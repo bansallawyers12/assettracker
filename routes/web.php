@@ -15,7 +15,7 @@ use App\Http\Controllers\ContactListController;
 use App\Http\Controllers\Email\MailMessageController;
 use App\Http\Controllers\Email\GmailController;
 use App\Http\Controllers\Email\EmailUploadController;
-
+use App\Http\Controllers\EmailTemplateController;
 
 
 Route::post('/test-json', function() {
@@ -23,7 +23,7 @@ Route::post('/test-json', function() {
 });
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('welcome')->layout('layouts.app');
 });
 
 Route::middleware(['auth', 'verified', EnsureTwoFactorVerified::class])->group(function () {
@@ -139,9 +139,21 @@ Route::middleware(['auth', EnsureTwoFactorVerified::class])->group(function () {
     // Email Section
     Route::get('/emails', [MailMessageController::class, 'index'])->name('emails.index');
     Route::get('/emails/{id}', [MailMessageController::class, 'show'])->name('emails.show');
+    Route::get('/emails/{id}/reply', [MailMessageController::class, 'reply'])->name('emails.reply');
+    Route::get('/emails/{id}/reply-data', [MailMessageController::class, 'getReplyData'])->name('emails.reply-data');
     Route::post('/emails/{id}/allocate-entity', [MailMessageController::class, 'allocateToBusinessEntity'])->name('emails.allocate.entity');
     Route::post('/emails/{id}/allocate-asset', [MailMessageController::class, 'allocateToAsset'])->name('emails.allocate.asset');
     Route::get('/emails-sync', [GmailController::class, 'sync'])->name('emails.sync');
+    
+    // New Email Compose Routes
+    Route::post('/emails/send', [MailMessageController::class, 'sendEmail'])->name('emails.send');
+    Route::post('/emails/save-draft', [MailMessageController::class, 'saveDraft'])->name('emails.save-draft');
+    Route::get('/emails/drafts', [MailMessageController::class, 'drafts'])->name('emails.drafts');
+    
+    // Email Template Management Routes
+    Route::resource('email-templates', EmailTemplateController::class);
+    Route::get('/email-templates/{emailTemplate}/preview', [EmailTemplateController::class, 'preview'])->name('email-templates.preview');
+    Route::get('/email-templates-api/templates', [EmailTemplateController::class, 'getTemplates'])->name('email-templates.api');
 
     // Email Routes (Nested under Business Entities)
     Route::get('business-entities/{businessEntity}/compose-email-data', [BusinessEntityController::class, 'getComposeEmailData'])->name('business-entities.compose-email-data');

@@ -1,10 +1,15 @@
-@extends('layouts.app')
+<x-app-layout>
+    <x-slot name="header">
+        <h2 class="font-semibold text-2xl text-blue-900 dark:text-blue-200 leading-tight">
+            {{ __('Create New Reminder') }}
+        </h2>
+    </x-slot>
 
-@section('content')
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-2xl mx-auto">
-        <div class="bg-white rounded-lg shadow-md p-6">
-            <h2 class="text-2xl font-bold mb-6">Create New Reminder</h2>
+    <div class="py-12">
+        <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
+            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900 dark:text-gray-100">
+                    <h2 class="text-2xl font-bold mb-6">Create New Reminder</h2>
 
             <form method="POST" action="{{ route('reminders.store') }}" class="space-y-6">
                 @csrf
@@ -81,43 +86,44 @@
                     </button>
                 </div>
             </form>
+                </div>
+            </div>
         </div>
     </div>
-</div>
 
-@push('scripts')
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const businessEntitySelect = document.getElementById('business_entity_id');
-        const assetSelect = document.getElementById('asset_id');
-        const repeatTypeSelect = document.getElementById('repeat_type');
-        const repeatEndDateContainer = document.getElementById('repeat_end_date_container');
+    @push('scripts')
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const businessEntitySelect = document.getElementById('business_entity_id');
+            const assetSelect = document.getElementById('asset_id');
+            const repeatTypeSelect = document.getElementById('repeat_type');
+            const repeatEndDateContainer = document.getElementById('repeat_end_date_container');
 
-        // Handle business entity change to load assets
-        businessEntitySelect.addEventListener('change', function() {
-            const entityId = this.value;
-            assetSelect.innerHTML = '<option value="">Select Asset</option>';
-            
-            if (entityId) {
-                fetch(`/api/business-entities/${entityId}/assets`)
-                    .then(response => response.json())
-                    .then(assets => {
-                        assets.forEach(asset => {
-                            const option = document.createElement('option');
-                            option.value = asset.id;
-                            option.textContent = asset.name;
-                            assetSelect.appendChild(option);
-                        });
-                    })
-                    .catch(error => console.error('Error loading assets:', error));
-            }
+            // Handle business entity change to load assets
+            businessEntitySelect.addEventListener('change', function() {
+                const entityId = this.value;
+                assetSelect.innerHTML = '<option value="">Select Asset</option>';
+                
+                if (entityId) {
+                    fetch(`/api/business-entities/${entityId}/assets`)
+                        .then(response => response.json())
+                        .then(assets => {
+                            assets.forEach(asset => {
+                                const option = document.createElement('option');
+                                option.value = asset.id;
+                                option.textContent = asset.name;
+                                assetSelect.appendChild(option);
+                            });
+                        })
+                        .catch(error => console.error('Error loading assets:', error));
+                }
+            });
+
+            // Handle repeat type change to show/hide end date
+            repeatTypeSelect.addEventListener('change', function() {
+                repeatEndDateContainer.style.display = this.value === 'none' ? 'none' : 'block';
+            });
         });
-
-        // Handle repeat type change to show/hide end date
-        repeatTypeSelect.addEventListener('change', function() {
-            repeatEndDateContainer.style.display = this.value === 'none' ? 'none' : 'block';
-        });
-    });
-</script>
-@endpush
-@endsection 
+    </script>
+    @endpush
+</x-app-layout> 

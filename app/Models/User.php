@@ -50,4 +50,28 @@ class User extends Authenticatable
     {
         return $this->hasMany(ContactList::class);
     }
+
+    /**
+     * Get the emails associated with the user.
+     */
+    public function emails()
+    {
+        return $this->hasMany(Email::class);
+    }
+
+    /**
+     * Get the email drafts created by the user.
+     */
+    public function emailDrafts()
+    {
+        return $this->hasMany(EmailDraft::class);
+    }
+
+    /**
+     * Get the business entities owned by the user.
+     */
+    public function businessEntities()
+    {
+        return $this->hasMany(BusinessEntity::class);
+    }
 }

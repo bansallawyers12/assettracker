@@ -35,16 +35,9 @@ class ContactEmail extends Mailable
      */
     public function envelope(): Envelope
     {
-        $envelope = new Envelope(
+        return new Envelope(
             subject: $this->subject,
         );
-
-        // Set the from address if provided
-        if ($this->fromEmail) {
-            $envelope->from($this->fromEmail);
-        }
-
-        return $envelope;
     }
 
     /**

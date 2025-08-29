@@ -1,14 +1,10 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-2xl text-blue-900 dark:text-blue-200 leading-tight">
-            {{ $person->first_name }} {{ $person->last_name }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900 dark:text-gray-100">
+@section('content')
+<div class="py-12">
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="p-6 text-gray-900 dark:text-gray-100">
                 <!-- Person Header -->
                 <div class="mb-6">
                     <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">
@@ -175,4 +171,4 @@
         </div>
     </div>
 </div>
-</x-app-layout>
+@endsection
