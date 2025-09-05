@@ -17,6 +17,15 @@ class AssetController extends Controller
         $this->middleware('auth');
     }
 
+    public function index(BusinessEntity $businessEntity)
+    {
+        $assets = $businessEntity->assets()->with(['notes' => function($query) {
+            $query->where('is_reminder', true)->where('reminder_date', '<=', now());
+        }])->paginate(15);
+        
+        return view('assets.index', compact('businessEntity', 'assets'));
+    }
+
     public function create(BusinessEntity $businessEntity)
     {
         return view('assets.create', compact('businessEntity'));

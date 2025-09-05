@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use App\Models\JournalLine;
+use App\Models\TrackingCategory;
+use App\Models\TrackingSubCategory;
 use Carbon\Carbon;
 
 class FinancialReportService
@@ -203,5 +205,110 @@ class FinancialReportService
             ->sum('credit_amount');
             
         return $debits - $credits;
+    }
+
+    /**
+     * Generate tracking category report for income and expenses
+     */
+    public function generateTrackingCategoryReport($businessEntityId, $startDate, $endDate, $trackingCategoryId = null, $trackingSubCategoryId = null)
+    {
+        $businessEntity = BusinessEntity::findOrFail($businessEntityId);
+        
+        $query = JournalLine::whereHas('journalEntry', function($q) use ($businessEntityId, $startDate, $endDate) {
+            $q->where('business_entity_id', $businessEntityId)
+              ->where('entry_date', '>=', $startDate)
+              ->where('entry_date', '<=', $endDate)
+              ->where('is_posted', true);
+        });
+
+        if ($trackingCategoryId) {
+            $query->where('tracking_category_id', $trackingCategoryId);
+        }
+
+        if ($trackingSubCategoryId) {
+            $query->where('tracking_sub_category_id', $trackingSubCategoryId);
+        }
+
+        $journalLines = $query->with(['chartOfAccount', 'trackingCategory', 'trackingSubCategory'])->get();
+
+        // Group by tracking category and sub-category
+        $trackingData = [];
+        $totalIncome = 0;
+        $totalExpenses = 0;
+
+        foreach ($journalLines as $line) {
+            $categoryName = $line->trackingCategory ? $line->trackingCategory->name : 'Uncategorized';
+            $subCategoryName = $line->trackingSubCategory ? $line->trackingSubCategory->name : 'No Sub-category';
+            
+            if (!isset($trackingData[$categoryName])) {
+                $trackingData[$categoryName] = [
+                    'name' => $categoryName,
+                    'sub_categories' => [],
+                    'total_income' => 0,
+                    'total_expenses' => 0,
+                    'net_amount' => 0
+                ];
+            }
+
+            if (!isset($trackingData[$categoryName]['sub_categories'][$subCategoryName])) {
+                $trackingData[$categoryName]['sub_categories'][$subCategoryName] = [
+                    'name' => $subCategoryName,
+                    'income' => 0,
+                    'expenses' => 0,
+                    'net_amount' => 0
+                ];
+            }
+
+            $amount = $line->debit_amount - $line->credit_amount;
+            
+            if ($line->chartOfAccount->account_type === 'income') {
+                $trackingData[$categoryName]['sub_categories'][$subCategoryName]['income'] += $amount;
+                $trackingData[$categoryName]['total_income'] += $amount;
+                $totalIncome += $amount;
+            } elseif ($line->chartOfAccount->account_type === 'expense') {
+                $trackingData[$categoryName]['sub_categories'][$subCategoryName]['expenses'] += abs($amount);
+                $trackingData[$categoryName]['total_expenses'] += abs($amount);
+                $totalExpenses += abs($amount);
+            }
+
+            $trackingData[$categoryName]['sub_categories'][$subCategoryName]['net_amount'] = 
+                $trackingData[$categoryName]['sub_categories'][$subCategoryName]['income'] - 
+                $trackingData[$categoryName]['sub_categories'][$subCategoryName]['expenses'];
+        }
+
+        // Calculate net amounts for categories
+        foreach ($trackingData as $categoryName => $categoryData) {
+            $trackingData[$categoryName]['net_amount'] = $categoryData['total_income'] - $categoryData['total_expenses'];
+        }
+
+        return [
+            'business_entity' => $businessEntity,
+            'period' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate
+            ],
+            'tracking_categories' => $trackingData,
+            'totals' => [
+                'total_income' => $totalIncome,
+                'total_expenses' => $totalExpenses,
+                'net_amount' => $totalIncome - $totalExpenses
+            ],
+            'filters' => [
+                'tracking_category_id' => $trackingCategoryId,
+                'tracking_sub_category_id' => $trackingSubCategoryId
+            ]
+        ];
+    }
+
+    /**
+     * Get available tracking categories for filtering
+     */
+    public function getTrackingCategories($businessEntityId)
+    {
+        return TrackingCategory::where('business_entity_id', $businessEntityId)
+            ->where('is_active', true)
+            ->with('activeSubCategories')
+            ->ordered()
+            ->get();
     }
 }

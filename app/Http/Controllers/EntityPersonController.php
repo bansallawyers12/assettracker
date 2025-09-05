@@ -240,6 +240,67 @@ class EntityPersonController extends Controller
     }
 
     /**
+     * Display all persons.
+     */
+    public function indexPersons()
+    {
+        $persons = Person::with(['entityPersons.businessEntity'])
+            ->has('entityPersons')
+            ->paginate(15);
+        
+        return view('persons.index', compact('persons'));
+    }
+
+    /**
+     * Show the form for creating a new person.
+     */
+    public function createPerson()
+    {
+        $businessEntities = BusinessEntity::all();
+        return view('persons.create', compact('businessEntities'));
+    }
+
+    /**
+     * Store a newly created person.
+     */
+    public function storePerson(Request $request)
+    {
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'phone' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+            'date_of_birth' => 'nullable|date',
+            'business_entity_id' => 'required|exists:business_entities,id',
+            'role' => 'required|string|max:255',
+            'role_status' => 'required|in:Active,Inactive',
+            'asic_due_date' => 'nullable|date',
+        ]);
+
+        // Create the person
+        $person = Person::create([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'],
+            'address' => $validated['address'],
+            'date_of_birth' => $validated['date_of_birth'],
+        ]);
+
+        // Create the entity-person relationship
+        EntityPerson::create([
+            'business_entity_id' => $validated['business_entity_id'],
+            'person_id' => $person->id,
+            'role' => $validated['role'],
+            'role_status' => $validated['role_status'],
+            'asic_due_date' => $validated['asic_due_date'],
+        ]);
+
+        return redirect()->route('persons.index')->with('success', 'Person created successfully.');
+    }
+
+    /**
      * Display all roles for a specific person across all entities.
      */
     public function showPerson(Person $person)

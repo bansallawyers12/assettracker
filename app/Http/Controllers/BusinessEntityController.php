@@ -281,6 +281,7 @@ class BusinessEntityController extends Controller
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
             'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
+            'related_entity_id' => 'nullable|exists:business_entities,id',
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit', // Added more specific statuses
             'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048', // Optional document upload
@@ -309,6 +310,7 @@ class BusinessEntityController extends Controller
         // Create the transaction record
         $transaction = Transaction::create([
             'business_entity_id' => $businessEntity->id,
+            'related_entity_id' => $request->related_entity_id,
             'date' => $request->date,
             'amount' => $request->amount,
             'description' => $request->description,
@@ -322,6 +324,70 @@ class BusinessEntityController extends Controller
         // Redirect to dashboard (or entity show page) with success message
         // Consider redirecting to business-entities.show instead?
         return redirect()->route('dashboard')->with('success', "Transaction '{$transaction->description}' added successfully!");
+    }
+
+    /**
+     * Store a new transaction for a bank account.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\BusinessEntity  $businessEntity
+     * @param  \App\Models\BankAccount  $bankAccount
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function storeBankTransaction(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount)
+    {
+        // Authorization check
+        if ($bankAccount->business_entity_id !== $businessEntity->id) {
+            abort(403, 'Unauthorized');
+        }
+
+        // Validate the transaction data
+        $request->validate([
+            'date' => 'required|date',
+            'amount' => 'required|numeric',
+            'description' => 'nullable|string|max:255',
+            'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
+            'related_entity_id' => 'nullable|exists:business_entities,id',
+            'gst_amount' => 'nullable|numeric',
+            'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
+            'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'document_name' => 'nullable|string|max:255',
+        ]);
+
+        $receiptPath = $request->input('receipt_path');
+
+        // Handle file upload if a new document is provided
+        if ($request->hasFile('document')) {
+            $file = $request->file('document');
+            $originalName = $file->getClientOriginalName();
+            $customName = $request->document_name ?: pathinfo($originalName, PATHINFO_FILENAME);
+            $extension = $file->getClientOriginalExtension();
+            $uploadDate = now()->format('Y-m-d');
+            $fileName = "{$customName}_{$uploadDate}.{$extension}";
+            $folderPath = "Receipts/{$businessEntity->id}_{$businessEntity->legal_name}";
+            $s3Path = "{$folderPath}/{$fileName}";
+
+            Storage::disk('s3')->put($s3Path, file_get_contents($file->getRealPath()));
+            $receiptPath = $s3Path;
+        }
+
+        // Create the transaction record
+        $transaction = Transaction::create([
+            'business_entity_id' => $businessEntity->id,
+            'related_entity_id' => $request->related_entity_id,
+            'bank_account_id' => $bankAccount->id,
+            'date' => $request->date,
+            'amount' => $request->amount,
+            'description' => $request->description,
+            'transaction_type' => $request->transaction_type,
+            'gst_amount' => $request->gst_amount,
+            'gst_status' => $request->gst_status,
+            'receipt_path' => $receiptPath,
+        ]);
+
+        // Redirect to the bank account show page with success message
+        return redirect()->route('business-entities.show', [$businessEntity->id, 'bank_account_id' => $bankAccount->id, '#tab_bank_accounts'])
+            ->with('success', "Transaction '{$transaction->description}' added successfully!");
     }
 
     /**
@@ -362,6 +428,7 @@ class BusinessEntityController extends Controller
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
             'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
+            'related_entity_id' => 'nullable|exists:business_entities,id',
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
             // Note: Updating receipt_path might require additional logic/validation if allowed
@@ -369,11 +436,48 @@ class BusinessEntityController extends Controller
 
         // Update the transaction with validated fields
         $transaction->update($request->only([
-            'date', 'amount', 'description', 'transaction_type', 'gst_amount', 'gst_status'
+            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'gst_amount', 'gst_status'
         ]));
 
         // Redirect to the business entity show page with success message
         return redirect()->route('business-entities.show', $businessEntity->id)->with('success', 'Transaction updated successfully!');
+    }
+
+    /**
+     * Update the specified bank account transaction.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \App\Models\BusinessEntity  $businessEntity
+     * @param  \App\Models\BankAccount  $bankAccount
+     * @param  \App\Models\Transaction  $transaction
+     * @return \Illuminate\Http\RedirectResponse
+     */
+    public function updateBankTransaction(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount, Transaction $transaction)
+    {
+        // Authorization checks
+        if ($transaction->business_entity_id !== $businessEntity->id || $transaction->bank_account_id !== $bankAccount->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Validate the updated data
+        $request->validate([
+            'date' => 'required|date',
+            'amount' => 'required|numeric',
+            'description' => 'nullable|string|max:255',
+            'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
+            'related_entity_id' => 'nullable|exists:business_entities,id',
+            'gst_amount' => 'nullable|numeric',
+            'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
+        ]);
+
+        // Update the transaction with validated fields
+        $transaction->update($request->only([
+            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'gst_amount', 'gst_status'
+        ]));
+
+        // Redirect to the bank account show page with success message
+        return redirect()->route('business-entities.show', [$businessEntity->id, 'bank_account_id' => $bankAccount->id, '#tab_bank_accounts'])
+            ->with('success', 'Transaction updated successfully!');
     }
 
     /**
@@ -1060,6 +1164,42 @@ class BusinessEntityController extends Controller
         }
     }
 
+    /**
+     * Display all bank accounts across all business entities for the current user.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function bankAccountsIndex()
+    {
+        $user = Auth::user();
+        $businessEntities = BusinessEntity::where('user_id', $user->id)->get();
+        $bankAccounts = collect();
+        
+        foreach ($businessEntities as $entity) {
+            $entityBankAccounts = $entity->bankAccounts()->with(['bankStatementEntries.transaction'])->get();
+            $bankAccounts = $bankAccounts->merge($entityBankAccounts);
+        }
+        
+        return view('bank-accounts.index', compact('bankAccounts', 'businessEntities'));
+    }
 
+    /**
+     * Display all transactions across all business entities for the current user.
+     *
+     * @return \Illuminate\View\View
+     */
+    public function transactionsIndex()
+    {
+        $user = Auth::user();
+        $businessEntities = BusinessEntity::where('user_id', $user->id)->get();
+        $transactions = collect();
+        
+        foreach ($businessEntities as $entity) {
+            $entityTransactions = $entity->transactions()->with(['bankStatementEntries'])->orderBy('date', 'desc')->get();
+            $transactions = $transactions->merge($entityTransactions);
+        }
+        
+        return view('transactions.index', compact('transactions', 'businessEntities'));
+    }
 
 } // End of BusinessEntityController class

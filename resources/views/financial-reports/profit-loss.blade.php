@@ -1,6 +1,4 @@
-@extends('layouts.app')
-
-@section('content')
+<x-app-layout>
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-3xl font-bold text-gray-900">Profit & Loss Statement - {{ $report['business_entity']->legal_name }}</h1>
@@ -92,4 +90,4 @@
         </div>
     </div>
 </div>
-@endsection
+</x-app-layout>

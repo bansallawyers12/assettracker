@@ -6,11 +6,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use App\Traits\EncryptsAttributes;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable;
+    use HasFactory, Notifiable, EncryptsAttributes;
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +22,28 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'phone',
+        'address',
+        'two_factor_secret',
+        'two_factor_backup_codes',
+        'two_factor_enabled',
+        'password_changed_at',
+        'last_login_at',
+        'last_login_ip',
+    ];
+
+    /**
+     * The attributes that should be encrypted.
+     * This overrides the trait's default empty array.
+     *
+     * @var array
+     */
+    protected $encrypted = [
+        'email',
+        'phone',
+        'address',
+        'two_factor_secret',
+        'two_factor_backup_codes',
     ];
 
     /**
@@ -43,6 +66,9 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'two_factor_enabled' => 'boolean',
+            'password_changed_at' => 'datetime',
+            'last_login_at' => 'datetime',
         ];
     }
 

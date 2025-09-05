@@ -15,6 +15,14 @@ class FinancialReportController extends Controller
         $this->financialReportService = $financialReportService;
     }
     
+    public function index()
+    {
+        $user = auth()->user();
+        $businessEntities = BusinessEntity::where('user_id', $user->id)->get();
+        
+        return view('financial-reports.index', compact('businessEntities'));
+    }
+    
     public function profitLoss(BusinessEntity $businessEntity, Request $request)
     {
         $startDate = $request->get('start_date', now()->startOfYear());
@@ -53,5 +61,25 @@ class FinancialReportController extends Controller
         );
         
         return view('financial-reports.cash-flow', compact('report'));
+    }
+    
+    public function trackingCategories(BusinessEntity $businessEntity, Request $request)
+    {
+        $startDate = $request->get('start_date', now()->startOfYear());
+        $endDate = $request->get('end_date', now()->endOfYear());
+        $trackingCategoryId = $request->get('tracking_category_id');
+        $trackingSubCategoryId = $request->get('tracking_sub_category_id');
+        
+        $report = $this->financialReportService->generateTrackingCategoryReport(
+            $businessEntity->id, 
+            $startDate, 
+            $endDate,
+            $trackingCategoryId,
+            $trackingSubCategoryId
+        );
+        
+        $trackingCategories = $this->financialReportService->getTrackingCategories($businessEntity->id);
+        
+        return view('financial-reports.tracking-categories', compact('report', 'trackingCategories'));
     }
 }

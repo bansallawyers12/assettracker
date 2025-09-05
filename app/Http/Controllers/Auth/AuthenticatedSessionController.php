@@ -89,56 +89,14 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
 
         $user = User::where('email', $request->email)->first();
-
-        if ($user) {
-            try {
-                // Generate a 6-digit code
-                $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-                $user->two_factor_code = $code;
-                $user->two_factor_expires_at = now()->addMinutes(15);
-                $user->save();
-
-                // Send the notification
-                $user->notify(new TwoFactorCode($code));
-              
-                $details = [
-                    'title' => 'Your verification code is '.$code,
-                    'subject' => 'verification Code From Assettracker'
-                ];
-
-                
-                try {
-                    Mail::to($user->email)->send(new VerificationMail($details));
-                    //dd('Mail sent successfully');
-                } catch (\Exception $e) {
-                    dd('Mail sending failed: ' . $e->getMessage());
-                }
-
-
-                Log::info('2FA code sent to user', [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'code' => $code
-                ]);
-
-                return redirect()->route('two-factor.challenge')
-                    ->with('status', 'Verification code has been sent to your email. Please check your inbox.');
-            } catch (\Exception $e) {
-                Log::error('Failed to send 2FA code', [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'error' => $e->getMessage()
-                ]);
-
-                return back()->withErrors([
-                    'email' => 'Failed to send verification code. Please try again.',
-                ]);
-            }
+        if (!$user) {
+            return back()->withErrors([
+                'email' => 'The provided credentials do not match our records.',
+            ]);
         }
 
-        return back()->withErrors([
-            'email' => 'The provided credentials do not match our records.',
-        ]);
+        Auth::login($user);
+        return redirect()->route('dashboard');
     }
 
     public function verifyTwoFactor(Request $request)
@@ -164,6 +122,56 @@ class AuthenticatedSessionController extends Controller
         Auth::login($user);
 
         return redirect()->route('dashboard');
+    }
+
+    public function resendTwoFactor(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'email' => 'required|email',
+        ]);
+
+        $user = User::where('email', $request->email)->first();
+        if (!$user) {
+            return back()->withErrors(['email' => 'User not found.']);
+        }
+
+        try {
+            $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            $user->two_factor_code = $code;
+            $user->two_factor_expires_at = now()->addMinutes(15);
+            $user->save();
+
+            $user->notify(new TwoFactorCode($code));
+
+            $details = [
+                'title' => 'Your verification code is '.$code,
+                'subject' => 'verification Code From Assettracker'
+            ];
+
+            try {
+                Mail::to($user->email)->send(new VerificationMail($details));
+            } catch (\Exception $e) {
+                Log::error('Mail sending failed (resend)', [
+                    'user_id' => $user->id,
+                    'email' => $user->email,
+                    'error' => $e->getMessage(),
+                ]);
+                return back()->withErrors([
+                    'email' => 'Could not resend verification email. Try again shortly.',
+                ]);
+            }
+
+            return redirect()->route('two-factor.challenge')
+                ->with('status', 'A new verification code has been sent to your email.');
+        } catch (\Exception $e) {
+            Log::error('Failed to resend 2FA code', [
+                'email' => $request->email,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->withErrors([
+                'email' => 'Failed to resend verification code. Please try again.',
+            ]);
+        }
     }
 
     /**

@@ -18,6 +18,7 @@ use App\Http\Controllers\Email\EmailUploadController;
 use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\FinancialReportController;
+use App\Http\Controllers\InvoiceController;
 
 
 Route::post('/test-json', function() {
@@ -28,14 +29,22 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::middleware(['auth', 'verified', EnsureTwoFactorVerified::class])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [BusinessEntityController::class, 'dashboard'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    
+    // Two-Factor Authentication Routes
+    Route::get('/two-factor/setup', [TwoFactorController::class, 'show'])->name('two-factor.setup');
+    Route::post('/two-factor/enable', [TwoFactorController::class, 'enable'])->name('two-factor.enable');
+    Route::post('/two-factor/disable', [TwoFactorController::class, 'disable'])->name('two-factor.disable');
+    Route::get('/two-factor/manage', [TwoFactorController::class, 'show'])->name('two-factor.manage');
+    Route::post('/two-factor/regenerate-codes', [TwoFactorController::class, 'regenerateBackupCodes'])->name('two-factor.regenerate-codes');
+    Route::get('/two-factor/backup-codes', [TwoFactorController::class, 'showBackupCodes'])->name('two-factor.backup-codes');
 });
 
-Route::middleware(['auth', EnsureTwoFactorVerified::class])->group(function () {
+Route::middleware(['auth'])->group(function () {
     // Business Entities
     Route::resource('business-entities', BusinessEntityController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
     Route::post('business-entities/{businessEntity}/notes', [BusinessEntityController::class, 'storeNote'])->name('business-entities.notes.store');
@@ -50,7 +59,7 @@ Route::middleware(['auth', EnsureTwoFactorVerified::class])->group(function () {
     Route::post('notes/{note}/extend', [AssetController::class, 'extendNote'])->name('notes.extend');
 
     // Assets (Nested under Business Entities)
-    Route::resource('business-entities.assets', AssetController::class)->only(['create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::resource('business-entities.assets', AssetController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('business-entities/{businessEntity}/assets/{asset}/finalize/{type}', [AssetController::class, 'finalizeDueDate'])->name('assets.finalize-due-date');
     Route::post('business-entities/{businessEntity}/assets/{asset}/extend/{type}', [AssetController::class, 'extendDueDate'])->name('assets.extend-due-date');
     
@@ -75,7 +84,10 @@ Route::middleware(['auth', EnsureTwoFactorVerified::class])->group(function () {
     Route::post('entity-persons/{entityPerson}/finalize-due-date', [EntityPersonController::class, 'finalizeDueDate'])->name('entity-persons.finalize-due-date');
     Route::post('entity-persons/{entityPerson}/extend-due-date', [EntityPersonController::class, 'extendDueDate'])->name('entity-persons.extend-due-date');
 
-    // Person details route - show all roles for a person across all entities
+    // Person routes
+    Route::get('persons', [EntityPersonController::class, 'indexPersons'])->name('persons.index');
+    Route::get('persons/create', [EntityPersonController::class, 'createPerson'])->name('persons.create');
+    Route::post('persons', [EntityPersonController::class, 'storePerson'])->name('persons.store');
     Route::get('persons/{person}', [EntityPersonController::class, 'showPerson'])->name('persons.show');
 
     // Bank Accounts
@@ -96,12 +108,21 @@ Route::middleware(['auth', EnsureTwoFactorVerified::class])->group(function () {
 
     // Existing Bank Account Transaction Routes
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/create', [BusinessEntityController::class, 'createTransaction'])->name('business-entities.bank-accounts.transactions.create');
-    Route::post('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions', [BusinessEntityController::class, 'storeTransaction'])->name('business-entities.bank-accounts.transactions.store');
+    Route::post('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions', [BusinessEntityController::class, 'storeBankTransaction'])->name('business-entities.bank-accounts.transactions.store');
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/{transaction}', [BusinessEntityController::class, 'showTransaction'])->name('business-entities.bank-accounts.transactions.show');
+    Route::put('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/{transaction}', [BusinessEntityController::class, 'updateBankTransaction'])->name('business-entities.bank-accounts.transactions.update');
     Route::post('/business-entities/{businessEntity}/bank-accounts/{bankStatementEntry}/match-transaction', [BusinessEntityController::class, 'matchTransaction'])->name('business-entities.bank-accounts.match-transaction');
 
     // API for Bank Accounts
     Route::get('/api/business-entities/{businessEntity}/bank-accounts', [BusinessEntityController::class, 'getBankAccounts'])->name('business-entities.bank-accounts.api');
+
+    // Bank Import Routes
+    Route::post('/business-entities/{businessEntity}/bank-import/process', [App\Http\Controllers\BankImportController::class, 'process'])->name('business-entities.bank-import.process');
+    Route::get('/business-entities/{businessEntity}/bank-import/entries', [App\Http\Controllers\BankImportController::class, 'entries'])->name('business-entities.bank-import.entries');
+    Route::post('/business-entities/{businessEntity}/bank-import/save-matches', [App\Http\Controllers\BankImportController::class, 'saveMatches'])->name('business-entities.bank-import.save-matches');
+    
+    // Chart of Accounts API
+    Route::get('/business-entities/{businessEntity}/chart-of-accounts', [ChartOfAccountController::class, 'getAccountsJson'])->name('business-entities.chart-of-accounts.api');
 
     // API for Asset Documents
     Route::get('/api/business-entities/{businessEntity}/assets/{asset}/documents', [DocumentController::class, 'fetchAssetFiles'])->name('api.asset-documents.fetch');
@@ -119,7 +140,7 @@ Route::middleware(['auth', EnsureTwoFactorVerified::class])->group(function () {
 
         // Business Entity document routes
         Route::post('/business-entities/{businessEntity}/documents/fetch', 'fetchFiles')->name('business-entities.documents.fetch');
-        Route::post('/business-entities/{businessEntity}/documents/upload', 'uploadDocument')->name('business-entities.upload-document');
+        Route::post('/business-entities/{businessEntity}/documents/upload', 'uploadDocument')->name('business-entities.documents.upload');
 
         // Asset-specific document routes
         Route::post('/business-entities/{businessEntity}/assets/{asset}/documents/fetch', 'fetchAssetFiles')->name('asset-documents.fetchAssetFiles');
@@ -166,6 +187,31 @@ Route::middleware(['auth', EnsureTwoFactorVerified::class])->group(function () {
     Route::get('business-entities/{businessEntity}/financial-reports/profit-loss', [FinancialReportController::class, 'profitLoss'])->name('business-entities.financial-reports.profit-loss');
     Route::get('business-entities/{businessEntity}/financial-reports/balance-sheet', [FinancialReportController::class, 'balanceSheet'])->name('business-entities.financial-reports.balance-sheet');
     Route::get('business-entities/{businessEntity}/financial-reports/cash-flow', [FinancialReportController::class, 'cashFlow'])->name('business-entities.financial-reports.cash-flow');
+    Route::get('business-entities/{businessEntity}/financial-reports/tracking-categories', [FinancialReportController::class, 'trackingCategories'])->name('business-entities.financial-reports.tracking-categories');
+
+    // Invoice Routes (Nested under Business Entities)
+    Route::resource('business-entities.invoices', InvoiceController::class);
+    Route::post('business-entities/{businessEntity}/invoices/{invoice}/post', [InvoiceController::class, 'post'])->name('business-entities.invoices.post');
+
+    // Tracking Categories Routes (Nested under Business Entities)
+    Route::resource('business-entities.tracking-categories', App\Http\Controllers\TrackingCategoryController::class);
+    Route::resource('business-entities.tracking-categories.tracking-sub-categories', App\Http\Controllers\TrackingSubCategoryController::class)->except(['index', 'show']);
+
+    // Rent Invoice Routes (Nested under Business Entities)
+    Route::get('business-entities/{businessEntity}/rent-invoices', [App\Http\Controllers\RentInvoiceController::class, 'index'])->name('business-entities.rent-invoices.index');
+    Route::post('business-entities/{businessEntity}/rent-invoices/generate-all', [App\Http\Controllers\RentInvoiceController::class, 'generateAll'])->name('business-entities.rent-invoices.generate-all');
+    Route::post('business-entities/{businessEntity}/rent-invoices/generate-lease/{lease}', [App\Http\Controllers\RentInvoiceController::class, 'generateForLease'])->name('business-entities.rent-invoices.generate-lease');
+    Route::get('business-entities/{businessEntity}/rent-invoices/preview/{lease}', [App\Http\Controllers\RentInvoiceController::class, 'preview'])->name('business-entities.rent-invoices.preview');
+    Route::get('business-entities/{businessEntity}/rent-invoices/suite-assets', [App\Http\Controllers\RentInvoiceController::class, 'getSuiteAssets'])->name('business-entities.rent-invoices.suite-assets');
+    Route::get('business-entities/{businessEntity}/rent-invoices/upcoming', [App\Http\Controllers\RentInvoiceController::class, 'getUpcomingInvoices'])->name('business-entities.rent-invoices.upcoming');
+
+    // Global Accounting Routes (for Accounts Dashboard)
+    Route::get('/chart-of-accounts', [ChartOfAccountController::class, 'index'])->name('chart-of-accounts.index');
+    Route::get('/bank-accounts', [BusinessEntityController::class, 'bankAccountsIndex'])->name('bank-accounts.index');
+    Route::get('/transactions', [BusinessEntityController::class, 'transactionsIndex'])->name('transactions.index');
+    Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+    Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
+    Route::get('/bank-import', [App\Http\Controllers\BankImportController::class, 'index'])->name('bank-import.index');
 });
 
 Route::post('logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])->name('logout');
@@ -176,6 +222,10 @@ Route::get('/two-factor-challenge', function () {
 
 Route::post('/two-factor-challenge', [AuthenticatedSessionController::class, 'verifyTwoFactor'])
     ->name('two-factor.login');
+
+// Resend Two-Factor Code
+Route::post('/two-factor-resend', [AuthenticatedSessionController::class, 'resendTwoFactor'])
+    ->name('two-factor.resend');
 
 // Add this route for testing email
 Route::get('/test-email', function () {

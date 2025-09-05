@@ -7,9 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Transaction extends Model
 {
     protected $fillable = [
-        'business_entity_id', 'date', 'amount', 'description',
+        'business_entity_id', 'related_entity_id', 'date', 'amount', 'description',
         'transaction_type', 'gst_amount', 'gst_status', 'receipt_path',
-        'bank_account_id', // Nullable now
+        'bank_account_id', 'tracking_category_id', 'tracking_sub_category_id'
     ];
 
     protected $casts = [
@@ -50,9 +50,24 @@ class Transaction extends Model
         return $this->belongsTo(BusinessEntity::class);
     }
 
+    public function relatedEntity()
+    {
+        return $this->belongsTo(BusinessEntity::class, 'related_entity_id');
+    }
+
     public function bankStatementEntries()
     {
         return $this->hasMany(BankStatementEntry::class);
+    }
+
+    public function trackingCategory()
+    {
+        return $this->belongsTo(TrackingCategory::class);
+    }
+
+    public function trackingSubCategory()
+    {
+        return $this->belongsTo(TrackingSubCategory::class);
     }
 
     public function scopeUnmatched($query)

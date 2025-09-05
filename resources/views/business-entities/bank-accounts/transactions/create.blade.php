@@ -51,13 +51,23 @@
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">Transaction Type</label>
-                        <select name="transaction_type" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
+                        <select name="transaction_type" id="transaction_type" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" required>
                             <option value="">Select Type</option>
                             @foreach ($transactionTypes as $value => $label)
                                 <option value="{{ $value }}" {{ old('transaction_type', $transactionData['transaction_type'] ?? '') == $value ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
                         @error('transaction_type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="mb-4" id="related_entity_field" style="display: none;">
+                        <label class="block text-sm font-medium text-gray-700">Related Entity</label>
+                        <select name="related_entity_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            <option value="">Select Related Entity</option>
+                            @foreach(\App\Models\BusinessEntity::where('id', '!=', $businessEntity->id)->get() as $entity)
+                                <option value="{{ $entity->id }}" {{ old('related_entity_id', $transactionData['related_entity_id'] ?? '') == $entity->id ? 'selected' : '' }}>{{ $entity->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('related_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">GST Amount</label>
@@ -90,4 +100,40 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Related Entity field visibility
+            const transactionTypeSelect = document.getElementById('transaction_type');
+            const relatedEntityField = document.getElementById('related_entity_field');
+            
+            if (transactionTypeSelect && relatedEntityField) {
+                const relatedPartyTypes = [
+                    'rent_to_related_party',
+                    'purchases_from_related_party', 
+                    'sales_to_related_party',
+                    'directors_loans_to_company',
+                    'company_loans_to_directors',
+                    'repayment_directors_loans'
+                ];
+                
+                transactionTypeSelect.addEventListener('change', function() {
+                    if (relatedPartyTypes.includes(this.value)) {
+                        relatedEntityField.style.display = 'block';
+                        relatedEntityField.querySelector('select').required = true;
+                    } else {
+                        relatedEntityField.style.display = 'none';
+                        relatedEntityField.querySelector('select').required = false;
+                        relatedEntityField.querySelector('select').value = '';
+                    }
+                });
+                
+                // Check on page load
+                if (relatedPartyTypes.includes(transactionTypeSelect.value)) {
+                    relatedEntityField.style.display = 'block';
+                    relatedEntityField.querySelector('select').required = true;
+                }
+            }
+        });
+    </script>
 </x-app-layout>

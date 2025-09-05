@@ -12,7 +12,9 @@ class JournalLine extends Model
         'debit_amount',
         'credit_amount',
         'description',
-        'reference'
+        'reference',
+        'tracking_category_id',
+        'tracking_sub_category_id'
     ];
 
     protected $casts = [
@@ -28,5 +30,15 @@ class JournalLine extends Model
     public function chartOfAccount()
     {
         return $this->belongsTo(ChartOfAccount::class);
+    }
+
+    public function trackingCategory()
+    {
+        return $this->belongsTo(TrackingCategory::class);
+    }
+
+    public function trackingSubCategory()
+    {
+        return $this->belongsTo(TrackingSubCategory::class);
     }
 }

@@ -1,13 +1,20 @@
-@extends('layouts.app')
-
-@section('content')
+<x-app-layout>
 <div class="container mx-auto px-4 py-8">
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Chart of Accounts - {{ $businessEntity->legal_name }}</h1>
-        <a href="{{ route('business-entities.chart-of-accounts.create', $businessEntity) }}" 
-           class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-            Add New Account
-        </a>
+        <h1 class="text-3xl font-bold text-gray-900">
+            Chart of Accounts
+            @if($businessEntity)
+                - {{ $businessEntity->legal_name }}
+            @else
+                - All Entities
+            @endif
+        </h1>
+        @if($businessEntity)
+            <a href="{{ route('business-entities.chart-of-accounts.create', $businessEntity) }}" 
+               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                Add New Account
+            </a>
+        @endif
     </div>
 
     @if(session('success'))
@@ -57,15 +64,20 @@
                                 @endif
                             </span>
                             <div class="flex space-x-1">
-                                <a href="{{ route('business-entities.chart-of-accounts.edit', [$businessEntity, $account]) }}" 
-                                   class="text-indigo-600 hover:text-indigo-900 text-sm">Edit</a>
-                                @if($account->journalLines()->count() == 0)
-                                    <form method="POST" action="{{ route('business-entities.chart-of-accounts.destroy', [$businessEntity, $account]) }}" 
-                                          class="inline" onsubmit="return confirm('Are you sure you want to delete this account?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-900 text-sm ml-2">Delete</button>
-                                    </form>
+                                @if($businessEntity)
+                                    <a href="{{ route('business-entities.chart-of-accounts.edit', [$businessEntity, $account]) }}" 
+                                       class="text-indigo-600 hover:text-indigo-900 text-sm">Edit</a>
+                                    @if($account->journalLines()->count() == 0)
+                                        <form method="POST" action="{{ route('business-entities.chart-of-accounts.destroy', [$businessEntity, $account]) }}" 
+                                              class="inline" onsubmit="return confirm('Are you sure you want to delete this account?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-900 text-sm ml-2">Delete</button>
+                                        </form>
+                                    @endif
+                                @else
+                                    <span class="text-gray-400 text-sm">View Only</span>
+                                    <span class="text-xs text-gray-500 ml-2">({{ $account->businessEntity->legal_name }})</span>
                                 @endif
                             </div>
                         </div>
@@ -75,4 +87,4 @@
         </ul>
     </div>
 </div>
-@endsection
+</x-app-layout>
