@@ -16,6 +16,8 @@ use App\Http\Controllers\Email\MailMessageController;
 use App\Http\Controllers\Email\GmailController;
 use App\Http\Controllers\Email\EmailUploadController;
 use App\Http\Controllers\EmailTemplateController;
+use App\Http\Controllers\ChartOfAccountController;
+use App\Http\Controllers\FinancialReportController;
 
 
 Route::post('/test-json', function() {
@@ -23,7 +25,7 @@ Route::post('/test-json', function() {
 });
 
 Route::get('/', function () {
-    return view('welcome')->layout('layouts.app');
+    return view('welcome');
 });
 
 Route::middleware(['auth', 'verified', EnsureTwoFactorVerified::class])->group(function () {
@@ -158,6 +160,12 @@ Route::middleware(['auth', EnsureTwoFactorVerified::class])->group(function () {
     // Email Routes (Nested under Business Entities)
     Route::get('business-entities/{businessEntity}/compose-email-data', [BusinessEntityController::class, 'getComposeEmailData'])->name('business-entities.compose-email-data');
     Route::post('business-entities/{businessEntity}/send-email', [BusinessEntityController::class, 'sendEmail'])->name('business-entities.send-email');
+
+    // Accounting System Routes (Nested under Business Entities)
+    Route::resource('business-entities.chart-of-accounts', ChartOfAccountController::class);
+    Route::get('business-entities/{businessEntity}/financial-reports/profit-loss', [FinancialReportController::class, 'profitLoss'])->name('business-entities.financial-reports.profit-loss');
+    Route::get('business-entities/{businessEntity}/financial-reports/balance-sheet', [FinancialReportController::class, 'balanceSheet'])->name('business-entities.financial-reports.balance-sheet');
+    Route::get('business-entities/{businessEntity}/financial-reports/cash-flow', [FinancialReportController::class, 'cashFlow'])->name('business-entities.financial-reports.cash-flow');
 });
 
 Route::post('logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])->name('logout');

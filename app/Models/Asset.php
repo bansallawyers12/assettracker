@@ -37,6 +37,15 @@ class Asset extends Model
         'sro_updated',
         'real_estate_percentage',
         'rental_income',
+        'depreciation_method',
+        'useful_life_years',
+        'residual_value',
+        'accumulated_depreciation',
+        'book_value',
+        'is_depreciable',
+        'depreciation_account_id',
+        'disposal_date',
+        'disposal_amount',
     ];
 
     protected $casts = [
@@ -47,6 +56,7 @@ class Asset extends Model
         'council_rates_due_date' => 'datetime',
         'owners_corp_due_date' => 'datetime',
         'land_tax_due_date' => 'datetime',
+        'disposal_date' => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'acquisition_cost' => 'decimal:2',
@@ -55,10 +65,16 @@ class Asset extends Model
         'council_rates_amount' => 'decimal:2',
         'owners_corp_amount' => 'decimal:2',
         'land_tax_amount' => 'decimal:2',
+        'residual_value' => 'decimal:2',
+        'accumulated_depreciation' => 'decimal:2',
+        'book_value' => 'decimal:2',
+        'disposal_amount' => 'decimal:2',
         'vic_roads_updated' => 'boolean',
         'sro_updated' => 'boolean',
+        'is_depreciable' => 'boolean',
         'mileage' => 'integer',
         'square_footage' => 'integer',
+        'useful_life_years' => 'integer',
         'real_estate_percentage' => 'decimal:2',
         'rental_income' => 'decimal:2',
     ];
@@ -101,6 +117,89 @@ class Asset extends Model
     public function mailMessages()
     {
         return $this->belongsToMany(MailMessage::class, 'asset_mail_message');
+    }
+
+    public function depreciationAccount()
+    {
+        return $this->belongsTo(ChartOfAccount::class, 'depreciation_account_id');
+    }
+
+    public function depreciationSchedules()
+    {
+        return $this->hasMany(DepreciationSchedule::class);
+    }
+
+    public static $depreciationMethods = [
+        'straight_line' => 'Straight Line',
+        'reducing_balance' => 'Reducing Balance',
+        'units_of_production' => 'Units of Production'
+    ];
+
+    public function calculateDepreciation($method = null, $asOfDate = null)
+    {
+        $method = $method ?? $this->depreciation_method;
+        $asOfDate = $asOfDate ?? now();
+        
+        switch ($method) {
+            case 'straight_line':
+                return $this->calculateStraightLineDepreciation($asOfDate);
+            case 'reducing_balance':
+                return $this->calculateReducingBalanceDepreciation($asOfDate);
+            default:
+                return 0;
+        }
+    }
+
+    private function calculateStraightLineDepreciation($asOfDate)
+    {
+        if (!$this->is_depreciable || !$this->useful_life_years) {
+            return 0;
+        }
+        
+        $monthsInService = $this->acquisition_date->diffInMonths($asOfDate);
+        $totalMonths = $this->useful_life_years * 12;
+        
+        if ($monthsInService >= $totalMonths) {
+            return $this->acquisition_cost - $this->residual_value;
+        }
+        
+        $annualDepreciation = ($this->acquisition_cost - $this->residual_value) / $this->useful_life_years;
+        return ($annualDepreciation / 12) * $monthsInService;
+    }
+
+    private function calculateReducingBalanceDepreciation($asOfDate)
+    {
+        if (!$this->is_depreciable || !$this->useful_life_years) {
+            return 0;
+        }
+        
+        $monthsInService = $this->acquisition_date->diffInMonths($asOfDate);
+        $totalMonths = $this->useful_life_years * 12;
+        
+        if ($monthsInService >= $totalMonths) {
+            return $this->acquisition_cost - $this->residual_value;
+        }
+        
+        // Calculate reducing balance rate (typically 1.5x straight line rate)
+        $straightLineRate = 1 / $this->useful_life_years;
+        $reducingBalanceRate = $straightLineRate * 1.5;
+        
+        $depreciation = 0;
+        $bookValue = $this->acquisition_cost;
+        
+        for ($month = 1; $month <= $monthsInService; $month++) {
+            $monthlyDepreciation = $bookValue * ($reducingBalanceRate / 12);
+            $depreciation += $monthlyDepreciation;
+            $bookValue -= $monthlyDepreciation;
+            
+            // Ensure we don't depreciate below residual value
+            if ($bookValue <= $this->residual_value) {
+                $depreciation = $this->acquisition_cost - $this->residual_value;
+                break;
+            }
+        }
+        
+        return $depreciation;
     }
 
     /**
