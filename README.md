@@ -1,14 +1,15 @@
 # Asset Tracker
 
-A comprehensive Laravel-based asset management system designed for business entities to track, manage, and maintain their assets with document management and business intelligence features.
+A comprehensive Laravel-based asset management and accounting system designed for business entities to track, manage, and maintain their assets with integrated financial management, document management, and business intelligence features.
 
 ## 🚀 Features
 
 ### Core Asset Management
-- **Multi-Type Asset Support**: Cars, Houses (Owned/Rented), Warehouses, Land, Offices, Shops, Real Estate
+- **Multi-Type Asset Support**: Cars, Houses (Owned/Rented), Warehouses, Land, Offices, Shops, Real Estate, Suites
 - **Asset Lifecycle Tracking**: Acquisition, maintenance, insurance, registration, and disposal
 - **Financial Tracking**: Acquisition costs, current values, rental income, and depreciation
 - **Due Date Management**: Registration renewals, insurance renewals, service schedules, council rates, land tax
+- **Lease Management**: Track rental agreements, tenants, and lease terms
 
 ### Business Entity Management
 - **Entity Types**: Sole Trader, Company, Trust, Partnership
@@ -16,36 +17,52 @@ A comprehensive Laravel-based asset management system designed for business enti
 - **Contact Management**: Entity persons with multiple roles and responsibilities
 - **Document Storage**: Centralized document management for all entities
 
+### Advanced Accounting System
+- **Chart of Accounts**: Complete double-entry accounting system
+- **Financial Reports**: Profit & Loss, Balance Sheet, Cash Flow statements
+- **Journal Entries**: Manual journal entry creation and management
+- **Bank Statement Import**: Automated bank statement processing with Python backend
+- **Transaction Posting**: Automatic transaction posting to chart of accounts
+- **Tracking Categories**: Custom tracking categories and sub-categories
+- **Invoice Management**: Create, manage, and post invoices
+- **Rent Invoicing**: Automated rent invoice generation for leased properties
+
 ### Document Management
 - **Multi-Format Support**: Document storage for various file types (images, documents, spreadsheets)
 - **Centralized Storage**: Organized document management for all business entities
 - **Secure Access**: Role-based access control for document viewing and management
+- **Encrypted Storage**: Advanced file encryption for sensitive documents
 
 ### Financial Management
 - **Bank Account Integration**: Multiple bank accounts per business entity
 - **Transaction Tracking**: Manual and automated transaction entry
 - **Receipt Management**: Digital receipt storage and categorization
-- **Transaction Management**: Manual transaction entry and tracking
+- **Bank Statement Processing**: Import and reconcile bank statements
+- **Depreciation Schedules**: Automated asset depreciation calculations
+
+### Email & Communication
+- **Gmail Integration**: Sync emails from Gmail accounts
+- **Email Templates**: Pre-built templates for common communications
+- **Contact Lists**: Organized contact management for business relationships
+- **Email Upload**: Upload .eml and .msg email files
+- **Email Allocation**: Link emails to business entities and assets
 
 ### Security & Authentication
-- **Two-Factor Authentication**: Enhanced security with email-based 2FA
+- **Two-Factor Authentication**: Enhanced security with Google 2FA
 - **Role-Based Access Control**: Granular permissions for different user types
-- **Secure File Storage**: Encrypted document storage with access controls
+- **Encrypted File Storage**: Advanced encryption for sensitive data
+- **Security Headers**: Comprehensive security headers implementation
+- **Encrypted Backups**: Secure backup system with encryption
 
 ### Cloud Storage Integration
 - **AWS S3 Integration**: Secure cloud storage for documents and receipts
-- **AWS S3 Support**: Alternative cloud storage option
+- **Encrypted Storage**: File-level encryption for sensitive documents
 - **Local Storage**: Fallback to local storage when needed
 
 ### Reminder System
 - **Smart Notifications**: Due date reminders for all asset types
 - **Customizable Alerts**: Configurable reminder frequencies and priorities
 - **Bulk Operations**: Mass reminder management and completion
-
-### Communication Tools
-- **Email Templates**: Pre-built templates for common communications
-- **Contact Lists**: Organized contact management for business relationships
-- **Email Templates**: Pre-built templates for common communications
 
 ## 🏗️ Architecture
 
@@ -65,10 +82,24 @@ A comprehensive Laravel-based asset management system designed for business enti
 - **Transaction**: Financial transaction tracking
 - **Reminder**: Due date and task management
 - **BankAccount**: Banking information and statements
+- **ChartOfAccount**: Chart of accounts for accounting
+- **JournalEntry/JournalLine**: Double-entry accounting system
+- **Invoice/InvoiceLine**: Invoice management and processing
+- **Lease**: Rental agreement management
+- **Tenant**: Tenant information and management
+- **MailMessage**: Email management and storage
+- **EmailTemplate**: Email template system
+- **ContactList**: Contact management
+- **TrackingCategory/TrackingSubCategory**: Custom tracking system
 
 ### Services
-
-- **AWS S3 Integration**: Cloud storage integration
+- **FinancialReportService**: Generate financial reports (P&L, Balance Sheet, Cash Flow)
+- **TwoFactorService**: Google 2FA implementation
+- **GmailFetcher**: Gmail API integration
+- **MsgParserService**: Email file parsing (.eml/.msg)
+- **RentInvoiceService**: Automated rent invoice generation
+- **InvoicePostingService**: Invoice posting to accounting system
+- **TransactionPostingService**: Transaction posting automation
 - **FileHelper**: File management utilities
 - **UrlHelper**: URL generation and validation
 
@@ -78,7 +109,7 @@ A comprehensive Laravel-based asset management system designed for business enti
 - Composer 2.0 or higher
 - Node.js 18+ and npm
 - MySQL 8.0+ or PostgreSQL 13+
-
+- Python 3.8+ (for bank statement processing)
 - AWS S3 credentials (for cloud storage)
 
 ## 🛠️ Installation
@@ -99,13 +130,26 @@ A comprehensive Laravel-based asset management system designed for business enti
    npm install
    ```
 
-4. **Environment setup**
+4. **Install Python dependencies**
+   ```bash
+   # Windows
+   install_python_deps.bat
+   
+   # Linux/Mac
+   chmod +x install_python_deps.sh
+   ./install_python_deps.sh
+   
+   # Manual installation
+   pip install pandas openpyxl xlrd
+   ```
+
+5. **Environment setup**
    ```bash
    cp .env.example .env
    php artisan key:generate
    ```
 
-5. **Configure environment variables**
+6. **Configure environment variables**
    ```env
    # Database
    DB_CONNECTION=mysql
@@ -138,36 +182,46 @@ AWS_BUCKET=your_bucket_name
    GMAIL_LABEL=INBOX
    ```
 
-6. **Run database migrations**
+7. **Run database migrations**
    ```bash
    php artisan migrate
    ```
 
-### Emails Section
-
-- Access via Dashboard → Emails
-- Sync Gmail: uses credentials above. When `GMAIL_ENABLED=false` or creds missing, a dummy sync runs.
-- Upload emails: Emails → Upload; accepts `.eml`/`.msg` files (10MB each). Files stored under `storage/app/emails/uploads/{user_id}` and listed as `uploaded`.
-
-7. **Build frontend assets**
+8. **Build frontend assets**
    ```bash
    npm run build
    ```
 
-8. **Start the development server**
+9. **Start the development server**
    ```bash
    php artisan serve
    ```
+
+## 📧 Email Integration
+
+### Gmail Integration
+- Access via Dashboard → Emails
+- Sync Gmail: uses credentials above. When `GMAIL_ENABLED=false` or creds missing, a dummy sync runs.
+- Upload emails: Emails → Upload; accepts `.eml`/`.msg` files (10MB each). Files stored under `storage/app/emails/uploads/{user_id}` and listed as `uploaded`.
+
+### Bank Statement Import
+- Access via Dashboard → Bank Import
+- Upload Excel (.xlsx, .xls) or CSV bank statement files
+- Automatic parsing and matching to chart of accounts
+- Manual override capabilities for precise control
 
 ## 🚀 Quick Start
 
 1. **Register a new account** at `/register`
 2. **Complete two-factor authentication** setup
 3. **Create your first business entity** with company details
-4. **Add assets** (cars, properties, equipment)
-5. **Upload documents** and manage them securely
-6. **Set up reminders** for important due dates
-7. **Track transactions** and manage bank accounts
+4. **Set up chart of accounts** for your accounting system
+5. **Add assets** (cars, properties, equipment, suites)
+6. **Upload documents** and manage them securely
+7. **Set up reminders** for important due dates
+8. **Import bank statements** and reconcile transactions
+9. **Generate financial reports** (P&L, Balance Sheet)
+10. **Set up email integration** for communication
 
 ## 📱 Usage Examples
 
@@ -233,32 +287,72 @@ php artisan queue:work
 
 The application uses a comprehensive database schema with the following key tables:
 
+### Core Business Tables
 - **business_entities**: Core business information
+- **entity_persons**: People and roles within entities
+- **persons**: Individual person records
+- **contact_lists**: Contact management
+
+### Asset Management Tables
 - **assets**: Multi-type asset management
-- **entity_persons**: People and roles
-- **documents**: File storage and metadata
-- **transactions**: Financial records
+- **asset_documents**: Asset-specific document links
+- **leases**: Rental agreement management
+- **tenants**: Tenant information
+- **depreciation_schedules**: Asset depreciation tracking
+
+### Accounting System Tables
+- **chart_of_accounts**: Chart of accounts structure
+- **transactions**: Financial transaction records
+- **journal_entries**: Double-entry journal entries
+- **journal_lines**: Individual journal entry lines
+- **invoices**: Invoice management
+- **invoice_lines**: Invoice line items
 - **bank_accounts**: Banking information
+- **bank_statement_entries**: Bank statement processing
+- **tracking_categories**: Custom tracking categories
+- **tracking_sub_categories**: Tracking sub-categories
+
+### Communication Tables
+- **mail_messages**: Email storage and management
+- **mail_attachments**: Email attachment storage
+- **mail_labels**: Email label management
+- **email_templates**: Email template system
+- **email_drafts**: Draft email storage
+
+### System Tables
+- **documents**: File storage and metadata
 - **reminders**: Due date management
 - **notes**: General notes and comments
+- **due_dates**: Due date tracking
+- **roles**: User role management
 
 ## 🔐 Security Features
 
-- **Two-Factor Authentication**: Email-based 2FA for enhanced security
+- **Two-Factor Authentication**: Google 2FA with backup codes
+- **Encrypted Data Storage**: Field-level encryption for sensitive data
+- **Encrypted File Storage**: Advanced file encryption system
+- **Security Headers**: Comprehensive security headers implementation
+- **Encrypted Backups**: Secure backup system with encryption
 - **CSRF Protection**: Built-in Laravel CSRF token validation
 - **SQL Injection Prevention**: Eloquent ORM with parameterized queries
 - **File Upload Security**: Secure file handling and validation
 - **Role-Based Access**: Granular permission system
+- **Environment Variable Encryption**: Encrypted configuration management
 
 ## 🌐 API Endpoints
 
 The application provides RESTful API endpoints for:
 
-- Business entity management
-- Asset operations
-- Document uploads and retrieval
-- Transaction processing
-- Reminder management
+- **Business Entity Management**: CRUD operations for business entities
+- **Asset Operations**: Asset management and tracking
+- **Accounting System**: Chart of accounts, transactions, journal entries
+- **Financial Reports**: Profit & Loss, Balance Sheet, Cash Flow
+- **Document Management**: File uploads and retrieval
+- **Email Integration**: Gmail sync and email management
+- **Bank Import**: Bank statement processing
+- **Invoice Management**: Invoice creation and processing
+- **Reminder System**: Due date and task management
+- **Contact Management**: Contact lists and person management
 
 ## 📈 Performance
 
@@ -290,10 +384,13 @@ For support and questions:
 ## 🔮 Roadmap
 
 - **Mobile App**: Native mobile applications for iOS and Android
-- **Advanced Analytics**: Business intelligence and reporting dashboard
-- **Integration APIs**: Third-party service integrations
+- **Advanced Analytics**: Enhanced business intelligence and reporting dashboard
+- **Integration APIs**: Third-party service integrations (Xero, QuickBooks)
 - **Multi-Tenancy**: Support for multiple organizations
-- **Business Intelligence**: Enhanced reporting and analytics
+- **Advanced Reporting**: Custom report builder and scheduling
+- **API Enhancements**: RESTful API for third-party integrations
+- **Workflow Automation**: Automated business process workflows
+- **Advanced Security**: Additional security features and compliance tools
 
 ---
 
