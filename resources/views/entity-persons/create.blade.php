@@ -97,7 +97,7 @@
 
                         <div class="mb-4">
                             <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
-                            <select name="role" id="role" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <select name="role" id="role" class="mt-1 block w-full border-gray-300 rounded-md" onchange="toggleAppointorFields()">
                                 <option value="">Select Role</option>
                                 <option value="Director">Director</option>
                                 <option value="Secretary">Secretary</option>
@@ -105,10 +105,56 @@
                                 <option value="Trustee">Trustee</option>
                                 <option value="Beneficiary">Beneficiary</option>
                                 <option value="Settlor">Settlor</option>
+                                <option value="Appointor">Appointor</option>
                                 <option value="Owner">Owner</option>
                             </select>
                             @error('role') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
+
+                        <!-- Appointor Entity Selection (Hidden by default) -->
+                        <div id="appointor_entity_fields" class="mb-4 hidden">
+                            <div class="bg-yellow-50 rounded-lg p-4 border-l-4 border-yellow-500">
+                                <h4 class="text-sm font-medium text-yellow-800 mb-2">Appointor Entity Selection</h4>
+                                <p class="text-xs text-yellow-600 mb-3">When role is "Appointor", you can select either a person or a company/entity.</p>
+                                
+                                <div class="mb-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Appointor Type</label>
+                                    <div class="flex space-x-4">
+                                        <label class="flex items-center">
+                                            <input type="radio" name="appointor_type" value="person" class="mr-2" onchange="toggleAppointorTypeFields()">
+                                            Person
+                                        </label>
+                                        <label class="flex items-center">
+                                            <input type="radio" name="appointor_type" value="entity" class="mr-2" onchange="toggleAppointorTypeFields()">
+                                            Company/Entity
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div id="appointor_person_selection" class="hidden">
+                                    <label for="appointor_person_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Person</label>
+                                    <select name="appointor_person_id" id="appointor_person_id" class="mt-1 block w-full border-gray-300 rounded-md">
+                                        <option value="">Select a person</option>
+                                        @foreach ($persons as $person)
+                                            <option value="{{ $person->id }}">{{ $person->first_name }} {{ $person->last_name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('appointor_person_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div id="appointor_entity_selection" class="hidden">
+                                    <label for="appointor_entity_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Entity</label>
+                                    <select name="appointor_entity_id" id="appointor_entity_id" class="mt-1 block w-full border-gray-300 rounded-md">
+                                        <option value="">Select an entity</option>
+                                        @foreach ($businessEntities as $entity)
+                                            <option value="{{ $entity->id }}">{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
+                                        @endforeach
+                                    </select>
+                                    @error('appointor_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="mb-4">
                             <label for="appointment_date" class="block text-sm font-medium text-gray-700">Appointment Date</label>
                             <input type="date" name="appointment_date" id="appointment_date" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('appointment_date') ?? now()->format('Y-m-d') }}">
@@ -194,12 +240,61 @@
             }
         }
 
+        function toggleAppointorFields() {
+            const role = document.getElementById('role').value;
+            const appointorFields = document.getElementById('appointor_entity_fields');
+            
+            if (role === 'Appointor') {
+                appointorFields.classList.remove('hidden');
+            } else {
+                appointorFields.classList.add('hidden');
+                // Clear appointor fields when role is not Appointor
+                document.querySelectorAll('input[name="appointor_type"]').forEach(radio => radio.checked = false);
+                document.getElementById('appointor_person_selection').classList.add('hidden');
+                document.getElementById('appointor_entity_selection').classList.add('hidden');
+                document.getElementById('appointor_person_id').value = '';
+                document.getElementById('appointor_entity_id').value = '';
+            }
+        }
+
+        function toggleAppointorTypeFields() {
+            const appointorType = document.querySelector('input[name="appointor_type"]:checked')?.value;
+            const personSelection = document.getElementById('appointor_person_selection');
+            const entitySelection = document.getElementById('appointor_entity_selection');
+            const personSelect = document.getElementById('appointor_person_id');
+            const entitySelect = document.getElementById('appointor_entity_id');
+            
+            if (appointorType === 'person') {
+                personSelection.classList.remove('hidden');
+                entitySelection.classList.add('hidden');
+                personSelect.required = true;
+                entitySelect.required = false;
+                entitySelect.value = '';
+            } else if (appointorType === 'entity') {
+                personSelection.classList.add('hidden');
+                entitySelection.classList.remove('hidden');
+                personSelect.required = false;
+                entitySelect.required = true;
+                personSelect.value = '';
+            } else {
+                personSelection.classList.add('hidden');
+                entitySelection.classList.add('hidden');
+                personSelect.required = false;
+                entitySelect.required = false;
+                personSelect.value = '';
+                entitySelect.value = '';
+            }
+        }
+
         // Set default date to today if not set
         document.addEventListener('DOMContentLoaded', function() {
             const appointmentDate = document.getElementById('appointment_date');
             if (!appointmentDate.value) {
                 appointmentDate.value = new Date().toISOString().split('T')[0];
             }
+            
+            // Initialize appointor fields
+            toggleAppointorFields();
         });
     </script>
 </x-app-layout>

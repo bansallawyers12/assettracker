@@ -12,6 +12,7 @@ class EntityPerson extends Model
         'business_entity_id',
         'person_id',
         'entity_trustee_id',
+        'appointor_entity_id',
         'role',
         'appointment_date',
         'resignation_date',
@@ -62,6 +63,11 @@ class EntityPerson extends Model
         return $this->belongsTo(BusinessEntity::class, 'entity_trustee_id');
     }
 
+    public function appointorEntity()
+    {
+        return $this->belongsTo(BusinessEntity::class, 'appointor_entity_id');
+    }
+
     public function scopeDueWithin15Days($query)
     {
         return $query->where(function ($query) {
@@ -69,5 +75,34 @@ class EntityPerson extends Model
                   ->where('asic_updated', false)
                   ->where('role_status', 'Active');
         });
+    }
+
+    /**
+     * Check if this relationship involves an appointor entity.
+     */
+    public function isAppointorEntity()
+    {
+        return $this->role === 'Appointor' && !is_null($this->appointor_entity_id);
+    }
+
+    /**
+     * Check if this relationship involves a person appointor.
+     */
+    public function isAppointorPerson()
+    {
+        return $this->role === 'Appointor' && !is_null($this->person_id);
+    }
+
+    /**
+     * Get the appointor (either person or entity).
+     */
+    public function getAppointorAttribute()
+    {
+        if ($this->isAppointorPerson()) {
+            return $this->person;
+        } elseif ($this->isAppointorEntity()) {
+            return $this->appointorEntity;
+        }
+        return null;
     }
 }

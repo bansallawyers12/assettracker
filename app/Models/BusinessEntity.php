@@ -10,6 +10,14 @@ class BusinessEntity extends Model
         'legal_name',
         'trading_name',
         'entity_type',
+        'trust_type',
+        'trust_establishment_date',
+        'trust_deed_date',
+        'trust_deed_reference',
+        'trust_vesting_date',
+        'trust_vesting_conditions',
+        'appointor_person_id',
+        'appointor_entity_id',
         'abn',
         'acn',
         'tfn',
@@ -23,6 +31,9 @@ class BusinessEntity extends Model
     ];
 
     protected $casts = [
+        'trust_establishment_date' => 'date',
+        'trust_deed_date' => 'date',
+        'trust_vesting_date' => 'date',
         'asic_renewal_date' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -95,6 +106,50 @@ public function overdueReminders()
     public function mailMessages()
     {
         return $this->belongsToMany(MailMessage::class, 'business_entity_mail_message');
+    }
+
+    /**
+     * Get the appointor person for this trust.
+     */
+    public function appointorPerson()
+    {
+        return $this->belongsTo(Person::class, 'appointor_person_id');
+    }
+
+    /**
+     * Get the appointor entity for this trust.
+     */
+    public function appointorEntity()
+    {
+        return $this->belongsTo(BusinessEntity::class, 'appointor_entity_id');
+    }
+
+    /**
+     * Get all trustees for this trust (both person and entity trustees).
+     */
+    public function trustees()
+    {
+        return $this->hasMany(EntityPerson::class, 'business_entity_id')
+            ->where('role', 'Trustee')
+            ->where('role_status', 'Active');
+    }
+
+    /**
+     * Get all beneficiaries for this trust.
+     */
+    public function beneficiaries()
+    {
+        return $this->hasMany(EntityPerson::class, 'business_entity_id')
+            ->where('role', 'Beneficiary')
+            ->where('role_status', 'Active');
+    }
+
+    /**
+     * Check if this entity is a trust.
+     */
+    public function isTrust()
+    {
+        return $this->entity_type === 'Trust';
     }
 
 }

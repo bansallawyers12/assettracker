@@ -36,8 +36,9 @@ class EntityPersonController extends Controller
         }
 
         $persons = Person::all();
+        $businessEntities = BusinessEntity::where('entity_type', '!=', 'Trust')->get(); // Exclude trusts to prevent circular references
 
-        return view('entity-persons.create', compact('businessEntity', 'persons'));
+        return view('entity-persons.create', compact('businessEntity', 'persons', 'businessEntities'));
     }
 
     /**
@@ -53,7 +54,8 @@ class EntityPersonController extends Controller
             'business_entity_id' => 'required|exists:business_entities,id',
             'person_id' => 'nullable|exists:persons,id',
             'entity_trustee_id' => 'nullable|exists:business_entities,id',
-            'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Owner',
+            'appointor_entity_id' => 'nullable|exists:business_entities,id',
+            'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Appointor,Owner',
             'appointment_date' => 'required|date',
             'resignation_date' => 'nullable|date|after:appointment_date',
             'role_status' => 'required|in:Active,Resigned',
@@ -67,6 +69,9 @@ class EntityPersonController extends Controller
             'phone_number' => 'nullable|string|max:15',
             'tfn' => 'nullable|string|max:9',
             'abn' => 'nullable|string|max:11',
+            // Appointor-specific fields
+            'appointor_type' => 'required_if:role,Appointor|in:person,entity',
+            'appointor_person_id' => 'required_if:appointor_type,person|exists:persons,id',
         ], [
             'business_entity_id.required' => 'The business entity is required.',
             'role.required' => 'The role is required.',
@@ -74,6 +79,8 @@ class EntityPersonController extends Controller
             'role_status.required' => 'The role status is required.',
             'first_name.required_if' => 'The first name is required when creating a new person.',
             'last_name.required_if' => 'The last name is required when creating a new person.',
+            'appointor_type.required_if' => 'Appointor type is required when role is Appointor.',
+            'appointor_person_id.required_if' => 'Please select an appointor person.',
         ]);
 
         // Handle new person creation if checkbox is checked
@@ -109,10 +116,26 @@ class EntityPersonController extends Controller
             $personId = $request->filled('person_id') ? $request->person_id : null;
         }
 
+        // Handle appointor entity selection
+        $appointorEntityId = null;
+        if ($request->role === 'Appointor') {
+            if ($request->appointor_type === 'person') {
+                // For person appointor, use the person_id
+                $appointorEntityId = null;
+            } elseif ($request->appointor_type === 'entity') {
+                // For entity appointor, use the appointor_entity_id
+                $appointorEntityId = $request->appointor_entity_id;
+                $personId = null; // Clear person_id for entity appointor
+            }
+        }
+
         // Ensure either person_id or entity_trustee_id is filled, but not both (after new person creation)
-        if (($personId && $entityTrusteeId) || (!$personId && !$entityTrusteeId)) {
-            Log::warning('Validation failed: Either person_id or entity_trustee_id must be filled, but not both.', ['person_id' => $personId, 'entity_trustee_id' => $entityTrusteeId]);
-            return redirect()->back()->withErrors(['error' => 'Either an existing person or a trustee entity must be selected, but not both.']);
+        // Exception: For Appointor role, we handle this differently
+        if ($request->role !== 'Appointor') {
+            if (($personId && $entityTrusteeId) || (!$personId && !$entityTrusteeId)) {
+                Log::warning('Validation failed: Either person_id or entity_trustee_id must be filled, but not both.', ['person_id' => $personId, 'entity_trustee_id' => $entityTrusteeId]);
+                return redirect()->back()->withErrors(['error' => 'Either an existing person or a trustee entity must be selected, but not both.']);
+            }
         }
 
         // Prepare data for EntityPerson creation
@@ -120,6 +143,7 @@ class EntityPersonController extends Controller
             'business_entity_id' => $request->business_entity_id,
             'person_id' => $personId,
             'entity_trustee_id' => $entityTrusteeId,
+            'appointor_entity_id' => $appointorEntityId,
             'role' => $request->role,
             'appointment_date' => $request->appointment_date,
             'resignation_date' => $request->resignation_date,
@@ -181,7 +205,8 @@ class EntityPersonController extends Controller
             'business_entity_id' => 'required|exists:business_entities,id',
             'person_id' => 'nullable|exists:persons,id',
             'entity_trustee_id' => 'nullable|exists:business_entities,id',
-            'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Owner',
+            'appointor_entity_id' => 'nullable|exists:business_entities,id',
+            'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Appointor,Owner',
             'appointment_date' => 'required|date',
             'resignation_date' => 'nullable|date|after:appointment_date',
             'role_status' => 'required|in:Active,Resigned',
@@ -191,8 +216,11 @@ class EntityPersonController extends Controller
         ]);
 
         // Ensure either person_id or entity_trustee_id is filled, but not both
-        if (($request->person_id && $request->entity_trustee_id) || (!$request->person_id && !$request->entity_trustee_id)) {
-            return redirect()->back()->withErrors(['error' => 'Either person_id or entity_trustee_id must be filled, but not both.']);
+        // Exception: For Appointor role, we handle this differently
+        if ($request->role !== 'Appointor') {
+            if (($request->person_id && $request->entity_trustee_id) || (!$request->person_id && !$request->entity_trustee_id)) {
+                return redirect()->back()->withErrors(['error' => 'Either person_id or entity_trustee_id must be filled, but not both.']);
+            }
         }
 
         $entityPerson->update($validated);
