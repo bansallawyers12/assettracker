@@ -5,8 +5,8 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Symfony\Component\Process\Process;
 use ZipArchive;
 
 class CreateEncryptedBackup extends Command
@@ -104,10 +104,53 @@ class CreateEncryptedBackup extends Command
             if (File::exists($databasePath)) {
                 File::copy($databasePath, $filepath);
             }
+        } elseif ($connection === 'pgsql') {
+            $command = sprintf(
+                'pg_dump -h %s -p %s -U %s -d %s --no-owner --no-acl -f %s',
+                escapeshellarg($host),
+                escapeshellarg($port),
+                escapeshellarg($username),
+                escapeshellarg($database),
+                escapeshellarg($filepath)
+            );
+            $this->runProcessWithEnv($command, ['PGPASSWORD' => $password ?? '']);
+        } elseif (in_array($connection, ['mysql', 'mariadb'])) {
+            $passwordArg = $password ? '-p' . escapeshellarg($password) : '';
+            $command = sprintf(
+                'mysqldump -h %s -P %s -u %s %s %s > %s',
+                escapeshellarg($host),
+                escapeshellarg($port),
+                escapeshellarg($username),
+                $passwordArg,
+                escapeshellarg($database),
+                escapeshellarg($filepath)
+            );
+            $this->runProcessWithEnv($command);
         } else {
-            // For MySQL/PostgreSQL, you would use mysqldump or pg_dump
-            // This is a simplified version - in production, use proper database tools
             $this->warn('Database backup for ' . $connection . ' requires manual implementation');
+        }
+    }
+
+    /**
+     * Run a shell process for database backup.
+     */
+    protected function runProcessWithEnv(string $command, array $env = []): void
+    {
+        $process = Process::fromShellCommandline($command, null, null, null, 300);
+        $previous = null;
+        if (isset($env['PGPASSWORD'])) {
+            $previous = getenv('PGPASSWORD') ?: false;
+            putenv('PGPASSWORD=' . $env['PGPASSWORD']);
+        }
+        try {
+            $process->run();
+            if (!$process->isSuccessful()) {
+                throw new \RuntimeException('Database backup failed: ' . $process->getErrorOutput());
+            }
+        } finally {
+            if ($previous !== null) {
+                putenv('PGPASSWORD=' . ($previous !== false ? (string) $previous : ''));
+            }
         }
     }
 

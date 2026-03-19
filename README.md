@@ -69,7 +69,7 @@ A comprehensive Laravel-based asset management and accounting system designed fo
 ### Technology Stack
 - **Backend**: Laravel 12 (PHP 8.2+)
 - **Frontend**: Blade templates with Tailwind CSS
-- **Database**: MySQL/PostgreSQL with comprehensive migrations
+- **Database**: PostgreSQL with comprehensive migrations
 
 - **Cloud Storage**: AWS S3 support
 - **Authentication**: Laravel Breeze with custom 2FA
@@ -108,7 +108,7 @@ A comprehensive Laravel-based asset management and accounting system designed fo
 - PHP 8.2 or higher
 - Composer 2.0 or higher
 - Node.js 18+ and npm
-- MySQL 8.0+ or PostgreSQL 13+
+- PostgreSQL 13+
 - Python 3.8+ (for bank statement processing)
 - AWS S3 credentials (for cloud storage)
 
@@ -149,10 +149,10 @@ A comprehensive Laravel-based asset management and accounting system designed fo
 
 6. **Configure environment variables**
    ```env
-   # Database
-   DB_CONNECTION=mysql
+   # Database (PostgreSQL)
+   DB_CONNECTION=pgsql
    DB_HOST=127.0.0.1
-   DB_PORT=3306
+   DB_PORT=5432
    DB_DATABASE=assettracker
    DB_USERNAME=your_username
    DB_PASSWORD=your_password

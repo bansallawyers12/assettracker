@@ -19,8 +19,8 @@ return new class extends Migration
 
         Schema::table('entity_person', function (Blueprint $table) use ($driver) {
             // Drop constraints if they exist (different syntax for different database drivers)
-            if ($driver === 'mysql') {
-                // MySQL approach
+            if ($driver === 'mysql' || $driver === 'mariadb') {
+                // MySQL/MariaDB approach
                 // Check if constraints exist and drop them
                 $constraints = DB::select("
                     SELECT CONSTRAINT_NAME

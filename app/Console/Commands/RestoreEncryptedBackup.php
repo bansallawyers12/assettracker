@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\File;
+use Symfony\Component\Process\Process;
 use ZipArchive;
 
 class RestoreEncryptedBackup extends Command
@@ -142,8 +143,41 @@ class RestoreEncryptedBackup extends Command
         if ($connection === 'sqlite') {
             $databasePath = database_path(config("database.connections.{$connection}.database"));
             File::copy($dbFile, $databasePath);
+        } elseif ($connection === 'pgsql') {
+            $database = config("database.connections.{$connection}.database");
+            $username = config("database.connections.{$connection}.username");
+            $password = config("database.connections.{$connection}.password");
+            $host = config("database.connections.{$connection}.host");
+            $port = config("database.connections.{$connection}.port");
+
+            $command = sprintf(
+                'psql -h %s -p %s -U %s -d %s -f %s',
+                escapeshellarg($host),
+                escapeshellarg($port),
+                escapeshellarg($username),
+                escapeshellarg($database),
+                escapeshellarg($dbFile)
+            );
+            $this->runRestoreProcess($command, ['PGPASSWORD' => $password ?? '']);
+        } elseif (in_array($connection, ['mysql', 'mariadb'])) {
+            $database = config("database.connections.{$connection}.database");
+            $username = config("database.connections.{$connection}.username");
+            $password = config("database.connections.{$connection}.password");
+            $host = config("database.connections.{$connection}.host");
+            $port = config("database.connections.{$connection}.port");
+
+            $passwordArg = $password ? '-p' . escapeshellarg($password) : '';
+            $command = sprintf(
+                'mysql -h %s -P %s -u %s %s %s < %s',
+                escapeshellarg($host),
+                escapeshellarg($port),
+                escapeshellarg($username),
+                $passwordArg,
+                escapeshellarg($database),
+                escapeshellarg($dbFile)
+            );
+            $this->runRestoreProcess($command);
         } else {
-            // For MySQL/PostgreSQL, implement proper restoration
             $this->warn("Database restoration for {$connection} requires manual implementation");
         }
     }
@@ -194,6 +228,29 @@ class RestoreEncryptedBackup extends Command
         if (File::exists("{$configDir}/app_config")) {
             $this->line('Restoring application configuration...');
             File::copyDirectory("{$configDir}/app_config", config_path());
+        }
+    }
+
+    /**
+     * Run a shell process for database restore.
+     */
+    protected function runRestoreProcess(string $command, array $env = []): void
+    {
+        $process = Process::fromShellCommandline($command, null, null, null, 300);
+        $previous = null;
+        if (isset($env['PGPASSWORD'])) {
+            $previous = getenv('PGPASSWORD') ?: false;
+            putenv('PGPASSWORD=' . $env['PGPASSWORD']);
+        }
+        try {
+            $process->run();
+            if (!$process->isSuccessful()) {
+                throw new \RuntimeException('Database restore failed: ' . $process->getErrorOutput());
+            }
+        } finally {
+            if ($previous !== null) {
+                putenv('PGPASSWORD=' . ($previous !== false ? (string) $previous : ''));
+            }
         }
     }
 }

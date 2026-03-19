@@ -21,8 +21,8 @@ return new class extends Migration
         // Log that we're executing this migration
         \Log::info('Executing force drop constraints migration for entity_person table');
         
-        if ($driver === 'mysql') {
-            // For MySQL, we use a more direct approach
+        if ($driver === 'mysql' || $driver === 'mariadb') {
+            // For MySQL/MariaDB, we use a more direct approach
             $constraints = DB::select("
                 SELECT CONSTRAINT_NAME
                 FROM information_schema.TABLE_CONSTRAINTS
