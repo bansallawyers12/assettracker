@@ -109,32 +109,24 @@ return new class extends Migration
                     $table->dropUnique('entity_person_business_entity_id_entity_trustee_id_role_unique');
                 }
             } else if ($driver === 'pgsql') {
-                // PostgreSQL approach
+                // PostgreSQL approach - use IF EXISTS to avoid errors when constraints don't exist
                 $constraints = DB::select("
                     SELECT conname
                     FROM pg_constraint
                     JOIN pg_class ON pg_constraint.conrelid = pg_class.oid
-                    JOIN pg_namespace ON pg_class.relnamespace = pg_namespace.oid
                     WHERE pg_class.relname = 'entity_person'
                     AND pg_constraint.contype = 'u'
                 ");
-                
+
                 foreach ($constraints as $constraint) {
-                    $table->dropUnique($constraint->conname);
+                    DB::statement("ALTER TABLE entity_person DROP CONSTRAINT IF EXISTS \"{$constraint->conname}\"");
                 }
-                
-                // Try the same explicit drops as for MySQL
-                try {
-                    $table->dropUnique('unique_person_role');
-                } catch (\Exception $e) {
-                    // Constraint might not exist, that's OK
-                }
-                
-                try {
-                    $table->dropUnique('unique_trustee_role');
-                } catch (\Exception $e) {
-                    // Constraint might not exist, that's OK
-                }
+
+                // Drop by name if they exist (fresh installs may not have these)
+                DB::statement('ALTER TABLE entity_person DROP CONSTRAINT IF EXISTS "unique_person_role"');
+                DB::statement('ALTER TABLE entity_person DROP CONSTRAINT IF EXISTS "unique_trustee_role"');
+                DB::statement('ALTER TABLE entity_person DROP CONSTRAINT IF EXISTS "entity_person_business_entity_id_person_id_role_unique"');
+                DB::statement('ALTER TABLE entity_person DROP CONSTRAINT IF EXISTS "entity_person_business_entity_id_entity_trustee_id_role_unique"');
             } else if ($driver === 'sqlite') {
                 // For SQLite, we need to recreate the table without the constraints
                 // This is more complex and requires a multi-step migration

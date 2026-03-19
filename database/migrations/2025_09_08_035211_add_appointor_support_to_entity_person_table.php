@@ -19,8 +19,21 @@ return new class extends Migration
         });
 
         // Update the role enum to include 'Appointor'
-        // Note: MySQL doesn't support ALTER ENUM directly, so we need to use raw SQL
-        DB::statement("ALTER TABLE entity_person MODIFY COLUMN role ENUM('Director', 'Secretary', 'Shareholder', 'Trustee', 'Beneficiary', 'Settlor', 'Owner', 'Appointor') NOT NULL");
+        $driver = DB::connection()->getDriverName();
+        if ($driver === 'mysql' || $driver === 'mariadb') {
+            DB::statement("ALTER TABLE entity_person MODIFY COLUMN role ENUM('Director', 'Secretary', 'Shareholder', 'Trustee', 'Beneficiary', 'Settlor', 'Owner', 'Appointor') NOT NULL");
+        } elseif ($driver === 'pgsql') {
+            $constraints = DB::select("
+                SELECT conname FROM pg_constraint con
+                INNER JOIN pg_class rel ON rel.oid = con.conrelid
+                WHERE rel.relname = 'entity_person' AND con.contype = 'c'
+                AND pg_get_constraintdef(con.oid) LIKE '%role%'
+            ");
+            foreach ($constraints as $c) {
+                DB::statement("ALTER TABLE entity_person DROP CONSTRAINT \"{$c->conname}\"");
+            }
+            DB::statement("ALTER TABLE entity_person ADD CONSTRAINT entity_person_role_check CHECK (\"role\" IN ('Director', 'Secretary', 'Shareholder', 'Trustee', 'Beneficiary', 'Settlor', 'Owner', 'Appointor'))");
+        }
     }
 
     /**
@@ -36,6 +49,20 @@ return new class extends Migration
         });
 
         // Revert the role enum to original values
-        DB::statement("ALTER TABLE entity_person MODIFY COLUMN role ENUM('Director', 'Secretary', 'Shareholder', 'Trustee', 'Beneficiary', 'Settlor', 'Owner') NOT NULL");
+        $driver = DB::connection()->getDriverName();
+        if ($driver === 'mysql' || $driver === 'mariadb') {
+            DB::statement("ALTER TABLE entity_person MODIFY COLUMN role ENUM('Director', 'Secretary', 'Shareholder', 'Trustee', 'Beneficiary', 'Settlor', 'Owner') NOT NULL");
+        } elseif ($driver === 'pgsql') {
+            $constraints = DB::select("
+                SELECT conname FROM pg_constraint con
+                INNER JOIN pg_class rel ON rel.oid = con.conrelid
+                WHERE rel.relname = 'entity_person' AND con.contype = 'c'
+                AND pg_get_constraintdef(con.oid) LIKE '%role%'
+            ");
+            foreach ($constraints as $c) {
+                DB::statement("ALTER TABLE entity_person DROP CONSTRAINT \"{$c->conname}\"");
+            }
+            DB::statement("ALTER TABLE entity_person ADD CONSTRAINT entity_person_role_check CHECK (\"role\" IN ('Director', 'Secretary', 'Shareholder', 'Trustee', 'Beneficiary', 'Settlor', 'Owner'))");
+        }
     }
 };
