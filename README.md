@@ -130,17 +130,15 @@ A comprehensive Laravel-based asset management and accounting system designed fo
    npm install
    ```
 
-4. **Install Python dependencies**
+4. **Install Python dependencies** (bank import + email .msg parsing)
    ```bash
-   # Windows
-   install_python_deps.bat
+   # One command - installs deps and verifies all Python services
+   python\start.bat          # Windows
+   ./python/start.sh          # Linux/Mac (chmod +x python/start.sh first)
    
-   # Linux/Mac
-   chmod +x install_python_deps.sh
-   ./install_python_deps.sh
-   
-   # Manual installation
-   pip install pandas openpyxl xlrd
+   # Or use the install scripts directly
+   python\install_python_deps.bat
+   pip install -r python/requirements.txt
    ```
 
 5. **Environment setup**

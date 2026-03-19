@@ -198,7 +198,7 @@ class BankImportController extends Controller
     {
         try {
             $fullPath = Storage::disk('local')->path($filePath);
-            $pythonScript = base_path('python_bank_parser.py');
+            $pythonScript = base_path('python/python_bank_parser.py');
             
             // Check if Python script exists
             if (!file_exists($pythonScript)) {

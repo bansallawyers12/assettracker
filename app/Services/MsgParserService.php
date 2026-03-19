@@ -14,8 +14,9 @@ class MsgParserService
     {
         $absolutePath = Storage::path($storedPath);
         $python = $this->detectPython();
-        // Support both locations: storage/app/scripts and storage/app/private/scripts
+        // Support: python/ folder, storage/app/scripts, storage/app/private/scripts
         $scriptCandidates = [
+            base_path('python/parse_msg_simple.py'),
             Storage::path('scripts/parse_msg_simple.py'),
             Storage::path('private/scripts/parse_msg_simple.py'),
         ];

@@ -15,7 +15,8 @@ if ! command -v pip3 &> /dev/null; then
     exit 1
 fi
 
-# Install required packages
+# Run from script's directory
+cd "$(dirname "$0")"
 pip3 install -r requirements.txt
 
 echo "Python dependencies installed successfully!"

@@ -17,7 +17,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Install required packages
+REM Install required packages (run from script's directory)
+cd /d "%~dp0"
 pip install -r requirements.txt
 
 if errorlevel 1 (
