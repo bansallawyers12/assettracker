@@ -9,6 +9,12 @@ use App\Models\BusinessEntity;
 use App\Policies\BusinessEntityPolicy;
 use App\Models\Asset;
 use App\Policies\AssetPolicy;
+use App\Models\ContactList;
+use App\Policies\ContactListPolicy;
+use App\Models\EmailTemplate;
+use App\Policies\EmailTemplatePolicy;
+use App\Models\Reminder;
+use App\Policies\ReminderPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -21,7 +27,9 @@ class AuthServiceProvider extends ServiceProvider
         Document::class => DocumentPolicy::class,
         BusinessEntity::class => BusinessEntityPolicy::class,
         Asset::class => AssetPolicy::class,
-        // ... other policies ...
+        ContactList::class => ContactListPolicy::class,
+        EmailTemplate::class => EmailTemplatePolicy::class,
+        Reminder::class => ReminderPolicy::class,
     ];
 
     /**

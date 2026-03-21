@@ -26,6 +26,8 @@ class AssetController extends Controller
 
     public function index(BusinessEntity $businessEntity)
     {
+        $this->authorize('view', $businessEntity);
+
         $assets = $businessEntity->assets()->with(['notes' => function($query) {
             $query->where('is_reminder', true)->where('reminder_date', '<=', now());
         }])->paginate(15);
@@ -35,11 +37,15 @@ class AssetController extends Controller
 
     public function create(BusinessEntity $businessEntity)
     {
+        $this->authorize('view', $businessEntity);
+
         return view('assets.create', compact('businessEntity'));
     }
 
     public function store(Request $request, BusinessEntity $businessEntity)
     {
+        $this->authorize('view', $businessEntity);
+
         $validatedData = $request->validate([
             'asset_type' => 'nullable|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate',
             'name' => 'required|string|max:255',
@@ -530,6 +536,8 @@ class AssetController extends Controller
      */
     private function ensureAssetBelongsToBusinessEntity(BusinessEntity $businessEntity, Asset $asset): void
     {
+        $this->authorize('view', $businessEntity);
+
         if ((int) $asset->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
         }

@@ -8,6 +8,14 @@ use App\Models\User;
 class BusinessEntityPolicy
 {
     /**
+     * Determine whether the user can view any business entities (e.g. index).
+     */
+    public function viewAny(User $user): bool
+    {
+        return true;
+    }
+
+    /**
      * Determine whether the user can view the business entity.
      */
     public function view(User $user, BusinessEntity $businessEntity)
