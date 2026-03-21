@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\BusinessEntity;
+use App\Models\Invoice;
 use App\Models\Lease;
 use App\Models\Note;
 use App\Models\RealEstateCompany;
@@ -95,7 +96,30 @@ class AssetController extends Controller
             'tenants.realEstateCompany.contacts',
         ]);
 
-        return view('assets.show', compact('businessEntity', 'asset'));
+        $year = (int) now()->format('Y');
+        $assetInvoices = Invoice::query()
+            ->where('asset_id', $asset->id)
+            ->with(['lease.tenant', 'lines'])
+            ->orderByDesc('issue_date')
+            ->get();
+
+        $invoiceSummary = [
+            'ytd_invoiced' => (float) Invoice::query()
+                ->where('asset_id', $asset->id)
+                ->whereYear('issue_date', $year)
+                ->sum('total_amount'),
+            'outstanding' => (float) Invoice::query()
+                ->where('asset_id', $asset->id)
+                ->where('status', 'approved')
+                ->sum('total_amount'),
+            'ytd_paid' => (float) Invoice::query()
+                ->where('asset_id', $asset->id)
+                ->where('status', 'paid')
+                ->whereYear('paid_at', $year)
+                ->sum('total_amount'),
+        ];
+
+        return view('assets.show', compact('businessEntity', 'asset', 'assetInvoices', 'invoiceSummary'));
     }
 
     public function edit(BusinessEntity $businessEntity, Asset $asset)

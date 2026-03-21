@@ -163,6 +163,7 @@
                                     <a href="#tab_tenants" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Tenants</a>
                                     <a href="#tab_leases" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Leases</a>
                                     <a href="#tab_financials" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Financials</a>
+                                    <a href="#tab_invoices" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Invoices</a>
                                 @else
                                     <a href="#tab_financials" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Financials</a>
                                 @endif
@@ -575,6 +576,13 @@
                                         @endif
                                     </div>
                                 </div>
+
+                                @include('assets.partials.invoices-tab', [
+                                    'businessEntity' => $businessEntity,
+                                    'asset' => $asset,
+                                    'assetInvoices' => $assetInvoices,
+                                    'invoiceSummary' => $invoiceSummary,
+                                ])
                             @else
                                 <!-- Generic: Financials Tab -->
                                 <div id="tab_financials" class="tab-content hidden">

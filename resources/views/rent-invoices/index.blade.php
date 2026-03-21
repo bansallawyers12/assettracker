@@ -32,14 +32,14 @@
             </div>
         @endif
 
-        <!-- Suite Assets Overview -->
+        <!-- Leasable assets & leases -->
         <div class="bg-white shadow sm:rounded-lg mb-6">
             <div class="px-4 py-5 sm:p-6">
-                <h3 class="text-lg font-medium text-gray-900 mb-4">Suite Assets & Leases</h3>
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Properties & leases</h3>
                 
-                @if($suiteAssets->count() > 0)
+                @if($leaseableAssets->count() > 0)
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        @foreach($suiteAssets as $asset)
+                        @foreach($leaseableAssets as $asset)
                             <div class="border border-gray-200 rounded-lg p-4">
                                 <h4 class="font-medium text-gray-900">{{ $asset->name }}</h4>
                                 <p class="text-sm text-gray-500">{{ $asset->address }}</p>
@@ -89,8 +89,8 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
                             </svg>
                         </div>
-                        <h3 class="mt-2 text-sm font-medium text-gray-900">No Suite Assets</h3>
-                        <p class="mt-1 text-sm text-gray-500">Add Suite assets to start generating rent invoices.</p>
+                        <h3 class="mt-2 text-sm font-medium text-gray-900">No leasable properties</h3>
+                        <p class="mt-1 text-sm text-gray-500">Add a house, office, suite, or other leased asset with an active lease to generate rent invoices.</p>
                     </div>
                 @endif
             </div>
@@ -162,7 +162,7 @@
                         <table class="min-w-full divide-y divide-gray-300">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Suite</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Property</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tenant</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Invoice Date</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>

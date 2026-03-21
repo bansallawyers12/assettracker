@@ -6,6 +6,20 @@ use Illuminate\Database\Eloquent\Model;
 
 class Asset extends Model
 {
+    /**
+     * Asset types that typically have tenants / rent invoices.
+     */
+    public const LEASABLE_ASSET_TYPES = [
+        'House Owned',
+        'House Rented',
+        'Warehouse',
+        'Land',
+        'Office',
+        'Shop',
+        'Real Estate',
+        'Suite',
+    ];
+
     protected $fillable = [
         'business_entity_id',
         'user_id',
@@ -102,6 +116,11 @@ class Asset extends Model
     public function leases()
     {
         return $this->hasMany(Lease::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
     }
 
     public function notes()

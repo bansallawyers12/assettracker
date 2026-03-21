@@ -32,11 +32,11 @@ class RentInvoiceService
         try {
             DB::beginTransaction();
 
-            // Get all active leases
+            // Get all active leases on leasable property types
             $query = Lease::with(['asset', 'tenant'])
-                ->whereHas('asset', function($q) use ($businessEntityId) {
-                    $q->where('asset_type', 'Suite')
-                      ->where('status', 'Active');
+                ->whereHas('asset', function ($q) use ($businessEntityId) {
+                    $q->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
+                        ->where('status', 'Active');
                     if ($businessEntityId) {
                         $q->where('business_entity_id', $businessEntityId);
                     }
@@ -150,6 +150,8 @@ class RentInvoiceService
         // Create invoice
         $invoice = Invoice::create([
             'business_entity_id' => $businessEntity->id,
+            'lease_id' => $lease->id,
+            'asset_id' => $asset->id,
             'invoice_number' => $invoiceNumber,
             'issue_date' => $date->format('Y-m-d'),
             'due_date' => $date->copy()->addDays(30)->format('Y-m-d'),
@@ -158,7 +160,7 @@ class RentInvoiceService
             'currency' => 'AUD',
             'status' => 'draft',
             'is_posted' => false,
-            'notes' => "Monthly rent for {$asset->name} (Suite)"
+            'notes' => "Rent for {$asset->name} — {$date->format('F Y')}",
         ]);
 
         // Create invoice line
@@ -187,14 +189,25 @@ class RentInvoiceService
     }
 
     /**
-     * Check if invoice already exists for this lease and period
+     * Check if invoice already exists for this lease and calendar month of $date.
      */
-    protected function getExistingInvoice(Lease $lease, Carbon $date)
+    public function getExistingInvoice(Lease $lease, Carbon $date)
     {
         $startOfMonth = $date->copy()->startOfMonth();
         $endOfMonth = $date->copy()->endOfMonth();
 
+        $byLease = Invoice::query()
+            ->where('lease_id', $lease->id)
+            ->whereBetween('issue_date', [$startOfMonth->toDateString(), $endOfMonth->toDateString()])
+            ->first();
+
+        if ($byLease) {
+            return $byLease;
+        }
+
+        // Legacy rows created before lease_id was stored
         return Invoice::where('business_entity_id', $lease->asset->business_entity_id)
+            ->whereNull('lease_id')
             ->where('customer_name', $lease->tenant ? $lease->tenant->name : 'Unknown Tenant')
             ->where('reference', 'like', "%{$lease->asset->name}%")
             ->whereBetween('issue_date', [$startOfMonth, $endOfMonth])
@@ -227,23 +240,26 @@ class RentInvoiceService
     }
 
     /**
-     * Calculate rent amount based on lease frequency
+     * Calculate rent amount for one invoice period (calendar month) from lease frequency.
      */
-    protected function calculateRentAmount(Lease $lease, Carbon $date)
+    public function calculateRentAmount(Lease $lease, Carbon $date)
     {
-        $baseAmount = $lease->rental_amount;
+        $baseAmount = (float) $lease->rental_amount;
 
-        switch (strtolower($lease->payment_frequency)) {
+        switch (strtolower((string) $lease->payment_frequency)) {
             case 'weekly':
-                return $baseAmount * 4.33; // Approximate weeks per month
+                return round($baseAmount * 4.33, 2);
+            case 'fortnightly':
+                return round($baseAmount * (26 / 12), 2);
             case 'monthly':
                 return $baseAmount;
             case 'quarterly':
-                return $baseAmount / 3;
+                return round($baseAmount / 3, 2);
             case 'annually':
-                return $baseAmount / 12;
+            case 'yearly':
+                return round($baseAmount / 12, 2);
             default:
-                return $baseAmount; // Default to monthly
+                return $baseAmount;
         }
     }
 
@@ -279,10 +295,10 @@ class RentInvoiceService
         $endDate = Carbon::now()->addMonths($months);
 
         $leases = Lease::with(['asset', 'tenant'])
-            ->whereHas('asset', function($q) use ($businessEntityId) {
-                $q->where('asset_type', 'Suite')
-                  ->where('status', 'Active')
-                  ->where('business_entity_id', $businessEntityId);
+            ->whereHas('asset', function ($q) use ($businessEntityId) {
+                $q->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
+                    ->where('status', 'Active')
+                    ->where('business_entity_id', $businessEntityId);
             })
             ->where('start_date', '<=', $endDate)
             ->where(function($q) use ($endDate) {

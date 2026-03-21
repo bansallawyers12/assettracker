@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\InvoiceReminderMail;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\BusinessEntity;
 use App\Services\InvoicePostingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
 
 class InvoiceController extends Controller
@@ -14,35 +16,37 @@ class InvoiceController extends Controller
 	public function index(BusinessEntity $businessEntity = null)
 	{
 		if ($businessEntity) {
-			// Specific business entity view
+			$this->authorize('view', $businessEntity);
+
 			$invoices = Invoice::where('business_entity_id', $businessEntity->id)
+				->with(['asset'])
 				->orderByDesc('issue_date')
 				->paginate(20);
+
 			return view('invoices.index', compact('businessEntity', 'invoices'));
-		} else {
-			// Global view for all business entities
-			$user = auth()->user();
-			$businessEntities = BusinessEntity::where('user_id', $user->id)->get();
-			$invoices = collect();
-			
-			foreach ($businessEntities as $entity) {
-				$entityInvoices = Invoice::where('business_entity_id', $entity->id)
-					->orderByDesc('issue_date')
-					->get();
-				$invoices = $invoices->merge($entityInvoices);
-			}
-			
-			return view('invoices.index', compact('invoices', 'businessEntities'));
 		}
+
+		$user = auth()->user();
+		$entityIds = BusinessEntity::where('user_id', $user->id)->pluck('id')->all();
+		$invoices = Invoice::whereIn('business_entity_id', $entityIds)
+			->with(['asset', 'businessEntity'])
+			->orderByDesc('issue_date')
+			->paginate(30);
+
+		return view('invoices.index', compact('invoices'));
 	}
 
 	public function create(BusinessEntity $businessEntity)
 	{
+		$this->authorize('view', $businessEntity);
+
 		return view('invoices.create', compact('businessEntity'));
 	}
 
 	public function store(Request $request, BusinessEntity $businessEntity)
 	{
+		$this->authorize('update', $businessEntity);
+
 		$data = $request->validate([
 			'invoice_number' => [
 				'required',
@@ -103,13 +107,15 @@ class InvoiceController extends Controller
 
 	public function show(BusinessEntity $businessEntity, Invoice $invoice)
 	{
+		$this->authorize('view', $businessEntity);
 		$this->authorizeInvoice($businessEntity, $invoice);
-		$invoice->load('lines');
+		$invoice->load(['lines', 'lease.tenant', 'asset']);
 		return view('invoices.show', compact('businessEntity', 'invoice'));
 	}
 
 	public function edit(BusinessEntity $businessEntity, Invoice $invoice)
 	{
+		$this->authorize('update', $businessEntity);
 		$this->authorizeInvoice($businessEntity, $invoice);
 		$invoice->load('lines');
 		return view('invoices.edit', compact('businessEntity', 'invoice'));
@@ -117,6 +123,7 @@ class InvoiceController extends Controller
 
 	public function update(Request $request, BusinessEntity $businessEntity, Invoice $invoice)
 	{
+		$this->authorize('update', $businessEntity);
 		$this->authorizeInvoice($businessEntity, $invoice);
 		if ($invoice->is_posted) {
 			return back()->with('error', 'Posted invoices cannot be edited.');
@@ -177,6 +184,7 @@ class InvoiceController extends Controller
 
 	public function destroy(BusinessEntity $businessEntity, Invoice $invoice)
 	{
+		$this->authorize('update', $businessEntity);
 		$this->authorizeInvoice($businessEntity, $invoice);
 		if ($invoice->is_posted) {
 			return back()->with('error', 'Posted invoices cannot be deleted.');
@@ -188,6 +196,7 @@ class InvoiceController extends Controller
 
 	public function post(BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
 	{
+		$this->authorize('update', $businessEntity);
 		$this->authorizeInvoice($businessEntity, $invoice);
 		if ($invoice->is_posted) {
 			return back()->with('info', 'Invoice already posted.');
@@ -198,8 +207,71 @@ class InvoiceController extends Controller
 			->with('success', 'Invoice posted to ledger');
 	}
 
+	public function recordPayment(Request $request, BusinessEntity $businessEntity, Invoice $invoice)
+	{
+		$this->authorize('update', $businessEntity);
+		$this->authorizeInvoice($businessEntity, $invoice);
+
+		if ($invoice->status !== 'approved') {
+			return back()->with('error', 'Only approved (posted) invoices can be marked paid.');
+		}
+		if ($invoice->paid_at) {
+			return back()->with('error', 'This invoice is already recorded as paid.');
+		}
+
+		$data = $request->validate([
+			'paid_at' => 'required|date',
+			'payment_method' => 'nullable|string|max:100',
+			'payment_reference' => 'nullable|string|max:255',
+		]);
+
+		$invoice->update([
+			'paid_at' => $data['paid_at'],
+			'payment_method' => $data['payment_method'] ?? null,
+			'payment_reference' => $data['payment_reference'] ?? null,
+			'status' => 'paid',
+		]);
+
+		return back()->with('success', 'Payment recorded.');
+	}
+
+	public function remind(BusinessEntity $businessEntity, Invoice $invoice)
+	{
+		$this->authorize('update', $businessEntity);
+		$this->authorizeInvoice($businessEntity, $invoice);
+
+		if ($invoice->status !== 'approved') {
+			return back()->with('error', 'Reminders can only be sent for approved (posted) invoices.');
+		}
+
+		$invoice->loadMissing(['lease.tenant']);
+		$tenant = $invoice->lease?->tenant;
+		$email = $tenant?->email;
+		if (!$email) {
+			return back()->with('error', 'No tenant email on file for this invoice.');
+		}
+
+		$customerName = $tenant->name ?? $invoice->customer_name;
+
+		try {
+			Mail::to($email)->send(new InvoiceReminderMail($invoice, $customerName));
+		} catch (\Throwable $e) {
+			report($e);
+
+			return back()->with('error', 'Could not send email. Check your mail configuration.');
+		}
+
+		$invoice->update([
+			'last_reminder_sent_at' => now(),
+			'reminder_count' => (int) $invoice->reminder_count + 1,
+		]);
+
+		return back()->with('success', 'Reminder sent to '.$email);
+	}
+
 	private function authorizeInvoice(BusinessEntity $businessEntity, Invoice $invoice): void
 	{
-		abort_unless($invoice->business_entity_id === $businessEntity->id, 404);
+		abort_unless((int) $invoice->business_entity_id === (int) $businessEntity->id, 404);
+		abort_unless((int) $businessEntity->user_id === (int) auth()->id(), 403);
 	}
 }

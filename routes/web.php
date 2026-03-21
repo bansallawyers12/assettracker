@@ -17,6 +17,7 @@ use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\AssetInvoiceController;
 
 
 Route::post('/test-json', function() {
@@ -79,6 +80,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/business-entities/{businessEntity}/assets/{asset}/leases/create', [AssetController::class, 'createLease'])->name('business-entities.assets.leases.create');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/leases', [AssetController::class, 'storeLease'])->name('business-entities.assets.leases.store');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/leases/sync-from-tenants', [AssetController::class, 'syncLeasesFromTenants'])->name('business-entities.assets.leases.sync-from-tenants');
+    Route::post('business-entities/{businessEntity}/assets/{asset}/invoices/create-for-lease', [AssetInvoiceController::class, 'storeForLease'])->name('assets.invoices.store-for-lease');
 
     // Entity Persons
     Route::get('entity-persons/create/{business_entity_id}', [EntityPersonController::class, 'create'])->name('entity-persons.create');
@@ -194,6 +196,8 @@ Route::middleware(['auth'])->group(function () {
     // Invoice Routes (Nested under Business Entities)
     Route::resource('business-entities.invoices', InvoiceController::class);
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/post', [InvoiceController::class, 'post'])->name('business-entities.invoices.post');
+    Route::post('business-entities/{businessEntity}/invoices/{invoice}/record-payment', [InvoiceController::class, 'recordPayment'])->name('business-entities.invoices.record-payment');
+    Route::post('business-entities/{businessEntity}/invoices/{invoice}/remind', [InvoiceController::class, 'remind'])->name('business-entities.invoices.remind');
 
     // Tracking Categories Routes (Nested under Business Entities)
     Route::resource('business-entities.tracking-categories', App\Http\Controllers\TrackingCategoryController::class);

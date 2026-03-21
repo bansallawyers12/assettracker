@@ -31,7 +31,7 @@
                         <h4 class="text-md font-medium text-gray-900 mb-3">Lease Information</h4>
                         <dl class="space-y-2">
                             <div>
-                                <dt class="text-sm font-medium text-gray-500">Suite</dt>
+                                <dt class="text-sm font-medium text-gray-500">Property</dt>
                                 <dd class="text-sm text-gray-900">{{ $lease->asset->name }}</dd>
                             </div>
                             <div>

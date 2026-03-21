@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\Lease;
 use App\Services\RentInvoiceService;
@@ -36,18 +37,17 @@ class RentInvoiceController extends Controller
             ->with(['lines'])
             ->get();
 
-        // Get all suite assets with leases
-        $suiteAssets = \App\Models\Asset::where('business_entity_id', $businessEntity->id)
-            ->where('asset_type', 'Suite')
+        $leaseableAssets = Asset::where('business_entity_id', $businessEntity->id)
+            ->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
             ->where('status', 'Active')
             ->with(['leases.tenant'])
             ->get();
 
         return view('rent-invoices.index', compact(
-            'businessEntity', 
-            'upcomingInvoices', 
-            'existingInvoices', 
-            'suiteAssets'
+            'businessEntity',
+            'upcomingInvoices',
+            'existingInvoices',
+            'leaseableAssets'
         ));
     }
 
@@ -81,7 +81,9 @@ class RentInvoiceController extends Controller
     public function generateForLease(Request $request, BusinessEntity $businessEntity, Lease $lease)
     {
         $this->authorize('update', $businessEntity);
-        
+
+        abort_unless((int) $lease->asset->business_entity_id === (int) $businessEntity->id, 404);
+
         $request->validate([
             'invoice_date' => 'nullable|date'
         ]);
@@ -105,7 +107,9 @@ class RentInvoiceController extends Controller
     public function preview(BusinessEntity $businessEntity, Lease $lease)
     {
         $this->authorize('view', $businessEntity);
-        
+
+        abort_unless((int) $lease->asset->business_entity_id === (int) $businessEntity->id, 404);
+
         $currentMonth = Carbon::now();
         $rentAmount = $this->rentInvoiceService->calculateRentAmount($lease, $currentMonth);
         
@@ -128,8 +132,8 @@ class RentInvoiceController extends Controller
     {
         $this->authorize('view', $businessEntity);
         
-        $assets = \App\Models\Asset::where('business_entity_id', $businessEntity->id)
-            ->where('asset_type', 'Suite')
+        $assets = Asset::where('business_entity_id', $businessEntity->id)
+            ->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
             ->where('status', 'Active')
             ->with(['leases.tenant'])
             ->get();
