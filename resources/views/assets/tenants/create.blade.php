@@ -44,28 +44,29 @@
                                 <input type="hidden" id="create_real_estate_company" name="create_real_estate_company" value="{{ old('create_real_estate_company') ? 1 : 0 }}">
 
                                 <div class="flex items-center justify-between gap-4">
-                                    <label for="real_estate_business_entity_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                                        Attach Existing Real Estate Company
+                                    <label for="real_estate_company_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                        Attach existing real estate agency
                                     </label>
                                     <button
                                         type="button"
                                         id="toggle-create-real-estate-company"
                                         class="inline-flex items-center px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white text-sm rounded-lg transition-all duration-200"
                                     >
-                                        {{ old('create_real_estate_company') ? 'Use Existing Company' : 'Create Real Estate Company' }}
+                                        {{ old('create_real_estate_company') ? 'Use existing agency' : 'Create new agency' }}
                                     </button>
                                 </div>
 
                                 <div id="existing-company-section" class="{{ old('create_real_estate_company') ? 'hidden' : '' }}">
-                                    <select name="real_estate_business_entity_id" id="real_estate_business_entity_id" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                        <option value="">Select a company</option>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Agencies are stored separately from your business entities.</p>
+                                    <select name="real_estate_company_id" id="real_estate_company_id" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        <option value="">Select an agency</option>
                                         @foreach ($realEstateCompanies as $realEstateCompany)
-                                            <option value="{{ $realEstateCompany->id }}" {{ old('real_estate_business_entity_id') == $realEstateCompany->id ? 'selected' : '' }}>
-                                                {{ $realEstateCompany->legal_name }}
+                                            <option value="{{ $realEstateCompany->id }}" {{ old('real_estate_company_id') == $realEstateCompany->id ? 'selected' : '' }}>
+                                                {{ $realEstateCompany->name }}
                                             </option>
                                         @endforeach
                                     </select>
-                                    @error('real_estate_business_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                    @error('real_estate_company_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </div>
 
                                 <div id="new-company-section" class="space-y-4 {{ old('create_real_estate_company') ? '' : 'hidden' }}">

@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\BusinessEntity;
-use App\Models\EntityPerson;
 use App\Models\Lease;
 use App\Models\Note;
-use App\Models\Person;
+use App\Models\RealEstateCompany;
+use App\Models\RealEstateCompanyContact;
 use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -92,7 +92,7 @@ class AssetController extends Controller
         $asset->load([
             'notes',
             'leases.tenant',
-            'tenants.realEstateCompany.persons.person',
+            'tenants.realEstateCompany.contacts',
         ]);
 
         return view('assets.show', compact('businessEntity', 'asset'));
@@ -209,10 +209,9 @@ class AssetController extends Controller
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
-        $realEstateCompanies = BusinessEntity::query()
-            ->where('user_id', auth()->id())
-            ->where('entity_type', 'Company')
-            ->orderBy('legal_name')
+        $realEstateCompanies = RealEstateCompany::query()
+            ->forUser(auth()->id())
+            ->orderBy('name')
             ->get();
 
         return view('assets.tenants.create', compact('businessEntity', 'asset', 'realEstateCompanies'));
@@ -236,18 +235,17 @@ class AssetController extends Controller
             'notes' => 'nullable|string',
             'is_real_estate_managed' => 'nullable|boolean',
             'create_real_estate_company' => 'nullable|boolean',
-            'real_estate_business_entity_id' => [
+            'real_estate_company_id' => [
                 'nullable',
-                Rule::exists('business_entities', 'id')->where(function ($query) {
-                    $query->where('user_id', auth()->id())
-                        ->where('entity_type', 'Company');
+                Rule::exists('real_estate_companies', 'id')->where(function ($query) {
+                    $query->where('user_id', auth()->id());
                 }),
             ],
         ]);
 
         $isRealEstateManaged = $request->boolean('is_real_estate_managed');
         $isCreatingRealEstateCompany = $request->boolean('create_real_estate_company');
-        $realEstateBusinessEntityId = null;
+        $realEstateCompanyId = null;
 
         if ($isRealEstateManaged) {
             if ($isCreatingRealEstateCompany) {
@@ -259,14 +257,14 @@ class AssetController extends Controller
                     'real_estate_contacts.*.phone' => 'required|string|max:20',
                 ]);
             } else {
-                if (empty($validated['real_estate_business_entity_id'])) {
+                if (empty($validated['real_estate_company_id'])) {
                     return redirect()
                         ->back()
                         ->withInput()
-                        ->withErrors(['real_estate_business_entity_id' => 'Please select a real estate company, or create a new one.']);
+                        ->withErrors(['real_estate_company_id' => 'Please select a real estate agency, or create a new one.']);
                 }
 
-                $realEstateBusinessEntityId = (int) $validated['real_estate_business_entity_id'];
+                $realEstateCompanyId = (int) $validated['real_estate_company_id'];
             }
         }
 
@@ -299,7 +297,7 @@ class AssetController extends Controller
             $validated,
             $isRealEstateManaged,
             $isCreatingRealEstateCompany,
-            &$realEstateBusinessEntityId,
+            &$realEstateCompanyId,
             $leaseExpiryDate,
             $leaseDurationValue,
             $leaseDurationUnit,
@@ -308,24 +306,19 @@ class AssetController extends Controller
             if ($isRealEstateManaged && $isCreatingRealEstateCompany) {
                 $contacts = collect($request->input('real_estate_contacts', []));
                 $primaryContact = $contacts->first();
-                $registeredAddress = $request->input('address') ?: ($asset->address ?: 'Address not provided');
-                $registeredEmail = $primaryContact['email'] ?? $request->input('email') ?? 'no-reply@assettracker.local';
-                $rawPhone = $primaryContact['phone'] ?? $request->input('phone') ?? '0000000000';
-                // Schema may be VARCHAR(15) on some DBs — avoid truncation errors
-                $registeredPhone = mb_substr((string) $rawPhone, 0, 15);
+                $address = $request->input('address') ?: ($asset->address ?: null);
+                $companyEmail = $primaryContact['email'] ?? $request->input('email');
+                $companyPhone = $primaryContact['phone'] ?? $request->input('phone');
 
-                $realEstateCompany = BusinessEntity::create([
-                    'legal_name' => $request->input('real_estate_company_name'),
-                    'trading_name' => $request->input('real_estate_company_name'),
-                    'entity_type' => 'Company',
-                    'registered_address' => $registeredAddress,
-                    'registered_email' => $registeredEmail,
-                    'phone_number' => $registeredPhone,
+                $realEstateCompany = RealEstateCompany::create([
                     'user_id' => auth()->id(),
-                    'status' => 'Active',
+                    'name' => $request->input('real_estate_company_name'),
+                    'email' => $companyEmail,
+                    'phone' => $companyPhone,
+                    'address' => $address,
                 ]);
 
-                $realEstateBusinessEntityId = $realEstateCompany->id;
+                $realEstateCompanyId = $realEstateCompany->id;
 
                 foreach ($contacts as $contact) {
                     $fullName = trim((string) ($contact['contact_person_name'] ?? ''));
@@ -333,22 +326,11 @@ class AssetController extends Controller
                         continue;
                     }
 
-                    [$firstName, $lastName] = $this->splitContactName($fullName);
-
-                    $person = Person::create([
-                        'first_name' => $firstName,
-                        'last_name' => $lastName,
+                    RealEstateCompanyContact::create([
+                        'real_estate_company_id' => $realEstateCompany->id,
+                        'contact_person_name' => $fullName,
                         'email' => $contact['email'] ?? null,
-                        'phone_number' => $contact['phone'] ?? null,
-                        'status' => 'Active',
-                    ]);
-
-                    EntityPerson::create([
-                        'business_entity_id' => $realEstateCompany->id,
-                        'person_id' => $person->id,
-                        'role' => 'Owner',
-                        'appointment_date' => now()->toDateString(),
-                        'role_status' => 'Active',
+                        'phone' => $contact['phone'] ?? null,
                     ]);
                 }
             }
@@ -367,7 +349,7 @@ class AssetController extends Controller
                 'rent_frequency' => $validated['rent_frequency'] ?? null,
                 'notes' => $validated['notes'] ?? null,
                 'is_real_estate_managed' => $isRealEstateManaged,
-                'real_estate_business_entity_id' => $realEstateBusinessEntityId,
+                'real_estate_company_id' => $realEstateCompanyId,
             ]);
 
             $this->createLeaseFromTenantIfMissing($asset, $tenant);
@@ -514,15 +496,6 @@ class AssetController extends Controller
         return redirect()->back()->with('error', 'No valid reminder date to extend.');
     }
 
-    private function splitContactName(string $fullName): array
-    {
-        $nameParts = preg_split('/\s+/', trim($fullName)) ?: [];
-        $firstName = $nameParts[0] ?? 'Contact';
-        $lastName = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : 'Contact';
-
-        return [$firstName, $lastName];
-    }
-
     /**
      * Nested routes resolve Asset by id only — ensure it belongs to the URL business entity.
      */
@@ -572,7 +545,7 @@ class AssetController extends Controller
         if ($tenant->is_real_estate_managed) {
             $tenant->loadMissing('realEstateCompany');
             if ($tenant->realEstateCompany) {
-                $leaseTermsParts[] = 'Managed by: '.$tenant->realEstateCompany->legal_name;
+                $leaseTermsParts[] = 'Managed by: '.$tenant->realEstateCompany->name;
             }
         }
 

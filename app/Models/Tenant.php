@@ -11,7 +11,7 @@ class Tenant extends Model
         'move_in_date', 'lease_duration', 'lease_duration_value', 'lease_duration_unit',
         'lease_expiry_date', 'lease_expiry_reminder_days', 'rent_amount', 'rent_frequency',
         'move_out_date', 'notes',
-        'is_real_estate_managed', 'real_estate_business_entity_id',
+        'is_real_estate_managed', 'real_estate_company_id',
     ];
 
     protected $casts = [
@@ -29,8 +29,11 @@ class Tenant extends Model
         return $this->belongsTo(Asset::class);
     }
 
+    /**
+     * Managing real estate agency (not a business entity / your company).
+     */
     public function realEstateCompany()
     {
-        return $this->belongsTo(BusinessEntity::class, 'real_estate_business_entity_id');
+        return $this->belongsTo(RealEstateCompany::class, 'real_estate_company_id');
     }
 }

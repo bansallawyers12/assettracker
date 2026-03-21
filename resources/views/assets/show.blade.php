@@ -398,25 +398,23 @@
                                                                 <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->is_real_estate_managed ? 'Yes' : 'No' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Real Estate Company</dt>
-                                                                <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->realEstateCompany->legal_name ?? 'N/A' }}</dd>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Real Estate Agency</dt>
+                                                                <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->realEstateCompany->name ?? 'N/A' }}</dd>
                                                             </div>
                                                             <div class="col-span-2">
-                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Real Estate Contacts</dt>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Agency Contacts</dt>
                                                                 <dd class="text-gray-900 dark:text-gray-200">
-                                                                    @if ($tenant->realEstateCompany && $tenant->realEstateCompany->persons->isNotEmpty())
-                                                                        @foreach ($tenant->realEstateCompany->persons as $relation)
-                                                                            @if ($relation->person)
-                                                                                <div class="mb-1">
-                                                                                    {{ trim(($relation->person->first_name ?? '') . ' ' . ($relation->person->last_name ?? '')) }}
-                                                                                    @if ($relation->person->email)
-                                                                                        - {{ $relation->person->email }}
-                                                                                    @endif
-                                                                                    @if ($relation->person->phone_number)
-                                                                                        - {{ $relation->person->phone_number }}
-                                                                                    @endif
-                                                                                </div>
-                                                                            @endif
+                                                                    @if ($tenant->realEstateCompany && $tenant->realEstateCompany->contacts->isNotEmpty())
+                                                                        @foreach ($tenant->realEstateCompany->contacts as $contact)
+                                                                            <div class="mb-1">
+                                                                                {{ $contact->contact_person_name }}
+                                                                                @if ($contact->email)
+                                                                                    - {{ $contact->email }}
+                                                                                @endif
+                                                                                @if ($contact->phone)
+                                                                                    - {{ $contact->phone }}
+                                                                                @endif
+                                                                            </div>
                                                                         @endforeach
                                                                     @else
                                                                         N/A
