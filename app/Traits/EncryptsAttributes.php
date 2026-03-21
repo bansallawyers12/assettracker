@@ -15,23 +15,20 @@ trait EncryptsAttributes
 
 
     /**
-     * Boot the trait.
+     * Encryption/decryption is handled entirely by setAttribute() and getAttribute()
+     * so that $this->attributes always holds ciphertext and dirty-tracking works
+     * correctly (no spurious UPDATEs).
+     *
+     * The public encryptAttributes() / decryptAttributes() methods below are kept
+     * for explicit use in backfill commands or testing only – they are no longer
+     * called automatically by Eloquent lifecycle events.
      */
-    public static function bootEncryptsAttributes()
-    {
-        static::saving(function ($model) {
-            $model->encryptAttributes();
-        });
-
-        static::retrieved(function ($model) {
-            $model->decryptAttributes();
-        });
-    }
 
     /**
-     * Encrypt the specified attributes.
+     * Encrypt all encrypted attributes in-place on the current model instance.
+     * Useful for one-off backfill commands; does NOT persist to the database.
      */
-    public function encryptAttributes()
+    public function encryptAttributes(): void
     {
         foreach ($this->getEncryptedAttributes() as $attribute) {
             if (isset($this->attributes[$attribute]) && !empty($this->attributes[$attribute])) {
@@ -45,17 +42,16 @@ trait EncryptsAttributes
     }
 
     /**
-     * Decrypt the specified attributes.
+     * Decrypt all encrypted attributes in-place on the current model instance.
+     * Useful for one-off backfill commands; does NOT persist to the database.
      */
-    public function decryptAttributes()
+    public function decryptAttributes(): void
     {
         foreach ($this->getEncryptedAttributes() as $attribute) {
             if (isset($this->attributes[$attribute]) && !empty($this->attributes[$attribute])) {
                 try {
                     $this->attributes[$attribute] = $this->decrypt($this->attributes[$attribute]);
                 } catch (\Exception $e) {
-                    // If decryption fails, keep the original value
-                    // This handles cases where data was stored unencrypted
                     Log::warning("Failed to decrypt attribute {$attribute}: " . $e->getMessage());
                 }
             }
@@ -94,10 +90,14 @@ trait EncryptsAttributes
     public function setAttribute($key, $value)
     {
         if (in_array($key, $this->getEncryptedAttributes()) && !empty($value)) {
-            try {
-                $value = $this->encrypt($value);
-            } catch (\Exception $e) {
-                Log::error("Failed to encrypt attribute {$key}: " . $e->getMessage());
+            // Only encrypt if the value is not already a valid ciphertext.
+            // This prevents double-encryption when a model is re-saved after retrieval.
+            if (!$this->isAlreadyEncrypted($value)) {
+                try {
+                    $value = $this->encrypt($value);
+                } catch (\Exception $e) {
+                    Log::error("Failed to encrypt attribute {$key}: " . $e->getMessage());
+                }
             }
         }
 
@@ -136,6 +136,24 @@ trait EncryptsAttributes
         } catch (\Exception $e) {
             // Return original value if decryption fails
             return $value;
+        }
+    }
+
+    /**
+     * Determine whether a value is already a valid Laravel ciphertext.
+     * Used by setAttribute() to prevent double-encryption on re-save.
+     */
+    protected function isAlreadyEncrypted(mixed $value): bool
+    {
+        if (!is_string($value) || empty($value)) {
+            return false;
+        }
+
+        try {
+            Crypt::decrypt($value);
+            return true;
+        } catch (\Exception) {
+            return false;
         }
     }
 

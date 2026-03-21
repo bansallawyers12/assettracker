@@ -33,8 +33,11 @@ class Person extends Model
      * @var array
      */
     protected $encrypted = [
+        'first_name',
+        'last_name',
         'email',
         'tfn',
+        'abn',
         'phone_number',
         'address',
         'identification_number',

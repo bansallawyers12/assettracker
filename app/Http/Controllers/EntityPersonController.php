@@ -88,8 +88,9 @@ class EntityPersonController extends Controller
         $entityTrusteeId = $request->input('entity_trustee_id', null);
         
         if ($request->has('create_new_person') && $request->create_new_person == 1) {
-            // Check if email already exists before creating new person
-            if ($request->email && Person::where('email', $request->email)->exists()) {
+            // Email is stored encrypted so a raw WHERE clause cannot match; compare
+            // after Eloquent decrypts each row via getAttribute().
+            if ($request->email && Person::all()->contains(fn ($p) => $p->email === $request->email)) {
                 return redirect()->back()
                     ->withInput()
                     ->withErrors(['email' => 'A person with this email already exists. Please use the existing person instead.']);
