@@ -153,7 +153,7 @@
         @endif
 
         <!-- Upcoming Invoices -->
-        @if($upcomingInvoices->count() > 0)
+        @if(count($upcomingInvoices) > 0)
             <div class="bg-white shadow sm:rounded-lg">
                 <div class="px-4 py-5 sm:p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Upcoming Rent Invoices (Next 6 Months)</h3>

@@ -49,6 +49,6 @@ class TwoFactorVerified
         }
 
         // Redirect to 2FA verification page
-        return redirect()->route('2fa.verify');
+        return redirect()->route('two-factor.totp-challenge');
     }
 }

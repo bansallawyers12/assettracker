@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use App\Services\TwoFactorService;
-use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\View\View;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\View\View;
 
 class TwoFactorController extends Controller
 {
@@ -111,5 +112,74 @@ class TwoFactorController extends Controller
         $backupCodes = json_decode($user->two_factor_backup_codes ?? '[]', true);
 
         return view('auth.two-factor.backup-codes', compact('user', 'backupCodes'));
+    }
+
+    /**
+     * Show the TOTP challenge page.
+     * Handles two cases:
+     * - Mid-login: credentials verified but not yet logged in (2fa_pending_user in session)
+     * - Session refresh: user is logged in but 2fa_verified flag was lost
+     */
+    public function showChallenge(Request $request): View|RedirectResponse
+    {
+        // Already fully verified — nothing to do here
+        if ($request->user() && $request->session()->has('2fa_verified')) {
+            return redirect()->route('dashboard');
+        }
+
+        // Logged in but 2fa_verified flag is missing — seed the pending key so the
+        // form POST can find the user without requiring them to log in again
+        if ($request->user() && !$request->session()->has('2fa_pending_user')) {
+            $request->session()->put('2fa_pending_user', $request->user()->id);
+        }
+
+        if (!$request->session()->has('2fa_pending_user')) {
+            return redirect()->route('login');
+        }
+
+        return view('auth.two-factor.challenge');
+    }
+
+    /**
+     * Verify the TOTP code or backup code.
+     */
+    public function verifyChallenge(Request $request): RedirectResponse
+    {
+        $alreadyLoggedIn = (bool) $request->user();
+        $userId = $request->session()->get('2fa_pending_user')
+            ?? optional($request->user())->id;
+
+        if (!$userId) {
+            return redirect()->route('login');
+        }
+
+        $request->validate([
+            'code' => 'required|string',
+        ]);
+
+        $user = User::find($userId);
+
+        if (!$user) {
+            $request->session()->forget('2fa_pending_user');
+            return redirect()->route('login');
+        }
+
+        $code = $request->input('code');
+        $valid = $this->twoFactorService->verifyCode($user, $code)
+            || $this->twoFactorService->verifyBackupCode($user, $code);
+
+        if (!$valid) {
+            return back()->withErrors(['code' => 'The provided code is invalid. Please try again.']);
+        }
+
+        $request->session()->forget('2fa_pending_user');
+        $request->session()->put('2fa_verified', true);
+
+        if (!$alreadyLoggedIn) {
+            Auth::login($user);
+            $request->session()->regenerate();
+        }
+
+        return redirect()->intended(route('dashboard'));
     }
 }

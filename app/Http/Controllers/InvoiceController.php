@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 
 class InvoiceController extends Controller
 {
-	public function index(BusinessEntity $businessEntity = null)
+	public function index(?BusinessEntity $businessEntity = null)
 	{
 		if ($businessEntity) {
 			$this->authorize('view', $businessEntity);

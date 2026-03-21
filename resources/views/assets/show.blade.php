@@ -1,5 +1,7 @@
 @php
     use App\Models\Transaction;
+    use App\Models\Asset as AssetModel;
+    $isLeasable = in_array($asset->asset_type, AssetModel::LEASABLE_ASSET_TYPES);
 @endphp
 <x-app-layout>
     <x-slot name="header">
@@ -87,7 +89,7 @@
                                     </svg>
                                     Upload Document
                                 </button>
-                            @elseif (in_array($asset->asset_type, ['House Owned', 'House Rented', 'Warehouse', 'Land', 'Office', 'Shop', 'Real Estate']))
+                            @elseif ($isLeasable)
                                 <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -159,7 +161,7 @@
                                     <a href="#tab_registration" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Registration</a>
                                     <a href="#tab_insurance" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Insurance</a>
                                     <a href="#tab_service" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Service History</a>
-                                @elseif (in_array($asset->asset_type, ['House Owned', 'House Rented', 'Warehouse', 'Land', 'Office', 'Shop', 'Real Estate']))
+                                @elseif ($isLeasable)
                                     <a href="#tab_tenants" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Tenants</a>
                                     <a href="#tab_leases" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Leases</a>
                                     <a href="#tab_financials" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Financials</a>
@@ -312,7 +314,7 @@
                                         @endif
                                     </div>
                                 </div>
-                            @elseif (in_array($asset->asset_type, ['House Owned', 'House Rented', 'Warehouse', 'Land', 'Office', 'Shop', 'Real Estate']))
+                            @elseif ($isLeasable)
                                 <!-- Real Estate: Tenants Tab -->
                                 <div id="tab_tenants" class="tab-content hidden">
                                     <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">

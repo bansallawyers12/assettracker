@@ -96,28 +96,33 @@ class AssetController extends Controller
             'tenants.realEstateCompany.contacts',
         ]);
 
-        $year = (int) now()->format('Y');
-        $assetInvoices = Invoice::query()
-            ->where('asset_id', $asset->id)
-            ->with(['lease.tenant', 'lines'])
-            ->orderByDesc('issue_date')
-            ->get();
+        $assetInvoices = collect();
+        $invoiceSummary = ['ytd_invoiced' => 0.0, 'outstanding' => 0.0, 'ytd_paid' => 0.0];
 
-        $invoiceSummary = [
-            'ytd_invoiced' => (float) Invoice::query()
+        if (in_array($asset->asset_type, Asset::LEASABLE_ASSET_TYPES)) {
+            $year = (int) now()->format('Y');
+            $assetInvoices = Invoice::query()
                 ->where('asset_id', $asset->id)
-                ->whereYear('issue_date', $year)
-                ->sum('total_amount'),
-            'outstanding' => (float) Invoice::query()
-                ->where('asset_id', $asset->id)
-                ->where('status', 'approved')
-                ->sum('total_amount'),
-            'ytd_paid' => (float) Invoice::query()
-                ->where('asset_id', $asset->id)
-                ->where('status', 'paid')
-                ->whereYear('paid_at', $year)
-                ->sum('total_amount'),
-        ];
+                ->with(['lease.tenant', 'lines'])
+                ->orderByDesc('issue_date')
+                ->get();
+
+            $invoiceSummary = [
+                'ytd_invoiced' => (float) Invoice::query()
+                    ->where('asset_id', $asset->id)
+                    ->whereYear('issue_date', $year)
+                    ->sum('total_amount'),
+                'outstanding' => (float) Invoice::query()
+                    ->where('asset_id', $asset->id)
+                    ->where('status', 'approved')
+                    ->sum('total_amount'),
+                'ytd_paid' => (float) Invoice::query()
+                    ->where('asset_id', $asset->id)
+                    ->where('status', 'paid')
+                    ->whereYear('paid_at', $year)
+                    ->sum('total_amount'),
+            ];
+        }
 
         return view('assets.show', compact('businessEntity', 'asset', 'assetInvoices', 'invoiceSummary'));
     }
