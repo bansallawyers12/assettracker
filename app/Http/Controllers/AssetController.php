@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\EntityPerson;
+use App\Models\Lease;
 use App\Models\Note;
 use App\Models\Person;
+use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -89,6 +91,7 @@ class AssetController extends Controller
 
         $asset->load([
             'notes',
+            'leases.tenant',
             'tenants.realEstateCompany.persons.person',
         ]);
 
@@ -367,6 +370,8 @@ class AssetController extends Controller
                 'real_estate_business_entity_id' => $realEstateBusinessEntityId,
             ]);
 
+            $this->createLeaseFromTenantIfMissing($asset, $tenant);
+
             if ($leaseExpiryDate && $reminderDays !== null) {
                 $reminderDate = $leaseExpiryDate->copy()->subDays($reminderDays);
                 $reminderDate = $reminderDate->lt(now()) ? now() : $reminderDate;
@@ -383,6 +388,29 @@ class AssetController extends Controller
         });
 
         return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])->with('success', 'Tenant added successfully!');
+    }
+
+    /**
+     * Create a lease row from tenant lease/rent fields (Leases tab) if none exists yet for this tenant.
+     */
+    public function syncLeasesFromTenants(BusinessEntity $businessEntity, Asset $asset)
+    {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
+        $created = 0;
+        foreach ($asset->tenants as $tenant) {
+            if ($this->createLeaseFromTenantIfMissing($asset, $tenant)) {
+                $created++;
+            }
+        }
+
+        $message = $created > 0
+            ? "{$created} lease(s) created from tenant records (Leases tab)."
+            : 'No new leases needed: each tenant with a lease start date already has a lease, or no lease start date is set on your tenants.';
+
+        return redirect()
+            ->to(route('business-entities.assets.show', [$businessEntity->id, $asset->id]).'#tab_leases')
+            ->with('success', $message);
     }
 
     public function createLease(BusinessEntity $businessEntity, Asset $asset)
@@ -503,5 +531,67 @@ class AssetController extends Controller
         if ((int) $asset->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
         }
+    }
+
+    /**
+     * Copy lease start, duration/expiry, rent, and notes from a tenant into the leases table (one row per tenant if missing).
+     */
+    private function createLeaseFromTenantIfMissing(Asset $asset, Tenant $tenant): bool
+    {
+        if (!$tenant->move_in_date) {
+            return false;
+        }
+
+        if (Lease::query()->where('asset_id', $asset->id)->where('tenant_id', $tenant->id)->exists()) {
+            return false;
+        }
+
+        $rentAmount = $tenant->rent_amount !== null && $tenant->rent_amount !== ''
+            ? $tenant->rent_amount
+            : 0;
+
+        $paymentFrequency = match ($tenant->rent_frequency ?? '') {
+            'Weekly' => 'Weekly',
+            'Monthly' => 'Monthly',
+            default => 'Monthly',
+        };
+
+        $leaseTermsParts = [];
+        if ($tenant->lease_duration_value && $tenant->lease_duration_unit) {
+            $leaseTermsParts[] = "Duration: {$tenant->lease_duration_value} {$tenant->lease_duration_unit}";
+        }
+        if ($tenant->lease_expiry_date) {
+            $leaseTermsParts[] = 'Lease end: '.$tenant->lease_expiry_date->format('d/m/Y');
+        }
+        if ($tenant->lease_expiry_reminder_days !== null) {
+            $leaseTermsParts[] = "Expiry reminder: {$tenant->lease_expiry_reminder_days} days before end";
+        }
+        if ($tenant->notes) {
+            $leaseTermsParts[] = 'Notes: '.$tenant->notes;
+        }
+        if ($tenant->is_real_estate_managed) {
+            $tenant->loadMissing('realEstateCompany');
+            if ($tenant->realEstateCompany) {
+                $leaseTermsParts[] = 'Managed by: '.$tenant->realEstateCompany->legal_name;
+            }
+        }
+
+        $leaseTerms = count($leaseTermsParts) ? implode('. ', $leaseTermsParts) : 'Synced from tenant record.';
+
+        $endDate = $tenant->lease_expiry_date
+            ? $tenant->lease_expiry_date->format('Y-m-d')
+            : null;
+
+        Lease::create([
+            'asset_id' => $asset->id,
+            'tenant_id' => $tenant->id,
+            'rental_amount' => $rentAmount,
+            'payment_frequency' => $paymentFrequency,
+            'start_date' => $tenant->move_in_date->format('Y-m-d'),
+            'end_date' => $endDate,
+            'terms' => $leaseTerms,
+        ]);
+
+        return true;
     }
 }

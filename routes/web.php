@@ -78,6 +78,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/business-entities/{businessEntity}/assets/{asset}/tenants', [AssetController::class, 'storeTenant'])->name('business-entities.assets.tenants.store');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/leases/create', [AssetController::class, 'createLease'])->name('business-entities.assets.leases.create');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/leases', [AssetController::class, 'storeLease'])->name('business-entities.assets.leases.store');
+    Route::post('/business-entities/{businessEntity}/assets/{asset}/leases/sync-from-tenants', [AssetController::class, 'syncLeasesFromTenants'])->name('business-entities.assets.leases.sync-from-tenants');
 
     // Entity Persons
     Route::get('entity-persons/create/{business_entity_id}', [EntityPersonController::class, 'create'])->name('entity-persons.create');

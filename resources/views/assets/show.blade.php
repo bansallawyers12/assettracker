@@ -23,6 +23,16 @@
 
     <div class="py-8 bg-blue-50 dark:bg-blue-900 min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            @if (session('success'))
+                <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200" role="alert">
+                    {{ session('success') }}
+                </div>
+            @endif
+            @if (session('error'))
+                <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200" role="alert">
+                    {{ session('error') }}
+                </div>
+            @endif
             <div class="flex flex-col lg:flex-row gap-6">
                 <!-- Left Sidebar: Asset Details -->
                 <div class="w-full lg:w-1/3">
@@ -305,14 +315,25 @@
                                 <!-- Real Estate: Tenants Tab -->
                                 <div id="tab_tenants" class="tab-content hidden">
                                     <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                                        <div class="flex justify-between items-center mb-4">
+                                        <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
                                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Tenants</h3>
-                                            <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                                </svg>
-                                                Add Tenant
-                                            </a>
+                                            <div class="flex flex-wrap gap-2">
+                                                <form method="POST" action="{{ route('business-entities.assets.leases.sync-from-tenants', [$businessEntity->id, $asset->id]) }}" class="inline" onsubmit="return confirm('Create lease rows from tenant lease/rent data for any tenant that does not have one yet?');">
+                                                    @csrf
+                                                    <button type="submit" class="inline-flex items-center px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm shadow-md transition-all duration-200" title="Copies lease start, end, duration, rent, and notes into the Leases tab">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                                        </svg>
+                                                        Sync to Leases tab
+                                                    </button>
+                                                </form>
+                                                <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                                    </svg>
+                                                    Add Tenant
+                                                </a>
+                                            </div>
                                         </div>
                                         @if ($asset->tenants->isEmpty())
                                             <p class="text-gray-500 dark:text-gray-400 text-center py-4">No tenants yet.</p>
@@ -849,10 +870,16 @@
                 });
             });
 
-            // Show first tab by default
+            // Show tab from URL hash (e.g. after "Sync to Leases tab") or first tab by default
             if (tabs.length > 0) {
-                const firstTabId = tabs[0].getAttribute('href').substring(1);
-                showTab(firstTabId);
+                const hash = window.location.hash ? window.location.hash.substring(1) : '';
+                const hashEl = hash && document.getElementById(hash);
+                if (hashEl && hash.startsWith('tab_')) {
+                    showTab(hash);
+                } else {
+                    const firstTabId = tabs[0].getAttribute('href').substring(1);
+                    showTab(firstTabId);
+                }
             }
 
             // Initialize reminder logic
