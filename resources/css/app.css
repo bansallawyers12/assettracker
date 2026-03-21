@@ -26,3 +26,83 @@
 .max-w-7xl {
     max-width: 96rem !important; /* 1536px, wider than default 80rem */
 }
+
+/* Google PlaceAutocompleteElement (new Places widget) */
+[data-au-addr-mount] gmp-place-autocomplete {
+    display: block;
+    width: 100%;
+}
+
+/* Business entity page polish */
+.entity-show-page .entity-details-card,
+.entity-show-page .entity-main-card {
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.entity-show-page .entity-toolbar {
+    border-bottom: 1px solid rgb(229 231 235);
+    padding-bottom: 1rem;
+}
+
+.entity-show-page .entity-primary-action {
+    border-radius: 0.65rem;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15);
+}
+
+.entity-show-page .entity-tab-nav {
+    background: rgb(249 250 251);
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.75rem;
+    padding: 0.3rem;
+}
+
+.entity-show-page .entity-tab-link {
+    border: 0;
+    line-height: 1.1rem;
+    border-radius: 0.55rem;
+}
+
+.entity-show-page .entity-tab-link.active {
+    color: rgb(67 56 202);
+    background: white;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.entity-show-page .entity-secondary-actions {
+    gap: 0.55rem;
+}
+
+.entity-show-page .entity-secondary-action {
+    border: 1px solid rgb(229 231 235);
+    border-radius: 9999px;
+    padding-inline: 0.65rem;
+}
+
+.entity-show-page .entity-quick-access {
+    background: linear-gradient(180deg, rgba(238, 242, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%);
+    border-radius: 0.75rem;
+    padding: 0.85rem;
+}
+
+.entity-show-page .entity-quick-link {
+    border-radius: 9999px;
+    border: 1px solid transparent;
+}
+
+.dark .entity-show-page .entity-toolbar {
+    border-bottom-color: rgb(55 65 81);
+}
+
+.dark .entity-show-page .entity-tab-nav {
+    background: rgb(17 24 39);
+    border-color: rgb(55 65 81);
+}
+
+.dark .entity-show-page .entity-tab-link.active {
+    color: rgb(199 210 254);
+    background: rgb(31 41 55);
+}
+
+.dark .entity-show-page .entity-secondary-action {
+    border-color: rgb(75 85 99);
+}

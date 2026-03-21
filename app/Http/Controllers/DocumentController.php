@@ -413,11 +413,16 @@ class DocumentController extends Controller
                 if (Storage::disk('s3')->exists($document->path)) {
                     $url = Storage::disk('s3')->temporaryUrl($document->path, now()->addMinutes(5));
                     $fileDetails[] = [
+                        // Canonical keys used by existing documents screens
                         'name' => $document->file_name,
+                        'uploaded' => $document->created_at->format('Y-m-d H:i:s'),
+                        // Compatibility keys used by asset details screen JS
+                        'id' => $document->id,
+                        'file_name' => $document->file_name,
+                        'created_at' => $document->created_at->format('Y-m-d H:i:s'),
                         'path' => $document->path,
                         'type' => $this->getFileType(pathinfo($document->path, PATHINFO_EXTENSION)),
                         'size' => $this->formatFileSize(Storage::disk('s3')->size($document->path)),
-                        'uploaded' => $document->created_at->format('Y-m-d H:i:s'),
                         'url' => $url,
                         'description' => $document->description,
                         'document_type' => $document->type,

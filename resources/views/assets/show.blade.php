@@ -335,16 +335,72 @@
                                                                 <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->address ?? 'N/A' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Move-In Date</dt>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Lease Start Date</dt>
                                                                 <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->move_in_date ? $tenant->move_in_date->format('d/m/Y') : 'N/A' }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Move-Out Date</dt>
-                                                                <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->move_out_date ? $tenant->move_out_date->format('d/m/Y') : 'N/A' }}</dd>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Lease Duration</dt>
+                                                                <dd class="text-gray-900 dark:text-gray-200">
+                                                                    @if ($tenant->lease_duration_value && $tenant->lease_duration_unit)
+                                                                        {{ $tenant->lease_duration_value }} {{ $tenant->lease_duration_unit }}
+                                                                    @else
+                                                                        {{ $tenant->lease_duration ?? 'N/A' }}
+                                                                    @endif
+                                                                </dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Lease Expiry Date</dt>
+                                                                <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->lease_expiry_date ? $tenant->lease_expiry_date->format('d/m/Y') : 'N/A' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Reminder Before Expiry</dt>
+                                                                <dd class="text-gray-900 dark:text-gray-200">
+                                                                    {{ $tenant->lease_expiry_reminder_days !== null ? $tenant->lease_expiry_reminder_days . ' days' : 'N/A' }}
+                                                                </dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Rent</dt>
+                                                                <dd class="text-gray-900 dark:text-gray-200">
+                                                                    @if ($tenant->rent_amount !== null && $tenant->rent_frequency)
+                                                                        ${{ number_format($tenant->rent_amount, 2) }} / {{ strtolower($tenant->rent_frequency) }}
+                                                                    @else
+                                                                        N/A
+                                                                    @endif
+                                                                </dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Notes</dt>
                                                                 <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->notes ?? 'N/A' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Managed by Real Estate</dt>
+                                                                <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->is_real_estate_managed ? 'Yes' : 'No' }}</dd>
+                                                            </div>
+                                                            <div>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Real Estate Company</dt>
+                                                                <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->realEstateCompany->legal_name ?? 'N/A' }}</dd>
+                                                            </div>
+                                                            <div class="col-span-2">
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Real Estate Contacts</dt>
+                                                                <dd class="text-gray-900 dark:text-gray-200">
+                                                                    @if ($tenant->realEstateCompany && $tenant->realEstateCompany->persons->isNotEmpty())
+                                                                        @foreach ($tenant->realEstateCompany->persons as $relation)
+                                                                            @if ($relation->person)
+                                                                                <div class="mb-1">
+                                                                                    {{ trim(($relation->person->first_name ?? '') . ' ' . ($relation->person->last_name ?? '')) }}
+                                                                                    @if ($relation->person->email)
+                                                                                        - {{ $relation->person->email }}
+                                                                                    @endif
+                                                                                    @if ($relation->person->phone_number)
+                                                                                        - {{ $relation->person->phone_number }}
+                                                                                    @endif
+                                                                                </div>
+                                                                            @endif
+                                                                        @endforeach
+                                                                    @else
+                                                                        N/A
+                                                                    @endif
+                                                                </dd>
                                                             </div>
                                                         </dl>
                                                     </div>
@@ -839,7 +895,9 @@
 
                 fetch(`/api/business-entities/${entityId}/assets/${assetId}/documents`)
                     .then(response => response.json())
-                    .then(documents => {
+                    .then(data => {
+                        const documents = Array.isArray(data) ? data : (Array.isArray(data.files) ? data.files : []);
+
                         if (documents.length === 0) {
                             filesContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center py-4">No documents uploaded yet.</p>';
                             return;
@@ -852,9 +910,9 @@
                                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                         </svg>
-                                        <span class="text-sm text-gray-900 dark:text-gray-100">${doc.file_name}</span>
+                                        <span class="text-sm text-gray-900 dark:text-gray-100">${doc.file_name || doc.name || 'Untitled file'}</span>
                                     </div>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">${doc.created_at}</span>
+                                    <span class="text-xs text-gray-500 dark:text-gray-400">${doc.created_at || doc.uploaded || ''}</span>
                                 </div>
                             </div>
                         `).join('');

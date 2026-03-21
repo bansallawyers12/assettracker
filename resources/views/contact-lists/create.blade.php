@@ -74,8 +74,7 @@
 
                             <div class="md:col-span-2">
                                 <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
-                                <textarea name="address" id="address" rows="3"
-                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('address') }}</textarea>
+                                <x-google-address-input name="address" id="address" :value="old('address')" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
                                 @error('address')
                                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                                 @enderror

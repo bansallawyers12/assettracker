@@ -48,7 +48,7 @@
 
                             <div class="md:col-span-2">
                                 <x-input-label for="address" :value="__('Address')" />
-                                <textarea id="address" name="address" rows="3" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm">{{ old('address') }}</textarea>
+                                <x-google-address-input name="address" id="address" :value="old('address')" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" />
                                 <x-input-error :messages="$errors->get('address')" class="mt-2" />
                             </div>
 

@@ -72,6 +72,9 @@ Route::middleware(['auth'])->group(function () {
     
     // Tenant and Lease Routes
     Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/create', [AssetController::class, 'createTenant'])->name('business-entities.assets.tenants.create');
+    Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants', function ($businessEntity, $asset) {
+        return redirect()->route('business-entities.assets.tenants.create', [$businessEntity, $asset]);
+    })->name('business-entities.assets.tenants.index');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/tenants', [AssetController::class, 'storeTenant'])->name('business-entities.assets.tenants.store');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/leases/create', [AssetController::class, 'createLease'])->name('business-entities.assets.leases.create');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/leases', [AssetController::class, 'storeLease'])->name('business-entities.assets.leases.store');

@@ -19,6 +19,18 @@
                 <div class="p-6 text-gray-900">
                     <form method="POST" action="{{ route('business-entities.store') }}">
                         @csrf
+
+                        @if ($errors->any())
+                            <div class="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                                <p class="font-semibold text-red-900">We couldn’t save this entity. Please check the following:</p>
+                                <ul class="mt-2 list-inside list-disc space-y-1">
+                                    @foreach ($errors->all() as $message)
+                                        <li>{{ $message }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
                         <div class="bg-blue-50 rounded-lg p-4 mb-6 border-l-4 border-blue-500">
                             <h3 class="text-lg font-medium text-blue-800 mb-2">Business Information</h3>
                             <p class="text-sm text-blue-600">Enter the basic information about your business entity.</p>
@@ -188,7 +200,7 @@
                         
                         <div class="mt-6">
                             <label for="registered_address" class="block text-sm font-medium text-gray-700 mb-1">Registered Address*</label>
-                            <textarea name="registered_address" id="registered_address" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" required></textarea>
+                            <x-google-address-input name="registered_address" id="registered_address" :value="old('registered_address')" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" />
                             @error('registered_address') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                         </div>
                         
@@ -214,6 +226,8 @@
             const trustTypeField = document.getElementById('trust_type');
             const trustEstablishmentDateField = document.getElementById('trust_establishment_date');
             const trustDeedDateField = document.getElementById('trust_deed_date');
+            const trustDeedReferenceField = document.getElementById('trust_deed_reference');
+            const trustVestingDateField = document.getElementById('trust_vesting_date');
             const appointorTypeField = document.getElementById('appointor_type');
             
             if (entityType === 'Trust') {

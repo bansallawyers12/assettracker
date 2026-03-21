@@ -114,7 +114,7 @@
                         <!-- Property-Specific Fields -->
                         <div id="property-fields" class="hidden mb-4">
                             <label for="address" class="block text-sm font-medium text-gray-700">Address</label>
-                            <textarea name="address" id="address" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">{{ old('address', $asset->address) }}</textarea>
+                            <x-google-address-input name="address" id="address" :value="old('address', $asset->address)" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
                             @error('address') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="square_footage" class="block text-sm font-medium text-gray-700">Square Footage</label>
                             <input type="number" name="square_footage" id="square_footage" value="{{ old('square_footage', $asset->square_footage) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">

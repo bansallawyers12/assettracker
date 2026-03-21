@@ -4,10 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\BusinessEntity;
+use App\Models\EntityPerson;
 use App\Models\Note;
+use App\Models\Person;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Routing\Controller;
+use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 class AssetController extends Controller
@@ -34,11 +38,12 @@ class AssetController extends Controller
     public function store(Request $request, BusinessEntity $businessEntity)
     {
         $validatedData = $request->validate([
-            'asset_type' => 'required|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate',
+            'asset_type' => 'nullable|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate',
             'name' => 'required|string|max:255',
-            'acquisition_cost' => 'nullable|numeric|min:0',
+            'acquisition_cost' => 'required|numeric|min:0',
             'current_value' => 'nullable|numeric|min:0',
-            'acquisition_date' => 'nullable|date',
+            'acquisition_date' => 'required|date',
+            'status' => 'nullable|in:Active,Inactive,Sold,Under Maintenance',
             'description' => 'nullable|string',
             'registration_number' => 'nullable|string',
             'registration_due_date' => 'nullable|date',
@@ -63,6 +68,10 @@ class AssetController extends Controller
             'rental_income' => 'nullable|numeric|min:0',
         ]);
 
+        $validatedData['asset_type'] = $validatedData['asset_type'] ?? 'Car';
+        $validatedData['current_value'] = $validatedData['current_value'] ?? 0;
+        $validatedData['status'] = $validatedData['status'] ?? 'Active';
+
         $assetData = array_merge($validatedData, [
             'business_entity_id' => $businessEntity->id,
             'user_id' => auth()->id(),
@@ -76,17 +85,27 @@ class AssetController extends Controller
 
     public function show(BusinessEntity $businessEntity, Asset $asset)
     {
-        $asset->load('notes');
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
+        $asset->load([
+            'notes',
+            'tenants.realEstateCompany.persons.person',
+        ]);
+
         return view('assets.show', compact('businessEntity', 'asset'));
     }
 
     public function edit(BusinessEntity $businessEntity, Asset $asset)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
         return view('assets.edit', compact('businessEntity', 'asset'));
     }
 
     public function update(Request $request, BusinessEntity $businessEntity, Asset $asset)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
         $validatedData = $request->validate([
             'asset_type' => 'required|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate',
             'name' => 'required|string|max:255',
@@ -125,6 +144,8 @@ class AssetController extends Controller
 
     public function finalizeDueDate(Request $request, BusinessEntity $businessEntity, Asset $asset, $type)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
         $fieldMap = [
             'registration' => 'registration_due_date',
             'insurance' => 'insurance_due_date',
@@ -146,6 +167,8 @@ class AssetController extends Controller
 
     public function extendDueDate(Request $request, BusinessEntity $businessEntity, Asset $asset, $type)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
         $fieldMap = [
             'registration' => 'registration_due_date',
             'insurance' => 'insurance_due_date',
@@ -172,6 +195,8 @@ class AssetController extends Controller
 
     public function destroy(BusinessEntity $businessEntity, Asset $asset)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
         $asset->delete();
         return redirect()->route('business-entities.show', $businessEntity->id)
             ->with('success', 'Asset deleted successfully');
@@ -179,36 +204,204 @@ class AssetController extends Controller
 
     public function createTenant(BusinessEntity $businessEntity, Asset $asset)
     {
-        return view('assets.tenants.create', compact('businessEntity', 'asset'));
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
+        $realEstateCompanies = BusinessEntity::query()
+            ->where('user_id', auth()->id())
+            ->where('entity_type', 'Company')
+            ->orderBy('legal_name')
+            ->get();
+
+        return view('assets.tenants.create', compact('businessEntity', 'asset', 'realEstateCompanies'));
     }
 
     public function storeTenant(Request $request, BusinessEntity $businessEntity, Asset $asset)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'move_in_date' => 'nullable|date',
-            'move_out_date' => 'nullable|date|after_or_equal:move_in_date',
+            'lease_duration_value' => 'nullable|integer|min:1|required_with:lease_duration_unit',
+            'lease_duration_unit' => 'nullable|in:days,weeks,months,years|required_with:lease_duration_value',
+            'lease_expiry_reminder_days' => 'nullable|integer|min:0|max:3650',
+            'rent_amount' => 'nullable|numeric|min:0',
+            'rent_frequency' => 'nullable|in:Weekly,Monthly|required_with:rent_amount',
             'notes' => 'nullable|string',
+            'is_real_estate_managed' => 'nullable|boolean',
+            'create_real_estate_company' => 'nullable|boolean',
+            'real_estate_business_entity_id' => [
+                'nullable',
+                Rule::exists('business_entities', 'id')->where(function ($query) {
+                    $query->where('user_id', auth()->id())
+                        ->where('entity_type', 'Company');
+                }),
+            ],
         ]);
 
-        $asset->tenants()->create($validated);
+        $isRealEstateManaged = $request->boolean('is_real_estate_managed');
+        $isCreatingRealEstateCompany = $request->boolean('create_real_estate_company');
+        $realEstateBusinessEntityId = null;
+
+        if ($isRealEstateManaged) {
+            if ($isCreatingRealEstateCompany) {
+                $request->validate([
+                    'real_estate_company_name' => 'required|string|max:255',
+                    'real_estate_contacts' => 'required|array|min:1',
+                    'real_estate_contacts.*.contact_person_name' => 'required|string|max:255',
+                    'real_estate_contacts.*.email' => 'required|email|max:255',
+                    'real_estate_contacts.*.phone' => 'required|string|max:20',
+                ]);
+            } else {
+                if (empty($validated['real_estate_business_entity_id'])) {
+                    return redirect()
+                        ->back()
+                        ->withInput()
+                        ->withErrors(['real_estate_business_entity_id' => 'Please select a real estate company, or create a new one.']);
+                }
+
+                $realEstateBusinessEntityId = (int) $validated['real_estate_business_entity_id'];
+            }
+        }
+
+        $leaseExpiryDate = null;
+        // HTTP form values are strings; Carbon add*() requires int|float
+        $leaseDurationValue = isset($validated['lease_duration_value']) && $validated['lease_duration_value'] !== ''
+            ? (int) $validated['lease_duration_value']
+            : null;
+        $leaseDurationUnit = $validated['lease_duration_unit'] ?? null;
+        $leaseStartDate = !empty($validated['move_in_date']) ? Carbon::parse($validated['move_in_date']) : null;
+        $reminderDays = array_key_exists('lease_expiry_reminder_days', $validated)
+            && $validated['lease_expiry_reminder_days'] !== ''
+            ? (int) $validated['lease_expiry_reminder_days']
+            : null;
+
+        if ($leaseStartDate && $leaseDurationValue && $leaseDurationUnit) {
+            $leaseExpiryDate = match ($leaseDurationUnit) {
+                'days' => $leaseStartDate->copy()->addDays($leaseDurationValue),
+                'weeks' => $leaseStartDate->copy()->addWeeks($leaseDurationValue),
+                'months' => $leaseStartDate->copy()->addMonths($leaseDurationValue),
+                'years' => $leaseStartDate->copy()->addYears($leaseDurationValue),
+                default => null,
+            };
+        }
+
+        DB::transaction(function () use (
+            $request,
+            $asset,
+            $businessEntity,
+            $validated,
+            $isRealEstateManaged,
+            $isCreatingRealEstateCompany,
+            &$realEstateBusinessEntityId,
+            $leaseExpiryDate,
+            $leaseDurationValue,
+            $leaseDurationUnit,
+            $reminderDays
+        ) {
+            if ($isRealEstateManaged && $isCreatingRealEstateCompany) {
+                $contacts = collect($request->input('real_estate_contacts', []));
+                $primaryContact = $contacts->first();
+                $registeredAddress = $request->input('address') ?: ($asset->address ?: 'Address not provided');
+                $registeredEmail = $primaryContact['email'] ?? $request->input('email') ?? 'no-reply@assettracker.local';
+                $rawPhone = $primaryContact['phone'] ?? $request->input('phone') ?? '0000000000';
+                // Schema may be VARCHAR(15) on some DBs — avoid truncation errors
+                $registeredPhone = mb_substr((string) $rawPhone, 0, 15);
+
+                $realEstateCompany = BusinessEntity::create([
+                    'legal_name' => $request->input('real_estate_company_name'),
+                    'trading_name' => $request->input('real_estate_company_name'),
+                    'entity_type' => 'Company',
+                    'registered_address' => $registeredAddress,
+                    'registered_email' => $registeredEmail,
+                    'phone_number' => $registeredPhone,
+                    'user_id' => auth()->id(),
+                    'status' => 'Active',
+                ]);
+
+                $realEstateBusinessEntityId = $realEstateCompany->id;
+
+                foreach ($contacts as $contact) {
+                    $fullName = trim((string) ($contact['contact_person_name'] ?? ''));
+                    if ($fullName === '') {
+                        continue;
+                    }
+
+                    [$firstName, $lastName] = $this->splitContactName($fullName);
+
+                    $person = Person::create([
+                        'first_name' => $firstName,
+                        'last_name' => $lastName,
+                        'email' => $contact['email'] ?? null,
+                        'phone_number' => $contact['phone'] ?? null,
+                        'status' => 'Active',
+                    ]);
+
+                    EntityPerson::create([
+                        'business_entity_id' => $realEstateCompany->id,
+                        'person_id' => $person->id,
+                        'role' => 'Owner',
+                        'appointment_date' => now()->toDateString(),
+                        'role_status' => 'Active',
+                    ]);
+                }
+            }
+
+            $tenant = $asset->tenants()->create([
+                'name' => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['phone'] ?? null,
+                'address' => $validated['address'] ?? null,
+                'move_in_date' => $validated['move_in_date'] ?? null,
+                'lease_duration_value' => $leaseDurationValue,
+                'lease_duration_unit' => $leaseDurationUnit,
+                'lease_expiry_date' => $leaseExpiryDate,
+                'lease_expiry_reminder_days' => $reminderDays,
+                'rent_amount' => $validated['rent_amount'] ?? null,
+                'rent_frequency' => $validated['rent_frequency'] ?? null,
+                'notes' => $validated['notes'] ?? null,
+                'is_real_estate_managed' => $isRealEstateManaged,
+                'real_estate_business_entity_id' => $realEstateBusinessEntityId,
+            ]);
+
+            if ($leaseExpiryDate && $reminderDays !== null) {
+                $reminderDate = $leaseExpiryDate->copy()->subDays($reminderDays);
+                $reminderDate = $reminderDate->lt(now()) ? now() : $reminderDate;
+
+                $asset->notes()->create([
+                    'content' => "Lease expiry reminder for tenant {$tenant->name}. Lease ends on {$leaseExpiryDate->format('d/m/Y')}.",
+                    'user_id' => auth()->id(),
+                    'is_reminder' => true,
+                    'reminder_date' => $reminderDate,
+                    'business_entity_id' => $businessEntity->id,
+                    'asset_id' => $asset->id,
+                ]);
+            }
+        });
 
         return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])->with('success', 'Tenant added successfully!');
     }
 
     public function createLease(BusinessEntity $businessEntity, Asset $asset)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
         $tenants = $asset->tenants;
         return view('assets.leases.create', compact('businessEntity', 'asset', 'tenants'));
     }
 
     public function storeLease(Request $request, BusinessEntity $businessEntity, Asset $asset)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
         $validated = $request->validate([
-            'tenant_id' => 'nullable|exists:tenants,id',
+            'tenant_id' => [
+                'nullable',
+                Rule::exists('tenants', 'id')->where('asset_id', $asset->id),
+            ],
             'rental_amount' => 'required|numeric|min:0',
             'payment_frequency' => 'required|in:Weekly,Fortnightly,Monthly,Quarterly,Yearly',
             'start_date' => 'required|date',
@@ -223,11 +416,15 @@ class AssetController extends Controller
 
     public function createNote(BusinessEntity $businessEntity, Asset $asset)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
         return view('assets.notes.create', compact('businessEntity', 'asset'));
     }
 
     public function storeNote(Request $request, BusinessEntity $businessEntity, Asset $asset)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
         $request->validate([
             'content' => 'required|string',
             'is_reminder' => 'boolean',
@@ -252,6 +449,12 @@ class AssetController extends Controller
 
     public function destroyNote(BusinessEntity $businessEntity, Asset $asset, Note $note)
     {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
+        if ((int) $note->asset_id !== (int) $asset->id) {
+            abort(404);
+        }
+
         $note->delete();
         return redirect()->back()->with('success', 'Note deleted successfully.');
     }
@@ -281,5 +484,24 @@ class AssetController extends Controller
             return redirect()->back()->with('success', 'Reminder extended by 3 days.');
         }
         return redirect()->back()->with('error', 'No valid reminder date to extend.');
+    }
+
+    private function splitContactName(string $fullName): array
+    {
+        $nameParts = preg_split('/\s+/', trim($fullName)) ?: [];
+        $firstName = $nameParts[0] ?? 'Contact';
+        $lastName = count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : 'Contact';
+
+        return [$firstName, $lastName];
+    }
+
+    /**
+     * Nested routes resolve Asset by id only — ensure it belongs to the URL business entity.
+     */
+    private function ensureAssetBelongsToBusinessEntity(BusinessEntity $businessEntity, Asset $asset): void
+    {
+        if ((int) $asset->business_entity_id !== (int) $businessEntity->id) {
+            abort(404);
+        }
     }
 }

@@ -82,16 +82,16 @@ class BusinessEntityController extends Controller
             'phone_number' => 'required|string|max:15',
             'asic_renewal_date' => 'nullable|date',
             
-            // Trust-specific validation
-            'trust_type' => 'required_if:entity_type,Trust|in:Discretionary,Unit,Fixed,Testamentary,Charitable',
-            'trust_establishment_date' => 'required_if:entity_type,Trust|date|before_or_equal:today',
-            'trust_deed_date' => 'required_if:entity_type,Trust|date|before_or_equal:today',
+            // Trust-specific validation (nullable first so empty values skip date/rules when entity is not Trust)
+            'trust_type' => 'nullable|required_if:entity_type,Trust|in:Discretionary,Unit,Fixed,Testamentary,Charitable',
+            'trust_establishment_date' => 'nullable|required_if:entity_type,Trust|date|before_or_equal:today',
+            'trust_deed_date' => 'nullable|required_if:entity_type,Trust|date|before_or_equal:today',
             'trust_deed_reference' => 'nullable|string|max:255',
             'trust_vesting_date' => 'nullable|date|after:trust_establishment_date',
             'trust_vesting_conditions' => 'nullable|string|max:1000',
-            'appointor_type' => 'required_if:entity_type,Trust|in:person,entity',
-            'appointor_person_id' => 'required_if:appointor_type,person|exists:persons,id',
-            'appointor_entity_id' => 'required_if:appointor_type,entity|exists:business_entities,id',
+            'appointor_type' => 'nullable|required_if:entity_type,Trust|in:person,entity',
+            'appointor_person_id' => 'nullable|required_if:appointor_type,person|exists:persons,id',
+            'appointor_entity_id' => 'nullable|required_if:appointor_type,entity|exists:business_entities,id',
         ], [
             'trust_type.required_if' => 'Trust type is required when entity type is Trust.',
             'trust_establishment_date.required_if' => 'Trust establishment date is required when entity type is Trust.',
@@ -101,32 +101,41 @@ class BusinessEntityController extends Controller
             'appointor_entity_id.required_if' => 'Please select an appointor entity.',
         ]);
 
-        // Create the business entity with validated data
-        BusinessEntity::create([
-            'legal_name' => $request->legal_name,
-            'trading_name' => $request->trading_name,
-            'entity_type' => $request->entity_type,
-            'trust_type' => $request->trust_type,
-            'trust_establishment_date' => $request->trust_establishment_date,
-            'trust_deed_date' => $request->trust_deed_date,
-            'trust_deed_reference' => $request->trust_deed_reference,
-            'trust_vesting_date' => $request->trust_vesting_date,
-            'trust_vesting_conditions' => $request->trust_vesting_conditions,
-            'appointor_person_id' => $request->appointor_person_id,
-            'appointor_entity_id' => $request->appointor_entity_id,
-            'abn' => $request->abn,
-            'acn' => $request->acn,
-            'tfn' => $request->tfn, // Ensure proper encryption/security if stored
-            'corporate_key' => $request->corporate_key,
-            'registered_address' => $request->registered_address,
-            'registered_email' => $request->registered_email,
-            'phone_number' => $request->phone_number,
-            'asic_renewal_date' => $request->asic_renewal_date,
-            'user_id' => auth()->id(), // Associate with the logged-in user
-            'status' => 'Active', // Default status
-        ]);
+        try {
+            BusinessEntity::create([
+                'legal_name' => $request->legal_name,
+                'trading_name' => $request->trading_name,
+                'entity_type' => $request->entity_type,
+                'trust_type' => $request->trust_type,
+                'trust_establishment_date' => $request->trust_establishment_date,
+                'trust_deed_date' => $request->trust_deed_date,
+                'trust_deed_reference' => $request->trust_deed_reference,
+                'trust_vesting_date' => $request->trust_vesting_date,
+                'trust_vesting_conditions' => $request->trust_vesting_conditions,
+                'appointor_person_id' => $request->appointor_person_id,
+                'appointor_entity_id' => $request->appointor_entity_id,
+                'abn' => $request->abn,
+                'acn' => $request->acn,
+                'tfn' => $request->tfn, // Ensure proper encryption/security if stored
+                'corporate_key' => $request->corporate_key,
+                'registered_address' => $request->registered_address,
+                'registered_email' => $request->registered_email,
+                'phone_number' => $request->phone_number,
+                'asic_renewal_date' => $request->asic_renewal_date,
+                'user_id' => auth()->id(), // Associate with the logged-in user
+                'status' => 'Active', // Default status
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            Log::error('BusinessEntity store failed', [
+                'message' => $e->getMessage(),
+                'user_id' => auth()->id(),
+            ]);
 
-        // Redirect to the index page with a success message
+            return redirect()->back()
+                ->withInput()
+                ->withErrors(['save' => 'Could not save the business entity. If ABN or ACN is already in use, use different values or edit the existing entity.']);
+        }
+
         return redirect()->route('business-entities.index')->with('success', 'Business entity added successfully!');
     }
 
