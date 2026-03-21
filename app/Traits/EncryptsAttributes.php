@@ -13,7 +13,6 @@ trait EncryptsAttributes
      * Models using this trait must define their own $encrypted property.
      */
 
-
     /**
      * Encryption/decryption is handled entirely by setAttribute() and getAttribute()
      * so that $this->attributes always holds ciphertext and dirty-tracking works
@@ -25,6 +24,31 @@ trait EncryptsAttributes
      */
 
     /**
+     * Override attributesToArray() so that toArray(), toJson(), and JSON
+     * serialisation all return decrypted values, not raw ciphertext.
+     *
+     * Eloquent's default attributesToArray() builds its result directly from
+     * $this->attributes (ciphertext) without calling getAttribute(), so this
+     * override is required to decrypt encrypted fields in the array output.
+     */
+    public function attributesToArray(): array
+    {
+        $attributes = parent::attributesToArray();
+
+        foreach ($this->getEncryptedAttributes() as $key) {
+            if (array_key_exists($key, $attributes) && !empty($attributes[$key])) {
+                try {
+                    $attributes[$key] = $this->decrypt($attributes[$key]);
+                } catch (\Exception $e) {
+                    // If decryption fails keep original (handles legacy plaintext rows)
+                }
+            }
+        }
+
+        return $attributes;
+    }
+
+    /**
      * Encrypt all encrypted attributes in-place on the current model instance.
      * Useful for one-off backfill commands; does NOT persist to the database.
      */
@@ -32,6 +56,9 @@ trait EncryptsAttributes
     {
         foreach ($this->getEncryptedAttributes() as $attribute) {
             if (isset($this->attributes[$attribute]) && !empty($this->attributes[$attribute])) {
+                if ($this->isAlreadyEncrypted($this->attributes[$attribute])) {
+                    continue;
+                }
                 try {
                     $this->attributes[$attribute] = $this->encrypt($this->attributes[$attribute]);
                 } catch (\Exception $e) {
