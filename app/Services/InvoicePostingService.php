@@ -70,14 +70,9 @@ class InvoicePostingService
 	{
 		$entityId = $invoice->business_entity_id;
 		$receivables = $this->findAccount($entityId, '1100')
-			?? $this->findByName($entityId, 'Accounts Receivable');
+			?? $this->findByName($entityId, 'Accounts Receivable')
+			?? $this->ensureAccountsReceivable($entityId);
 		$gstPayable = $this->findByName($entityId, 'GST Payable') ?? $this->findAccount($entityId, '2200');
-
-		if (!$receivables) {
-			throw new \RuntimeException(
-				'Accounts Receivable not found for this business entity. Create an account with code 1100 or name "Accounts Receivable", or run ChartOfAccountSeeder / xero:chart-of-accounts for this entity.'
-			);
-		}
 
 		$lines = [];
 
@@ -93,7 +88,10 @@ class InvoicePostingService
 					->first();
 			}
 			if (!$account) {
-				$account = $this->findAccount($entityId, '4000'); // Sales Revenue default
+				$account = $this->findAccount($entityId, '4000')
+					?? $this->findAccount($entityId, '6000')
+					?? $this->findByName($entityId, 'Sales')
+					?? $this->ensureDefaultSalesAccount($entityId);
 			}
 			$net = (float) $line->line_total / (1 + (float) $line->gst_rate);
 			$gst = (float) $line->line_total - $net;
@@ -128,5 +126,45 @@ class InvoicePostingService
 		return ChartOfAccount::where('business_entity_id', $businessEntityId)
 			->where('account_name', $name)
 			->first();
+	}
+
+	/**
+	 * Default chart is not always seeded; create the standard AR account used by ChartOfAccountSeeder.
+	 */
+	private function ensureAccountsReceivable(int $businessEntityId): ChartOfAccount
+	{
+		return ChartOfAccount::firstOrCreate(
+			[
+				'business_entity_id' => $businessEntityId,
+				'account_code' => '1100',
+			],
+			[
+				'account_name' => 'Accounts Receivable',
+				'account_type' => 'asset',
+				'account_category' => 'current_asset',
+				'is_active' => true,
+				'opening_balance' => 0,
+				'current_balance' => 0,
+			]
+		);
+	}
+
+	/** @see ChartOfAccountSeeder — default income account when line has no account_code */
+	private function ensureDefaultSalesAccount(int $businessEntityId): ChartOfAccount
+	{
+		return ChartOfAccount::firstOrCreate(
+			[
+				'business_entity_id' => $businessEntityId,
+				'account_code' => '6000',
+			],
+			[
+				'account_name' => 'Sales',
+				'account_type' => 'income',
+				'account_category' => 'operating_income',
+				'is_active' => true,
+				'opening_balance' => 0,
+				'current_balance' => 0,
+			]
+		);
 	}
 }
