@@ -2,16 +2,18 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use App\Traits\EncryptsAttributes;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, EncryptsAttributes;
+    use HasFactory, Notifiable, EncryptsAttributes {
+        EncryptsAttributes::setAttribute as setEncryptedAttribute;
+    }
 
     /**
      * The attributes that are mass assignable.
@@ -21,6 +23,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'email_hash',
         'password',
         'phone',
         'address',
@@ -54,6 +57,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'email_hash',
     ];
 
     /**
@@ -70,6 +74,20 @@ class User extends Authenticatable
             'password_changed_at' => 'datetime',
             'last_login_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Override setAttribute to compute a deterministic email_hash alongside
+     * the encrypted email, so Auth::attempt() can perform DB lookups without
+     * decrypting every row.
+     */
+    public function setAttribute($key, $value): mixed
+    {
+        if ($key === 'email' && !empty($value) && !$this->isAlreadyEncrypted($value)) {
+            $this->attributes['email_hash'] = hash_hmac('sha256', strtolower(trim((string) $value)), config('app.key'));
+        }
+
+        return $this->setEncryptedAttribute($key, $value);
     }
 
     public function contactLists()

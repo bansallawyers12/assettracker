@@ -20,10 +20,6 @@ use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\AssetInvoiceController;
 
 
-Route::post('/test-json', function() {
-    return response()->json(['status' => 'success', 'message' => 'This is a test JSON response']);
-});
-
 Route::get('/', function () {
     return view('welcome');
 });
@@ -42,6 +38,7 @@ Route::post('/two-factor/challenge', [TwoFactorController::class, 'verifyChallen
 // 2FA setup / management routes
 // These are intentionally exempt from 2fa.enrolled and 2fa.verified so
 // that unenrolled users can actually reach the setup page.
+// backup-codes requires 2fa.verified since it shows sensitive recovery data.
 // -----------------------------------------------------------------------
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/two-factor/setup', [TwoFactorController::class, 'show'])->name('two-factor.setup');
@@ -49,6 +46,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/two-factor/disable', [TwoFactorController::class, 'disable'])->name('two-factor.disable');
     Route::get('/two-factor/manage', [TwoFactorController::class, 'show'])->name('two-factor.manage');
     Route::post('/two-factor/regenerate-codes', [TwoFactorController::class, 'regenerateBackupCodes'])->name('two-factor.regenerate-codes');
+});
+
+// backup-codes requires full 2FA verification to view sensitive recovery codes
+Route::middleware(['auth', 'verified', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/two-factor/backup-codes', [TwoFactorController::class, 'showBackupCodes'])->name('two-factor.backup-codes');
 });
 
@@ -87,7 +88,6 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Asset Document Routes
     Route::post('/business-entities/{businessEntity}/assets/{asset}/documents', [App\Http\Controllers\DocumentController::class, 'uploadAssetDocument'])->name('business-entities.assets.documents.store');
-    Route::post('/business-entities/{businessEntity}/assets/{asset}/documents/fetch', [DocumentController::class, 'fetchAssetFiles'])->name('asset-documents.fetchAssetFiles');
 
     // Tenant and Lease Routes
     Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/create', [AssetController::class, 'createTenant'])->name('business-entities.assets.tenants.create');
@@ -231,7 +231,5 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
     Route::get('/bank-import', [App\Http\Controllers\BankImportController::class, 'index'])->name('bank-import.index');
 });
-
-Route::post('logout', [\App\Http\Controllers\Auth\AuthenticatedSessionController::class, 'destroy'])->name('logout');
 
 require __DIR__.'/auth.php';

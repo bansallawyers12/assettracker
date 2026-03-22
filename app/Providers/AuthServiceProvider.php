@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Auth;
+use App\Auth\EncryptedEmailUserProvider;
 use App\Models\Document;
 use App\Policies\DocumentPolicy;
 use App\Models\BusinessEntity;
@@ -37,6 +39,11 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Auth::provider('encrypted-eloquent', function ($app, array $config) {
+            return new EncryptedEmailUserProvider(
+                $app['hash'],
+                $config['model']
+            );
+        });
     }
 }

@@ -101,12 +101,16 @@ class PasswordSecurity
         $user = $request->user();
         $maxAge = config('security.passwords.max_age_days', 90);
 
-        if ($user->password_changed_at && 
+        if ($user->password_changed_at &&
             $user->password_changed_at->diffInDays(now()) > $maxAge) {
-            
-            // Force password change
-            if ($request->route()?->getName() !== 'password.change') {
-                abort(403, 'Password has expired. Please change your password.');
+
+            // Only exempt the profile edit / password update routes to avoid redirect loops
+            $exemptRoutes = ['profile.edit', 'password.update', 'logout'];
+            if (!in_array($request->route()?->getName(), $exemptRoutes)) {
+                redirect()->route('profile.edit')
+                    ->with('status', 'password-expired')
+                    ->send();
+                exit;
             }
         }
     }

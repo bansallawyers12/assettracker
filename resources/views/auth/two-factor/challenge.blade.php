@@ -20,11 +20,11 @@
             <input
                 id="code"
                 name="code"
-                type="text"
-                inputmode="numeric"
-                autocomplete="one-time-code"
-                maxlength="8"
-                placeholder="000000"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="6"
+            placeholder="000000"
                 autofocus
                 class="block mt-1.5 w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500 dark:focus:ring-blue-500 shadow-sm text-sm placeholder-gray-400 dark:placeholder-gray-500 text-center tracking-widest text-lg font-mono"
             />

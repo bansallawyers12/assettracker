@@ -22,11 +22,13 @@ class TwoFactorController extends Controller
 
     /**
      * Show the 2FA setup page.
+     * The generated secret is stored in the session (not in the HTML form) to
+     * avoid exposing it to potential XSS on the setup page.
      */
-    public function show(): View
+    public function show(Request $request): View
     {
         $user = Auth::user();
-        
+
         if ($user->two_factor_enabled) {
             return view('auth.two-factor.manage', compact('user'));
         }
@@ -34,16 +36,26 @@ class TwoFactorController extends Controller
         $secret = $this->twoFactorService->generateSecretKey();
         $qrCodeUrl = $this->twoFactorService->getQRCodeUrl($user, $secret);
 
-        return view('auth.two-factor.setup', compact('user', 'secret', 'qrCodeUrl'));
+        // Store secret in session — the form no longer sends it as a hidden field
+        $request->session()->put('2fa_setup_secret', $secret);
+
+        return view('auth.two-factor.setup', compact('user', 'qrCodeUrl'));
     }
 
     /**
      * Enable 2FA for the user.
+     * Reads the secret from the session rather than from a hidden form field.
      */
     public function enable(Request $request): RedirectResponse
     {
+        $secret = $request->session()->get('2fa_setup_secret');
+
+        if (!$secret) {
+            return redirect()->route('two-factor.setup')
+                ->withErrors(['code' => 'Setup session expired. Please start again.']);
+        }
+
         $validator = Validator::make($request->all(), [
-            'secret' => 'required|string',
             'code' => 'required|string|size:6',
         ]);
 
@@ -52,11 +64,14 @@ class TwoFactorController extends Controller
         }
 
         $user = Auth::user();
-        
-        // Temporarily set the secret to verify the code
-        $user->two_factor_secret = $request->secret;
-        
-        if ($this->twoFactorService->enableTwoFactor($user, $request->secret, $request->code)) {
+
+        // Temporarily set the secret on the model instance so verifyCode() can use it
+        $user->two_factor_secret = $secret;
+
+        if ($this->twoFactorService->enableTwoFactor($user, $secret, $request->code)) {
+            $request->session()->forget('2fa_setup_secret');
+            // Mark 2FA as verified for this session immediately after setup
+            $request->session()->put('2fa_verified', true);
             return redirect()->route('profile.edit')->with('status', 'two-factor-enabled');
         }
 
@@ -77,8 +92,9 @@ class TwoFactorController extends Controller
         }
 
         $user = Auth::user();
-        
+
         if ($this->twoFactorService->disableTwoFactor($user, $request->code)) {
+            $request->session()->forget('2fa_verified');
             return redirect()->route('profile.edit')->with('status', 'two-factor-disabled');
         }
 
@@ -91,7 +107,7 @@ class TwoFactorController extends Controller
     public function regenerateBackupCodes(): RedirectResponse
     {
         $user = Auth::user();
-        
+
         if (!$user->two_factor_enabled) {
             return back()->withErrors(['error' => 'Two-factor authentication is not enabled.']);
         }
@@ -116,19 +132,13 @@ class TwoFactorController extends Controller
 
     /**
      * Show the TOTP challenge page.
-     * Handles two cases:
-     * - Mid-login: credentials verified but not yet logged in (2fa_pending_user in session)
-     * - Session refresh: user is logged in but 2fa_verified flag was lost
      */
     public function showChallenge(Request $request): View|RedirectResponse
     {
-        // Already fully verified — nothing to do here
         if ($request->user() && $request->session()->has('2fa_verified')) {
             return redirect()->route('dashboard');
         }
 
-        // Logged in but 2fa_verified flag is missing — seed the pending key so the
-        // form POST can find the user without requiring them to log in again
         if ($request->user() && !$request->session()->has('2fa_pending_user')) {
             $request->session()->put('2fa_pending_user', $request->user()->id);
         }
@@ -154,6 +164,7 @@ class TwoFactorController extends Controller
         }
 
         $code = trim(str_replace(' ', '', $request->input('code', '') ?? ''));
+
         if (empty($code)) {
             return back()->withErrors(['code' => 'The code field is required.']);
         }
@@ -164,8 +175,12 @@ class TwoFactorController extends Controller
             $request->session()->forget('2fa_pending_user');
             return redirect()->route('login');
         }
+
+        // Normalise to uppercase so backup codes work regardless of input case
+        $codeNormalised = strtoupper($code);
+
         $valid = $this->twoFactorService->verifyCode($user, $code)
-            || $this->twoFactorService->verifyBackupCode($user, $code);
+            || $this->twoFactorService->verifyBackupCode($user, $codeNormalised);
 
         if (!$valid) {
             return back()->withErrors(['code' => 'The provided code is invalid. Please try again.']);
@@ -175,7 +190,8 @@ class TwoFactorController extends Controller
         $request->session()->put('2fa_verified', true);
 
         if (!$alreadyLoggedIn) {
-            Auth::login($user);
+            $remember = $request->session()->pull('2fa_remember', false);
+            Auth::loginUsingId($userId, $remember);
             $request->session()->regenerate();
         }
 

@@ -11,9 +11,21 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Global middleware — runs on every request
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
+        // Web group additions
+        $middleware->appendToGroup('web', \App\Http\Middleware\PasswordSecurity::class);
+
+        // API group additions
+        $middleware->appendToGroup('api', \App\Http\Middleware\RateLimitMiddleware::class);
+
+        // Named middleware aliases
         $middleware->alias([
             '2fa.enrolled' => \App\Http\Middleware\EnsureTwoFactorEnrolled::class,
             '2fa.verified' => \App\Http\Middleware\TwoFactorVerified::class,
+            'rate.limit'   => \App\Http\Middleware\RateLimitMiddleware::class,
+            'password.security' => \App\Http\Middleware\PasswordSecurity::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

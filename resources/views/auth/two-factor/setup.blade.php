@@ -57,7 +57,6 @@
 
                     <form method="POST" action="{{ route('two-factor.enable') }}">
                         @csrf
-                        <input type="hidden" name="secret" value="{{ $secret }}">
                         
                         <div>
                             <x-input-label for="code" :value="__('Verification Code')" />
