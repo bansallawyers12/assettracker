@@ -69,11 +69,14 @@ class InvoicePostingService
 	private function buildLines(Invoice $invoice): array
 	{
 		$entityId = $invoice->business_entity_id;
-		$receivables = $this->findAccount($entityId, '1100'); // Accounts Receivable
+		$receivables = $this->findAccount($entityId, '1100')
+			?? $this->findByName($entityId, 'Accounts Receivable');
 		$gstPayable = $this->findByName($entityId, 'GST Payable') ?? $this->findAccount($entityId, '2200');
 
 		if (!$receivables) {
-			throw new \RuntimeException('Accounts Receivable account not found.');
+			throw new \RuntimeException(
+				'Accounts Receivable not found for this business entity. Create an account with code 1100 or name "Accounts Receivable", or run ChartOfAccountSeeder / xero:chart-of-accounts for this entity.'
+			);
 		}
 
 		$lines = [];

@@ -207,6 +207,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Invoice Routes
     Route::resource('business-entities.invoices', InvoiceController::class);
+    Route::get('business-entities/{businessEntity}/invoices/{invoice}/post', [InvoiceController::class, 'postRedirect'])->name('business-entities.invoices.post.get');
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/post', [InvoiceController::class, 'post'])->name('business-entities.invoices.post');
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/record-payment', [InvoiceController::class, 'recordPayment'])->name('business-entities.invoices.record-payment');
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/remind', [InvoiceController::class, 'remind'])->name('business-entities.invoices.remind');

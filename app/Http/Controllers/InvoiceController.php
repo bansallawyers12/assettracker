@@ -194,6 +194,18 @@ class InvoiceController extends Controller
 			->with('success', 'Invoice deleted');
 	}
 
+	/**
+	 * Browsers issue GET when this URL is opened directly; posting requires POST from the invoice page.
+	 */
+	public function postRedirect(BusinessEntity $businessEntity, Invoice $invoice)
+	{
+		$this->authorize('view', $businessEntity);
+		$this->authorizeInvoice($businessEntity, $invoice);
+
+		return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
+			->with('info', 'Use the Post to ledger button on this page to post the invoice.');
+	}
+
 	public function post(BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
 	{
 		$this->authorize('update', $businessEntity);
