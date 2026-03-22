@@ -153,9 +153,10 @@ class TwoFactorController extends Controller
             return redirect()->route('login');
         }
 
-        $request->validate([
-            'code' => 'required|string',
-        ]);
+        $code = trim(str_replace(' ', '', $request->input('code', '') ?? ''));
+        if (empty($code)) {
+            return back()->withErrors(['code' => 'The code field is required.']);
+        }
 
         $user = User::find($userId);
 
@@ -163,8 +164,6 @@ class TwoFactorController extends Controller
             $request->session()->forget('2fa_pending_user');
             return redirect()->route('login');
         }
-
-        $code = $request->input('code');
         $valid = $this->twoFactorService->verifyCode($user, $code)
             || $this->twoFactorService->verifyBackupCode($user, $code);
 

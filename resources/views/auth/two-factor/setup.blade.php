@@ -24,10 +24,27 @@
                     </div>
 
                     <div class="flex justify-center mb-6">
-                        <div class="bg-white p-4 rounded-lg shadow">
-                            {!! $qrCodeUrl !!}
-                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow" id="qrcode-container"></div>
                     </div>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">
+                        Can't scan? Manually enter this secret in your app: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{{ $secret }}</code>
+                    </p>
+
+                    @push('scripts')
+                    <script src="https://cdn.jsdelivr.net/npm/davidshimjs-qrcodejs@0.0.2/qrcode.min.js"></script>
+                    <script>
+                        document.addEventListener('DOMContentLoaded', function() {
+                            new QRCode(document.getElementById('qrcode-container'), {
+                                text: @json($qrCodeUrl),
+                                width: 200,
+                                height: 200,
+                                colorDark: '#000000',
+                                colorLight: '#ffffff',
+                                correctLevel: QRCode.CorrectLevel.H
+                            });
+                        });
+                    </script>
+                    @endpush
 
                     <div class="mb-6">
                         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
