@@ -34,12 +34,19 @@ class InvoicePostingService
 			$entry->created_by = $invoice->businessEntity?->user_id ?? auth()->id();
 			$entry->source_type = Invoice::class;
 			$entry->source_id = $invoice->id;
-			$entry->save();
 
 			$lines = $this->buildLines($invoice);
 
 			$totalDebit = 0;
 			$totalCredit = 0;
+			foreach ($lines as $line) {
+				$totalDebit += $line['debit'];
+				$totalCredit += $line['credit'];
+			}
+			$entry->total_debit = $totalDebit;
+			$entry->total_credit = $totalCredit;
+			$entry->save();
+
 			foreach ($lines as $line) {
 				JournalLine::create([
 					'journal_entry_id' => $entry->id,
@@ -49,13 +56,7 @@ class InvoicePostingService
 					'description' => $line['description'] ?? null,
 					'reference' => 'INV:'.$invoice->id,
 				]);
-				$totalDebit += $line['debit'];
-				$totalCredit += $line['credit'];
 			}
-
-			$entry->total_debit = $totalDebit;
-			$entry->total_credit = $totalCredit;
-			$entry->save();
 
 			$invoice->is_posted = true;
 			$invoice->status = 'approved';

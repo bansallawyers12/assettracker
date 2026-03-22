@@ -13,7 +13,6 @@ use App\Models\Tenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Routing\Controller;
 use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 

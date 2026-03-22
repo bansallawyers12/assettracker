@@ -27,19 +27,26 @@ class PasswordSecurity
     }
 
     /**
-     * Check if the request is related to password operations.
+     * Routes where a new password is being set — strength rules apply here.
+     */
+    protected function isPasswordCreationRequest(Request $request): bool
+    {
+        $creationRoutes = [
+            'register',
+            'password.update',
+            'password.reset',
+            'password.store',
+        ];
+
+        return in_array($request->route()?->getName(), $creationRoutes);
+    }
+
+    /**
+     * Check if the request is related to password operations (for age-check purposes).
      */
     protected function isPasswordRelatedRequest(Request $request): bool
     {
-        $passwordRoutes = [
-            'password.update',
-            'password.confirm',
-            'register',
-            'password.reset',
-        ];
-
-        return in_array($request->route()?->getName(), $passwordRoutes) ||
-               $request->has('password') ||
+        return $this->isPasswordCreationRequest($request) ||
                $request->has('current_password') ||
                $request->has('password_confirmation');
     }
@@ -49,7 +56,7 @@ class PasswordSecurity
      */
     protected function validatePasswordStrength(Request $request): void
     {
-        if (!$request->has('password')) {
+        if (!$request->has('password') || !$this->isPasswordCreationRequest($request)) {
             return;
         }
 

@@ -33,12 +33,19 @@ class TransactionPostingService
 			$entry->created_by = $transaction->businessEntity?->user_id ?? auth()->id();
 			$entry->source_type = Transaction::class;
 			$entry->source_id = $transaction->id;
-			$entry->save();
 
 			$lines = $this->buildLines($transaction);
 
 			$totalDebit = 0;
 			$totalCredit = 0;
+			foreach ($lines as $line) {
+				$totalDebit += $line['debit'];
+				$totalCredit += $line['credit'];
+			}
+			$entry->total_debit = $totalDebit;
+			$entry->total_credit = $totalCredit;
+			$entry->save();
+
 			foreach ($lines as $line) {
 				JournalLine::create([
 					'journal_entry_id' => $entry->id,
@@ -48,13 +55,7 @@ class TransactionPostingService
 					'description' => $line['description'] ?? null,
 					'reference' => 'TXN:'.$transaction->id,
 				]);
-				$totalDebit += $line['debit'];
-				$totalCredit += $line['credit'];
 			}
-
-			$entry->total_debit = $totalDebit;
-			$entry->total_credit = $totalCredit;
-			$entry->save();
 
 			return $entry;
 		});

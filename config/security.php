@@ -1,8 +1,10 @@
 <?php
 
-$viteDevCsp = '';
+$viteDevHttp = '';
+$viteDevWs   = '';
 if (in_array(env('APP_ENV'), ['local', 'testing'], true)) {
-    $viteDevCsp = ' http://127.0.0.1:5173 http://localhost:5173 http://[::1]:5173 ws://127.0.0.1:5173 ws://localhost:5173 ws://[::1]:5173';
+    $viteDevHttp = ' http://127.0.0.1:5173 http://localhost:5173 http://[::1]:5173';
+    $viteDevWs   = ' ws://127.0.0.1:5173 ws://localhost:5173 ws://[::1]:5173';
 }
 
 return [
@@ -158,9 +160,15 @@ return [
         'force_https' => env('FORCE_HTTPS', true),
         'hsts_max_age' => 31536000, // 1 year
         'hsts_include_subdomains' => true,
+        // Google Maps / Places: script-src + connect-src for *.googleapis.com
+        // @see https://developers.google.com/maps/documentation/javascript/content-security-policy
+        //
+        // Also allow: jsDelivr + code.jquery.com (Summernote, QR on 2FA setup), Office Online embed
+        // (resources/js/documents.js), and https: on connect-src / frame-src so presigned S3 URLs work
+        // across regions (standard host wildcards do not match bucket.s3.region.amazonaws.com).
         'content_security_policy' => env(
             'CONTENT_SECURITY_POLICY',
-            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteDevCsp}; style-src 'self' 'unsafe-inline' https://fonts.bunny.net{$viteDevCsp}; img-src 'self' data: https:; font-src 'self' data: https://fonts.bunny.net; connect-src 'self'{$viteDevCsp}; frame-ancestors 'none';"
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteDevHttp} https://cdn.jsdelivr.net https://code.jquery.com https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:; style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com https://cdn.jsdelivr.net{$viteDevHttp}; img-src 'self' data: https:; font-src 'self' data: https://fonts.bunny.net https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self'{$viteDevHttp}{$viteDevWs} https://*.googleapis.com *.google.com https://*.gstatic.com https: data: blob:; frame-src 'self' https://view.officeapps.live.com *.google.com https:; worker-src blob:; frame-ancestors 'none';"
         ),
         'x_frame_options' => 'DENY',
         'x_content_type_options' => 'nosniff',
