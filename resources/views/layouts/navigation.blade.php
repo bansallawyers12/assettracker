@@ -3,7 +3,7 @@
         <div class="flex justify-between h-16">
             <div class="flex items-center">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 group">
-                    <x-application-logo class="block h-8 w-auto fill-current text-blue-600 dark:text-blue-400 transition-transform group-hover:scale-105" />
+                    <x-application-logo class="block h-8 w-8 shrink-0 fill-current text-blue-600 dark:text-blue-400 transition-transform group-hover:scale-105" />
                     <span class="text-lg font-bold text-gray-900 dark:text-white tracking-tight hidden sm:inline">Asset Tracker</span>
                 </a>
 

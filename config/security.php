@@ -1,5 +1,10 @@
 <?php
 
+$viteDevCsp = '';
+if (in_array(env('APP_ENV'), ['local', 'testing'], true)) {
+    $viteDevCsp = ' http://127.0.0.1:5173 http://localhost:5173 http://[::1]:5173 ws://127.0.0.1:5173 ws://localhost:5173 ws://[::1]:5173';
+}
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -153,7 +158,10 @@ return [
         'force_https' => env('FORCE_HTTPS', true),
         'hsts_max_age' => 31536000, // 1 year
         'hsts_include_subdomains' => true,
-        'content_security_policy' => "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none';",
+        'content_security_policy' => env(
+            'CONTENT_SECURITY_POLICY',
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteDevCsp}; style-src 'self' 'unsafe-inline' https://fonts.bunny.net{$viteDevCsp}; img-src 'self' data: https:; font-src 'self' data: https://fonts.bunny.net; connect-src 'self'{$viteDevCsp}; frame-ancestors 'none';"
+        ),
         'x_frame_options' => 'DENY',
         'x_content_type_options' => 'nosniff',
         'x_xss_protection' => '1; mode=block',
