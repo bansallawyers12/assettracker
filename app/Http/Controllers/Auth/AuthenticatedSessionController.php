@@ -39,9 +39,28 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('two-factor.totp-challenge');
         }
 
+        if ($user && (! $user->two_factor_enabled || ! $user->two_factor_secret)) {
+            $user->increment('logins_without_two_factor_count');
+            $user->refresh();
+        }
+
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'));
+        $grace = (int) config('admin.two_factor_grace_logins', 3);
+        $redirect = redirect()->intended(route('dashboard'));
+
+        if ($user && (! $user->two_factor_enabled || ! $user->two_factor_secret)) {
+            $used = (int) $user->logins_without_two_factor_count;
+            $redirect->with(
+                '2fa_reminder',
+                __('Please set up two-factor authentication. You have used :used of :grace logins before it becomes required.', [
+                    'used' => $used,
+                    'grace' => $grace,
+                ])
+            );
+        }
+
+        return $redirect;
     }
 
     public function destroy(Request $request): RedirectResponse

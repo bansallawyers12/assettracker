@@ -15,17 +15,15 @@ class SecurityHeaders
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $response = $next($request);
-
-        // Only apply security headers if enabled
         if (!config('security.headers.enabled', true)) {
-            return $response;
+            return $next($request);
         }
 
-        // Force HTTPS
         if (config('security.headers.force_https', true) && !$request->secure()) {
             return redirect()->secure($request->getRequestUri(), 301);
         }
+
+        $response = $next($request);
 
         // Security Headers
         $response->headers->set('X-Content-Type-Options', 'nosniff');

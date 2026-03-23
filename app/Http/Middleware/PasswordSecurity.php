@@ -32,7 +32,7 @@ class PasswordSecurity
     protected function isPasswordCreationRequest(Request $request): bool
     {
         $creationRoutes = [
-            'register',
+            'admin.users.store',
             'password.update',
             'password.reset',
             'password.store',

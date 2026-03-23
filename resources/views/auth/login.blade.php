@@ -36,12 +36,5 @@
         <x-primary-button class="w-full justify-center py-2.5">
             {{ __('Sign in') }}
         </x-primary-button>
-
-        @if (Route::has('register'))
-            <p class="text-center text-sm text-gray-500 dark:text-gray-400">
-                Don't have an account?
-                <a href="{{ route('register') }}" class="font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors">Create one</a>
-            </p>
-        @endif
     </form>
 </x-guest-layout>

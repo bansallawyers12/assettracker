@@ -30,6 +30,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'two_factor_secret',
         'two_factor_backup_codes',
         'two_factor_enabled',
+        'logins_without_two_factor_count',
         'password_changed_at',
         'last_login_at',
         'last_login_ip',
@@ -71,6 +72,7 @@ class User extends Authenticatable implements MustVerifyEmail
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_enabled' => 'boolean',
+            'logins_without_two_factor_count' => 'integer',
             'password_changed_at' => 'datetime',
             'last_login_at' => 'datetime',
         ];

@@ -109,6 +109,7 @@ class TwoFactorService
             'two_factor_secret' => $secret,
             'two_factor_backup_codes' => json_encode($backupCodes),
             'two_factor_enabled' => true,
+            'logins_without_two_factor_count' => 0,
         ]);
 
         return true;
@@ -127,6 +128,7 @@ class TwoFactorService
             'two_factor_secret' => null,
             'two_factor_backup_codes' => null,
             'two_factor_enabled' => false,
+            'logins_without_two_factor_count' => 0,
         ]);
 
         return true;

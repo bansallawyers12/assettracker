@@ -38,6 +38,11 @@
                             </button>
                         </x-slot>
                         <x-slot name="content">
+                            @if (strcasecmp(Auth::user()->email, config('admin.email')) === 0)
+                                <x-dropdown-link :href="route('admin.users.create')">
+                                    {{ __('Create user') }}
+                                </x-dropdown-link>
+                            @endif
                             <x-dropdown-link :href="route('profile.edit')">
                                 {{ __('Profile') }}
                             </x-dropdown-link>
@@ -52,9 +57,6 @@
                     </x-dropdown>
                 @else
                     <a href="{{ route('login') }}" class="text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Login</a>
-                    @if (Route::has('register'))
-                        <a href="{{ route('register') }}" class="text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">Register</a>
-                    @endif
                 @endauth
             </div>
 
@@ -94,6 +96,11 @@
                     </div>
                 </div>
                 <div class="mt-3 space-y-1 px-3">
+                    @if (strcasecmp(Auth::user()->email, config('admin.email')) === 0)
+                        <x-responsive-nav-link :href="route('admin.users.create')">
+                            {{ __('Create user') }}
+                        </x-responsive-nav-link>
+                    @endif
                     <x-responsive-nav-link :href="route('profile.edit')">
                         {{ __('Profile') }}
                     </x-responsive-nav-link>
@@ -110,11 +117,6 @@
                     <x-responsive-nav-link :href="route('login')">
                         {{ __('Login') }}
                     </x-responsive-nav-link>
-                    @if (Route::has('register'))
-                        <x-responsive-nav-link :href="route('register')">
-                            {{ __('Register') }}
-                        </x-responsive-nav-link>
-                    @endif
                 </div>
             @endauth
         </div>

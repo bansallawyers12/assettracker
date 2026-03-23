@@ -20,6 +20,17 @@
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
             @include('layouts.navigation')
 
+            @if (session('2fa_reminder') && Auth::check() && (! Auth::user()->two_factor_enabled || ! Auth::user()->two_factor_secret))
+                <div class="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 px-4 py-3">
+                    <div class="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm text-amber-900 dark:text-amber-100">
+                        <p class="font-medium">{{ session('2fa_reminder') }}</p>
+                        <a href="{{ route('two-factor.setup') }}" class="inline-flex items-center justify-center font-semibold text-amber-900 dark:text-amber-50 underline decoration-2 underline-offset-2 shrink-0">
+                            {{ __('Set up two-factor authentication') }}
+                        </a>
+                    </div>
+                </div>
+            @endif
+
             @isset($header)
                 <header class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
                     <div class="max-w-7xl mx-auto py-5 px-4 sm:px-6 lg:px-8">

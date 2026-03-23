@@ -233,4 +233,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/bank-import', [App\Http\Controllers\BankImportController::class, 'index'])->name('bank-import.index');
 });
 
+Route::middleware(['auth', 'verified', 'super.admin'])->group(function () {
+    Route::get('/admin/users/create', [\App\Http\Controllers\Admin\UserManagementController::class, 'create'])->name('admin.users.create');
+    Route::post('/admin/users', [\App\Http\Controllers\Admin\UserManagementController::class, 'store'])->name('admin.users.store');
+});
+
 require __DIR__.'/auth.php';

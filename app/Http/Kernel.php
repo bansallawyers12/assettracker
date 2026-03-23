@@ -60,6 +60,7 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         '2fa.enrolled' => \App\Http\Middleware\EnsureTwoFactorEnrolled::class,
         '2fa.verified' => \App\Http\Middleware\TwoFactorVerified::class,
+        'super.admin' => \App\Http\Middleware\EnsureSuperAdmin::class,
         'rate.limit' => \App\Http\Middleware\RateLimitMiddleware::class,
         'password.security' => \App\Http\Middleware\PasswordSecurity::class,
     ];

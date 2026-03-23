@@ -157,7 +157,9 @@ return [
 
     'headers' => [
         'enabled' => env('SECURE_HEADERS', true),
-        'force_https' => env('FORCE_HTTPS', true),
+        // Never redirect to HTTPS on PHP's built-in server (`php artisan serve`) — it has no TLS.
+        'force_https' => filter_var(env('FORCE_HTTPS', true), FILTER_VALIDATE_BOOLEAN)
+            && PHP_SAPI !== 'cli-server',
         'hsts_max_age' => 31536000, // 1 year
         'hsts_include_subdomains' => true,
         // Google Maps / Places: script-src + connect-src for *.googleapis.com
