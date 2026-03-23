@@ -29,7 +29,7 @@ class TwoFactorController extends Controller
     {
         $user = Auth::user();
 
-        if ($user->two_factor_enabled) {
+        if ($user->hasFullyEnabledTwoFactor()) {
             return view('auth.two-factor.manage', compact('user'));
         }
 

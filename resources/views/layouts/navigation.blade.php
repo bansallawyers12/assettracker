@@ -38,7 +38,7 @@
                             </button>
                         </x-slot>
                         <x-slot name="content">
-                            @if (strcasecmp(Auth::user()->email, config('admin.email')) === 0)
+                            @if (Auth::user()->isPrimaryAdministrator())
                                 <x-dropdown-link :href="route('admin.users.create')">
                                     {{ __('Create user') }}
                                 </x-dropdown-link>
@@ -96,7 +96,7 @@
                     </div>
                 </div>
                 <div class="mt-3 space-y-1 px-3">
-                    @if (strcasecmp(Auth::user()->email, config('admin.email')) === 0)
+                    @if (Auth::user()->isPrimaryAdministrator())
                         <x-responsive-nav-link :href="route('admin.users.create')">
                             {{ __('Create user') }}
                         </x-responsive-nav-link>

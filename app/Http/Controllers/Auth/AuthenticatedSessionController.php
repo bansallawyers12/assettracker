@@ -25,7 +25,7 @@ class AuthenticatedSessionController extends Controller
         // avoids a secondary DB lookup and works with encrypted email columns.
         $user = Auth::user();
 
-        if ($user && $user->two_factor_enabled && $user->two_factor_secret) {
+        if ($user && $user->hasFullyEnabledTwoFactor()) {
             // Log the user back OUT so they cannot bypass 2FA by navigating
             // directly to any auth-protected route before completing the challenge.
             Auth::guard('web')->logout();
@@ -39,21 +39,21 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('two-factor.totp-challenge');
         }
 
-        if ($user && (! $user->two_factor_enabled || ! $user->two_factor_secret)) {
+        if ($user && ! $user->hasFullyEnabledTwoFactor()) {
             $user->increment('logins_without_two_factor_count');
             $user->refresh();
         }
 
         $request->session()->regenerate();
 
-        $grace = (int) config('admin.two_factor_grace_logins', 3);
+        $grace = max(0, (int) config('admin.two_factor_grace_logins', 3));
         $redirect = redirect()->intended(route('dashboard'));
 
-        if ($user && (! $user->two_factor_enabled || ! $user->two_factor_secret)) {
+        if ($user && ! $user->hasFullyEnabledTwoFactor()) {
             $used = (int) $user->logins_without_two_factor_count;
             $redirect->with(
                 '2fa_reminder',
-                __('Please set up two-factor authentication. You have used :used of :grace logins before it becomes required.', [
+                __('Please set up two-factor authentication. You have completed :used of :grace allowed login sessions without 2FA. Once you exceed that limit, you must enroll before using the rest of the application.', [
                     'used' => $used,
                     'grace' => $grace,
                 ])

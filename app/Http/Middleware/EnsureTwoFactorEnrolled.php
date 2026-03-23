@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,15 +13,15 @@ class EnsureTwoFactorEnrolled
     {
         $user = $request->user();
 
-        if (! $user) {
+        if (! $user instanceof User) {
             return redirect()->route('login');
         }
 
-        if ($user->two_factor_enabled && $user->two_factor_secret) {
+        if ($user->hasFullyEnabledTwoFactor()) {
             return $next($request);
         }
 
-        $grace = (int) config('admin.two_factor_grace_logins', 3);
+        $grace = max(0, (int) config('admin.two_factor_grace_logins', 3));
         $exceeded = ((int) $user->logins_without_two_factor_count) > $grace;
 
         if (! $exceeded) {
@@ -34,9 +35,11 @@ class EnsureTwoFactorEnrolled
             'two-factor.enable',
             'two-factor.manage',
             'logout',
+            'profile.edit',
+            'profile.update',
         ];
 
-        if ($this->isSuperAdmin($user)) {
+        if ($user->isPrimaryAdministrator()) {
             $allowed[] = 'admin.users.create';
             $allowed[] = 'admin.users.store';
         }
@@ -47,12 +50,5 @@ class EnsureTwoFactorEnrolled
 
         return redirect()->route('two-factor.setup')
             ->with('status', __('You must enable two-factor authentication to continue. You have exceeded the allowed logins without 2FA.'));
-    }
-
-    private function isSuperAdmin(\Illuminate\Contracts\Auth\Authenticatable $user): bool
-    {
-        $email = $user instanceof \App\Models\User ? (string) $user->email : '';
-
-        return strcasecmp($email, config('admin.email')) === 0;
     }
 }

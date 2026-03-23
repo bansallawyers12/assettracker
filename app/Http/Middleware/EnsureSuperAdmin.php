@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -12,7 +13,7 @@ class EnsureSuperAdmin
     {
         $user = $request->user();
 
-        if (! $user || strcasecmp((string) $user->email, config('admin.email')) !== 0) {
+        if (! $user instanceof User || ! $user->isPrimaryAdministrator()) {
             abort(Response::HTTP_FORBIDDEN);
         }
 

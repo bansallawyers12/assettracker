@@ -92,6 +92,25 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->setEncryptedAttribute($key, $value);
     }
 
+    /**
+     * Whether TOTP 2FA is fully enabled (flag + secret present).
+     */
+    public function hasFullyEnabledTwoFactor(): bool
+    {
+        return $this->two_factor_enabled && filled($this->two_factor_secret);
+    }
+
+    /**
+     * Primary portal administrator (config/admin.php). Used for user creation and grace-period exceptions.
+     */
+    public function isPrimaryAdministrator(): bool
+    {
+        $configured = strtolower(trim((string) config('admin.email')));
+
+        return $configured !== ''
+            && strcasecmp(strtolower(trim((string) $this->email)), $configured) === 0;
+    }
+
     public function contactLists()
     {
         return $this->hasMany(ContactList::class);

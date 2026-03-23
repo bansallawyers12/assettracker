@@ -18,7 +18,7 @@ class UserManagementController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $email = strtolower(trim($request->string('email')));
+        $email = strtolower(trim((string) $request->input('email')));
         $emailHash = hash_hmac('sha256', $email, config('app.key'));
 
         $request->merge(['email' => $email]);
@@ -40,7 +40,7 @@ class UserManagementController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
-        if (strcasecmp($email, config('admin.email')) === 0) {
+        if (strcasecmp($email, strtolower(trim((string) config('admin.email')))) === 0) {
             return back()->withErrors(['email' => __('This address is reserved for the primary administrator.')])->withInput();
         }
 

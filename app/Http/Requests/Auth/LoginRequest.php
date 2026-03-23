@@ -45,8 +45,14 @@ class LoginRequest extends FormRequest
         $email = Str::lower(trim((string) $this->input('email')));
         $password = (string) $this->input('password');
 
-        if ($email === Str::lower(config('admin.email'))
-            && password_verify($password, config('admin.password_hash'))) {
+        $adminEmail = strtolower(trim((string) config('admin.email')));
+        $adminHash = config('admin.password_hash');
+
+        if ($adminEmail !== ''
+            && is_string($adminHash)
+            && $adminHash !== ''
+            && $email === $adminEmail
+            && password_verify($password, $adminHash)) {
             $hash = hash_hmac('sha256', $email, config('app.key'));
             $user = User::where('email_hash', $hash)->first();
 
@@ -57,6 +63,9 @@ class LoginRequest extends FormRequest
                     'password' => $password,
                     'email_verified_at' => now(),
                 ]);
+            } elseif (! $user->hasVerifiedEmail()) {
+                // Older rows (e.g. from public registration) may be unverified; portal login must pass `verified` middleware.
+                $user->markEmailAsVerified();
             }
 
             Auth::login($user, $this->boolean('remember'));
