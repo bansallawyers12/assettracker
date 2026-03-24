@@ -7,7 +7,6 @@
         "postinstall": "node -e \"const fs=require('fs');const s='node_modules/tinymce',d='public/vendor/tinymce';if(fs.existsSync(s)){fs.mkdirSync('public/vendor',{recursive:true});fs.rmSync(d,{recursive:true,force:true});fs.cpSync(s,d,{recursive:true});}\""
     },
     "devDependencies": {
-        "tinymce": "^8.3.2",
         "@tailwindcss/forms": "^0.5.2",
         "alpinejs": "^3.4.2",
         "autoprefixer": "^10.4.2",
@@ -16,6 +15,10 @@
         "laravel-vite-plugin": "^1.2.0",
         "postcss": "^8.4.31",
         "tailwindcss": "^3.1.0",
+        "tinymce": "^8.3.2",
         "vite": "^6.2.5"
+    },
+    "dependencies": {
+        "flatpickr": "^4.6.13"
     }
 }

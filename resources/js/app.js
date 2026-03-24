@@ -1,5 +1,6 @@
 import './bootstrap';
 import './documents.js';
+import { initFlatpickr } from './flatpickr-init';
 
 import Alpine from 'alpinejs';
 
@@ -8,6 +9,8 @@ window.Alpine = Alpine;
 Alpine.start();
 
 document.addEventListener('DOMContentLoaded', function() {
+    initFlatpickr();
+
     const tabLinks = document.querySelectorAll('.tab-link');
     const tabContents = document.querySelectorAll('.tab-content');
 
