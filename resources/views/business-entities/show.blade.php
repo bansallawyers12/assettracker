@@ -1024,10 +1024,8 @@
         </div> {{-- End of max-w-7xl container --}}
     </div> {{-- End of py-8 background div --}}
 
-    <!-- Summernote CSS & JS -->
-    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+    <!-- TinyMCE (self-hosted: npm `tinymce` → postinstall copies to public/vendor/tinymce) -->
+    <script src="{{ asset('vendor/tinymce/tinymce.min.js') }}"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
@@ -1036,7 +1034,7 @@
             const composeEmailForm = document.getElementById('compose-email-form');
             const fromEmailSelect = document.getElementById('from_email');
             const subjectInput = document.getElementById('subject');
-            // const messageTextarea = document.getElementById('message'); // No longer needed directly for getting/setting content after Summernote init
+            const tinymceBaseUrl = @json(asset('vendor/tinymce'));
 
             // Function to switch tabs
             function switchTab(targetId) {
@@ -1120,10 +1118,10 @@
 
             //     if (selectedTemplate) {
             //         subjectInput.value = selectedTemplate.subject;
-            //         $('#message').summernote('code', selectedTemplate.description); // Set content using Summernote API
+            //         tinymce.get('message')?.setContent(selectedTemplate.description);
             //     } else {
             //         subjectInput.value = '';
-            //         $('#message').summernote('code', ''); // Clear content using Summernote API
+            //         tinymce.get('message')?.setContent('');
             //     }
             // });
 
@@ -1132,7 +1130,8 @@
                 e.preventDefault();
 
                 const formData = new FormData(this);
-                formData.set('message', $('#message').summernote('code')); // Get content from Summernote
+                const messageEditor = tinymce.get('message');
+                formData.set('message', messageEditor ? messageEditor.getContent() : (document.getElementById('message')?.value ?? ''));
 
                 // Add business entity ID to form data
                 formData.append('_method', 'POST');
@@ -1150,7 +1149,7 @@
                     console.log(data);
                     alert(data.message);
                     composeEmailForm.reset();
-                    $('#message').summernote('code', ''); // Clear Summernote editor after submission
+                    tinymce.get('message')?.setContent('');
                 })
                 .catch(error => {
                     console.error('Error sending email:', error);
@@ -1158,21 +1157,23 @@
                 });
             });
 
-            // Initialize Summernote
-            $('#message').summernote({
-                placeholder: 'Write your message here...',
-                tabsize: 2,
-                height: 200,
-                toolbar: [
-                    ['style', ['style']],
-                    ['font', ['bold', 'underline', 'clear']],
-                    ['color', ['color']],
-                    ['para', ['ul', 'ol', 'paragraph']],
-                    ['table', ['table']],
-                    ['insert', ['link', 'picture', 'video']],
-                    ['view', ['fullscreen', 'code', 'help']]
-                ]
-            });
+            if (document.getElementById('message')) {
+                tinymce.init({
+                    selector: '#message',
+                    base_url: tinymceBaseUrl,
+                    suffix: '.min',
+                    license_key: 'gpl',
+                    promotion: false,
+                    branding: false,
+                    height: 200,
+                    menubar: false,
+                    placeholder: 'Write your message here...',
+                    plugins: 'lists advlist autolink link image media table code fullscreen help',
+                    toolbar: 'undo redo | blocks | bold italic underline removeformat | forecolor | alignleft aligncenter alignright | bullist numlist | table | link image media | code fullscreen help',
+                    relative_urls: false,
+                    remove_script_host: false,
+                });
+            }
 
             // Bank Import functionality
             const uploadStatementBtn = document.getElementById('upload-statement-btn');
