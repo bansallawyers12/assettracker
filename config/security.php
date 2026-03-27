@@ -2,9 +2,11 @@
 
 $viteDevHttp = '';
 $viteDevWs   = '';
-if (in_array(env('APP_ENV'), ['local', 'testing'], true)) {
-    $viteDevHttp = ' http://127.0.0.1:5173 http://localhost:5173 http://[::1]:5173';
-    $viteDevWs   = ' ws://127.0.0.1:5173 ws://localhost:5173 ws://[::1]:5173';
+$isDevLikeEnvironment = in_array(env('APP_ENV'), ['local', 'testing'], true)
+    || filter_var(env('APP_DEBUG', false), FILTER_VALIDATE_BOOLEAN);
+if ($isDevLikeEnvironment) {
+    $viteDevHttp = ' http://127.0.0.1:5173 http://localhost:5173';
+    $viteDevWs   = ' ws://127.0.0.1:5173 ws://localhost:5173';
 }
 
 return [

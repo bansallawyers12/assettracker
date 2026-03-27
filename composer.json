@@ -8,11 +8,13 @@
     "require": {
         "php": "^8.2",
         "laravel/framework": "^12.0",
+        "laravel/reverb": "^1.9",
         "laravel/tinker": "^2.10.1",
         "league/flysystem": "^3.29",
         "league/flysystem-aws-s3-v3": "^3.29",
         "pragmarx/google2fa": "^8.0",
-        "pragmarx/google2fa-laravel": "^2.3"
+        "pragmarx/google2fa-laravel": "^2.3",
+        "pusher/pusher-php-server": "^7.2"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -55,7 +57,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" --names=server,queue,logs"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#34d399\" \"php artisan serve\" \"php artisan queue:listen --tries=1\" \"php artisan pail --timeout=0\" \"php artisan reverb:start\" --names=server,queue,logs,reverb"
         ]
     },
     "extra": {
