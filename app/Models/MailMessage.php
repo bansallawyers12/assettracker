@@ -24,6 +24,9 @@ class MailMessage extends Model
         'html_content',
         'text_content',
         'status',
+        'source_type',
+        'source_path',
+        'source_hash',
     ];
 
     protected $casts = [
