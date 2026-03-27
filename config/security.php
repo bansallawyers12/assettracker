@@ -9,6 +9,32 @@ if ($isDevLikeEnvironment) {
     $viteDevWs   = ' ws://127.0.0.1:5173 ws://localhost:5173';
 }
 
+// Laravel Reverb (Echo): connect-src must allow ws/wss (and http/https) to the Reverb host:port.
+$reverbConnect = '';
+$broadcastDefault = env('BROADCAST_CONNECTION') ?: env('BROADCAST_DRIVER');
+if (in_array((string) $broadcastDefault, ['reverb'], true)) {
+    $rawHost = env('REVERB_HOST', 'localhost');
+    $host = trim((string) $rawHost, " \t\n\r\0\x0B'\"");
+    $port = (int) env('REVERB_PORT', 443);
+    $scheme = strtolower((string) env('REVERB_SCHEME', 'https'));
+    $httpScheme = $scheme === 'https' ? 'https' : 'http';
+    $wsScheme = $scheme === 'https' ? 'wss' : 'ws';
+
+    $hosts = [$host];
+    if (strcasecmp($host, 'localhost') === 0) {
+        $hosts[] = '127.0.0.1';
+    } elseif ($host === '127.0.0.1') {
+        $hosts[] = 'localhost';
+    }
+
+    $parts = [];
+    foreach (array_unique($hosts) as $h) {
+        $parts[] = "{$wsScheme}://{$h}:{$port}";
+        $parts[] = "{$httpScheme}://{$h}:{$port}";
+    }
+    $reverbConnect = ' '.implode(' ', $parts);
+}
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -172,7 +198,7 @@ return [
         // across regions (standard host wildcards do not match bucket.s3.region.amazonaws.com).
         'content_security_policy' => env(
             'CONTENT_SECURITY_POLICY',
-            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteDevHttp} https://cdn.jsdelivr.net https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:; style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com https://cdn.jsdelivr.net{$viteDevHttp}; img-src 'self' data: https:; font-src 'self' data: https://fonts.bunny.net https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self'{$viteDevHttp}{$viteDevWs} https://*.googleapis.com *.google.com https://*.gstatic.com https: data: blob:; frame-src 'self' https://view.officeapps.live.com *.google.com https:; worker-src blob:; frame-ancestors 'none';"
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteDevHttp} https://cdn.jsdelivr.net https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:; style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com https://cdn.jsdelivr.net{$viteDevHttp}; img-src 'self' data: https:; font-src 'self' data: https://fonts.bunny.net https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self'{$viteDevHttp}{$viteDevWs}{$reverbConnect} https://*.googleapis.com *.google.com https://*.gstatic.com https: data: blob:; frame-src 'self' https://view.officeapps.live.com *.google.com https:; worker-src blob:; frame-ancestors 'none';"
         ),
         'x_frame_options' => 'DENY',
         'x_content_type_options' => 'nosniff',
