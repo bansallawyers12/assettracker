@@ -39,4 +39,10 @@ return [
         'places_api_key' => env('GOOGLE_PLACES_API_KEY', env('GOOGLE_MAPS_API_KEY')),
     ],
 
+    'python_email' => [
+        'enabled' => env('PYTHON_EMAIL_SERVICE_ENABLED', true),
+        'url' => env('PYTHON_SERVICE_URL', 'http://127.0.0.1:5001'),
+        'timeout' => env('PYTHON_EMAIL_SERVICE_TIMEOUT', 30),
+    ],
+
 ];

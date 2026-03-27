@@ -25,14 +25,22 @@ class SecurityHeaders
 
         $response = $next($request);
 
+        $allowSameOriginFraming = $request->routeIs('emails.show');
+
         // Security Headers
         $response->headers->set('X-Content-Type-Options', 'nosniff');
-        $response->headers->set('X-Frame-Options', config('security.headers.x_frame_options', 'DENY'));
+        $response->headers->set(
+            'X-Frame-Options',
+            $allowSameOriginFraming ? 'SAMEORIGIN' : config('security.headers.x_frame_options', 'DENY')
+        );
         $response->headers->set('X-XSS-Protection', config('security.headers.x_xss_protection', '1; mode=block'));
         $response->headers->set('Referrer-Policy', config('security.headers.referrer_policy', 'strict-origin-when-cross-origin'));
 
         // Content Security Policy
         $csp = config('security.headers.content_security_policy');
+        if ($allowSameOriginFraming && is_string($csp)) {
+            $csp = preg_replace("/frame-ancestors\\s+'none'/i", "frame-ancestors 'self'", $csp) ?? $csp;
+        }
         if ($csp) {
             $response->headers->set('Content-Security-Policy', $csp);
         }

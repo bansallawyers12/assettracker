@@ -178,6 +178,8 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Email Section
     Route::get('/emails', [MailMessageController::class, 'index'])->name('emails.index');
+    Route::get('/emails/upload', [MailMessageController::class, 'uploadIndex'])->name('emails.upload');
+    Route::post('/emails/upload', [MailMessageController::class, 'uploadMsg'])->name('emails.upload.store');
     Route::get('/emails/{id}', [MailMessageController::class, 'show'])->name('emails.show');
     Route::get('/emails/{id}/reply', [MailMessageController::class, 'reply'])->name('emails.reply');
     Route::get('/emails/{id}/reply-data', [MailMessageController::class, 'getReplyData'])->name('emails.reply-data');

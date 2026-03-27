@@ -9,6 +9,7 @@ use App\Models\MailMessage;
 use App\Models\BusinessEntity;
 use App\Models\Asset;
 use App\Models\Document;
+use App\Services\MsgParserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -58,6 +59,142 @@ class MailMessageController extends Controller
             'labels' => $labels,
             'filters' => $request->only(['search', 'label_id', 'sender', 'date_from', 'date_to']),
         ]);
+    }
+
+    public function uploadIndex(Request $request)
+    {
+        $userId = Auth::id();
+        $query = MailMessage::query()->where('user_id', $userId);
+
+        if ($search = $request->string('search')->toString()) {
+            $query->where(function ($q) use ($search) {
+                $q->where('subject', 'like', "%$search%")
+                    ->orWhere('sender_email', 'like', "%$search%")
+                    ->orWhere('sender_name', 'like', "%$search%")
+                    ->orWhere('text_content', 'like', "%$search%")
+                    ->orWhere('recipients', 'like', "%$search%");
+            });
+        }
+
+        if ($labelId = $request->integer('label_id')) {
+            $query->whereHas('labels', function ($q) use ($labelId) {
+                $q->where('mail_labels.id', $labelId);
+            });
+        }
+
+        $type = strtolower($request->string('type')->toString());
+        if ($type === 'inbox' || $type === 'sent') {
+            $labelName = $type === 'sent' ? 'Sent' : 'Inbox';
+            $query->whereHas('labels', function ($q) use ($labelName) {
+                $q->where('mail_labels.name', $labelName);
+            });
+        }
+
+        $messages = $query->latest('sent_date')->paginate(20)->withQueryString();
+        $labels = MailLabel::where('user_id', $userId)->orderBy('type')->orderBy('name')->get();
+
+        return view('emails.upload', [
+            'messages' => $messages,
+            'labels' => $labels,
+            'filters' => $request->only(['search', 'label_id', 'type']),
+        ]);
+    }
+
+    public function uploadMsg(Request $request, MsgParserService $msgParserService)
+    {
+        $validated = $request->validate([
+            'email_files' => ['required', 'array', 'max:10'],
+            'email_files.*' => ['required', 'file', 'mimes:msg', 'max:30720'],
+        ], [
+            'email_files.required' => 'Please select at least one .msg file.',
+            'email_files.*.mimes' => 'Only .msg files are allowed.',
+            'email_files.max' => 'Maximum 10 files can be uploaded at once.',
+        ]);
+
+        $userId = Auth::id();
+        $uploadedCount = 0;
+        $skippedCount = 0;
+        $reprocessedCount = 0;
+        $failedCount = 0;
+
+        foreach ($validated['email_files'] as $file) {
+            try {
+                $sourceHash = hash_file('sha256', $file->getRealPath()) ?: null;
+                $existing = null;
+                if ($sourceHash) {
+                    $existing = MailMessage::where('user_id', $userId)->where('source_hash', $sourceHash)->latest('id')->first();
+                }
+
+                if ($existing) {
+                    $alreadyParsed = $existing->status === 'parsed'
+                        && (filled($existing->html_content) || filled($existing->text_content) || filled($existing->sender_email));
+
+                    if ($alreadyParsed) {
+                        $skippedCount++;
+                        continue;
+                    }
+
+                    if (blank($existing->source_path) || !Storage::exists($existing->source_path)) {
+                        $existing->source_path = $file->store('emails/uploads/' . $userId);
+                        $existing->save();
+                    }
+
+                    $msgParserService->parseAndUpdateMessage($existing, $existing->source_path);
+                    $existing->refresh();
+                    if ($existing->status === 'parsed') {
+                        $reprocessedCount++;
+                    } else {
+                        $failedCount++;
+                    }
+                    continue;
+                }
+
+                $storedPath = $file->store('emails/uploads/' . $userId);
+                $message = MailMessage::create([
+                    'user_id' => $userId,
+                    'subject' => $file->getClientOriginalName(),
+                    'sender_name' => null,
+                    'sender_email' => null,
+                    'recipients' => null,
+                    'sent_date' => now(),
+                    'html_content' => null,
+                    'text_content' => null,
+                    'status' => 'uploaded',
+                    'source_type' => 'upload',
+                    'source_path' => $storedPath,
+                    'source_hash' => $sourceHash,
+                ]);
+
+                $msgParserService->parseAndUpdateMessage($message, $storedPath);
+                $uploadedCount++;
+            } catch (\Throwable $e) {
+                $failedCount++;
+                Log::warning('MSG upload failed', [
+                    'user_id' => $userId,
+                    'filename' => $file->getClientOriginalName(),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $statusParts = [];
+        if ($uploadedCount > 0) {
+            $statusParts[] = $uploadedCount . ' uploaded';
+        }
+        if ($skippedCount > 0) {
+            $statusParts[] = $skippedCount . ' skipped (duplicate)';
+        }
+        if ($reprocessedCount > 0) {
+            $statusParts[] = $reprocessedCount . ' reprocessed';
+        }
+        if ($failedCount > 0) {
+            $statusParts[] = $failedCount . ' failed';
+        }
+        if ($statusParts === []) {
+            $statusParts[] = 'No files were processed';
+        }
+
+        return redirect()->route('emails.upload')->with('status', 'Email upload completed: ' . implode(', ', $statusParts) . '.');
     }
 
     public function show(int $id)

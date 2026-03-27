@@ -15,6 +15,12 @@ from pathlib import Path
 
 import extract_msg
 
+try:
+    # Prevent Windows cp1252 console encoding crashes on Unicode characters.
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 
 def parse_sender(sender):
     """Extract name and email from sender (string or object)."""
@@ -138,7 +144,14 @@ def main():
             'text_content': body,
             'attachments': attachments
         }
-        print(json.dumps(result, ensure_ascii=False))
+        payload = json.dumps(result, ensure_ascii=False)
+        try:
+            sys.stdout.write(payload)
+            sys.stdout.flush()
+        except UnicodeEncodeError:
+            # Final fallback if stdout encoding cannot handle some characters.
+            sys.stdout.buffer.write(payload.encode('utf-8', errors='replace'))
+            sys.stdout.flush()
     finally:
         msg.close()
 
