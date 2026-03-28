@@ -19,7 +19,6 @@ use App\Models\Reminder;
 use Illuminate\Support\Str; // Add this at the top with other use statements
 
 use App\Models\EmailTemplate;
-use App\Models\Email;
 use App\Mail\ContactEmail;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Person;
@@ -1262,14 +1261,9 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $businessEntities = BusinessEntity::all();
-        $bankAccounts = collect();
-        
-        foreach ($businessEntities as $entity) {
-            $entityBankAccounts = $entity->bankAccounts()->with(['bankStatementEntries.transaction'])->get();
-            $bankAccounts = $bankAccounts->merge($entityBankAccounts);
-        }
-        
+        $businessEntities = BusinessEntity::orderBy('legal_name')->get();
+        $bankAccounts = BankAccount::with(['businessEntity', 'bankStatementEntries.transaction'])->get();
+
         return view('bank-accounts.index', compact('bankAccounts', 'businessEntities'));
     }
 
@@ -1282,14 +1276,11 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $businessEntities = BusinessEntity::all();
-        $transactions = collect();
-        
-        foreach ($businessEntities as $entity) {
-            $entityTransactions = $entity->transactions()->with(['bankStatementEntries'])->orderBy('date', 'desc')->get();
-            $transactions = $transactions->merge($entityTransactions);
-        }
-        
+        $businessEntities = BusinessEntity::orderBy('legal_name')->get();
+        $transactions = Transaction::with(['businessEntity', 'bankStatementEntries'])
+            ->orderBy('date', 'desc')
+            ->get();
+
         return view('transactions.index', compact('transactions', 'businessEntities'));
     }
 
