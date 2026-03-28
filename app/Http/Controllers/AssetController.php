@@ -10,11 +10,12 @@ use App\Models\Note;
 use App\Models\RealEstateCompany;
 use App\Models\RealEstateCompanyContact;
 use App\Models\Tenant;
+use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
-use Carbon\Carbon;
 
 class AssetController extends Controller
 {
@@ -27,10 +28,10 @@ class AssetController extends Controller
     {
         $this->authorize('view', $businessEntity);
 
-        $assets = $businessEntity->assets()->with(['notes' => function($query) {
+        $assets = $businessEntity->assets()->with(['notes' => function ($query) {
             $query->where('is_reminder', true)->where('reminder_date', '<=', now());
         }])->paginate(15);
-        
+
         return view('assets.index', compact('businessEntity', 'assets'));
     }
 
@@ -42,7 +43,11 @@ class AssetController extends Controller
         $this->authorize('viewAny', Asset::class);
 
         $assets = Asset::query()
-            ->whereHas('businessEntity')
+            ->whereHas('businessEntity', function ($q) {
+                if (! auth()->user()->isPrimaryAdministrator()) {
+                    $q->where('user_id', auth()->id());
+                }
+            })
             ->with('businessEntity')
             ->orderBy('name')
             ->orderBy('id')
@@ -121,6 +126,13 @@ class AssetController extends Controller
         $assetInvoices = collect();
         $invoiceSummary = ['ytd_invoiced' => 0.0, 'outstanding' => 0.0, 'ytd_paid' => 0.0];
 
+        $documentCategories = $businessEntity->documentCategories()
+            ->where('asset_id', $asset->id)
+            ->with(['documents' => fn ($q) => $q->orderBy('id')])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
         if (in_array($asset->asset_type, Asset::LEASABLE_ASSET_TYPES)) {
             $year = (int) now()->format('Y');
             $assetInvoices = Invoice::query()
@@ -146,7 +158,7 @@ class AssetController extends Controller
             ];
         }
 
-        return view('assets.show', compact('businessEntity', 'asset', 'assetInvoices', 'invoiceSummary'));
+        return view('assets.show', compact('businessEntity', 'asset', 'assetInvoices', 'invoiceSummary', 'documentCategories'));
     }
 
     public function edit(BusinessEntity $businessEntity, Asset $asset)
@@ -209,14 +221,14 @@ class AssetController extends Controller
             'land_tax' => 'land_tax_due_date',
         ];
 
-        if (!isset($fieldMap[$type])) {
+        if (! isset($fieldMap[$type])) {
             return redirect()->back()->with('error', 'Invalid due date type.');
         }
 
         $field = $fieldMap[$type];
         $asset->update([$field => null]);
 
-        return redirect()->back()->with('success', ucfirst($type) . ' due date finalized!');
+        return redirect()->back()->with('success', ucfirst($type).' due date finalized!');
     }
 
     public function extendDueDate(Request $request, BusinessEntity $businessEntity, Asset $asset, $type)
@@ -232,18 +244,20 @@ class AssetController extends Controller
             'land_tax' => 'land_tax_due_date',
         ];
 
-        if (!isset($fieldMap[$type])) {
+        if (! isset($fieldMap[$type])) {
             return redirect()->back()->with('error', 'Invalid due date type.');
         }
 
         $field = $fieldMap[$type];
         $currentDate = $asset->$field;
-        if ($currentDate && $currentDate instanceof \Carbon\Carbon) {
+        if ($currentDate && $currentDate instanceof Carbon) {
             $asset->update([$field => $currentDate->addDays(3)]);
-            return redirect()->back()->with('success', ucfirst($type) . ' due date extended by 3 days!');
+
+            return redirect()->back()->with('success', ucfirst($type).' due date extended by 3 days!');
         }
 
         Log::warning("No due date found for {$type} on asset {$asset->id}");
+
         return redirect()->back()->with('error', 'No valid due date to extend.');
     }
 
@@ -252,6 +266,7 @@ class AssetController extends Controller
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
         $asset->delete();
+
         return redirect()->route('business-entities.show', $businessEntity->id)
             ->with('success', 'Asset deleted successfully');
     }
@@ -322,7 +337,7 @@ class AssetController extends Controller
             ? (int) $validated['lease_duration_value']
             : null;
         $leaseDurationUnit = $validated['lease_duration_unit'] ?? null;
-        $leaseStartDate = !empty($validated['move_in_date']) ? Carbon::parse($validated['move_in_date']) : null;
+        $leaseStartDate = ! empty($validated['move_in_date']) ? Carbon::parse($validated['move_in_date']) : null;
         $reminderDays = array_key_exists('lease_expiry_reminder_days', $validated)
             && $validated['lease_expiry_reminder_days'] !== ''
             ? (int) $validated['lease_expiry_reminder_days']
@@ -448,6 +463,7 @@ class AssetController extends Controller
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
         $tenants = $asset->tenants;
+
         return view('assets.leases.create', compact('businessEntity', 'asset', 'tenants'));
     }
 
@@ -514,33 +530,35 @@ class AssetController extends Controller
         }
 
         $note->delete();
+
         return redirect()->back()->with('success', 'Note deleted successfully.');
     }
 
     /**
      * Finalize a note by removing its reminder status.
      *
-     * @param  \App\Models\Note  $note
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function finalizeNote(Note $note)
     {
         $note->update(['reminder_date' => null, 'is_reminder' => false]);
+
         return redirect()->back()->with('success', 'Reminder finalized.');
     }
 
     /**
      * Extend a note's reminder date by 3 days.
      *
-     * @param  \App\Models\Note  $note
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function extendNote(Note $note)
     {
         if ($note->reminder_date) {
             $note->update(['reminder_date' => Carbon::parse($note->reminder_date)->addDays(3)]);
+
             return redirect()->back()->with('success', 'Reminder extended by 3 days.');
         }
+
         return redirect()->back()->with('error', 'No valid reminder date to extend.');
     }
 
@@ -561,7 +579,7 @@ class AssetController extends Controller
      */
     private function createLeaseFromTenantIfMissing(Asset $asset, Tenant $tenant): bool
     {
-        if (!$tenant->move_in_date) {
+        if (! $tenant->move_in_date) {
             return false;
         }
 
