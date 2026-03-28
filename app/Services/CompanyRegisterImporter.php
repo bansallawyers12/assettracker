@@ -71,15 +71,20 @@ class CompanyRegisterImporter
             $emailFromRow = trim((string) ($row['registered_email'] ?? ''));
             $phoneFromRow = trim((string) ($row['phone_number'] ?? ''));
 
+            // Always set — PostgreSQL may enforce NOT NULL; never omit keys from $payload.
             if ($emailFromRow !== '') {
                 $payload['registered_email'] = $emailFromRow;
-            } elseif (! $entity || blank($entity->registered_email)) {
+            } elseif ($entity && ! blank($entity->registered_email)) {
+                $payload['registered_email'] = $entity->registered_email;
+            } else {
                 $payload['registered_email'] = $this->placeholderImportEmail($abn, $acn, $legalName, $userId, $line);
             }
 
             if ($phoneFromRow !== '') {
                 $payload['phone_number'] = $phoneFromRow;
-            } elseif (! $entity || blank($entity->phone_number)) {
+            } elseif ($entity && ! blank($entity->phone_number)) {
+                $payload['phone_number'] = $entity->phone_number;
+            } else {
                 $payload['phone_number'] = '0000000000';
             }
 
@@ -101,11 +106,14 @@ class CompanyRegisterImporter
                 &$directorsLinked
             ): void {
                 if ($entity) {
-                    $entity->update($payload);
+                    $entity->forceFill($payload);
+                    $entity->save();
                     $updated++;
                     $be = $entity;
                 } else {
-                    $be = BusinessEntity::query()->create($payload);
+                    $be = new BusinessEntity;
+                    $be->forceFill($payload);
+                    $be->save();
                     $created++;
                 }
 
