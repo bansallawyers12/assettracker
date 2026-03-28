@@ -249,20 +249,14 @@
                 });
             });
 
-            delBtn?.addEventListener('click', () => {
+            delBtn?.addEventListener('click', async () => {
                 if (!lastDocId) return;
-                if (!confirm('Delete this document?')) return;
-                fetch(`{{ route('documents.delete') }}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                    },
-                    body: JSON.stringify({ document_id: parseInt(lastDocId, 10) }),
-                }).then(r => r.json()).then(data => {
-                    if (data.success) location.reload();
-                    else alert(data.error || 'Failed');
-                });
+                if (!confirm('Remove the file from this checklist row? The row will be kept.')) return;
+                const entityId = root.dataset.entityId;
+                const r = await api(`/business-entities/${entityId}/document-slots/${lastDocId}/clear-file`, { method: 'POST', body: '{}' });
+                const j = await r.json();
+                if (j.status) location.reload();
+                else alert(j.message || 'Failed');
             });
 
             root.querySelectorAll('.doc-clear').forEach(btn => {
