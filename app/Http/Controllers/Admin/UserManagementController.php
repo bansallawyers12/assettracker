@@ -49,6 +49,7 @@ class UserManagementController extends Controller
             'email' => $email,
             'password' => $request->password,
             'email_verified_at' => now(),
+            'password_changed_at' => now(),
         ]);
 
         return redirect()->route('admin.users.create')->with('status', __('User created successfully.'));

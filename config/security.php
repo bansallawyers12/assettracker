@@ -114,7 +114,8 @@ return [
         'require_numbers' => env('PASSWORD_REQUIRE_NUMBERS', true),
         'require_uppercase' => env('PASSWORD_REQUIRE_UPPERCASE', true),
         'require_lowercase' => env('PASSWORD_REQUIRE_LOWERCASE', true),
-        'max_age_days' => 90, // Force password change every 90 days
+        // Set to 0 to disable expiry redirects (see PasswordSecurity middleware).
+        'max_age_days' => (int) env('PASSWORD_MAX_AGE_DAYS', 90),
         'history_count' => 5, // Remember last 5 passwords
     ],
 
