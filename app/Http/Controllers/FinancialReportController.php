@@ -17,6 +17,8 @@ class FinancialReportController extends Controller
     
     public function index()
     {
+        $this->authorize('viewAny', BusinessEntity::class);
+
         $businessEntities = BusinessEntity::all();
         
         return view('financial-reports.index', compact('businessEntities'));
@@ -24,6 +26,8 @@ class FinancialReportController extends Controller
     
     public function profitLoss(BusinessEntity $businessEntity, Request $request)
     {
+        $this->authorize('view', $businessEntity);
+
         $startDate = $request->get('start_date', now()->startOfYear());
         $endDate = $request->get('end_date', now()->endOfYear());
         
@@ -38,6 +42,8 @@ class FinancialReportController extends Controller
     
     public function balanceSheet(BusinessEntity $businessEntity, Request $request)
     {
+        $this->authorize('view', $businessEntity);
+
         $asOfDate = $request->get('as_of_date', now());
         
         $report = $this->financialReportService->generateBalanceSheet(
@@ -50,6 +56,8 @@ class FinancialReportController extends Controller
     
     public function cashFlow(BusinessEntity $businessEntity, Request $request)
     {
+        $this->authorize('view', $businessEntity);
+
         $startDate = $request->get('start_date', now()->startOfYear());
         $endDate = $request->get('end_date', now()->endOfYear());
         
@@ -64,6 +72,8 @@ class FinancialReportController extends Controller
     
     public function trackingCategories(BusinessEntity $businessEntity, Request $request)
     {
+        $this->authorize('view', $businessEntity);
+
         $startDate = $request->get('start_date', now()->startOfYear());
         $endDate = $request->get('end_date', now()->endOfYear());
         $trackingCategoryId = $request->get('tracking_category_id');

@@ -99,8 +99,8 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Related Entity</label>
                             <select name="related_entity_id" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                                 <option value="">Select Related Entity</option>
-                                @foreach(\App\Models\BusinessEntity::where('id', '!=', $businessEntities->first()?->id)->get() as $entity)
-                                    <option value="{{ $entity->id }}" {{ old('related_entity_id', session('transactionData.related_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->name }}</option>
+                                @foreach($businessEntities->sortBy('legal_name') as $entity)
+                                    <option value="{{ $entity->id }}" {{ old('related_entity_id', session('transactionData.related_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
                                 @endforeach
                             </select>
                             @error('related_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
@@ -561,26 +561,45 @@
             const transactionSection = document.getElementById('add-transaction-section');
             const cancelTransactionBtn = document.getElementById('cancel-transaction-btn');
             const entitySelect = document.getElementById('business_entity_id');
+            const relatedEntityField = document.getElementById('related_entity_field');
 
-            transactionBtn.addEventListener('click', () => {
-                transactionSection.classList.toggle('hidden');
-            });
+            if (transactionBtn && transactionSection) {
+                transactionBtn.addEventListener('click', () => {
+                    transactionSection.classList.toggle('hidden');
+                });
+            }
 
-            cancelTransactionBtn.addEventListener('click', () => {
-                if (!{{ session()->has('success') ? 'true' : 'false' }}) {
-                    transactionSection.classList.add('hidden');
+            if (cancelTransactionBtn && transactionSection) {
+                cancelTransactionBtn.addEventListener('click', () => {
+                    if (!{{ session()->has('success') ? 'true' : 'false' }}) {
+                        transactionSection.classList.add('hidden');
+                    }
+                });
+            }
+
+            if (entitySelect) {
+                const storeForm = document.getElementById('store-transaction-form');
+
+                function syncTransactionFormFromEntitySelect() {
+                    const entityId = entitySelect.value;
+                    if (entityId && storeForm) {
+                        storeForm.action = `{{ url('business-entities') }}/${entityId}/transactions/store`;
+                    }
+                    const relatedSel = relatedEntityField ? relatedEntityField.querySelector('select') : null;
+                    if (relatedSel) {
+                        Array.from(relatedSel.options).forEach(opt => {
+                            if (!opt.value) return;
+                            opt.disabled = opt.value === entityId;
+                        });
+                    }
                 }
-            });
 
-            entitySelect.addEventListener('change', (e) => {
-                const entityId = e.target.value;
-                if (entityId) {
-                    document.getElementById('store-transaction-form').action = `{{ url('business-entities') }}/${entityId}/transactions/store`;
-                }
-            });
+                entitySelect.addEventListener('change', syncTransactionFormFromEntitySelect);
+                syncTransactionFormFromEntitySelect();
+            }
 
             @if (session('error') || session('transactionData'))
-                transactionSection.classList.remove('hidden');
+                if (transactionSection) transactionSection.classList.remove('hidden');
             @endif
 
             function initializeReminderLogic() {
@@ -616,7 +635,6 @@
             initializeReminderLogic();
 
             const transactionTypeSelect = document.getElementById('transaction_type');
-            const relatedEntityField = document.getElementById('related_entity_field');
 
             if (transactionTypeSelect && relatedEntityField) {
                 const relatedPartyTypes = [

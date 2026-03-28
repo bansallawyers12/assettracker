@@ -311,10 +311,8 @@ class BusinessEntityController extends Controller
      */
     public function storeTransaction(Request $request, BusinessEntity $businessEntity)
     {
-        $this->authorize('update', $businessEntity);
-
-        // Validate the transaction data
         $request->validate([
+            'business_entity_id' => 'nullable|exists:business_entities,id',
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
@@ -324,8 +322,20 @@ class BusinessEntityController extends Controller
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit', // Added more specific statuses
             'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048', // Optional document upload
             'document_name' => 'nullable|string|max:255',
-            // 'business_entity_id' is implicitly available via the route model binding ($businessEntity)
         ]);
+
+        $targetEntity = $request->filled('business_entity_id')
+            ? BusinessEntity::findOrFail($request->integer('business_entity_id'))
+            : $businessEntity;
+
+        $this->authorize('update', $targetEntity);
+
+        if ($request->filled('related_entity_id')
+            && (int) $request->related_entity_id === (int) $targetEntity->id) {
+            throw ValidationException::withMessages([
+                'related_entity_id' => 'Related entity must be different from the business entity.',
+            ]);
+        }
 
         $receiptPath = $request->input('receipt_path'); // Get path if pre-filled from extraction
 
@@ -337,7 +347,7 @@ class BusinessEntityController extends Controller
             $extension = $file->getClientOriginalExtension();
             $uploadDate = now()->format('Y-m-d');
             $fileName = "{$customName}_{$uploadDate}.{$extension}";
-            $folderPath = "Receipts/{$businessEntity->id}_{$businessEntity->legal_name}";
+            $folderPath = "Receipts/{$targetEntity->id}_{$targetEntity->legal_name}";
             $s3Path = "{$folderPath}/{$fileName}";
 
             // Upload to S3 (S3 doesn't require explicit directory creation)
@@ -347,7 +357,7 @@ class BusinessEntityController extends Controller
 
         // Create the transaction record
         $transaction = Transaction::create([
-            'business_entity_id' => $businessEntity->id,
+            'business_entity_id' => $targetEntity->id,
             'related_entity_id' => $request->related_entity_id,
             'date' => $request->date,
             'amount' => $request->amount,
