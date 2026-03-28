@@ -17,16 +17,7 @@ class ReminderController extends Controller
     public function index(Request $request)
     {
         $query = Reminder::query()
-            ->with(['businessEntity', 'asset', 'user'])
-            ->where(function($q) {
-                $q->where('user_id', Auth::id())
-                  ->orWhereHas('businessEntity', function($q) {
-                      $q->where('user_id', Auth::id());
-                  })
-                  ->orWhereHas('asset.businessEntity', function($q) {
-                      $q->where('user_id', Auth::id());
-                  });
-            });
+            ->with(['businessEntity', 'asset', 'user']);
 
         // Apply filters
         if ($request->has('status')) {
@@ -71,10 +62,8 @@ class ReminderController extends Controller
      */
     public function create(Request $request)
     {
-        $businessEntities = BusinessEntity::where('user_id', Auth::id())->get();
-        $assets = Asset::whereHas('businessEntity', function($q) {
-            $q->where('user_id', Auth::id());
-        })->get();
+        $businessEntities = BusinessEntity::all();
+        $assets = Asset::with('businessEntity')->get();
 
         $selectedEntity = null;
         $selectedAsset = null;
@@ -141,10 +130,8 @@ class ReminderController extends Controller
     {
         $this->authorize('update', $reminder);
         
-        $businessEntities = BusinessEntity::where('user_id', Auth::id())->get();
-        $assets = Asset::whereHas('businessEntity', function($q) {
-            $q->where('user_id', Auth::id());
-        })->get();
+        $businessEntities = BusinessEntity::all();
+        $assets = Asset::with('businessEntity')->get();
 
         return view('reminders.edit', compact('reminder', 'businessEntities', 'assets'));
     }
@@ -225,13 +212,7 @@ class ReminderController extends Controller
             'reminders.*' => 'exists:reminders,id'
         ]);
 
-        $reminders = Reminder::whereIn('id', $validated['reminders'])
-            ->where(function($q) {
-                $q->where('user_id', Auth::id())
-                  ->orWhereHas('businessEntity', function($q) {
-                      $q->where('user_id', Auth::id());
-                  });
-            })->get();
+        $reminders = Reminder::whereIn('id', $validated['reminders'])->get();
 
         foreach ($reminders as $reminder) {
             $reminder->complete();

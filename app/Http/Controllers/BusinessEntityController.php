@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Log; // Added for logging
 use Illuminate\Support\Facades\Storage; // Added for file storage
 use Illuminate\Validation\ValidationException; // Added for handling validation exceptions
 use App\Models\Reminder;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str; // Add this at the top with other use statements
 
 use App\Models\EmailTemplate;
@@ -38,22 +37,11 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $userId = auth()->id();
         $businessEntities = BusinessEntity::query()
-            ->where('user_id', $userId)
             ->with('persons')
             ->get();
 
         $reminders = Note::where('is_reminder', true)
-            ->where(function ($q) use ($userId) {
-                $q->where('user_id', $userId)
-                    ->orWhereHas('businessEntity', function ($q) use ($userId) {
-                        $q->where('user_id', $userId);
-                    })
-                    ->orWhereHas('asset.businessEntity', function ($q) use ($userId) {
-                        $q->where('user_id', $userId);
-                    });
-            })
             ->whereDate('reminder_date', '>=', now()->toDateString())
             ->orderBy('reminder_date')
             ->get();
@@ -70,16 +58,11 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('create', BusinessEntity::class);
 
-        $userId = auth()->id();
         $persons = Person::query()
-            ->whereHas('businessEntities', function ($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })
             ->orderBy('id')
             ->get();
 
         $businessEntities = BusinessEntity::query()
-            ->where('user_id', $userId)
             ->where('entity_type', '!=', 'Trust')
             ->orderBy('legal_name')
             ->get();
@@ -97,7 +80,6 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('create', BusinessEntity::class);
 
-        $userId = auth()->id();
         // Validate the incoming request data
         $request->validate([
             'legal_name' => 'required|string|max:255',
@@ -123,19 +105,12 @@ class BusinessEntityController extends Controller
             'appointor_person_id' => [
                 'nullable',
                 'required_if:appointor_type,person',
-                Rule::exists('persons', 'id')->whereIn('id', function ($query) use ($userId) {
-                    $query->select('entity_person.person_id')
-                        ->from('entity_person')
-                        ->join('business_entities', 'entity_person.business_entity_id', '=', 'business_entities.id')
-                        ->where('business_entities.user_id', $userId);
-                }),
+                Rule::exists('persons', 'id'),
             ],
             'appointor_entity_id' => [
                 'nullable',
                 'required_if:appointor_type,entity',
-                Rule::exists('business_entities', 'id')->where(function ($query) use ($userId) {
-                    $query->where('user_id', $userId)->where('entity_type', '!=', 'Trust');
-                }),
+                Rule::exists('business_entities', 'id')->where('entity_type', '!=', 'Trust'),
             ],
         ], [
             'trust_type.required_if' => 'Trust type is required when entity type is Trust.',
@@ -241,22 +216,11 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $user = Auth::user();
-        $businessEntities = BusinessEntity::where('user_id', $user->id)->get();
-        $assets = Asset::whereHas('businessEntity', function($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })->get();
+        $businessEntities = BusinessEntity::all();
+        $assets = Asset::all();
         
         // Fetch Reminder records
-        $reminders = Reminder::where(function($q) use ($user) {
-            $q->where('user_id', $user->id)
-              ->orWhereHas('businessEntity', function($q) use ($user) {
-                  $q->where('user_id', $user->id);
-              })
-              ->orWhereHas('asset.businessEntity', function($q) use ($user) {
-                  $q->where('user_id', $user->id);
-              });
-        })
+        $reminders = Reminder::query()
         ->active()
         ->dueWithinDays(15)
         ->with(['businessEntity', 'asset', 'user'])
@@ -265,15 +229,6 @@ class BusinessEntityController extends Controller
 
         // Fetch Note-based reminders
         $noteReminders = Note::where('is_reminder', true)
-            ->where(function($q) use ($user) {
-                $q->where('user_id', $user->id)
-                  ->orWhereHas('businessEntity', function($q) use ($user) {
-                      $q->where('user_id', $user->id);
-                  })
-                  ->orWhereHas('asset.businessEntity', function($q) use ($user) {
-                      $q->where('user_id', $user->id);
-                  });
-            })
             ->whereDate('reminder_date', '>=', now())
             ->whereDate('reminder_date', '<=', now()->addDays(15))
             ->with(['businessEntity', 'asset', 'user'])
@@ -301,9 +256,7 @@ class BusinessEntityController extends Controller
         // Combine reminders, sort by due date
         $allReminders = $reminders->concat($noteReminders)->sortBy('next_due_date');
 
-        $persons = EntityPerson::whereHas('businessEntity', function($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })->with(['person', 'trusteeEntity', 'businessEntity'])->get();
+        $persons = EntityPerson::with(['person', 'trusteeEntity', 'businessEntity'])->get();
 
         // Group persons by their actual Person record to avoid duplicates
         $uniquePersons = $persons->where('person_id', '!=', null)
@@ -320,16 +273,12 @@ class BusinessEntityController extends Controller
             })
             ->values();
 
-        $assetDueDates = Asset::whereHas('businessEntity', function($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })->where(function($q) {
+        $assetDueDates = Asset::where(function($q) {
             $q->whereDate('registration_due_date', '>=', now())
               ->whereDate('registration_due_date', '<=', now()->addDays(15));
         })->with('businessEntity')->get();
 
-        $entityDueDates = EntityPerson::whereHas('businessEntity', function($q) use ($user) {
-            $q->where('user_id', $user->id);
-        })->where(function($q) {
+        $entityDueDates = EntityPerson::where(function($q) {
             $q->whereDate('asic_due_date', '>=', now())
               ->whereDate('asic_due_date', '<=', now()->addDays(15));
         })->with('businessEntity')->get();
@@ -370,7 +319,7 @@ class BusinessEntityController extends Controller
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
             'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
-            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')->where('user_id', auth()->id())],
+            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit', // Added more specific statuses
             'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048', // Optional document upload
@@ -438,7 +387,7 @@ class BusinessEntityController extends Controller
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
             'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
-            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')->where('user_id', auth()->id())],
+            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
             'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
@@ -523,7 +472,7 @@ class BusinessEntityController extends Controller
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
             'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
-            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')->where('user_id', auth()->id())],
+            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
             // Note: Updating receipt_path might require additional logic/validation if allowed
@@ -562,7 +511,7 @@ class BusinessEntityController extends Controller
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
             'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
-            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')->where('user_id', auth()->id())],
+            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
         ]);
@@ -977,7 +926,6 @@ class BusinessEntityController extends Controller
         // Get available transaction types and business entities (if needed for transfers etc.)
         $transactionTypes = Transaction::$transactionTypes;
         $businessEntities = BusinessEntity::query()
-            ->where('user_id', auth()->id())
             ->orderBy('legal_name')
             ->get();
 
@@ -1304,8 +1252,7 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $user = Auth::user();
-        $businessEntities = BusinessEntity::where('user_id', $user->id)->get();
+        $businessEntities = BusinessEntity::all();
         $bankAccounts = collect();
         
         foreach ($businessEntities as $entity) {
@@ -1325,8 +1272,7 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $user = Auth::user();
-        $businessEntities = BusinessEntity::where('user_id', $user->id)->get();
+        $businessEntities = BusinessEntity::all();
         $transactions = collect();
         
         foreach ($businessEntities as $entity) {

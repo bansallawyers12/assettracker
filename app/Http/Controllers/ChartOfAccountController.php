@@ -20,8 +20,7 @@ class ChartOfAccountController extends Controller
             return view('chart-of-accounts.index', compact('businessEntity', 'accounts'));
         } else {
             // Global view for all business entities
-            $user = auth()->user();
-            $businessEntities = \App\Models\BusinessEntity::where('user_id', $user->id)->get();
+            $businessEntities = \App\Models\BusinessEntity::all();
             $accounts = collect();
             
             foreach ($businessEntities as $entity) {

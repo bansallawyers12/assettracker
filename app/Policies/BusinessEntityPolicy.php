@@ -20,8 +20,7 @@ class BusinessEntityPolicy
      */
     public function view(User $user, BusinessEntity $businessEntity)
     {
-        // Allow users to view their own business entities
-        return $user->id === $businessEntity->user_id;
+        return true;
     }
 
     /**
@@ -38,8 +37,7 @@ class BusinessEntityPolicy
      */
     public function update(User $user, BusinessEntity $businessEntity)
     {
-        // Allow users to update their own business entities
-        return $user->id === $businessEntity->user_id;
+        return true;
     }
 
     /**
@@ -47,7 +45,6 @@ class BusinessEntityPolicy
      */
     public function delete(User $user, BusinessEntity $businessEntity)
     {
-        // Allow users to delete their own business entities
-        return $user->id === $businessEntity->user_id;
+        return true;
     }
 } 

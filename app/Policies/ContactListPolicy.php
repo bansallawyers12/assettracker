@@ -13,7 +13,7 @@ class ContactListPolicy
      */
     public function viewAny(User $user, BusinessEntity $businessEntity)
     {
-        return $user->id === $businessEntity->user_id;
+        return true;
     }
 
     /**
@@ -21,7 +21,7 @@ class ContactListPolicy
      */
     public function view(User $user, BusinessEntity $businessEntity, ContactList $contactList)
     {
-         return $user->id === $businessEntity->user_id && $contactList->business_entity_id === $businessEntity->id;
+        return $contactList->business_entity_id === $businessEntity->id;
     }
 
     /**
@@ -29,7 +29,7 @@ class ContactListPolicy
      */
     public function create(User $user, BusinessEntity $businessEntity)
     {
-        return $user->id === $businessEntity->user_id;
+        return true;
     }
 
     /**
@@ -37,7 +37,7 @@ class ContactListPolicy
      */
     public function update(User $user, BusinessEntity $businessEntity, ContactList $contactList)
     {
-        return $user->id === $businessEntity->user_id && $contactList->business_entity_id === $businessEntity->id;
+        return $contactList->business_entity_id === $businessEntity->id;
     }
 
     /**
@@ -45,6 +45,6 @@ class ContactListPolicy
      */
     public function delete(User $user, BusinessEntity $businessEntity, ContactList $contactList)
     {
-        return $user->id === $businessEntity->user_id && $contactList->business_entity_id === $businessEntity->id;
+        return $contactList->business_entity_id === $businessEntity->id;
     }
 } 

@@ -14,7 +14,7 @@ class EmailTemplateController extends Controller
      */
     public function index()
     {
-        $templates = EmailTemplate::forUser(Auth::id())
+        $templates = EmailTemplate::query()
             ->orderBy('name')
             ->paginate(10);
 
@@ -129,7 +129,7 @@ class EmailTemplateController extends Controller
      */
     public function getTemplates()
     {
-        $templates = EmailTemplate::forUser(Auth::id())
+        $templates = EmailTemplate::query()
             ->select('id', 'name', 'subject', 'description')
             ->orderBy('name')
             ->get();

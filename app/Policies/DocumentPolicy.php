@@ -9,16 +9,16 @@ class DocumentPolicy
 {
     public function view(User $user, Document $document)
     {
-        return $user->id === $document->user_id;
+        return true;
     }
 
     public function update(User $user, Document $document)
     {
-        return $user->id === $document->user_id;
+        return true;
     }
 
     public function delete(User $user, Document $document)
     {
-        return $user->id === $document->user_id;
+        return true;
     }
 } 

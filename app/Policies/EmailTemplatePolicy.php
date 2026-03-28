@@ -20,7 +20,7 @@ class EmailTemplatePolicy
      */
     public function view(User $user, EmailTemplate $emailTemplate): bool
     {
-        return $user->id === $emailTemplate->user_id;
+        return true;
     }
 
     /**
@@ -36,7 +36,7 @@ class EmailTemplatePolicy
      */
     public function update(User $user, EmailTemplate $emailTemplate): bool
     {
-        return $user->id === $emailTemplate->user_id;
+        return true;
     }
 
     /**
@@ -44,7 +44,7 @@ class EmailTemplatePolicy
      */
     public function delete(User $user, EmailTemplate $emailTemplate): bool
     {
-        return $user->id === $emailTemplate->user_id;
+        return true;
     }
 
     /**
@@ -52,7 +52,7 @@ class EmailTemplatePolicy
      */
     public function restore(User $user, EmailTemplate $emailTemplate): bool
     {
-        return $user->id === $emailTemplate->user_id;
+        return true;
     }
 
     /**
@@ -60,6 +60,6 @@ class EmailTemplatePolicy
      */
     public function forceDelete(User $user, EmailTemplate $emailTemplate): bool
     {
-        return $user->id === $emailTemplate->user_id;
+        return true;
     }
 }
