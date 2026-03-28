@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\MailAttachment;
 use App\Models\MailLabel;
 use App\Models\MailMessage;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
@@ -13,6 +14,71 @@ class MsgParserService
     public function parseAndUpdateMessage(MailMessage $message, string $storedPath): void
     {
         $absolutePath = Storage::path($storedPath);
+        $data = $this->parseViaHttpService($absolutePath);
+
+        if (!is_array($data)) {
+            $data = $this->parseViaLocalScript($absolutePath);
+        }
+
+        if (!is_array($data)) {
+            return;
+        }
+
+        $this->updateMessageFromParsedData($message, $data);
+        $this->assignPrimaryLabel($message);
+    }
+
+    protected function parseViaHttpService(string $absolutePath): ?array
+    {
+        $url = (string) config('services.python_email.url', 'http://127.0.0.1:5001');
+        $enabled = (bool) config('services.python_email.enabled', true);
+        if (!$enabled) {
+            return null;
+        }
+
+        try {
+            if (!is_file($absolutePath)) {
+                return null;
+            }
+
+            $response = Http::timeout((int) config('services.python_email.timeout', 30))
+                ->attach('file', file_get_contents($absolutePath), basename($absolutePath))
+                ->post(rtrim($url, '/') . '/email/parse');
+
+            if (!$response->successful()) {
+                Log::warning('Python email service returned non-success status', [
+                    'status' => $response->status(),
+                    'url' => $url,
+                    'body' => mb_substr((string) $response->body(), 0, 500),
+                ]);
+                return null;
+            }
+
+            $data = $response->json();
+            if (!is_array($data)) {
+                Log::warning('Python email service returned invalid JSON payload');
+                return null;
+            }
+
+            if (isset($data['success']) && $data['success'] === false) {
+                Log::warning('Python email service parsing failed', [
+                    'error' => $data['error'] ?? 'unknown',
+                ]);
+                return null;
+            }
+
+            return $data;
+        } catch (\Throwable $e) {
+            Log::info('Python email service not available, falling back to local parser', [
+                'url' => $url,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    protected function parseViaLocalScript(string $absolutePath): ?array
+    {
         $python = $this->detectPython();
         // Support: python/ folder, storage/app/scripts, storage/app/private/scripts
         $scriptCandidates = [
@@ -30,7 +96,7 @@ class MsgParserService
 
         if (!$scriptPath) {
             Log::error('Python parser script not found', ['candidates' => $scriptCandidates]);
-            return;
+            return null;
         }
 
         $command = sprintf('%s "%s" "%s" 2>&1', $python, str_replace('\\', '/', $scriptPath), str_replace('\\', '/', $absolutePath));
@@ -45,15 +111,20 @@ class MsgParserService
         $jsonEnd = strrpos($joined, '}');
         if ($jsonStart === false || $jsonEnd === false) {
             Log::warning('No JSON found in parser output', ['output' => mb_substr($joined, 0, 1000)]);
-            return;
+            return null;
         }
         $json = substr($joined, $jsonStart, $jsonEnd - $jsonStart + 1);
         $data = json_decode($json, true);
         if (!is_array($data)) {
             Log::warning('Parser JSON decode failed', ['json' => mb_substr($json, 0, 1000)]);
-            return;
+            return null;
         }
 
+        return $data;
+    }
+
+    protected function updateMessageFromParsedData(MailMessage $message, array $data): void
+    {
         $message->update([
             'subject' => $this->sanitize($data['subject'] ?? $message->subject),
             'sender_name' => $this->sanitize($data['sender_name'] ?? $message->sender_name),
@@ -91,8 +162,6 @@ class MsgParserService
                 'is_inline' => $isInline,
             ]);
         }
-
-        $this->assignPrimaryLabel($message);
     }
 
     protected function detectPython(): string
