@@ -14,7 +14,7 @@ class EnsureAccountActive
     {
         $user = $request->user();
 
-        if ($user instanceof User && ! $user->is_active) {
+        if ($user instanceof User && ! $user->isAccountActive()) {
             Auth::logout();
 
             $request->session()->invalidate();
