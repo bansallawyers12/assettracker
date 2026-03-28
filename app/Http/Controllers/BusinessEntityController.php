@@ -217,6 +217,7 @@ class BusinessEntityController extends Controller
 
         $businessEntities = BusinessEntity::all();
         $assets = Asset::query()
+            ->whereHas('businessEntity')
             ->orderBy('name')
             ->orderBy('id')
             ->get();
@@ -734,7 +735,7 @@ class BusinessEntityController extends Controller
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
             'asic_renewal_date' => 'nullable|date',
-            'status' => 'required|in:Active,Inactive,Archived', // Added status update
+            'status' => 'required|in:Active,Inactive,Deregistered',
         ]);
 
         // Update the business entity with validated data

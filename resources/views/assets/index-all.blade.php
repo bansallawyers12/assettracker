@@ -40,6 +40,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     @foreach ($assets as $asset)
                         @php
+                            $entity = $asset->businessEntity;
                             $entityId = $asset->business_entity_id;
                         @endphp
                         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 ease-in-out transform hover:scale-105 border-l-4 border-indigo-500">
@@ -52,14 +53,14 @@
                                         <p class="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
                                             {{ $asset->asset_type }}
                                         </p>
-                                        @if($asset->businessEntity)
-                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate" title="{{ $asset->businessEntity->legal_name }}">
-                                                {{ $asset->businessEntity->legal_name }}
+                                        @if($entity)
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 truncate" title="{{ $entity->legal_name }}">
+                                                {{ $entity->legal_name }}
                                             </p>
                                         @endif
                                     </div>
                                     <div class="flex space-x-2 flex-shrink-0">
-                                        <a href="{{ route('business-entities.assets.edit', [$entityId, $asset->id]) }}" class="text-gray-400 hover:text-indigo-600 transition-colors">
+                                        <a href="{{ route('business-entities.assets.edit', [$entityId, $asset->id]) }}" class="text-gray-400 hover:text-indigo-600 transition-colors" aria-label="Edit {{ $asset->name }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                             </svg>
