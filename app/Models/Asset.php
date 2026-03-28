@@ -148,17 +148,22 @@ class Asset extends Model
         return $this->hasMany(DepreciationSchedule::class);
     }
 
+    public function documentCategories()
+    {
+        return $this->hasMany(DocumentCategory::class, 'asset_id');
+    }
+
     public static $depreciationMethods = [
         'straight_line' => 'Straight Line',
         'reducing_balance' => 'Reducing Balance',
-        'units_of_production' => 'Units of Production'
+        'units_of_production' => 'Units of Production',
     ];
 
     public function calculateDepreciation($method = null, $asOfDate = null)
     {
         $method = $method ?? $this->depreciation_method;
         $asOfDate = $asOfDate ?? now();
-        
+
         switch ($method) {
             case 'straight_line':
                 return $this->calculateStraightLineDepreciation($asOfDate);
@@ -171,53 +176,54 @@ class Asset extends Model
 
     private function calculateStraightLineDepreciation($asOfDate)
     {
-        if (!$this->is_depreciable || !$this->useful_life_years) {
+        if (! $this->is_depreciable || ! $this->useful_life_years) {
             return 0;
         }
-        
+
         $monthsInService = $this->acquisition_date->diffInMonths($asOfDate);
         $totalMonths = $this->useful_life_years * 12;
-        
+
         if ($monthsInService >= $totalMonths) {
             return $this->acquisition_cost - $this->residual_value;
         }
-        
+
         $annualDepreciation = ($this->acquisition_cost - $this->residual_value) / $this->useful_life_years;
+
         return ($annualDepreciation / 12) * $monthsInService;
     }
 
     private function calculateReducingBalanceDepreciation($asOfDate)
     {
-        if (!$this->is_depreciable || !$this->useful_life_years) {
+        if (! $this->is_depreciable || ! $this->useful_life_years) {
             return 0;
         }
-        
+
         $monthsInService = $this->acquisition_date->diffInMonths($asOfDate);
         $totalMonths = $this->useful_life_years * 12;
-        
+
         if ($monthsInService >= $totalMonths) {
             return $this->acquisition_cost - $this->residual_value;
         }
-        
+
         // Calculate reducing balance rate (typically 1.5x straight line rate)
         $straightLineRate = 1 / $this->useful_life_years;
         $reducingBalanceRate = $straightLineRate * 1.5;
-        
+
         $depreciation = 0;
         $bookValue = $this->acquisition_cost;
-        
+
         for ($month = 1; $month <= $monthsInService; $month++) {
             $monthlyDepreciation = $bookValue * ($reducingBalanceRate / 12);
             $depreciation += $monthlyDepreciation;
             $bookValue -= $monthlyDepreciation;
-            
+
             // Ensure we don't depreciate below residual value
             if ($bookValue <= $this->residual_value) {
                 $depreciation = $this->acquisition_cost - $this->residual_value;
                 break;
             }
         }
-        
+
         return $depreciation;
     }
 
@@ -241,7 +247,7 @@ class Asset extends Model
     {
         $query = self::whereNotNull('business_entity_id');
 
-        if (!$includeInactive) {
+        if (! $includeInactive) {
             $query->where('status', 'Active');
         }
 
@@ -260,9 +266,10 @@ class Asset extends Model
             foreach ($dateFields as $field) {
                 $query->orWhere(function ($q) use ($field, $startDate, $endDate) {
                     $q->whereNotNull($field)
-                      ->whereBetween($field, [$startDate, $endDate]);
+                        ->whereBetween($field, [$startDate, $endDate]);
                 });
             }
+
             return $query;
         });
     }

@@ -2,67 +2,63 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log;
 use App\Models\Asset;
-use Illuminate\Support\Str;
 use App\Models\BusinessEntity;
-use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
+use App\Models\DocumentCategory;
+use App\Services\ChecklistFilenameMatcher;
+use App\Services\DocumentUploadService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class DocumentController extends Controller
 {
+    public function __construct(
+        private DocumentUploadService $uploadService,
+        private ChecklistFilenameMatcher $filenameMatcher
+    ) {}
+
+    private function fileValidationRules(string $key = 'document'): array
+    {
+        $max = (int) config('documents.max_kilobytes', 10240);
+        $mimes = (string) config('documents.mimes', 'pdf');
+
+        return [
+            $key => "required|file|max:{$max}|mimes:{$mimes}",
+        ];
+    }
+
     public function index(Request $request)
     {
         $businessEntityId = $request->input('business_entity_id');
         $businessEntityName = $request->input('business_entity_name');
 
-        Log::info('DocumentController@index called with:', [
-            'business_entity_id' => $businessEntityId,
-            'business_entity_name' => $businessEntityName
-        ]);
-
-        if (!$businessEntityId || !$businessEntityName) {
-            Log::error('Missing business entity information');
+        if (! $businessEntityId || ! $businessEntityName) {
             return redirect()->back()->with('error', 'Business entity information is required');
         }
 
         $businessEntity = BusinessEntity::findOrFail($businessEntityId);
         $this->authorize('view', $businessEntity);
 
-        // Get documents from database
         $documents = Document::where('business_entity_id', $businessEntityId)
             ->orderBy('created_at', 'desc')
             ->get();
 
-        Log::info('Found database documents:', ['count' => $documents->count()]);
-
-        // Get files from S3
         $folderPath = "BusinessEntities/{$businessEntityId}_{$businessEntityName}";
         $docsPath = "{$folderPath}/docs";
         $s3Files = [];
-        
-        try {
-            Log::info('Attempting to list S3 files from path:', ['path' => $folderPath]);
-            
-            // Check if the directory exists
-            if (!Storage::disk('s3')->exists($folderPath)) {
-                Log::warning('S3 directory does not exist:', ['path' => $folderPath]);
-                // Create the directory if it doesn't exist
-                Storage::disk('s3')->makeDirectory($folderPath);
-                Log::info('Created S3 directory:', ['path' => $folderPath]);
-            }
 
-            // Check if docs subdirectory exists
-            if (!Storage::disk('s3')->exists($docsPath)) {
-                Log::info('Creating docs subdirectory:', ['path' => $docsPath]);
+        try {
+            if (! Storage::disk('s3')->exists($folderPath)) {
+                Storage::disk('s3')->makeDirectory($folderPath);
+            }
+            if (! Storage::disk('s3')->exists($docsPath)) {
                 Storage::disk('s3')->makeDirectory($docsPath);
             }
 
-            // First check files in the main directory
-            $mainFiles = Storage::disk('s3')->files($folderPath);
-            foreach ($mainFiles as $file) {
+            foreach (array_merge(Storage::disk('s3')->files($folderPath), Storage::disk('s3')->files($docsPath)) as $file) {
                 try {
                     $url = Storage::disk('s3')->temporaryUrl($file, now()->addMinutes(5));
                     $s3Files[] = [
@@ -71,124 +67,88 @@ class DocumentController extends Controller
                         'type' => $this->getFileType(pathinfo($file, PATHINFO_EXTENSION)),
                         'size' => $this->formatFileSize(Storage::disk('s3')->size($file)),
                         'uploaded' => date('Y-m-d H:i:s', Storage::disk('s3')->lastModified($file)),
-                        'url' => $url
+                        'url' => $url,
                     ];
                 } catch (\Exception $e) {
-                    Log::error('Error processing file:', [
-                        'file' => $file,
-                        'error' => $e->getMessage()
-                    ]);
-                    continue;
-                }
-            }
-
-            // Then check files in the docs subdirectory
-            $docsFiles = Storage::disk('s3')->files($docsPath);
-            foreach ($docsFiles as $file) {
-                try {
-                    $url = Storage::disk('s3')->temporaryUrl($file, now()->addMinutes(5));
-                    $s3Files[] = [
-                        'name' => basename($file),
-                        'path' => $file,
-                        'type' => $this->getFileType(pathinfo($file, PATHINFO_EXTENSION)),
-                        'size' => $this->formatFileSize(Storage::disk('s3')->size($file)),
-                        'uploaded' => date('Y-m-d H:i:s', Storage::disk('s3')->lastModified($file)),
-                        'url' => $url
-                    ];
-                } catch (\Exception $e) {
-                    Log::error('Error processing file:', [
-                        'file' => $file,
-                        'error' => $e->getMessage()
-                    ]);
-                    continue;
+                    Log::error('Error processing S3 file', ['file' => $file, 'error' => $e->getMessage()]);
                 }
             }
         } catch (\Exception $e) {
-            Log::error('Error listing S3 files:', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return redirect()->back()->with('error', 'Error accessing S3 storage: ' . $e->getMessage());
-        }
+            Log::error('Error listing S3 files', ['error' => $e->getMessage()]);
 
-        Log::info('Returning view with:', [
-            'documents_count' => $documents->count(),
-            's3_files_count' => count($s3Files)
-        ]);
+            return redirect()->back()->with('error', 'Error accessing S3 storage: '.$e->getMessage());
+        }
 
         return view('asset-documents.index', [
             'documents' => $documents,
             's3Files' => $s3Files,
             'business_entity_id' => $businessEntityId,
-            'business_entity_name' => $businessEntityName
+            'business_entity_name' => $businessEntityName,
         ]);
     }
 
     public function fetchFiles(Request $request)
     {
-        try {
-            $businessEntityId = $request->input('business_entity_id');
-            if (!$businessEntityId) {
-                Log::error('Missing business entity ID');
-                return response()->json(['error' => 'Business entity ID is required'], 400);
-            }
-
-            $businessEntity = BusinessEntity::findOrFail($businessEntityId);
-            $this->authorize('view', $businessEntity);
-
-            // Only fetch documents that are not associated with any asset
-            $documents = Document::where('business_entity_id', $businessEntityId)
-                ->whereNull('asset_id')  // Add this condition to exclude asset documents
-                ->orderBy('created_at', 'desc')
-                ->get();
-
-            $fileDetails = $this->formatFileDetails($documents);
-            return response()->json(['files' => $fileDetails]);
-        } catch (\Exception $e) {
-            Log::error('Error in fetchFiles:', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to fetch documents'], 500);
+        $businessEntityId = $request->input('business_entity_id');
+        if (! $businessEntityId) {
+            return response()->json(['error' => 'Business entity ID is required'], 400);
         }
+
+        $businessEntity = BusinessEntity::findOrFail($businessEntityId);
+        $this->authorize('view', $businessEntity);
+
+        $documents = Document::where('business_entity_id', $businessEntityId)
+            ->whereNull('asset_id')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json(['files' => $this->formatFileDetails($documents)]);
     }
 
     public function uploadDocument(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
 
-        try {
-            $request->validate([
-                'document' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:2048',
+        $rules = array_merge(
+            [
+                'document_id' => 'required|exists:documents,id',
                 'file_name' => 'nullable|string|max:255',
-                'document_type' => 'required|in:legal,financial,other',
-                'description' => 'nullable|string|max:255',
-            ]);
+                'document_type' => ['nullable', Rule::in(['legal', 'financial', 'other'])],
+            ],
+            $this->fileValidationRules('document')
+        );
 
+        $request->validate($rules);
+
+        $document = Document::findOrFail($request->document_id);
+        $this->authorize('update', $document);
+
+        if ((int) $document->business_entity_id !== (int) $businessEntity->id || $document->asset_id !== null) {
+            return redirect()->route('business-entities.show', $businessEntity->id)
+                ->with('error', 'Invalid document slot.');
+        }
+
+        try {
             $file = $request->file('document');
-            $sanitizedName = $this->sanitizeFilename($businessEntity->legal_name);
-            $docsPath = "BusinessEntities/{$businessEntity->id}_{$sanitizedName}/docs";
+            $this->uploadService->attachFileToDocument(
+                $document,
+                $file,
+                $businessEntity,
+                null,
+                $request->input('file_name')
+            );
 
-            $this->ensureS3DirectoryExists($docsPath);
-
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $filePath = "{$docsPath}/{$filename}";
-
-            Storage::disk('s3')->put($filePath, file_get_contents($file));
-
-            $document = new Document();
-            $document->business_entity_id = $businessEntity->id;
-            $document->file_name = $request->file_name ?? $file->getClientOriginalName();
-            $document->path = $filePath;
-            $document->type = $request->document_type;
-            $document->description = $request->description;
-            $document->filetype = $file->getClientMimeType();
-            $document->user_id = auth()->id();
-            $document->save();
+            if ($request->filled('document_type')) {
+                $document->update(['type' => $request->document_type]);
+            }
 
             return redirect()->route('business-entities.show', $businessEntity->id)
                 ->with('success', 'Document uploaded successfully!');
         } catch (\Exception $e) {
-            Log::error("Failed to upload document: " . $e->getMessage());
+            Log::error('Entity document upload failed', ['error' => $e->getMessage()]);
+
             return redirect()->route('business-entities.show', $businessEntity->id)
-                ->with('error', 'Failed to upload document: ' . $e->getMessage());
+                ->with('error', 'Failed to upload document: '.$e->getMessage());
         }
     }
 
@@ -197,58 +157,216 @@ class DocumentController extends Controller
         $this->authorize('update', $businessEntity);
         $this->authorize('update', $asset);
 
-        try {
-            $request->validate([
-                'document' => 'required|file|mimes:pdf,doc,docx,jpg,png|max:2048',
+        $rules = array_merge(
+            [
+                'document_id' => 'required|exists:documents,id',
                 'file_name' => 'nullable|string|max:255',
-                'document_type' => 'required|in:legal,financial,other',
-                'description' => 'nullable|string|max:255',
-            ]);
+                'document_type' => ['nullable', Rule::in(['legal', 'financial', 'other'])],
+            ],
+            $this->fileValidationRules('document')
+        );
 
+        $request->validate($rules);
+
+        $document = Document::findOrFail($request->document_id);
+        $this->authorize('update', $document);
+
+        if ((int) $document->business_entity_id !== (int) $businessEntity->id
+            || (int) $document->asset_id !== (int) $asset->id) {
+            return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
+                ->with('error', 'Invalid document slot.');
+        }
+
+        try {
             $file = $request->file('document');
-            $sanitizedName = $this->sanitizeFilename($businessEntity->legal_name);
-            $assetFolderName = "{$asset->id}_" . $this->sanitizeFilename($asset->name);
-            $docsPath = "BusinessEntities/{$businessEntity->id}_{$sanitizedName}/docs/{$assetFolderName}";
+            $this->uploadService->attachFileToDocument(
+                $document,
+                $file,
+                $businessEntity,
+                $asset,
+                $request->input('file_name')
+            );
 
-            $this->ensureS3DirectoryExists($docsPath);
-
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $filePath = "{$docsPath}/{$filename}";
-
-            Storage::disk('s3')->put($filePath, file_get_contents($file));
-
-            $document = new Document();
-            $document->business_entity_id = $businessEntity->id;
-            $document->asset_id = $asset->id;
-            $document->file_name = $request->file_name ?? $file->getClientOriginalName();
-            $document->path = $filePath;
-            $document->type = $request->document_type;
-            $document->description = $request->description;
-            $document->filetype = $file->getClientMimeType();
-            $document->user_id = auth()->id();
-            $document->save();
+            if ($request->filled('document_type')) {
+                $document->update(['type' => $request->document_type]);
+            }
 
             return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
                 ->with('success', 'Document uploaded successfully!');
         } catch (\Exception $e) {
-            Log::error("Failed to upload asset document: " . $e->getMessage());
+            Log::error('Asset document upload failed', ['error' => $e->getMessage()]);
+
             return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
-                ->with('error', 'Failed to upload document: ' . $e->getMessage());
+                ->with('error', 'Failed to upload document: '.$e->getMessage());
         }
     }
 
-    private function sanitizeFilename($name)
+    public function bulkUpload(Request $request, BusinessEntity $businessEntity)
     {
-        $name = preg_replace('/[^a-zA-Z0-9\s\-]/', '', $name);
-        return trim(str_replace(' ', '-', $name));
+        $this->authorize('update', $businessEntity);
+
+        $request->validate([
+            'category_id' => 'required|exists:document_categories,id',
+            'asset_id' => 'nullable|exists:assets,id',
+            'mappings' => 'present|array',
+        ]);
+
+        $category = DocumentCategory::findOrFail($request->category_id);
+        if ((int) $category->business_entity_id !== (int) $businessEntity->id) {
+            return response()->json(['status' => false, 'message' => 'Invalid category'], 422);
+        }
+
+        $asset = null;
+        if ($request->filled('asset_id')) {
+            $asset = Asset::findOrFail($request->asset_id);
+            if ((int) $asset->business_entity_id !== (int) $businessEntity->id) {
+                return response()->json(['status' => false, 'message' => 'Invalid asset'], 422);
+            }
+            if ((int) $category->asset_id !== (int) $asset->id) {
+                return response()->json(['status' => false, 'message' => 'Category does not belong to this asset'], 422);
+            }
+        } elseif ($category->asset_id !== null) {
+            return response()->json(['status' => false, 'message' => 'Use asset-scoped bulk upload for asset categories'], 422);
+        }
+
+        if (! $request->hasFile('files')) {
+            return response()->json(['status' => false, 'message' => 'No files uploaded']);
+        }
+
+        $files = $request->file('files');
+        if (! is_array($files)) {
+            $files = [$files];
+        }
+
+        $mappingsInput = $request->input('mappings', []);
+        $mappings = [];
+        foreach ($mappingsInput as $mappingStr) {
+            if (is_string($mappingStr)) {
+                $decoded = json_decode($mappingStr, true);
+                if (is_array($decoded)) {
+                    $mappings[] = $decoded;
+                }
+            } elseif (is_array($mappingStr)) {
+                $mappings[] = $mappingStr;
+            }
+        }
+
+        $uploaded = 0;
+        $errors = [];
+
+        foreach ($files as $index => $file) {
+            try {
+                $rules = $this->fileValidationRules('file');
+                $validator = validator(['file' => $file], $rules);
+                if ($validator->fails()) {
+                    $errors[] = ($file?->getClientOriginalName() ?? 'file').': '.$validator->errors()->first('file');
+
+                    continue;
+                }
+
+                $mapping = $mappings[$index] ?? null;
+                if (! is_array($mapping) || empty($mapping['name'])) {
+                    $errors[] = 'No checklist mapping for file '.($file->getClientOriginalName() ?? $index);
+
+                    continue;
+                }
+
+                $checklistName = $mapping['name'];
+                $type = $mapping['type'] ?? 'existing';
+
+                $query = Document::query()
+                    ->where('business_entity_id', $businessEntity->id)
+                    ->where('document_category_id', $category->id)
+                    ->where('checklist_label', $checklistName)
+                    ->whereNull('path');
+
+                if ($asset) {
+                    $query->where('asset_id', $asset->id);
+                } else {
+                    $query->whereNull('asset_id');
+                }
+
+                $slot = $query->first();
+
+                if (! $slot && $type === 'new') {
+                    $slot = Document::query()->create([
+                        'business_entity_id' => $businessEntity->id,
+                        'asset_id' => $asset?->id,
+                        'document_category_id' => $category->id,
+                        'checklist_label' => $checklistName,
+                        'type' => 'other',
+                        'user_id' => auth()->id(),
+                    ]);
+                } elseif (! $slot && $type === 'existing') {
+                    $exists = Document::query()
+                        ->where('business_entity_id', $businessEntity->id)
+                        ->where('document_category_id', $category->id)
+                        ->where('checklist_label', $checklistName)
+                        ->when($asset, fn ($q) => $q->where('asset_id', $asset->id))
+                        ->when(! $asset, fn ($q) => $q->whereNull('asset_id'))
+                        ->exists();
+
+                    if ($exists) {
+                        $slot = Document::query()->create([
+                            'business_entity_id' => $businessEntity->id,
+                            'asset_id' => $asset?->id,
+                            'document_category_id' => $category->id,
+                            'checklist_label' => $checklistName,
+                            'type' => 'other',
+                            'user_id' => auth()->id(),
+                        ]);
+                    }
+                }
+
+                if (! $slot) {
+                    $errors[] = "No empty slot for checklist \"{$checklistName}\" ({$file->getClientOriginalName()})";
+
+                    continue;
+                }
+
+                $this->uploadService->attachFileToDocument($slot, $file, $businessEntity, $asset);
+                $uploaded++;
+            } catch (\Exception $e) {
+                $errors[] = $e->getMessage();
+                Log::error('Bulk document upload row failed', ['error' => $e->getMessage()]);
+            }
+        }
+
+        return response()->json([
+            'status' => $uploaded > 0,
+            'message' => $uploaded > 0 ? "Uploaded {$uploaded} file(s)" : 'No files uploaded',
+            'uploaded' => $uploaded,
+            'errors' => $errors,
+        ]);
     }
 
-    private function ensureS3DirectoryExists($path)
+    public function autoMatch(Request $request, BusinessEntity $businessEntity)
     {
-        if (!Storage::disk('s3')->exists($path)) {
-            Storage::disk('s3')->makeDirectory($path);
-            Log::info('Created S3 directory:', ['path' => $path]);
+        $this->authorize('update', $businessEntity);
+
+        $request->validate([
+            'category_id' => 'required|exists:document_categories,id',
+            'files' => 'required|array',
+            'files.*.name' => 'required|string',
+        ]);
+
+        $category = DocumentCategory::findOrFail($request->category_id);
+        if ((int) $category->business_entity_id !== (int) $businessEntity->id) {
+            return response()->json(['status' => false, 'matches' => []], 422);
         }
+
+        $checklists = Document::query()
+            ->where('document_category_id', $category->id)
+            ->whereNull('path')
+            ->pluck('checklist_label')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $matches = $this->filenameMatcher->matchFiles($request->input('files', []), $checklists);
+
+        return response()->json(['status' => true, 'matches' => $matches]);
     }
 
     public function fetchAssetFiles(Request $request, BusinessEntity $businessEntity, Asset $asset)
@@ -256,89 +374,87 @@ class DocumentController extends Controller
         $this->authorize('view', $businessEntity);
         $this->authorize('view', $asset);
 
-        try {
-            $documents = Document::where('business_entity_id', $businessEntity->id)
-                ->where('asset_id', $asset->id)
-                ->orderBy('created_at', 'desc')
-                ->get();
+        $documents = Document::where('business_entity_id', $businessEntity->id)
+            ->where('asset_id', $asset->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-            $fileDetails = $this->formatFileDetails($documents);
-            return response()->json(['files' => $fileDetails]);
-        } catch (\Exception $e) {
-            Log::error('Error in fetchAssetFiles:', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to fetch documents'], 500);
-        }
+        return response()->json(['files' => $this->formatFileDetails($documents)]);
     }
 
     public function getFileLink(Request $request)
     {
-        try {
-            $request->validate(['path' => 'required|string']);
-            $path = $request->input('path');
-            
-            $document = Document::where('path', $path)->firstOrFail();
-            $this->authorize('view', $document);
-            
-            if (!Storage::disk('s3')->exists($path)) {
-                return response()->json(['error' => 'File not found'], 404);
-            }
-            
-            $url = Storage::disk('s3')->temporaryUrl($path, now()->addMinutes(5));
-            return response()->json(['success' => true, 'url' => $url]);
-        } catch (\Exception $e) {
-            Log::error('Error in getFileLink: ' . $e->getMessage());
-            return response()->json(['error' => $e->getMessage()], 500);
+        $request->validate(['path' => 'required|string']);
+
+        $document = Document::where('path', $request->path)->firstOrFail();
+        $this->authorize('view', $document);
+
+        if (! Storage::disk('s3')->exists($document->path)) {
+            return response()->json(['error' => 'File not found'], 404);
         }
+
+        $url = Storage::disk('s3')->temporaryUrl($document->path, now()->addMinutes(5));
+
+        return response()->json(['success' => true, 'url' => $url]);
     }
 
     public function deleteFile(Request $request)
     {
-        try {
-            $request->validate(['url' => 'required|string']);
-            $url = $request->input('url');
+        $request->validate([
+            'url' => 'nullable|string',
+            'document_id' => 'nullable|integer|exists:documents,id',
+        ]);
 
-            // Extract path from URL (temporary URL may include query params)
-            $path = parse_url($url, PHP_URL_PATH);
-            // Remove leading slash if present
-            $path = ltrim($path, '/');
-
-            $document = Document::where('path', $path)->firstOrFail();
+        if ($request->filled('document_id')) {
+            $document = Document::findOrFail($request->document_id);
             $this->authorize('delete', $document);
-
-            if (!Storage::disk('s3')->exists($path)) {
-                return response()->json(['error' => 'File not found'], 404);
+            if ($document->path && Storage::disk('s3')->exists($document->path)) {
+                Storage::disk('s3')->delete($document->path);
             }
-
-            Storage::disk('s3')->delete($path);
             $document->delete();
 
-            return response()->json(['success' => true, 'message' => 'File deleted successfully']);
-        } catch (\Exception $e) {
-            Log::error('Error in deleteFile: ' . $e->getMessage());
-            return response()->json(['error' => 'Failed to delete document: ' . $e->getMessage()], 500);
+            return response()->json(['success' => true, 'message' => 'Document removed']);
         }
+
+        $request->validate(['url' => 'required|string']);
+        $url = $request->url;
+        $path = ltrim((string) parse_url($url, PHP_URL_PATH), '/');
+
+        $document = Document::where('path', $path)->firstOrFail();
+        $this->authorize('delete', $document);
+
+        if (! Storage::disk('s3')->exists($path)) {
+            return response()->json(['error' => 'File not found'], 404);
+        }
+
+        Storage::disk('s3')->delete($path);
+        $document->delete();
+
+        return response()->json(['success' => true, 'message' => 'File deleted successfully']);
     }
 
     private function getFileType($extension)
     {
+        $extension = strtolower((string) $extension);
         $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
         $documentExtensions = ['pdf', 'doc', 'docx', 'txt', 'rtf'];
         $spreadsheetExtensions = ['xls', 'xlsx', 'csv'];
         $presentationExtensions = ['ppt', 'pptx'];
-        
-        $extension = strtolower($extension);
-        
-        if (in_array($extension, $imageExtensions)) {
+
+        if (in_array($extension, $imageExtensions, true)) {
             return 'image';
-        } elseif (in_array($extension, $documentExtensions)) {
-            return 'document';
-        } elseif (in_array($extension, $spreadsheetExtensions)) {
-            return 'spreadsheet';
-        } elseif (in_array($extension, $presentationExtensions)) {
-            return 'presentation';
-        } else {
-            return 'other';
         }
+        if (in_array($extension, $documentExtensions, true)) {
+            return 'document';
+        }
+        if (in_array($extension, $spreadsheetExtensions, true)) {
+            return 'spreadsheet';
+        }
+        if (in_array($extension, $presentationExtensions, true)) {
+            return 'presentation';
+        }
+
+        return 'other';
     }
 
     private function formatFileSize($bytes)
@@ -348,61 +464,8 @@ class DocumentController extends Controller
         $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
         $pow = min($pow, count($units) - 1);
         $bytes /= pow(1024, $pow);
-        return round($bytes, 2) . ' ' . $units[$pow];
-    }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'file' => 'required|file|max:10240', // 10MB max
-            'business_entity_id' => 'required',
-            'business_entity_name' => 'required',
-            'document_type' => 'required|in:legal,financial,other',
-            'description' => 'nullable|string|max:255'
-        ]);
-
-        try {
-            $file = $request->file('file');
-            $businessEntityId = $request->input('business_entity_id');
-            $businessEntityName = $request->input('business_entity_name');
-            $documentType = $request->input('document_type');
-            $description = $request->input('description');
-
-            // Create the path with docs subdirectory
-            $folderPath = "BusinessEntities/{$businessEntityId}_{$businessEntityName}";
-            $docsPath = "{$folderPath}/docs";
-            
-            // Ensure the docs subdirectory exists
-            if (!Storage::disk('s3')->exists($docsPath)) {
-                Storage::disk('s3')->makeDirectory($docsPath);
-            }
-
-            // Generate a unique filename
-            $filename = time() . '_' . $file->getClientOriginalName();
-            $filePath = "{$docsPath}/{$filename}";
-
-            // Store the file in S3
-            Storage::disk('s3')->put($filePath, file_get_contents($file));
-
-            // Create document record in database
-            $document = Document::create([
-                'business_entity_id' => $businessEntityId,
-                'name' => $file->getClientOriginalName(),
-                'path' => $filePath,
-                'type' => $documentType,
-                'description' => $description,
-                'filetype' => $file->getClientMimeType(),
-                'user_id' => auth()->id()
-            ]);
-
-            return redirect()->back()->with('success', 'Document uploaded successfully');
-        } catch (\Exception $e) {
-            Log::error('Error uploading document:', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return redirect()->back()->with('error', 'Error uploading document: ' . $e->getMessage());
-        }
+        return round($bytes, 2).' '.$units[$pow];
     }
 
     private function formatFileDetails($documents)
@@ -410,35 +473,38 @@ class DocumentController extends Controller
         $fileDetails = [];
         foreach ($documents as $document) {
             try {
-                if (Storage::disk('s3')->exists($document->path)) {
-                    $url = Storage::disk('s3')->temporaryUrl($document->path, now()->addMinutes(5));
-                    $fileDetails[] = [
-                        // Canonical keys used by existing documents screens
-                        'name' => $document->file_name,
-                        'uploaded' => $document->created_at->format('Y-m-d H:i:s'),
-                        // Compatibility keys used by asset details screen JS
-                        'id' => $document->id,
-                        'file_name' => $document->file_name,
-                        'created_at' => $document->created_at->format('Y-m-d H:i:s'),
-                        'path' => $document->path,
-                        'type' => $this->getFileType(pathinfo($document->path, PATHINFO_EXTENSION)),
-                        'size' => $this->formatFileSize(Storage::disk('s3')->size($document->path)),
-                        'url' => $url,
-                        'description' => $document->description,
-                        'document_type' => $document->type,
-                    ];
-                } else {
-                    Log::warning('S3 file not found:', ['document_id' => $document->id, 'path' => $document->path]);
+                if (! $document->path) {
+                    continue;
                 }
-            } catch (\Exception $e) {
-                Log::error('Error processing document:', [
-                    'document_id' => $document->id,
+                if (! Storage::disk('s3')->exists($document->path)) {
+                    Log::warning('S3 file not found', ['document_id' => $document->id, 'path' => $document->path]);
+
+                    continue;
+                }
+                $url = Storage::disk('s3')->temporaryUrl($document->path, now()->addMinutes(5));
+                $fileDetails[] = [
+                    'name' => $document->file_name,
+                    'uploaded' => $document->created_at->format('Y-m-d H:i:s'),
+                    'id' => $document->id,
+                    'file_name' => $document->file_name,
+                    'created_at' => $document->created_at->format('Y-m-d H:i:s'),
                     'path' => $document->path,
+                    'type' => $this->getFileType(pathinfo($document->path, PATHINFO_EXTENSION)),
+                    'size' => $this->formatFileSize(Storage::disk('s3')->size($document->path)),
+                    'url' => $url,
+                    'description' => $document->description,
+                    'document_type' => $document->type,
+                    'checklist_label' => $document->checklist_label,
+                ];
+            } catch (\Exception $e) {
+                Log::error('Error processing document', [
+                    'document_id' => $document->id,
                     'error' => $e->getMessage(),
                 ]);
             }
         }
-        usort($fileDetails, fn($a, $b) => strtotime($b['uploaded']) - strtotime($a['uploaded']));
+        usort($fileDetails, fn ($a, $b) => strtotime($b['uploaded']) - strtotime($a['uploaded']));
+
         return $fileDetails;
     }
 
@@ -448,27 +514,23 @@ class DocumentController extends Controller
         $this->authorize('view', $asset);
         $this->authorize('view', $document);
 
-        try {
-            if ($document->business_entity_id !== $businessEntity->id || $document->asset_id !== $asset->id) {
-                return response()->json(['error' => 'Document not found'], 404);
-            }
-
-            if (!Storage::disk('s3')->exists($document->path)) {
-                return response()->json(['error' => 'Document not found'], 404);
-            }
-
-            $previewUrl = Storage::disk('s3')->temporaryUrl($document->path, now()->addMinutes(5));
-            return response()->json(['preview_url' => $previewUrl]);
-        } catch (\Exception $e) {
-            Log::error('Error in previewDocument:', ['error' => $e->getMessage()]);
-            return response()->json(['error' => 'Failed to generate preview'], 500);
+        if ($document->business_entity_id !== $businessEntity->id || $document->asset_id !== $asset->id) {
+            return response()->json(['error' => 'Document not found'], 404);
         }
+
+        if (! $document->path || ! Storage::disk('s3')->exists($document->path)) {
+            return response()->json(['error' => 'Document not found'], 404);
+        }
+
+        $previewUrl = Storage::disk('s3')->temporaryUrl($document->path, now()->addMinutes(5));
+
+        return response()->json(['preview_url' => $previewUrl]);
     }
 
     public function showUploadForm(BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
+
         return view('business-entities.upload-document', compact('businessEntity'));
     }
 }
-

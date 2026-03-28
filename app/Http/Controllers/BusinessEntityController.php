@@ -3,34 +3,37 @@
 namespace App\Http\Controllers;
 
 // Import necessary models and classes
-use App\Models\BusinessEntity;
+use App\Mail\ContactEmail;
 use App\Models\Asset;
-use App\Models\EntityPerson;
-use App\Models\Note;
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
-use App\Models\Transaction;
-use Illuminate\Http\Request;
-use Carbon\Carbon; // Added for date manipulation
-use Illuminate\Support\Facades\Log; // Added for logging
-use Illuminate\Support\Facades\Storage; // Added for file storage
-use Illuminate\Validation\ValidationException; // Added for handling validation exceptions
-use App\Models\Reminder;
-use Illuminate\Support\Str; // Add this at the top with other use statements
-
+use App\Models\BusinessEntity;
 use App\Models\EmailTemplate;
-use App\Mail\ContactEmail;
+use App\Models\EntityPerson;
+use App\Models\Note;
+use App\Models\Person; // Added for date manipulation
+use App\Models\Reminder; // Added for logging
+use App\Models\Transaction; // Added for file storage
+use Carbon\Carbon; // Added for handling validation exceptions
+use Illuminate\Database\QueryException;
+// Add this at the top with other use statements
+
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
-use App\Models\Person;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class BusinessEntityController extends Controller
 {
-
     /**
      * Display a listing of the business entities.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function index()
     {
@@ -38,6 +41,7 @@ class BusinessEntityController extends Controller
 
         $businessEntities = BusinessEntity::query()
             ->with('persons')
+            ->when(! auth()->user()->isPrimaryAdministrator(), fn ($q) => $q->where('user_id', auth()->id()))
             ->get();
 
         $reminders = Note::where('is_reminder', true)
@@ -51,7 +55,7 @@ class BusinessEntityController extends Controller
     /**
      * Show the form for creating a new business entity.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function create()
     {
@@ -72,8 +76,7 @@ class BusinessEntityController extends Controller
     /**
      * Store a newly created business entity in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function store(Request $request)
     {
@@ -92,7 +95,7 @@ class BusinessEntityController extends Controller
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
             'asic_renewal_date' => 'nullable|date',
-            
+
             // Trust-specific validation (nullable first so empty values skip date/rules when entity is not Trust)
             'trust_type' => 'nullable|required_if:entity_type,Trust|in:Discretionary,Unit,Fixed,Testamentary,Charitable',
             'trust_establishment_date' => 'nullable|required_if:entity_type,Trust|date|before_or_equal:today',
@@ -144,7 +147,7 @@ class BusinessEntityController extends Controller
                 'user_id' => auth()->id(), // Associate with the logged-in user
                 'status' => 'Active', // Default status
             ]);
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (QueryException $e) {
             Log::error('BusinessEntity store failed', [
                 'message' => $e->getMessage(),
                 'user_id' => auth()->id(),
@@ -161,8 +164,7 @@ class BusinessEntityController extends Controller
     /**
      * Display the specified business entity.
      *
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function show(BusinessEntity $businessEntity)
     {
@@ -172,9 +174,15 @@ class BusinessEntityController extends Controller
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
         $bankAccounts = $businessEntity->bankAccounts()->with(['bankStatementEntries.transaction'])->get();
         $transactions = $businessEntity->transactions()->with(['bankStatementEntries'])->orderBy('date', 'desc')->get();
-        $documents = $businessEntity->documents;
+        $documents = $businessEntity->documents()->whereNotNull('path')->orderBy('created_at', 'desc')->get();
+        $documentCategories = $businessEntity->documentCategories()
+            ->whereNull('asset_id')
+            ->with(['documents' => fn ($q) => $q->orderBy('id')])
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
         $notes = $businessEntity->notes()->where('is_reminder', false)->orderBy('created_at', 'desc')->get();
-        
+
         // Get reminders using the new Reminder model
         $reminders = Reminder::where('business_entity_id', $businessEntity->id)
             ->with(['user'])
@@ -199,6 +207,7 @@ class BusinessEntityController extends Controller
             'bankAccounts',
             'transactions',
             'documents',
+            'documentCategories',
             'notes',
             'reminders',
             'unmatchedTransactions',
@@ -209,26 +218,28 @@ class BusinessEntityController extends Controller
     /**
      * Display the main dashboard.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function dashboard()
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $businessEntities = BusinessEntity::all();
+        $businessEntities = BusinessEntity::query()
+            ->when(! auth()->user()->isPrimaryAdministrator(), fn ($q) => $q->where('user_id', auth()->id()))
+            ->get();
         $assets = Asset::query()
             ->whereHas('businessEntity')
             ->orderBy('name')
             ->orderBy('id')
             ->get();
-        
+
         // Fetch Reminder records
         $reminders = Reminder::query()
-        ->active()
-        ->dueWithinDays(15)
-        ->with(['businessEntity', 'asset', 'user'])
-        ->orderBy('next_due_date')
-        ->get();
+            ->active()
+            ->dueWithinDays(15)
+            ->with(['businessEntity', 'asset', 'user'])
+            ->orderBy('next_due_date')
+            ->get();
 
         // Fetch Note-based reminders
         $noteReminders = Note::where('is_reminder', true)
@@ -237,7 +248,7 @@ class BusinessEntityController extends Controller
             ->with(['businessEntity', 'asset', 'user'])
             ->orderBy('reminder_date')
             ->get()
-            ->map(function($note) {
+            ->map(function ($note) {
                 // Normalize Note to match Reminder structure
                 return (object) [
                     'id' => $note->id,
@@ -264,8 +275,9 @@ class BusinessEntityController extends Controller
         // Group persons by their actual Person record to avoid duplicates
         $uniquePersons = $persons->where('person_id', '!=', null)
             ->groupBy('person_id')
-            ->map(function($entityPersonGroup) {
+            ->map(function ($entityPersonGroup) {
                 $firstEntityPerson = $entityPersonGroup->first();
+
                 return [
                     'person' => $firstEntityPerson->person,
                     'entityPersons' => $entityPersonGroup,
@@ -276,14 +288,14 @@ class BusinessEntityController extends Controller
             })
             ->values();
 
-        $assetDueDates = Asset::where(function($q) {
+        $assetDueDates = Asset::where(function ($q) {
             $q->whereDate('registration_due_date', '>=', now())
-              ->whereDate('registration_due_date', '<=', now()->addDays(15));
+                ->whereDate('registration_due_date', '<=', now()->addDays(15));
         })->with('businessEntity')->get();
 
-        $entityDueDates = EntityPerson::where(function($q) {
+        $entityDueDates = EntityPerson::where(function ($q) {
             $q->whereDate('asic_due_date', '>=', now())
-              ->whereDate('asic_due_date', '<=', now()->addDays(15));
+                ->whereDate('asic_due_date', '<=', now()->addDays(15));
         })->with('businessEntity')->get();
 
         return view('dashboard', compact(
@@ -300,17 +312,13 @@ class BusinessEntityController extends Controller
     /**
      * Extract transaction information from an uploaded document using OpenAI.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
-
 
     /**
      * Store a new transaction for a business entity.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function storeTransaction(Request $request, BusinessEntity $businessEntity)
     {
@@ -319,7 +327,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
-            'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
+            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit', // Added more specific statuses
@@ -380,10 +388,7 @@ class BusinessEntityController extends Controller
     /**
      * Store a new transaction for a bank account.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\BankAccount  $bankAccount
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function storeBankTransaction(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount)
     {
@@ -399,7 +404,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
-            'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
+            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
@@ -446,9 +451,7 @@ class BusinessEntityController extends Controller
     /**
      * Show the form for editing the specified transaction.
      *
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\Transaction  $transaction
-     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     * @return View|RedirectResponse
      */
     public function editTransaction(BusinessEntity $businessEntity, Transaction $transaction)
     {
@@ -458,17 +461,14 @@ class BusinessEntityController extends Controller
         if ($transaction->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized action.');
         }
-        // Return the edit view with necessary data
-        return view('business-entities.transactions.edit', compact('businessEntity', 'transaction'));
+
+        return view('business-entities.bank-accounts.transactions.edit', compact('businessEntity', 'transaction'));
     }
 
     /**
      * Update the specified transaction in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\Transaction  $transaction
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function updateTransaction(Request $request, BusinessEntity $businessEntity, Transaction $transaction)
     {
@@ -484,7 +484,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
-            'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
+            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
@@ -493,7 +493,7 @@ class BusinessEntityController extends Controller
 
         // Update the transaction with validated fields
         $transaction->update($request->only([
-            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'gst_amount', 'gst_status'
+            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'gst_amount', 'gst_status',
         ]));
 
         // Redirect to the business entity show page with success message
@@ -503,11 +503,7 @@ class BusinessEntityController extends Controller
     /**
      * Update the specified bank account transaction.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\BankAccount  $bankAccount
-     * @param  \App\Models\Transaction  $transaction
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function updateBankTransaction(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount, Transaction $transaction)
     {
@@ -523,7 +519,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
-            'transaction_type' => 'required|in:' . implode(',', array_keys(Transaction::$transactionTypes)),
+            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
@@ -531,7 +527,7 @@ class BusinessEntityController extends Controller
 
         // Update the transaction with validated fields
         $transaction->update($request->only([
-            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'gst_amount', 'gst_status'
+            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'gst_amount', 'gst_status',
         ]));
 
         // Redirect to the bank account show page with success message
@@ -542,10 +538,7 @@ class BusinessEntityController extends Controller
     /**
      * Match a transaction to a bank statement entry.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\Transaction  $transaction
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function matchTransaction(Request $request, BusinessEntity $businessEntity, Transaction $transaction)
     {
@@ -566,16 +559,15 @@ class BusinessEntityController extends Controller
 
         // Further authorization: ensure the bank statement entry belongs to the same business entity
         if ($entry->bankAccount->business_entity_id !== $businessEntity->id) {
-             abort(403, 'Bank statement entry does not belong to this business entity.');
+            abort(403, 'Bank statement entry does not belong to this business entity.');
         }
 
         // Update the bank statement entry to link it to the transaction
         $entry->update(['transaction_id' => $transaction->id]);
         // Optionally, update the transaction's bank_account_id if it's null
-        if(is_null($transaction->bank_account_id)){
+        if (is_null($transaction->bank_account_id)) {
             $transaction->update(['bank_account_id' => $entry->bank_account_id]);
         }
-
 
         // Redirect back to the entity show page (likely to the bank accounts tab)
         return redirect()->route('business-entities.show', [$businessEntity->id, '#tab_bank_accounts'])->with('success', 'Transaction matched successfully!');
@@ -584,8 +576,7 @@ class BusinessEntityController extends Controller
     /**
      * Get bank accounts for a specific business entity (useful for AJAX calls).
      *
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function getBankAccounts(BusinessEntity $businessEntity)
     {
@@ -595,59 +586,9 @@ class BusinessEntityController extends Controller
     }
 
     /**
-     * Upload a general document for a business entity.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function uploadDocument(Request $request, BusinessEntity $businessEntity)
-    {
-        $this->authorize('update', $businessEntity);
-
-        // Validate the uploaded file and optional custom name
-        $request->validate([
-            'document' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png,gif,bmp,svg,webp,xls,xlsx,csv,ppt,pptx,eml,msg|max:10240', // 10MB max size, added email types
-            'file_name' => 'nullable|string|max:255'
-        ]);
-
-        try {
-            $file = $request->file('document');
-
-            // Determine filename (custom or generated)
-            $fileName = $request->file_name
-                ? $request->file_name . '.' . $file->getClientOriginalExtension()
-                : time() . '_' . $file->getClientOriginalName(); // Use timestamp prefix for uniqueness
-
-            // Define S3 path structure
-            $folderPath = "GeneralInfo/{$businessEntity->legal_name}/docs"; // Consistent path structure
-            $s3Path = "{$folderPath}/{$fileName}";
-
-            // Upload file to S3
-            Storage::disk('s3')->put($s3Path, file_get_contents($file->getRealPath()));
-
-            // Generate a temporary URL for immediate access (expires in 1 hour)
-            $fileUrl = Storage::disk('s3')->temporaryUrl($s3Path, now()->addHour());
-
-            // Redirect back with success message and file URL
-            return redirect()->route('business-entities.show', $businessEntity->id)
-                ->with('success', 'Document uploaded successfully!')
-                ->with('file_url', $fileUrl);
-
-        } catch (\Exception $e) {
-            Log::error("Failed to upload document to S3 for entity {$businessEntity->id}: " . $e->getMessage());
-            // Redirect back with a generic error message
-            return redirect()->route('business-entities.show', $businessEntity->id)
-               ->with('error', 'Failed to upload document. Please try again.');
-        }
-    }
-
-    /**
      * Store a new note for a business entity.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function storeNote(Request $request, BusinessEntity $businessEntity)
     {
@@ -655,25 +596,23 @@ class BusinessEntityController extends Controller
 
         // Validate note content and reminder details
         try {
-             $validated = $request->validate([
-                 'content' => 'required|string|max:1000', // Max length for note content
-                 'is_reminder' => 'boolean', // Ensure it's treated as boolean
-                 'reminder_date' => 'nullable|required_if:is_reminder,1|date|after_or_equal:today', // Required only if it's a reminder
-             ], [
-                 // Custom error messages for clarity
-                 'reminder_date.required_if' => 'The reminder date is required when setting a note as a reminder.',
-                 'reminder_date.date' => 'The reminder date must be a valid date.',
-                 'reminder_date.after_or_equal' => 'The reminder date must be today or a future date.',
-             ]);
+            $validated = $request->validate([
+                'content' => 'required|string|max:1000', // Max length for note content
+                'is_reminder' => 'boolean', // Ensure it's treated as boolean
+                'reminder_date' => 'nullable|required_if:is_reminder,1|date|after_or_equal:today', // Required only if it's a reminder
+            ], [
+                // Custom error messages for clarity
+                'reminder_date.required_if' => 'The reminder date is required when setting a note as a reminder.',
+                'reminder_date.date' => 'The reminder date must be a valid date.',
+                'reminder_date.after_or_equal' => 'The reminder date must be today or a future date.',
+            ]);
         } catch (ValidationException $e) {
-             // Log validation errors for debugging
-             Log::error('Note validation failed: ', $e->errors());
-             // Redirect back with validation errors
-             return redirect()->back()->withErrors($e->errors())->withInput();
+            // Log validation errors for debugging
+            Log::error('Note validation failed: ', $e->errors());
+
+            // Redirect back with validation errors
+            return redirect()->back()->withErrors($e->errors())->withInput();
         }
-
-
-
 
         $isReminder = $request->boolean('is_reminder'); // Use boolean() helper
 
@@ -690,7 +629,8 @@ class BusinessEntityController extends Controller
         try {
             $note = Note::create($noteData);
         } catch (\Exception $e) {
-            Log::error('Failed to save note: ' . $e->getMessage());
+            Log::error('Failed to save note: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'Failed to save note. Please try again.')->withInput();
         }
 
@@ -701,8 +641,7 @@ class BusinessEntityController extends Controller
     /**
      * Show the form for editing the specified business entity.
      *
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function edit(BusinessEntity $businessEntity)
     {
@@ -714,9 +653,7 @@ class BusinessEntityController extends Controller
     /**
      * Update the specified business entity in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function update(Request $request, BusinessEntity $businessEntity)
     {
@@ -727,8 +664,8 @@ class BusinessEntityController extends Controller
             'legal_name' => 'required|string|max:255',
             'trading_name' => 'nullable|string|max:255',
             'entity_type' => 'required|in:Sole Trader,Company,Trust,Partnership',
-            'abn' => 'nullable|string|max:11|unique:business_entities,abn,' . $businessEntity->id,
-            'acn' => 'nullable|string|max:9|unique:business_entities,acn,' . $businessEntity->id,
+            'abn' => 'nullable|string|max:11|unique:business_entities,abn,'.$businessEntity->id,
+            'acn' => 'nullable|string|max:9|unique:business_entities,acn,'.$businessEntity->id,
             'tfn' => 'nullable|string|max:9', // Consider security
             'corporate_key' => 'nullable|string|max:255',
             'registered_address' => 'required|string',
@@ -763,8 +700,7 @@ class BusinessEntityController extends Controller
     /**
      * Show the form for creating a new bank account for a business entity.
      *
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function createBankAccount(BusinessEntity $businessEntity)
     {
@@ -776,9 +712,7 @@ class BusinessEntityController extends Controller
     /**
      * Store a newly created bank account for a business entity.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function storeBankAccount(Request $request, BusinessEntity $businessEntity)
     {
@@ -808,9 +742,7 @@ class BusinessEntityController extends Controller
     /**
      * Show the form for editing the specified bank account.
      *
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\BankAccount  $bankAccount
-     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     * @return View|RedirectResponse
      */
     public function editBankAccount(BusinessEntity $businessEntity, BankAccount $bankAccount)
     {
@@ -820,6 +752,7 @@ class BusinessEntityController extends Controller
         if ($bankAccount->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized action.');
         }
+
         // Return the edit view, passing entity and bank account data
         return view('business-entities.bank-accounts.edit', compact('businessEntity', 'bankAccount'));
     }
@@ -827,10 +760,7 @@ class BusinessEntityController extends Controller
     /**
      * Update the specified bank account in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\BankAccount  $bankAccount
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function updateBankAccount(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount)
     {
@@ -862,18 +792,10 @@ class BusinessEntityController extends Controller
             ->with('success', 'Bank account updated successfully!');
     }
 
-
-
-
-
     /**
      * Allocate a bank statement entry to an existing transaction.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\BankAccount  $bankAccount
-     * @param  \App\Models\BankStatementEntry  $bankStatementEntry
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function allocateTransaction(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount, BankStatementEntry $bankStatementEntry)
     {
@@ -894,17 +816,17 @@ class BusinessEntityController extends Controller
         // If allocating, ensure the selected transaction belongs to the same business entity
         if ($transactionId) {
             $transaction = Transaction::find($transactionId);
-            if (!$transaction || $transaction->business_entity_id !== $businessEntity->id) {
-                 return redirect()->route('business-entities.show', [$businessEntity->id, '#tab_bank_accounts'])
+            if (! $transaction || $transaction->business_entity_id !== $businessEntity->id) {
+                return redirect()->route('business-entities.show', [$businessEntity->id, '#tab_bank_accounts'])
                     ->with('error', 'Selected transaction does not belong to this business entity.');
             }
-             // Update the transaction's bank_account_id if it's not already set
-             if (is_null($transaction->bank_account_id)) {
-                 $transaction->update(['bank_account_id' => $bankAccount->id]);
-             } elseif ($transaction->bank_account_id !== $bankAccount->id) {
-                 // Handle case where transaction is already linked to a different account (optional)
-                 Log::warning("Transaction {$transactionId} allocated to BankStatementEntry {$bankStatementEntry->id} but already belongs to BankAccount {$transaction->bank_account_id}.");
-             }
+            // Update the transaction's bank_account_id if it's not already set
+            if (is_null($transaction->bank_account_id)) {
+                $transaction->update(['bank_account_id' => $bankAccount->id]);
+            } elseif ($transaction->bank_account_id !== $bankAccount->id) {
+                // Handle case where transaction is already linked to a different account (optional)
+                Log::warning("Transaction {$transactionId} allocated to BankStatementEntry {$bankStatementEntry->id} but already belongs to BankAccount {$transaction->bank_account_id}.");
+            }
         }
 
         // Update the bank statement entry's transaction link
@@ -919,13 +841,10 @@ class BusinessEntityController extends Controller
             ->with('success', $message);
     }
 
-
     /**
      * Show the form for creating a new transaction, potentially pre-filled from receipt extraction.
      *
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\BankAccount  $bankAccount
-     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     * @return View|RedirectResponse
      */
     public function createTransaction(BusinessEntity $businessEntity, BankAccount $bankAccount)
     {
@@ -959,15 +878,10 @@ class BusinessEntityController extends Controller
         ));
     }
 
-
-
     /**
      * Display the specified transaction.
      *
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\BankAccount  $bankAccount
-     * @param  \App\Models\Transaction  $transaction
-     * @return \Illuminate\View\View|\Illuminate\Http\RedirectResponse
+     * @return View|RedirectResponse
      */
     public function showTransaction(BusinessEntity $businessEntity, BankAccount $bankAccount, Transaction $transaction)
     {
@@ -977,43 +891,42 @@ class BusinessEntityController extends Controller
         if ($transaction->bank_account_id !== $bankAccount->id || $bankAccount->business_entity_id !== $businessEntity->id) {
             abort(404); // Or abort(403) if preferred
         }
-        // Return the transaction show view
-        return view('transactions.show', compact('businessEntity', 'bankAccount', 'transaction'));
+
+        return view('business-entities.bank-accounts.transactions.show', compact('businessEntity', 'bankAccount', 'transaction'));
     }
 
     /**
      * Finalize a reminder by removing its reminder status.
      *
-     * @param  \App\Models\Note  $note
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function finalizeReminder(Note $note)
     {
         $note->update(['reminder_date' => null, 'is_reminder' => false]);
+
         return redirect()->back()->with('success', 'Reminder finalized.');
     }
 
     /**
      * Extend a reminder's due date by 3 days.
      *
-     * @param  \App\Models\Note  $note
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function extendReminder(Note $note)
     {
         if ($note->reminder_date) {
             $note->update(['reminder_date' => Carbon::parse($note->reminder_date)->addDays(3)]);
+
             return redirect()->back()->with('success', 'Reminder extended by 3 days.');
         }
+
         return redirect()->back()->with('error', 'No valid reminder date to extend.');
     }
 
     /**
      * Delete a note from a business entity.
      *
-     * @param  \App\Models\BusinessEntity  $businessEntity
-     * @param  \App\Models\Note  $note
-     * @return \Illuminate\Http\RedirectResponse
+     * @return RedirectResponse
      */
     public function destroyNote(BusinessEntity $businessEntity, Note $note)
     {
@@ -1025,6 +938,7 @@ class BusinessEntityController extends Controller
         }
 
         $note->delete();
+
         return redirect()->back()->with('success', 'Note deleted successfully.');
     }
 
@@ -1034,7 +948,7 @@ class BusinessEntityController extends Controller
      * Helper method to determine file type based on extension.
      * Moved inside the class definition.
      *
-     * @param string $extension File extension.
+     * @param  string  $extension  File extension.
      * @return string File type category ('image', 'document', 'spreadsheet', 'presentation', 'email', 'other').
      */
     private function getFileType($extension)
@@ -1047,11 +961,22 @@ class BusinessEntityController extends Controller
 
         $extension = strtolower($extension);
 
-        if (in_array($extension, $imageTypes)) return 'image';
-        if (in_array($extension, $documentTypes)) return 'document';
-        if (in_array($extension, $spreadsheetTypes)) return 'spreadsheet';
-        if (in_array($extension, $presentationTypes)) return 'presentation';
-        if (in_array($extension, $emailTypes)) return 'email'; // Check for email
+        if (in_array($extension, $imageTypes)) {
+            return 'image';
+        }
+        if (in_array($extension, $documentTypes)) {
+            return 'document';
+        }
+        if (in_array($extension, $spreadsheetTypes)) {
+            return 'spreadsheet';
+        }
+        if (in_array($extension, $presentationTypes)) {
+            return 'presentation';
+        }
+        if (in_array($extension, $emailTypes)) {
+            return 'email';
+        } // Check for email
+
         return 'other'; // Default category
     }
 
@@ -1059,8 +984,8 @@ class BusinessEntityController extends Controller
      * Determine a likely transaction type based on description keywords and amount.
      * This is a basic inference and may need refinement or user confirmation.
      *
-     * @param string $description Transaction description.
-     * @param float $amount Transaction amount.
+     * @param  string  $description  Transaction description.
+     * @param  float  $amount  Transaction amount.
      * @return string Key from Transaction::$transactionTypes or 'unknown'.
      */
     protected function determineTransactionType($description, $amount)
@@ -1070,29 +995,67 @@ class BusinessEntityController extends Controller
 
         // --- Income Rules (Amount > 0) ---
         if ($amount > 0) {
-            if (preg_match('/sale|invoice|revenue|payment received/i', $description)) return 'sales_revenue';
-            if (preg_match('/interest/i', $description)) return 'interest_income';
-            if (preg_match('/rent received|rental income/i', $description)) return 'rental_income';
-            if (preg_match('/grant|subsidy/i', $description)) return 'grants_subsidies';
-            if (preg_match('/director loan|loan from director/i', $description)) return 'directors_loans_to_company';
-            if (preg_match('/related party sale/i', $description)) return 'sales_to_related_party';
+            if (preg_match('/sale|invoice|revenue|payment received/i', $description)) {
+                return 'sales_revenue';
+            }
+            if (preg_match('/interest/i', $description)) {
+                return 'interest_income';
+            }
+            if (preg_match('/rent received|rental income/i', $description)) {
+                return 'rental_income';
+            }
+            if (preg_match('/grant|subsidy/i', $description)) {
+                return 'grants_subsidies';
+            }
+            if (preg_match('/director loan|loan from director/i', $description)) {
+                return 'directors_loans_to_company';
+            }
+            if (preg_match('/related party sale/i', $description)) {
+                return 'sales_to_related_party';
+            }
             // Add more income rules as needed
         }
         // --- Expense Rules (Amount < 0) ---
         elseif ($amount < 0) {
-            if (preg_match('/cogs|cost of goods|inventory purchase/i', $description)) return 'cogs';
-            if (preg_match('/wages|salary|payroll|superannuation|super fund/i', $description)) return 'wages_superannuation';
-            if (preg_match('/rent payment|lease|electricity|water|gas|internet|phone bill|utilities/i', $description)) return 'rent_utilities';
-            if (preg_match('/marketing|advertising|google ads|facebook ads|seo/i', $description)) return 'marketing_advertising';
-            if (preg_match('/travel|flight|hotel|accommodation|uber|taxi/i', $description)) return 'travel_expenses';
-            if (preg_match('/loan repayment|mortgage payment/i', $description)) return 'loan_repayments';
-            if (preg_match('/capital purchase|asset purchase|vehicle|equipment|computer/i', $description)) return 'capital_expenditure';
-            if (preg_match('/bas payment|gst payment|payg payment|tax office|ato/i', $description)) return 'bas_payments';
-            if (preg_match('/director loan repayment|repay director/i', $description)) return 'repayment_directors_loans';
-            if (preg_match('/loan to director|advance to director/i', $description)) return 'company_loans_to_directors'; // Division 7A implication
-            if (preg_match('/director fee|directors fee/i', $description)) return 'directors_fees';
-            if (preg_match('/related party rent/i', $description)) return 'rent_to_related_party';
-            if (preg_match('/related party purchase/i', $description)) return 'purchases_from_related_party';
+            if (preg_match('/cogs|cost of goods|inventory purchase/i', $description)) {
+                return 'cogs';
+            }
+            if (preg_match('/wages|salary|payroll|superannuation|super fund/i', $description)) {
+                return 'wages_superannuation';
+            }
+            if (preg_match('/rent payment|lease|electricity|water|gas|internet|phone bill|utilities/i', $description)) {
+                return 'rent_utilities';
+            }
+            if (preg_match('/marketing|advertising|google ads|facebook ads|seo/i', $description)) {
+                return 'marketing_advertising';
+            }
+            if (preg_match('/travel|flight|hotel|accommodation|uber|taxi/i', $description)) {
+                return 'travel_expenses';
+            }
+            if (preg_match('/loan repayment|mortgage payment/i', $description)) {
+                return 'loan_repayments';
+            }
+            if (preg_match('/capital purchase|asset purchase|vehicle|equipment|computer/i', $description)) {
+                return 'capital_expenditure';
+            }
+            if (preg_match('/bas payment|gst payment|payg payment|tax office|ato/i', $description)) {
+                return 'bas_payments';
+            }
+            if (preg_match('/director loan repayment|repay director/i', $description)) {
+                return 'repayment_directors_loans';
+            }
+            if (preg_match('/loan to director|advance to director/i', $description)) {
+                return 'company_loans_to_directors';
+            } // Division 7A implication
+            if (preg_match('/director fee|directors fee/i', $description)) {
+                return 'directors_fees';
+            }
+            if (preg_match('/related party rent/i', $description)) {
+                return 'rent_to_related_party';
+            }
+            if (preg_match('/related party purchase/i', $description)) {
+                return 'purchases_from_related_party';
+            }
             // Add more expense rules as needed
         }
 
@@ -1104,9 +1067,9 @@ class BusinessEntityController extends Controller
      * Calculate GST amount and determine status based on amount and transaction type.
      * Assumes standard Australian GST rules (10%). Needs adjustment for specific cases.
      *
-     * @param float $amount The transaction amount (positive for income, negative for expense).
-     * @param string $transactionType The key for the transaction type.
-     * @param string $description Transaction description (optional, for context).
+     * @param  float  $amount  The transaction amount (positive for income, negative for expense).
+     * @param  string  $transactionType  The key for the transaction type.
+     * @param  string  $description  Transaction description (optional, for context).
      * @return array ['gst_amount' => float, 'gst_status' => string]
      */
     protected function calculateGST($amount, $transactionType, $description)
@@ -1140,7 +1103,7 @@ class BusinessEntityController extends Controller
             'wages_superannuation',     // Outside scope of GST
             'loan_repayments',          // Principal is financial supply, interest might be
             'bas_payments',             // Tax payment, outside scope
-            'repayment_directors_loans',// Financial supply
+            'repayment_directors_loans', // Financial supply
             'company_loans_to_directors', // Financial supply
         ];
 
@@ -1157,8 +1120,8 @@ class BusinessEntityController extends Controller
 
             // Refinement: Check description for explicit "GST Free" mentions?
             if (preg_match('/gst free/i', $description)) {
-                 $gstAmount = 0.0;
-                 $gstStatus = 'gst_free';
+                $gstAmount = 0.0;
+                $gstStatus = 'gst_free';
             }
 
         } elseif (in_array($transactionType, $gstFreeTypes)) {
@@ -1166,10 +1129,9 @@ class BusinessEntityController extends Controller
             $gstStatus = 'gst_free'; // Explicitly GST-free or out of scope
         } else {
             // Handle 'unknown' or other types - default to GST Free unless specific rules apply
-             $gstAmount = 0.0;
-             $gstStatus = 'gst_free'; // Or 'check_manually'
+            $gstAmount = 0.0;
+            $gstStatus = 'gst_free'; // Or 'check_manually'
         }
-
 
         return [
             // Return absolute value for gst_amount for consistency? Or keep sign? Convention varies.
@@ -1219,25 +1181,24 @@ class BusinessEntityController extends Controller
             // Log the email attempt
             Log::info('Attempting to send email', [
                 'to' => $recipientEmail,
-                'subject' => $subject
+                'subject' => $subject,
             ]);
 
             // Create the email instance
             $email = new ContactEmail($subject, $message, $attachments);
-            
+
             // Send the email
             Mail::to($recipientEmail)->send($email);
 
             // Log successful email
             Log::info('Email sent successfully', [
                 'to' => $recipientEmail,
-                'subject' => $subject
+                'subject' => $subject,
             ]);
 
-            
             return response()->json([
                 'success' => true,
-                'message' => 'Email sent successfully!'
+                'message' => 'Email sent successfully!',
             ]);
 
         } catch (\Exception $e) {
@@ -1246,12 +1207,12 @@ class BusinessEntityController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
                 'to' => $recipientEmail,
-                'subject' => $subject
+                'subject' => $subject,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send email: ' . $e->getMessage()
+                'message' => 'Failed to send email: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -1259,7 +1220,7 @@ class BusinessEntityController extends Controller
     /**
      * Display all bank accounts across all business entities for the current user.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function bankAccountsIndex()
     {
@@ -1274,18 +1235,27 @@ class BusinessEntityController extends Controller
     /**
      * Display all transactions across all business entities for the current user.
      *
-     * @return \Illuminate\View\View
+     * @return View
      */
     public function transactionsIndex()
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
         $businessEntities = BusinessEntity::orderBy('legal_name')->get();
-        $transactions = Transaction::with(['businessEntity', 'bankStatementEntries'])
-            ->orderBy('date', 'desc')
-            ->get();
+
+        $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries'])
+            ->orderBy('date', 'desc');
+
+        if ($entityId = request('entity_id')) {
+            $query->where('business_entity_id', $entityId);
+        }
+
+        if ($type = request('type')) {
+            $query->where('transaction_type', $type);
+        }
+
+        $transactions = $query->get();
 
         return view('transactions.index', compact('transactions', 'businessEntities'));
     }
-
 } // End of BusinessEntityController class

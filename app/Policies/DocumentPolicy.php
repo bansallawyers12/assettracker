@@ -2,23 +2,37 @@
 
 namespace App\Policies;
 
+use App\Models\BusinessEntity;
 use App\Models\Document;
 use App\Models\User;
 
 class DocumentPolicy
 {
-    public function view(User $user, Document $document)
+    private function canAccessEntity(User $user, ?BusinessEntity $entity): bool
     {
-        return true;
+        if (! $entity) {
+            return false;
+        }
+
+        if ($user->isPrimaryAdministrator()) {
+            return true;
+        }
+
+        return (int) $entity->user_id === (int) $user->id;
     }
 
-    public function update(User $user, Document $document)
+    public function view(User $user, Document $document): bool
     {
-        return true;
+        return $this->canAccessEntity($user, $document->businessEntity);
     }
 
-    public function delete(User $user, Document $document)
+    public function update(User $user, Document $document): bool
     {
-        return true;
+        return $this->canAccessEntity($user, $document->businessEntity);
     }
-} 
+
+    public function delete(User $user, Document $document): bool
+    {
+        return $this->canAccessEntity($user, $document->businessEntity);
+    }
+}

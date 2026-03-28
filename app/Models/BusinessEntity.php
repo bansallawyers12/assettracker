@@ -58,37 +58,37 @@ class BusinessEntity extends Model
     {
         return $this->hasMany(EntityPerson::class, 'business_entity_id');
     }
+
     public function bankAccounts()
-{
-    return $this->hasMany(BankAccount::class);
-}
+    {
+        return $this->hasMany(BankAccount::class);
+    }
 
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
+    }
 
-public function transactions()
-{
-    return $this->hasMany(Transaction::class);
-}
+    public function reminders()
+    {
+        return $this->morphMany(Reminder::class, 'reminder');
+    }
 
-public function reminders()
-{
-    return $this->morphMany(Reminder::class, 'reminder');
-}
+    /**
+     * Get all pending reminders for the business entity.
+     */
+    public function pendingReminders()
+    {
+        return $this->reminders()->pending();
+    }
 
-/**
- * Get all pending reminders for the business entity.
- */
-public function pendingReminders()
-{
-    return $this->reminders()->pending();
-}
-
-/**
- * Get all overdue reminders for the business entity.
- */
-public function overdueReminders()
-{
-    return $this->reminders()->overdue();
-}
+    /**
+     * Get all overdue reminders for the business entity.
+     */
+    public function overdueReminders()
+    {
+        return $this->reminders()->overdue();
+    }
 
     /**
      * Get the contact lists for the business entity.
@@ -100,7 +100,12 @@ public function overdueReminders()
 
     public function documents()
     {
-        return $this->hasMany(\App\Models\Document::class, 'business_entity_id');
+        return $this->hasMany(Document::class, 'business_entity_id');
+    }
+
+    public function documentCategories()
+    {
+        return $this->hasMany(DocumentCategory::class, 'business_entity_id');
     }
 
     public function mailMessages()
@@ -151,5 +156,4 @@ public function overdueReminders()
     {
         return $this->entity_type === 'Trust';
     }
-
 }

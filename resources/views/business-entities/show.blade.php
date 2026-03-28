@@ -170,43 +170,6 @@
                                     Email
                                 </a>
                             </div>
-                            
-                            <!-- Upload Form (Hidden by default) -->
-                            <form id="upload-form" class="hidden w-full bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-inner mt-3" method="POST" action="{{ route('business-entities.upload-document', $businessEntity->id) }}" enctype="multipart/form-data">
-                                @csrf
-                                <div class="grid gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Document</label>
-                                        <input type="file" name="document" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                        @error('document') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Document Type</label>
-                                        <select name="document_type" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
-                                            <option value="">Select Document Type</option>
-                                            <option value="legal">Legal</option>
-                                            <option value="financial">Financial</option>
-                                            <option value="other">Other</option>
-                                        </select>
-                                        @error('document_type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (optional)</label>
-                                        <textarea name="description" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" rows="3" placeholder="Enter document description"></textarea>
-                                        @error('description') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">File Name (optional)</label>
-                                        <input type="text" name="file_name" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" placeholder="Enter custom file name (without extension)">
-                                        @error('file_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div class="flex justify-end">
-                                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                            Upload
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
                         </div>
 
                         <!-- Quick Accounting Links -->
@@ -614,115 +577,15 @@
                             <!-- Documents Tab -->
                             <div id="tab_documents" class="tab-content hidden">
                                 <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                                    <div class="flex justify-between items-center mb-4">
+                                    <div class="mb-4">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Documents</h3>
-                                        <button onclick="document.getElementById('upload-form').classList.toggle('hidden')" class="inline-flex items-center px-3 py-1 bg-purple-500 hover:bg-purple-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                            </svg>
-                                            Add Document
-                                        </button>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Organise files by category and checklist. Upload per row or use bulk upload.</p>
                                     </div>
-
-                                    <!-- Upload Form -->
-                                    <form id="upload-form" class="hidden w-full bg-white dark:bg-gray-900 p-4 rounded-lg shadow-md mb-6" method="POST" action="{{ route('business-entities.upload-document', $businessEntity->id) }}" enctype="multipart/form-data">
-                                        @csrf
-                                        <div class="grid gap-4">
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Document</label>
-                                                <input type="file" name="document" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                                @error('document') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Document Type</label>
-                                                <select name="document_type" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
-                                                    <option value="">Select Document Type</option>
-                                                    <option value="legal">Legal</option>
-                                                    <option value="financial">Financial</option>
-                                                    <option value="other">Other</option>
-                                                </select>
-                                                @error('document_type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (optional)</label>
-                                                <textarea name="description" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" rows="3" placeholder="Enter document description"></textarea>
-                                                @error('description') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                            </div>
-                                            <div>
-                                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">File Name (optional)</label>
-                                                <input type="text" name="file_name" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" placeholder="Enter custom file name (without extension)">
-                                                @error('file_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                            </div>
-                                            <div class="flex justify-end">
-                                                <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                                    Upload
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </form>
-
-                                    @if (!isset($documents) || $documents->isEmpty())
-                                        <p class="text-gray-500 dark:text-gray-400 text-center py-4">No documents yet.</p>
-                                    @else
-                                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                            <div class="lg:col-span-1 bg-white dark:bg-gray-900 rounded-lg shadow-md">
-                                                <div class="p-4">
-                                                    <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Uploaded Documents</h4>
-                                                    <div id="entity-files-container" class="divide-y divide-gray-200 dark:divide-gray-700 max-h-[500px] overflow-y-auto">
-                                                        @foreach ($documents as $document)
-                                                            <div class="py-3 px-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" onclick="previewEntityDocumentByPath('{{ $document->path }}', '{{ addslashes($document->file_name) }}')">
-                                                                <div class="flex items-start justify-between">
-                                                                    <div class="flex items-start space-x-3">
-                                                                        <svg class="w-5 h-5 text-gray-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                                                        </svg>
-                                                                        <div>
-                                                                            <div class="text-sm text-gray-900 dark:text-gray-100 font-medium">{{ $document->file_name }}</div>
-                                                                            <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                                                @php
-                                                                                    $size = null;
-                                                                                    try { $size = \Illuminate\Support\Facades\Storage::disk('s3')->size($document->path); } catch (Exception $e) { $size = null; }
-                                                                                @endphp
-                                                                                @if($size)
-                                                                                    {{ number_format($size/1024, 2) }} KB
-                                                                                @endif
-                                                                                <span class="ml-2">{{ strtolower($document->type) }}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <span class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $document->created_at->format('Y-m-d H:i') }}</span>
-                                                                </div>
-                                                            </div>
-                                                        @endforeach
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="lg:col-span-2 bg-white dark:bg-gray-900 rounded-lg shadow-md">
-                                                <div class="p-4 border-b border-gray-200 dark:border-gray-700">
-                                                    <div class="flex items-center justify-between">
-                                                        <h4 id="entity-document-title" class="text-lg font-semibold text-gray-900 dark:text-gray-100">Document Preview</h4>
-                                                    </div>
-                                                    <div class="mt-3 flex gap-3">
-                                                        <a id="entity-document-download" href="#" target="_blank" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200 disabled:opacity-50" aria-disabled="true">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                                            </svg>
-                                                            Download
-                                                        </a>
-                                                        <button id="entity-document-delete" type="button" class="inline-flex items-center px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg shadow-md transition-all duration-200 disabled:opacity-50" disabled>
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                                                            </svg>
-                                                            Delete Document
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div class="h-[520px]">
-                                                    <iframe id="entity-document-frame" class="w-full h-full" frameborder="0"></iframe>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    @endif
+                                    @include('business-entities.partials.documents-workspace', [
+                                        'businessEntity' => $businessEntity,
+                                        'asset' => null,
+                                        'documentCategories' => $documentCategories ?? collect(),
+                                    ])
                                 </div>
                             </div>
 
@@ -939,7 +802,7 @@
                                     </div>
 
                                     <!-- Upload Form (Hidden by default) -->
-                                    <div id="upload-form" class="hidden mb-6 bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
+                                    <div id="bank-import-upload-panel" class="hidden mb-6 bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
                                         <form id="bank-import-form" enctype="multipart/form-data">
                                             @csrf
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -1177,7 +1040,7 @@
 
             // Bank Import functionality
             const uploadStatementBtn = document.getElementById('upload-statement-btn');
-            const uploadForm = document.getElementById('upload-form');
+            const uploadForm = document.getElementById('bank-import-upload-panel');
             const cancelUploadBtn = document.getElementById('cancel-upload');
             const bankImportForm = document.getElementById('bank-import-form');
             const matchingInterface = document.getElementById('matching-interface');
@@ -1411,81 +1274,6 @@
                 });
             });
 
-            // Documents tab preview helpers
-            window.previewEntityDocument = function(url, title) {
-                const frame = document.getElementById('entity-document-frame');
-                const heading = document.getElementById('entity-document-title');
-                const downloadBtn = document.getElementById('entity-document-download');
-                const deleteBtn = document.getElementById('entity-document-delete');
-                if (!frame || !heading || !downloadBtn || !deleteBtn) return window.open(url, '_blank');
-                frame.src = url;
-                heading.textContent = title || 'Document preview';
-                downloadBtn.href = url;
-                downloadBtn.setAttribute('aria-disabled', 'false');
-                deleteBtn.disabled = false;
-            }
-
-            // Preview by S3 path (uses backend to generate signed URL)
-            window.previewEntityDocumentByPath = function(path, title) {
-                fetch(`{{ route('documents.getLink') }}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({ path })
-                })
-                .then(r => r.json())
-                .then(data => {
-                    if (data && data.success && data.url) {
-                        window.previewEntityDocument(data.url, title);
-                        // store last url on delete button for later
-                        const deleteBtn = document.getElementById('entity-document-delete');
-                        if (deleteBtn) deleteBtn.dataset.url = data.url;
-                    }
-                })
-                .catch(err => console.error('Failed to get file link', err));
-            }
-
-            // Delete current document
-            const deleteBtn = document.getElementById('entity-document-delete');
-            if (deleteBtn) {
-                deleteBtn.addEventListener('click', function() {
-                    const url = this.dataset.url;
-                    if (!url) return;
-                    if (!confirm('Delete this document?')) return;
-                    fetch(`{{ route('documents.delete') }}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                        },
-                        body: JSON.stringify({ url })
-                    })
-                    .then(r => r.json())
-                    .then(data => {
-                        if (data && data.success) {
-                            // clear preview
-                            const frame = document.getElementById('entity-document-frame');
-                            const heading = document.getElementById('entity-document-title');
-                            const downloadBtn = document.getElementById('entity-document-download');
-                            if (frame) frame.src = '';
-                            if (heading) heading.textContent = 'Document Preview';
-                            if (downloadBtn) downloadBtn.setAttribute('aria-disabled', 'true');
-                            this.disabled = true;
-                            this.dataset.url = '';
-                            // optionally refresh page to update list
-                            location.reload();
-                        } else if (data && data.error) {
-                            alert(data.error);
-                        }
-                    })
-                    .catch(err => {
-                        console.error('Delete failed', err);
-                        alert('Failed to delete document');
-                    });
-                });
-            }
         });
     </script>
     

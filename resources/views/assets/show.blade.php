@@ -83,12 +83,12 @@
                         <!-- Action Buttons -->
                         <div class="flex flex-wrap gap-3 mb-6">
                             @if ($asset->asset_type === 'Car')
-                                <button type="button" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105" onclick="document.getElementById('upload-form').classList.toggle('hidden')">
+                                <a href="#tab_documents" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                     </svg>
-                                    Upload Document
-                                </button>
+                                    Documents
+                                </a>
                             @elseif ($isLeasable)
                                 <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -102,55 +102,20 @@
                                     </svg>
                                     Add Lease
                                 </a>
-                                <button type="button" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105" onclick="document.getElementById('upload-form').classList.toggle('hidden')">
+                                <a href="#tab_documents" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                     </svg>
-                                    Upload Document
-                                </button>
+                                    Documents
+                                </a>
                             @else
-                                <button type="button" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105" onclick="document.getElementById('upload-form').classList.toggle('hidden')">
+                                <a href="#tab_documents" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                     </svg>
-                                    Upload Document
-                                </button>
+                                    Documents
+                                </a>
                             @endif
-                            <form id="upload-form" class="hidden mt-4 w-full bg-gray-50 dark:bg-gray-800 p-4 rounded-lg shadow-inner" method="POST" action="{{ route('business-entities.assets.documents.store', [$businessEntity->id, $asset->id]) }}" enctype="multipart/form-data">
-                                @csrf
-                                <div class="grid gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Document</label>
-                                        <input type="file" name="document" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-                                        @error('document') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Document Type</label>
-                                        <select name="document_type" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
-                                            <option value="">Select Document Type</option>
-                                            <option value="legal">Legal</option>
-                                            <option value="financial">Financial</option>
-                                            <option value="other">Other</option>
-                                        </select>
-                                        @error('document_type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description (optional)</label>
-                                        <textarea name="description" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" rows="3" placeholder="Enter document description"></textarea>
-                                        @error('description') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">File Name (optional)</label>
-                                        <input type="text" name="file_name" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" placeholder="Enter custom file name (without extension)">
-                                        @error('file_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                    </div>
-                                    <div class="flex justify-end">
-                                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                            Upload
-                                        </button>
-                                    </div>
-                                </div>
-                            </form>
                         </div>
 
                         <!-- Tabs -->
@@ -626,32 +591,13 @@
 
                             <!-- Documents Tab -->
                             <div id="tab_documents" class="tab-content hidden">
-                                <div id="document-data" data-entity-id="{{ $businessEntity->id }}" data-entity-name="{{ $businessEntity->legal_name }}" data-asset-id="{{ $asset->id }}" data-asset-name="{{ $asset->name }}" style="display:none;"></div>
                                 <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                                    <div id="upload-alerts"></div>
-                                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                        <div class="lg:col-span-1 bg-white dark:bg-gray-900 rounded-lg shadow-md">
-                                            <div class="p-4">
-                                                <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Uploaded Documents</h4>
-                                                <div id="files-container" class="divide-y divide-gray-200 dark:divide-gray-700 max-h-[500px] overflow-y-auto">
-                                                    <p class="text-gray-500 dark:text-gray-400 text-center py-4">Loading documents...</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="lg:col-span-2 bg-white dark:bg-gray-900 rounded-lg shadow-md">
-                                            <div class="p-4">
-                                                <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Document Preview</h4>
-                                                <div id="preview-container" class="w-full h-[500px] flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-lg">
-                                                    <div class="text-center text-gray-500 dark:text-gray-400">
-                                                        <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                                        </svg>
-                                                        <p>Select a document to preview</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Asset documents are separate from entity-level documents. Add categories and checklist rows here.</p>
+                                    @include('business-entities.partials.documents-workspace', [
+                                        'businessEntity' => $businessEntity,
+                                        'asset' => $asset,
+                                        'documentCategories' => $documentCategories ?? collect(),
+                                    ])
                                 </div>
                             </div>
 
@@ -916,90 +862,6 @@
 
             // Call the function directly
             initializeReminderLogic();
-
-            // Document upload and preview functionality
-            const documentData = document.getElementById('document-data');
-            const filesContainer = document.getElementById('files-container');
-            const previewContainer = document.getElementById('preview-container');
-            const uploadAlerts = document.getElementById('upload-alerts');
-
-            // Function to load documents
-            function loadDocuments() {
-                const entityId = documentData.dataset.entityId;
-                const assetId = documentData.dataset.assetId;
-
-                fetch(`/api/business-entities/${entityId}/assets/${assetId}/documents`)
-                    .then(response => response.json())
-                    .then(data => {
-                        const documents = Array.isArray(data) ? data : (Array.isArray(data.files) ? data.files : []);
-
-                        if (documents.length === 0) {
-                            filesContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center py-4">No documents uploaded yet.</p>';
-                            return;
-                        }
-
-                        filesContainer.innerHTML = documents.map(doc => `
-                            <div class="py-2 px-4 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer" onclick="previewDocument('${doc.id}')">
-                                <div class="flex items-center justify-between">
-                                    <div class="flex items-center space-x-3">
-                                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                        </svg>
-                                        <span class="text-sm text-gray-900 dark:text-gray-100">${doc.file_name || doc.name || 'Untitled file'}</span>
-                                    </div>
-                                    <span class="text-xs text-gray-500 dark:text-gray-400">${doc.created_at || doc.uploaded || ''}</span>
-                                </div>
-                            </div>
-                        `).join('');
-                    })
-                    .catch(error => {
-                        console.error('Error loading documents:', error);
-                        filesContainer.innerHTML = '<p class="text-red-500 text-center py-4">Error loading documents.</p>';
-                    });
-            }
-
-            // Function to preview document
-            window.previewDocument = function(documentId) {
-                const entityId = documentData.dataset.entityId;
-                const assetId = documentData.dataset.assetId;
-
-                previewContainer.innerHTML = `
-                    <div class="text-center">
-                        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
-                        <p class="mt-2 text-gray-500 dark:text-gray-400">Loading document...</p>
-                    </div>
-                `;
-
-                fetch(`/api/business-entities/${entityId}/assets/${assetId}/documents/${documentId}/preview`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.preview_url) {
-                            previewContainer.innerHTML = `
-                                <iframe src="${data.preview_url}" class="w-full h-full" frameborder="0"></iframe>
-                            `;
-                        } else {
-                            previewContainer.innerHTML = `
-                                <div class="text-center text-gray-500 dark:text-gray-400">
-                                    <svg class="w-12 h-12 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                    <p>Preview not available</p>
-                                </div>
-                            `;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error previewing document:', error);
-                        previewContainer.innerHTML = `
-                            <div class="text-center text-red-500">
-                                <p>Error loading document preview</p>
-                            </div>
-                        `;
-                    });
-            };
-
-            // Load documents on page load
-            loadDocuments();
         });
     </script>
     @endpush
