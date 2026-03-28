@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Web group additions
         $middleware->appendToGroup('web', \App\Http\Middleware\PasswordSecurity::class);
+        $middleware->appendToGroup('web', \App\Http\Middleware\EnsureAccountActive::class);
 
         // API group additions
         $middleware->appendToGroup('api', \App\Http\Middleware\RateLimitMiddleware::class);

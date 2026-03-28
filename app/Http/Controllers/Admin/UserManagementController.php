@@ -6,11 +6,22 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
 class UserManagementController extends Controller
 {
+    public function index(): View
+    {
+        $users = User::query()
+            ->orderBy('name')
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('admin.users.index', compact('users'));
+    }
+
     public function create(): View
     {
         return view('admin.users.create');
@@ -50,8 +61,68 @@ class UserManagementController extends Controller
             'password' => $request->password,
             'email_verified_at' => now(),
             'password_changed_at' => now(),
+            'is_active' => true,
         ]);
 
-        return redirect()->route('admin.users.create')->with('status', __('User created successfully.'));
+        return redirect()->route('admin.users.index')->with('status', __('User created successfully.'));
+    }
+
+    public function activate(User $user): RedirectResponse
+    {
+        if ($user->isPrimaryAdministrator()) {
+            return back()->with('error', __('The primary administrator account is always active.'));
+        }
+
+        $user->update(['is_active' => true]);
+
+        return back()->with('status', __('User activated.'));
+    }
+
+    public function deactivate(User $user): RedirectResponse
+    {
+        if ($user->isPrimaryAdministrator()) {
+            return back()->with('error', __('You cannot deactivate the primary administrator.'));
+        }
+
+        if ($user->is(auth()->user())) {
+            return back()->with('error', __('You cannot deactivate your own account.'));
+        }
+
+        $user->update(['is_active' => false]);
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+
+        return back()->with('status', __('User deactivated. They can no longer sign in.'));
+    }
+
+    public function updatePassword(Request $request, User $user): RedirectResponse
+    {
+        $validated = $request->validate([
+            'password' => ['required', 'confirmed', Rules\Password::defaults()],
+        ]);
+
+        $user->update([
+            'password' => $validated['password'],
+            'password_changed_at' => now(),
+        ]);
+
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+
+        return back()->with('status', __('Password updated for :name.', ['name' => $user->name]));
+    }
+
+    public function destroy(User $user): RedirectResponse
+    {
+        if ($user->isPrimaryAdministrator()) {
+            return back()->with('error', __('You cannot delete the primary administrator.'));
+        }
+
+        if ($user->is(auth()->user())) {
+            return back()->with('error', __('You cannot delete your own account.'));
+        }
+
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+        $user->delete();
+
+        return back()->with('status', __('User deleted.'));
     }
 }

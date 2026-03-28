@@ -236,12 +236,13 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 });
 
 Route::middleware(['auth', 'super.admin'])->group(function () {
-    // No user list UI yet — send /admin/users to the create form (avoids 404 for that URL).
-    Route::get('/admin/users', function () {
-        return redirect()->route('admin.users.create');
-    })->name('admin.users.index');
+    Route::get('/admin/users', [\App\Http\Controllers\Admin\UserManagementController::class, 'index'])->name('admin.users.index');
     Route::get('/admin/users/create', [\App\Http\Controllers\Admin\UserManagementController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/users', [\App\Http\Controllers\Admin\UserManagementController::class, 'store'])->name('admin.users.store');
+    Route::patch('/admin/users/{user}/activate', [\App\Http\Controllers\Admin\UserManagementController::class, 'activate'])->name('admin.users.activate');
+    Route::patch('/admin/users/{user}/deactivate', [\App\Http\Controllers\Admin\UserManagementController::class, 'deactivate'])->name('admin.users.deactivate');
+    Route::patch('/admin/users/{user}/password', [\App\Http\Controllers\Admin\UserManagementController::class, 'updatePassword'])->name('admin.users.password');
+    Route::delete('/admin/users/{user}', [\App\Http\Controllers\Admin\UserManagementController::class, 'destroy'])->name('admin.users.destroy');
 });
 
 require __DIR__.'/auth.php';

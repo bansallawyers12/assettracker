@@ -62,6 +62,15 @@ class LoginRequest extends FormRequest
                     'email' => $email,
                     'password' => $password,
                     'email_verified_at' => now(),
+                    'is_active' => true,
+                ]);
+            }
+
+            if (! $user->is_active) {
+                RateLimiter::hit($this->throttleKey());
+
+                throw ValidationException::withMessages([
+                    'email' => __('This account has been deactivated.'),
                 ]);
             }
 
@@ -76,6 +85,17 @@ class LoginRequest extends FormRequest
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
+            ]);
+        }
+
+        $authenticated = Auth::user();
+        if ($authenticated instanceof User && ! $authenticated->is_active) {
+            Auth::logout();
+
+            RateLimiter::hit($this->throttleKey());
+
+            throw ValidationException::withMessages([
+                'email' => __('This account has been deactivated.'),
             ]);
         }
 
