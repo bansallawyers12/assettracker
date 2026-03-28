@@ -12,6 +12,19 @@ use Illuminate\View\View;
 
 class UserManagementController extends Controller
 {
+    /**
+     * Remove persisted sessions for this user when using the database session driver.
+     * Other drivers (file, redis, etc.) are not keyed by user_id here; remember_token is still cleared separately.
+     */
+    private function flushDatabaseSessionsForUser(User $user): void
+    {
+        if (config('session.driver') !== 'database') {
+            return;
+        }
+
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+    }
+
     public function index(): View
     {
         $users = User::query()
@@ -88,24 +101,30 @@ class UserManagementController extends Controller
             return back()->with('error', __('You cannot deactivate your own account.'));
         }
 
-        $user->update(['is_active' => false]);
-        DB::table('sessions')->where('user_id', $user->id)->delete();
+        $user->update([
+            'is_active' => false,
+            'remember_token' => null,
+        ]);
+        $this->flushDatabaseSessionsForUser($user);
 
         return back()->with('status', __('User deactivated. They can no longer sign in.'));
     }
 
     public function updatePassword(Request $request, User $user): RedirectResponse
     {
-        $validated = $request->validate([
+        $bag = 'password_user_'.$user->id;
+
+        $validated = $request->validateWithBag($bag, [
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $user->update([
             'password' => $validated['password'],
             'password_changed_at' => now(),
+            'remember_token' => null,
         ]);
 
-        DB::table('sessions')->where('user_id', $user->id)->delete();
+        $this->flushDatabaseSessionsForUser($user);
 
         return back()->with('status', __('Password updated for :name.', ['name' => $user->name]));
     }
@@ -120,7 +139,7 @@ class UserManagementController extends Controller
             return back()->with('error', __('You cannot delete your own account.'));
         }
 
-        DB::table('sessions')->where('user_id', $user->id)->delete();
+        $this->flushDatabaseSessionsForUser($user);
         $user->delete();
 
         return back()->with('status', __('User deleted.'));

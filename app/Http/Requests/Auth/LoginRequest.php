@@ -66,7 +66,7 @@ class LoginRequest extends FormRequest
                 ]);
             }
 
-            if (! $user->is_active) {
+            if (! $user->isAccountActive()) {
                 RateLimiter::hit($this->throttleKey());
 
                 throw ValidationException::withMessages([
@@ -89,7 +89,7 @@ class LoginRequest extends FormRequest
         }
 
         $authenticated = Auth::user();
-        if ($authenticated instanceof User && ! $authenticated->is_active) {
+        if ($authenticated instanceof User && ! $authenticated->isAccountActive()) {
             Auth::logout();
 
             RateLimiter::hit($this->throttleKey());

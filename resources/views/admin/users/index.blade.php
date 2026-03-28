@@ -61,7 +61,7 @@
                                     </td>
                                     <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ $u->email }}</td>
                                     <td class="px-4 py-3 text-sm">
-                                        @if ($u->is_active)
+                                        @if ($u->isAccountActive())
                                             <span class="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">{{ __('Active') }}</span>
                                         @else
                                             <span class="inline-flex items-center rounded-full bg-gray-200 dark:bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-800 dark:text-gray-200">{{ __('Inactive') }}</span>
@@ -77,7 +77,7 @@
                                     <td class="px-4 py-3 text-sm text-right">
                                         <div class="flex flex-col items-end gap-2">
                                             @if (! $u->isPrimaryAdministrator())
-                                                @if ($u->is_active)
+                                                @if ($u->isAccountActive())
                                                     <form method="POST" action="{{ route('admin.users.deactivate', $u) }}" class="inline">
                                                         @csrf
                                                         @method('PATCH')
@@ -92,17 +92,20 @@
                                                 @endif
                                             @endif
 
-                                            <details class="text-left w-full max-w-xs">
+                                            @php($pwBag = 'password_user_'.$u->id)
+                                            <details class="text-left w-full max-w-xs" @if ($errors->getBag($pwBag)->isNotEmpty()) open @endif>
                                                 <summary class="cursor-pointer text-blue-600 dark:text-blue-400 hover:underline">{{ __('Reset password') }}</summary>
                                                 <form method="POST" action="{{ route('admin.users.password', $u) }}" class="mt-2 space-y-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-600">
                                                     @csrf
                                                     @method('PATCH')
                                                     <div>
                                                         <x-input-label for="pw-{{ $u->id }}" :value="__('New password')" class="sr-only" />
-                                                        <x-text-input id="pw-{{ $u->id }}" class="block w-full text-sm" type="password" name="password" required autocomplete="new-password" placeholder="{{ __('New password') }}" />
+                                                        <x-text-input id="pw-{{ $u->id }}" class="block w-full text-sm" type="password" name="password" value="" required autocomplete="new-password" placeholder="{{ __('New password') }}" />
+                                                        <x-input-error :messages="$errors->getBag($pwBag)->get('password')" class="mt-1" />
                                                     </div>
                                                     <div>
-                                                        <x-text-input class="block w-full text-sm" type="password" name="password_confirmation" required autocomplete="new-password" placeholder="{{ __('Confirm password') }}" />
+                                                        <x-text-input class="block w-full text-sm" type="password" name="password_confirmation" value="" required autocomplete="new-password" placeholder="{{ __('Confirm password') }}" />
+                                                        <x-input-error :messages="$errors->getBag($pwBag)->get('password_confirmation')" class="mt-1" />
                                                     </div>
                                                     <x-password-requirements-hint class="text-xs" />
                                                     <button type="submit" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">{{ __('Save password') }}</button>

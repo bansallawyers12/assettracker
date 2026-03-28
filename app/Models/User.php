@@ -113,6 +113,18 @@ class User extends Authenticatable
             && strcasecmp(strtolower(trim((string) $this->email)), $configured) === 0;
     }
 
+    /**
+     * Whether the account may sign in. Missing `is_active` (e.g. before migrations) is treated as active.
+     */
+    public function isAccountActive(): bool
+    {
+        if (! array_key_exists('is_active', $this->getAttributes())) {
+            return true;
+        }
+
+        return (bool) $this->getAttribute('is_active');
+    }
+
     public function contactLists()
     {
         return $this->hasMany(ContactList::class);
