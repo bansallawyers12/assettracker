@@ -34,6 +34,23 @@ class AssetController extends Controller
         return view('assets.index', compact('businessEntity', 'assets'));
     }
 
+    /**
+     * List all assets across business entities (matches dashboard scope).
+     */
+    public function indexAll()
+    {
+        $this->authorize('viewAny', Asset::class);
+
+        $assets = Asset::query()
+            ->whereHas('businessEntity')
+            ->with('businessEntity')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->paginate(15);
+
+        return view('assets.index-all', compact('assets'));
+    }
+
     public function create(BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);

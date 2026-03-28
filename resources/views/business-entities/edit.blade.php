@@ -68,6 +68,23 @@
                                 </select>
                                 @error('entity_type') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
+
+                            <div>
+                                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status*</label>
+                                @php
+                                    $allowedStatuses = ['Active', 'Inactive', 'Archived'];
+                                    $currentStatus = old('status', $businessEntity->status ?? 'Active');
+                                    if (! in_array($currentStatus, $allowedStatuses, true)) {
+                                        $currentStatus = 'Active';
+                                    }
+                                @endphp
+                                <select name="status" id="status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" required>
+                                    <option value="Active" {{ $currentStatus === 'Active' ? 'selected' : '' }}>Active</option>
+                                    <option value="Inactive" {{ $currentStatus === 'Inactive' ? 'selected' : '' }}>Inactive</option>
+                                    <option value="Archived" {{ $currentStatus === 'Archived' ? 'selected' : '' }}>Archived</option>
+                                </select>
+                                @error('status') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                            </div>
                             
                             <div>
                                 <label for="registered_email" class="block text-sm font-medium text-gray-700 mb-1">Email Address*</label>

@@ -216,7 +216,10 @@ class BusinessEntityController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
 
         $businessEntities = BusinessEntity::all();
-        $assets = Asset::all();
+        $assets = Asset::query()
+            ->orderBy('name')
+            ->orderBy('id')
+            ->get();
         
         // Fetch Reminder records
         $reminders = Reminder::query()

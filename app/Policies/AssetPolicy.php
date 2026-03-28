@@ -8,6 +8,14 @@ use App\Models\User;
 class AssetPolicy
 {
     /**
+     * Determine whether the user can list assets globally (e.g. /assets).
+     */
+    public function viewAny(User $user): bool
+    {
+        return true;
+    }
+
+    /**
      * Determine whether the user can view the asset.
      */
     public function view(User $user, Asset $asset)

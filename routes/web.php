@@ -76,6 +76,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('notes/{note}/finalize', [AssetController::class, 'finalizeNote'])->name('notes.finalize');
     Route::post('notes/{note}/extend', [AssetController::class, 'extendNote'])->name('notes.extend');
 
+    // All assets (cross-entity; dashboard "View All")
+    Route::get('/assets', [AssetController::class, 'indexAll'])->name('assets.index');
+
     // Assets (Nested under Business Entities)
     Route::resource('business-entities.assets', AssetController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('business-entities/{businessEntity}/assets/{asset}/finalize/{type}', [AssetController::class, 'finalizeDueDate'])->name('assets.finalize-due-date');

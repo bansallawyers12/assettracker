@@ -429,7 +429,7 @@
                         <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div class="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
                                 <h3 class="text-sm font-bold text-gray-900 dark:text-white">Assets</h3>
-                                <a href="{{ route('business-entities.assets.index', $businessEntities->first()?->id ?? 0) }}" class="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline">View All</a>
+                                <a href="{{ route('assets.index') }}" class="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline">View All</a>
                             </div>
                             <div class="p-4">
                                 @if ($assets->isEmpty())
