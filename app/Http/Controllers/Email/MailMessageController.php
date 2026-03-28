@@ -21,7 +21,7 @@ class MailMessageController extends Controller
     {
         $userId = Auth::id();
 
-        $query = MailMessage::query()->where('user_id', $userId);
+        $query = MailMessage::query();
 
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($q) use ($search) {
@@ -52,7 +52,7 @@ class MailMessageController extends Controller
 
         $messages = $query->latest('sent_date')->paginate(20)->withQueryString();
 
-        $labels = MailLabel::where('user_id', $userId)->orderBy('type')->orderBy('name')->get();
+        $labels = MailLabel::orderBy('type')->orderBy('name')->get();
 
         return view('emails.index', [
             'messages' => $messages,
@@ -64,7 +64,7 @@ class MailMessageController extends Controller
     public function uploadIndex(Request $request)
     {
         $userId = Auth::id();
-        $query = MailMessage::query()->where('user_id', $userId);
+        $query = MailMessage::query();
 
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($q) use ($search) {
@@ -91,7 +91,7 @@ class MailMessageController extends Controller
         }
 
         $messages = $query->latest('sent_date')->paginate(20)->withQueryString();
-        $labels = MailLabel::where('user_id', $userId)->orderBy('type')->orderBy('name')->get();
+        $labels = MailLabel::orderBy('type')->orderBy('name')->get();
 
         return view('emails.upload', [
             'messages' => $messages,
@@ -122,7 +122,7 @@ class MailMessageController extends Controller
                 $sourceHash = hash_file('sha256', $file->getRealPath()) ?: null;
                 $existing = null;
                 if ($sourceHash) {
-                    $existing = MailMessage::where('user_id', $userId)->where('source_hash', $sourceHash)->latest('id')->first();
+                    $existing = MailMessage::where('source_hash', $sourceHash)->latest('id')->first();
                 }
 
                 if ($existing) {
@@ -199,9 +199,7 @@ class MailMessageController extends Controller
 
     public function show(int $id)
     {
-        $userId = Auth::id();
         $message = MailMessage::with(['attachments', 'labels'])
-            ->where('user_id', $userId)
             ->findOrFail($id);
 
         return view('emails.show', [
@@ -211,9 +209,7 @@ class MailMessageController extends Controller
 
     public function reply(int $id)
     {
-        $userId = Auth::id();
         $message = MailMessage::with(['attachments', 'labels'])
-            ->where('user_id', $userId)
             ->findOrFail($id);
 
         return view('emails.reply', [
@@ -223,8 +219,7 @@ class MailMessageController extends Controller
 
     public function getReplyData(int $id)
     {
-        $userId = Auth::id();
-        $message = MailMessage::where('user_id', $userId)->findOrFail($id);
+        $message = MailMessage::findOrFail($id);
 
         return response()->json([
             'subject' => 'Re: ' . ($message->subject ?: '(No subject)'),
@@ -242,8 +237,8 @@ class MailMessageController extends Controller
         ]);
 
         $userId = Auth::id();
-        $message = MailMessage::where('user_id', $userId)->findOrFail($id);
-        $entity = BusinessEntity::where('user_id', $userId)->findOrFail($request->integer('business_entity_id'));
+        $message = MailMessage::findOrFail($id);
+        $entity = BusinessEntity::findOrFail($request->integer('business_entity_id'));
 
         // Attach to entity pivot
         $message->businessEntities()->syncWithoutDetaching([$entity->id]);
@@ -272,9 +267,9 @@ class MailMessageController extends Controller
         ]);
 
         $userId = Auth::id();
-        $message = MailMessage::where('user_id', $userId)->findOrFail($id);
+        $message = MailMessage::findOrFail($id);
 
-        $asset = Asset::where('user_id', $userId)->findOrFail($request->integer('asset_id'));
+        $asset = Asset::findOrFail($request->integer('asset_id'));
 
         // Attach to asset pivot
         $message->assets()->syncWithoutDetaching([$asset->id]);
@@ -523,9 +518,7 @@ class MailMessageController extends Controller
      */
     public function drafts()
     {
-        $userId = Auth::id();
-        
-        $drafts = \App\Models\EmailDraft::forUser($userId)
+        $drafts = \App\Models\EmailDraft::query()
             ->with(['businessEntity', 'template'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);

@@ -17,8 +17,7 @@ class FinancialReportController extends Controller
     
     public function index()
     {
-        $user = auth()->user();
-        $businessEntities = BusinessEntity::where('user_id', $user->id)->get();
+        $businessEntities = BusinessEntity::all();
         
         return view('financial-reports.index', compact('businessEntities'));
     }

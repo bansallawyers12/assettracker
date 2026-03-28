@@ -179,7 +179,7 @@
                         <select id="business_entity_id" name="business_entity_id" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             <option value="">No association</option>
                             @try
-                                @foreach(\App\Models\BusinessEntity::where('user_id', auth()->id())->orderBy('legal_name')->get() as $entity)
+                                @foreach(\App\Models\BusinessEntity::orderBy('legal_name')->get() as $entity)
                                     <option value="{{ $entity->id }}">{{ $entity->legal_name }}</option>
                                 @endforeach
                             @catch(\Exception $e)

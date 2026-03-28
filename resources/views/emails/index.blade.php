@@ -83,7 +83,7 @@
                                                                     <label class="block text-xs text-gray-600 dark:text-gray-300">Business Entity</label>
                                                                     <select name="business_entity_id" class="w-full border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                                         <option value="">Select entity...</option>
-                                                                        @php($entities = \App\Models\BusinessEntity::where('user_id', auth()->id())->orderBy('legal_name')->get())
+                                                                        @php($entities = \App\Models\BusinessEntity::orderBy('legal_name')->get())
                                                                         @foreach ($entities as $entity)
                                                                             <option value="{{ $entity->id }}">{{ $entity->legal_name }}</option>
                                                                         @endforeach
@@ -96,7 +96,7 @@
                                                                     <label class="block text-xs text-gray-600 dark:text-gray-300">Asset</label>
                                                                     <select name="asset_id" class="w-full border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                                         <option value="">Select asset...</option>
-                                                                        @php($assets = \App\Models\Asset::where('user_id', auth()->id())->orderBy('name')->get())
+                                                                        @php($assets = \App\Models\Asset::orderBy('name')->get())
                                                                         @foreach ($assets as $asset)
                                                                             <option value="{{ $asset->id }}">{{ $asset->name }} ({{ $asset->asset_type }})</option>
                                                                         @endforeach

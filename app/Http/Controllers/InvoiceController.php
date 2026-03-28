@@ -26,9 +26,7 @@ class InvoiceController extends Controller
 			return view('invoices.index', compact('businessEntity', 'invoices'));
 		}
 
-		$user = auth()->user();
-		$entityIds = BusinessEntity::where('user_id', $user->id)->pluck('id')->all();
-		$invoices = Invoice::whereIn('business_entity_id', $entityIds)
+		$invoices = Invoice::query()
 			->with(['asset', 'businessEntity'])
 			->orderByDesc('issue_date')
 			->paginate(30);
@@ -284,6 +282,5 @@ class InvoiceController extends Controller
 	private function authorizeInvoice(BusinessEntity $businessEntity, Invoice $invoice): void
 	{
 		abort_unless((int) $invoice->business_entity_id === (int) $businessEntity->id, 404);
-		abort_unless((int) $businessEntity->user_id === (int) auth()->id(), 403);
 	}
 }

@@ -12,8 +12,7 @@ class AssetPolicy
      */
     public function view(User $user, Asset $asset)
     {
-        // Allow users to view assets that belong to their business entities
-        return $user->id === $asset->businessEntity->user_id;
+        return true;
     }
 
     /**
@@ -30,8 +29,7 @@ class AssetPolicy
      */
     public function update(User $user, Asset $asset)
     {
-        // Allow users to update assets that belong to their business entities
-        return $user->id === $asset->businessEntity->user_id;
+        return true;
     }
 
     /**
@@ -39,7 +37,6 @@ class AssetPolicy
      */
     public function delete(User $user, Asset $asset)
     {
-        // Allow users to delete assets that belong to their business entities
-        return $user->id === $asset->businessEntity->user_id;
+        return true;
     }
 } 

@@ -244,7 +244,6 @@ class AssetController extends Controller
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
         $realEstateCompanies = RealEstateCompany::query()
-            ->forUser(auth()->id())
             ->orderBy('name')
             ->get();
 
@@ -271,9 +270,7 @@ class AssetController extends Controller
             'create_real_estate_company' => 'nullable|boolean',
             'real_estate_company_id' => [
                 'nullable',
-                Rule::exists('real_estate_companies', 'id')->where(function ($query) {
-                    $query->where('user_id', auth()->id());
-                }),
+                Rule::exists('real_estate_companies', 'id'),
             ],
         ]);
 
