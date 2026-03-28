@@ -68,6 +68,21 @@ class CompanyRegisterImporter
                 'status' => 'Active',
             ];
 
+            $emailFromRow = trim((string) ($row['registered_email'] ?? ''));
+            $phoneFromRow = trim((string) ($row['phone_number'] ?? ''));
+
+            if ($emailFromRow !== '') {
+                $payload['registered_email'] = $emailFromRow;
+            } elseif (! $entity || blank($entity->registered_email)) {
+                $payload['registered_email'] = $this->placeholderImportEmail($abn, $acn, $legalName, $userId, $line);
+            }
+
+            if ($phoneFromRow !== '') {
+                $payload['phone_number'] = $phoneFromRow;
+            } elseif (! $entity || blank($entity->phone_number)) {
+                $payload['phone_number'] = '0000000000';
+            }
+
             if ($dryRun) {
                 $entity ? $updated++ : $created++;
 
@@ -158,6 +173,16 @@ class CompanyRegisterImporter
             'directors_linked' => $directorsLinked,
             'warnings' => $warnings,
         ];
+    }
+
+    /**
+     * Placeholder for DB NOT NULL / imports without a real company email. Use example.invalid (reserved TLD).
+     */
+    private function placeholderImportEmail(?string $abn, ?string $acn, string $legalName, int $userId, int $line): string
+    {
+        $key = $abn ?? ($acn !== null ? 'acn'.$acn : 'row'.$line.'-'.substr(md5($legalName), 0, 8));
+
+        return "import.{$key}.u{$userId}@example.invalid";
     }
 
     private function normalizeDigits(mixed $value): ?string
