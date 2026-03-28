@@ -4,8 +4,9 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
 class PasswordSecurity
@@ -66,34 +67,56 @@ class PasswordSecurity
         $validator = Validator::make(['password' => $password], ['password' => $rules]);
 
         if ($validator->fails()) {
-            abort(422, 'Password does not meet security requirements: ' . implode(', ', $validator->errors()->all()));
+            $exception = new ValidationException($validator);
+            if ($request->route()?->getName() === 'password.update') {
+                $exception->errorBag('updatePassword');
+            }
+            throw $exception;
         }
     }
 
     /**
-     * Get password validation rules.
+     * Get password validation rules (aligned with security.passwords config).
      */
     protected function getPasswordRules(): array
     {
-        $rules = ['required', 'string', 'min:' . config('security.passwords.min_length', 12)];
+        return ['required', 'string', $this->buildPasswordRule()];
+    }
 
-        if (config('security.passwords.require_uppercase', true)) {
-            $rules[] = 'regex:/[A-Z]/';
-        }
+    /**
+     * Laravel Password rule so failure messages stay specific (length, mixed case, numbers, symbols).
+     */
+    protected function buildPasswordRule(): Password
+    {
+        $rule = Password::min((int) config('security.passwords.min_length', 12));
 
-        if (config('security.passwords.require_lowercase', true)) {
-            $rules[] = 'regex:/[a-z]/';
+        $reqUpper = config('security.passwords.require_uppercase', true);
+        $reqLower = config('security.passwords.require_lowercase', true);
+
+        if ($reqUpper && $reqLower) {
+            $rule = $rule->mixedCase();
+        } else {
+            $extra = [];
+            if ($reqUpper) {
+                $extra[] = 'regex:/[A-Z]/';
+            }
+            if ($reqLower) {
+                $extra[] = 'regex:/[a-z]/';
+            }
+            if ($extra !== []) {
+                $rule = $rule->rules($extra);
+            }
         }
 
         if (config('security.passwords.require_numbers', true)) {
-            $rules[] = 'regex:/[0-9]/';
+            $rule = $rule->numbers();
         }
 
         if (config('security.passwords.require_special_chars', true)) {
-            $rules[] = 'regex:/[^A-Za-z0-9]/';
+            $rule = $rule->symbols();
         }
 
-        return $rules;
+        return $rule;
     }
 
     /**
