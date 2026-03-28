@@ -2,6 +2,9 @@
     <div class="py-8 lg:py-10">
         <div class="max-w-lg mx-auto px-4 sm:px-6 lg:px-8">
             <div class="mb-6">
+                <div class="flex flex-wrap items-center gap-3 mb-2">
+                    <a href="{{ route('admin.users.index') }}" class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">{{ __('← Back to users') }}</a>
+                </div>
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ __('Create user') }}</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('New accounts are created here by the primary administrator. Users can sign in with the email and password you set.') }}</p>
             </div>

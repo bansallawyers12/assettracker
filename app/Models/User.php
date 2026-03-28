@@ -24,6 +24,7 @@ class User extends Authenticatable
         'email',
         'email_hash',
         'email_verified_at',
+        'is_active',
         'password',
         'phone',
         'address',
@@ -71,6 +72,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
             'two_factor_enabled' => 'boolean',
             'logins_without_two_factor_count' => 'integer',
             'password_changed_at' => 'datetime',

@@ -39,6 +39,9 @@
                         </x-slot>
                         <x-slot name="content">
                             @if (Auth::user()->isPrimaryAdministrator())
+                                <x-dropdown-link :href="route('admin.users.index')">
+                                    {{ __('Manage users') }}
+                                </x-dropdown-link>
                                 <x-dropdown-link :href="route('admin.users.create')">
                                     {{ __('Create user') }}
                                 </x-dropdown-link>
@@ -97,6 +100,9 @@
                 </div>
                 <div class="mt-3 space-y-1 px-3">
                     @if (Auth::user()->isPrimaryAdministrator())
+                        <x-responsive-nav-link :href="route('admin.users.index')">
+                            {{ __('Manage users') }}
+                        </x-responsive-nav-link>
                         <x-responsive-nav-link :href="route('admin.users.create')">
                             {{ __('Create user') }}
                         </x-responsive-nav-link>
