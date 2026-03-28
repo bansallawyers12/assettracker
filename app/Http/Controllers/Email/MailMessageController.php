@@ -19,8 +19,6 @@ class MailMessageController extends Controller
 {
     public function index(Request $request)
     {
-        $userId = Auth::id();
-
         $query = MailMessage::query();
 
         if ($search = $request->string('search')->toString()) {
@@ -63,7 +61,6 @@ class MailMessageController extends Controller
 
     public function uploadIndex(Request $request)
     {
-        $userId = Auth::id();
         $query = MailMessage::query();
 
         if ($search = $request->string('search')->toString()) {
@@ -236,20 +233,19 @@ class MailMessageController extends Controller
             'business_entity_id' => 'required|exists:business_entities,id',
         ]);
 
-        $userId = Auth::id();
         $message = MailMessage::findOrFail($id);
         $entity = BusinessEntity::findOrFail($request->integer('business_entity_id'));
 
         // Attach to entity pivot
         $message->businessEntities()->syncWithoutDetaching([$entity->id]);
 
-        // Ensure a label exists for this entity and attach it to the message
+        // Ensure a shared label exists for this entity and attach it to the message
         $labelName = 'Entity: ' . $entity->legal_name;
         $label = MailLabel::firstOrCreate([
-            'user_id' => $userId,
+            'type' => 'entity',
             'name' => $labelName,
         ], [
-            'type' => 'entity',
+            'user_id' => Auth::id(),
             'color' => '#fde68a',
         ]);
         $message->labels()->syncWithoutDetaching([$label->id]);
@@ -266,21 +262,19 @@ class MailMessageController extends Controller
             'asset_id' => 'required|exists:assets,id',
         ]);
 
-        $userId = Auth::id();
         $message = MailMessage::findOrFail($id);
-
         $asset = Asset::findOrFail($request->integer('asset_id'));
 
         // Attach to asset pivot
         $message->assets()->syncWithoutDetaching([$asset->id]);
 
-        // Ensure a label exists for this asset and attach it to the message
+        // Ensure a shared label exists for this asset and attach it to the message
         $labelName = 'Asset: ' . $asset->name;
         $label = MailLabel::firstOrCreate([
-            'user_id' => $userId,
+            'type' => 'asset',
             'name' => $labelName,
         ], [
-            'type' => 'asset',
+            'user_id' => Auth::id(),
             'color' => '#bbf7d0',
         ]);
         $message->labels()->syncWithoutDetaching([$label->id]);
@@ -563,10 +557,10 @@ class MailMessageController extends Controller
                 if ($entity) {
                     $labelName = 'Entity: ' . $entity->legal_name;
                     $label = MailLabel::firstOrCreate([
-                        'user_id' => $userId,
+                        'type' => 'entity',
                         'name' => $labelName,
                     ], [
-                        'type' => 'entity',
+                        'user_id' => $userId,
                         'color' => '#fde68a',
                     ]);
                     $mailMessage->labels()->attach($label->id);
