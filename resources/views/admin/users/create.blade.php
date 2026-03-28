@@ -31,6 +31,7 @@
                     <div>
                         <x-input-label for="password" :value="__('Password')" />
                         <x-text-input id="password" class="block mt-1.5 w-full" type="password" name="password" required autocomplete="new-password" />
+                        <x-password-requirements-hint />
                         <x-input-error :messages="$errors->get('password')" class="mt-1.5" />
                     </div>
 
