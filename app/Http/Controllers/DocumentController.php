@@ -30,63 +30,6 @@ class DocumentController extends Controller
         ];
     }
 
-    public function index(Request $request)
-    {
-        $businessEntityId = $request->input('business_entity_id');
-        $businessEntityName = $request->input('business_entity_name');
-
-        if (! $businessEntityId || ! $businessEntityName) {
-            return redirect()->back()->with('error', 'Business entity information is required');
-        }
-
-        $businessEntity = BusinessEntity::findOrFail($businessEntityId);
-        $this->authorize('view', $businessEntity);
-
-        $documents = Document::where('business_entity_id', $businessEntityId)
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        $folderPath = "BusinessEntities/{$businessEntityId}_{$businessEntityName}";
-        $docsPath = "{$folderPath}/docs";
-        $s3Files = [];
-
-        try {
-            if (! Storage::disk('s3')->exists($folderPath)) {
-                Storage::disk('s3')->makeDirectory($folderPath);
-            }
-            if (! Storage::disk('s3')->exists($docsPath)) {
-                Storage::disk('s3')->makeDirectory($docsPath);
-            }
-
-            foreach (array_merge(Storage::disk('s3')->files($folderPath), Storage::disk('s3')->files($docsPath)) as $file) {
-                try {
-                    $url = Storage::disk('s3')->temporaryUrl($file, now()->addMinutes(5));
-                    $s3Files[] = [
-                        'name' => basename($file),
-                        'path' => $file,
-                        'type' => $this->getFileType(pathinfo($file, PATHINFO_EXTENSION)),
-                        'size' => $this->formatFileSize(Storage::disk('s3')->size($file)),
-                        'uploaded' => date('Y-m-d H:i:s', Storage::disk('s3')->lastModified($file)),
-                        'url' => $url,
-                    ];
-                } catch (\Exception $e) {
-                    Log::error('Error processing S3 file', ['file' => $file, 'error' => $e->getMessage()]);
-                }
-            }
-        } catch (\Exception $e) {
-            Log::error('Error listing S3 files', ['error' => $e->getMessage()]);
-
-            return redirect()->back()->with('error', 'Error accessing S3 storage: '.$e->getMessage());
-        }
-
-        return view('asset-documents.index', [
-            'documents' => $documents,
-            's3Files' => $s3Files,
-            'business_entity_id' => $businessEntityId,
-            'business_entity_name' => $businessEntityName,
-        ]);
-    }
-
     public function fetchFiles(Request $request)
     {
         $businessEntityId = $request->input('business_entity_id');
@@ -525,12 +468,5 @@ class DocumentController extends Controller
         $previewUrl = Storage::disk('s3')->temporaryUrl($document->path, now()->addMinutes(5));
 
         return response()->json(['preview_url' => $previewUrl]);
-    }
-
-    public function showUploadForm(BusinessEntity $businessEntity)
-    {
-        $this->authorize('update', $businessEntity);
-
-        return view('business-entities.upload-document', compact('businessEntity'));
     }
 }

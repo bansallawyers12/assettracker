@@ -174,7 +174,6 @@ class BusinessEntityController extends Controller
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
         $bankAccounts = $businessEntity->bankAccounts()->with(['bankStatementEntries.transaction'])->get();
         $transactions = $businessEntity->transactions()->with(['bankStatementEntries'])->orderBy('date', 'desc')->get();
-        $documents = $businessEntity->documents()->whereNotNull('path')->orderBy('created_at', 'desc')->get();
         $documentCategories = $businessEntity->documentCategories()
             ->whereNull('asset_id')
             ->with(['documents' => fn ($q) => $q->orderBy('id')])
@@ -206,7 +205,6 @@ class BusinessEntityController extends Controller
             'persons',
             'bankAccounts',
             'transactions',
-            'documents',
             'documentCategories',
             'notes',
             'reminders',

@@ -80,6 +80,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::patch('business-entities/{businessEntity}/document-slots/{document}', [DocumentWorkspaceController::class, 'updateSlotLabel'])->name('entities.document-slots.update');
     Route::delete('business-entities/{businessEntity}/document-slots/{document}', [DocumentWorkspaceController::class, 'destroySlot'])->name('entities.document-slots.destroy');
     Route::post('business-entities/{businessEntity}/document-slots/{document}/clear-file', [DocumentWorkspaceController::class, 'clearFile'])->name('entities.document-slots.clear-file');
+    Route::patch('business-entities/{businessEntity}/document-slots/{document}/move', [DocumentWorkspaceController::class, 'moveSlot'])->name('entities.document-slots.move');
     Route::post('business-entities/{businessEntity}/documents/bulk-upload', [DocumentController::class, 'bulkUpload'])->name('entities.documents.bulk-upload');
     Route::post('business-entities/{businessEntity}/documents/auto-match', [DocumentController::class, 'autoMatch'])->name('entities.documents.auto-match');
     Route::post('business-entities/{businessEntity}/transactions/{transaction}/match', [BusinessEntityController::class, 'matchTransaction'])->name('business-entities.transactions.match');
@@ -168,7 +169,6 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
         Route::post('/documents/fetch-files', 'fetchFiles')->name('documents.fetchFiles');
         Route::post('/documents/get-link', 'getFileLink')->name('documents.getLink');
         Route::post('/documents/delete', [DocumentController::class, 'deleteFile'])->name('documents.delete');
-        Route::get('/documents', 'index')->name('documents.index');
 
         Route::post('/business-entities/{businessEntity}/documents/fetch', 'fetchFiles')->name('business-entities.documents.fetch');
 
