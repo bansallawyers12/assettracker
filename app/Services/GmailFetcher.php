@@ -58,7 +58,7 @@ class GmailFetcher
         foreach ($messages as $m) {
             $gmailId = (string) ($m['id'] ?? '');
             if ($gmailId === '') continue;
-            if (MailMessage::where('user_id', $userId)->where('gmail_id', $gmailId)->exists()) {
+            if (MailMessage::where('gmail_id', $gmailId)->exists()) {
                 continue;
             }
 
@@ -83,7 +83,7 @@ class GmailFetcher
             ]);
 
             $labelName = str_contains((string) $model->sender_email, '@yourdomain.com') ? 'Sent' : 'Inbox';
-            $label = MailLabel::where('user_id', $userId)->where('name', $labelName)->first();
+            $label = MailLabel::where('type', 'system')->where('name', $labelName)->orderBy('id')->first();
             if ($label) {
                 $model->labels()->attach($label->id);
             }
@@ -117,13 +117,16 @@ class GmailFetcher
     protected function ensureSystemLabels(int $userId): void
     {
         foreach (['Inbox', 'Sent'] as $name) {
-            MailLabel::firstOrCreate([
-                'user_id' => $userId,
-                'name' => $name,
-            ], [
-                'color' => $name === 'Inbox' ? '#2563eb' : '#10b981',
-                'type' => 'system',
-            ]);
+            MailLabel::firstOrCreate(
+                [
+                    'type' => 'system',
+                    'name' => $name,
+                ],
+                [
+                    'user_id' => $userId,
+                    'color' => $name === 'Inbox' ? '#2563eb' : '#10b981',
+                ]
+            );
         }
     }
 
