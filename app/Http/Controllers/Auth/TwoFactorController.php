@@ -39,7 +39,7 @@ class TwoFactorController extends Controller
         // Store secret in session — the form no longer sends it as a hidden field
         $request->session()->put('2fa_setup_secret', $secret);
 
-        return view('auth.two-factor.setup', compact('user', 'qrCodeUrl'));
+        return view('auth.two-factor.setup', compact('user', 'qrCodeUrl', 'secret'));
     }
 
     /**
