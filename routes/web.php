@@ -236,6 +236,10 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 });
 
 Route::middleware(['auth', 'verified', 'super.admin'])->group(function () {
+    // No user list UI yet — send /admin/users to the create form (avoids 404 for that URL).
+    Route::get('/admin/users', function () {
+        return redirect()->route('admin.users.create');
+    })->name('admin.users.index');
     Route::get('/admin/users/create', [\App\Http\Controllers\Admin\UserManagementController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/users', [\App\Http\Controllers\Admin\UserManagementController::class, 'store'])->name('admin.users.store');
 });
