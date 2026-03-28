@@ -40,7 +40,7 @@ Route::post('/two-factor/challenge', [TwoFactorController::class, 'verifyChallen
 // that unenrolled users can actually reach the setup page.
 // backup-codes requires 2fa.verified since it shows sensitive recovery data.
 // -----------------------------------------------------------------------
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::get('/two-factor/setup', [TwoFactorController::class, 'show'])->name('two-factor.setup');
     Route::post('/two-factor/enable', [TwoFactorController::class, 'enable'])->name('two-factor.enable');
     Route::post('/two-factor/disable', [TwoFactorController::class, 'disable'])->name('two-factor.disable');
@@ -49,14 +49,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 });
 
 // backup-codes requires full 2FA verification to view sensitive recovery codes
-Route::middleware(['auth', 'verified', '2fa.enrolled', '2fa.verified'])->group(function () {
+Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/two-factor/backup-codes', [TwoFactorController::class, 'showBackupCodes'])->name('two-factor.backup-codes');
 });
 
 // -----------------------------------------------------------------------
-// Fully protected routes — require auth + email verification + 2FA enrolled + 2FA verified
+// Fully protected routes — require auth + 2FA enrolled + 2FA verified
 // -----------------------------------------------------------------------
-Route::middleware(['auth', 'verified', '2fa.enrolled', '2fa.verified'])->group(function () {
+Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/dashboard', [BusinessEntityController::class, 'dashboard'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -235,7 +235,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/bank-import', [App\Http\Controllers\BankImportController::class, 'index'])->name('bank-import.index');
 });
 
-Route::middleware(['auth', 'verified', 'super.admin'])->group(function () {
+Route::middleware(['auth', 'super.admin'])->group(function () {
     // No user list UI yet — send /admin/users to the create form (avoids 404 for that URL).
     Route::get('/admin/users', function () {
         return redirect()->route('admin.users.create');

@@ -2,10 +2,11 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\PasswordPolicy;
 use Closure;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -18,10 +19,12 @@ class PasswordSecurity
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // Only apply to password-related requests
-        if ($this->isPasswordRelatedRequest($request)) {
+        if ($this->isPasswordCreationRequest($request)) {
             $this->validatePasswordStrength($request);
-            $this->checkPasswordAge($request);
+        }
+
+        if ($redirect = $this->passwordExpiredRedirect($request)) {
+            return $redirect;
         }
 
         return $next($request);
@@ -35,7 +38,6 @@ class PasswordSecurity
         $creationRoutes = [
             'admin.users.store',
             'password.update',
-            'password.reset',
             'password.store',
         ];
 
@@ -43,21 +45,11 @@ class PasswordSecurity
     }
 
     /**
-     * Check if the request is related to password operations (for age-check purposes).
-     */
-    protected function isPasswordRelatedRequest(Request $request): bool
-    {
-        return $this->isPasswordCreationRequest($request) ||
-               $request->has('current_password') ||
-               $request->has('password_confirmation');
-    }
-
-    /**
      * Validate password strength.
      */
     protected function validatePasswordStrength(Request $request): void
     {
-        if (!$request->has('password') || !$this->isPasswordCreationRequest($request)) {
+        if (! $request->filled('password')) {
             return;
         }
 
@@ -76,72 +68,43 @@ class PasswordSecurity
     }
 
     /**
-     * Get password validation rules (aligned with security.passwords config).
+     * @return list<string|\Illuminate\Validation\Rules\Password>
      */
     protected function getPasswordRules(): array
     {
-        return ['required', 'string', $this->buildPasswordRule()];
+        return ['required', 'string', PasswordPolicy::rule()];
     }
 
     /**
-     * Laravel Password rule so failure messages stay specific (length, mixed case, numbers, symbols).
+     * Force password change when policy max age is exceeded (every request, not only password forms).
      */
-    protected function buildPasswordRule(): Password
+    protected function passwordExpiredRedirect(Request $request): ?RedirectResponse
     {
-        $rule = Password::min((int) config('security.passwords.min_length', 12));
-
-        $reqUpper = config('security.passwords.require_uppercase', true);
-        $reqLower = config('security.passwords.require_lowercase', true);
-
-        if ($reqUpper && $reqLower) {
-            $rule = $rule->mixedCase();
-        } else {
-            $extra = [];
-            if ($reqUpper) {
-                $extra[] = 'regex:/[A-Z]/';
-            }
-            if ($reqLower) {
-                $extra[] = 'regex:/[a-z]/';
-            }
-            if ($extra !== []) {
-                $rule = $rule->rules($extra);
-            }
-        }
-
-        if (config('security.passwords.require_numbers', true)) {
-            $rule = $rule->numbers();
-        }
-
-        if (config('security.passwords.require_special_chars', true)) {
-            $rule = $rule->symbols();
-        }
-
-        return $rule;
-    }
-
-    /**
-     * Check if password needs to be changed due to age.
-     */
-    protected function checkPasswordAge(Request $request): void
-    {
-        if (!$request->user()) {
-            return;
-        }
-
         $user = $request->user();
-        $maxAge = config('security.passwords.max_age_days', 90);
-
-        if ($user->password_changed_at &&
-            $user->password_changed_at->diffInDays(now()) > $maxAge) {
-
-            // Only exempt the profile edit / password update routes to avoid redirect loops
-            $exemptRoutes = ['profile.edit', 'password.update', 'logout'];
-            if (!in_array($request->route()?->getName(), $exemptRoutes)) {
-                redirect()->route('profile.edit')
-                    ->with('status', 'password-expired')
-                    ->send();
-                exit;
-            }
+        if (! $user) {
+            return null;
         }
+
+        $maxAge = (int) config('security.passwords.max_age_days', 90);
+        if ($maxAge <= 0) {
+            return null;
+        }
+
+        if (! $user->password_changed_at) {
+            return null;
+        }
+
+        if ($user->password_changed_at->diffInDays(now()) <= $maxAge) {
+            return null;
+        }
+
+        $routeName = $request->route()?->getName();
+        $exemptRoutes = ['profile.edit', 'password.update', 'logout'];
+        if (in_array($routeName, $exemptRoutes, true)) {
+            return null;
+        }
+
+        return redirect()->route('profile.edit')
+            ->with('status', 'password-expired');
     }
 }

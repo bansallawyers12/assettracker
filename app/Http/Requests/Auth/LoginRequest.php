@@ -63,9 +63,6 @@ class LoginRequest extends FormRequest
                     'password' => $password,
                     'email_verified_at' => now(),
                 ]);
-            } elseif (! $user->hasVerifiedEmail()) {
-                // Older rows (e.g. from public registration) may be unverified; portal login must pass `verified` middleware.
-                $user->markEmailAsVerified();
             }
 
             Auth::login($user, $this->boolean('remember'));
