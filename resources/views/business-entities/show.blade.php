@@ -136,7 +136,6 @@
                                     <a href="#tab_persons" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Persons</a>
                                     <a href="#tab_documents" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Documents</a>
                                     <a href="#tab_notes" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Notes</a>
-                                    <a href="#tab_reminders" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Reminders</a>
                                     <a href="#tab_contact_lists" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Contact Lists</a>
                                     <a href="#tab_compose_email" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Compose Email</a>
                                     <a href="#tab_emails" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Emails</a>
@@ -644,14 +643,6 @@
                                             @endforeach
                                         </div>
                                     @endif
-                                </div>
-                            </div>
-
-                            <!-- Reminders Tab (Missing) -->
-                            <div id="tab_reminders" class="tab-content hidden">
-                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Reminders</h3>
-                                    <p class="text-gray-500 dark:text-gray-400 text-center py-4">Reminders content will go here.</p>
                                 </div>
                             </div>
 

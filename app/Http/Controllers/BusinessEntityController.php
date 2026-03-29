@@ -42,14 +42,10 @@ class BusinessEntityController extends Controller
         $businessEntities = BusinessEntity::query()
             ->with('persons')
             ->when(! auth()->user()->isPrimaryAdministrator(), fn ($q) => $q->where('user_id', auth()->id()))
+            ->orderBy('legal_name')
             ->get();
 
-        $reminders = Note::where('is_reminder', true)
-            ->whereDate('reminder_date', '>=', now()->toDateString())
-            ->orderBy('reminder_date')
-            ->get();
-
-        return view('business-entities.index', compact('businessEntities', 'reminders'));
+        return view('business-entities.index', compact('businessEntities'));
     }
 
     /**
@@ -182,12 +178,6 @@ class BusinessEntityController extends Controller
             ->get();
         $notes = $businessEntity->notes()->where('is_reminder', false)->orderBy('created_at', 'desc')->get();
 
-        // Get reminders using the new Reminder model
-        $reminders = Reminder::where('business_entity_id', $businessEntity->id)
-            ->with(['user'])
-            ->orderBy('next_due_date')
-            ->get();
-
         // Get unmatched transactions for each bank account
         $unmatchedTransactions = [];
         foreach ($bankAccounts as $bankAccount) {
@@ -207,7 +197,6 @@ class BusinessEntityController extends Controller
             'transactions',
             'documentCategories',
             'notes',
-            'reminders',
             'unmatchedTransactions',
             'contactLists'
         ));
