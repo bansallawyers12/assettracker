@@ -3,13 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Transaction extends Model
 {
     protected $fillable = [
         'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description',
-        'transaction_type', 'gst_amount', 'gst_status', 'receipt_path',
-        'bank_account_id', 'tracking_category_id', 'tracking_sub_category_id'
+        'transaction_type', 'gst_amount', 'gst_status', 'receipt_path', 'document_id',
+        'bank_account_id', 'tracking_category_id', 'tracking_sub_category_id',
     ];
 
     protected $casts = [
@@ -53,6 +54,20 @@ class Transaction extends Model
     public function asset()
     {
         return $this->belongsTo(Asset::class);
+    }
+
+    public function receiptDocument()
+    {
+        return $this->belongsTo(Document::class, 'document_id');
+    }
+
+    public function getReceiptUrlAttribute(): ?string
+    {
+        if (! $this->receipt_path) {
+            return null;
+        }
+
+        return Storage::disk('s3')->temporaryUrl($this->receipt_path, now()->addMinutes(30));
     }
 
     public function relatedEntity()

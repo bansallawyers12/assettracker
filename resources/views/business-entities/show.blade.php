@@ -324,7 +324,7 @@
                                                     @foreach ($transactions as $transaction)
                                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->date->format('d/m/Y') }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->amount }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">${{ number_format($transaction->amount, 2) }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->description }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                                                                 @if ($transaction->asset)
@@ -347,7 +347,7 @@
                                                             </td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                                                                 <div class="flex flex-wrap gap-2">
-                                                                    <a href="{{ route('business-entities.bank-accounts.transactions.show', [$businessEntity->id, $bankAccounts->first()->id ?? 0, $transaction->id]) }}" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded text-xs">
+                                                                    <a href="{{ route('business-entities.transactions.edit', [$businessEntity->id, $transaction->id]) }}" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded text-xs">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                                         </svg>
@@ -384,6 +384,17 @@
                                                                             Receipt
                                                                         </a>
                                                                     @endif
+                                                                    <form action="{{ route('business-entities.transactions.destroy', [$businessEntity->id, $transaction->id]) }}" method="POST" class="inline-flex items-center" onsubmit="return confirmDeleteTransaction(this, @json((bool) $transaction->document_id));">
+                                                                        @csrf
+                                                                        @method('DELETE')
+                                                                        <input type="hidden" name="delete_linked_document" value="0" />
+                                                                        <button type="submit" class="inline-flex items-center px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-200 rounded text-xs">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                            </svg>
+                                                                            Delete
+                                                                        </button>
+                                                                    </form>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -399,9 +410,16 @@
                                                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                         <div>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Date:</span> {{ $selectedTransaction->date->format('d/m/Y') }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Amount:</span> {{ $selectedTransaction->amount }}</p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Amount:</span> ${{ number_format($selectedTransaction->amount, 2) }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Description:</span> {{ $selectedTransaction->description }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> {{ Transaction::$transactionTypes[$selectedTransaction->transaction_type] ?? 'N/A' }}</p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Asset:</span>
+                                                                @if ($selectedTransaction->asset)
+                                                                    <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $selectedTransaction->asset_id]) }}#tab_transactions" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">{{ $selectedTransaction->asset->name }}</a>
+                                                                @else
+                                                                    <span class="text-gray-500 dark:text-gray-400">Entity only</span>
+                                                                @endif
+                                                            </p>
                                                         </div>
                                                         <div>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST Amount:</span> {{ $selectedTransaction->gst_amount ?? 'N/A' }}</p>
@@ -409,7 +427,7 @@
                                                             @if ($selectedTransaction->receipt_path)
                                                                 <p class="mb-2">
                                                                     <span class="font-medium text-gray-700 dark:text-gray-300">Receipt:</span>
-                                                                    <a href="{{ $transaction->receiptUrl }}" target="_blank" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">View Receipt</a>
+                                                                    <a href="{{ $selectedTransaction->receiptUrl }}" target="_blank" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">View Receipt</a>
                                                                 </p>
                                                             @endif
                                                         </div>
@@ -1275,6 +1293,19 @@
 
         });
     </script>
-    
+    <script>
+        function confirmDeleteTransaction(form, hasLinkedReceiptDoc) {
+            if (!confirm('Delete this transaction?')) {
+                return false;
+            }
+            const input = form.querySelector('input[name="delete_linked_document"]');
+            if (hasLinkedReceiptDoc && confirm('Also delete the attached receipt from Documents?')) {
+                input.value = '1';
+            } else {
+                input.value = '0';
+            }
+            return true;
+        }
+    </script>
 
 </x-app-layout>

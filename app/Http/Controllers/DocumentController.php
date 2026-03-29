@@ -351,6 +351,7 @@ class DocumentController extends Controller
         if ($request->filled('document_id')) {
             $document = Document::findOrFail($request->document_id);
             $this->authorize('delete', $document);
+            $this->uploadService->clearTransactionLinksForDocument($document);
             if ($document->path && Storage::disk('s3')->exists($document->path)) {
                 Storage::disk('s3')->delete($document->path);
             }
@@ -365,6 +366,7 @@ class DocumentController extends Controller
 
         $document = Document::where('path', $path)->firstOrFail();
         $this->authorize('delete', $document);
+        $this->uploadService->clearTransactionLinksForDocument($document);
 
         if (! Storage::disk('s3')->exists($path)) {
             return response()->json(['error' => 'File not found'], 404);

@@ -64,10 +64,20 @@
                         <select name="related_entity_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                             <option value="">Select Related Entity</option>
                             @foreach(\App\Models\BusinessEntity::where('id', '!=', $businessEntity->id)->get() as $entity)
-                                <option value="{{ $entity->id }}" {{ old('related_entity_id', $transactionData['related_entity_id'] ?? '') == $entity->id ? 'selected' : '' }}>{{ $entity->name }}</option>
+                                <option value="{{ $entity->id }}" {{ old('related_entity_id', $transactionData['related_entity_id'] ?? '') == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
                             @endforeach
                         </select>
                         @error('related_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Asset <span class="text-gray-500 font-normal">(optional)</span></label>
+                        <select name="asset_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                            <option value="">None — entity only</option>
+                            @foreach ($businessEntity->assets()->orderBy('name')->get() as $asset)
+                                <option value="{{ $asset->id }}" {{ (string) old('asset_id', $transactionData['asset_id'] ?? '') === (string) $asset->id ? 'selected' : '' }}>{{ $asset->name }}</option>
+                            @endforeach
+                        </select>
+                        @error('asset_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700">GST Amount</label>

@@ -141,6 +141,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('business-entities/{businessEntity}/transactions/store', [BusinessEntityController::class, 'storeTransaction'])->name('business-entities.transactions.store');
     Route::get('business-entities/{businessEntity}/transactions/{transaction}/edit', [BusinessEntityController::class, 'editTransaction'])->name('business-entities.transactions.edit');
     Route::put('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'updateTransaction'])->name('business-entities.transactions.update');
+    Route::delete('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'destroyTransaction'])->name('business-entities.transactions.destroy');
 
     // Existing Bank Account Transaction Routes
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/create', [BusinessEntityController::class, 'createTransaction'])->name('business-entities.bank-accounts.transactions.create');

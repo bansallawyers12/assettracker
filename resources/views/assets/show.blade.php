@@ -617,7 +617,18 @@
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ $tx->description }}</td>
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ Transaction::$transactionTypes[$tx->transaction_type] ?? $tx->transaction_type }}</td>
                                                             <td class="px-4 py-2 text-sm">
-                                                                <a href="{{ route('business-entities.transactions.edit', [$businessEntity->id, $tx->id]) }}" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium">Edit</a>
+                                                                <div class="flex flex-wrap gap-2 items-center">
+                                                                    <a href="{{ route('business-entities.transactions.edit', [$businessEntity->id, $tx->id]) }}" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium">Edit</a>
+                                                                    @if ($tx->receipt_path)
+                                                                        <a href="{{ $tx->receiptUrl }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium">Receipt</a>
+                                                                    @endif
+                                                                    <form action="{{ route('business-entities.transactions.destroy', [$businessEntity->id, $tx->id]) }}" method="POST" class="inline-flex items-center" onsubmit="return confirmDeleteTransaction(this, @json((bool) $tx->document_id));">
+                                                                        @csrf
+                                                                        @method('DELETE')
+                                                                        <input type="hidden" name="delete_linked_document" value="0" />
+                                                                        <button type="submit" class="text-red-700 hover:text-red-900 dark:text-red-400 text-xs font-medium">Delete</button>
+                                                                    </form>
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     @endforeach
@@ -902,6 +913,19 @@
             // Call the function directly
             initializeReminderLogic();
         });
+
+        function confirmDeleteTransaction(form, hasLinkedReceiptDoc) {
+            if (!confirm('Delete this transaction?')) {
+                return false;
+            }
+            const input = form.querySelector('input[name="delete_linked_document"]');
+            if (hasLinkedReceiptDoc && confirm('Also delete the attached receipt from Documents?')) {
+                input.value = '1';
+            } else {
+                input.value = '0';
+            }
+            return true;
+        }
     </script>
     @endpush
 </x-app-layout>

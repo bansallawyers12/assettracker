@@ -8,12 +8,14 @@ use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
+use App\Models\Document;
 use App\Models\EmailTemplate;
 use App\Models\EntityPerson;
 use App\Models\Note;
 use App\Models\Person; // Added for date manipulation
 use App\Models\Reminder; // Added for logging
 use App\Models\Transaction; // Added for file storage
+use App\Services\DocumentUploadService;
 use Carbon\Carbon; // Added for handling validation exceptions
 use Illuminate\Database\QueryException;
 // Add this at the top with other use statements
@@ -21,6 +23,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -30,6 +34,10 @@ use Illuminate\View\View;
 
 class BusinessEntityController extends Controller
 {
+    public function __construct(
+        private DocumentUploadService $documentUploadService
+    ) {}
+
     /**
      * Display a listing of the business entities.
      *
@@ -306,6 +314,8 @@ class BusinessEntityController extends Controller
      */
     public function storeTransaction(Request $request, BusinessEntity $businessEntity)
     {
+        $this->normalizeOptionalTransactionAssetId($request);
+
         $resolvedEntityId = $request->filled('business_entity_id')
             ? (int) $request->business_entity_id
             : (int) $businessEntity->id;
@@ -341,38 +351,65 @@ class BusinessEntityController extends Controller
             ]);
         }
 
-        $receiptPath = $request->input('receipt_path'); // Get path if pre-filled from extraction
+        $asset = $request->filled('asset_id')
+            ? Asset::query()->find($request->integer('asset_id'))
+            : null;
 
-        // Handle file upload if a new document is provided
-        if ($request->hasFile('document')) {
-            $file = $request->file('document');
-            $originalName = $file->getClientOriginalName();
-            $customName = $request->document_name ?: pathinfo($originalName, PATHINFO_FILENAME);
-            $extension = $file->getClientOriginalExtension();
-            $uploadDate = now()->format('Y-m-d');
-            $fileName = "{$customName}_{$uploadDate}.{$extension}";
-            $folderPath = "Receipts/{$targetEntity->id}_{$targetEntity->legal_name}";
-            $s3Path = "{$folderPath}/{$fileName}";
+        $transaction = DB::transaction(function () use ($request, $targetEntity, $asset) {
+            $receiptPath = null;
+            $documentId = null;
+            $prefillPath = $request->input('receipt_path');
 
-            // Upload to S3 (S3 doesn't require explicit directory creation)
-            Storage::disk('s3')->put($s3Path, file_get_contents($file->getRealPath()));
-            $receiptPath = $s3Path; // Update receipt path with the newly uploaded file
-        }
+            if ($request->hasFile('document')) {
+                $file = $request->file('document');
+                $originalName = $file->getClientOriginalName();
+                $displayName = $request->filled('document_name')
+                    ? $request->string('document_name').'.'.$file->getClientOriginalExtension()
+                    : $originalName;
+                $labelBase = $request->document_name ?: pathinfo($originalName, PATHINFO_FILENAME);
+                $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
+                $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                    $targetEntity,
+                    $asset,
+                    $file,
+                    $displayName,
+                    $labelBase,
+                    $desc !== '' ? $desc : null
+                );
+                $receiptPath = $document->path;
+                $documentId = $document->id;
+            } elseif ($prefillPath && Storage::disk('s3')->exists($prefillPath)) {
+                $displayName = basename(str_replace('\\', '/', $prefillPath));
+                $labelBase = pathinfo($displayName, PATHINFO_FILENAME) ?: 'Receipt';
+                $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
+                $document = $this->documentUploadService->createTransactionReceiptFromExistingS3Path(
+                    $targetEntity,
+                    $asset,
+                    $prefillPath,
+                    $displayName,
+                    $labelBase,
+                    $desc !== '' ? $desc : null
+                );
+                $receiptPath = $document->path;
+                $documentId = $document->id;
+            } elseif ($prefillPath) {
+                $receiptPath = $prefillPath;
+            }
 
-        // Create the transaction record
-        $transaction = Transaction::create([
-            'business_entity_id' => $targetEntity->id,
-            'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
-            'related_entity_id' => $request->related_entity_id,
-            'date' => $request->date,
-            'amount' => $request->amount,
-            'description' => $request->description,
-            'transaction_type' => $request->transaction_type,
-            'gst_amount' => $request->gst_amount,
-            'gst_status' => $request->gst_status,
-            'receipt_path' => $receiptPath,
-            // 'bank_account_id' might be set later during reconciliation
-        ]);
+            return Transaction::create([
+                'business_entity_id' => $targetEntity->id,
+                'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
+                'related_entity_id' => $request->related_entity_id,
+                'date' => $request->date,
+                'amount' => $request->amount,
+                'description' => $request->description,
+                'transaction_type' => $request->transaction_type,
+                'gst_amount' => $request->gst_amount,
+                'gst_status' => $request->gst_status,
+                'receipt_path' => $receiptPath,
+                'document_id' => $documentId,
+            ]);
+        });
 
         // Redirect to dashboard (or entity show page) with success message
         // Consider redirecting to business-entities.show instead?
@@ -393,6 +430,8 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $this->normalizeOptionalTransactionAssetId($request);
+
         // Validate the transaction data
         $request->validate([
             'date' => 'required|date',
@@ -411,37 +450,66 @@ class BusinessEntityController extends Controller
             'document_name' => 'nullable|string|max:255',
         ]);
 
-        $receiptPath = $request->input('receipt_path');
+        $asset = $request->filled('asset_id')
+            ? Asset::query()->find($request->integer('asset_id'))
+            : null;
 
-        // Handle file upload if a new document is provided
-        if ($request->hasFile('document')) {
-            $file = $request->file('document');
-            $originalName = $file->getClientOriginalName();
-            $customName = $request->document_name ?: pathinfo($originalName, PATHINFO_FILENAME);
-            $extension = $file->getClientOriginalExtension();
-            $uploadDate = now()->format('Y-m-d');
-            $fileName = "{$customName}_{$uploadDate}.{$extension}";
-            $folderPath = "Receipts/{$businessEntity->id}_{$businessEntity->legal_name}";
-            $s3Path = "{$folderPath}/{$fileName}";
+        $transaction = DB::transaction(function () use ($request, $businessEntity, $bankAccount, $asset) {
+            $receiptPath = null;
+            $documentId = null;
+            $prefillPath = $request->input('receipt_path');
 
-            Storage::disk('s3')->put($s3Path, file_get_contents($file->getRealPath()));
-            $receiptPath = $s3Path;
-        }
+            if ($request->hasFile('document')) {
+                $file = $request->file('document');
+                $originalName = $file->getClientOriginalName();
+                $displayName = $request->filled('document_name')
+                    ? $request->string('document_name').'.'.$file->getClientOriginalExtension()
+                    : $originalName;
+                $labelBase = $request->document_name ?: pathinfo($originalName, PATHINFO_FILENAME);
+                $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
+                $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                    $businessEntity,
+                    $asset,
+                    $file,
+                    $displayName,
+                    $labelBase,
+                    $desc !== '' ? $desc : null
+                );
+                $receiptPath = $document->path;
+                $documentId = $document->id;
+            } elseif ($prefillPath && Storage::disk('s3')->exists($prefillPath)) {
+                $displayName = basename(str_replace('\\', '/', $prefillPath));
+                $labelBase = pathinfo($displayName, PATHINFO_FILENAME) ?: 'Receipt';
+                $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
+                $document = $this->documentUploadService->createTransactionReceiptFromExistingS3Path(
+                    $businessEntity,
+                    $asset,
+                    $prefillPath,
+                    $displayName,
+                    $labelBase,
+                    $desc !== '' ? $desc : null
+                );
+                $receiptPath = $document->path;
+                $documentId = $document->id;
+            } elseif ($prefillPath) {
+                $receiptPath = $prefillPath;
+            }
 
-        // Create the transaction record
-        $transaction = Transaction::create([
-            'business_entity_id' => $businessEntity->id,
-            'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
-            'related_entity_id' => $request->related_entity_id,
-            'bank_account_id' => $bankAccount->id,
-            'date' => $request->date,
-            'amount' => $request->amount,
-            'description' => $request->description,
-            'transaction_type' => $request->transaction_type,
-            'gst_amount' => $request->gst_amount,
-            'gst_status' => $request->gst_status,
-            'receipt_path' => $receiptPath,
-        ]);
+            return Transaction::create([
+                'business_entity_id' => $businessEntity->id,
+                'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
+                'related_entity_id' => $request->related_entity_id,
+                'bank_account_id' => $bankAccount->id,
+                'date' => $request->date,
+                'amount' => $request->amount,
+                'description' => $request->description,
+                'transaction_type' => $request->transaction_type,
+                'gst_amount' => $request->gst_amount,
+                'gst_status' => $request->gst_status,
+                'receipt_path' => $receiptPath,
+                'document_id' => $documentId,
+            ]);
+        });
 
         // Redirect to the bank account show page with success message
         return redirect()->route('business-entities.show', [$businessEntity->id, 'bank_account_id' => $bankAccount->id, '#tab_bank_accounts'])
@@ -462,6 +530,8 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        $transaction->load('asset');
+
         return view('business-entities.bank-accounts.transactions.edit', compact('businessEntity', 'transaction'));
     }
 
@@ -479,6 +549,8 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        $this->normalizeOptionalTransactionAssetId($request);
+
         $data = $request->validate([
             'date' => 'required|date',
             'amount' => 'required|numeric',
@@ -496,12 +568,44 @@ class BusinessEntityController extends Controller
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
 
-        $transaction->update(\Illuminate\Support\Arr::only($data, [
+        $transaction->update(Arr::only($data, [
             'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
         ]));
 
         // Redirect to the business entity show page with success message
         return redirect()->route('business-entities.show', $businessEntity->id)->with('success', 'Transaction updated successfully!');
+    }
+
+    /**
+     * Remove a transaction; optionally remove its linked receipt document.
+     *
+     * @return RedirectResponse
+     */
+    public function destroyTransaction(Request $request, BusinessEntity $businessEntity, Transaction $transaction): RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        if ((int) $transaction->business_entity_id !== (int) $businessEntity->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $deleteLinkedDocument = $request->boolean('delete_linked_document');
+        $document = $transaction->document_id
+            ? Document::query()->find($transaction->document_id)
+            : null;
+
+        $transaction->delete();
+
+        if ($deleteLinkedDocument && $document) {
+            if ($document->path && Storage::disk('s3')->exists($document->path)) {
+                Storage::disk('s3')->delete($document->path);
+            }
+            $document->delete();
+        }
+
+        return redirect()->route('business-entities.show', $businessEntity->id)
+            ->withFragment('tab_transactions')
+            ->with('success', 'Transaction deleted.');
     }
 
     /**
@@ -518,6 +622,8 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        $this->normalizeOptionalTransactionAssetId($request);
+
         $data = $request->validate([
             'date' => 'required|date',
             'amount' => 'required|numeric',
@@ -535,7 +641,7 @@ class BusinessEntityController extends Controller
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
 
-        $transaction->update(\Illuminate\Support\Arr::only($data, [
+        $transaction->update(Arr::only($data, [
             'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
         ]));
 
@@ -879,6 +985,7 @@ class BusinessEntityController extends Controller
             'gst_amount' => '',
             'gst_status' => '',
             'receipt_path' => '',
+            'asset_id' => '',
         ]);
 
         // Return the create transaction view
@@ -1269,4 +1376,14 @@ class BusinessEntityController extends Controller
 
         return view('transactions.index', compact('transactions', 'businessEntities'));
     }
-} // End of BusinessEntityController class
+
+    /**
+     * HTML selects submit "" for the empty option; normalize so nullable|integer rules pass.
+     */
+    private function normalizeOptionalTransactionAssetId(Request $request): void
+    {
+        if ($request->has('asset_id') && $request->input('asset_id') === '') {
+            $request->merge(['asset_id' => null]);
+        }
+    }
+}
