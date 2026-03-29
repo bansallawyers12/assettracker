@@ -43,11 +43,7 @@ class AssetController extends Controller
         $this->authorize('viewAny', Asset::class);
 
         $assets = Asset::query()
-            ->whereHas('businessEntity', function ($q) {
-                if (! auth()->user()->isPrimaryAdministrator()) {
-                    $q->where('user_id', auth()->id());
-                }
-            })
+            ->whereHas('businessEntity')
             ->with('businessEntity')
             ->orderBy('name')
             ->orderBy('id')
