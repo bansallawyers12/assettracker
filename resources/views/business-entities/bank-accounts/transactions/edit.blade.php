@@ -51,6 +51,16 @@
                             @error('related_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset <span class="text-gray-400 font-normal">(optional)</span></label>
+                            <select name="asset_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                                <option value="">None — entity only</option>
+                                @foreach ($businessEntity->assets()->orderBy('name')->get() as $asset)
+                                    <option value="{{ $asset->id }}" {{ (string) old('asset_id', $transaction->asset_id) === (string) $asset->id ? 'selected' : '' }}>{{ $asset->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('asset_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+                        <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST Amount</label>
                             <input type="number" name="gst_amount" step="0.01" value="{{ old('gst_amount', $transaction->gst_amount) }}" 
                                    class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">

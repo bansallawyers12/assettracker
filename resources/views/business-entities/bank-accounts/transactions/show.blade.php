@@ -58,6 +58,15 @@
                 </div>
 
                 <div>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Asset</p>
+                    @if ($transaction->asset)
+                        <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $transaction->asset_id]) }}#tab_transactions" class="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300">{{ $transaction->asset->name }}</a>
+                    @else
+                        <p class="text-sm text-gray-500 dark:text-gray-400">—</p>
+                    @endif
+                </div>
+
+                <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Match Status</p>
                     @if ($transaction->bankStatementEntries()->exists())
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">

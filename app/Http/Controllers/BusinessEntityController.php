@@ -168,7 +168,7 @@ class BusinessEntityController extends Controller
         $assets = $businessEntity->assets;
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
         $bankAccounts = $businessEntity->bankAccounts()->with(['bankStatementEntries.transaction'])->get();
-        $transactions = $businessEntity->transactions()->with(['bankStatementEntries'])->orderBy('date', 'desc')->get();
+        $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset'])->orderBy('date', 'desc')->get();
         $documentCategories = $businessEntity->documentCategories()
             ->whereNull('asset_id')
             ->with(['documents' => fn ($q) => $q->orderBy('id')])
@@ -212,7 +212,7 @@ class BusinessEntityController extends Controller
 
         $businessEntities = BusinessEntity::query()->get();
         $assets = Asset::query()
-            ->whereHas('businessEntity')
+            ->whereIn('business_entity_id', $businessEntities->modelKeys())
             ->orderBy('name')
             ->orderBy('id')
             ->get();
@@ -306,6 +306,10 @@ class BusinessEntityController extends Controller
      */
     public function storeTransaction(Request $request, BusinessEntity $businessEntity)
     {
+        $resolvedEntityId = $request->filled('business_entity_id')
+            ? (int) $request->business_entity_id
+            : (int) $businessEntity->id;
+
         $request->validate([
             'business_entity_id' => 'nullable|exists:business_entities,id',
             'date' => 'required|date',
@@ -313,6 +317,11 @@ class BusinessEntityController extends Controller
             'description' => 'nullable|string|max:255',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
+            'asset_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $resolvedEntityId)),
+            ],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit', // Added more specific statuses
             'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048', // Optional document upload
@@ -353,6 +362,7 @@ class BusinessEntityController extends Controller
         // Create the transaction record
         $transaction = Transaction::create([
             'business_entity_id' => $targetEntity->id,
+            'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
             'related_entity_id' => $request->related_entity_id,
             'date' => $request->date,
             'amount' => $request->amount,
@@ -390,6 +400,11 @@ class BusinessEntityController extends Controller
             'description' => 'nullable|string|max:255',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
+            'asset_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $businessEntity->id)),
+            ],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
             'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
@@ -416,6 +431,7 @@ class BusinessEntityController extends Controller
         // Create the transaction record
         $transaction = Transaction::create([
             'business_entity_id' => $businessEntity->id,
+            'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
             'related_entity_id' => $request->related_entity_id,
             'bank_account_id' => $bankAccount->id,
             'date' => $request->date,
@@ -463,21 +479,25 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // Validate the updated data
-        $request->validate([
+        $data = $request->validate([
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
+            'asset_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $businessEntity->id)),
+            ],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
-            // Note: Updating receipt_path might require additional logic/validation if allowed
         ]);
 
-        // Update the transaction with validated fields
-        $transaction->update($request->only([
-            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'gst_amount', 'gst_status',
+        $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
+
+        $transaction->update(\Illuminate\Support\Arr::only($data, [
+            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
         ]));
 
         // Redirect to the business entity show page with success message
@@ -498,20 +518,25 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        // Validate the updated data
-        $request->validate([
+        $data = $request->validate([
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
+            'asset_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $businessEntity->id)),
+            ],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
         ]);
 
-        // Update the transaction with validated fields
-        $transaction->update($request->only([
-            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'gst_amount', 'gst_status',
+        $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
+
+        $transaction->update(\Illuminate\Support\Arr::only($data, [
+            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
         ]));
 
         // Redirect to the bank account show page with success message
@@ -876,6 +901,8 @@ class BusinessEntityController extends Controller
             abort(404); // Or abort(403) if preferred
         }
 
+        $transaction->load('asset');
+
         return view('business-entities.bank-accounts.transactions.show', compact('businessEntity', 'bankAccount', 'transaction'));
     }
 
@@ -1227,7 +1254,7 @@ class BusinessEntityController extends Controller
 
         $businessEntities = BusinessEntity::orderBy('legal_name')->get();
 
-        $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries'])
+        $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries', 'asset'])
             ->orderBy('date', 'desc');
 
         if ($entityId = request('entity_id')) {

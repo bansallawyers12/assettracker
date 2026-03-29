@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Transaction extends Model
 {
     protected $fillable = [
-        'business_entity_id', 'related_entity_id', 'date', 'amount', 'description',
+        'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description',
         'transaction_type', 'gst_amount', 'gst_status', 'receipt_path',
         'bank_account_id', 'tracking_category_id', 'tracking_sub_category_id'
     ];
@@ -48,6 +48,11 @@ class Transaction extends Model
     public function businessEntity()
     {
         return $this->belongsTo(BusinessEntity::class);
+    }
+
+    public function asset()
+    {
+        return $this->belongsTo(Asset::class);
     }
 
     public function relatedEntity()

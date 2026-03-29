@@ -314,6 +314,7 @@
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Date</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Amount</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Description</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Asset</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Type</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Status</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Actions</th>
@@ -325,6 +326,13 @@
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->date->format('d/m/Y') }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->amount }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->description }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                                                                @if ($transaction->asset)
+                                                                    <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $transaction->asset_id]) }}#tab_transactions" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">{{ $transaction->asset->name }}</a>
+                                                                @else
+                                                                    <span class="text-gray-400">—</span>
+                                                                @endif
+                                                            </td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ Transaction::$transactionTypes[$transaction->transaction_type] ?? 'Unknown' }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                                                                 @if ($transaction->bankStatementEntries()->exists())
