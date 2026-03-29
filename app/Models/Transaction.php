@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 
 class Transaction extends Model
 {
@@ -53,6 +54,15 @@ class Transaction extends Model
     public function asset()
     {
         return $this->belongsTo(Asset::class);
+    }
+
+    public function getReceiptUrlAttribute(): ?string
+    {
+        if (! $this->receipt_path) {
+            return null;
+        }
+
+        return Storage::disk('s3')->temporaryUrl($this->receipt_path, now()->addMinutes(30));
     }
 
     public function relatedEntity()

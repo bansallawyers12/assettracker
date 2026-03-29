@@ -21,6 +21,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -306,6 +307,8 @@ class BusinessEntityController extends Controller
      */
     public function storeTransaction(Request $request, BusinessEntity $businessEntity)
     {
+        $this->normalizeOptionalTransactionAssetId($request);
+
         $resolvedEntityId = $request->filled('business_entity_id')
             ? (int) $request->business_entity_id
             : (int) $businessEntity->id;
@@ -393,6 +396,8 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized');
         }
 
+        $this->normalizeOptionalTransactionAssetId($request);
+
         // Validate the transaction data
         $request->validate([
             'date' => 'required|date',
@@ -462,6 +467,8 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        $transaction->load('asset');
+
         return view('business-entities.bank-accounts.transactions.edit', compact('businessEntity', 'transaction'));
     }
 
@@ -478,6 +485,8 @@ class BusinessEntityController extends Controller
         if ($transaction->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized action.');
         }
+
+        $this->normalizeOptionalTransactionAssetId($request);
 
         $data = $request->validate([
             'date' => 'required|date',
@@ -496,7 +505,7 @@ class BusinessEntityController extends Controller
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
 
-        $transaction->update(\Illuminate\Support\Arr::only($data, [
+        $transaction->update(Arr::only($data, [
             'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
         ]));
 
@@ -518,6 +527,8 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        $this->normalizeOptionalTransactionAssetId($request);
+
         $data = $request->validate([
             'date' => 'required|date',
             'amount' => 'required|numeric',
@@ -535,7 +546,7 @@ class BusinessEntityController extends Controller
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
 
-        $transaction->update(\Illuminate\Support\Arr::only($data, [
+        $transaction->update(Arr::only($data, [
             'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
         ]));
 
@@ -879,6 +890,7 @@ class BusinessEntityController extends Controller
             'gst_amount' => '',
             'gst_status' => '',
             'receipt_path' => '',
+            'asset_id' => '',
         ]);
 
         // Return the create transaction view
@@ -1269,4 +1281,14 @@ class BusinessEntityController extends Controller
 
         return view('transactions.index', compact('transactions', 'businessEntities'));
     }
-} // End of BusinessEntityController class
+
+    /**
+     * HTML selects submit "" for the empty option; normalize so nullable|integer rules pass.
+     */
+    private function normalizeOptionalTransactionAssetId(Request $request): void
+    {
+        if ($request->has('asset_id') && $request->input('asset_id') === '') {
+            $request->merge(['asset_id' => null]);
+        }
+    }
+}

@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Convert empty form strings to null so nullable validation rules work correctly
+        $middleware->convertEmptyStringsToNull();
+
         // Global middleware — runs on every request
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 

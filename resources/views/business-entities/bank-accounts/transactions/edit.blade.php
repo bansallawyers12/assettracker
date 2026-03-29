@@ -45,7 +45,7 @@
                             <select name="related_entity_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
                                 <option value="">Select Related Entity</option>
                                 @foreach(\App\Models\BusinessEntity::where('id', '!=', $transaction->business_entity_id)->get() as $entity)
-                                    <option value="{{ $entity->id }}" {{ old('related_entity_id', $transaction->related_entity_id) == $entity->id ? 'selected' : '' }}>{{ $entity->name }}</option>
+                                    <option value="{{ $entity->id }}" {{ old('related_entity_id', $transaction->related_entity_id) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
                                 @endforeach
                             </select>
                             @error('related_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
