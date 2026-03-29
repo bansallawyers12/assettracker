@@ -104,7 +104,7 @@
                     <input type="hidden" name="receipt_path" value="{{ $transactionData['receipt_path'] ?? '' }}">
                     <div class="flex space-x-4">
                         <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md shadow-sm transition duration-200">Add Transaction</button>
-                        <a href="{{ route('business-entities.show', [$businessEntity->id, 'bank_account_id' => $bankAccount->id, '#tab_bank_accounts']) }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm transition duration-200">Cancel</a>
+                        <a href="{{ route('business-entities.show', ['business_entity' => $businessEntity->id, 'bank_account_id' => $bankAccount->id]) }}#tab_bank_accounts" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-sm transition duration-200">Cancel</a>
                     </div>
                 </form>
             </div>
