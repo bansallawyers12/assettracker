@@ -41,7 +41,6 @@ class BusinessEntityController extends Controller
 
         $businessEntities = BusinessEntity::query()
             ->with('persons')
-            ->when(! auth()->user()->isPrimaryAdministrator(), fn ($q) => $q->where('user_id', auth()->id()))
             ->orderBy('legal_name')
             ->get();
 
@@ -211,9 +210,7 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $businessEntities = BusinessEntity::query()
-            ->when(! auth()->user()->isPrimaryAdministrator(), fn ($q) => $q->where('user_id', auth()->id()))
-            ->get();
+        $businessEntities = BusinessEntity::query()->get();
         $assets = Asset::query()
             ->whereHas('businessEntity')
             ->orderBy('name')

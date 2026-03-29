@@ -20,11 +20,7 @@ class BusinessEntityPolicy
      */
     public function view(User $user, BusinessEntity $businessEntity)
     {
-        if ($user->isPrimaryAdministrator()) {
-            return true;
-        }
-
-        return (int) $businessEntity->user_id === (int) $user->id;
+        return true;
     }
 
     /**
@@ -41,11 +37,7 @@ class BusinessEntityPolicy
      */
     public function update(User $user, BusinessEntity $businessEntity)
     {
-        if ($user->isPrimaryAdministrator()) {
-            return true;
-        }
-
-        return (int) $businessEntity->user_id === (int) $user->id;
+        return true;
     }
 
     /**
@@ -53,10 +45,6 @@ class BusinessEntityPolicy
      */
     public function delete(User $user, BusinessEntity $businessEntity)
     {
-        if ($user->isPrimaryAdministrator()) {
-            return true;
-        }
-
-        return (int) $businessEntity->user_id === (int) $user->id;
+        return true;
     }
 }

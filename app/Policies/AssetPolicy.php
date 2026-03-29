@@ -7,17 +7,9 @@ use App\Models\User;
 
 class AssetPolicy
 {
-    private function canAccessViaEntity(User $user, Asset $asset): bool
+    private function canAccessViaEntity(Asset $asset): bool
     {
-        $entity = $asset->businessEntity;
-        if (! $entity) {
-            return false;
-        }
-        if ($user->isPrimaryAdministrator()) {
-            return true;
-        }
-
-        return (int) $entity->user_id === (int) $user->id;
+        return $asset->businessEntity !== null;
     }
 
     /**
@@ -33,7 +25,7 @@ class AssetPolicy
      */
     public function view(User $user, Asset $asset): bool
     {
-        return $this->canAccessViaEntity($user, $asset);
+        return $this->canAccessViaEntity($asset);
     }
 
     /**
@@ -49,7 +41,7 @@ class AssetPolicy
      */
     public function update(User $user, Asset $asset): bool
     {
-        return $this->canAccessViaEntity($user, $asset);
+        return $this->canAccessViaEntity($asset);
     }
 
     /**
@@ -57,6 +49,6 @@ class AssetPolicy
      */
     public function delete(User $user, Asset $asset): bool
     {
-        return $this->canAccessViaEntity($user, $asset);
+        return $this->canAccessViaEntity($asset);
     }
 }

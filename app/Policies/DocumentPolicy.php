@@ -8,31 +8,23 @@ use App\Models\User;
 
 class DocumentPolicy
 {
-    private function canAccessEntity(User $user, ?BusinessEntity $entity): bool
+    private function canAccessEntity(?BusinessEntity $entity): bool
     {
-        if (! $entity) {
-            return false;
-        }
-
-        if ($user->isPrimaryAdministrator()) {
-            return true;
-        }
-
-        return (int) $entity->user_id === (int) $user->id;
+        return $entity !== null;
     }
 
     public function view(User $user, Document $document): bool
     {
-        return $this->canAccessEntity($user, $document->businessEntity);
+        return $this->canAccessEntity($document->businessEntity);
     }
 
     public function update(User $user, Document $document): bool
     {
-        return $this->canAccessEntity($user, $document->businessEntity);
+        return $this->canAccessEntity($document->businessEntity);
     }
 
     public function delete(User $user, Document $document): bool
     {
-        return $this->canAccessEntity($user, $document->businessEntity);
+        return $this->canAccessEntity($document->businessEntity);
     }
 }
