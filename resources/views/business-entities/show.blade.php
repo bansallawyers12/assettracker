@@ -384,6 +384,17 @@
                                                                             Receipt
                                                                         </a>
                                                                     @endif
+                                                                    <form action="{{ route('business-entities.transactions.destroy', [$businessEntity->id, $transaction->id]) }}" method="POST" class="inline-flex items-center" onsubmit="return confirmDeleteTransaction(this, @json((bool) $transaction->document_id));">
+                                                                        @csrf
+                                                                        @method('DELETE')
+                                                                        <input type="hidden" name="delete_linked_document" value="0" />
+                                                                        <button type="submit" class="inline-flex items-center px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-200 rounded text-xs">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                            </svg>
+                                                                            Delete
+                                                                        </button>
+                                                                    </form>
                                                                 </div>
                                                             </td>
                                                         </tr>
@@ -1282,6 +1293,19 @@
 
         });
     </script>
-    
+    <script>
+        function confirmDeleteTransaction(form, hasLinkedReceiptDoc) {
+            if (!confirm('Delete this transaction?')) {
+                return false;
+            }
+            const input = form.querySelector('input[name="delete_linked_document"]');
+            if (hasLinkedReceiptDoc && confirm('Also delete the attached receipt from Documents?')) {
+                input.value = '1';
+            } else {
+                input.value = '0';
+            }
+            return true;
+        }
+    </script>
 
 </x-app-layout>

@@ -9,6 +9,7 @@ use App\Models\MailMessage;
 use App\Models\BusinessEntity;
 use App\Models\Asset;
 use App\Models\Document;
+use App\Services\DocumentUploadService;
 use App\Services\MsgParserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,6 +18,10 @@ use Illuminate\Support\Facades\Storage;
 
 class MailMessageController extends Controller
 {
+    public function __construct(
+        private DocumentUploadService $documentUploadService
+    ) {}
+
     public function index(Request $request)
     {
         $query = MailMessage::query();
@@ -294,6 +299,12 @@ class MailMessageController extends Controller
                 Storage::disk('s3')->makeDirectory($docsPath);
             }
 
+            $category = $this->documentUploadService->firstOrCreateCategoryNamed(
+                $entity,
+                null,
+                DocumentUploadService::IMPORTED_FROM_EMAIL_CATEGORY_TITLE
+            );
+
             foreach ($message->attachments as $att) {
                 if (!$att->storage_path || !Storage::exists($att->storage_path)) {
                     continue;
@@ -308,14 +319,22 @@ class MailMessageController extends Controller
                 }
 
                 if (!Document::where('path', $targetPath)->exists()) {
+                    $checklistLabel = pathinfo($filename, PATHINFO_FILENAME) ?: $filename;
+                    $fileSize = Storage::disk('s3')->exists($targetPath)
+                        ? Storage::disk('s3')->size($targetPath)
+                        : null;
+
                     Document::create([
                         'business_entity_id' => $entity->id,
                         'asset_id' => null,
+                        'document_category_id' => $category->id,
+                        'checklist_label' => $checklistLabel,
                         'file_name' => $filename,
                         'path' => $targetPath,
                         'type' => 'other',
                         'description' => 'Imported from email #' . $message->id . ': ' . (string) $message->subject,
                         'filetype' => $att->content_type ?: 'application/octet-stream',
+                        'file_size' => $fileSize,
                         'user_id' => Auth::id(),
                     ]);
                 }
@@ -341,6 +360,12 @@ class MailMessageController extends Controller
                 Storage::disk('s3')->makeDirectory($docsPath);
             }
 
+            $category = $this->documentUploadService->firstOrCreateCategoryNamed(
+                $entity,
+                $asset,
+                DocumentUploadService::IMPORTED_FROM_EMAIL_CATEGORY_TITLE
+            );
+
             foreach ($message->attachments as $att) {
                 if (!$att->storage_path || !Storage::exists($att->storage_path)) {
                     continue;
@@ -355,14 +380,22 @@ class MailMessageController extends Controller
                 }
 
                 if (!Document::where('path', $targetPath)->exists()) {
+                    $checklistLabel = pathinfo($filename, PATHINFO_FILENAME) ?: $filename;
+                    $fileSize = Storage::disk('s3')->exists($targetPath)
+                        ? Storage::disk('s3')->size($targetPath)
+                        : null;
+
                     Document::create([
                         'business_entity_id' => $entity->id,
                         'asset_id' => $asset->id,
+                        'document_category_id' => $category->id,
+                        'checklist_label' => $checklistLabel,
                         'file_name' => $filename,
                         'path' => $targetPath,
                         'type' => 'other',
                         'description' => 'Imported from email #' . $message->id . ': ' . (string) $message->subject,
                         'filetype' => $att->content_type ?: 'application/octet-stream',
+                        'file_size' => $fileSize,
                         'user_id' => Auth::id(),
                     ]);
                 }

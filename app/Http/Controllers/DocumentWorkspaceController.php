@@ -116,6 +116,8 @@ class DocumentWorkspaceController extends Controller
         $this->authorize('update', $businessEntity);
         $this->ensureDocumentBelongs($businessEntity, $document);
 
+        $this->uploadService->clearTransactionLinksForDocument($document);
+
         if ($document->path && Storage::disk('s3')->exists($document->path)) {
             Storage::disk('s3')->delete($document->path);
         }
@@ -154,6 +156,7 @@ class DocumentWorkspaceController extends Controller
             return response()->json(['status' => true]);
         }
 
+        $this->uploadService->clearTransactionLinksForDocument($document);
         $this->uploadService->deleteFileFromDocument($document);
 
         return response()->json(['status' => true, 'document' => $document->fresh()]);
