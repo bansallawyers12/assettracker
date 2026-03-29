@@ -56,6 +56,7 @@
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Date</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Entity</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Asset</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Bank Account</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Type</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Description</th>
@@ -72,6 +73,13 @@
                                 </td>
                                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
                                     {{ $tx->businessEntity->legal_name ?? '—' }}
+                                </td>
+                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
+                                    @if ($tx->asset && $tx->businessEntity)
+                                        <a href="{{ route('business-entities.assets.show', [$tx->businessEntity->id, $tx->asset_id]) }}#tab_transactions" class="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300">{{ $tx->asset->name }}</a>
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
                                     @if ($tx->bankAccount)
@@ -122,7 +130,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="9" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                     No transactions found.
                                 </td>
                             </tr>

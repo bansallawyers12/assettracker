@@ -134,6 +134,7 @@
                                 @else
                                     <a href="#tab_financials" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Financials</a>
                                 @endif
+                                <a href="#tab_transactions" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Transactions</a>
                                 <a href="#tab_documents" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Documents</a>
                                 <a href="#tab_notes" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Notes</a>
                                 <a href="#tab_reminders" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Reminders</a>
@@ -588,6 +589,44 @@
                                     </div>
                                 </div>
                             @endif
+
+                            <!-- Transactions (entity-level tx linked to this asset) -->
+                            <div id="tab_transactions" class="tab-content hidden">
+                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Transactions</h3>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Book transactions tagged to this asset also appear on the business entity. Leave asset blank when adding a transaction to keep it entity-wide only.</p>
+                                    @if ($asset->transactions->isEmpty())
+                                        <p class="text-gray-500 dark:text-gray-400 text-center py-6">No transactions linked to this asset yet.</p>
+                                    @else
+                                        <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900">
+                                                <thead class="bg-indigo-50 dark:bg-indigo-900/40">
+                                                    <tr>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase">Date</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase">Amount</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase">Description</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase">Type</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase"></th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                                    @foreach ($asset->transactions as $tx)
+                                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/80">
+                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ $tx->date->format('d/m/Y') }}</td>
+                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">${{ number_format($tx->amount, 2) }}</td>
+                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ $tx->description }}</td>
+                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ Transaction::$transactionTypes[$tx->transaction_type] ?? $tx->transaction_type }}</td>
+                                                            <td class="px-4 py-2 text-sm">
+                                                                <a href="{{ route('business-entities.transactions.edit', [$businessEntity->id, $tx->id]) }}" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium">Edit</a>
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
 
                             <!-- Documents Tab -->
                             <div id="tab_documents" class="tab-content hidden">

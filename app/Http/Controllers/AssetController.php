@@ -117,6 +117,7 @@ class AssetController extends Controller
             'notes',
             'leases.tenant',
             'tenants.realEstateCompany.contacts',
+            'transactions' => fn ($q) => $q->orderBy('date', 'desc'),
         ]);
 
         $assetInvoices = collect();

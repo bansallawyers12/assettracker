@@ -103,9 +103,9 @@ class Asset extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function assetTransactions()
+    public function transactions()
     {
-        return $this->hasMany(AssetTransaction::class);
+        return $this->hasMany(Transaction::class);
     }
 
     public function tenants()

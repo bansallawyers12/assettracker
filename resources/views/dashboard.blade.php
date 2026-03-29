@@ -68,6 +68,18 @@
                             @error('business_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
                         <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset <span class="text-gray-400 font-normal">(optional)</span></label>
+                            <select name="asset_id" id="transaction_asset_id"
+                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                <option value="">None — entity only</option>
+                                @foreach ($assets as $asset)
+                                    <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}"
+                                        {{ (string) old('asset_id', session('transactionData.asset_id')) === (string) $asset->id ? 'selected' : '' }}>{{ $asset->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('asset_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
                             <input type="date" name="date" value="{{ old('date', session('transactionData.date', now()->toDateString())) }}"
                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
@@ -562,6 +574,7 @@
             const cancelTransactionBtn = document.getElementById('cancel-transaction-btn');
             const entitySelect = document.getElementById('business_entity_id');
             const relatedEntityField = document.getElementById('related_entity_field');
+            const transactionAssetSelect = document.getElementById('transaction_asset_id');
 
             if (transactionBtn && transactionSection) {
                 transactionBtn.addEventListener('click', () => {
@@ -591,6 +604,21 @@
                             if (!opt.value) return;
                             opt.disabled = opt.value === entityId;
                         });
+                    }
+                    if (transactionAssetSelect) {
+                        let keepValue = transactionAssetSelect.value;
+                        Array.from(transactionAssetSelect.options).forEach(opt => {
+                            if (!opt.value) return;
+                            const match = opt.dataset.entityId === entityId;
+                            opt.hidden = !match;
+                            opt.disabled = !match;
+                        });
+                        const stillValid = Array.from(transactionAssetSelect.options).some(
+                            o => o.value === keepValue && !o.disabled
+                        );
+                        if (!stillValid) {
+                            transactionAssetSelect.value = '';
+                        }
                     }
                 }
 
