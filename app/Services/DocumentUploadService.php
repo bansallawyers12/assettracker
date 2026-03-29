@@ -101,6 +101,8 @@ class DocumentUploadService
         $document->file_size = $file->getSize();
         $document->user_id = auth()->id();
         $document->save();
+
+        Transaction::query()->where('document_id', $document->id)->update(['receipt_path' => $path]);
     }
 
     public function ensureDirectory(string $path): void
@@ -120,6 +122,8 @@ class DocumentUploadService
         $document->filetype = null;
         $document->file_size = null;
         $document->save();
+
+        Transaction::query()->where('document_id', $document->id)->update(['receipt_path' => null]);
     }
 
     /**
