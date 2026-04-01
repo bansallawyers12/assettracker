@@ -54,13 +54,33 @@
     background: rgb(249 250 251);
     border: 1px solid rgb(229 231 235);
     border-radius: 0.75rem;
-    padding: 0.3rem;
+    padding: 0.35rem 0.4rem;
+}
+
+.entity-show-page .entity-tab-nav--combined {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* Global `.tab-link` is defined after @tailwind utilities and would otherwise
+   override entity toolbar padding, borders, and text color utilities. */
+.entity-show-page .entity-tab-nav .tab-link {
+    padding: 0.5rem 0.75rem;
+    border-bottom-width: 0;
+    border-bottom-color: transparent;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.entity-show-page .entity-tab-nav .tab-link:not(.active) {
+    color: rgb(75 85 99);
 }
 
 .entity-show-page .entity-tab-link {
     border: 0;
-    line-height: 1.1rem;
-    border-radius: 0.55rem;
+    line-height: 1.25rem;
+    border-radius: 0.5rem;
 }
 
 .entity-show-page .entity-tab-link.active {
@@ -69,15 +89,8 @@
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
 }
 
-.entity-show-page .entity-quick-access {
-    background: linear-gradient(180deg, rgba(238, 242, 255, 0.4) 0%, rgba(255, 255, 255, 0) 100%);
-    border-radius: 0.75rem;
-    padding: 0.85rem;
-}
-
-.entity-show-page .entity-quick-link {
-    border-radius: 9999px;
-    border: 1px solid transparent;
+.entity-show-page .entity-external-nav {
+    white-space: nowrap;
 }
 
 .dark .entity-show-page .entity-toolbar {
@@ -87,6 +100,10 @@
 .dark .entity-show-page .entity-tab-nav {
     background: rgb(17 24 39);
     border-color: rgb(55 65 81);
+}
+
+.dark .entity-show-page .entity-tab-nav .tab-link:not(.active) {
+    color: rgb(209 213 219);
 }
 
 .dark .entity-show-page .entity-tab-link.active {

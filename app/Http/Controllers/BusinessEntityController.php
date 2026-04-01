@@ -177,7 +177,7 @@ class BusinessEntityController extends Controller
         $assets = $businessEntity->assets;
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
         $bankAccounts = $businessEntity->bankAccounts()->with(['bankStatementEntries.transaction'])->get();
-        $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset'])->orderBy('date', 'desc')->get();
+        $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument'])->orderBy('date', 'desc')->get();
         $documentCategories = $businessEntity->documentCategories()
             ->whereNull('asset_id')
             ->with(['documents' => fn ($q) => $q->orderBy('id')])
@@ -1511,7 +1511,7 @@ class BusinessEntityController extends Controller
 
         $businessEntities = BusinessEntity::orderBy('legal_name')->get();
 
-        $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries', 'asset'])
+        $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries', 'asset', 'relatedEntity'])
             ->orderBy('date', 'desc');
 
         if ($entityId = request('entity_id')) {

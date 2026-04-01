@@ -115,56 +115,58 @@
                     <div class="entity-main-card bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
                         <!-- Combined Actions and Navigation -->
                         <div class="entity-toolbar mb-5">
-                            <div class="entity-toolbar-top flex flex-wrap items-center gap-2.5">
-                                <nav class="entity-tab-nav flex flex-wrap gap-1.5" aria-label="Tabs" id="entity-tabs">
-                                    <a href="#tab_assets" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Assets</a>
-                                    <a href="#tab_persons" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Persons</a>
-                                    <a href="#tab_documents" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Documents</a>
-                                    <a href="#tab_notes" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Notes</a>
-                                    <a href="#tab_contact_lists" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Contact Lists</a>
-                                    <a href="#tab_compose_email" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Compose Email</a>
-                                    <a href="#tab_emails" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Emails</a>
-                                </nav>
-                            </div>
-                        </div>
-
-                        <!-- Quick Accounting Links -->
-                        <div class="entity-quick-access mb-4">
-                            <div class="flex items-center justify-between mb-2">
-                                <h3 class="text-sm font-medium text-gray-700 dark:text-gray-300">Quick Access</h3>
-                                <a href="{{ route('dashboard') }}" class="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200">View Full Dashboard →</a>
-                            </div>
-                            <div class="flex flex-wrap gap-2">
-                                <a href="{{ route('chart-of-accounts.index') }}" class="entity-quick-link inline-flex items-center px-2 py-1 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-900/50 text-green-700 dark:text-green-300 rounded text-xs font-medium transition-colors">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                                    </svg>
-                                    Chart of Accounts
-                                </a>
-                                <a href="{{ route('business-entities.tracking-categories.index', $businessEntity) }}" class="entity-quick-link inline-flex items-center px-2 py-1 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-300 rounded text-xs font-medium transition-colors">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                                    </svg>
-                                    Tracking Categories
-                                </a>
-                                <a href="{{ route('bank-accounts.index') }}" class="entity-quick-link inline-flex items-center px-2 py-1 bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded text-xs font-medium transition-colors">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
-                                    </svg>
-                                    Bank Accounts
-                                </a>
-                                <a href="{{ route('transactions.index') }}" class="entity-quick-link inline-flex items-center px-2 py-1 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/30 dark:hover:bg-purple-900/50 text-purple-700 dark:text-purple-300 rounded text-xs font-medium transition-colors">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-                                    </svg>
-                                    Transactions
-                                </a>
-                                <a href="{{ route('invoices.index') }}" class="entity-quick-link inline-flex items-center px-2 py-1 bg-orange-100 hover:bg-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-300 rounded text-xs font-medium transition-colors">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                    Invoices
-                                </a>
+                            <div class="entity-toolbar-top overflow-x-auto -mx-1 px-1 pb-0.5">
+                                <div class="entity-tab-nav entity-tab-nav--combined flex flex-nowrap sm:flex-wrap items-center gap-1 sm:gap-1.5 min-w-min sm:min-w-0" id="entity-tabs">
+                                    <nav class="flex flex-nowrap sm:flex-wrap items-center gap-1 sm:gap-1.5 shrink-0" aria-label="Entity sections">
+                                        <a href="#tab_assets" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Assets</a>
+                                        <a href="#tab_persons" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Persons</a>
+                                        <a href="#tab_documents" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Documents</a>
+                                        <a href="#tab_notes" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Notes</a>
+                                        <a href="#tab_contact_lists" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Contact Lists</a>
+                                        <a href="#tab_compose_email" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Compose Email</a>
+                                        <a href="#tab_emails" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Emails</a>
+                                    </nav>
+                                    <span class="hidden sm:block w-px h-6 bg-gray-200 dark:bg-gray-600 shrink-0 self-center" aria-hidden="true"></span>
+                                    <nav class="flex flex-nowrap sm:flex-wrap items-center gap-1 sm:gap-1.5 shrink-0" aria-label="Accounting and finance">
+                                        <a href="{{ route('chart-of-accounts.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                            <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                            </svg>
+                                            Chart of Accounts
+                                        </a>
+                                        <a href="{{ route('business-entities.tracking-categories.index', $businessEntity) }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                            <svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                            </svg>
+                                            Tracking Categories
+                                        </a>
+                                        <a href="{{ route('bank-accounts.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                            <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
+                                            </svg>
+                                            Bank Accounts
+                                        </a>
+                                        <a href="{{ route('transactions.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                            <svg class="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                                            </svg>
+                                            Transactions
+                                        </a>
+                                        <a href="{{ route('invoices.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                            <svg class="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                            </svg>
+                                            Invoices
+                                        </a>
+                                    </nav>
+                                    <span class="hidden sm:block w-px h-6 bg-gray-200 dark:bg-gray-600 shrink-0 self-center" aria-hidden="true"></span>
+                                    <a href="{{ route('dashboard') }}" title="Open the full application dashboard" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                        <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
+                                        </svg>
+                                        <span>Full dashboard</span>
+                                    </a>
+                                </div>
                             </div>
                         </div>
 
@@ -309,7 +311,13 @@
                                                     @foreach ($transactions as $transaction)
                                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ $transaction->date->format('d/m/Y') }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">${{ number_format($transaction->amount, 2) }}</td>
+                                                            <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
+                                                                @if (Transaction::directionFromType((string) $transaction->transaction_type) === 'income')
+                                                                    <span class="text-green-700 dark:text-green-400">+${{ number_format($transaction->amount, 2) }}</span>
+                                                                @else
+                                                                    <span class="text-red-700 dark:text-red-400">−${{ number_format($transaction->amount, 2) }}</span>
+                                                                @endif
+                                                            </td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">{{ $transaction->description }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->invoice_number ?? '—' }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
@@ -413,6 +421,9 @@
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Description:</span> {{ $selectedTransaction->description ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Invoice #:</span> {{ $selectedTransaction->invoice_number ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> {{ Transaction::$transactionTypes[$selectedTransaction->transaction_type] ?? 'N/A' }}</p>
+                                                            @if ($selectedTransaction->relatedEntity)
+                                                                <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Director / Related Entity:</span> {{ $selectedTransaction->relatedEntity->legal_name }}</p>
+                                                            @endif
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Asset:</span>
                                                                 @if ($selectedTransaction->asset)
                                                                     <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $selectedTransaction->asset_id]) }}#tab_transactions" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">{{ $selectedTransaction->asset->name }}</a>
@@ -940,62 +951,75 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const tabs = document.querySelectorAll('.tab-link');
-            const tabContents = document.querySelectorAll('.tab-content');
+            const tabsRoot = document.getElementById('entity-tabs');
+            const tabs = tabsRoot ? tabsRoot.querySelectorAll('a.tab-link') : [];
+            const tabContents = document.querySelectorAll('.tab-content-container > .tab-content');
             const composeEmailForm = document.getElementById('compose-email-form');
             const fromEmailSelect = document.getElementById('from_email');
             const subjectInput = document.getElementById('subject');
             const tinymceBaseUrl = @json(asset('vendor/tinymce'));
 
+            function escapeHashId(id) {
+                return (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(id) : id.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            }
+
             // Function to switch tabs
-            function switchTab(targetId) {
-                // Hide all tab contents
+            function switchTab(targetId, options) {
+                const opts = options || {};
+                const candidate = document.getElementById(targetId);
+                let resolvedId = targetId;
+                if (!candidate || !candidate.classList.contains('tab-content')) {
+                    resolvedId = 'tab_assets';
+                    if (opts.fixInvalidHash && window.location.hash !== '#' + resolvedId) {
+                        history.replaceState(null, '', '#' + resolvedId);
+                    }
+                }
+
                 tabContents.forEach(content => {
                     content.classList.add('hidden');
                 });
 
-                // Show only the selected tab content
-                const selectedTab = document.getElementById(targetId);
+                const selectedTab = document.getElementById(resolvedId);
                 if (selectedTab) {
                     selectedTab.classList.remove('hidden');
                 }
 
-                // Update tab styles
                 tabs.forEach(tab => {
-                    tab.classList.remove('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
-                    tab.classList.add('border-transparent', 'text-gray-600', 'dark:text-gray-300');
+                    tab.classList.remove('active');
                 });
 
-                const activeTab = document.querySelector(`.tab-link[href="#${targetId}"]`);
-                if (activeTab) {
-                    activeTab.classList.add('border-indigo-500', 'text-indigo-600', 'dark:text-indigo-400');
-                    activeTab.classList.remove('border-transparent', 'text-gray-600', 'dark:text-gray-300');
+                if (tabsRoot) {
+                    const activeTab = tabsRoot.querySelector('a.tab-link[href="#' + escapeHashId(resolvedId) + '"]');
+                    if (activeTab) {
+                        activeTab.classList.add('active');
+                    }
                 }
             }
 
-            // Event listeners for tabs
             tabs.forEach(tab => {
                 tab.addEventListener('click', function (e) {
                     e.preventDefault();
                     const targetId = this.getAttribute('href').substring(1);
                     switchTab(targetId);
-                    // Update URL hash without triggering page reload
-                    history.pushState(null, null, `#${targetId}`);
+                    history.pushState(null, '', '#' + targetId);
                 });
             });
 
-            // Handle browser back/forward buttons
-            window.addEventListener('popstate', function() {
+            window.addEventListener('popstate', function () {
                 const targetId = window.location.hash.substring(1) || 'tab_assets';
                 switchTab(targetId);
             });
 
-            // Activate tab based on URL hash on page load
+            window.addEventListener('hashchange', function () {
+                const targetId = window.location.hash.substring(1) || 'tab_assets';
+                switchTab(targetId);
+            });
+
             const initialTab = window.location.hash ? window.location.hash.substring(1) : 'tab_assets';
-            switchTab(initialTab);
+            switchTab(initialTab, { fixInvalidHash: true });
 
             // Fetch data for Compose Email tab
-            if (document.getElementById('tab_compose_email')) {
+            if (document.getElementById('tab_compose_email') && fromEmailSelect) {
                 fetch("{{ route('business-entities.compose-email-data', $businessEntity->id) }}")
                     .then(response => response.json())
                     .then(data => {
@@ -1036,37 +1060,37 @@
             //     }
             // });
 
-            // Handle form submission
-            composeEmailForm.addEventListener('submit', function (e) {
-                e.preventDefault();
+            if (composeEmailForm) {
+                composeEmailForm.addEventListener('submit', function (e) {
+                    e.preventDefault();
 
-                const formData = new FormData(this);
-                const messageEditor = tinymce.get('message');
-                formData.set('message', messageEditor ? messageEditor.getContent() : (document.getElementById('message')?.value ?? ''));
+                    const formData = new FormData(this);
+                    const messageEditor = tinymce.get('message');
+                    formData.set('message', messageEditor ? messageEditor.getContent() : (document.getElementById('message')?.value ?? ''));
 
-                // Add business entity ID to form data
-                formData.append('_method', 'POST');
-                formData.append('business_entity_id', "{{ $businessEntity->id }}");
+                    formData.append('_method', 'POST');
+                    formData.append('business_entity_id', "{{ $businessEntity->id }}");
 
-                fetch("{{ route('business-entities.send-email', $businessEntity->id) }}", {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    console.log(data);
-                    alert(data.message);
-                    composeEmailForm.reset();
-                    tinymce.get('message')?.setContent('');
-                })
-                .catch(error => {
-                    console.error('Error sending email:', error);
-                    alert('Error sending email.');
+                    fetch("{{ route('business-entities.send-email', $businessEntity->id) }}", {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data);
+                        alert(data.message);
+                        composeEmailForm.reset();
+                        tinymce.get('message')?.setContent('');
+                    })
+                    .catch(error => {
+                        console.error('Error sending email:', error);
+                        alert('Error sending email.');
+                    });
                 });
-            });
+            }
 
             if (document.getElementById('message')) {
                 tinymce.init({
@@ -1086,7 +1110,7 @@
                 });
             }
 
-            // Bank Import functionality
+            // Bank Import functionality (skip wiring if panel markup is absent)
             const uploadStatementBtn = document.getElementById('upload-statement-btn');
             const uploadForm = document.getElementById('bank-import-upload-panel');
             const cancelUploadBtn = document.getElementById('cancel-upload');
@@ -1095,7 +1119,8 @@
             const autoMatchBtn = document.getElementById('auto-match-btn');
             const saveMatchesBtn = document.getElementById('save-matches-btn');
 
-            // Show/hide upload form
+            if (uploadStatementBtn && uploadForm && cancelUploadBtn && bankImportForm && matchingInterface && autoMatchBtn && saveMatchesBtn) {
+
             uploadStatementBtn.addEventListener('click', function() {
                 uploadForm.classList.remove('hidden');
                 uploadStatementBtn.classList.add('hidden');
@@ -1307,20 +1332,24 @@
                 });
             });
 
-            // Account search functionality
-            document.getElementById('account-search').addEventListener('input', function(e) {
-                const searchTerm = e.target.value.toLowerCase();
-                const chartAccounts = document.querySelectorAll('.chart-account');
-                
-                chartAccounts.forEach(account => {
-                    const text = account.textContent.toLowerCase();
-                    if (text.includes(searchTerm)) {
-                        account.style.display = 'block';
-                    } else {
-                        account.style.display = 'none';
-                    }
+            const accountSearch = document.getElementById('account-search');
+            if (accountSearch) {
+                accountSearch.addEventListener('input', function(e) {
+                    const searchTerm = e.target.value.toLowerCase();
+                    const chartAccounts = document.querySelectorAll('.chart-account');
+
+                    chartAccounts.forEach(account => {
+                        const text = account.textContent.toLowerCase();
+                        if (text.includes(searchTerm)) {
+                            account.style.display = 'block';
+                        } else {
+                            account.style.display = 'none';
+                        }
+                    });
                 });
-            });
+            }
+
+            }
 
         });
     </script>

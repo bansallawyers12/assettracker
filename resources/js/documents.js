@@ -20,8 +20,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const tabLinks = document.querySelectorAll('.tab-link');
             tabLinks.forEach(link => {
                 link.addEventListener('click', (e) => {
-                    const target = e.target.getAttribute('href');
-                    if (target === '#tab_documents') {
+                    const href = e.currentTarget.getAttribute('href');
+                    if (href === '#tab_documents') {
                         this.fetchDocuments();
                     }
                 });
