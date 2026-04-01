@@ -18,6 +18,12 @@ class TransactionObserver
 
 	public function updated(Transaction $transaction): void
 	{
+		// If changed from paid → unpaid, remove any existing journal entry
+		if ($transaction->payment_status === 'unpaid') {
+			$this->postingService->unpost($transaction);
+
+			return;
+		}
 		$this->postingService->post($transaction);
 	}
 

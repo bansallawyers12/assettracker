@@ -44,14 +44,9 @@
     padding-bottom: 1rem;
 }
 
-.entity-show-page .entity-primary-action {
-    border-radius: 0.65rem;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.15);
-}
-
 @layer components {
     .entity-show-page .entity-btn-primary {
-        @apply inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors shadow-sm;
+        @apply inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-gray-900;
     }
 }
 
@@ -72,16 +67,6 @@
     color: rgb(67 56 202);
     background: white;
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
-}
-
-.entity-show-page .entity-secondary-actions {
-    gap: 0.55rem;
-}
-
-.entity-show-page .entity-secondary-action {
-    border: 1px solid rgb(229 231 235);
-    border-radius: 9999px;
-    padding-inline: 0.65rem;
 }
 
 .entity-show-page .entity-quick-access {
@@ -107,8 +92,4 @@
 .dark .entity-show-page .entity-tab-link.active {
     color: rgb(199 210 254);
     background: rgb(31 41 55);
-}
-
-.dark .entity-show-page .entity-secondary-action {
-    border-color: rgb(75 85 99);
 }
