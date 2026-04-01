@@ -15,7 +15,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                     </svg>
-                    Edit Entity
+                    Edit company profile
                 </a>
             </div>
         </div>
@@ -27,14 +27,8 @@
                 <!-- Left Sidebar: Business Details -->
                 <div class="w-full lg:w-80 flex-shrink-0">
                     <div class="entity-details-card bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
-                        <div class="flex items-center justify-between mb-4">
+                        <div class="mb-4">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Business Details</h3>
-                            <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="inline-flex items-center px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm transition-colors">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                </svg>
-                                Edit
-                            </a>
                         </div>
                         <dl class="space-y-3">
                             <div class="grid grid-cols-2 gap-2">
@@ -59,13 +53,13 @@
                                 @if($businessEntity->abn)
                                 <div>
                                     <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">ABN</dt>
-                                    <dd class="text-sm text-gray-900 dark:text-gray-200 font-mono">{{ $businessEntity->abn }}</dd>
+                                    <dd class="text-sm text-gray-900 dark:text-gray-200 font-mono">{{ \App\Models\BusinessEntity::formatAbn($businessEntity->abn) }}</dd>
                                 </div>
                                 @endif
                                 @if($businessEntity->acn)
                                 <div>
                                     <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">ACN</dt>
-                                    <dd class="text-sm text-gray-900 dark:text-gray-200 font-mono">{{ $businessEntity->acn }}</dd>
+                                    <dd class="text-sm text-gray-900 dark:text-gray-200 font-mono">{{ \App\Models\BusinessEntity::formatAcn($businessEntity->acn) }}</dd>
                                 </div>
                                 @endif
                             </div>
@@ -79,11 +73,25 @@
                                     <div class="grid grid-cols-1 gap-2">
                                         <div>
                                             <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Email</dt>
-                                            <dd class="text-sm text-gray-900 dark:text-gray-200">{{ $businessEntity->registered_email }}</dd>
+                                            <dd class="text-sm text-gray-900 dark:text-gray-200">
+                                                @if ($businessEntity->registeredEmailIsPlaceholder())
+                                                    <span class="text-gray-500 dark:text-gray-400">Not set</span>
+                                                    <a href="{{ route('business-entities.edit', $businessEntity->id) }}#registered_email" class="text-indigo-600 dark:text-indigo-400 hover:underline text-sm ml-1">Add email</a>
+                                                @else
+                                                    {{ $businessEntity->registered_email }}
+                                                @endif
+                                            </dd>
                                         </div>
                                         <div>
                                             <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Phone</dt>
-                                            <dd class="text-sm text-gray-900 dark:text-gray-200">{{ $businessEntity->phone_number }}</dd>
+                                            <dd class="text-sm text-gray-900 dark:text-gray-200">
+                                                @if ($businessEntity->phoneNumberIsPlaceholder())
+                                                    <span class="text-gray-500 dark:text-gray-400">Not set</span>
+                                                    <a href="{{ route('business-entities.edit', $businessEntity->id) }}#phone_number" class="text-indigo-600 dark:text-indigo-400 hover:underline text-sm ml-1">Add phone</a>
+                                                @else
+                                                    {{ $businessEntity->phone_number }}
+                                                @endif
+                                            </dd>
                                         </div>
                                     </div>
                                 </div>
@@ -92,7 +100,7 @@
                             @if($businessEntity->asic_renewal_date)
                             <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
                                 <div>
-                                    <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">ASIC Renewal</dt>
+                                    <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">ASIC renewal due</dt>
                                     <dd class="text-sm text-gray-900 dark:text-gray-200">{{ $businessEntity->asic_renewal_date->format('d/m/Y') }}</dd>
                                 </div>
                             </div>
@@ -106,31 +114,7 @@
                     <div class="entity-main-card bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
                         <!-- Combined Actions and Navigation -->
                         <div class="entity-toolbar mb-5">
-                            <div class="entity-toolbar-top flex flex-wrap items-center gap-2.5 mb-3">
-                                @php
-                                    $label = (isset($businessEntity->entity_type) && $businessEntity->entity_type == 'Trust') 
-                                        ? 'Add Person/Company' 
-                                        : 'Add Person';
-                                @endphp
-                                
-                                <!-- Primary Action Buttons -->
-                                <a href="{{ route('entity-persons.create', $businessEntity->id) }}" class="entity-primary-action entity-primary-action--success inline-flex items-center px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                    </svg>
-                                    {{ $label }}
-                                </a>
-                                <a href="{{ route('business-entities.assets.create', $businessEntity->id) }}" class="entity-primary-action entity-primary-action--info inline-flex items-center px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                    </svg>
-                                    Add Asset
-                                </a>
-                                
-                                <!-- Divider -->
-                                <div class="h-6 w-px bg-gray-300 dark:bg-gray-600"></div>
-                                
-                                <!-- Tab Navigation -->
+                            <div class="entity-toolbar-top flex flex-wrap items-center gap-2.5">
                                 <nav class="entity-tab-nav flex flex-wrap gap-1.5" aria-label="Tabs" id="entity-tabs">
                                     <a href="#tab_assets" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Assets</a>
                                     <a href="#tab_persons" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Persons</a>
@@ -140,34 +124,6 @@
                                     <a href="#tab_compose_email" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Compose Email</a>
                                     <a href="#tab_emails" class="tab-link entity-tab-link px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">Emails</a>
                                 </nav>
-                            </div>
-                            
-                            <!-- Secondary Actions Row -->
-                            <div class="entity-secondary-actions flex flex-wrap gap-2">
-                                <a href="#tab_notes" class="entity-secondary-action inline-flex items-center px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs font-medium transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                    </svg>
-                                    Add Note
-                                </a>
-                                <a href="#tab_documents" class="entity-secondary-action inline-flex items-center px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs font-medium transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                    </svg>
-                                    Upload
-                                </a>
-                                <a href="#tab_contact_lists" class="entity-secondary-action inline-flex items-center px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs font-medium transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                                    </svg>
-                                    Contacts
-                                </a>
-                                <a href="#tab_compose_email" class="entity-secondary-action inline-flex items-center px-2 py-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded text-xs font-medium transition-colors">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                    </svg>
-                                    Email
-                                </a>
                             </div>
                         </div>
 
@@ -218,12 +174,14 @@
                                 <div class="space-y-3">
                                     <div class="flex justify-between items-center">
                                         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Assets</h3>
-                                        <a href="{{ route('business-entities.assets.create', $businessEntity->id) }}#tab_assets" class="inline-flex items-center px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                            </svg>
-                                            Add Asset
-                                        </a>
+                                        @if (isset($assets) && !$assets->isEmpty())
+                                            <a href="{{ route('business-entities.assets.create', $businessEntity->id) }}#tab_assets" class="entity-btn-primary">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                </svg>
+                                                Add Asset
+                                            </a>
+                                        @endif
                                     </div>
                                     @if (isset($assets) && $assets->isEmpty())
                                         <div class="text-center py-6">
@@ -232,7 +190,14 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                                                 </svg>
                                             </div>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400">No assets yet</p>
+                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No assets yet</p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">Assets are items this entity owns or manages—such as property, vehicles, or equipment.</p>
+                                            <a href="{{ route('business-entities.assets.create', $businessEntity->id) }}#tab_assets" class="entity-btn-primary mt-4 inline-flex">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                </svg>
+                                                Add your first asset
+                                            </a>
                                         </div>
                                     @else
                                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -251,15 +216,25 @@
 
                             <!-- Persons Tab -->
                             <div id="tab_persons" class="tab-content hidden">
+                                @php
+                                    $personAddLabel = ($businessEntity->entity_type ?? '') === 'Trust'
+                                        ? 'Add Person/Company'
+                                        : 'Add Person';
+                                    $personEmptyCta = ($businessEntity->entity_type ?? '') === 'Trust'
+                                        ? 'Add your first person or company'
+                                        : 'Add your first person';
+                                @endphp
                                 <div class="space-y-3">
                                     <div class="flex justify-between items-center">
                                         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Persons</h3>
-                                        <a href="{{ route('entity-persons.create', $businessEntity->id) }}#tab_persons" class="inline-flex items-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                            </svg>
-                                            Add Person
-                                        </a>
+                                        @if (isset($persons) && !$persons->isEmpty())
+                                            <a href="{{ route('entity-persons.create', $businessEntity->id) }}#tab_persons" class="entity-btn-primary">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                                </svg>
+                                                {{ $personAddLabel }}
+                                            </a>
+                                        @endif
                                     </div>
                                     @if (isset($persons) && $persons->isEmpty())
                                         <div class="text-center py-6">
@@ -268,7 +243,14 @@
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
                                                 </svg>
                                             </div>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400">No persons yet</p>
+                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No persons yet</p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">Persons are directors, shareholders, trustees, or other roles linked to this entity.</p>
+                                            <a href="{{ route('entity-persons.create', $businessEntity->id) }}#tab_persons" class="entity-btn-primary mt-4 inline-flex">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                                                </svg>
+                                                {{ $personEmptyCta }}
+                                            </a>
                                         </div>
                                     @else
                                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

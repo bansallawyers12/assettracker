@@ -8,11 +8,17 @@ use App\Models\JournalLine;
 use App\Models\ChartOfAccount;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TransactionPostingService
 {
-	public function post(Transaction $transaction): JournalEntry
+	public function post(Transaction $transaction): ?JournalEntry
 	{
+		// Unpaid transactions represent obligations only — no cash movement to post yet.
+		if ($transaction->payment_status === 'unpaid') {
+			return null;
+		}
+
 		return DB::transaction(function () use ($transaction) {
 			$existing = JournalEntry::where('source_type', Transaction::class)
 				->where('source_id', $transaction->id)
@@ -35,6 +41,11 @@ class TransactionPostingService
 			$entry->source_id = $transaction->id;
 
 			$lines = $this->buildLines($transaction);
+
+			// If GL mapping is missing, skip posting entirely rather than creating an empty entry.
+			if (empty($lines)) {
+				return null;
+			}
 
 			$totalDebit = 0;
 			$totalCredit = 0;
@@ -100,7 +111,15 @@ class TransactionPostingService
 
 		$counterAccount = $mapping[$transaction->transaction_type] ?? null;
 		if (!$cashAccount || !$counterAccount) {
-			throw new \RuntimeException('Required accounts not found for posting transaction.');
+			Log::warning('TransactionPostingService: required GL accounts not found for transaction', [
+				'transaction_id'   => $transaction->id,
+				'transaction_type' => $transaction->transaction_type,
+				'business_entity'  => $transaction->business_entity_id,
+				'missing_cash'     => !$cashAccount,
+				'missing_counter'  => !$counterAccount,
+			]);
+
+			return [];
 		}
 
 		$lines = [];
