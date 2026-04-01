@@ -1,4 +1,5 @@
 @php
+    use App\Models\BusinessEntity;
     use App\Models\Transaction;
 @endphp
 <x-app-layout>
@@ -53,13 +54,13 @@
                                 @if($businessEntity->abn)
                                 <div>
                                     <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">ABN</dt>
-                                    <dd class="text-sm text-gray-900 dark:text-gray-200 font-mono">{{ \App\Models\BusinessEntity::formatAbn($businessEntity->abn) }}</dd>
+                                    <dd class="text-sm text-gray-900 dark:text-gray-200 font-mono">{{ BusinessEntity::formatAbn($businessEntity->abn) }}</dd>
                                 </div>
                                 @endif
                                 @if($businessEntity->acn)
                                 <div>
                                     <dt class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">ACN</dt>
-                                    <dd class="text-sm text-gray-900 dark:text-gray-200 font-mono">{{ \App\Models\BusinessEntity::formatAcn($businessEntity->acn) }}</dd>
+                                    <dd class="text-sm text-gray-900 dark:text-gray-200 font-mono">{{ BusinessEntity::formatAcn($businessEntity->acn) }}</dd>
                                 </div>
                                 @endif
                             </div>
@@ -176,7 +177,7 @@
                                         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Assets</h3>
                                         @if (isset($assets) && !$assets->isEmpty())
                                             <a href="{{ route('business-entities.assets.create', $businessEntity->id) }}#tab_assets" class="entity-btn-primary">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                                 </svg>
                                                 Add Asset
@@ -193,7 +194,7 @@
                                             <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No assets yet</p>
                                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">Assets are items this entity owns or manages—such as property, vehicles, or equipment.</p>
                                             <a href="{{ route('business-entities.assets.create', $businessEntity->id) }}#tab_assets" class="entity-btn-primary mt-4 inline-flex">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                                 </svg>
                                                 Add your first asset
@@ -217,10 +218,10 @@
                             <!-- Persons Tab -->
                             <div id="tab_persons" class="tab-content hidden">
                                 @php
-                                    $personAddLabel = ($businessEntity->entity_type ?? '') === 'Trust'
+                                    $personAddLabel = $businessEntity->isTrust()
                                         ? 'Add Person/Company'
                                         : 'Add Person';
-                                    $personEmptyCta = ($businessEntity->entity_type ?? '') === 'Trust'
+                                    $personEmptyCta = $businessEntity->isTrust()
                                         ? 'Add your first person or company'
                                         : 'Add your first person';
                                 @endphp
@@ -229,7 +230,7 @@
                                         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Persons</h3>
                                         @if (isset($persons) && !$persons->isEmpty())
                                             <a href="{{ route('entity-persons.create', $businessEntity->id) }}#tab_persons" class="entity-btn-primary">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                                 </svg>
                                                 {{ $personAddLabel }}
@@ -246,7 +247,7 @@
                                             <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No persons yet</p>
                                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">Persons are directors, shareholders, trustees, or other roles linked to this entity.</p>
                                             <a href="{{ route('entity-persons.create', $businessEntity->id) }}#tab_persons" class="entity-btn-primary mt-4 inline-flex">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                                                 </svg>
                                                 {{ $personEmptyCta }}
@@ -718,7 +719,12 @@
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <div>
                                                 <label for="to_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">To *</label>
-                                                <input type="email" id="to_email" name="to_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" value="{{ $businessEntity->registered_email }}" readonly required>
+                                                @if ($businessEntity->registeredEmailIsPlaceholder())
+                                                    <p class="mt-1 text-sm text-amber-700 dark:text-amber-300">No company email on file. Enter a recipient below or <a href="{{ route('business-entities.edit', $businessEntity->id) }}#registered_email" class="font-medium underline hover:no-underline">add one in the company profile</a>.</p>
+                                                    <input type="email" id="to_email" name="to_email" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" value="{{ old('to_email') }}" autocomplete="email" placeholder="recipient@example.com" required>
+                                                @else
+                                                    <input type="email" id="to_email" name="to_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" value="{{ $businessEntity->registered_email }}" readonly required>
+                                                @endif
                                             </div>
                                         </div>
 

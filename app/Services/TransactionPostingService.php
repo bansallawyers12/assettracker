@@ -42,8 +42,12 @@ class TransactionPostingService
 
 			$lines = $this->buildLines($transaction);
 
-			// If GL mapping is missing, skip posting entirely rather than creating an empty entry.
+			// If GL mapping is missing, remove any stale journal entry (lines may already be deleted above).
 			if (empty($lines)) {
+				if ($entry->exists) {
+					$entry->delete();
+				}
+
 				return null;
 			}
 

@@ -326,6 +326,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
+            'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'asset_id' => [
@@ -334,9 +335,16 @@ class BusinessEntityController extends Controller
                 Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $resolvedEntityId)),
             ],
             'gst_amount' => 'nullable|numeric',
-            'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit', // Added more specific statuses
-            'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048', // Optional document upload
+            'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
+            'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'document_name' => 'nullable|string|max:255',
+            'payment_status' => 'required|in:unpaid,paid',
+            'due_date' => 'nullable|date',
+            'paid_at' => 'nullable|date',
+            'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
+            'paid_by' => 'nullable|string|max:255',
+            'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'payment_document_name' => 'nullable|string|max:255',
         ]);
 
         $targetEntity = $request->filled('business_entity_id')
@@ -399,23 +407,47 @@ class BusinessEntityController extends Controller
                 $documentId = $document->id;
             }
 
+            $paymentDocumentId = null;
+            if ($request->hasFile('payment_document')) {
+                $payFile = $request->file('payment_document');
+                $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile);
+                $payLabelBase = $request->filled('payment_document_name')
+                    ? trim((string) $request->input('payment_document_name'))
+                    : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
+                $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
+                $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                    $targetEntity,
+                    $asset,
+                    $payFile,
+                    $payDisplayName,
+                    $payLabelBase ?: 'Payment Receipt',
+                    $payDesc !== '' ? $payDesc : null
+                );
+                $paymentDocumentId = $payDocument->id;
+            }
+
             return Transaction::create([
-                'business_entity_id' => $targetEntity->id,
-                'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
-                'related_entity_id' => $request->related_entity_id,
-                'date' => $request->date,
-                'amount' => $request->amount,
-                'description' => $request->description,
-                'transaction_type' => $request->transaction_type,
-                'gst_amount' => $request->gst_amount,
-                'gst_status' => $request->gst_status,
-                'receipt_path' => $receiptPath,
-                'document_id' => $documentId,
+                'business_entity_id'  => $targetEntity->id,
+                'asset_id'            => $request->filled('asset_id') ? $request->integer('asset_id') : null,
+                'related_entity_id'   => $request->related_entity_id,
+                'date'                => $request->date,
+                'amount'              => $request->amount,
+                'description'         => $request->description,
+                'invoice_number'      => $request->invoice_number,
+                'transaction_type'    => $request->transaction_type,
+                'gst_amount'          => $request->gst_amount,
+                'gst_status'          => $request->gst_status,
+                'receipt_path'        => $receiptPath,
+                'document_id'         => $documentId,
+                'payment_status'      => $request->payment_status ?? 'paid',
+                'due_date'            => $request->due_date,
+                'paid_at'             => $request->paid_at,
+                'payment_method'      => $request->payment_method,
+                'paid_by'             => $request->paid_by,
+                'payment_document_id' => $paymentDocumentId,
             ]);
         });
 
-        // Redirect to dashboard (or entity show page) with success message
-        // Consider redirecting to business-entities.show instead?
         return redirect()->route('dashboard')->with('success', "Transaction '{$transaction->description}' added successfully!");
     }
 
@@ -440,6 +472,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
+            'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'asset_id' => [
@@ -451,6 +484,13 @@ class BusinessEntityController extends Controller
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
             'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'document_name' => 'nullable|string|max:255',
+            'payment_status' => 'required|in:unpaid,paid',
+            'due_date' => 'nullable|date',
+            'paid_at' => 'nullable|date',
+            'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
+            'paid_by' => 'nullable|string|max:255',
+            'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'payment_document_name' => 'nullable|string|max:255',
         ]);
 
         $asset = $request->filled('asset_id')
@@ -500,19 +540,45 @@ class BusinessEntityController extends Controller
                 $documentId = $document->id;
             }
 
+            $paymentDocumentId = null;
+            if ($request->hasFile('payment_document')) {
+                $payFile = $request->file('payment_document');
+                $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile);
+                $payLabelBase = $request->filled('payment_document_name')
+                    ? trim((string) $request->input('payment_document_name'))
+                    : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
+                $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
+                $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                    $businessEntity,
+                    $asset,
+                    $payFile,
+                    $payDisplayName,
+                    $payLabelBase ?: 'Payment Receipt',
+                    $payDesc !== '' ? $payDesc : null
+                );
+                $paymentDocumentId = $payDocument->id;
+            }
+
             return Transaction::create([
-                'business_entity_id' => $businessEntity->id,
-                'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
-                'related_entity_id' => $request->related_entity_id,
-                'bank_account_id' => $bankAccount->id,
-                'date' => $request->date,
-                'amount' => $request->amount,
-                'description' => $request->description,
-                'transaction_type' => $request->transaction_type,
-                'gst_amount' => $request->gst_amount,
-                'gst_status' => $request->gst_status,
-                'receipt_path' => $receiptPath,
-                'document_id' => $documentId,
+                'business_entity_id'  => $businessEntity->id,
+                'asset_id'            => $request->filled('asset_id') ? $request->integer('asset_id') : null,
+                'related_entity_id'   => $request->related_entity_id,
+                'bank_account_id'     => $bankAccount->id,
+                'date'                => $request->date,
+                'amount'              => $request->amount,
+                'description'         => $request->description,
+                'invoice_number'      => $request->invoice_number,
+                'transaction_type'    => $request->transaction_type,
+                'gst_amount'          => $request->gst_amount,
+                'gst_status'          => $request->gst_status,
+                'receipt_path'        => $receiptPath,
+                'document_id'         => $documentId,
+                'payment_status'      => $request->payment_status ?? 'paid',
+                'due_date'            => $request->due_date,
+                'paid_at'             => $request->paid_at,
+                'payment_method'      => $request->payment_method,
+                'paid_by'             => $request->paid_by,
+                'payment_document_id' => $paymentDocumentId,
             ]);
         });
 
@@ -560,6 +626,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
+            'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'asset_id' => [
@@ -569,6 +636,11 @@ class BusinessEntityController extends Controller
             ],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
+            'payment_status' => 'required|in:unpaid,paid',
+            'due_date' => 'nullable|date',
+            'paid_at' => 'nullable|date',
+            'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
+            'paid_by' => 'nullable|string|max:255',
         ]);
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
@@ -576,10 +648,11 @@ class BusinessEntityController extends Controller
         $this->detachIncompatibleReceiptDocument($transaction, $data['asset_id']);
 
         $transaction->update(Arr::only($data, [
-            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
+            'date', 'amount', 'description', 'invoice_number', 'transaction_type',
+            'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
+            'payment_status', 'due_date', 'paid_at', 'payment_method', 'paid_by',
         ]));
 
-        // Redirect to the business entity show page with success message
         return redirect()->route('business-entities.show', $businessEntity->id)->with('success', 'Transaction updated successfully!');
     }
 
@@ -600,6 +673,9 @@ class BusinessEntityController extends Controller
         $document = $transaction->document_id
             ? Document::query()->find($transaction->document_id)
             : null;
+        $paymentDocument = $transaction->payment_document_id
+            ? Document::query()->find($transaction->payment_document_id)
+            : null;
 
         $transaction->delete();
 
@@ -608,6 +684,13 @@ class BusinessEntityController extends Controller
                 Storage::disk('s3')->delete($document->path);
             }
             $document->delete();
+        }
+
+        if ($deleteLinkedDocument && $paymentDocument) {
+            if ($paymentDocument->path && Storage::disk('s3')->exists($paymentDocument->path)) {
+                Storage::disk('s3')->delete($paymentDocument->path);
+            }
+            $paymentDocument->delete();
         }
 
         return redirect()->route('business-entities.show', $businessEntity->id)
@@ -635,6 +718,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
+            'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
             'asset_id' => [
@@ -644,6 +728,11 @@ class BusinessEntityController extends Controller
             ],
             'gst_amount' => 'nullable|numeric',
             'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
+            'payment_status' => 'required|in:unpaid,paid',
+            'due_date' => 'nullable|date',
+            'paid_at' => 'nullable|date',
+            'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
+            'paid_by' => 'nullable|string|max:255',
         ]);
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
@@ -651,10 +740,11 @@ class BusinessEntityController extends Controller
         $this->detachIncompatibleReceiptDocument($transaction, $data['asset_id']);
 
         $transaction->update(Arr::only($data, [
-            'date', 'amount', 'description', 'transaction_type', 'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
+            'date', 'amount', 'description', 'invoice_number', 'transaction_type',
+            'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
+            'payment_status', 'due_date', 'paid_at', 'payment_method', 'paid_by',
         ]));
 
-        // Redirect to the bank account show page with success message
         return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
             ->with('success', 'Transaction updated successfully!');
     }
@@ -980,8 +1070,6 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        // Get available transaction types and business entities (if needed for transfers etc.)
-        $transactionTypes = Transaction::$transactionTypes;
         $businessEntities = BusinessEntity::query()
             ->orderBy('legal_name')
             ->get();
@@ -991,16 +1079,22 @@ class BusinessEntityController extends Controller
             'date' => now()->toDateString(),
             'amount' => '',
             'description' => '',
+            'invoice_number' => '',
             'transaction_type' => '',
             'gst_amount' => '',
-            'gst_status' => '',
+            'gst_status' => 'included',
             'receipt_path' => '',
             'asset_id' => '',
+            'payment_status' => 'paid',
+            'due_date' => '',
+            'paid_at' => '',
+            'payment_method' => '',
+            'paid_by' => '',
+            'direction' => 'expense',
         ]);
 
-        // Return the create transaction view
         return view('business-entities.bank-accounts.transactions.create', compact(
-            'businessEntity', 'bankAccount', 'transactionTypes', 'businessEntities', 'transactionData'
+            'businessEntity', 'bankAccount', 'businessEntities', 'transactionData'
         ));
     }
 
@@ -1380,6 +1474,17 @@ class BusinessEntityController extends Controller
 
         if ($type = request('type')) {
             $query->where('transaction_type', $type);
+        }
+
+        if (($ps = request('payment_status')) && in_array($ps, ['paid', 'unpaid'], true)) {
+            $query->where('payment_status', $ps);
+        }
+
+        if (($dir = request('direction')) && in_array($dir, ['income', 'expense'], true)) {
+            $typeKeys = $dir === 'income'
+                ? array_keys(Transaction::$incomeTypes)
+                : array_keys(Transaction::$expenseTypes);
+            $query->whereIn('transaction_type', $typeKeys);
         }
 
         $transactions = $query->get();

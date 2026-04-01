@@ -191,13 +191,25 @@ class BusinessEntity extends Model
         }
         $lower = strtolower($e);
 
-        return str_contains($lower, 'example.invalid')
-            || str_contains($lower, '@example.');
+        if (str_contains($lower, 'example.invalid')) {
+            return true;
+        }
+
+        // Typical import / doc placeholder domains (avoid matching "myexample.com" etc.)
+        if (preg_match('/@(example\.(com|org|net|invalid|test)|localhost)\b/i', $e)) {
+            return true;
+        }
+
+        return false;
     }
 
     public function phoneNumberIsPlaceholder(): bool
     {
-        $p = preg_replace('/\D/', '', (string) $this->phone_number);
+        $raw = trim((string) $this->phone_number);
+        if ($raw === '') {
+            return true;
+        }
+        $p = preg_replace('/\D/', '', $raw);
         if ($p === '') {
             return true;
         }

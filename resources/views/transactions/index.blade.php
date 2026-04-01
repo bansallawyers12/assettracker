@@ -18,7 +18,6 @@
             </div>
         @endif
 
-        {{-- Entity Filter --}}
         <form method="GET" action="{{ route('transactions.index') }}" class="mb-6 flex flex-wrap gap-3 items-end">
             <div>
                 <label for="entity_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Filter by Entity</label>
@@ -42,12 +41,35 @@
                     @endforeach
                 </select>
             </div>
-            @if (request()->hasAny(['entity_id', 'type']))
+            <div>
+                <label for="direction_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Income / Expense</label>
+                <select id="direction_filter" name="direction" onchange="this.form.submit()"
+                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                    <option value="">All</option>
+                    <option value="income" {{ request('direction') === 'income' ? 'selected' : '' }}>Income</option>
+                    <option value="expense" {{ request('direction') === 'expense' ? 'selected' : '' }}>Expense</option>
+                </select>
+            </div>
+            <div>
+                <label for="payment_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Payment</label>
+                <select id="payment_filter" name="payment_status" onchange="this.form.submit()"
+                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                    <option value="">All</option>
+                    <option value="paid" {{ request('payment_status') === 'paid' ? 'selected' : '' }}>Paid</option>
+                    <option value="unpaid" {{ request('payment_status') === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
+                </select>
+            </div>
+            @if (request()->hasAny(['entity_id', 'type', 'direction', 'payment_status']))
                 <a href="{{ route('transactions.index') }}" class="inline-flex items-center px-3 py-2 text-xs text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
                     Clear filters
                 </a>
             @endif
         </form>
+
+        @php
+            $incomeSum = $transactions->filter(fn ($t) => \App\Models\Transaction::directionFromType((string) $t->transaction_type) === 'income')->sum(fn ($t) => (float) $t->amount);
+            $expenseSum = $transactions->filter(fn ($t) => \App\Models\Transaction::directionFromType((string) $t->transaction_type) === 'expense')->sum(fn ($t) => (float) $t->amount);
+        @endphp
 
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
             <div class="overflow-x-auto">
@@ -59,6 +81,9 @@
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Asset</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Bank Account</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Type</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Invoice #</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Payment</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Due</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Description</th>
                             <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300">Amount</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Matched</th>
@@ -90,6 +115,19 @@
                                 </td>
                                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
                                     {{ \App\Models\Transaction::$transactionTypes[$tx->transaction_type] ?? '—' }}
+                                </td>
+                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                    {{ $tx->invoice_number ?? '—' }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    @if (($tx->payment_status ?? 'paid') === 'unpaid')
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Unpaid</span>
+                                    @else
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Paid</span>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
+                                    {{ $tx->due_date?->format('d/m/Y') ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3 max-w-xs truncate text-gray-900 dark:text-gray-100" title="{{ $tx->description }}">
                                     {{ $tx->description ?? '—' }}
@@ -130,7 +168,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="12" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                     No transactions found.
                                 </td>
                             </tr>
@@ -139,11 +177,12 @@
                 </table>
             </div>
 
-            {{-- Summary footer --}}
             @if ($transactions->count() > 0)
-                <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-                    {{ $transactions->count() }} {{ Str::plural('transaction', $transactions->count()) }}
-                    &mdash; Total: ${{ number_format($transactions->sum(fn($t) => (float) $t->amount), 2) }}
+                <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                    <div>{{ $transactions->count() }} {{ Str::plural('transaction', $transactions->count()) }} in view</div>
+                    <div>Income total: <span class="font-medium text-green-700 dark:text-green-400">${{ number_format($incomeSum, 2) }}</span></div>
+                    <div>Expense total: <span class="font-medium text-red-700 dark:text-red-400">${{ number_format($expenseSum, 2) }}</span></div>
+                    <div>Net (income &minus; expense): <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($incomeSum - $expenseSum, 2) }}</span></div>
                 </div>
             @endif
         </div>
