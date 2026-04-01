@@ -454,9 +454,16 @@
                                         <div class="flex items-start gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 hover:border-amber-200 dark:hover:border-amber-700 transition-colors">
                                             <div class="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-amber-400"></div>
                                             <div class="flex-1 min-w-0">
-                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $reminder->content }}</p>
+                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                                                    {{ $reminder->content }}
+                                                    @if (!empty($reminder->is_transaction))
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 flex-shrink-0">BILL DUE</span>
+                                                    @elseif (!empty($reminder->is_note))
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 flex-shrink-0">NOTE</span>
+                                                    @endif
+                                                </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                                    {{ $reminder->asset ? $reminder->asset->name : ($reminder->businessEntity->legal_name ?? 'Unknown') }}
+                                                    {{ $reminder->asset?->name ?? ($reminder->businessEntity?->legal_name ?? 'Unknown') }}
                                                     &middot; {{ $reminder->user?->name ?? 'Unknown' }}
                                                 </p>
                                                 <div class="mt-2 flex flex-wrap items-center gap-2">

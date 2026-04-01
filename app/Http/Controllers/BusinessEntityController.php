@@ -405,7 +405,7 @@ class BusinessEntityController extends Controller
             ? Asset::query()->find($request->integer('asset_id'))
             : null;
 
-        $transaction = DB::transaction(function () use ($request, $targetEntity, $asset) {
+        $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved) {
             $receiptPath = null;
             $documentId = null;
             $prefillPath = $request->input('receipt_path');
