@@ -1534,13 +1534,13 @@ class BusinessEntityController extends Controller
             || str_starts_with($path, 'BusinessEntities/'.$entity->id.'_');
     }
 
-    private function buildReceiptUploadDisplayName(Request $request, UploadedFile $file): string
+    private function buildReceiptUploadDisplayName(Request $request, UploadedFile $file, string $nameField = 'document_name'): string
     {
-        if (! $request->filled('document_name')) {
+        if (! $request->filled($nameField)) {
             return $file->getClientOriginalName();
         }
 
-        $base = trim((string) $request->input('document_name', ''));
+        $base = trim((string) $request->input($nameField, ''));
         if ($base === '') {
             return $file->getClientOriginalName();
         }
