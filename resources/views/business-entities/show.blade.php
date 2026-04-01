@@ -297,18 +297,21 @@
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Date</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Amount</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Description</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Invoice #</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Asset</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Type</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Status</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Payment</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Bank</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                                                     @foreach ($transactions as $transaction)
                                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->date->format('d/m/Y') }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">${{ number_format($transaction->amount, 2) }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->description }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ $transaction->date->format('d/m/Y') }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">${{ number_format($transaction->amount, 2) }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">{{ $transaction->description }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->invoice_number ?? '—' }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                                                                 @if ($transaction->asset)
                                                                     <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $transaction->asset_id]) }}#tab_transactions" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">{{ $transaction->asset->name }}</a>
@@ -317,6 +320,19 @@
                                                                 @endif
                                                             </td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ Transaction::$transactionTypes[$transaction->transaction_type] ?? 'Unknown' }}</td>
+                                                            <td class="px-6 py-4">
+                                                                @if (($transaction->payment_status ?? 'paid') === 'unpaid')
+                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Unpaid</span>
+                                                                    @if ($transaction->due_date)
+                                                                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Due {{ $transaction->due_date->format('d/m/Y') }}</div>
+                                                                    @endif
+                                                                @else
+                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Paid</span>
+                                                                    @if ($transaction->paid_at)
+                                                                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $transaction->paid_at->format('d/m/Y') }}</div>
+                                                                    @endif
+                                                                @endif
+                                                            </td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                                                                 @if ($transaction->bankStatementEntries()->exists())
                                                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
@@ -394,7 +410,8 @@
                                                         <div>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Date:</span> {{ $selectedTransaction->date->format('d/m/Y') }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Amount:</span> ${{ number_format($selectedTransaction->amount, 2) }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Description:</span> {{ $selectedTransaction->description }}</p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Description:</span> {{ $selectedTransaction->description ?? '—' }}</p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Invoice #:</span> {{ $selectedTransaction->invoice_number ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> {{ Transaction::$transactionTypes[$selectedTransaction->transaction_type] ?? 'N/A' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Asset:</span>
                                                                 @if ($selectedTransaction->asset)
@@ -405,12 +422,38 @@
                                                             </p>
                                                         </div>
                                                         <div>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST Amount:</span> {{ $selectedTransaction->gst_amount ?? 'N/A' }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST Status:</span> {{ $selectedTransaction->gst_status ?? 'N/A' }}</p>
+                                                            <p class="mb-2">
+                                                                <span class="font-medium text-gray-700 dark:text-gray-300">Payment:</span>
+                                                                @if (($selectedTransaction->payment_status ?? 'paid') === 'unpaid')
+                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ml-1">Unpaid</span>
+                                                                    @if ($selectedTransaction->due_date)
+                                                                        — Due {{ $selectedTransaction->due_date->format('d/m/Y') }}
+                                                                    @endif
+                                                                @else
+                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ml-1">Paid</span>
+                                                                    @if ($selectedTransaction->paid_at)
+                                                                        on {{ $selectedTransaction->paid_at->format('d/m/Y') }}
+                                                                    @endif
+                                                                    @if ($selectedTransaction->payment_method)
+                                                                        via {{ Transaction::$paymentMethods[$selectedTransaction->payment_method] ?? ucfirst($selectedTransaction->payment_method) }}
+                                                                    @endif
+                                                                    @if ($selectedTransaction->paid_by)
+                                                                        by {{ $selectedTransaction->paid_by }}
+                                                                    @endif
+                                                                @endif
+                                                            </p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST Amount:</span> {{ $selectedTransaction->gst_amount ? '$'.number_format($selectedTransaction->gst_amount, 2) : '—' }}</p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST Status:</span> {{ Transaction::$gstStatusLabels[$selectedTransaction->gst_status] ?? ($selectedTransaction->gst_status ? ucfirst($selectedTransaction->gst_status) : '—') }}</p>
                                                             @if ($selectedTransaction->receipt_path)
                                                                 <p class="mb-2">
-                                                                    <span class="font-medium text-gray-700 dark:text-gray-300">Receipt:</span>
-                                                                    <a href="{{ $selectedTransaction->receiptUrl }}" target="_blank" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">View Receipt</a>
+                                                                    <span class="font-medium text-gray-700 dark:text-gray-300">Invoice / Bill:</span>
+                                                                    <a href="{{ $selectedTransaction->receiptUrl }}" target="_blank" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">View Document</a>
+                                                                </p>
+                                                            @endif
+                                                            @if ($selectedTransaction->paymentDocument && $selectedTransaction->paymentDocument->path)
+                                                                <p class="mb-2">
+                                                                    <span class="font-medium text-gray-700 dark:text-gray-300">Payment Receipt:</span>
+                                                                    <a href="{{ \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($selectedTransaction->paymentDocument->path, now()->addMinutes(30)) }}" target="_blank" class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">View Payment Receipt</a>
                                                                 </p>
                                                             @endif
                                                         </div>

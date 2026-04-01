@@ -8,7 +8,7 @@
     <div class="py-12 bg-gray-100 dark:bg-gray-900 min-h-screen">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 border-t-4 border-blue-300 dark:border-blue-600">
-                <form method="POST" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}">
+                <form method="POST" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
@@ -180,6 +180,33 @@
                                        class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                                        placeholder="e.g., ANZ Cheque, Director">
                                 @error('paid_by') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    Payment Receipt <span class="text-gray-400 font-normal">(optional)</span>
+                                </label>
+                                @if ($transaction->paymentDocument && $transaction->paymentDocument->path)
+                                    <div class="mt-1 mb-2 text-xs text-gray-500 dark:text-gray-400">
+                                        Current:
+                                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($transaction->paymentDocument->path, now()->addMinutes(30)) }}"
+                                           target="_blank"
+                                           class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline">
+                                            {{ $transaction->paymentDocument->display_name ?? 'View Receipt' }}
+                                        </a>
+                                        — upload a new file below to replace it
+                                    </div>
+                                @endif
+                                <input type="file" name="payment_document"
+                                       class="mt-1 block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100 dark:file:bg-gray-700 dark:file:text-green-300"
+                                       accept="image/*,application/pdf">
+                                @error('payment_document') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Receipt Name</label>
+                                <input type="text" name="payment_document_name" value="{{ old('payment_document_name') }}"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                                       placeholder="e.g., Bank Transfer Confirmation">
+                                @error('payment_document_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                         </div>
                     </div>
