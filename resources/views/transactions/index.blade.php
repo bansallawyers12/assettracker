@@ -85,6 +85,7 @@
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Payment</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Due</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Description</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Vendor</th>
                             <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300">Amount</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Matched</th>
                             <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300">Actions</th>
@@ -132,6 +133,9 @@
                                 <td class="px-4 py-3 max-w-xs truncate text-gray-900 dark:text-gray-100" title="{{ $tx->description }}">
                                     {{ $tx->description ?? '—' }}
                                 </td>
+                                <td class="px-4 py-3 max-w-[8rem] truncate text-gray-700 dark:text-gray-300" title="{{ $tx->vendor_name }}">
+                                    {{ $tx->vendor_name ?? '—' }}
+                                </td>
                                 <td class="px-4 py-3 text-right font-medium whitespace-nowrap">
                                     @if (\App\Models\Transaction::directionFromType((string) $tx->transaction_type) === 'income')
                                         <span class="text-green-700 dark:text-green-400">+${{ number_format((float) $tx->amount, 2) }}</span>
@@ -172,7 +176,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="12" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="13" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                     No transactions found.
                                 </td>
                             </tr>

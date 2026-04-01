@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Storage;
 class Transaction extends Model
 {
     protected $fillable = [
-        'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description',
-        'transaction_type', 'gst_amount', 'gst_status', 'receipt_path', 'document_id',
+        'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description', 'vendor_name',
+        'transaction_type', 'gst_amount', 'gst_status', 'gst_basis', 'receipt_path', 'document_id',
         'bank_account_id', 'tracking_category_id', 'tracking_sub_category_id',
         'invoice_number', 'payment_status', 'due_date', 'paid_at', 'payment_method',
         'paid_by', 'payment_document_id',
@@ -34,6 +34,7 @@ class Transaction extends Model
         'director_loan_in'          => 'Director Loan In',
         // Expense
         'water_service_expenses'    => 'Water Service Expenses',
+        'management_fees'           => 'Management Fees',
         'land_tax'                  => 'Land Tax',
         'valuation_and_rates'       => 'Valuation & Rates',
         'oc_fees'                   => 'OC Fees',
@@ -58,6 +59,7 @@ class Transaction extends Model
     /** Expense transaction types */
     public static $expenseTypes = [
         'water_service_expenses'  => 'Water Service Expenses',
+        'management_fees'         => 'Management Fees',
         'land_tax'                => 'Land Tax',
         'valuation_and_rates'     => 'Valuation & Rates',
         'oc_fees'                 => 'OC Fees',
@@ -85,6 +87,12 @@ class Transaction extends Model
         'gst_free'     => 'GST Free',
         'collected'    => 'Collected',
         'input_credit' => 'Input Credit',
+    ];
+
+    /** How the amount relates to GST (10%) */
+    public static $gstBasisLabels = [
+        'inclusive' => 'GST inclusive (total includes 10% GST)',
+        'exclusive' => 'GST exclusive (10% added on top)',
     ];
 
     /**

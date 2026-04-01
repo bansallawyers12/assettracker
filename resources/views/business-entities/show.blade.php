@@ -299,6 +299,7 @@
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Date</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Amount</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Description</th>
+                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Vendor</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Invoice #</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Asset</th>
                                                         <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Type</th>
@@ -319,6 +320,7 @@
                                                                 @endif
                                                             </td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">{{ $transaction->description }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-[10rem] truncate">{{ $transaction->vendor_name ?? '—' }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->invoice_number ?? '—' }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                                                                 @if ($transaction->asset)
@@ -419,6 +421,7 @@
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Date:</span> {{ $selectedTransaction->date->format('d/m/Y') }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Amount:</span> ${{ number_format($selectedTransaction->amount, 2) }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Description:</span> {{ $selectedTransaction->description ?? '—' }}</p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Vendor:</span> {{ $selectedTransaction->vendor_name ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Invoice #:</span> {{ $selectedTransaction->invoice_number ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> {{ Transaction::$transactionTypes[$selectedTransaction->transaction_type] ?? 'N/A' }}</p>
                                                             @if ($selectedTransaction->relatedEntity)
@@ -454,6 +457,7 @@
                                                                 @endif
                                                             </p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST Amount:</span> {{ $selectedTransaction->gst_amount ? '$'.number_format($selectedTransaction->gst_amount, 2) : '—' }}</p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST basis:</span> {{ $selectedTransaction->gst_basis ? (Transaction::$gstBasisLabels[$selectedTransaction->gst_basis] ?? $selectedTransaction->gst_basis) : '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST Status:</span> {{ Transaction::$gstStatusLabels[$selectedTransaction->gst_status] ?? ($selectedTransaction->gst_status ? ucfirst($selectedTransaction->gst_status) : '—') }}</p>
                                                             @if ($selectedTransaction->receipt_path)
                                                                 <p class="mb-2">

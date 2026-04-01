@@ -16,6 +16,7 @@ use App\Models\Person; // Added for date manipulation
 use App\Models\Reminder; // Added for logging
 use App\Models\Transaction; // Added for file storage
 use App\Services\DocumentUploadService;
+use App\Support\TransactionGstResolver;
 use Carbon\Carbon; // Added for handling validation exceptions
 use Illuminate\Database\QueryException;
 // Add this at the top with other use statements
@@ -260,8 +261,37 @@ class BusinessEntityController extends Controller
                 ];
             });
 
+        $transactionDueReminders = Transaction::query()
+            ->where('payment_status', 'unpaid')
+            ->whereNotNull('due_date')
+            ->whereDate('due_date', '>=', now()->startOfDay())
+            ->whereDate('due_date', '<=', now()->addDays(15))
+            ->with(['businessEntity.user', 'asset'])
+            ->orderBy('due_date')
+            ->get()
+            ->map(function (Transaction $t) {
+                $amt = number_format((float) $t->amount, 2);
+                $desc = $t->description ?: 'Unpaid bill';
+                $vendor = $t->vendor_name ? ' · '.$t->vendor_name : '';
+                $content = 'Bill due: '.$desc.$vendor.' — $'.$amt;
+
+                return (object) [
+                    'content' => $content,
+                    'next_due_date' => $t->due_date,
+                    'repeat_type' => 'none',
+                    'business_entity_id' => $t->business_entity_id,
+                    'asset_id' => $t->asset_id,
+                    'user' => $t->businessEntity?->user,
+                    'businessEntity' => $t->businessEntity,
+                    'asset' => $t->asset,
+                    'is_note' => false,
+                    'is_transaction' => true,
+                    'transaction_id' => $t->id,
+                ];
+            });
+
         // Combine reminders, sort by due date
-        $allReminders = $reminders->concat($noteReminders)->sortBy('next_due_date');
+        $allReminders = $reminders->concat($noteReminders)->concat($transactionDueReminders)->sortBy('next_due_date');
 
         $persons = EntityPerson::with(['person', 'trusteeEntity', 'businessEntity'])->get();
 
@@ -316,6 +346,7 @@ class BusinessEntityController extends Controller
     public function storeTransaction(Request $request, BusinessEntity $businessEntity)
     {
         $this->normalizeOptionalTransactionAssetId($request);
+        $this->normalizeEmptyGstBasisRequest($request);
 
         $resolvedEntityId = $request->filled('business_entity_id')
             ? (int) $request->business_entity_id
@@ -326,6 +357,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
+            'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
@@ -335,7 +367,7 @@ class BusinessEntityController extends Controller
                 Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $resolvedEntityId)),
             ],
             'gst_amount' => 'nullable|numeric',
-            'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
+            'gst_basis' => 'nullable|in:inclusive,exclusive',
             'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'document_name' => 'nullable|string|max:255',
             'payment_status' => 'required|in:unpaid,paid',
@@ -359,6 +391,15 @@ class BusinessEntityController extends Controller
                 'related_entity_id' => 'Related entity must be different from the business entity.',
             ]);
         }
+
+        $this->validateTransactionGstBasis($request);
+
+        $gstResolved = TransactionGstResolver::resolve(
+            (float) $request->amount,
+            $request->input('gst_basis') ?: null,
+            $request->input('gst_amount'),
+            Transaction::directionFromType((string) $request->transaction_type)
+        );
 
         $asset = $request->filled('asset_id')
             ? Asset::query()->find($request->integer('asset_id'))
@@ -433,10 +474,12 @@ class BusinessEntityController extends Controller
                 'date'                => $request->date,
                 'amount'              => $request->amount,
                 'description'         => $request->description,
+                'vendor_name'         => $request->vendor_name,
                 'invoice_number'      => $request->invoice_number,
                 'transaction_type'    => $request->transaction_type,
-                'gst_amount'          => $request->gst_amount,
-                'gst_status'          => $request->gst_status,
+                'gst_amount'          => $gstResolved['gst_amount'],
+                'gst_status'          => $gstResolved['gst_status'],
+                'gst_basis'           => $gstResolved['gst_basis'],
                 'receipt_path'        => $receiptPath,
                 'document_id'         => $documentId,
                 'payment_status'      => $request->payment_status ?? 'paid',
@@ -466,12 +509,14 @@ class BusinessEntityController extends Controller
         }
 
         $this->normalizeOptionalTransactionAssetId($request);
+        $this->normalizeEmptyGstBasisRequest($request);
 
         // Validate the transaction data
         $request->validate([
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
+            'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
@@ -481,7 +526,7 @@ class BusinessEntityController extends Controller
                 Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $businessEntity->id)),
             ],
             'gst_amount' => 'nullable|numeric',
-            'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
+            'gst_basis' => 'nullable|in:inclusive,exclusive',
             'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'document_name' => 'nullable|string|max:255',
             'payment_status' => 'required|in:unpaid,paid',
@@ -493,11 +538,20 @@ class BusinessEntityController extends Controller
             'payment_document_name' => 'nullable|string|max:255',
         ]);
 
+        $this->validateTransactionGstBasis($request);
+
+        $gstResolved = TransactionGstResolver::resolve(
+            (float) $request->amount,
+            $request->input('gst_basis') ?: null,
+            $request->input('gst_amount'),
+            Transaction::directionFromType((string) $request->transaction_type)
+        );
+
         $asset = $request->filled('asset_id')
             ? Asset::query()->find($request->integer('asset_id'))
             : null;
 
-        $transaction = DB::transaction(function () use ($request, $businessEntity, $bankAccount, $asset) {
+        $transaction = DB::transaction(function () use ($request, $businessEntity, $bankAccount, $asset, $gstResolved) {
             $receiptPath = null;
             $documentId = null;
             $prefillPath = $request->input('receipt_path');
@@ -567,10 +621,12 @@ class BusinessEntityController extends Controller
                 'date'                => $request->date,
                 'amount'              => $request->amount,
                 'description'         => $request->description,
+                'vendor_name'         => $request->vendor_name,
                 'invoice_number'      => $request->invoice_number,
                 'transaction_type'    => $request->transaction_type,
-                'gst_amount'          => $request->gst_amount,
-                'gst_status'          => $request->gst_status,
+                'gst_amount'          => $gstResolved['gst_amount'],
+                'gst_status'          => $gstResolved['gst_status'],
+                'gst_basis'           => $gstResolved['gst_basis'],
                 'receipt_path'        => $receiptPath,
                 'document_id'         => $documentId,
                 'payment_status'      => $request->payment_status ?? 'paid',
@@ -621,11 +677,13 @@ class BusinessEntityController extends Controller
         }
 
         $this->normalizeOptionalTransactionAssetId($request);
+        $this->normalizeEmptyGstBasisRequest($request);
 
         $data = $request->validate([
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
+            'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
@@ -635,7 +693,7 @@ class BusinessEntityController extends Controller
                 Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $businessEntity->id)),
             ],
             'gst_amount' => 'nullable|numeric',
-            'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
+            'gst_basis' => 'nullable|in:inclusive,exclusive',
             'payment_status' => 'required|in:unpaid,paid',
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
@@ -644,6 +702,15 @@ class BusinessEntityController extends Controller
             'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'payment_document_name' => 'nullable|string|max:255',
         ]);
+
+        $this->validateTransactionGstBasis($request);
+
+        $gstResolved = TransactionGstResolver::resolve(
+            (float) $data['amount'],
+            $data['gst_basis'] ?? null,
+            $request->input('gst_amount'),
+            Transaction::directionFromType((string) $data['transaction_type'])
+        );
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
 
@@ -669,12 +736,19 @@ class BusinessEntityController extends Controller
             $data['payment_document_id'] = $payDocument->id;
         }
 
-        $transaction->update(Arr::only($data, [
-            'date', 'amount', 'description', 'invoice_number', 'transaction_type',
-            'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
-            'payment_status', 'due_date', 'paid_at', 'payment_method', 'paid_by',
-            'payment_document_id',
-        ]));
+        $transaction->update(array_merge(
+            Arr::only($data, [
+                'date', 'amount', 'description', 'vendor_name', 'invoice_number', 'transaction_type',
+                'related_entity_id', 'asset_id',
+                'payment_status', 'due_date', 'paid_at', 'payment_method', 'paid_by',
+                'payment_document_id',
+            ]),
+            [
+                'gst_amount' => $gstResolved['gst_amount'],
+                'gst_status' => $gstResolved['gst_status'],
+                'gst_basis' => $gstResolved['gst_basis'],
+            ]
+        ));
 
         return redirect()->route('business-entities.show', $businessEntity->id)->with('success', 'Transaction updated successfully!');
     }
@@ -736,11 +810,13 @@ class BusinessEntityController extends Controller
         }
 
         $this->normalizeOptionalTransactionAssetId($request);
+        $this->normalizeEmptyGstBasisRequest($request);
 
         $data = $request->validate([
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
+            'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
             'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
@@ -750,7 +826,7 @@ class BusinessEntityController extends Controller
                 Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $businessEntity->id)),
             ],
             'gst_amount' => 'nullable|numeric',
-            'gst_status' => 'nullable|in:included,excluded,gst_free,collected,input_credit',
+            'gst_basis' => 'nullable|in:inclusive,exclusive',
             'payment_status' => 'required|in:unpaid,paid',
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
@@ -759,6 +835,15 @@ class BusinessEntityController extends Controller
             'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'payment_document_name' => 'nullable|string|max:255',
         ]);
+
+        $this->validateTransactionGstBasis($request);
+
+        $gstResolved = TransactionGstResolver::resolve(
+            (float) $data['amount'],
+            $data['gst_basis'] ?? null,
+            $request->input('gst_amount'),
+            Transaction::directionFromType((string) $data['transaction_type'])
+        );
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
 
@@ -784,12 +869,19 @@ class BusinessEntityController extends Controller
             $data['payment_document_id'] = $payDocument->id;
         }
 
-        $transaction->update(Arr::only($data, [
-            'date', 'amount', 'description', 'invoice_number', 'transaction_type',
-            'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
-            'payment_status', 'due_date', 'paid_at', 'payment_method', 'paid_by',
-            'payment_document_id',
-        ]));
+        $transaction->update(array_merge(
+            Arr::only($data, [
+                'date', 'amount', 'description', 'vendor_name', 'invoice_number', 'transaction_type',
+                'related_entity_id', 'asset_id',
+                'payment_status', 'due_date', 'paid_at', 'payment_method', 'paid_by',
+                'payment_document_id',
+            ]),
+            [
+                'gst_amount' => $gstResolved['gst_amount'],
+                'gst_status' => $gstResolved['gst_status'],
+                'gst_basis' => $gstResolved['gst_basis'],
+            ]
+        ));
 
         return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
             ->with('success', 'Transaction updated successfully!');
@@ -1125,10 +1217,11 @@ class BusinessEntityController extends Controller
             'date' => now()->toDateString(),
             'amount' => '',
             'description' => '',
+            'vendor_name' => '',
             'invoice_number' => '',
             'transaction_type' => '',
             'gst_amount' => '',
-            'gst_status' => 'included',
+            'gst_basis' => '',
             'receipt_path' => '',
             'asset_id' => '',
             'payment_status' => 'paid',
@@ -1219,6 +1312,29 @@ class BusinessEntityController extends Controller
      * @param  string  $extension  File extension.
      * @return string File type category ('image', 'document', 'spreadsheet', 'presentation', 'email', 'other').
      */
+    private function normalizeEmptyGstBasisRequest(Request $request): void
+    {
+        if ($request->input('gst_basis') === '') {
+            $request->merge(['gst_basis' => null]);
+        }
+    }
+
+    private function validateTransactionGstBasis(Request $request): void
+    {
+        $raw = $request->input('gst_amount');
+        if ($raw === null || $raw === '') {
+            return;
+        }
+        if (! is_numeric($raw) || round((float) $raw, 2) <= 0) {
+            return;
+        }
+        if (! in_array($request->input('gst_basis'), ['inclusive', 'exclusive'], true)) {
+            throw ValidationException::withMessages([
+                'gst_basis' => 'Select whether the amount is GST inclusive or GST exclusive when you enter a GST amount.',
+            ]);
+        }
+    }
+
     private function getFileType($extension)
     {
         $imageTypes = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];

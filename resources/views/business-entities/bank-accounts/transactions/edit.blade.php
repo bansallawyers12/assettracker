@@ -8,7 +8,7 @@
     <div class="py-12 bg-gray-100 dark:bg-gray-900 min-h-screen">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 border-t-4 border-blue-300 dark:border-blue-600">
-                <form method="POST" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data">
+                <form method="POST" id="bank-edit-transaction-form" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data">
                     @csrf
                     @method('PUT')
 
@@ -47,7 +47,7 @@
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
-                            <input type="number" name="amount" step="0.01" value="{{ old('amount', $transaction->amount) }}"
+                            <input type="number" name="amount" id="bank_edit_amount" step="0.01" value="{{ old('amount', $transaction->amount) }}"
                                    class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
                             @error('amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
@@ -57,6 +57,14 @@
                             <input type="text" name="description" value="{{ old('description', $transaction->description) }}"
                                    class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
                             @error('description') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor name</label>
+                            <input type="text" name="vendor_name" value="{{ old('vendor_name', $transaction->vendor_name) }}"
+                                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                                   placeholder="Supplier or party name">
+                            @error('vendor_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
@@ -103,23 +111,30 @@
                             @error('asset_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
+                        @php
+                            $editGstBasis = old('gst_basis', $transaction->gst_basis ?? ((float) ($transaction->gst_amount ?? 0) > 0 ? 'inclusive' : ''));
+                        @endphp
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GST (10%)</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="radio" name="gst_basis" value="" class="rounded-full border-gray-300 text-blue-600" {{ $editGstBasis === '' || $editGstBasis === null ? 'checked' : '' }}> No GST
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="radio" name="gst_basis" value="inclusive" class="rounded-full border-gray-300 text-blue-600" {{ $editGstBasis === 'inclusive' ? 'checked' : '' }}> GST inclusive — amount includes 10%
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="radio" name="gst_basis" value="exclusive" class="rounded-full border-gray-300 text-blue-600" {{ $editGstBasis === 'exclusive' ? 'checked' : '' }}> GST exclusive — 10% on top
+                                </label>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Leave GST amount blank to auto-calculate. Enter a value to override.</p>
+                            @error('gst_basis') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST Amount</label>
-                            <input type="number" name="gst_amount" step="0.01" value="{{ old('gst_amount', $transaction->gst_amount) }}"
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST amount <span class="text-gray-400 font-normal">(optional)</span></label>
+                            <input type="number" name="gst_amount" id="bank_edit_gst_amount" step="0.01" value="{{ old('gst_amount', $transaction->gst_amount) }}"
                                    class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
                             @error('gst_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST Status</label>
-                            <select name="gst_status" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
-                                <option value="included" {{ old('gst_status', $transaction->gst_status) == 'included' ? 'selected' : '' }}>Included</option>
-                                <option value="excluded" {{ old('gst_status', $transaction->gst_status) == 'excluded' ? 'selected' : '' }}>Excluded</option>
-                                <option value="gst_free" {{ old('gst_status', $transaction->gst_status) == 'gst_free' ? 'selected' : '' }}>GST Free</option>
-                                <option value="collected" {{ old('gst_status', $transaction->gst_status) == 'collected' ? 'selected' : '' }}>Collected</option>
-                                <option value="input_credit" {{ old('gst_status', $transaction->gst_status) == 'input_credit' ? 'selected' : '' }}>Input Credit</option>
-                            </select>
-                            @error('gst_status') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
                     </div>
@@ -288,6 +303,33 @@
                     relatedEntityField.querySelector('select').required = true;
                 }
             }
+
+            (function bankEditGstCalc() {
+                const form = document.getElementById('bank-edit-transaction-form');
+                const amtEl = document.getElementById('bank_edit_amount');
+                const gstEl = document.getElementById('bank_edit_gst_amount');
+                if (!form || !amtEl || !gstEl) return;
+                let gstTouched = @json(old('gst_amount') !== null && old('gst_amount') !== '');
+                gstEl.addEventListener('input', () => { gstTouched = true; });
+                function basis() {
+                    const r = form.querySelector('input[name="gst_basis"]:checked');
+                    return r ? r.value : '';
+                }
+                function recalc() {
+                    if (gstTouched) return;
+                    const a = parseFloat(amtEl.value);
+                    const b = basis();
+                    if (!b || Number.isNaN(a)) { gstEl.value = ''; return; }
+                    if (b === 'inclusive') gstEl.value = (Math.round((a - a / 1.1) * 100) / 100).toFixed(2);
+                    else if (b === 'exclusive') gstEl.value = (Math.round(a * 0.1 * 100) / 100).toFixed(2);
+                }
+                amtEl.addEventListener('input', recalc);
+                form.querySelectorAll('input[name="gst_basis"]').forEach((r) => r.addEventListener('change', () => {
+                    if (!r.checked) return;
+                    gstTouched = false;
+                    recalc();
+                }));
+            })();
         });
     </script>
 </x-app-layout>

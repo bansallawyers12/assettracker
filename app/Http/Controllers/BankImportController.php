@@ -164,8 +164,9 @@ class BankImportController extends Controller
                     'amount' => $bankEntry->amount,
                     'description' => $bankEntry->description,
                     'transaction_type' => $this->mapTransactionType($chartAccount->account_type, $bankEntry->amount),
-                    'gst_amount' => 0, // Will be calculated by the posting service
-                    'gst_status' => 'excluded'
+                    'gst_amount' => null,
+                    'gst_status' => 'gst_free',
+                    'gst_basis' => null,
                 ]);
 
                 // Link bank entry to transaction

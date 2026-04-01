@@ -92,9 +92,10 @@ class TransactionPostingService
 	private function buildLines(Transaction $transaction): array
 	{
 		$businessEntityId = $transaction->business_entity_id;
-		$amountGross = (float) $transaction->amount;
-		$gstAmount   = (float) ($transaction->gst_amount ?? 0);
-		$amountNet   = $amountGross - $gstAmount;
+		$parts = $this->cashNetAndGst($transaction);
+		$amountGross = $parts['cash'];
+		$gstAmount = $parts['gst'];
+		$amountNet = $parts['net'];
 
 		$cashAccount    = $this->findAccount($businessEntityId, '1000'); // Cash at Bank
 		$gstPayable     = $this->findByName($businessEntityId, 'GST Payable')     ?? $this->findAccount($businessEntityId, '2200');
@@ -112,6 +113,7 @@ class TransactionPostingService
 			'asset_sales'               => $this->findByName($businessEntityId, 'Asset Sales')         ?? $this->findAccount($businessEntityId, '4000'),
 			// Expense
 			'water_service_expenses'    => $this->findByName($businessEntityId, 'Utilities Expense')   ?? $this->findAccount($businessEntityId, '5200'),
+			'management_fees'           => $this->findByName($businessEntityId, 'Management Fees')    ?? $this->findByName($businessEntityId, 'Other Expense')       ?? $this->findAccount($businessEntityId, '5200'),
 			'land_tax'                  => $this->findByName($businessEntityId, 'Land Tax')            ?? $this->findAccount($businessEntityId, '5200'),
 			'valuation_and_rates'       => $this->findByName($businessEntityId, 'Rates Expense')       ?? $this->findAccount($businessEntityId, '5200'),
 			'oc_fees'                   => $this->findByName($businessEntityId, 'OC Fees')             ?? $this->findAccount($businessEntityId, '5200'),
@@ -158,6 +160,37 @@ class TransactionPostingService
 		}
 
 		return $lines;
+	}
+
+	/**
+	 * @return array{cash: float, net: float, gst: float}
+	 */
+	private function cashNetAndGst(Transaction $transaction): array
+	{
+		$amt = (float) $transaction->amount;
+		$gst = max(0.0, (float) ($transaction->gst_amount ?? 0));
+
+		if ($gst < 0.000001) {
+			return [
+				'cash' => round($amt, 2),
+				'net' => round($amt, 2),
+				'gst' => 0.0,
+			];
+		}
+
+		if ($transaction->gst_basis === 'exclusive') {
+			return [
+				'cash' => round($amt + $gst, 2),
+				'net' => round($amt, 2),
+				'gst' => round($gst, 2),
+			];
+		}
+
+		return [
+			'cash' => round($amt, 2),
+			'net' => round($amt - $gst, 2),
+			'gst' => round($gst, 2),
+		];
 	}
 
 	private function line(int $accountId, float $debit, float $credit, ?string $description = null): array
