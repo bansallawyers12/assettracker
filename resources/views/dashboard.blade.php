@@ -115,7 +115,7 @@
                         {{-- Amount --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount</label>
-                            <input type="number" name="amount" step="0.01" value="{{ old('amount', session('transactionData.amount')) }}"
+                            <input type="number" name="amount" id="dashboard_txn_amount" step="0.01" value="{{ old('amount', session('transactionData.amount')) }}"
                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
                             @error('amount') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
@@ -126,6 +126,15 @@
                             <input type="text" name="description" value="{{ old('description', session('transactionData.description')) }}"
                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                             @error('description') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Vendor name --}}
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vendor name</label>
+                            <input type="text" name="vendor_name" value="{{ old('vendor_name', session('transactionData.vendor_name')) }}"
+                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                   placeholder="Supplier or party name">
+                            @error('vendor_name') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
                         {{-- Invoice Number --}}
@@ -164,25 +173,34 @@
                             @error('related_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
-                        {{-- GST Amount --}}
+                        @php
+                            $dashGstBasis = old('gst_basis', session('transactionData.gst_basis', ''));
+                        @endphp
+                        {{-- GST: basis + amount --}}
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GST (10%)</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="radio" name="gst_basis" value="" class="rounded-full border-gray-300 text-blue-600" {{ $dashGstBasis === '' || $dashGstBasis === null ? 'checked' : '' }}>
+                                    No GST
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="radio" name="gst_basis" value="inclusive" class="rounded-full border-gray-300 text-blue-600" {{ $dashGstBasis === 'inclusive' ? 'checked' : '' }}>
+                                    GST inclusive — amount includes 10% GST
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="radio" name="gst_basis" value="exclusive" class="rounded-full border-gray-300 text-blue-600" {{ $dashGstBasis === 'exclusive' ? 'checked' : '' }}>
+                                    GST exclusive — 10% added on top of amount
+                                </label>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Leave GST amount blank to auto-calculate. Enter a value to override. If you enter GST, pick inclusive or exclusive.</p>
+                            @error('gst_basis') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                        </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST Amount</label>
-                            <input type="number" name="gst_amount" step="0.01" value="{{ old('gst_amount', session('transactionData.gst_amount')) }}"
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST amount <span class="text-gray-400 font-normal">(optional)</span></label>
+                            <input type="number" name="gst_amount" id="dashboard_gst_amount" step="0.01" value="{{ old('gst_amount', session('transactionData.gst_amount')) }}"
                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                             @error('gst_amount') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        {{-- GST Status --}}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST Status</label>
-                            <select name="gst_status" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
-                                <option value="included" {{ old('gst_status', session('transactionData.gst_status', 'included')) == 'included' ? 'selected' : '' }}>Included</option>
-                                <option value="excluded" {{ old('gst_status', session('transactionData.gst_status')) == 'excluded' ? 'selected' : '' }}>Excluded</option>
-                                <option value="gst_free" {{ old('gst_status', session('transactionData.gst_status')) == 'gst_free' ? 'selected' : '' }}>GST Free</option>
-                                <option value="collected" {{ old('gst_status', session('transactionData.gst_status')) == 'collected' ? 'selected' : '' }}>Collected</option>
-                                <option value="input_credit" {{ old('gst_status', session('transactionData.gst_status')) == 'input_credit' ? 'selected' : '' }}>Input Credit</option>
-                            </select>
-                            @error('gst_status') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
                         {{-- Invoice / Bill upload --}}
@@ -439,7 +457,7 @@
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $reminder->content }}</p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                     {{ $reminder->asset ? $reminder->asset->name : ($reminder->businessEntity->legal_name ?? 'Unknown') }}
-                                                    &middot; {{ $reminder->user->name ?? 'Unknown' }}
+                                                    &middot; {{ $reminder->user?->name ?? 'Unknown' }}
                                                 </p>
                                                 <div class="mt-2 flex flex-wrap items-center gap-2">
                                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
@@ -455,18 +473,22 @@
                                                 </div>
                                             </div>
                                             <div class="flex-shrink-0 flex gap-1.5">
-                                                <form action="{{ $reminder->is_note ? route('notes.finalize', $reminder->id) : route('reminders.complete', $reminder->id) }}" method="POST">
-                                                    @csrf
-                                                    <button type="submit" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 dark:text-emerald-400 transition-colors" title="Finalize">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                                    </button>
-                                                </form>
-                                                <form action="{{ $reminder->is_note ? route('notes.extend', $reminder->id) : route('reminders.extend', $reminder->id) }}" method="POST">
-                                                    @csrf
-                                                    <button type="submit" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-400 transition-colors" title="Extend">
-                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
-                                                    </button>
-                                                </form>
+                                                @if (!empty($reminder->is_transaction))
+                                                    <a href="{{ route('business-entities.show', [$reminder->business_entity_id, 'transaction_id' => $reminder->transaction_id]) }}#tab_transactions" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/30 dark:text-indigo-400 transition-colors text-xs font-medium px-2" title="Open transaction">View</a>
+                                                @else
+                                                    <form action="{{ !empty($reminder->is_note) ? route('notes.finalize', $reminder->id) : route('reminders.complete', $reminder->id) }}" method="POST">
+                                                        @csrf
+                                                        <button type="submit" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 dark:text-emerald-400 transition-colors" title="Finalize">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                        </button>
+                                                    </form>
+                                                    <form action="{{ !empty($reminder->is_note) ? route('notes.extend', $reminder->id) : route('reminders.extend', $reminder->id) }}" method="POST">
+                                                        @csrf
+                                                        <button type="submit" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-400 transition-colors" title="Extend">
+                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             </div>
                                         </div>
                                     @endforeach
@@ -757,6 +779,39 @@
                 entitySelect.addEventListener('change', syncTransactionFormFromEntitySelect);
                 syncTransactionFormFromEntitySelect();
             }
+
+            (function initDashboardGstCalc() {
+                const amtEl = document.getElementById('dashboard_txn_amount');
+                const gstEl = document.getElementById('dashboard_gst_amount');
+                const form = document.getElementById('store-transaction-form');
+                if (!amtEl || !gstEl || !form) return;
+                let gstTouched = @json(old('gst_amount') !== null && old('gst_amount') !== '');
+                gstEl.addEventListener('input', () => { gstTouched = true; });
+                function basis() {
+                    const r = form.querySelector('input[name="gst_basis"]:checked');
+                    return r ? r.value : '';
+                }
+                function recalc() {
+                    if (gstTouched) return;
+                    const a = parseFloat(amtEl.value);
+                    const b = basis();
+                    if (!b || Number.isNaN(a)) {
+                        gstEl.value = '';
+                        return;
+                    }
+                    if (b === 'inclusive') {
+                        gstEl.value = (Math.round((a - a / 1.1) * 100) / 100).toFixed(2);
+                    } else if (b === 'exclusive') {
+                        gstEl.value = (Math.round(a * 0.1 * 100) / 100).toFixed(2);
+                    }
+                }
+                amtEl.addEventListener('input', recalc);
+                form.querySelectorAll('input[name="gst_basis"]').forEach((r) => r.addEventListener('change', () => {
+                    if (!r.checked) return;
+                    gstTouched = false;
+                    recalc();
+                }));
+            })();
 
             @if (session('error') || session('transactionData'))
                 if (transactionSection) transactionSection.classList.remove('hidden');

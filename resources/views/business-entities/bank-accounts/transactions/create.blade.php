@@ -62,13 +62,18 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
-                            <input type="number" name="amount" step="0.01" value="{{ old('amount', $td['amount'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" required>
+                            <input type="number" name="amount" id="bank_create_amount" step="0.01" value="{{ old('amount', $td['amount'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" required>
                             @error('amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
                             <input type="text" name="description" value="{{ old('description', $td['description'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
                             @error('description') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor name</label>
+                            <input type="text" name="vendor_name" value="{{ old('vendor_name', $td['vendor_name'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" placeholder="Supplier or party name">
+                            @error('vendor_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Invoice Number <span class="text-gray-400 font-normal">(optional)</span></label>
@@ -108,21 +113,27 @@
                             </select>
                             @error('asset_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST Amount</label>
-                            <input type="number" name="gst_amount" step="0.01" value="{{ old('gst_amount', $td['gst_amount'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
-                            @error('gst_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        @php $createGstBasis = old('gst_basis', $td['gst_basis'] ?? ''); @endphp
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GST (10%)</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="radio" name="gst_basis" value="" class="rounded-full border-gray-300 text-purple-600" {{ $createGstBasis === '' || $createGstBasis === null ? 'checked' : '' }}> No GST
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="radio" name="gst_basis" value="inclusive" class="rounded-full border-gray-300 text-purple-600" {{ $createGstBasis === 'inclusive' ? 'checked' : '' }}> GST inclusive — amount includes 10%
+                                </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="radio" name="gst_basis" value="exclusive" class="rounded-full border-gray-300 text-purple-600" {{ $createGstBasis === 'exclusive' ? 'checked' : '' }}> GST exclusive — 10% on top
+                                </label>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Leave GST amount blank to auto-calculate. Enter a value to override.</p>
+                            @error('gst_basis') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST Status</label>
-                            <select name="gst_status" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
-                                <option value="included" {{ old('gst_status', $td['gst_status'] ?? 'included') == 'included' ? 'selected' : '' }}>Included</option>
-                                <option value="excluded" {{ old('gst_status', $td['gst_status'] ?? '') == 'excluded' ? 'selected' : '' }}>Excluded</option>
-                                <option value="gst_free" {{ old('gst_status', $td['gst_status'] ?? '') == 'gst_free' ? 'selected' : '' }}>GST Free</option>
-                                <option value="collected" {{ old('gst_status', $td['gst_status'] ?? '') == 'collected' ? 'selected' : '' }}>Collected</option>
-                                <option value="input_credit" {{ old('gst_status', $td['gst_status'] ?? '') == 'input_credit' ? 'selected' : '' }}>Input Credit</option>
-                            </select>
-                            @error('gst_status') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST amount <span class="text-gray-400 font-normal">(optional)</span></label>
+                            <input type="number" name="gst_amount" id="bank_create_gst_amount" step="0.01" value="{{ old('gst_amount', $td['gst_amount'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
+                            @error('gst_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Business Entity</label>
@@ -277,6 +288,33 @@
                     if (rs) rs.required = true;
                 }
             }
+
+            (function bankCreateGstCalc() {
+                const form = document.getElementById('bank-store-transaction-form');
+                const amtEl = document.getElementById('bank_create_amount');
+                const gstEl = document.getElementById('bank_create_gst_amount');
+                if (!form || !amtEl || !gstEl) return;
+                let gstTouched = @json(old('gst_amount') !== null && old('gst_amount') !== '');
+                gstEl.addEventListener('input', () => { gstTouched = true; });
+                function basis() {
+                    const r = form.querySelector('input[name="gst_basis"]:checked');
+                    return r ? r.value : '';
+                }
+                function recalc() {
+                    if (gstTouched) return;
+                    const a = parseFloat(amtEl.value);
+                    const b = basis();
+                    if (!b || Number.isNaN(a)) { gstEl.value = ''; return; }
+                    if (b === 'inclusive') gstEl.value = (Math.round((a - a / 1.1) * 100) / 100).toFixed(2);
+                    else if (b === 'exclusive') gstEl.value = (Math.round(a * 0.1 * 100) / 100).toFixed(2);
+                }
+                amtEl.addEventListener('input', recalc);
+                form.querySelectorAll('input[name="gst_basis"]').forEach((r) => r.addEventListener('change', () => {
+                    if (!r.checked) return;
+                    gstTouched = false;
+                    recalc();
+                }));
+            })();
         });
     </script>
 </x-app-layout>

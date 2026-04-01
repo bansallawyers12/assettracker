@@ -50,6 +50,11 @@
                     <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->description ?? '—' }}</p>
                 </div>
 
+                <div class="sm:col-span-2">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Vendor</p>
+                    <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->vendor_name ?? '—' }}</p>
+                </div>
+
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Transaction Type</p>
                     <p class="text-sm text-gray-900 dark:text-gray-100">
@@ -126,6 +131,13 @@
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">GST Amount</p>
                     <p class="text-sm text-gray-900 dark:text-gray-100">
                         {{ $transaction->gst_amount ? '$'.number_format((float) $transaction->gst_amount, 2) : '—' }}
+                    </p>
+                </div>
+
+                <div>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">GST basis</p>
+                    <p class="text-sm text-gray-900 dark:text-gray-100">
+                        {{ $transaction->gst_basis ? (\App\Models\Transaction::$gstBasisLabels[$transaction->gst_basis] ?? $transaction->gst_basis) : '—' }}
                     </p>
                 </div>
 
