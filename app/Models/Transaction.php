@@ -82,6 +82,15 @@ class Transaction extends Model
         'other'         => 'Other',
     ];
 
+    /** GST status display labels */
+    public static $gstStatusLabels = [
+        'included'     => 'Included',
+        'excluded'     => 'Excluded',
+        'gst_free'     => 'GST Free',
+        'collected'    => 'Collected',
+        'input_credit' => 'Input Credit',
+    ];
+
     /**
      * Derive direction ('income' or 'expense') from a transaction type key.
      */

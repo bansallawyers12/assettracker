@@ -410,7 +410,7 @@ class BusinessEntityController extends Controller
             $paymentDocumentId = null;
             if ($request->hasFile('payment_document')) {
                 $payFile = $request->file('payment_document');
-                $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile);
+                $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile, 'payment_document_name');
                 $payLabelBase = $request->filled('payment_document_name')
                     ? trim((string) $request->input('payment_document_name'))
                     : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
@@ -543,7 +543,7 @@ class BusinessEntityController extends Controller
             $paymentDocumentId = null;
             if ($request->hasFile('payment_document')) {
                 $payFile = $request->file('payment_document');
-                $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile);
+                $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile, 'payment_document_name');
                 $payLabelBase = $request->filled('payment_document_name')
                     ? trim((string) $request->input('payment_document_name'))
                     : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
@@ -641,16 +641,39 @@ class BusinessEntityController extends Controller
             'paid_at' => 'nullable|date',
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
             'paid_by' => 'nullable|string|max:255',
+            'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'payment_document_name' => 'nullable|string|max:255',
         ]);
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
 
         $this->detachIncompatibleReceiptDocument($transaction, $data['asset_id']);
 
+        $asset = $data['asset_id'] ? Asset::query()->find($data['asset_id']) : null;
+
+        if ($request->hasFile('payment_document')) {
+            $payFile = $request->file('payment_document');
+            $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile, 'payment_document_name');
+            $payLabelBase = $request->filled('payment_document_name')
+                ? trim((string) $request->input('payment_document_name'))
+                : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
+            $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
+            $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                $businessEntity,
+                $asset,
+                $payFile,
+                $payDisplayName,
+                $payLabelBase ?: 'Payment Receipt',
+                $payDesc !== '' ? $payDesc : null
+            );
+            $data['payment_document_id'] = $payDocument->id;
+        }
+
         $transaction->update(Arr::only($data, [
             'date', 'amount', 'description', 'invoice_number', 'transaction_type',
             'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
             'payment_status', 'due_date', 'paid_at', 'payment_method', 'paid_by',
+            'payment_document_id',
         ]));
 
         return redirect()->route('business-entities.show', $businessEntity->id)->with('success', 'Transaction updated successfully!');
@@ -733,16 +756,39 @@ class BusinessEntityController extends Controller
             'paid_at' => 'nullable|date',
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
             'paid_by' => 'nullable|string|max:255',
+            'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
+            'payment_document_name' => 'nullable|string|max:255',
         ]);
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
 
         $this->detachIncompatibleReceiptDocument($transaction, $data['asset_id']);
 
+        $asset = $data['asset_id'] ? Asset::query()->find($data['asset_id']) : null;
+
+        if ($request->hasFile('payment_document')) {
+            $payFile = $request->file('payment_document');
+            $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile, 'payment_document_name');
+            $payLabelBase = $request->filled('payment_document_name')
+                ? trim((string) $request->input('payment_document_name'))
+                : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
+            $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
+            $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                $businessEntity,
+                $asset,
+                $payFile,
+                $payDisplayName,
+                $payLabelBase ?: 'Payment Receipt',
+                $payDesc !== '' ? $payDesc : null
+            );
+            $data['payment_document_id'] = $payDocument->id;
+        }
+
         $transaction->update(Arr::only($data, [
             'date', 'amount', 'description', 'invoice_number', 'transaction_type',
             'related_entity_id', 'asset_id', 'gst_amount', 'gst_status',
             'payment_status', 'due_date', 'paid_at', 'payment_method', 'paid_by',
+            'payment_document_id',
         ]));
 
         return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')

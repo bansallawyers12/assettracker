@@ -811,14 +811,11 @@
 
             function filterTypesByDirection(direction) {
                 if (!transactionTypeSelect) return;
-                const currentVal = transactionTypeSelect.value;
-                let firstVisible = null;
                 Array.from(transactionTypeSelect.options).forEach(opt => {
                     if (!opt.value) return;
                     const match = !opt.dataset.direction || opt.dataset.direction === direction;
                     opt.hidden   = !match;
                     opt.disabled = !match;
-                    if (match && !firstVisible) firstVisible = opt.value;
                 });
                 if (transactionTypeSelect.value && transactionTypeSelect.options[transactionTypeSelect.selectedIndex]?.disabled) {
                     transactionTypeSelect.value = '';

@@ -58,6 +58,11 @@
                 </div>
 
                 <div>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Invoice Number</p>
+                    <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->invoice_number ?? '—' }}</p>
+                </div>
+
+                <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Asset</p>
                     @if ($transaction->asset)
                         <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $transaction->asset_id]) }}#tab_transactions" class="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300">{{ $transaction->asset->name }}</a>
@@ -65,6 +70,37 @@
                         <p class="text-sm text-gray-500 dark:text-gray-400">—</p>
                     @endif
                 </div>
+
+                <div>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Payment Status</p>
+                    @if (($transaction->payment_status ?? 'paid') === 'unpaid')
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Unpaid</span>
+                    @else
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Paid</span>
+                    @endif
+                </div>
+
+                @if (($transaction->payment_status ?? 'paid') === 'unpaid')
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Due Date</p>
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->due_date?->format('d/m/Y') ?? '—' }}</p>
+                    </div>
+                @else
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Payment Date</p>
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->paid_at?->format('d/m/Y') ?? '—' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Payment Method</p>
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ \App\Models\Transaction::$paymentMethods[$transaction->payment_method] ?? ($transaction->payment_method ? ucfirst($transaction->payment_method) : '—') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                            {{ $transaction->direction === 'income' ? 'Received By / Account' : 'Paid By' }}
+                        </p>
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->paid_by ?? '—' }}</p>
+                    </div>
+                @endif
 
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Match Status</p>
@@ -89,17 +125,28 @@
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">GST Status</p>
                     <p class="text-sm text-gray-900 dark:text-gray-100">
-                        {{ $transaction->gst_status ? ucfirst($transaction->gst_status) : '—' }}
+                        {{ \App\Models\Transaction::$gstStatusLabels[$transaction->gst_status] ?? ($transaction->gst_status ? ucfirst($transaction->gst_status) : '—') }}
                     </p>
                 </div>
 
                 @if ($transaction->receipt_path)
-                    <div class="sm:col-span-2">
-                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Receipt</p>
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Invoice / Bill</p>
                         <a href="{{ \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($transaction->receipt_path, now()->addMinutes(30)) }}"
                            target="_blank"
                            class="inline-flex items-center text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 underline">
-                            View Receipt
+                            View Document
+                        </a>
+                    </div>
+                @endif
+
+                @if ($transaction->paymentDocument && $transaction->paymentDocument->path)
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Payment Receipt</p>
+                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($transaction->paymentDocument->path, now()->addMinutes(30)) }}"
+                           target="_blank"
+                           class="inline-flex items-center text-sm text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline">
+                            View Payment Receipt
                         </a>
                     </div>
                 @endif
