@@ -156,4 +156,52 @@ class BusinessEntity extends Model
     {
         return $this->entity_type === 'Trust';
     }
+
+    public static function formatAbn(?string $abn): string
+    {
+        if ($abn === null || $abn === '') {
+            return '';
+        }
+        $digits = preg_replace('/\D/', '', $abn);
+        if (strlen($digits) === 11) {
+            return substr($digits, 0, 2).' '.substr($digits, 2, 3).' '.substr($digits, 5, 3).' '.substr($digits, 8, 3);
+        }
+
+        return $abn;
+    }
+
+    public static function formatAcn(?string $acn): string
+    {
+        if ($acn === null || $acn === '') {
+            return '';
+        }
+        $digits = preg_replace('/\D/', '', $acn);
+        if (strlen($digits) === 9) {
+            return substr($digits, 0, 3).' '.substr($digits, 3, 3).' '.substr($digits, 6, 3);
+        }
+
+        return $acn;
+    }
+
+    public function registeredEmailIsPlaceholder(): bool
+    {
+        $e = trim((string) $this->registered_email);
+        if ($e === '') {
+            return true;
+        }
+        $lower = strtolower($e);
+
+        return str_contains($lower, 'example.invalid')
+            || str_contains($lower, '@example.');
+    }
+
+    public function phoneNumberIsPlaceholder(): bool
+    {
+        $p = preg_replace('/\D/', '', (string) $this->phone_number);
+        if ($p === '') {
+            return true;
+        }
+
+        return (bool) preg_match('/^0+$/', $p);
+    }
 }
