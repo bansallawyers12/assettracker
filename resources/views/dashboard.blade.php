@@ -852,12 +852,9 @@
             // ── Related Entity visibility ──────────────────────────────────────
             if (transactionTypeSelect && relatedEntityField) {
                 const relatedPartyTypes = [
-                    'rent_to_related_party',
-                    'purchases_from_related_party',
-                    'sales_to_related_party',
-                    'directors_loans_to_company',
-                    'company_loans_to_directors',
-                    'repayment_directors_loans'
+                    'director_loan_in',
+                    'director_loan_out',
+                    'director_loan_repayment',
                 ];
 
                 transactionTypeSelect.addEventListener('change', function() {

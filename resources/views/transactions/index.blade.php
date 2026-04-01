@@ -133,7 +133,11 @@
                                     {{ $tx->description ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3 text-right font-medium whitespace-nowrap">
-                                    ${{ number_format((float) $tx->amount, 2) }}
+                                    @if (\App\Models\Transaction::directionFromType((string) $tx->transaction_type) === 'income')
+                                        <span class="text-green-700 dark:text-green-400">+${{ number_format((float) $tx->amount, 2) }}</span>
+                                    @else
+                                        <span class="text-red-700 dark:text-red-400">−${{ number_format((float) $tx->amount, 2) }}</span>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3">
                                     @if ($tx->bankStatementEntries->count() > 0)

@@ -25,52 +25,48 @@ class Transaction extends Model
 
     /** All transaction types with display labels */
     public static $transactionTypes = [
-        'sales_revenue'                => 'Sales Revenue',
-        'interest_income'              => 'Interest Income',
-        'rental_income'                => 'Rental Income',
-        'grants_subsidies'             => 'Grants/Subsidies',
-        'directors_loans_to_company'   => 'Directors\' Loans to Company',
-        'cogs'                         => 'Cost of Goods Sold (COGS)',
-        'wages_superannuation'         => 'Wages and Superannuation',
-        'rent_utilities'               => 'Rent and Utilities',
-        'marketing_advertising'        => 'Marketing/Advertising',
-        'travel_expenses'              => 'Travel Expenses',
-        'loan_repayments'              => 'Loan Repayments',
-        'capital_expenditure'          => 'Capital Expenditure',
-        'bas_payments'                 => 'BAS Payments',
-        'repayment_directors_loans'    => 'Repayment of Directors\' Loans',
-        'company_loans_to_directors'   => 'Company Loans to Directors (Division 7A)',
-        'directors_fees'               => 'Directors\' Fees',
-        'rent_to_related_party'        => 'Rent to Related Party',
-        'purchases_from_related_party' => 'Purchases from Related Party',
-        'sales_to_related_party'       => 'Sales to Related Party',
+        // Income
+        'rental_income'             => 'Rental Income',
+        'reimbursement_of_expenses' => 'Reimbursement of Expenses',
+        'interest_income'           => 'Interest Income',
+        'other_income'              => 'Other Income',
+        'asset_sales'               => 'Asset Sales',
+        'director_loan_in'          => 'Director Loan In',
+        // Expense
+        'water_service_expenses'    => 'Water Service Expenses',
+        'land_tax'                  => 'Land Tax',
+        'valuation_and_rates'       => 'Valuation & Rates',
+        'oc_fees'                   => 'OC Fees',
+        'repairs_maintenance'       => 'Repairs & Maintenance',
+        'other_expenses'            => 'Other Expenses',
+        'asset_purchase'            => 'Asset Purchase',
+        'other_personal_expenses'   => 'Other / Personal Expenses',
+        'director_loan_out'         => 'Director Loan Out',
+        'director_loan_repayment'   => 'Director Loan Repayment',
     ];
 
     /** Income transaction types */
     public static $incomeTypes = [
-        'sales_revenue'              => 'Sales Revenue',
-        'interest_income'            => 'Interest Income',
-        'rental_income'              => 'Rental Income',
-        'grants_subsidies'           => 'Grants/Subsidies',
-        'sales_to_related_party'     => 'Sales to Related Party',
-        'directors_loans_to_company' => 'Directors\' Loans to Company',
+        'rental_income'             => 'Rental Income',
+        'reimbursement_of_expenses' => 'Reimbursement of Expenses',
+        'interest_income'           => 'Interest Income',
+        'other_income'              => 'Other Income',
+        'asset_sales'               => 'Asset Sales',
+        'director_loan_in'          => 'Director Loan In',
     ];
 
     /** Expense transaction types */
     public static $expenseTypes = [
-        'cogs'                         => 'Cost of Goods Sold (COGS)',
-        'wages_superannuation'         => 'Wages and Superannuation',
-        'rent_utilities'               => 'Rent and Utilities',
-        'marketing_advertising'        => 'Marketing/Advertising',
-        'travel_expenses'              => 'Travel Expenses',
-        'loan_repayments'              => 'Loan Repayments',
-        'capital_expenditure'          => 'Capital Expenditure',
-        'bas_payments'                 => 'BAS Payments',
-        'repayment_directors_loans'    => 'Repayment of Directors\' Loans',
-        'company_loans_to_directors'   => 'Company Loans to Directors (Division 7A)',
-        'directors_fees'               => 'Directors\' Fees',
-        'rent_to_related_party'        => 'Rent to Related Party',
-        'purchases_from_related_party' => 'Purchases from Related Party',
+        'water_service_expenses'  => 'Water Service Expenses',
+        'land_tax'                => 'Land Tax',
+        'valuation_and_rates'     => 'Valuation & Rates',
+        'oc_fees'                 => 'OC Fees',
+        'repairs_maintenance'     => 'Repairs & Maintenance',
+        'other_expenses'          => 'Other Expenses',
+        'asset_purchase'          => 'Asset Purchase',
+        'other_personal_expenses' => 'Other / Personal Expenses',
+        'director_loan_out'       => 'Director Loan Out',
+        'director_loan_repayment' => 'Director Loan Repayment',
     ];
 
     /** Payment method options */

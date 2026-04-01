@@ -62,6 +62,13 @@
                     <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->invoice_number ?? '—' }}</p>
                 </div>
 
+                @if ($transaction->relatedEntity)
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Director / Related Entity</p>
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->relatedEntity->legal_name }}</p>
+                    </div>
+                @endif
+
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Asset</p>
                     @if ($transaction->asset)
