@@ -36,6 +36,7 @@ class Transaction extends Model
         // Expense
         'water_service_expenses' => 'Water Service Expenses',
         'management_fees' => 'Management Fees',
+        'legal_expenses' => 'Legal Expenses',
         'land_tax' => 'Land Tax',
         'valuation_and_rates' => 'Valuation & Rates',
         'oc_fees' => 'OC Fees',
@@ -61,6 +62,7 @@ class Transaction extends Model
     public static $expenseTypes = [
         'water_service_expenses' => 'Water Service Expenses',
         'management_fees' => 'Management Fees',
+        'legal_expenses' => 'Legal Expenses',
         'land_tax' => 'Land Tax',
         'valuation_and_rates' => 'Valuation & Rates',
         'oc_fees' => 'OC Fees',

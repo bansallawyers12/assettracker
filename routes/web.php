@@ -5,6 +5,7 @@ use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetInvoiceController;
 use App\Http\Controllers\Auth\TwoFactorController;
 use App\Http\Controllers\BankImportController;
+use App\Http\Controllers\BillsTasksController;
 use App\Http\Controllers\BusinessEntityController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\ContactListController;
@@ -61,6 +62,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 // -----------------------------------------------------------------------
 Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/dashboard', [BusinessEntityController::class, 'dashboard'])->name('dashboard');
+    Route::get('/bills-tasks', [BillsTasksController::class, 'index'])->name('bills-tasks.index');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');

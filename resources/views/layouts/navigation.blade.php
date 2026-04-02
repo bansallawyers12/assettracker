@@ -12,6 +12,10 @@
                         class="px-3 py-2 rounded-lg text-sm font-medium transition-colors">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('bills-tasks.index')" :active="request()->routeIs('bills-tasks.*')"
+                        class="px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                        {{ __('Bills & tasks') }}
+                    </x-nav-link>
                     <x-nav-link :href="route('emails.index')" :active="request()->routeIs('emails.*')"
                         class="px-3 py-2 rounded-lg text-sm font-medium transition-colors">
                         {{ __('Emails') }}
@@ -78,6 +82,9 @@
         <div class="pt-2 pb-3 space-y-1 px-3">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('bills-tasks.index')" :active="request()->routeIs('bills-tasks.*')">
+                {{ __('Bills & tasks') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('emails.index')" :active="request()->routeIs('emails.*')">
                 {{ __('Emails') }}

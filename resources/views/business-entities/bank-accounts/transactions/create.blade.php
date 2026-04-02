@@ -194,9 +194,7 @@
                                 @error('payment_method') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             @php
-                                $pbSplit = old('paid_by_select') !== null
-                                    ? ['select' => old('paid_by_select'), 'other' => old('paid_by_other', '')]
-                                    : \App\Support\TransactionPayerResolver::splitStoredForForm($td['paid_by'] ?? null);
+                                $pbSplit = \App\Support\TransactionPayerResolver::splitStoredForForm($td['paid_by'] ?? null);
                             @endphp
                             @include('partials.transaction-paid-by-fields', [
                                 'payerOptions' => $payerOptions,
