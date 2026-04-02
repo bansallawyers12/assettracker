@@ -20,6 +20,7 @@ class BillsTasksController extends Controller
     public function index(Request $request): View
     {
         $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('viewAny', Reminder::class);
 
         $tab = $request->query('tab', 'unpaid');
         if (! in_array($tab, ['unpaid', 'due', 'paid', 'completed'], true)) {
@@ -51,6 +52,7 @@ class BillsTasksController extends Controller
             $paidTransactions = Transaction::query()
                 ->where('payment_status', 'paid')
                 ->with(['businessEntity', 'asset'])
+                ->orderByRaw('CASE WHEN paid_at IS NULL THEN 1 ELSE 0 END')
                 ->orderByDesc('paid_at')
                 ->orderByDesc('date')
                 ->paginate(self::PER_PAGE)
@@ -59,7 +61,7 @@ class BillsTasksController extends Controller
             $completedReminders = Reminder::query()
                 ->where('is_completed', true)
                 ->with(['businessEntity', 'asset', 'user'])
-                ->orderByDesc('completed_at')
+                ->orderByRaw('COALESCE(completed_at, updated_at) DESC')
                 ->orderByDesc('id')
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
@@ -79,7 +81,7 @@ class BillsTasksController extends Controller
 
     private function dueItemsTotalCount(): int
     {
-        return Reminder::query()->active()->count()
+        return Reminder::query()->active()->whereNotNull('next_due_date')->count()
             + Note::query()->where('is_reminder', true)->whereNotNull('reminder_date')->count()
             + Transaction::query()->where('payment_status', 'unpaid')->whereNotNull('due_date')->count()
             + Asset::query()->whereNotNull('registration_due_date')->count()
@@ -87,6 +89,9 @@ class BillsTasksController extends Controller
     }
 
     /**
+     * Merges several due-date sources in PHP, then paginates. Fine for typical portfolios;
+     * very large datasets may need a DB-side UNION or cursor-based approach.
+     *
      * @return LengthAwarePaginator<int, object>
      */
     private function paginatedDueItems(Request $request): LengthAwarePaginator
@@ -95,6 +100,7 @@ class BillsTasksController extends Controller
 
         Reminder::query()
             ->active()
+            ->whereNotNull('next_due_date')
             ->with(['businessEntity', 'asset', 'user'])
             ->orderBy('next_due_date')
             ->get()
