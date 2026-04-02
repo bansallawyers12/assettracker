@@ -55,7 +55,6 @@ class EntityPersonController extends Controller
             'business_entity_id' => 'required|exists:business_entities,id',
             'person_id' => 'nullable|exists:persons,id',
             'entity_trustee_id' => 'nullable|exists:business_entities,id',
-            'appointor_entity_id' => 'nullable|exists:business_entities,id',
             'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Appointor,Owner',
             'appointment_date' => 'required|date',
             'resignation_date' => 'nullable|date|after:appointment_date',
@@ -81,6 +80,11 @@ class EntityPersonController extends Controller
                 'required',
                 Rule::exists('persons', 'id'),
             ],
+            'appointor_entity_id' => [
+                Rule::excludeIf(fn() => $request->role !== 'Appointor' || $request->appointor_type !== 'entity'),
+                'required',
+                Rule::exists('business_entities', 'id'),
+            ],
         ], [
             'business_entity_id.required' => 'The business entity is required.',
             'role.required' => 'The role is required.',
@@ -91,6 +95,8 @@ class EntityPersonController extends Controller
             'appointor_type.required' => 'Appointor type is required when role is Appointor.',
             'appointor_person_id.required' => 'Please select an appointor person.',
             'appointor_person_id.exists' => 'The selected appointor person is invalid.',
+            'appointor_entity_id.required' => 'Please select an appointor entity.',
+            'appointor_entity_id.exists' => 'The selected appointor entity is invalid.',
         ]);
 
         // Handle new person creation if checkbox is checked
@@ -253,6 +259,18 @@ class EntityPersonController extends Controller
             if (($request->person_id && $request->entity_trustee_id) || (!$request->person_id && !$request->entity_trustee_id)) {
                 return redirect()->back()->withErrors(['error' => 'Either person_id or entity_trustee_id must be filled, but not both.']);
             }
+        }
+
+        // Appointor fields are excluded from $validated when not applicable (Rule::excludeIf).
+        // Explicitly null them out so stale values are cleared when role changes away from Appointor,
+        // or when the opposite appointor type is used (e.g. switching from person to entity appointor).
+        if ($request->role !== 'Appointor') {
+            $validated['appointor_person_id'] = null;
+            $validated['appointor_entity_id'] = null;
+        } elseif ($request->appointor_type === 'person') {
+            $validated['appointor_entity_id'] = null;
+        } elseif ($request->appointor_type === 'entity') {
+            $validated['appointor_person_id'] = null;
         }
 
         $entityPerson->update($validated);
