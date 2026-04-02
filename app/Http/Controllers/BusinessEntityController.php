@@ -322,7 +322,7 @@ class BusinessEntityController extends Controller
                 ->whereDate('asic_due_date', '<=', now()->addDays(15));
         })->with('businessEntity')->get();
 
-        $payerOptions = TransactionPayerResolver::payerOptionsForUserId((int) auth()->id());
+        $payerOptions = TransactionPayerResolver::payerOptions();
 
         return view('dashboard', compact(
             'businessEntities',
@@ -669,7 +669,7 @@ class BusinessEntityController extends Controller
 
         $transaction->load('asset');
 
-        $payerOptions = TransactionPayerResolver::payerOptionsForUserId((int) auth()->id());
+        $payerOptions = TransactionPayerResolver::payerOptions();
 
         return view('business-entities.bank-accounts.transactions.edit', compact('businessEntity', 'transaction', 'payerOptions'));
     }
@@ -1250,7 +1250,7 @@ class BusinessEntityController extends Controller
             'direction' => 'expense',
         ]);
 
-        $payerOptions = TransactionPayerResolver::payerOptionsForUserId((int) auth()->id());
+        $payerOptions = TransactionPayerResolver::payerOptions();
 
         return view('business-entities.bank-accounts.transactions.create', compact(
             'businessEntity', 'bankAccount', 'businessEntities', 'transactionData', 'payerOptions'
@@ -1700,7 +1700,7 @@ class BusinessEntityController extends Controller
         }
 
         $paidBy = TransactionPayerResolver::resolveFromRequest($request);
-        TransactionPayerResolver::assertSelectionAllowed($paidBy, (int) auth()->id());
+        TransactionPayerResolver::assertSelectionAllowed($paidBy);
 
         return $paidBy;
     }

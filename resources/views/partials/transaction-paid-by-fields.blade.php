@@ -1,6 +1,6 @@
 {{--
     Payer dropdown: companies (user's entities) + active directors; optional free-text "Other".
-    Expects: $payerOptions (TransactionPayerResolver::payerOptionsForUserId), $paidBySelect / $paidByOther
+    Expects: $payerOptions (TransactionPayerResolver::payerOptions), $paidBySelect / $paidByOther
     as defaults from stored data. After validation errors, old('paid_by_select'|'paid_by_other') wins.
 --}}
 @php
