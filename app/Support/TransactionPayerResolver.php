@@ -7,6 +7,10 @@ use App\Models\EntityPerson;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
+/**
+ * Resolves transaction "paid by" from UI tokens (be:{entityId}, ep:{entityPersonId}) or free text.
+ * Options and validation are scoped to the owning user_id on business_entities.
+ */
 class TransactionPayerResolver
 {
     /**
@@ -14,19 +18,23 @@ class TransactionPayerResolver
      */
     public static function payerOptionsForUserId(int $userId): array
     {
-        $companies = BusinessEntity::query()
+        $entities = BusinessEntity::query()
             ->where('user_id', $userId)
             ->orderBy('legal_name')
-            ->get()
+            ->get();
+
+        $companies = $entities
             ->map(fn (BusinessEntity $e) => [
                 'value' => 'be:'.$e->id,
                 'label' => $e->legal_name,
             ])
+            ->values()
             ->all();
 
-        $entityIds = BusinessEntity::query()
-            ->where('user_id', $userId)
-            ->pluck('id');
+        $entityIds = $entities->pluck('id');
+        if ($entityIds->isEmpty()) {
+            return ['companies' => $companies, 'directors' => []];
+        }
 
         $directors = EntityPerson::query()
             ->whereIn('business_entity_id', $entityIds)
@@ -51,6 +59,8 @@ class TransactionPayerResolver
                     'label' => $label,
                 ];
             })
+            ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
             ->all();
 
         return [
@@ -67,18 +77,18 @@ class TransactionPayerResolver
         if (preg_match('/^be:(\d+)$/', $stored, $m)) {
             $e = BusinessEntity::query()->find($m[1]);
 
-            return $e ? $e->legal_name : $stored;
+            return $e ? $e->legal_name : 'Company (removed)';
         }
         if (preg_match('/^ep:(\d+)$/', $stored, $m)) {
             $ep = EntityPerson::query()->with(['person', 'businessEntity'])->find($m[1]);
             if (! $ep) {
-                return $stored;
+                return 'Director (removed)';
             }
             $p = $ep->person;
             $name = $p ? trim($p->first_name.' '.$p->last_name) : '';
             $entityLabel = $ep->businessEntity?->legal_name ?? '';
             if ($name === '') {
-                return $entityLabel !== '' ? $entityLabel : $stored;
+                return $entityLabel !== '' ? $entityLabel : 'Director (removed)';
             }
 
             return $entityLabel !== '' ? $name.' — '.$entityLabel : $name;
@@ -104,17 +114,25 @@ class TransactionPayerResolver
 
     public static function resolveFromRequest(Request $request): ?string
     {
-        $sel = $request->input('paid_by_select');
-        if ($sel === null || $sel === '') {
+        $raw = $request->input('paid_by_select');
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+        if (! is_string($raw)) {
+            return null;
+        }
+        $sel = trim($raw);
+        if ($sel === '') {
             return null;
         }
         if ($sel === 'other') {
-            $t = trim((string) $request->input('paid_by_other', ''));
+            $othRaw = $request->input('paid_by_other');
+            $t = is_string($othRaw) ? trim($othRaw) : '';
 
             return $t === '' ? null : $t;
         }
 
-        return is_string($sel) ? $sel : null;
+        return $sel;
     }
 
     public static function assertSelectionAllowed(?string $resolved, int $userId): void
@@ -136,7 +154,7 @@ class TransactionPayerResolver
         }
         if (preg_match('/^ep:(\d+)$/', $resolved, $m)) {
             $ep = EntityPerson::query()->find($m[1]);
-            if (! $ep || $ep->role !== 'Director' || $ep->role_status !== 'Active') {
+            if (! $ep || $ep->role !== 'Director' || $ep->role_status !== 'Active' || $ep->person_id === null) {
                 throw ValidationException::withMessages([
                     'paid_by_select' => 'Invalid director selected.',
                 ]);

@@ -1686,7 +1686,13 @@ class BusinessEntityController extends Controller
 
     private function validatedPaidBy(Request $request): ?string
     {
-        $sel = (string) $request->input('paid_by_select', '');
+        $raw = $request->input('paid_by_select');
+        if (is_array($raw)) {
+            throw ValidationException::withMessages([
+                'paid_by_select' => 'Invalid payer selection.',
+            ]);
+        }
+        $sel = trim((string) ($raw ?? ''));
         if ($sel !== '' && $sel !== 'other' && ! preg_match('/^(be|ep):\d+$/', $sel)) {
             throw ValidationException::withMessages([
                 'paid_by_select' => 'Invalid payer selection.',

@@ -22,6 +22,11 @@
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                             Add Transaction
                         </button>
+                        <a href="{{ route('bills-tasks.index') }}"
+                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                            Bills &amp; tasks
+                        </a>
                         <a href="{{ route('emails.index') }}"
                            class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
@@ -274,9 +279,7 @@
                             </div>
                             <div class="md:col-span-2 lg:col-span-1">
                                 @php
-                                    $pbSplit = old('paid_by_select') !== null
-                                        ? ['select' => old('paid_by_select'), 'other' => old('paid_by_other', '')]
-                                        : \App\Support\TransactionPayerResolver::splitStoredForForm(session('transactionData.paid_by'));
+                                    $pbSplit = \App\Support\TransactionPayerResolver::splitStoredForForm(session('transactionData.paid_by'));
                                 @endphp
                                 @include('partials.transaction-paid-by-fields', [
                                     'payerOptions' => $payerOptions,
@@ -386,10 +389,13 @@
                                 Reminders
                                 <span class="text-xs font-normal text-gray-500 dark:text-gray-400">Next 15 days</span>
                             </h3>
+                            <div class="flex items-center gap-2">
+                            <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="inline-flex text-xs font-semibold text-amber-700 dark:text-amber-300 hover:underline shrink-0">Full list</a>
                             <button type="button" class="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors" onclick="document.getElementById('reminder-form').classList.toggle('hidden')">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                                 Add Reminder
                             </button>
+                            </div>
                         </div>
 
                         {{-- Reminder Form --}}
@@ -514,12 +520,13 @@
 
                     {{-- Due Dates --}}
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-                        <div class="p-5 border-b border-gray-100 dark:border-gray-700">
+                        <div class="p-5 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
                             <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                                 Upcoming Due Dates
                                 <span class="text-xs font-normal text-gray-500 dark:text-gray-400">Next 15 days</span>
                             </h3>
+                            <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline">Full list</a>
                         </div>
                         <div class="p-5">
                             @if ($assetDueDates->isNotEmpty() || $entityDueDates->isNotEmpty())
