@@ -1,5 +1,5 @@
 {{--
-    Payer dropdown: companies (user's entities) + active directors; optional free-text "Other".
+    Payer dropdown: all business entities + all director appointments; optional free-text "Other".
     Expects: $payerOptions (TransactionPayerResolver::payerOptions), $paidBySelect / $paidByOther
     as defaults from stored data. After validation errors, old('paid_by_select'|'paid_by_other') wins.
 --}}
@@ -18,7 +18,7 @@
             class="{{ $selectClass ?? 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white' }}">
         <option value="">— Not specified —</option>
         @if (count($payerCompanies))
-            <optgroup label="Companies">
+            <optgroup label="Entities">
                 @foreach ($payerCompanies as $opt)
                     <option value="{{ $opt['value'] }}" @selected(old('paid_by_select', $sel) === $opt['value'])>{{ $opt['label'] }}</option>
                 @endforeach

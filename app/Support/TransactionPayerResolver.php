@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 /**
  * Resolves transaction "paid by" from UI tokens (be:{entityId}, ep:{entityPersonId}) or free text.
  * Payer lists include every business entity and every director appointment (no user/status filters).
+ *
+ * Note: Any authenticated user who can open the form sees all entities/directors in the dropdown.
  */
 class TransactionPayerResolver
 {
@@ -35,26 +37,10 @@ class TransactionPayerResolver
             ->with(['person', 'businessEntity', 'trusteeEntity'])
             ->orderBy('id')
             ->get()
-            ->map(function (EntityPerson $ep) {
-                $entityLabel = $ep->businessEntity?->legal_name ?? '';
-                $statusSuffix = $ep->role_status === 'Resigned' ? ' (Resigned)' : '';
-
-                $p = $ep->person;
-                if ($ep->person_id && $p) {
-                    $name = trim($p->first_name.' '.$p->last_name);
-                    $base = $entityLabel !== '' ? $name.' — '.$entityLabel : $name;
-                } elseif ($ep->entity_trustee_id && $ep->trusteeEntity) {
-                    $trusteeName = $ep->trusteeEntity->legal_name;
-                    $base = $entityLabel !== '' ? $trusteeName.' — '.$entityLabel : $trusteeName;
-                } else {
-                    $base = $entityLabel !== '' ? $entityLabel : 'Director #'.$ep->id;
-                }
-
-                return [
-                    'value' => 'ep:'.$ep->id,
-                    'label' => $base.$statusSuffix,
-                ];
-            })
+            ->map(fn (EntityPerson $ep) => [
+                'value' => 'ep:'.$ep->id,
+                'label' => self::directorAppointmentLabel($ep),
+            ])
             ->sortBy('label', SORT_NATURAL | SORT_FLAG_CASE)
             ->values()
             ->all();
@@ -63,6 +49,38 @@ class TransactionPayerResolver
             'companies' => $companies,
             'directors' => $directors,
         ];
+    }
+
+    /**
+     * Human-readable label for a director appointment (person, corporate trustee, or fallback).
+     * Expects person, businessEntity, and trusteeEntity relations eager-loaded when available.
+     */
+    public static function directorAppointmentLabel(EntityPerson $ep): string
+    {
+        $entityLabel = $ep->businessEntity?->legal_name ?? '';
+        $statusSuffix = $ep->role_status === 'Resigned' ? ' (Resigned)' : '';
+
+        $base = '';
+        if ($ep->person_id) {
+            $p = $ep->person;
+            if ($p) {
+                $name = trim($p->first_name.' '.$p->last_name);
+                if ($name !== '') {
+                    $base = $entityLabel !== '' ? $name.' — '.$entityLabel : $name;
+                } else {
+                    $base = $entityLabel !== '' ? $entityLabel : 'Director #'.$ep->id;
+                }
+            } else {
+                $base = $entityLabel !== '' ? $entityLabel.' (person removed)' : 'Director #'.$ep->id;
+            }
+        } elseif ($ep->entity_trustee_id && $ep->trusteeEntity) {
+            $trusteeName = $ep->trusteeEntity->legal_name;
+            $base = $entityLabel !== '' ? $trusteeName.' — '.$entityLabel : $trusteeName;
+        } else {
+            $base = $entityLabel !== '' ? $entityLabel : 'Director #'.$ep->id;
+        }
+
+        return $base.$statusSuffix;
     }
 
     public static function paidByLabel(?string $stored): string
@@ -80,20 +98,10 @@ class TransactionPayerResolver
             if (! $ep) {
                 return 'Director (removed)';
             }
-            $statusSuffix = $ep->role_status === 'Resigned' ? ' (Resigned)' : '';
-            $entityLabel = $ep->businessEntity?->legal_name ?? '';
-            $p = $ep->person;
-            if ($ep->person_id && $p) {
-                $name = trim($p->first_name.' '.$p->last_name);
-                $base = $entityLabel !== '' ? $name.' — '.$entityLabel : $name;
-            } elseif ($ep->entity_trustee_id && $ep->trusteeEntity) {
-                $trusteeName = $ep->trusteeEntity->legal_name;
-                $base = $entityLabel !== '' ? $trusteeName.' — '.$entityLabel : $trusteeName;
-            } else {
-                return ($entityLabel !== '' ? $entityLabel : 'Director (removed)').$statusSuffix;
-            }
 
-            return $base.$statusSuffix;
+            $label = self::directorAppointmentLabel($ep);
+
+            return $ep->role === 'Director' ? $label : $label.' (now '.$ep->role.')';
         }
 
         return $stored;
@@ -148,7 +156,7 @@ class TransactionPayerResolver
         if (preg_match('/^be:(\d+)$/', $resolved, $m)) {
             if (! BusinessEntity::query()->whereKey($m[1])->exists()) {
                 throw ValidationException::withMessages([
-                    'paid_by_select' => 'Invalid company selected.',
+                    'paid_by_select' => 'Invalid entity selected.',
                 ]);
             }
 
