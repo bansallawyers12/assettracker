@@ -1,13 +1,25 @@
 @php
+    use App\Models\Transaction as TransactionModel;
     use Illuminate\Support\Carbon;
+
     $isOverdue = function (?Carbon $d): bool {
         return $d && $d->copy()->startOfDay()->lt(now()->startOfDay());
+    };
+    $txnDirectionLabel = function ($t): string {
+        return TransactionModel::directionFromType((string) $t->transaction_type) === 'income' ? 'Income' : 'Expense';
     };
 @endphp
 
 <x-app-layout>
     <div class="py-6 lg:py-8 bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            @if (session('success'))
+                <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200 text-sm border border-emerald-200 dark:border-emerald-800">{{ session('success') }}</div>
+            @endif
+            @if (session('error'))
+                <div class="p-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 text-sm border border-red-200 dark:border-red-800">{{ session('error') }}</div>
+            @endif
+
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Bills & tasks</h1>
@@ -57,6 +69,7 @@
                                                 @if ($t->vendor_name) · {{ $t->vendor_name }} @endif
                                             </p>
                                             <div class="mt-2 flex flex-wrap gap-2 text-xs">
+                                                <span class="px-2 py-0.5 rounded-md {{ $txnDirectionLabel($t) === 'Income' ? 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200' : 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200' }} font-medium">{{ $txnDirectionLabel($t) }}</span>
                                                 <span class="px-2 py-0.5 rounded-md bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200 font-medium">${{ number_format((float) $t->amount, 2) }}</span>
                                                 @if ($t->due_date)
                                                     <span class="px-2 py-0.5 rounded-md {{ $isOverdue($t->due_date) ? 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-300' : 'bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-200' }} font-medium">
@@ -93,9 +106,12 @@
                                             <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $t->description ?: 'Transaction' }}</p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $t->businessEntity?->legal_name ?? 'Entity' }}</p>
                                             <div class="mt-2 flex flex-wrap gap-2 text-xs">
+                                                <span class="px-2 py-0.5 rounded-md {{ $txnDirectionLabel($t) === 'Income' ? 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200' : 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200' }} font-medium">{{ $txnDirectionLabel($t) }}</span>
                                                 <span class="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-200 font-medium">${{ number_format((float) $t->amount, 2) }}</span>
                                                 @if ($t->paid_at)
                                                     <span class="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 dark:bg-gray-600 dark:text-gray-200 font-medium">Paid {{ $t->paid_at->format('d/m/Y') }}</span>
+                                                @else
+                                                    <span class="px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300 font-medium">Txn {{ $t->date?->format('d/m/Y') ?? '—' }}</span>
                                                 @endif
                                             </div>
                                         </div>
@@ -126,7 +142,8 @@
                                             <p class="text-xs text-gray-600 dark:text-gray-300 mt-1 line-clamp-2">{{ $r->content }}</p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
                                                 {{ $r->businessEntity?->legal_name ?? '—' }}
-                                                @if ($r->completed_at) · Completed {{ $r->completed_at->format('d/m/Y') }} @endif
+                                                @php $done = $r->completed_at ?? $r->updated_at; @endphp
+                                                @if ($done) · Completed {{ $done->format('d/m/Y') }} @endif
                                             </p>
                                         </div>
                                         <a href="{{ route('reminders.show', $r) }}" class="text-xs font-semibold text-indigo-600 dark:text-indigo-400 shrink-0">Open</a>
@@ -194,32 +211,74 @@
                                                 <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200">{{ $ep->asic_due_date?->format('d/m/Y') }}</span>
                                             @endif
                                         </div>
-                                        <div class="flex-shrink-0 flex flex-wrap gap-1.5 justify-end">
+                                        <div class="flex-shrink-0 flex flex-col items-end gap-2 min-w-[8rem]">
                                             @if ($row->kind === 'reminder')
                                                 @php $r = $row->reminder; @endphp
-                                                <a href="{{ route('reminders.show', $r) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 dark:text-indigo-300">View</a>
-                                                <form action="{{ route('reminders.complete', $r) }}" method="POST" class="inline">
-                                                    @csrf
-                                                    <button type="submit" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 dark:text-emerald-300" title="Complete">✓</button>
-                                                </form>
+                                                <div class="flex flex-wrap gap-1.5 justify-end">
+                                                    <a href="{{ route('reminders.show', $r) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 dark:text-indigo-300">View</a>
+                                                    <form action="{{ route('reminders.complete', $r) }}" method="POST" class="inline">
+                                                        @csrf
+                                                        <button type="submit" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 dark:text-emerald-300" title="Mark complete">✓</button>
+                                                    </form>
+                                                    <form action="{{ route('reminders.extend', $r) }}" method="POST" class="inline">
+                                                        @csrf
+                                                        <input type="hidden" name="days" value="3">
+                                                        <button type="submit" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-300 text-xs font-medium px-2" title="Extend due date by 3 days">+3d</button>
+                                                    </form>
+                                                </div>
                                             @elseif ($row->kind === 'note')
                                                 @php $n = $row->note; @endphp
-                                                @if ($n->business_entity_id)
-                                                    <a href="{{ route('business-entities.show', $n->business_entity_id) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Entity</a>
-                                                @endif
-                                                <form action="{{ route('notes.finalize', $n) }}" method="POST" class="inline">
-                                                    @csrf
-                                                    <button type="submit" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 dark:text-emerald-300" title="Finalize">✓</button>
-                                                </form>
+                                                <div class="flex flex-wrap gap-1.5 justify-end">
+                                                    @if ($n->business_entity_id)
+                                                        <a href="{{ route('business-entities.show', $n->business_entity_id) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Entity</a>
+                                                    @endif
+                                                    @if ($n->asset_id && $n->business_entity_id)
+                                                        <a href="{{ route('business-entities.assets.show', [$n->business_entity_id, $n->asset_id]) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Asset</a>
+                                                    @endif
+                                                    <form action="{{ route('notes.extend', $n) }}" method="POST" class="inline">
+                                                        @csrf
+                                                        <button type="submit" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-300 text-xs font-medium px-2" title="Extend by 3 days">+3d</button>
+                                                    </form>
+                                                    <form action="{{ route('notes.finalize', $n) }}" method="POST" class="inline">
+                                                        @csrf
+                                                        <button type="submit" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 dark:text-emerald-300" title="Finalize">✓</button>
+                                                    </form>
+                                                </div>
                                             @elseif ($row->kind === 'bill')
                                                 @php $t = $row->transaction; @endphp
                                                 <a href="{{ route('business-entities.transactions.edit', [$t->business_entity_id, $t->id]) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Edit</a>
                                             @elseif ($row->kind === 'registration')
                                                 @php $a = $row->asset; @endphp
-                                                <a href="{{ route('business-entities.assets.show', [$a->business_entity_id, $a->id]) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Asset</a>
+                                                <div class="flex flex-col items-end gap-2">
+                                                    <a href="{{ route('business-entities.assets.show', [$a->business_entity_id, $a->id]) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Asset</a>
+                                                    @if ($a->business_entity_id)
+                                                        <div class="flex flex-wrap gap-2 justify-end">
+                                                            <form action="{{ route('assets.finalize-due-date', [$a->business_entity_id, $a->id, 'registration']) }}" method="POST" class="inline">
+                                                                @csrf
+                                                                <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Finalize</button>
+                                                            </form>
+                                                            <form action="{{ route('assets.extend-due-date', [$a->business_entity_id, $a->id, 'registration']) }}" method="POST" class="inline">
+                                                                @csrf
+                                                                <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Extend</button>
+                                                            </form>
+                                                        </div>
+                                                    @endif
+                                                </div>
                                             @elseif ($row->kind === 'asic')
                                                 @php $ep = $row->entityPerson; @endphp
-                                                <a href="{{ route('business-entities.show', $ep->business_entity_id) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Entity</a>
+                                                <div class="flex flex-col items-end gap-2">
+                                                    <a href="{{ route('business-entities.show', $ep->business_entity_id) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Entity</a>
+                                                    <div class="flex flex-wrap gap-2 justify-end">
+                                                        <form action="{{ route('entity-persons.finalize-due-date', $ep->id) }}" method="POST" class="inline">
+                                                            @csrf
+                                                            <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Finalize</button>
+                                                        </form>
+                                                        <form action="{{ route('entity-persons.extend-due-date', $ep->id) }}" method="POST" class="inline">
+                                                            @csrf
+                                                            <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Extend</button>
+                                                        </form>
+                                                    </div>
+                                                </div>
                                             @endif
                                         </div>
                                     </div>
