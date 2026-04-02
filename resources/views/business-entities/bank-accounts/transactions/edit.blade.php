@@ -187,15 +187,17 @@
                                 </select>
                                 @error('payment_method') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" id="paid_by_label">
-                                    {{ $dir === 'income' ? 'Received By / Account' : 'Paid By' }}
-                                </label>
-                                <input type="text" name="paid_by" value="{{ old('paid_by', $transaction->paid_by) }}"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                                       placeholder="e.g., ANZ Cheque, Director">
-                                @error('paid_by') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
+                            @php
+                                $pbSplit = old('paid_by_select') !== null
+                                    ? ['select' => old('paid_by_select'), 'other' => old('paid_by_other', '')]
+                                    : \App\Support\TransactionPayerResolver::splitStoredForForm($transaction->paid_by);
+                            @endphp
+                            @include('partials.transaction-paid-by-fields', [
+                                'payerOptions' => $payerOptions,
+                                'paidBySelect' => $pbSplit['select'],
+                                'paidByOther' => $pbSplit['other'],
+                                'paidByLabelText' => $oldDir === 'income' ? 'Received By / Account' : 'Paid By',
+                            ])
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                                     Payment Receipt <span class="text-gray-400 font-normal">(optional)</span>
@@ -285,6 +287,15 @@
             if (paymentStatusPaid)   paymentStatusPaid.addEventListener('change', syncPaymentStatusBlocks);
             if (paymentStatusUnpaid) paymentStatusUnpaid.addEventListener('change', syncPaymentStatusBlocks);
             syncPaymentStatusBlocks();
+
+            const paidBySelect = document.getElementById('paid_by_select');
+            const paidByOtherWrap = document.getElementById('paid_by_other_wrap');
+            function syncPaidByOther() {
+                if (!paidBySelect || !paidByOtherWrap) return;
+                paidByOtherWrap.classList.toggle('hidden', paidBySelect.value !== 'other');
+            }
+            if (paidBySelect) paidBySelect.addEventListener('change', syncPaidByOther);
+            syncPaidByOther();
 
             if (transactionTypeSelect && relatedEntityField) {
                 const relatedPartyTypes = [

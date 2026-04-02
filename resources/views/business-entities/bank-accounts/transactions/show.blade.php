@@ -110,7 +110,7 @@
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                             {{ $transaction->direction === 'income' ? 'Received By / Account' : 'Paid By' }}
                         </p>
-                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->paid_by ?? '—' }}</p>
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->paid_by ? $transaction->paid_by_display : '—' }}</p>
                     </div>
                 @endif
 

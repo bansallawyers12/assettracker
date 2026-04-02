@@ -452,7 +452,7 @@
                                                                         via {{ Transaction::$paymentMethods[$selectedTransaction->payment_method] ?? ucfirst($selectedTransaction->payment_method) }}
                                                                     @endif
                                                                     @if ($selectedTransaction->paid_by)
-                                                                        by {{ $selectedTransaction->paid_by }}
+                                                                        by {{ $selectedTransaction->paid_by_display }}
                                                                     @endif
                                                                 @endif
                                                             </p>

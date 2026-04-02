@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\TransactionPayerResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
@@ -16,76 +17,76 @@ class Transaction extends Model
     ];
 
     protected $casts = [
-        'date'     => 'date',
+        'date' => 'date',
         'due_date' => 'date',
-        'paid_at'  => 'date',
-        'amount'     => 'decimal:2',
+        'paid_at' => 'date',
+        'amount' => 'decimal:2',
         'gst_amount' => 'decimal:2',
     ];
 
     /** All transaction types with display labels */
     public static $transactionTypes = [
         // Income
-        'rental_income'             => 'Rental Income',
+        'rental_income' => 'Rental Income',
         'reimbursement_of_expenses' => 'Reimbursement of Expenses',
-        'interest_income'           => 'Interest Income',
-        'other_income'              => 'Other Income',
-        'asset_sales'               => 'Asset Sales',
-        'director_loan_in'          => 'Director Loan In',
+        'interest_income' => 'Interest Income',
+        'other_income' => 'Other Income',
+        'asset_sales' => 'Asset Sales',
+        'director_loan_in' => 'Director Loan In',
         // Expense
-        'water_service_expenses'    => 'Water Service Expenses',
-        'management_fees'           => 'Management Fees',
-        'land_tax'                  => 'Land Tax',
-        'valuation_and_rates'       => 'Valuation & Rates',
-        'oc_fees'                   => 'OC Fees',
-        'repairs_maintenance'       => 'Repairs & Maintenance',
-        'other_expenses'            => 'Other Expenses',
-        'asset_purchase'            => 'Asset Purchase',
-        'other_personal_expenses'   => 'Other / Personal Expenses',
-        'director_loan_out'         => 'Director Loan Out',
-        'director_loan_repayment'   => 'Director Loan Repayment',
+        'water_service_expenses' => 'Water Service Expenses',
+        'management_fees' => 'Management Fees',
+        'land_tax' => 'Land Tax',
+        'valuation_and_rates' => 'Valuation & Rates',
+        'oc_fees' => 'OC Fees',
+        'repairs_maintenance' => 'Repairs & Maintenance',
+        'other_expenses' => 'Other Expenses',
+        'asset_purchase' => 'Asset Purchase',
+        'other_personal_expenses' => 'Other / Personal Expenses',
+        'director_loan_out' => 'Director Loan Out',
+        'director_loan_repayment' => 'Director Loan Repayment',
     ];
 
     /** Income transaction types */
     public static $incomeTypes = [
-        'rental_income'             => 'Rental Income',
+        'rental_income' => 'Rental Income',
         'reimbursement_of_expenses' => 'Reimbursement of Expenses',
-        'interest_income'           => 'Interest Income',
-        'other_income'              => 'Other Income',
-        'asset_sales'               => 'Asset Sales',
-        'director_loan_in'          => 'Director Loan In',
+        'interest_income' => 'Interest Income',
+        'other_income' => 'Other Income',
+        'asset_sales' => 'Asset Sales',
+        'director_loan_in' => 'Director Loan In',
     ];
 
     /** Expense transaction types */
     public static $expenseTypes = [
-        'water_service_expenses'  => 'Water Service Expenses',
-        'management_fees'         => 'Management Fees',
-        'land_tax'                => 'Land Tax',
-        'valuation_and_rates'     => 'Valuation & Rates',
-        'oc_fees'                 => 'OC Fees',
-        'repairs_maintenance'     => 'Repairs & Maintenance',
-        'other_expenses'          => 'Other Expenses',
-        'asset_purchase'          => 'Asset Purchase',
+        'water_service_expenses' => 'Water Service Expenses',
+        'management_fees' => 'Management Fees',
+        'land_tax' => 'Land Tax',
+        'valuation_and_rates' => 'Valuation & Rates',
+        'oc_fees' => 'OC Fees',
+        'repairs_maintenance' => 'Repairs & Maintenance',
+        'other_expenses' => 'Other Expenses',
+        'asset_purchase' => 'Asset Purchase',
         'other_personal_expenses' => 'Other / Personal Expenses',
-        'director_loan_out'       => 'Director Loan Out',
+        'director_loan_out' => 'Director Loan Out',
         'director_loan_repayment' => 'Director Loan Repayment',
     ];
 
     /** Payment method options */
     public static $paymentMethods = [
         'bank_transfer' => 'Bank Transfer',
-        'cash'          => 'Cash',
-        'card'          => 'Card',
-        'bpay'          => 'BPAY',
-        'other'         => 'Other',
+        'cash' => 'Cash',
+        'card' => 'Card',
+        'bpay' => 'BPAY',
+        'other' => 'Other',
     ];
 
     /** GST status display labels */
     public static $gstStatusLabels = [
-        'included'     => 'Included',
-        'excluded'     => 'Excluded',
-        'gst_free'     => 'GST Free',
-        'collected'    => 'Collected',
+        'included' => 'Included',
+        'excluded' => 'Excluded',
+        'gst_free' => 'GST Free',
+        'collected' => 'Collected',
         'input_credit' => 'Input Credit',
     ];
 
@@ -109,6 +110,11 @@ class Transaction extends Model
     public function getDirectionAttribute(): string
     {
         return static::directionFromType((string) $this->transaction_type);
+    }
+
+    public function getPaidByDisplayAttribute(): string
+    {
+        return TransactionPayerResolver::paidByLabel($this->paid_by);
     }
 
     public function bankAccount()

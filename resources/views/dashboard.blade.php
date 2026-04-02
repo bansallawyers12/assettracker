@@ -272,12 +272,20 @@
                                 </select>
                                 @error('payment_method') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1" id="paid_by_label">Paid By</label>
-                                <input type="text" name="paid_by" value="{{ old('paid_by', session('transactionData.paid_by')) }}"
-                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
-                                       placeholder="e.g., ANZ Cheque, Director">
-                                @error('paid_by') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                            <div class="md:col-span-2 lg:col-span-1">
+                                @php
+                                    $pbSplit = old('paid_by_select') !== null
+                                        ? ['select' => old('paid_by_select'), 'other' => old('paid_by_other', '')]
+                                        : \App\Support\TransactionPayerResolver::splitStoredForForm(session('transactionData.paid_by'));
+                                @endphp
+                                @include('partials.transaction-paid-by-fields', [
+                                    'payerOptions' => $payerOptions,
+                                    'paidBySelect' => $pbSplit['select'],
+                                    'paidByOther' => $pbSplit['other'],
+                                    'labelClass' => 'mb-1',
+                                    'selectClass' => 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm',
+                                    'errorClass' => 'text-xs mt-1',
+                                ])
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Receipt <span class="text-gray-400 font-normal">(optional)</span></label>
@@ -910,6 +918,15 @@
             if (paymentStatusPaid)   paymentStatusPaid.addEventListener('change', syncPaymentStatusBlocks);
             if (paymentStatusUnpaid) paymentStatusUnpaid.addEventListener('change', syncPaymentStatusBlocks);
             syncPaymentStatusBlocks();
+
+            const paidBySelect = document.getElementById('paid_by_select');
+            const paidByOtherWrap = document.getElementById('paid_by_other_wrap');
+            function syncPaidByOther() {
+                if (!paidBySelect || !paidByOtherWrap) return;
+                paidByOtherWrap.classList.toggle('hidden', paidBySelect.value !== 'other');
+            }
+            if (paidBySelect) paidBySelect.addEventListener('change', syncPaidByOther);
+            syncPaidByOther();
 
             // ── Related Entity visibility ──────────────────────────────────────
             if (transactionTypeSelect && relatedEntityField) {

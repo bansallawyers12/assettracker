@@ -193,11 +193,17 @@
                                 </select>
                                 @error('payment_method') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300" id="paid_by_label">Paid By</label>
-                                <input type="text" name="paid_by" value="{{ old('paid_by', $td['paid_by'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" placeholder="e.g., ANZ Cheque, Director">
-                                @error('paid_by') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
+                            @php
+                                $pbSplit = old('paid_by_select') !== null
+                                    ? ['select' => old('paid_by_select'), 'other' => old('paid_by_other', '')]
+                                    : \App\Support\TransactionPayerResolver::splitStoredForForm($td['paid_by'] ?? null);
+                            @endphp
+                            @include('partials.transaction-paid-by-fields', [
+                                'payerOptions' => $payerOptions,
+                                'paidBySelect' => $pbSplit['select'],
+                                'paidByOther' => $pbSplit['other'],
+                                'paidByLabelText' => $oldDir === 'income' ? 'Received By / Account' : 'Paid By',
+                            ])
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Receipt <span class="text-gray-400 font-normal">(optional)</span></label>
                                 <input type="file" name="payment_document" class="mt-1 block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 dark:file:bg-gray-700 dark:file:text-green-300" accept="image/*,application/pdf">
@@ -269,6 +275,15 @@
             if (paymentStatusPaid) paymentStatusPaid.addEventListener('change', syncPaymentBlocks);
             if (paymentStatusUnpaid) paymentStatusUnpaid.addEventListener('change', syncPaymentBlocks);
             syncPaymentBlocks();
+
+            const paidBySelect = document.getElementById('paid_by_select');
+            const paidByOtherWrap = document.getElementById('paid_by_other_wrap');
+            function syncPaidByOther() {
+                if (!paidBySelect || !paidByOtherWrap) return;
+                paidByOtherWrap.classList.toggle('hidden', paidBySelect.value !== 'other');
+            }
+            if (paidBySelect) paidBySelect.addEventListener('change', syncPaidByOther);
+            syncPaidByOther();
 
             if (transactionTypeSelect && relatedEntityField) {
                 const relatedPartyTypes = [

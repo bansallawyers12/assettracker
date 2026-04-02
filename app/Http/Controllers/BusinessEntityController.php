@@ -17,6 +17,7 @@ use App\Models\Reminder; // Added for logging
 use App\Models\Transaction; // Added for file storage
 use App\Services\DocumentUploadService;
 use App\Support\TransactionGstResolver;
+use App\Support\TransactionPayerResolver;
 use Carbon\Carbon; // Added for handling validation exceptions
 use Illuminate\Database\QueryException;
 // Add this at the top with other use statements
@@ -321,6 +322,8 @@ class BusinessEntityController extends Controller
                 ->whereDate('asic_due_date', '<=', now()->addDays(15));
         })->with('businessEntity')->get();
 
+        $payerOptions = TransactionPayerResolver::payerOptionsForUserId((int) auth()->id());
+
         return view('dashboard', compact(
             'businessEntities',
             'assets',
@@ -328,7 +331,8 @@ class BusinessEntityController extends Controller
             'persons',
             'uniquePersons',
             'assetDueDates',
-            'entityDueDates'
+            'entityDueDates',
+            'payerOptions'
         ));
     }
 
@@ -374,7 +378,8 @@ class BusinessEntityController extends Controller
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
-            'paid_by' => 'nullable|string|max:255',
+            'paid_by_select' => ['nullable', 'string', 'max:255'],
+            'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'payment_document_name' => 'nullable|string|max:255',
         ]);
@@ -405,7 +410,9 @@ class BusinessEntityController extends Controller
             ? Asset::query()->find($request->integer('asset_id'))
             : null;
 
-        $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved) {
+        $paidBy = $this->validatedPaidBy($request);
+
+        $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved, $paidBy) {
             $receiptPath = null;
             $documentId = null;
             $prefillPath = $request->input('receipt_path');
@@ -468,25 +475,25 @@ class BusinessEntityController extends Controller
             }
 
             return Transaction::create([
-                'business_entity_id'  => $targetEntity->id,
-                'asset_id'            => $request->filled('asset_id') ? $request->integer('asset_id') : null,
-                'related_entity_id'   => $request->related_entity_id,
-                'date'                => $request->date,
-                'amount'              => $request->amount,
-                'description'         => $request->description,
-                'vendor_name'         => $request->vendor_name,
-                'invoice_number'      => $request->invoice_number,
-                'transaction_type'    => $request->transaction_type,
-                'gst_amount'          => $gstResolved['gst_amount'],
-                'gst_status'          => $gstResolved['gst_status'],
-                'gst_basis'           => $gstResolved['gst_basis'],
-                'receipt_path'        => $receiptPath,
-                'document_id'         => $documentId,
-                'payment_status'      => $request->payment_status ?? 'paid',
-                'due_date'            => $request->due_date,
-                'paid_at'             => $request->paid_at,
-                'payment_method'      => $request->payment_method,
-                'paid_by'             => $request->paid_by,
+                'business_entity_id' => $targetEntity->id,
+                'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
+                'related_entity_id' => $request->related_entity_id,
+                'date' => $request->date,
+                'amount' => $request->amount,
+                'description' => $request->description,
+                'vendor_name' => $request->vendor_name,
+                'invoice_number' => $request->invoice_number,
+                'transaction_type' => $request->transaction_type,
+                'gst_amount' => $gstResolved['gst_amount'],
+                'gst_status' => $gstResolved['gst_status'],
+                'gst_basis' => $gstResolved['gst_basis'],
+                'receipt_path' => $receiptPath,
+                'document_id' => $documentId,
+                'payment_status' => $request->payment_status ?? 'paid',
+                'due_date' => $request->due_date,
+                'paid_at' => $request->paid_at,
+                'payment_method' => $request->payment_method,
+                'paid_by' => $paidBy,
                 'payment_document_id' => $paymentDocumentId,
             ]);
         });
@@ -533,7 +540,8 @@ class BusinessEntityController extends Controller
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
-            'paid_by' => 'nullable|string|max:255',
+            'paid_by_select' => ['nullable', 'string', 'max:255'],
+            'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'payment_document_name' => 'nullable|string|max:255',
         ]);
@@ -551,7 +559,9 @@ class BusinessEntityController extends Controller
             ? Asset::query()->find($request->integer('asset_id'))
             : null;
 
-        $transaction = DB::transaction(function () use ($request, $businessEntity, $bankAccount, $asset, $gstResolved) {
+        $paidBy = $this->validatedPaidBy($request);
+
+        $transaction = DB::transaction(function () use ($request, $businessEntity, $bankAccount, $asset, $gstResolved, $paidBy) {
             $receiptPath = null;
             $documentId = null;
             $prefillPath = $request->input('receipt_path');
@@ -614,26 +624,26 @@ class BusinessEntityController extends Controller
             }
 
             return Transaction::create([
-                'business_entity_id'  => $businessEntity->id,
-                'asset_id'            => $request->filled('asset_id') ? $request->integer('asset_id') : null,
-                'related_entity_id'   => $request->related_entity_id,
-                'bank_account_id'     => $bankAccount->id,
-                'date'                => $request->date,
-                'amount'              => $request->amount,
-                'description'         => $request->description,
-                'vendor_name'         => $request->vendor_name,
-                'invoice_number'      => $request->invoice_number,
-                'transaction_type'    => $request->transaction_type,
-                'gst_amount'          => $gstResolved['gst_amount'],
-                'gst_status'          => $gstResolved['gst_status'],
-                'gst_basis'           => $gstResolved['gst_basis'],
-                'receipt_path'        => $receiptPath,
-                'document_id'         => $documentId,
-                'payment_status'      => $request->payment_status ?? 'paid',
-                'due_date'            => $request->due_date,
-                'paid_at'             => $request->paid_at,
-                'payment_method'      => $request->payment_method,
-                'paid_by'             => $request->paid_by,
+                'business_entity_id' => $businessEntity->id,
+                'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
+                'related_entity_id' => $request->related_entity_id,
+                'bank_account_id' => $bankAccount->id,
+                'date' => $request->date,
+                'amount' => $request->amount,
+                'description' => $request->description,
+                'vendor_name' => $request->vendor_name,
+                'invoice_number' => $request->invoice_number,
+                'transaction_type' => $request->transaction_type,
+                'gst_amount' => $gstResolved['gst_amount'],
+                'gst_status' => $gstResolved['gst_status'],
+                'gst_basis' => $gstResolved['gst_basis'],
+                'receipt_path' => $receiptPath,
+                'document_id' => $documentId,
+                'payment_status' => $request->payment_status ?? 'paid',
+                'due_date' => $request->due_date,
+                'paid_at' => $request->paid_at,
+                'payment_method' => $request->payment_method,
+                'paid_by' => $paidBy,
                 'payment_document_id' => $paymentDocumentId,
             ]);
         });
@@ -659,7 +669,9 @@ class BusinessEntityController extends Controller
 
         $transaction->load('asset');
 
-        return view('business-entities.bank-accounts.transactions.edit', compact('businessEntity', 'transaction'));
+        $payerOptions = TransactionPayerResolver::payerOptionsForUserId((int) auth()->id());
+
+        return view('business-entities.bank-accounts.transactions.edit', compact('businessEntity', 'transaction', 'payerOptions'));
     }
 
     /**
@@ -698,7 +710,8 @@ class BusinessEntityController extends Controller
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
-            'paid_by' => 'nullable|string|max:255',
+            'paid_by_select' => ['nullable', 'string', 'max:255'],
+            'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'payment_document_name' => 'nullable|string|max:255',
         ]);
@@ -736,17 +749,20 @@ class BusinessEntityController extends Controller
             $data['payment_document_id'] = $payDocument->id;
         }
 
+        $paidBy = $this->validatedPaidBy($request);
+
         $transaction->update(array_merge(
             Arr::only($data, [
                 'date', 'amount', 'description', 'vendor_name', 'invoice_number', 'transaction_type',
                 'related_entity_id', 'asset_id',
-                'payment_status', 'due_date', 'paid_at', 'payment_method', 'paid_by',
+                'payment_status', 'due_date', 'paid_at', 'payment_method',
                 'payment_document_id',
             ]),
             [
                 'gst_amount' => $gstResolved['gst_amount'],
                 'gst_status' => $gstResolved['gst_status'],
                 'gst_basis' => $gstResolved['gst_basis'],
+                'paid_by' => $paidBy,
             ]
         ));
 
@@ -755,8 +771,6 @@ class BusinessEntityController extends Controller
 
     /**
      * Remove a transaction; optionally remove its linked receipt document.
-     *
-     * @return RedirectResponse
      */
     public function destroyTransaction(Request $request, BusinessEntity $businessEntity, Transaction $transaction): RedirectResponse
     {
@@ -831,7 +845,8 @@ class BusinessEntityController extends Controller
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
-            'paid_by' => 'nullable|string|max:255',
+            'paid_by_select' => ['nullable', 'string', 'max:255'],
+            'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'payment_document_name' => 'nullable|string|max:255',
         ]);
@@ -869,17 +884,20 @@ class BusinessEntityController extends Controller
             $data['payment_document_id'] = $payDocument->id;
         }
 
+        $paidBy = $this->validatedPaidBy($request);
+
         $transaction->update(array_merge(
             Arr::only($data, [
                 'date', 'amount', 'description', 'vendor_name', 'invoice_number', 'transaction_type',
                 'related_entity_id', 'asset_id',
-                'payment_status', 'due_date', 'paid_at', 'payment_method', 'paid_by',
+                'payment_status', 'due_date', 'paid_at', 'payment_method',
                 'payment_document_id',
             ]),
             [
                 'gst_amount' => $gstResolved['gst_amount'],
                 'gst_status' => $gstResolved['gst_status'],
                 'gst_basis' => $gstResolved['gst_basis'],
+                'paid_by' => $paidBy,
             ]
         ));
 
@@ -1232,8 +1250,10 @@ class BusinessEntityController extends Controller
             'direction' => 'expense',
         ]);
 
+        $payerOptions = TransactionPayerResolver::payerOptionsForUserId((int) auth()->id());
+
         return view('business-entities.bank-accounts.transactions.create', compact(
-            'businessEntity', 'bankAccount', 'businessEntities', 'transactionData'
+            'businessEntity', 'bankAccount', 'businessEntities', 'transactionData', 'payerOptions'
         ));
     }
 
@@ -1662,6 +1682,21 @@ class BusinessEntityController extends Controller
         if ($request->has('asset_id') && $request->input('asset_id') === '') {
             $request->merge(['asset_id' => null]);
         }
+    }
+
+    private function validatedPaidBy(Request $request): ?string
+    {
+        $sel = (string) $request->input('paid_by_select', '');
+        if ($sel !== '' && $sel !== 'other' && ! preg_match('/^(be|ep):\d+$/', $sel)) {
+            throw ValidationException::withMessages([
+                'paid_by_select' => 'Invalid payer selection.',
+            ]);
+        }
+
+        $paidBy = TransactionPayerResolver::resolveFromRequest($request);
+        TransactionPayerResolver::assertSelectionAllowed($paidBy, (int) auth()->id());
+
+        return $paidBy;
     }
 
     private function redirectToBusinessEntityShow(
