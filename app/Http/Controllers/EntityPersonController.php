@@ -7,6 +7,7 @@ use App\Models\BusinessEntity;
 use App\Models\Person;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 
 class EntityPersonController extends Controller
 {
@@ -69,9 +70,17 @@ class EntityPersonController extends Controller
             'phone_number' => 'nullable|string|max:15',
             'tfn' => 'nullable|string|max:9',
             'abn' => 'nullable|string|max:11',
-            // Appointor-specific fields
-            'appointor_type' => 'required_if:role,Appointor|in:person,entity',
-            'appointor_person_id' => 'required_if:appointor_type,person|exists:persons,id',
+            // Appointor-specific fields — excluded entirely when role is not Appointor
+            'appointor_type' => [
+                Rule::excludeIf(fn() => $request->role !== 'Appointor'),
+                'required',
+                'in:person,entity',
+            ],
+            'appointor_person_id' => [
+                Rule::excludeIf(fn() => $request->role !== 'Appointor' || $request->appointor_type !== 'person'),
+                'required',
+                Rule::exists('persons', 'id'),
+            ],
         ], [
             'business_entity_id.required' => 'The business entity is required.',
             'role.required' => 'The role is required.',
@@ -79,8 +88,9 @@ class EntityPersonController extends Controller
             'role_status.required' => 'The role status is required.',
             'first_name.required_if' => 'The first name is required when creating a new person.',
             'last_name.required_if' => 'The last name is required when creating a new person.',
-            'appointor_type.required_if' => 'Appointor type is required when role is Appointor.',
-            'appointor_person_id.required_if' => 'Please select an appointor person.',
+            'appointor_type.required' => 'Appointor type is required when role is Appointor.',
+            'appointor_person_id.required' => 'Please select an appointor person.',
+            'appointor_person_id.exists' => 'The selected appointor person is invalid.',
         ]);
 
         // Handle new person creation if checkbox is checked
@@ -206,7 +216,6 @@ class EntityPersonController extends Controller
             'business_entity_id' => 'required|exists:business_entities,id',
             'person_id' => 'nullable|exists:persons,id',
             'entity_trustee_id' => 'nullable|exists:business_entities,id',
-            'appointor_entity_id' => 'nullable|exists:business_entities,id',
             'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Appointor,Owner',
             'appointment_date' => 'required|date',
             'resignation_date' => 'nullable|date|after:appointment_date',
@@ -214,6 +223,28 @@ class EntityPersonController extends Controller
             'shares_percentage' => 'nullable|numeric|between:0,100',
             'authority_level' => 'nullable|in:Full,Limited',
             'asic_due_date' => 'nullable|date|after:today',
+            // Appointor-specific fields — excluded entirely when role is not Appointor
+            'appointor_type' => [
+                Rule::excludeIf(fn() => $request->role !== 'Appointor'),
+                'required',
+                'in:person,entity',
+            ],
+            'appointor_person_id' => [
+                Rule::excludeIf(fn() => $request->role !== 'Appointor' || $request->appointor_type !== 'person'),
+                'required',
+                Rule::exists('persons', 'id'),
+            ],
+            'appointor_entity_id' => [
+                Rule::excludeIf(fn() => $request->role !== 'Appointor' || $request->appointor_type !== 'entity'),
+                'required',
+                Rule::exists('business_entities', 'id'),
+            ],
+        ], [
+            'appointor_type.required' => 'Appointor type is required when role is Appointor.',
+            'appointor_person_id.required' => 'Please select an appointor person.',
+            'appointor_person_id.exists' => 'The selected appointor person is invalid.',
+            'appointor_entity_id.required' => 'Please select an appointor entity.',
+            'appointor_entity_id.exists' => 'The selected appointor entity is invalid.',
         ]);
 
         // Ensure either person_id or entity_trustee_id is filled, but not both

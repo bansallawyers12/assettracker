@@ -133,7 +133,7 @@
 
                                 <div id="appointor_person_selection" class="hidden">
                                     <label for="appointor_person_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Person</label>
-                                    <select name="appointor_person_id" id="appointor_person_id" class="mt-1 block w-full border-gray-300 rounded-md">
+                                    <select name="appointor_person_id" id="appointor_person_id" class="mt-1 block w-full border-gray-300 rounded-md" disabled>
                                         <option value="">Select a person</option>
                                         @foreach ($persons as $person)
                                             <option value="{{ $person->id }}">{{ $person->first_name }} {{ $person->last_name }}</option>
@@ -144,7 +144,7 @@
 
                                 <div id="appointor_entity_selection" class="hidden">
                                     <label for="appointor_entity_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Entity</label>
-                                    <select name="appointor_entity_id" id="appointor_entity_id" class="mt-1 block w-full border-gray-300 rounded-md">
+                                    <select name="appointor_entity_id" id="appointor_entity_id" class="mt-1 block w-full border-gray-300 rounded-md" disabled>
                                         <option value="">Select an entity</option>
                                         @foreach ($businessEntities as $entity)
                                             <option value="{{ $entity->id }}">{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
@@ -246,14 +246,23 @@
             
             if (role === 'Appointor') {
                 appointorFields.classList.remove('hidden');
+                // Re-enable the radios so they are submitted
+                document.querySelectorAll('input[name="appointor_type"]').forEach(radio => radio.disabled = false);
             } else {
                 appointorFields.classList.add('hidden');
-                // Clear appointor fields when role is not Appointor
-                document.querySelectorAll('input[name="appointor_type"]').forEach(radio => radio.checked = false);
+                // Clear and disable all appointor inputs so they are never submitted
+                document.querySelectorAll('input[name="appointor_type"]').forEach(radio => {
+                    radio.checked = false;
+                    radio.disabled = true;
+                });
                 document.getElementById('appointor_person_selection').classList.add('hidden');
                 document.getElementById('appointor_entity_selection').classList.add('hidden');
-                document.getElementById('appointor_person_id').value = '';
-                document.getElementById('appointor_entity_id').value = '';
+                const personSelect = document.getElementById('appointor_person_id');
+                const entitySelect = document.getElementById('appointor_entity_id');
+                personSelect.value = '';
+                personSelect.disabled = true;
+                entitySelect.value = '';
+                entitySelect.disabled = true;
             }
         }
 
@@ -267,20 +276,20 @@
             if (appointorType === 'person') {
                 personSelection.classList.remove('hidden');
                 entitySelection.classList.add('hidden');
-                personSelect.required = true;
-                entitySelect.required = false;
+                personSelect.disabled = false;
+                entitySelect.disabled = true;
                 entitySelect.value = '';
             } else if (appointorType === 'entity') {
                 personSelection.classList.add('hidden');
                 entitySelection.classList.remove('hidden');
-                personSelect.required = false;
-                entitySelect.required = true;
+                personSelect.disabled = true;
+                entitySelect.disabled = false;
                 personSelect.value = '';
             } else {
                 personSelection.classList.add('hidden');
                 entitySelection.classList.add('hidden');
-                personSelect.required = false;
-                entitySelect.required = false;
+                personSelect.disabled = true;
+                entitySelect.disabled = true;
                 personSelect.value = '';
                 entitySelect.value = '';
             }
