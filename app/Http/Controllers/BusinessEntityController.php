@@ -42,6 +42,23 @@ class BusinessEntityController extends Controller
     ) {}
 
     /**
+     * Validation rules for transaction invoice / payment uploads (KB max matches config/documents.php).
+     *
+     * @return array<string, string>
+     */
+    private function transactionReceiptUploadRules(bool $includeInvoiceField = true): array
+    {
+        $maxKb = max(1, (int) config('documents.max_kilobytes', 10240));
+        $rule = "nullable|file|mimes:jpeg,png,jpg,pdf|max:{$maxKb}";
+        $out = ['payment_document' => $rule];
+        if ($includeInvoiceField) {
+            $out['document'] = $rule;
+        }
+
+        return $out;
+    }
+
+    /**
      * Display a listing of the business entities.
      *
      * @return View
@@ -356,7 +373,7 @@ class BusinessEntityController extends Controller
             ? (int) $request->business_entity_id
             : (int) $businessEntity->id;
 
-        $request->validate([
+        $request->validate(array_merge([
             'business_entity_id' => 'nullable|exists:business_entities,id',
             'date' => 'required|date',
             'amount' => 'required|numeric',
@@ -372,7 +389,6 @@ class BusinessEntityController extends Controller
             ],
             'gst_amount' => 'nullable|numeric',
             'gst_basis' => 'nullable|in:inclusive,exclusive',
-            'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'document_name' => 'nullable|string|max:255',
             'payment_status' => 'required|in:unpaid,paid',
             'due_date' => 'nullable|date',
@@ -380,9 +396,8 @@ class BusinessEntityController extends Controller
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
-            'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'payment_document_name' => 'nullable|string|max:255',
-        ]);
+        ], $this->transactionReceiptUploadRules(true)));
 
         $targetEntity = $request->filled('business_entity_id')
             ? BusinessEntity::findOrFail($request->integer('business_entity_id'))
@@ -519,7 +534,7 @@ class BusinessEntityController extends Controller
         $this->normalizeEmptyGstBasisRequest($request);
 
         // Validate the transaction data
-        $request->validate([
+        $request->validate(array_merge([
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
@@ -534,7 +549,6 @@ class BusinessEntityController extends Controller
             ],
             'gst_amount' => 'nullable|numeric',
             'gst_basis' => 'nullable|in:inclusive,exclusive',
-            'document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'document_name' => 'nullable|string|max:255',
             'payment_status' => 'required|in:unpaid,paid',
             'due_date' => 'nullable|date',
@@ -542,9 +556,8 @@ class BusinessEntityController extends Controller
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
-            'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'payment_document_name' => 'nullable|string|max:255',
-        ]);
+        ], $this->transactionReceiptUploadRules(true)));
 
         $this->validateTransactionGstBasis($request);
 
@@ -691,7 +704,7 @@ class BusinessEntityController extends Controller
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
@@ -712,9 +725,8 @@ class BusinessEntityController extends Controller
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
-            'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'payment_document_name' => 'nullable|string|max:255',
-        ]);
+        ], $this->transactionReceiptUploadRules(false)));
 
         $this->validateTransactionGstBasis($request);
 
@@ -826,7 +838,7 @@ class BusinessEntityController extends Controller
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
-        $data = $request->validate([
+        $data = $request->validate(array_merge([
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
@@ -847,9 +859,8 @@ class BusinessEntityController extends Controller
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
-            'payment_document' => 'nullable|file|mimes:jpeg,png,jpg,pdf|max:2048',
             'payment_document_name' => 'nullable|string|max:255',
-        ]);
+        ], $this->transactionReceiptUploadRules(false)));
 
         $this->validateTransactionGstBasis($request);
 
