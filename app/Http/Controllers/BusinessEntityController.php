@@ -49,7 +49,8 @@ class BusinessEntityController extends Controller
     private function transactionReceiptUploadRules(bool $includeInvoiceField = true): array
     {
         $maxKb = max(1, (int) config('documents.max_kilobytes', 10240));
-        $rule = "nullable|file|mimes:jpeg,png,jpg,pdf|max:{$maxKb}";
+        $mimes = (string) config('documents.mimes', 'pdf,jpeg,png,jpg');
+        $rule = "nullable|file|mimes:{$mimes}|max:{$maxKb}";
         $out = ['payment_document' => $rule];
         if ($includeInvoiceField) {
             $out['document'] = $rule;

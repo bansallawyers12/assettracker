@@ -213,7 +213,7 @@
                                 @endif
                                 <input type="file" name="payment_document"
                                        class="mt-1 block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100 dark:file:bg-gray-700 dark:file:text-green-300"
-                                       accept="image/*,application/pdf">
+                                       accept="{{ config('documents.transaction_file_accept') }}">
                                 @error('payment_document') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>
