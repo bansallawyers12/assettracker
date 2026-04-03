@@ -19,7 +19,7 @@
             <div class="mb-2">
                 <a href="/" class="flex items-center gap-3 group">
                     <x-application-logo class="w-12 h-12 fill-current text-blue-600 dark:text-blue-400 transition-transform group-hover:scale-105" />
-                    <span class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Asset Tracker</span>
+                    <span class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">{{ config('app.name') }}</span>
                 </a>
             </div>
 

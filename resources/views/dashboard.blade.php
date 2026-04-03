@@ -213,7 +213,9 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invoice / Bill <span class="text-gray-400 font-normal">(optional)</span></label>
                             <input type="file" name="document"
                                    class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-blue-300"
-                                   accept="image/*,application/pdf">
+                                   accept="{{ config('documents.transaction_file_accept') }}">
+                            @php $dashDocMaxKb = max(1, (int) config('documents.max_kilobytes', 10240)); @endphp
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Up to {{ number_format($dashDocMaxKb / 1024, 1) }} MB per file. Ensure PHP <span class="font-mono">upload_max_filesize</span> and <span class="font-mono">post_max_size</span> are not smaller.</p>
                             @error('document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
@@ -294,7 +296,7 @@
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Receipt <span class="text-gray-400 font-normal">(optional)</span></label>
                                 <input type="file" name="payment_document"
                                        class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100 dark:file:bg-gray-700 dark:file:text-green-300"
-                                       accept="image/*,application/pdf">
+                                       accept="{{ config('documents.transaction_file_accept') }}">
                                 @error('payment_document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                             <div>

@@ -4,7 +4,7 @@
             <div class="flex items-center">
                 <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 group">
                     <x-application-logo class="block h-8 w-8 shrink-0 fill-current text-blue-600 dark:text-blue-400 transition-transform group-hover:scale-105" />
-                    <span class="text-lg font-bold text-gray-900 dark:text-white tracking-tight hidden sm:inline">Asset Tracker</span>
+                    <span class="text-lg font-bold text-gray-900 dark:text-white tracking-tight hidden sm:inline">{{ config('app.name') }}</span>
                 </a>
 
                 <div class="hidden sm:flex items-center ml-10 space-x-1">

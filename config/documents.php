@@ -6,4 +6,9 @@ return [
 
     'mimes' => 'pdf,doc,docx,jpg,jpeg,png,gif,bmp,svg,webp,xls,xlsx,csv,ppt,pptx,eml,msg,txt,rtf',
 
+    /*
+     * Browser file-picker hint for transaction invoice / receipt fields (extensions align with `mimes`).
+     */
+    'transaction_file_accept' => '.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.bmp,.svg,.webp,.xls,.xlsx,.csv,.ppt,.pptx,.eml,.msg,.txt,.rtf,image/*',
+
 ];

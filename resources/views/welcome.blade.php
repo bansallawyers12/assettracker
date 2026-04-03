@@ -4,7 +4,7 @@
             <div class="text-center mb-10">
                 <div class="flex items-center justify-center gap-3 mb-6">
                     <x-application-logo class="w-14 h-14 fill-current text-blue-600 dark:text-blue-400" />
-                    <h1 class="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white tracking-tight">Asset Tracker</h1>
+                    <h1 class="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white tracking-tight">{{ config('app.name') }}</h1>
                 </div>
                 <p class="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
                     Manage your business entities, assets, persons, and financial transactions &mdash; all in one place.
