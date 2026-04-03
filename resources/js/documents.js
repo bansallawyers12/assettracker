@@ -2,6 +2,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const DocumentManager = {
         init: function() {
             this.cacheElements();
+            // Entity/asset "Documents" tabs use documents-workspace (Blade + inline script).
+            // This bundle only runs when the legacy #document-data + list/preview markup exists.
+            if (!this.documentData || !this.filesContainer || !this.previewContainer) {
+                return;
+            }
             this.setupTabListener();
             // Load documents immediately if on the documents tab
             if (window.location.hash === '#tab_documents') {
@@ -29,8 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
 
         fetchDocuments: function() {
-            if (!this.documentData) {
-                console.error('Document data element not found');
+            if (!this.documentData || !this.filesContainer) {
                 return;
             }
 
