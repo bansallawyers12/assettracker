@@ -24,6 +24,16 @@
                         {{ session('error') }}
                     </div>
                 @endif
+                @if ($errors->any())
+                    <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200" role="alert">
+                        <p class="font-semibold mb-2">Could not save this transaction:</p>
+                        <ul class="list-disc list-inside space-y-1.5 leading-snug">
+                            @foreach ($errors->all() as $err)
+                                <li class="whitespace-normal break-words">{{ $err }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
                 <form method="POST" action="{{ route('business-entities.bank-accounts.extract-from-receipt', [$businessEntity->id, $bankAccount->id]) }}" enctype="multipart/form-data" class="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
                     @csrf

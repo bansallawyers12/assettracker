@@ -57,6 +57,16 @@
                         {{ session('error') }}
                     </div>
                 @endif
+                @if ($errors->any())
+                    <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 rounded-xl text-sm border border-red-200 dark:border-red-800" role="alert">
+                        <p class="font-semibold mb-2">Could not save this transaction:</p>
+                        <ul class="list-disc list-inside space-y-1.5 text-sm leading-snug">
+                            @foreach ($errors->all() as $err)
+                                <li class="whitespace-normal break-words">{{ $err }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                @endif
 
                 <form method="POST" action="{{ route('business-entities.transactions.store', ['businessEntity' => $businessEntities->first() ? $businessEntities->first()->id : 0]) }}" id="store-transaction-form" enctype="multipart/form-data">
                     @csrf
