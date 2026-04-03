@@ -60,6 +60,148 @@ class BusinessEntityController extends Controller
     }
 
     /**
+     * Human-readable validation messages for transaction file fields (explicit limits + PHP ini hints).
+     *
+     * @return array<string, string>
+     */
+    private function transactionReceiptValidationMessages(): array
+    {
+        $maxKb = max(1, (int) config('documents.max_kilobytes', 10240));
+        $maxMb = number_format($maxKb / 1024, 1);
+        $uploadMax = ini_get('upload_max_filesize');
+        $postMax = ini_get('post_max_size');
+
+        return [
+            'document.max' => "Invoice / bill is larger than the app limit ({$maxKb} KB, ~{$maxMb} MB from DOCUMENTS_MAX_KB / config documents.max_kilobytes). PHP upload_max_filesize is {$uploadMax} and post_max_size is {$postMax} — both must be at least as large as your file. Restart Apache/nginx after changing php.ini.",
+            'payment_document.max' => "Payment receipt is larger than the app limit ({$maxKb} KB, ~{$maxMb} MB from DOCUMENTS_MAX_KB / config documents.max_kilobytes). PHP upload_max_filesize is {$uploadMax} and post_max_size is {$postMax} — both must be at least as large as your file. Restart Apache/nginx after changing php.ini.",
+            'document.mimes' => 'Invoice / bill type is not allowed, or PHP could not detect the type. Allowed extensions match config documents.mimes (try PDF or a common image format).',
+            'payment_document.mimes' => 'Payment receipt type is not allowed, or PHP could not detect the type. Allowed extensions match config documents.mimes (try PDF or a common image format).',
+            'document.uploaded' => 'Invoice / bill did not upload successfully. See the detailed message on this field or check PHP upload_max_filesize / post_max_size.',
+            'payment_document.uploaded' => 'Payment receipt did not upload successfully. See the detailed message on this field or check PHP upload_max_filesize / post_max_size.',
+        ];
+    }
+
+    private static function iniSizeToBytes(string $value): int
+    {
+        $value = trim($value);
+        if ($value === '' || $value === '-1') {
+            return 0;
+        }
+        $unit = strtolower($value[strlen($value) - 1]);
+        if (in_array($unit, ['g', 'm', 'k'], true)) {
+            $num = (float) substr($value, 0, -1);
+        } else {
+            $num = (float) $value;
+            $unit = 'b';
+        }
+
+        return (int) match ($unit) {
+            'g' => $num * 1073741824,
+            'm' => $num * 1048576,
+            'k' => $num * 1024,
+            default => $num,
+        };
+    }
+
+    private static function formatBytes(int $bytes): string
+    {
+        if ($bytes >= 1073741824) {
+            return round($bytes / 1073741824, 1).' GB';
+        }
+        if ($bytes >= 1048576) {
+            return round($bytes / 1048576, 1).' MB';
+        }
+        if ($bytes >= 1024) {
+            return round($bytes / 1024, 1).' KB';
+        }
+
+        return $bytes.' B';
+    }
+
+    /**
+     * When the raw body is larger than post_max_size, PHP discards POST data — explain before generic "required" errors.
+     */
+    private function rejectOversizedMultipartRequest(Request $request): void
+    {
+        $ct = (string) $request->header('Content-Type', '');
+        if (! str_contains($ct, 'multipart/form-data')) {
+            return;
+        }
+        $len = (int) $request->header('Content-Length', 0);
+        if ($len <= 0) {
+            return;
+        }
+        $postMaxBytes = self::iniSizeToBytes((string) ini_get('post_max_size'));
+        if ($postMaxBytes > 0 && $len > $postMaxBytes) {
+            throw ValidationException::withMessages([
+                'document' => 'This request is about '.self::formatBytes($len).' but PHP post_max_size is only '.ini_get('post_max_size').'. Increase post_max_size in php.ini (it must be larger than your largest upload; usually ≥ upload_max_filesize). Restart the web server.',
+            ]);
+        }
+    }
+
+    /**
+     * If PHP dropped a large multipart body, $_POST / $_FILES are empty but Content-Length can still be set.
+     */
+    private function hintIfMultipartBodyLikelyDiscarded(Request $request): void
+    {
+        $ct = (string) $request->header('Content-Type', '');
+        if (! str_contains($ct, 'multipart/form-data')) {
+            return;
+        }
+        $len = (int) $request->header('Content-Length', 0);
+        if ($len < 512 * 1024) {
+            return;
+        }
+        if ($request->request->count() > 0 || $request->files->count() > 0) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'document' => 'No form data was received, but the browser reported a large upload (~'.self::formatBytes($len).'). This usually means the request exceeded PHP post_max_size ('.ini_get('post_max_size').'). Increase post_max_size and upload_max_filesize in php.ini and restart the web server.',
+        ]);
+    }
+
+    private function assertPhpUploadSucceeded(Request $request, string $field, string $label): void
+    {
+        if (! $request->hasFile($field)) {
+            return;
+        }
+        $file = $request->file($field);
+        if ($file->isValid()) {
+            return;
+        }
+
+        $iniUp = ini_get('upload_max_filesize');
+        $postMax = ini_get('post_max_size');
+        $code = $file->getError();
+        $msg = match ($code) {
+            UPLOAD_ERR_INI_SIZE => "The {$label} is larger than PHP upload_max_filesize (currently {$iniUp}). Increase upload_max_filesize in php.ini; post_max_size (currently {$postMax}) should be greater than or equal to that value. Restart the web server.",
+            UPLOAD_ERR_FORM_SIZE => "The {$label} exceeded the HTML MAX_FILE_SIZE limit for this form.",
+            UPLOAD_ERR_PARTIAL => "The {$label} was only partially uploaded. Try again with a stable connection.",
+            UPLOAD_ERR_NO_FILE => "No file was received for the {$label}.",
+            UPLOAD_ERR_NO_TMP_DIR => 'The server has no temporary folder for uploads (see upload_tmp_dir in php.ini).',
+            UPLOAD_ERR_CANT_WRITE => 'The server could not write the uploaded file to disk.',
+            UPLOAD_ERR_EXTENSION => 'A PHP extension blocked this file upload.',
+            default => "The {$label} upload failed (PHP upload error code {$code}). Check upload_max_filesize ({$iniUp}) and post_max_size ({$postMax}).",
+        };
+
+        throw ValidationException::withMessages([$field => $msg]);
+    }
+
+    /**
+     * @param  list<string>  $fileFields  e.g. ['document', 'payment_document']
+     */
+    private function prepareTransactionUploadValidation(Request $request, array $fileFields): void
+    {
+        $this->rejectOversizedMultipartRequest($request);
+        $this->hintIfMultipartBodyLikelyDiscarded($request);
+        foreach ($fileFields as $field) {
+            $label = $field === 'payment_document' ? 'payment receipt' : 'invoice / bill file';
+            $this->assertPhpUploadSucceeded($request, $field, $label);
+        }
+    }
+
+    /**
      * Display a listing of the business entities.
      *
      * @return View
@@ -374,6 +516,8 @@ class BusinessEntityController extends Controller
             ? (int) $request->business_entity_id
             : (int) $businessEntity->id;
 
+        $this->prepareTransactionUploadValidation($request, ['document', 'payment_document']);
+
         $request->validate(array_merge([
             'business_entity_id' => 'nullable|exists:business_entities,id',
             'date' => 'required|date',
@@ -398,7 +542,7 @@ class BusinessEntityController extends Controller
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
-        ], $this->transactionReceiptUploadRules(true)));
+        ], $this->transactionReceiptUploadRules(true)), $this->transactionReceiptValidationMessages());
 
         $targetEntity = $request->filled('business_entity_id')
             ? BusinessEntity::findOrFail($request->integer('business_entity_id'))
@@ -534,6 +678,8 @@ class BusinessEntityController extends Controller
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
+        $this->prepareTransactionUploadValidation($request, ['document', 'payment_document']);
+
         // Validate the transaction data
         $request->validate(array_merge([
             'date' => 'required|date',
@@ -558,7 +704,7 @@ class BusinessEntityController extends Controller
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
-        ], $this->transactionReceiptUploadRules(true)));
+        ], $this->transactionReceiptUploadRules(true)), $this->transactionReceiptValidationMessages());
 
         $this->validateTransactionGstBasis($request);
 
@@ -705,6 +851,8 @@ class BusinessEntityController extends Controller
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
+        $this->prepareTransactionUploadValidation($request, ['payment_document']);
+
         $data = $request->validate(array_merge([
             'date' => 'required|date',
             'amount' => 'required|numeric',
@@ -727,7 +875,7 @@ class BusinessEntityController extends Controller
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
-        ], $this->transactionReceiptUploadRules(false)));
+        ], $this->transactionReceiptUploadRules(false)), $this->transactionReceiptValidationMessages());
 
         $this->validateTransactionGstBasis($request);
 
@@ -839,6 +987,8 @@ class BusinessEntityController extends Controller
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
+        $this->prepareTransactionUploadValidation($request, ['payment_document']);
+
         $data = $request->validate(array_merge([
             'date' => 'required|date',
             'amount' => 'required|numeric',
@@ -861,7 +1011,7 @@ class BusinessEntityController extends Controller
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
-        ], $this->transactionReceiptUploadRules(false)));
+        ], $this->transactionReceiptUploadRules(false)), $this->transactionReceiptValidationMessages());
 
         $this->validateTransactionGstBasis($request);
 
