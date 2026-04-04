@@ -23,6 +23,25 @@
                        class="border border-gray-300 rounded text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
             </div>
 
+            {{-- Balance sheet quick-date shortcuts --}}
+            <div class="flex items-end gap-1.5 flex-wrap">
+                @php
+                    $bsShortcuts = [
+                        'Today'         => now()->toDateString(),
+                        'End of month'  => now()->endOfMonth()->toDateString(),
+                        'End of FY'     => now()->month >= 7
+                            ? now()->year . '-06-30'
+                            : (now()->year - 1) . '-06-30',
+                    ];
+                @endphp
+                @foreach($bsShortcuts as $label => $date)
+                    <a href="{{ $formRoute }}?as_of_date={{ $date }}"
+                       class="text-xs border border-gray-300 rounded px-2 py-1.5 text-gray-600 hover:bg-white hover:border-blue-400 hover:text-blue-600 transition-colors bg-transparent whitespace-nowrap">
+                        {{ $label }}
+                    </a>
+                @endforeach
+            </div>
+
             <div class="flex items-end gap-2 ml-auto">
                 <div class="relative" x-data="{ open: false }">
                     <button type="button"
@@ -49,20 +68,19 @@
     </x-slot:filters>
 
     {{-- ── Report statement ────────────────────────────────────────── --}}
-    <div class="px-0 pb-6">
+    <div class="pb-6">
         <table class="w-full text-sm">
-
-            {{-- ─── ASSETS ──────────────────────────────────────────── --}}
             <tbody>
-                <tr class="border-t border-gray-100">
+
+                {{-- ─── ASSETS ──────────────────────────────────────────── --}}
+                <tr>
                     <td colspan="2"
                         class="px-6 pt-5 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
                         Assets
                     </td>
                 </tr>
 
-                @foreach($report['assets']['by_category'] as $catKey => $catGroup)
-                    {{-- Category sub-heading --}}
+                @forelse($report['assets']['by_category'] as $catKey => $catGroup)
                     <tr class="border-t border-gray-100">
                         <td colspan="2" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
                             {{ $catGroup['label'] }}
@@ -71,45 +89,45 @@
                     @foreach($catGroup['accounts'] as $row)
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-8 py-1.5 text-gray-700">
-                                {{ $row['account']->account_code }}
-                                &nbsp;{{ $row['account']->account_name }}
+                                {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
                             </td>
-                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-36">
+                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-40">
                                 {{ number_format($row['balance'], 2) }}
                             </td>
                         </tr>
                     @endforeach
-                    {{-- Category subtotal --}}
                     <tr class="border-t border-gray-100">
                         <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
                             Total {{ $catGroup['label'] }}
                         </td>
-                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-36 border-t border-gray-200">
+                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-40 border-t border-gray-200">
                             {{ number_format($catGroup['subtotal'], 2) }}
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="2" class="px-8 py-2 text-xs text-gray-400 italic">No asset accounts found</td>
+                    </tr>
+                @endforelse
 
-                {{-- Total Assets --}}
                 <tr class="border-t-2 border-gray-300 bg-gray-50">
                     <td class="px-6 py-3 text-sm font-bold text-gray-900">Total Assets</td>
-                    <td class="px-6 py-3 text-right text-sm font-bold text-gray-900 tabular-nums w-36">
+                    <td class="px-6 py-3 text-right text-sm font-bold text-gray-900 tabular-nums w-40">
                         {{ number_format($report['total_assets'], 2) }}
                     </td>
                 </tr>
 
-                {{-- spacer --}}
-                <tr><td colspan="2" class="py-3"></td></tr>
+                <tr><td colspan="2" class="py-4"></td></tr>
 
-                {{-- ─── LIABILITIES ─────────────────────────────────── --}}
-                <tr class="border-t border-gray-100">
+                {{-- ─── LIABILITIES ─────────────────────────────────────── --}}
+                <tr>
                     <td colspan="2"
                         class="px-6 pt-2 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
                         Liabilities
                     </td>
                 </tr>
 
-                @foreach($report['liabilities']['by_category'] as $catKey => $catGroup)
+                @forelse($report['liabilities']['by_category'] as $catKey => $catGroup)
                     <tr class="border-t border-gray-100">
                         <td colspan="2" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
                             {{ $catGroup['label'] }}
@@ -118,11 +136,11 @@
                     @foreach($catGroup['accounts'] as $row)
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-8 py-1.5 text-gray-700">
-                                {{ $row['account']->account_code }}
-                                &nbsp;{{ $row['account']->account_name }}
+                                {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
                             </td>
-                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-36">
-                                {{ number_format($row['balance'], 2) }}
+                            {{-- Liabilities carry credit (negative) balances — display as positive --}}
+                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-40">
+                                {{ number_format(abs($row['balance']), 2) }}
                             </td>
                         </tr>
                     @endforeach
@@ -130,62 +148,79 @@
                         <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
                             Total {{ $catGroup['label'] }}
                         </td>
-                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-36 border-t border-gray-200">
-                            {{ number_format($catGroup['subtotal'], 2) }}
+                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-40 border-t border-gray-200">
+                            {{ number_format(abs($catGroup['subtotal']), 2) }}
                         </td>
                     </tr>
-                @endforeach
+                @empty
+                    <tr>
+                        <td colspan="2" class="px-8 py-2 text-xs text-gray-400 italic">No liability accounts found</td>
+                    </tr>
+                @endforelse
 
-                {{-- Total Liabilities --}}
                 <tr class="border-t-2 border-gray-200">
                     <td class="px-6 py-2 text-xs font-semibold text-gray-600">Total Liabilities</td>
-                    <td class="px-6 py-2 text-right font-semibold text-gray-700 tabular-nums w-36">
-                        {{ number_format($report['liabilities']['total'], 2) }}
+                    <td class="px-6 py-2 text-right font-semibold text-gray-700 tabular-nums w-40">
+                        {{ number_format(abs($report['liabilities']['total']), 2) }}
                     </td>
                 </tr>
 
-                {{-- spacer --}}
-                <tr><td colspan="2" class="py-3"></td></tr>
+                <tr><td colspan="2" class="py-4"></td></tr>
 
-                {{-- ─── EQUITY ───────────────────────────────────────── --}}
-                <tr class="border-t border-gray-100">
+                {{-- ─── EQUITY ───────────────────────────────────────────── --}}
+                <tr>
                     <td colspan="2"
                         class="px-6 pt-2 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
                         Equity
                     </td>
                 </tr>
 
-                @foreach($report['equity']['by_category'] as $catKey => $catGroup)
+                @forelse($report['equity']['by_category'] as $catKey => $catGroup)
+                    <tr class="border-t border-gray-100">
+                        <td colspan="2" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                            {{ $catGroup['label'] }}
+                        </td>
+                    </tr>
                     @foreach($catGroup['accounts'] as $row)
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-8 py-1.5 text-gray-700">
-                                {{ $row['account']->account_code }}
-                                &nbsp;{{ $row['account']->account_name }}
+                                {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
                             </td>
-                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-36">
-                                {{ number_format($row['balance'], 2) }}
+                            {{-- Equity carries credit (negative) balances — display as positive --}}
+                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-40">
+                                {{ number_format(abs($row['balance']), 2) }}
                             </td>
                         </tr>
                     @endforeach
-                @endforeach
+                    <tr class="border-t border-gray-100">
+                        <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
+                            Total {{ $catGroup['label'] }}
+                        </td>
+                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-40 border-t border-gray-200">
+                            {{ number_format(abs($catGroup['subtotal']), 2) }}
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="2" class="px-8 py-2 text-xs text-gray-400 italic">No equity accounts found</td>
+                    </tr>
+                @endforelse
 
-                {{-- Total Equity --}}
                 <tr class="border-t-2 border-gray-200">
                     <td class="px-6 py-2 text-xs font-semibold text-gray-600">Total Equity</td>
-                    <td class="px-6 py-2 text-right font-semibold text-gray-700 tabular-nums w-36">
-                        {{ number_format($report['equity']['total'], 2) }}
+                    <td class="px-6 py-2 text-right font-semibold text-gray-700 tabular-nums w-40">
+                        {{ number_format(abs($report['equity']['total']), 2) }}
                     </td>
                 </tr>
 
-                {{-- ─── TOTAL LIABILITIES & EQUITY ──────────────────── --}}
+                {{-- ─── TOTAL LIABILITIES & EQUITY ──────────────────────── --}}
                 <tr class="border-t-2 border-gray-300 bg-gray-50">
                     <td class="px-6 py-3 text-sm font-bold text-gray-900">Total Liabilities &amp; Equity</td>
-                    <td class="px-6 py-3 text-right text-sm font-bold text-gray-900 tabular-nums w-36">
+                    <td class="px-6 py-3 text-right text-sm font-bold text-gray-900 tabular-nums w-40">
                         {{ number_format($report['total_liabilities_equity'], 2) }}
                     </td>
                 </tr>
 
-                {{-- Balance check --}}
                 @if(!$balanced)
                     <tr class="bg-red-50">
                         <td colspan="2" class="px-6 py-2 text-xs text-red-700 font-medium">

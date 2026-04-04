@@ -14,22 +14,76 @@
     {{-- ── Filter toolbar ────────────────────────────────────────────── --}}
     <x-slot:filters>
         <form method="GET" action="{{ $formRoute }}"
-              class="flex flex-wrap items-end gap-3">
+              class="flex flex-wrap items-end gap-3 relative">
 
-            {{-- Account multi-select --}}
-            <div class="flex flex-col gap-1 min-w-[180px]">
+            {{-- Account dropdown with checkboxes (Xero-style) --}}
+            @php
+                $selectedIds   = $report['filters']['account_ids'];
+                $selectedCount = count($selectedIds);
+                $labelText     = $selectedCount === 0
+                    ? 'All accounts'
+                    : $selectedCount . ' account' . ($selectedCount === 1 ? '' : 's') . ' selected';
+            @endphp
+            <div class="flex flex-col gap-1"
+                 x-data="{
+                     open: false,
+                     count: {{ $selectedCount }},
+                     label() {
+                         return this.count === 0
+                             ? 'All accounts'
+                             : this.count + (this.count === 1 ? ' account' : ' accounts') + ' selected';
+                     },
+                     sync() {
+                         this.count = this.$el.querySelectorAll('input[name=\'account_ids[]\']:checked').length;
+                     }
+                 }">
                 <label class="text-xs font-medium text-gray-600">Accounts</label>
-                <select name="account_ids[]"
-                        multiple
-                        size="1"
-                        class="border border-gray-300 rounded text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500 min-w-[200px]">
+
+                {{-- Trigger button --}}
+                <button type="button"
+                        @click="open = !open"
+                        class="inline-flex items-center justify-between gap-2 border border-gray-300 rounded bg-white text-sm px-3 py-1.5 min-w-[200px] text-left hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <span class="text-gray-700 truncate" x-text="label()">{{ $labelText }}</span>
+                    <svg class="h-4 w-4 text-gray-400 shrink-0 transition-transform" :class="open ? 'rotate-180' : ''"
+                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                    </svg>
+                </button>
+
+                {{-- Dropdown panel --}}
+                <div x-show="open"
+                     @click.outside="open = false"
+                     x-transition:enter="transition ease-out duration-100"
+                     x-transition:enter-start="opacity-0 scale-95"
+                     x-transition:enter-end="opacity-100 scale-100"
+                     x-transition:leave="transition ease-in duration-75"
+                     x-transition:leave-start="opacity-100 scale-100"
+                     x-transition:leave-end="opacity-0 scale-95"
+                     class="absolute z-30 mt-1 bg-white border border-gray-200 rounded-md shadow-lg w-72 max-h-64 overflow-y-auto">
+
+                    {{-- Select all / clear --}}
+                    <div class="sticky top-0 bg-white border-b border-gray-100 px-3 py-2 flex items-center justify-between">
+                        <span class="text-xs text-gray-500 font-medium">Select accounts</span>
+                        <button type="button"
+                                @click="$el.closest('[x-data]').querySelectorAll('input[name=\'account_ids[]\']').forEach(cb => cb.checked = false); sync()"
+                                class="text-xs text-blue-600 hover:underline">Clear</button>
+                    </div>
+
                     @foreach($allAccounts as $acc)
-                        <option value="{{ $acc->id }}"
-                            {{ in_array($acc->id, $report['filters']['account_ids']) ? 'selected' : '' }}>
-                            {{ $acc->account_code }} – {{ $acc->account_name }}
-                        </option>
+                        <label class="flex items-center gap-2.5 px-3 py-2 hover:bg-gray-50 cursor-pointer select-none">
+                            <input type="checkbox"
+                                   name="account_ids[]"
+                                   value="{{ $acc->id }}"
+                                   @change="sync()"
+                                   {{ in_array($acc->id, $selectedIds) ? 'checked' : '' }}
+                                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm text-gray-700 leading-tight">
+                                <span class="font-medium text-gray-500">{{ $acc->account_code }}</span>
+                                {{ $acc->account_name }}
+                            </span>
+                        </label>
                     @endforeach
-                </select>
+                </div>
             </div>
 
             {{-- Date range --}}

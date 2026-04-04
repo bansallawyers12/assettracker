@@ -9,7 +9,7 @@
 @endphp
 
 <x-report-shell
-    title="Profit &amp; Loss"
+    title="Profit & Loss"
     :subtitle="$subtitle"
     :entity="$entity">
 
