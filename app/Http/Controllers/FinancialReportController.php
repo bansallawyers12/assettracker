@@ -70,6 +70,26 @@ class FinancialReportController extends Controller
         return view('financial-reports.cash-flow', compact('report'));
     }
     
+    public function accountTransactions(BusinessEntity $businessEntity, Request $request)
+    {
+        $this->authorize('view', $businessEntity);
+
+        $startDate  = $request->get('start_date', now()->startOfMonth()->toDateString());
+        $endDate    = $request->get('end_date',   now()->endOfMonth()->toDateString());
+        $accountIds = array_filter((array) $request->get('account_ids', []));
+
+        $report   = $this->financialReportService->generateAccountTransactions(
+            $businessEntity->id,
+            $startDate,
+            $endDate,
+            $accountIds
+        );
+
+        $allAccounts = $this->financialReportService->getActiveChartOfAccounts();
+
+        return view('financial-reports.account-transactions', compact('report', 'allAccounts'));
+    }
+
     public function trackingCategories(BusinessEntity $businessEntity, Request $request)
     {
         $this->authorize('view', $businessEntity);

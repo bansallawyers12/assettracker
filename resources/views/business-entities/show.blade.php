@@ -568,6 +568,30 @@
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Financial Reports</h3>
                                     </div>
                                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                                        {{-- Account Transactions --}}
+                                        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200">
+                                            <div class="flex items-center">
+                                                <div class="flex-shrink-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                    </svg>
+                                                </div>
+                                                <div class="ml-4">
+                                                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Account Transactions</h4>
+                                                    <p class="text-sm text-gray-500 dark:text-gray-400">Line-level movements by account</p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-4">
+                                                <a href="{{ route('business-entities.financial-reports.account-transactions', $businessEntity->id) }}" class="inline-flex items-center px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-200 rounded-lg text-sm transition-all duration-200">
+                                                    View Report
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        </div>
+
                                         <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200">
                                             <div class="flex items-center">
                                                 <div class="flex-shrink-0">
