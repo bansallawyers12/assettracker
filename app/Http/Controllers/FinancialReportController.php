@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\BusinessEntity;
 use App\Services\FinancialReportService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class FinancialReportController extends Controller
@@ -59,7 +60,9 @@ class FinancialReportController extends Controller
      */
     protected function mergeReportFormScope(array $report, Request $request, array $resolvedEntityIds): array
     {
-        if ($request->input('scope') === 'selected' || $request->filled('entity_ids')) {
+        // Match resolveReportEntityIds: only treat as "selected" when scope says so.
+        // Stray entity_ids[] on the query string must not flip the form when scope=all.
+        if ($request->input('scope') === 'selected') {
             $report['forms_scope'] = 'selected';
             $report['forms_entity_ids'] = $resolvedEntityIds;
         } else {
@@ -96,8 +99,8 @@ class FinancialReportController extends Controller
             return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
         }
 
-        $startDate = $request->get('start_date', now()->startOfYear());
-        $endDate = $request->get('end_date', now()->endOfYear());
+        $startDate = Carbon::parse($request->get('start_date', now()->copy()->startOfYear()))->toDateString();
+        $endDate = Carbon::parse($request->get('end_date', now()->copy()->endOfYear()))->toDateString();
         $report = $this->financialReportService->generateProfitLoss($ids, $startDate, $endDate);
         $report = $this->mergeReportFormScope($report, $request, $ids);
 
@@ -131,7 +134,7 @@ class FinancialReportController extends Controller
             return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
         }
 
-        $asOfDate = $request->get('as_of_date', now());
+        $asOfDate = Carbon::parse($request->get('as_of_date', now()))->toDateString();
         $report = $this->financialReportService->generateBalanceSheet($ids, $asOfDate);
         $report = $this->mergeReportFormScope($report, $request, $ids);
 
@@ -165,8 +168,8 @@ class FinancialReportController extends Controller
             return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
         }
 
-        $startDate = $request->get('start_date', now()->startOfYear());
-        $endDate = $request->get('end_date', now()->endOfYear());
+        $startDate = Carbon::parse($request->get('start_date', now()->copy()->startOfYear()))->toDateString();
+        $endDate = Carbon::parse($request->get('end_date', now()->copy()->endOfYear()))->toDateString();
         $report = $this->financialReportService->generateCashFlow($ids, $startDate, $endDate);
         $report = $this->mergeReportFormScope($report, $request, $ids);
 
@@ -200,9 +203,9 @@ class FinancialReportController extends Controller
             return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
         }
 
-        $startDate = $request->get('start_date', now()->startOfMonth()->toDateString());
-        $endDate = $request->get('end_date', now()->endOfMonth()->toDateString());
-        $accountIds = array_filter((array) $request->get('account_ids', []));
+        $startDate = Carbon::parse($request->get('start_date', now()->copy()->startOfMonth()))->toDateString();
+        $endDate = Carbon::parse($request->get('end_date', now()->copy()->endOfMonth()))->toDateString();
+        $accountIds = array_values(array_filter(array_map('intval', (array) $request->get('account_ids', [])), fn ($id) => $id > 0));
 
         $report = $this->financialReportService->generateAccountTransactions(
             $ids,
@@ -244,10 +247,14 @@ class FinancialReportController extends Controller
             return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
         }
 
-        $startDate = $request->get('start_date', now()->startOfYear());
-        $endDate = $request->get('end_date', now()->endOfYear());
-        $trackingCategoryId = $request->get('tracking_category_id');
-        $trackingSubCategoryId = $request->get('tracking_sub_category_id');
+        $startDate = Carbon::parse($request->get('start_date', now()->copy()->startOfYear()))->toDateString();
+        $endDate = Carbon::parse($request->get('end_date', now()->copy()->endOfYear()))->toDateString();
+        $trackingCategoryId = $request->filled('tracking_category_id')
+            ? max(0, (int) $request->get('tracking_category_id')) ?: null
+            : null;
+        $trackingSubCategoryId = $request->filled('tracking_sub_category_id')
+            ? max(0, (int) $request->get('tracking_sub_category_id')) ?: null
+            : null;
 
         $report = $this->financialReportService->generateTrackingCategoryReport(
             $ids,

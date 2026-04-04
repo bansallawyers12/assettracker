@@ -39,6 +39,9 @@
                           return true;
                       }
                   }"
+                  x-init="window.addEventListener('pageshow', () => {
+                      document.querySelectorAll('#financial-reports-hub-form input[name=\'entity_ids[]\']').forEach(cb => { cb.disabled = false; });
+                  })"
                   @submit="validate($event)">
 
                 {{-- Report types (fixed on top) --}}

@@ -43,12 +43,13 @@
             {{-- Balance sheet quick-date shortcuts --}}
             <div class="flex items-end gap-1.5 flex-wrap">
                 @php
+                    $today = \Carbon\Carbon::now();
                     $bsShortcuts = [
-                        'Today'         => now()->toDateString(),
-                        'End of month'  => now()->endOfMonth()->toDateString(),
-                        'End of FY'     => now()->month >= 7
-                            ? now()->year . '-06-30'
-                            : (now()->year - 1) . '-06-30',
+                        'Today' => $today->toDateString(),
+                        'End of month' => $today->copy()->endOfMonth()->toDateString(),
+                        'End of FY' => $today->month >= 7
+                            ? $today->year.'-06-30'
+                            : ($today->year - 1).'-06-30',
                     ];
                 @endphp
                 @foreach($bsShortcuts as $label => $date)
