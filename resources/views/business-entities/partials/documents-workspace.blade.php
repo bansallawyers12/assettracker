@@ -77,21 +77,13 @@
                                     </td>
                                     <td class="px-3 py-2 align-top text-right whitespace-nowrap">
                                         @if(!$doc->path)
-                                            <form method="POST" action="{{ $uploadAction }}" enctype="multipart/form-data" class="inline">
-                                                @csrf
-                                                <input type="hidden" name="document_id" value="{{ $doc->id }}">
-                                                <label class="cursor-pointer text-indigo-600 text-xs">Upload
-                                                    <input type="file" name="document" class="hidden" onchange="this.form.submit()">
-                                                </label>
-                                            </form>
+                                            <label class="cursor-pointer text-indigo-600 text-xs">Upload
+                                                <input type="file" class="hidden doc-slot-file" data-document-id="{{ $doc->id }}" data-replace="0">
+                                            </label>
                                         @else
-                                            <form method="POST" action="{{ $uploadAction }}" enctype="multipart/form-data" class="inline mr-1">
-                                                @csrf
-                                                <input type="hidden" name="document_id" value="{{ $doc->id }}">
-                                                <label class="cursor-pointer text-xs text-gray-600 dark:text-gray-400">Replace
-                                                    <input type="file" name="document" class="hidden" onchange="if(confirm('Replace existing file?')) this.form.submit();">
-                                                </label>
-                                            </form>
+                                            <label class="cursor-pointer text-xs text-gray-600 dark:text-gray-400 mr-1">Replace
+                                                <input type="file" class="hidden doc-slot-file" data-document-id="{{ $doc->id }}" data-replace="1">
+                                            </label>
                                         @endif
                                         <button type="button" class="doc-clear text-xs text-amber-600 {{ $doc->path ? '' : 'opacity-40 pointer-events-none' }}" data-doc-id="{{ $doc->id }}">Clear</button>
                                         <button type="button" class="doc-del text-xs text-red-600" data-doc-id="{{ $doc->id }}">×</button>
@@ -166,6 +158,101 @@
                     tab.classList.add('bg-indigo-600', 'text-white');
                     tab.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-gray-200');
                     panels.forEach(p => p.classList.toggle('hidden', p.dataset.categoryPanel !== id));
+                });
+            });
+
+            const uploadAction = root.dataset.uploadAction;
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const csrfHeader = csrfMeta ? csrfMeta.getAttribute('content') : root.dataset.csrf;
+
+            function parseJsonResponse(text) {
+                try {
+                    return JSON.parse(text);
+                } catch (_) {
+                    return null;
+                }
+            }
+
+            function alertUploadHttpError(status) {
+                if (status === 419) {
+                    alert('Your session has expired. Refresh the page and try again.');
+
+                    return;
+                }
+                if (status === 413) {
+                    alert('This file is too large for the server upload limit.');
+
+                    return;
+                }
+                if (status === 403) {
+                    alert('You are not allowed to upload to this document slot.');
+
+                    return;
+                }
+                alert('Upload failed. Please try again.');
+            }
+
+            root.querySelectorAll('input.doc-slot-file').forEach(input => {
+                input.addEventListener('change', async () => {
+                    if (input.dataset.uploading === '1') {
+                        return;
+                    }
+                    const replace = input.dataset.replace === '1';
+                    if (replace && !confirm('Replace existing file?')) {
+                        input.value = '';
+
+                        return;
+                    }
+                    const docId = input.dataset.documentId;
+                    const file = input.files && input.files[0];
+                    if (!docId || !file) {
+                        input.value = '';
+
+                        return;
+                    }
+                    const fd = new FormData();
+                    fd.append('_token', root.dataset.csrf);
+                    fd.append('document_id', docId);
+                    fd.append('document', file);
+                    input.dataset.uploading = '1';
+                    try {
+                        const r = await fetch(uploadAction, {
+                            method: 'POST',
+                            body: fd,
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'X-CSRF-TOKEN': csrfHeader || '',
+                            },
+                        });
+                        const text = await r.text();
+                        const j = parseJsonResponse(text);
+                        input.value = '';
+                        if (j && r.ok && j.status === true) {
+                            window.location.hash = '#tab_documents';
+                            location.reload();
+
+                            return;
+                        }
+                        if (!j) {
+                            alertUploadHttpError(r.status);
+
+                            return;
+                        }
+                        if (j.errors) {
+                            const msgs = Object.values(j.errors).flat();
+
+                            alert(msgs.join('\n') || j.message || 'Upload failed');
+
+                            return;
+                        }
+                        alert(j.message || 'Upload failed');
+                    } catch (e) {
+                        input.value = '';
+                        alert('Upload failed. Check your connection and try again.');
+                    } finally {
+                        delete input.dataset.uploading;
+                    }
                 });
             });
 
@@ -379,15 +466,28 @@
                     if (e.lengthComputable) pb.style.width = (e.loaded / e.total * 100) + '%';
                 });
                 xhr.onload = () => {
+                    if (xhr.status === 419) {
+                        alert('Your session has expired. Refresh the page and try again.');
+
+                        return;
+                    }
+                    if (xhr.status === 413) {
+                        alert('This file is too large for the server upload limit.');
+
+                        return;
+                    }
                     try {
                         const res = JSON.parse(xhr.responseText);
                         if (res.status) {
                             alert(res.message + (res.errors?.length ? '\n' + res.errors.join('\n') : ''));
+                            window.location.hash = '#tab_documents';
                             location.reload();
                         } else {
                             alert(res.message || 'Upload failed');
                         }
-                    } catch (e) { alert('Upload failed'); }
+                    } catch (e) {
+                        alert('Upload failed');
+                    }
                 };
                 xhr.send(formData);
             });

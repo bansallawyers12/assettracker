@@ -52,6 +52,8 @@ class DocumentController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
+        $wantsJson = $request->expectsJson();
+
         $rules = array_merge(
             [
                 'document_id' => 'required|exists:documents,id',
@@ -67,8 +69,13 @@ class DocumentController extends Controller
         $this->authorize('update', $document);
 
         if ((int) $document->business_entity_id !== (int) $businessEntity->id || $document->asset_id !== null) {
+            if ($wantsJson) {
+                return response()->json(['message' => 'Invalid document slot.'], 422);
+            }
+
             return redirect()->route('business-entities.show', $businessEntity->id)
-                ->with('error', 'Invalid document slot.');
+                ->with('error', 'Invalid document slot.')
+                ->withFragment('tab_documents');
         }
 
         try {
@@ -85,13 +92,30 @@ class DocumentController extends Controller
                 $document->update(['type' => $request->document_type]);
             }
 
+            if ($wantsJson) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Document uploaded successfully!',
+                ]);
+            }
+
             return redirect()->route('business-entities.show', $businessEntity->id)
-                ->with('success', 'Document uploaded successfully!');
+                ->with('success', 'Document uploaded successfully!')
+                ->withFragment('tab_documents');
         } catch (\Exception $e) {
             Log::error('Entity document upload failed', ['error' => $e->getMessage()]);
 
+            $userMessage = config('app.debug')
+                ? 'Failed to upload document: '.$e->getMessage()
+                : 'Failed to upload document. Please try again.';
+
+            if ($wantsJson) {
+                return response()->json(['message' => $userMessage], 500);
+            }
+
             return redirect()->route('business-entities.show', $businessEntity->id)
-                ->with('error', 'Failed to upload document: '.$e->getMessage());
+                ->with('error', $userMessage)
+                ->withFragment('tab_documents');
         }
     }
 
@@ -99,6 +123,8 @@ class DocumentController extends Controller
     {
         $this->authorize('update', $businessEntity);
         $this->authorize('update', $asset);
+
+        $wantsJson = $request->expectsJson();
 
         $rules = array_merge(
             [
@@ -116,8 +142,13 @@ class DocumentController extends Controller
 
         if ((int) $document->business_entity_id !== (int) $businessEntity->id
             || (int) $document->asset_id !== (int) $asset->id) {
+            if ($wantsJson) {
+                return response()->json(['message' => 'Invalid document slot.'], 422);
+            }
+
             return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
-                ->with('error', 'Invalid document slot.');
+                ->with('error', 'Invalid document slot.')
+                ->withFragment('tab_documents');
         }
 
         try {
@@ -134,13 +165,30 @@ class DocumentController extends Controller
                 $document->update(['type' => $request->document_type]);
             }
 
+            if ($wantsJson) {
+                return response()->json([
+                    'status' => true,
+                    'message' => 'Document uploaded successfully!',
+                ]);
+            }
+
             return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
-                ->with('success', 'Document uploaded successfully!');
+                ->with('success', 'Document uploaded successfully!')
+                ->withFragment('tab_documents');
         } catch (\Exception $e) {
             Log::error('Asset document upload failed', ['error' => $e->getMessage()]);
 
+            $userMessage = config('app.debug')
+                ? 'Failed to upload document: '.$e->getMessage()
+                : 'Failed to upload document. Please try again.';
+
+            if ($wantsJson) {
+                return response()->json(['message' => $userMessage], 500);
+            }
+
             return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
-                ->with('error', 'Failed to upload document: '.$e->getMessage());
+                ->with('error', $userMessage)
+                ->withFragment('tab_documents');
         }
     }
 
