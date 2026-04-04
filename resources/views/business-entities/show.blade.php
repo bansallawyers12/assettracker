@@ -43,6 +43,12 @@
                     </ul>
                 </div>
             @endif
+            @if ($businessEntity->isTenancyContactOnly())
+                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-900 dark:text-amber-100" role="status">
+                    <p class="font-medium">{{ __('Tenancy / property manager contact') }}</p>
+                    <p class="mt-1 text-amber-800 dark:text-amber-200">{{ __('This company is treated as a contact for managing rentals, not as one of your operating entities. It is hidden from the main entity list, reports, and accounting pickers. Prefer adding agencies when you add a tenant on an asset.') }}</p>
+                </div>
+            @endif
             <div class="flex flex-col lg:flex-row gap-6">
                 <!-- Left Sidebar: Business Details -->
                 <div class="w-full lg:w-80 flex-shrink-0">
@@ -564,6 +570,9 @@
                             <!-- Financial Reports Tab -->
                             <div id="tab_financial_reports" class="tab-content hidden">
                                 <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    @if ($businessEntity->isTenancyContactOnly())
+                                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Financial reports are not available for tenancy or property-manager contacts.') }}</p>
+                                    @else
                                     <div class="flex justify-between items-center mb-4">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Financial Reports</h3>
                                     </div>
@@ -680,6 +689,7 @@
                                             </div>
                                         </div>
                                     </div>
+                                    @endif
                                 </div>
                             </div>
 

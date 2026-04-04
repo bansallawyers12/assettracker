@@ -136,6 +136,18 @@
                             <x-google-address-input name="registered_address" id="registered_address" :value="old('registered_address', $businessEntity->registered_address)" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" />
                             @error('registered_address') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                         </div>
+
+                        <div class="mt-8 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="hidden" name="exclude_from_financial_reports" value="0">
+                                <input type="checkbox" name="exclude_from_financial_reports" value="1" class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('exclude_from_financial_reports', $businessEntity->exclude_from_financial_reports ?? false) ? 'checked' : '' }}>
+                                <span>
+                                    <span class="block text-sm font-medium text-gray-900">{{ __('Tenancy / property manager contact (not our operating entity)') }}</span>
+                                    <span class="block text-xs text-gray-600 mt-1">{{ __('When checked, this record is hidden from the main entity list, financial reports, bank import, and other accounting pickers. Prefer adding rental agencies via Add tenant on an asset when possible.') }}</span>
+                                </span>
+                            </label>
+                            @error('exclude_from_financial_reports') <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span> @enderror
+                        </div>
                         
                         <div class="mt-8 flex justify-between items-center">
                             <div class="text-sm text-gray-500">Last updated: {{ $businessEntity->updated_at->format('d M Y, h:i A') }}</div>

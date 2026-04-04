@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\BusinessEntity;
 use App\Models\TrackingCategory;
 use App\Models\TrackingSubCategory;
@@ -10,10 +11,13 @@ use Illuminate\Validation\Rule;
 
 class TrackingCategoryController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     public function index(BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $trackingCategories = TrackingCategory::where('business_entity_id', $businessEntity->id)
             ->with('subCategories')
             ->ordered()
@@ -25,14 +29,16 @@ class TrackingCategoryController extends Controller
     public function create(BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         return view('tracking-categories.create', compact('businessEntity'));
     }
 
     public function store(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -55,7 +61,8 @@ class TrackingCategoryController extends Controller
     public function show(BusinessEntity $businessEntity, TrackingCategory $trackingCategory)
     {
         $this->authorize('view', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $trackingCategory->load('subCategories');
         
         return view('tracking-categories.show', compact('businessEntity', 'trackingCategory'));
@@ -64,14 +71,16 @@ class TrackingCategoryController extends Controller
     public function edit(BusinessEntity $businessEntity, TrackingCategory $trackingCategory)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         return view('tracking-categories.edit', compact('businessEntity', 'trackingCategory'));
     }
 
     public function update(Request $request, BusinessEntity $businessEntity, TrackingCategory $trackingCategory)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -93,7 +102,8 @@ class TrackingCategoryController extends Controller
     public function destroy(BusinessEntity $businessEntity, TrackingCategory $trackingCategory)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         // Check if category is being used
         if ($trackingCategory->transactions()->exists() || $trackingCategory->journalLines()->exists()) {
             return redirect()->route('business-entities.tracking-categories.index', $businessEntity)

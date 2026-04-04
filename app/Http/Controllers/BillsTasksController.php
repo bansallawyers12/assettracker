@@ -9,6 +9,7 @@ use App\Models\Note;
 use App\Models\Reminder;
 use App\Models\Transaction;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
@@ -27,11 +28,13 @@ class BillsTasksController extends Controller
             $tab = 'unpaid';
         }
 
+        $opIds = $this->operationalBusinessEntityIds();
+
         $tabCounts = [
-            'unpaid' => Transaction::query()->where('payment_status', 'unpaid')->count(),
-            'due' => $this->dueItemsTotalCount(),
-            'paid' => Transaction::query()->where('payment_status', 'paid')->count(),
-            'completed' => Reminder::query()->where('is_completed', true)->count(),
+            'unpaid' => $this->transactionOperationalQuery($opIds)->where('payment_status', 'unpaid')->count(),
+            'due' => $this->dueItemsTotalCount($opIds),
+            'paid' => $this->transactionOperationalQuery($opIds)->where('payment_status', 'paid')->count(),
+            'completed' => $this->reminderOperationalQuery($opIds)->where('is_completed', true)->count(),
         ];
 
         $unpaidTransactions = null;
@@ -40,7 +43,7 @@ class BillsTasksController extends Controller
         $duePaginator = null;
 
         if ($tab === 'unpaid') {
-            $unpaidTransactions = Transaction::query()
+            $unpaidTransactions = $this->transactionOperationalQuery($opIds)
                 ->where('payment_status', 'unpaid')
                 ->with(['businessEntity', 'asset'])
                 ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
@@ -49,7 +52,7 @@ class BillsTasksController extends Controller
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
         } elseif ($tab === 'paid') {
-            $paidTransactions = Transaction::query()
+            $paidTransactions = $this->transactionOperationalQuery($opIds)
                 ->where('payment_status', 'paid')
                 ->with(['businessEntity', 'asset'])
                 ->orderByRaw('CASE WHEN paid_at IS NULL THEN 1 ELSE 0 END')
@@ -58,7 +61,7 @@ class BillsTasksController extends Controller
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
         } elseif ($tab === 'completed') {
-            $completedReminders = Reminder::query()
+            $completedReminders = $this->reminderOperationalQuery($opIds)
                 ->where('is_completed', true)
                 ->with(['businessEntity', 'asset', 'user'])
                 ->orderByRaw('COALESCE(completed_at, updated_at) DESC')
@@ -66,7 +69,7 @@ class BillsTasksController extends Controller
                 ->paginate(self::PER_PAGE)
                 ->withQueryString();
         } else {
-            $duePaginator = $this->paginatedDueItems($request);
+            $duePaginator = $this->paginatedDueItems($request, $opIds);
         }
 
         return view('bills-tasks.index', compact(
@@ -79,26 +82,27 @@ class BillsTasksController extends Controller
         ));
     }
 
-    private function dueItemsTotalCount(): int
+    /**
+     * @param  list<int>  $opIds
+     */
+    private function dueItemsTotalCount(array $opIds): int
     {
-        return Reminder::query()->active()->whereNotNull('next_due_date')->count()
-            + Note::query()->where('is_reminder', true)->whereNotNull('reminder_date')->count()
-            + Transaction::query()->where('payment_status', 'unpaid')->whereNotNull('due_date')->count()
-            + Asset::query()->whereNotNull('registration_due_date')->count()
-            + EntityPerson::query()->whereNotNull('asic_due_date')->count();
+        return $this->reminderOperationalQuery($opIds)->active()->whereNotNull('next_due_date')->count()
+            + $this->noteReminderOperationalQuery($opIds)->whereNotNull('reminder_date')->count()
+            + $this->transactionOperationalQuery($opIds)->where('payment_status', 'unpaid')->whereNotNull('due_date')->count()
+            + $this->assetOperationalQuery($opIds)->whereNotNull('registration_due_date')->count()
+            + $this->entityPersonOperationalQuery($opIds)->whereNotNull('asic_due_date')->count();
     }
 
     /**
-     * Merges several due-date sources in PHP, then paginates. Fine for typical portfolios;
-     * very large datasets may need a DB-side UNION or cursor-based approach.
-     *
+     * @param  list<int>  $opIds
      * @return LengthAwarePaginator<int, object>
      */
-    private function paginatedDueItems(Request $request): LengthAwarePaginator
+    private function paginatedDueItems(Request $request, array $opIds): LengthAwarePaginator
     {
         $items = collect();
 
-        Reminder::query()
+        $this->reminderOperationalQuery($opIds)
             ->active()
             ->whereNotNull('next_due_date')
             ->with(['businessEntity', 'asset', 'user'])
@@ -116,8 +120,7 @@ class BillsTasksController extends Controller
                 ]);
             });
 
-        Note::query()
-            ->where('is_reminder', true)
+        $this->noteReminderOperationalQuery($opIds)
             ->whereNotNull('reminder_date')
             ->with(['businessEntity', 'asset', 'user'])
             ->orderBy('reminder_date')
@@ -134,7 +137,7 @@ class BillsTasksController extends Controller
                 ]);
             });
 
-        Transaction::query()
+        $this->transactionOperationalQuery($opIds)
             ->where('payment_status', 'unpaid')
             ->whereNotNull('due_date')
             ->with(['businessEntity', 'asset'])
@@ -152,7 +155,7 @@ class BillsTasksController extends Controller
                 ]);
             });
 
-        Asset::query()
+        $this->assetOperationalQuery($opIds)
             ->whereNotNull('registration_due_date')
             ->with('businessEntity')
             ->orderBy('registration_due_date')
@@ -169,7 +172,7 @@ class BillsTasksController extends Controller
                 ]);
             });
 
-        EntityPerson::query()
+        $this->entityPersonOperationalQuery($opIds)
             ->whereNotNull('asic_due_date')
             ->with(['businessEntity', 'person'])
             ->orderBy('asic_due_date')
@@ -204,5 +207,89 @@ class BillsTasksController extends Controller
                 'query' => array_merge($request->query(), ['tab' => 'due']),
             ]
         );
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function operationalBusinessEntityIds(): array
+    {
+        return BusinessEntity::query()->operationalEntities()->pluck('id')->all();
+    }
+
+    /**
+     * @param  list<int>  $opIds
+     * @return Builder<Transaction>
+     */
+    private function transactionOperationalQuery(array $opIds): Builder
+    {
+        $q = Transaction::query();
+        if ($opIds === []) {
+            return $q->whereRaw('0 = 1');
+        }
+
+        return $q->whereIn('business_entity_id', $opIds);
+    }
+
+    /**
+     * @param  list<int>  $opIds
+     * @return Builder<Reminder>
+     */
+    private function reminderOperationalQuery(array $opIds): Builder
+    {
+        $q = Reminder::query();
+        if ($opIds === []) {
+            return $q->whereRaw('0 = 1');
+        }
+
+        return $q->where(function (Builder $w) use ($opIds) {
+            $w->whereNull('business_entity_id')
+                ->orWhereIn('business_entity_id', $opIds);
+        });
+    }
+
+    /**
+     * @param  list<int>  $opIds
+     * @return Builder<Note>
+     */
+    private function noteReminderOperationalQuery(array $opIds): Builder
+    {
+        $q = Note::query()->where('is_reminder', true);
+        if ($opIds === []) {
+            return $q->whereRaw('0 = 1');
+        }
+
+        return $q->where(function (Builder $w) use ($opIds) {
+            $w->whereNull('business_entity_id')
+                ->orWhereIn('business_entity_id', $opIds);
+        });
+    }
+
+    /**
+     * @param  list<int>  $opIds
+     * @return Builder<Asset>
+     */
+    private function assetOperationalQuery(array $opIds): Builder
+    {
+        $q = Asset::query();
+        if ($opIds === []) {
+            return $q->whereRaw('0 = 1');
+        }
+
+        return $q->whereIn('business_entity_id', $opIds);
+    }
+
+    /**
+     * @param  list<int>  $opIds
+     * @return Builder<EntityPerson>
+     */
+    private function entityPersonOperationalQuery(array $opIds): Builder
+    {
+        $q = EntityPerson::query();
+        if ($opIds === []) {
+            return $q->whereRaw('0 = 1');
+        }
+
+        return $q->whereIn('business_entity_id', $opIds);
     }
 }

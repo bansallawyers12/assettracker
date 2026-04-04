@@ -9,24 +9,41 @@ use Illuminate\Http\Request;
 class FinancialReportController extends Controller
 {
     protected $financialReportService;
-    
+
     public function __construct(FinancialReportService $financialReportService)
     {
         $this->financialReportService = $financialReportService;
     }
-    
+
+    /**
+     * @return \Illuminate\Http\RedirectResponse|null
+     */
+    protected function redirectIfExcludedFromFinancialReports(BusinessEntity $businessEntity)
+    {
+        if ($businessEntity->isTenancyContactOnly()) {
+            return redirect()->route('financial-reports.index')
+                ->with('error', 'Financial reports are not available for this company because it is excluded from reporting (for example, a property manager kept for contact purposes only).');
+        }
+
+        return null;
+    }
+
     public function index()
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $businessEntities = BusinessEntity::all();
-        
+        $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+
         return view('financial-reports.index', compact('businessEntities'));
     }
-    
+
     public function profitLoss(BusinessEntity $businessEntity, Request $request)
     {
         $this->authorize('view', $businessEntity);
+
+        if ($r = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $r;
+        }
 
         $startDate = $request->get('start_date', now()->startOfYear());
         $endDate = $request->get('end_date', now()->endOfYear());
@@ -44,6 +61,10 @@ class FinancialReportController extends Controller
     {
         $this->authorize('view', $businessEntity);
 
+        if ($r = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $r;
+        }
+
         $asOfDate = $request->get('as_of_date', now());
         
         $report = $this->financialReportService->generateBalanceSheet(
@@ -57,6 +78,10 @@ class FinancialReportController extends Controller
     public function cashFlow(BusinessEntity $businessEntity, Request $request)
     {
         $this->authorize('view', $businessEntity);
+
+        if ($r = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $r;
+        }
 
         $startDate = $request->get('start_date', now()->startOfYear());
         $endDate = $request->get('end_date', now()->endOfYear());
@@ -73,6 +98,10 @@ class FinancialReportController extends Controller
     public function accountTransactions(BusinessEntity $businessEntity, Request $request)
     {
         $this->authorize('view', $businessEntity);
+
+        if ($r = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $r;
+        }
 
         $startDate  = $request->get('start_date', now()->startOfMonth()->toDateString());
         $endDate    = $request->get('end_date',   now()->endOfMonth()->toDateString());
@@ -93,6 +122,10 @@ class FinancialReportController extends Controller
     public function trackingCategories(BusinessEntity $businessEntity, Request $request)
     {
         $this->authorize('view', $businessEntity);
+
+        if ($r = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $r;
+        }
 
         $startDate = $request->get('start_date', now()->startOfYear());
         $endDate = $request->get('end_date', now()->endOfYear());

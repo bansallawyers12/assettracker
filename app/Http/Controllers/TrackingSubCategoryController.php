@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\BusinessEntity;
 use App\Models\TrackingCategory;
 use App\Models\TrackingSubCategory;
@@ -9,17 +10,21 @@ use Illuminate\Http\Request;
 
 class TrackingSubCategoryController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     public function create(BusinessEntity $businessEntity, TrackingCategory $trackingCategory)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         return view('tracking-sub-categories.create', compact('businessEntity', 'trackingCategory'));
     }
 
     public function store(Request $request, BusinessEntity $businessEntity, TrackingCategory $trackingCategory)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -42,14 +47,16 @@ class TrackingSubCategoryController extends Controller
     public function edit(BusinessEntity $businessEntity, TrackingCategory $trackingCategory, TrackingSubCategory $trackingSubCategory)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         return view('tracking-sub-categories.edit', compact('businessEntity', 'trackingCategory', 'trackingSubCategory'));
     }
 
     public function update(Request $request, BusinessEntity $businessEntity, TrackingCategory $trackingCategory, TrackingSubCategory $trackingSubCategory)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -71,7 +78,8 @@ class TrackingSubCategoryController extends Controller
     public function destroy(BusinessEntity $businessEntity, TrackingCategory $trackingCategory, TrackingSubCategory $trackingSubCategory)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         // Check if sub-category is being used
         if ($trackingSubCategory->transactions()->exists() || $trackingSubCategory->journalLines()->exists()) {
             return redirect()->route('business-entities.tracking-categories.show', [$businessEntity, $trackingCategory])

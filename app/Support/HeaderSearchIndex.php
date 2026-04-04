@@ -16,7 +16,7 @@ final class HeaderSearchIndex
      */
     public static function build(): array
     {
-        $businessEntities = BusinessEntity::query()->get();
+        $businessEntities = BusinessEntity::query()->operationalEntities()->get();
         $assets = Asset::query()
             ->whereIn('business_entity_id', $businessEntities->modelKeys())
             ->orderBy('name')

@@ -41,6 +41,9 @@
                                 </div>
                             </div>
                             <div id="real-estate-section" class="mt-4 space-y-4 {{ old('is_real_estate_managed') ? '' : 'hidden' }}">
+                                <p class="text-xs text-gray-600 dark:text-gray-400 bg-slate-50 dark:bg-slate-900/50 rounded-md px-3 py-2 border border-slate-200 dark:border-slate-700">
+                                    {{ __('Agencies you add here are stored as contacts (real estate agencies), not as your business entities. They will not appear in financial reports or your main company list.') }}
+                                </p>
                                 <input type="hidden" id="create_real_estate_company" name="create_real_estate_company" value="{{ old('create_real_estate_company') ? 1 : 0 }}">
 
                                 <div class="flex items-center justify-between gap-4">

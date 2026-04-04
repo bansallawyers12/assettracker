@@ -16,6 +16,7 @@ use App\Models\Person; // Added for date manipulation
 use App\Models\Reminder; // Added for logging
 use App\Models\Transaction; // Added for file storage
 use App\Services\DocumentUploadService;
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Support\TransactionGstResolver;
 use App\Support\TransactionPayerResolver;
 use Carbon\Carbon; // Added for handling validation exceptions
@@ -37,6 +38,8 @@ use Illuminate\View\View;
 
 class BusinessEntityController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     public function __construct(
         private DocumentUploadService $documentUploadService
     ) {}
@@ -211,11 +214,17 @@ class BusinessEntityController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
 
         $businessEntities = BusinessEntity::query()
+            ->operationalEntities()
             ->with('persons')
             ->orderBy('legal_name')
             ->get();
 
-        return view('business-entities.index', compact('businessEntities'));
+        $tenancyContactEntities = BusinessEntity::query()
+            ->where('exclude_from_financial_reports', true)
+            ->orderBy('legal_name')
+            ->get();
+
+        return view('business-entities.index', compact('businessEntities', 'tenancyContactEntities'));
     }
 
     /**
@@ -232,6 +241,7 @@ class BusinessEntityController extends Controller
             ->get();
 
         $businessEntities = BusinessEntity::query()
+            ->operationalEntities()
             ->where('entity_type', '!=', 'Trust')
             ->orderBy('legal_name')
             ->get();
@@ -278,8 +288,9 @@ class BusinessEntityController extends Controller
             'appointor_entity_id' => [
                 'nullable',
                 'required_if:appointor_type,entity',
-                Rule::exists('business_entities', 'id')->where('entity_type', '!=', 'Trust'),
+                BusinessEntity::ruleExistsOperationalAppointorCompany(),
             ],
+            'exclude_from_financial_reports' => 'nullable|boolean',
         ], [
             'trust_type.required_if' => 'Trust type is required when entity type is Trust.',
             'trust_establishment_date.required_if' => 'Trust establishment date is required when entity type is Trust.',
@@ -312,6 +323,7 @@ class BusinessEntityController extends Controller
                 'asic_renewal_date' => $request->asic_renewal_date,
                 'user_id' => auth()->id(), // Associate with the logged-in user
                 'status' => 'Active', // Default status
+                'exclude_from_financial_reports' => $request->boolean('exclude_from_financial_reports'),
             ]);
         } catch (QueryException $e) {
             Log::error('BusinessEntity store failed', [
@@ -381,7 +393,7 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $businessEntities = BusinessEntity::query()->get();
+        $businessEntities = BusinessEntity::query()->operationalEntities()->get();
         $assets = Asset::query()
             ->whereIn('business_entity_id', $businessEntities->modelKeys())
             ->orderBy('name')
@@ -509,6 +521,9 @@ class BusinessEntityController extends Controller
      */
     public function storeTransaction(Request $request, BusinessEntity $businessEntity)
     {
+        $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
@@ -519,14 +534,14 @@ class BusinessEntityController extends Controller
         $this->prepareTransactionUploadValidation($request, ['document', 'payment_document']);
 
         $request->validate(array_merge([
-            'business_entity_id' => 'nullable|exists:business_entities,id',
+            'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
             'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
-            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
+            'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => [
                 'nullable',
                 'integer',
@@ -547,6 +562,8 @@ class BusinessEntityController extends Controller
         $targetEntity = $request->filled('business_entity_id')
             ? BusinessEntity::findOrFail($request->integer('business_entity_id'))
             : $businessEntity;
+
+        $this->ensureOperationalForAccounting($targetEntity);
 
         $this->authorize('update', $targetEntity);
 
@@ -670,6 +687,8 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
+        $this->ensureOperationalForAccounting($businessEntity);
+
         // Authorization check
         if ($bankAccount->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized');
@@ -688,7 +707,7 @@ class BusinessEntityController extends Controller
             'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
-            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
+            'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => [
                 'nullable',
                 'integer',
@@ -822,6 +841,8 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('view', $businessEntity);
 
+        $this->ensureOperationalForAccounting($businessEntity);
+
         // Authorization check: ensure the transaction belongs to the business entity
         if ($transaction->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized action.');
@@ -843,6 +864,8 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
+        $this->ensureOperationalForAccounting($businessEntity);
+
         // Authorization check
         if ($transaction->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized action.');
@@ -860,7 +883,7 @@ class BusinessEntityController extends Controller
             'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
-            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
+            'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => [
                 'nullable',
                 'integer',
@@ -979,6 +1002,8 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
+        $this->ensureOperationalForAccounting($businessEntity);
+
         // Authorization checks
         if ($transaction->business_entity_id !== $businessEntity->id || $transaction->bank_account_id !== $bankAccount->id) {
             abort(403, 'Unauthorized action.');
@@ -996,7 +1021,7 @@ class BusinessEntityController extends Controller
             'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
-            'related_entity_id' => ['nullable', Rule::exists('business_entities', 'id')],
+            'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => [
                 'nullable',
                 'integer',
@@ -1076,6 +1101,8 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
+        $this->ensureOperationalForAccounting($businessEntity);
+
         // Authorization check
         if ($transaction->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized action.');
@@ -1114,6 +1141,10 @@ class BusinessEntityController extends Controller
     public function getBankAccounts(BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
+
+        if ($businessEntity->isTenancyContactOnly()) {
+            return response()->json([]);
+        }
 
         return response()->json($businessEntity->bankAccounts()->select('id', 'bank_name', 'nickname')->get());
     }
@@ -1206,6 +1237,7 @@ class BusinessEntityController extends Controller
             'phone_number' => 'required|string|max:15',
             'asic_renewal_date' => 'nullable|date',
             'status' => 'required|in:Active,Inactive,Deregistered',
+            'exclude_from_financial_reports' => 'nullable|boolean',
         ]);
 
         // Update the business entity with validated data
@@ -1222,6 +1254,7 @@ class BusinessEntityController extends Controller
             'phone_number' => $request->phone_number,
             'asic_renewal_date' => $request->asic_renewal_date,
             'status' => $request->status, // Update status
+            'exclude_from_financial_reports' => $request->boolean('exclude_from_financial_reports'),
         ]);
 
         // Redirect to the show page for the updated entity with success message
@@ -1239,6 +1272,8 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
+        $this->ensureOperationalForAccounting($businessEntity);
+
         return view('business-entities.bank-accounts.create', compact('businessEntity'));
     }
 
@@ -1250,6 +1285,8 @@ class BusinessEntityController extends Controller
     public function storeBankAccount(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
+
+        $this->ensureOperationalForAccounting($businessEntity);
 
         // Validate bank account details
         $request->validate([
@@ -1281,6 +1318,8 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
+        $this->ensureOperationalForAccounting($businessEntity);
+
         // Authorization: Ensure the bank account belongs to the specified business entity
         if ($bankAccount->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized action.');
@@ -1298,6 +1337,8 @@ class BusinessEntityController extends Controller
     public function updateBankAccount(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount)
     {
         $this->authorize('update', $businessEntity);
+
+        $this->ensureOperationalForAccounting($businessEntity);
 
         // Authorization check
         if ($bankAccount->business_entity_id !== $businessEntity->id) {
@@ -1333,6 +1374,8 @@ class BusinessEntityController extends Controller
     public function allocateTransaction(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount, BankStatementEntry $bankStatementEntry)
     {
         $this->authorize('update', $businessEntity);
+
+        $this->ensureOperationalForAccounting($businessEntity);
 
         // Authorization checks
         if ($bankStatementEntry->bank_account_id !== $bankAccount->id || $bankAccount->business_entity_id !== $businessEntity->id) {
@@ -1383,12 +1426,15 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
+        $this->ensureOperationalForAccounting($businessEntity);
+
         // Authorization check
         if ($bankAccount->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized');
         }
 
         $businessEntities = BusinessEntity::query()
+            ->operationalEntities()
             ->orderBy('legal_name')
             ->get();
 
@@ -1792,7 +1838,7 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $businessEntities = BusinessEntity::orderBy('legal_name')->get();
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $bankAccounts = BankAccount::with(['businessEntity', 'bankStatementEntries.transaction'])->get();
 
         return view('bank-accounts.index', compact('bankAccounts', 'businessEntities'));
@@ -1807,7 +1853,7 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $businessEntities = BusinessEntity::orderBy('legal_name')->get();
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
 
         $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries', 'asset', 'relatedEntity'])
             ->orderBy('date', 'desc');

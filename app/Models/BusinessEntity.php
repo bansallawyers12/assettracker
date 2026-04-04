@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\Rule;
 
 class BusinessEntity extends Model
 {
@@ -28,6 +29,7 @@ class BusinessEntity extends Model
         'asic_renewal_date',
         'user_id',
         'status',
+        'exclude_from_financial_reports',
     ];
 
     protected $casts = [
@@ -35,9 +37,53 @@ class BusinessEntity extends Model
         'trust_deed_date' => 'date',
         'trust_vesting_date' => 'date',
         'asic_renewal_date' => 'datetime',
+        'exclude_from_financial_reports' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    /**
+     * Your operating companies/trusts (excludes tenancy/property-manager contacts).
+     */
+    public function scopeOperationalEntities($query)
+    {
+        return $query->where('exclude_from_financial_reports', false);
+    }
+
+    /**
+     * Same as operational entities — included on reports index and in reporting queries.
+     */
+    public function scopeForFinancialReports($query)
+    {
+        return $query->operationalEntities();
+    }
+
+    public function isTenancyContactOnly(): bool
+    {
+        return (bool) ($this->attributes['exclude_from_financial_reports'] ?? false);
+    }
+
+    public function isOperationalEntity(): bool
+    {
+        return ! $this->isTenancyContactOnly();
+    }
+
+    /**
+     * Exists rule limited to operating entities (excludes tenancy/property-manager contacts).
+     */
+    public static function ruleExistsOperational(string $column = 'id'): \Illuminate\Validation\Rules\Exists
+    {
+        return Rule::exists('business_entities', $column)->where('exclude_from_financial_reports', false);
+    }
+
+    /**
+     * Appointor company for a trust (operating entity, not a trust record).
+     */
+    public static function ruleExistsOperationalAppointorCompany(): \Illuminate\Validation\Rules\Exists
+    {
+        return self::ruleExistsOperational()
+            ->where('entity_type', '!=', 'Trust');
+    }
 
     public function user()
     {

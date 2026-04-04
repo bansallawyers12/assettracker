@@ -36,8 +36,16 @@ class EntityPersonController extends Controller
             return redirect()->route('business-entities.index')->withErrors(['error' => 'Business entity not found. Please select a valid entity.']);
         }
 
+        if ($businessEntity->isTenancyContactOnly()) {
+            return redirect()->route('business-entities.show', $businessEntity)
+                ->withErrors(['error' => 'Company roles and officers apply to operating entities only, not tenancy or property manager contacts.']);
+        }
+
         $persons = Person::all();
-        $businessEntities = BusinessEntity::where('entity_type', '!=', 'Trust')->get(); // Exclude trusts to prevent circular references
+        $businessEntities = BusinessEntity::operationalEntities()
+            ->where('entity_type', '!=', 'Trust')
+            ->orderBy('legal_name')
+            ->get(); // Operating entities only; exclude trusts to prevent circular references
 
         return view('entity-persons.create', compact('businessEntity', 'persons', 'businessEntities'));
     }
@@ -52,9 +60,9 @@ class EntityPersonController extends Controller
 
         // Validate the request - IMPORTANT: No unique validation here to allow multiple roles
         $validated = $request->validate([
-            'business_entity_id' => 'required|exists:business_entities,id',
+            'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'person_id' => 'nullable|exists:persons,id',
-            'entity_trustee_id' => 'nullable|exists:business_entities,id',
+            'entity_trustee_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Appointor,Owner',
             'appointment_date' => 'required|date',
             'resignation_date' => 'nullable|date|after:appointment_date',
@@ -83,7 +91,7 @@ class EntityPersonController extends Controller
             'appointor_entity_id' => [
                 Rule::excludeIf(fn() => $request->role !== 'Appointor' || $request->appointor_type !== 'entity'),
                 'required',
-                Rule::exists('business_entities', 'id'),
+                BusinessEntity::ruleExistsOperationalAppointorCompany(),
             ],
         ], [
             'business_entity_id.required' => 'The business entity is required.',
@@ -208,7 +216,7 @@ class EntityPersonController extends Controller
      */
     public function edit(EntityPerson $entityPerson)
     {
-        $businessEntities = BusinessEntity::all();
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $persons = Person::all();
         return view('entity-persons.edit', compact('entityPerson', 'businessEntities', 'persons'));
     }
@@ -219,9 +227,9 @@ class EntityPersonController extends Controller
     public function update(Request $request, EntityPerson $entityPerson)
     {
         $validated = $request->validate([
-            'business_entity_id' => 'required|exists:business_entities,id',
+            'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'person_id' => 'nullable|exists:persons,id',
-            'entity_trustee_id' => 'nullable|exists:business_entities,id',
+            'entity_trustee_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Appointor,Owner',
             'appointment_date' => 'required|date',
             'resignation_date' => 'nullable|date|after:appointment_date',
@@ -243,7 +251,7 @@ class EntityPersonController extends Controller
             'appointor_entity_id' => [
                 Rule::excludeIf(fn() => $request->role !== 'Appointor' || $request->appointor_type !== 'entity'),
                 'required',
-                Rule::exists('business_entities', 'id'),
+                BusinessEntity::ruleExistsOperationalAppointorCompany(),
             ],
         ], [
             'appointor_type.required' => 'Appointor type is required when role is Appointor.',
@@ -334,7 +342,7 @@ class EntityPersonController extends Controller
      */
     public function createPerson()
     {
-        $businessEntities = BusinessEntity::all();
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         return view('persons.create', compact('businessEntities'));
     }
 
@@ -350,7 +358,7 @@ class EntityPersonController extends Controller
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
             'date_of_birth' => 'nullable|date',
-            'business_entity_id' => 'required|exists:business_entities,id',
+            'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'role' => 'required|string|max:255',
             'role_status' => 'required|in:Active,Inactive',
             'asic_due_date' => 'nullable|date',
