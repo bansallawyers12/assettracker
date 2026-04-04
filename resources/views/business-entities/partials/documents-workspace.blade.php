@@ -314,25 +314,30 @@
             const delBtn = document.getElementById(prefix + '-del-preview');
             let lastDocId = null;
 
+            function documentContentUrl(docId, download) {
+                const params = new URLSearchParams();
+                if (assetId !== '' && assetId != null) {
+                    params.set('asset_id', String(assetId));
+                }
+                if (download) {
+                    params.set('download', '1');
+                }
+                const q = params.toString();
+
+                return `${base}/documents/${docId}/content${q ? `?${q}` : ''}`;
+            }
+
             root.querySelectorAll('.doc-preview').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    const path = btn.dataset.path;
-                    fetch(`{{ route('documents.getLink') }}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                        },
-                        body: JSON.stringify({ path }),
-                    }).then(r => r.json()).then(data => {
-                        if (data.success && data.url) {
-                            frame.src = data.url;
-                            dl.href = data.url;
-                            dl.classList.remove('opacity-50', 'pointer-events-none');
-                            delBtn.classList.remove('opacity-50', 'pointer-events-none');
-                            lastDocId = btn.dataset.docId || null;
-                        }
-                    });
+                    const docId = btn.dataset.docId;
+                    if (!docId || !frame || !dl) {
+                        return;
+                    }
+                    frame.src = documentContentUrl(docId, false);
+                    dl.href = documentContentUrl(docId, true);
+                    dl.classList.remove('opacity-50', 'pointer-events-none');
+                    delBtn?.classList.remove('opacity-50', 'pointer-events-none');
+                    lastDocId = docId;
                 });
             });
 

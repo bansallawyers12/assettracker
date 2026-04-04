@@ -389,6 +389,96 @@ class DocumentController extends Controller
         return response()->json(['success' => true, 'url' => $url]);
     }
 
+    /**
+     * Stream document bytes from storage through the app so the browser gets a same-origin URL
+     * with inline disposition and a correct Content-Type (fixes empty PDF previews in iframes).
+     *
+     * Asset-scoped documents require ?asset_id={id} matching the row (workspace passes this).
+     * Entity-scoped documents (asset_id null) must not include asset_id (entity workspace omits it).
+     */
+    public function streamDocument(Request $request, BusinessEntity $businessEntity, Document $document)
+    {
+        $this->authorize('view', $businessEntity);
+        $this->authorize('view', $document);
+
+        if ((int) $document->business_entity_id !== (int) $businessEntity->id) {
+            abort(404);
+        }
+
+        if ($document->asset_id === null) {
+            if ($request->query->has('asset_id')) {
+                abort(404);
+            }
+        } elseif ((int) $request->query('asset_id') !== (int) $document->asset_id) {
+            abort(404);
+        }
+
+        if (! $document->path || ! Storage::disk('s3')->exists($document->path)) {
+            abort(404);
+        }
+
+        $name = $this->safeContentDispositionFilename($document->file_name, $document->path);
+        $mime = $this->resolveDocumentMimeType($document);
+        $headers = [
+            'Content-Type' => $mime,
+            'Cache-Control' => 'private, max-age=120',
+        ];
+
+        if ($request->boolean('download')) {
+            return Storage::disk('s3')->download($document->path, $name, $headers);
+        }
+
+        return Storage::disk('s3')->response($document->path, $name, $headers, 'inline');
+    }
+
+    /**
+     * @param  string|null  $fileName  Stored display name; may contain path separators or control chars from uploads.
+     */
+    private function safeContentDispositionFilename(?string $fileName, string $storagePath): string
+    {
+        $raw = ($fileName !== null && $fileName !== '') ? $fileName : basename($storagePath);
+        $raw = str_replace(["\r", "\n", "\0"], '', $raw);
+        $base = basename($raw);
+
+        return $base !== '' ? $base : 'document';
+    }
+
+    private function resolveDocumentMimeType(Document $document): string
+    {
+        $path = $document->path;
+        $fromDb = $document->filetype;
+
+        if (is_string($fromDb) && $fromDb !== '' && $fromDb !== 'application/octet-stream') {
+            return $fromDb;
+        }
+
+        $ext = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+        $map = [
+            'pdf' => 'application/pdf',
+            'jpg' => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            'bmp' => 'image/bmp',
+            'txt' => 'text/plain',
+            'csv' => 'text/csv',
+        ];
+
+        if (isset($map[$ext])) {
+            return $map[$ext];
+        }
+
+        try {
+            $detected = Storage::disk('s3')->mimeType($path);
+
+            return $detected ?: 'application/octet-stream';
+        } catch (\Throwable) {
+            return 'application/octet-stream';
+        }
+    }
+
     public function deleteFile(Request $request)
     {
         $request->validate([
