@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Mail\InvoiceReminderMail;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
@@ -13,10 +14,13 @@ use Illuminate\Validation\Rule;
 
 class InvoiceController extends Controller
 {
+	use EnsuresOperationalBusinessEntity;
+
 	public function index(?BusinessEntity $businessEntity = null)
 	{
 		if ($businessEntity) {
 			$this->authorize('view', $businessEntity);
+			$this->ensureOperationalForAccounting($businessEntity);
 
 			$invoices = Invoice::where('business_entity_id', $businessEntity->id)
 				->with(['asset'])
@@ -27,6 +31,7 @@ class InvoiceController extends Controller
 		}
 
 		$invoices = Invoice::query()
+			->whereIn('business_entity_id', BusinessEntity::query()->operationalEntities()->pluck('id'))
 			->with(['asset', 'businessEntity'])
 			->orderByDesc('issue_date')
 			->paginate(30);
@@ -37,6 +42,7 @@ class InvoiceController extends Controller
 	public function create(BusinessEntity $businessEntity)
 	{
 		$this->authorize('view', $businessEntity);
+		$this->ensureOperationalForAccounting($businessEntity);
 
 		return view('invoices.create', compact('businessEntity'));
 	}
@@ -44,6 +50,7 @@ class InvoiceController extends Controller
 	public function store(Request $request, BusinessEntity $businessEntity)
 	{
 		$this->authorize('update', $businessEntity);
+		$this->ensureOperationalForAccounting($businessEntity);
 
 		$data = $request->validate([
 			'invoice_number' => [
@@ -282,5 +289,6 @@ class InvoiceController extends Controller
 	private function authorizeInvoice(BusinessEntity $businessEntity, Invoice $invoice): void
 	{
 		abort_unless((int) $invoice->business_entity_id === (int) $businessEntity->id, 404);
+		$this->ensureOperationalForAccounting($businessEntity);
 	}
 }

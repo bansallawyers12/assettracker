@@ -21,6 +21,7 @@ class TransactionPayerResolver
     public static function payerOptions(): array
     {
         $entities = BusinessEntity::query()
+            ->operationalEntities()
             ->orderBy('legal_name')
             ->get();
 

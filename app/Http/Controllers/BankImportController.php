@@ -24,7 +24,7 @@ class BankImportController extends Controller
     
     public function index()
     {
-        $businessEntities = BusinessEntity::all();
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         
         return view('bank-import.index', compact('businessEntities'));
     }
@@ -41,6 +41,7 @@ class BankImportController extends Controller
 
         try {
             $businessEntity = BusinessEntity::findOrFail($businessEntityId);
+            abort_if($businessEntity->isTenancyContactOnly(), 403, 'Bank import is not available for tenancy or property-manager contacts.');
             $bankAccount = BankAccount::findOrFail($request->bank_account_id);
 
             // Verify bank account belongs to business entity

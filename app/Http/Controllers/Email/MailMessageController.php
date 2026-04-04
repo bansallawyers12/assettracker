@@ -235,7 +235,7 @@ class MailMessageController extends Controller
     public function allocateToBusinessEntity(Request $request, int $id)
     {
         $request->validate([
-            'business_entity_id' => 'required|exists:business_entities,id',
+            'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
         ]);
 
         $message = MailMessage::findOrFail($id);
@@ -428,7 +428,7 @@ class MailMessageController extends Controller
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
             'attachments.*' => 'nullable|file|max:10240', // Max 10MB per file
-            'business_entity_id' => 'nullable|exists:business_entities,id',
+            'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
         ]);
 
         try {
@@ -493,7 +493,7 @@ class MailMessageController extends Controller
             'bcc_email' => 'nullable|email',
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
-            'business_entity_id' => 'nullable|exists:business_entities,id',
+            'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'template_id' => 'nullable|exists:email_templates,id',
         ]);
 

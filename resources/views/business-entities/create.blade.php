@@ -203,6 +203,23 @@
                             <x-google-address-input name="registered_address" id="registered_address" :value="old('registered_address')" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" />
                             @error('registered_address') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                         </div>
+
+                        <div class="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                            <p class="font-medium">{{ __('Managing rentals?') }}</p>
+                            <p class="mt-1 text-blue-800">{{ __('Property managers and agencies should be added when you add a tenant on a property asset (not as a business entity here). Use the checkbox below only for legacy or special cases.') }}</p>
+                        </div>
+
+                        <div class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="hidden" name="exclude_from_financial_reports" value="0">
+                                <input type="checkbox" name="exclude_from_financial_reports" value="1" class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('exclude_from_financial_reports') ? 'checked' : '' }}>
+                                <span>
+                                    <span class="block text-sm font-medium text-gray-900">{{ __('This is a tenancy / property manager contact only') }}</span>
+                                    <span class="block text-xs text-gray-600 mt-1">{{ __('Exclude from your operating entity list, reports, and accounting pickers.') }}</span>
+                                </span>
+                            </label>
+                            @error('exclude_from_financial_reports') <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span> @enderror
+                        </div>
                         
                         <div class="mt-8 flex items-center justify-end">
                             <span class="text-sm text-gray-500 mr-4">* Required fields</span>

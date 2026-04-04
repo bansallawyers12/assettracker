@@ -103,7 +103,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Related Entity</label>
                             <select name="related_entity_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
                                 <option value="">Select Related Entity</option>
-                                @foreach(\App\Models\BusinessEntity::where('id', '!=', $transaction->business_entity_id)->get() as $entity)
+                                @foreach(\App\Models\BusinessEntity::operationalEntities()->where('id', '!=', $transaction->business_entity_id)->orderBy('legal_name')->get() as $entity)
                                     <option value="{{ $entity->id }}" {{ old('related_entity_id', $transaction->related_entity_id) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
                                 @endforeach
                             </select>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\Lease;
@@ -11,6 +12,8 @@ use Carbon\Carbon;
 
 class RentInvoiceController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     protected $rentInvoiceService;
 
     public function __construct(RentInvoiceService $rentInvoiceService)
@@ -24,7 +27,8 @@ class RentInvoiceController extends Controller
     public function index(BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         // Get upcoming rent invoices
         $upcomingInvoices = $this->rentInvoiceService->getUpcomingRentInvoices($businessEntity->id, 6);
         
@@ -57,7 +61,8 @@ class RentInvoiceController extends Controller
     public function generateAll(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $request->validate([
             'invoice_date' => 'nullable|date'
         ]);
@@ -81,6 +86,7 @@ class RentInvoiceController extends Controller
     public function generateForLease(Request $request, BusinessEntity $businessEntity, Lease $lease)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         abort_unless((int) $lease->asset->business_entity_id === (int) $businessEntity->id, 404);
 
@@ -107,6 +113,7 @@ class RentInvoiceController extends Controller
     public function preview(BusinessEntity $businessEntity, Lease $lease)
     {
         $this->authorize('view', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         abort_unless((int) $lease->asset->business_entity_id === (int) $businessEntity->id, 404);
 
@@ -131,7 +138,8 @@ class RentInvoiceController extends Controller
     public function getSuiteAssets(BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $assets = Asset::where('business_entity_id', $businessEntity->id)
             ->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
             ->where('status', 'Active')
@@ -147,7 +155,8 @@ class RentInvoiceController extends Controller
     public function getUpcomingInvoices(BusinessEntity $businessEntity, $months = 6)
     {
         $this->authorize('view', $businessEntity);
-        
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $upcomingInvoices = $this->rentInvoiceService->getUpcomingRentInvoices($businessEntity->id, $months);
         
         return response()->json($upcomingInvoices);

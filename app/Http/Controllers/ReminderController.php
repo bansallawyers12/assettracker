@@ -41,7 +41,10 @@ class ReminderController extends Controller
         }
 
         if ($request->has('entity')) {
-            $query->forBusinessEntity($request->entity);
+            $filterEntity = BusinessEntity::query()->find($request->entity);
+            if ($filterEntity && $filterEntity->isOperationalEntity()) {
+                $query->forBusinessEntity($request->entity);
+            }
         }
 
         if ($request->has('asset')) {
@@ -62,19 +65,24 @@ class ReminderController extends Controller
      */
     public function create(Request $request)
     {
-        $businessEntities = BusinessEntity::all();
-        $assets = Asset::with('businessEntity')->get();
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
+        $assets = Asset::query()
+            ->whereIn('business_entity_id', $businessEntities->modelKeys())
+            ->with('businessEntity')
+            ->get();
 
         $selectedEntity = null;
         $selectedAsset = null;
 
         if ($request->has('entity')) {
-            $selectedEntity = BusinessEntity::findOrFail($request->entity);
+            $candidate = BusinessEntity::findOrFail($request->entity);
+            $selectedEntity = $candidate->isTenancyContactOnly() ? null : $candidate;
         }
 
         if ($request->has('asset')) {
             $selectedAsset = Asset::findOrFail($request->asset);
-            $selectedEntity = $selectedAsset->businessEntity;
+            $owner = $selectedAsset->businessEntity;
+            $selectedEntity = ($owner && $owner->isOperationalEntity()) ? $owner : null;
         }
 
         return view('reminders.create', compact('businessEntities', 'assets', 'selectedEntity', 'selectedAsset'));
@@ -91,7 +99,7 @@ class ReminderController extends Controller
             'reminder_date' => 'required|date|after:now',
             'repeat_type' => 'required|in:none,monthly,quarterly,annual',
             'repeat_end_date' => 'nullable|date|after:reminder_date',
-            'business_entity_id' => 'nullable|exists:business_entities,id',
+            'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => 'nullable|exists:assets,id',
             'category' => 'nullable|string|max:50',
             'priority' => 'required|in:low,medium,high',
@@ -130,8 +138,11 @@ class ReminderController extends Controller
     {
         $this->authorize('update', $reminder);
         
-        $businessEntities = BusinessEntity::all();
-        $assets = Asset::with('businessEntity')->get();
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
+        $assets = Asset::query()
+            ->whereIn('business_entity_id', $businessEntities->modelKeys())
+            ->with('businessEntity')
+            ->get();
 
         return view('reminders.edit', compact('reminder', 'businessEntities', 'assets'));
     }
@@ -149,7 +160,7 @@ class ReminderController extends Controller
             'reminder_date' => 'required|date',
             'repeat_type' => 'required|in:none,monthly,quarterly,annual',
             'repeat_end_date' => 'nullable|date|after:reminder_date',
-            'business_entity_id' => 'nullable|exists:business_entities,id',
+            'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => 'nullable|exists:assets,id',
             'category' => 'nullable|string|max:50',
             'priority' => 'required|in:low,medium,high',
