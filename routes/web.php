@@ -162,8 +162,8 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/bank-import/entries', [BankImportController::class, 'entries'])->name('business-entities.bank-import.entries');
     Route::post('/business-entities/{businessEntity}/bank-import/save-matches', [BankImportController::class, 'saveMatches'])->name('business-entities.bank-import.save-matches');
 
-    // Chart of Accounts API
-    Route::get('/business-entities/{businessEntity}/chart-of-accounts', [ChartOfAccountController::class, 'getAccountsJson'])->name('business-entities.chart-of-accounts.api');
+    // Chart of Accounts JSON (must not share GET URI with the HTML resource index)
+    Route::get('/api/business-entities/{businessEntity}/chart-of-accounts', [ChartOfAccountController::class, 'getAccountsJson'])->name('business-entities.chart-of-accounts.api');
 
     // API for Asset Documents
     Route::get('/api/business-entities/{businessEntity}/assets/{asset}/documents', [DocumentController::class, 'fetchAssetFiles'])->name('api.asset-documents.fetch');

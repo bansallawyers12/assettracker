@@ -13,24 +13,34 @@ class ChartOfAccountController extends Controller
     {
         if ($businessEntity) {
             // Specific business entity view
-            $accounts = ChartOfAccount::where('business_entity_id', $businessEntity->id)
+            $accounts = ChartOfAccount::query()
+                ->with('businessEntity')
+                ->withCount('journalLines')
+                ->where('business_entity_id', $businessEntity->id)
                 ->orderBy('account_code')
                 ->get();
-                
-            return view('chart-of-accounts.index', compact('businessEntity', 'accounts'));
+
+            $businessEntities = BusinessEntity::query()->orderBy('legal_name')->get();
+
+            return view('chart-of-accounts.index', compact('businessEntity', 'accounts', 'businessEntities'));
         } else {
-            // Global view for all business entities
-            $businessEntities = \App\Models\BusinessEntity::all();
-            $accounts = collect();
-            
-            foreach ($businessEntities as $entity) {
-                $entityAccounts = ChartOfAccount::where('business_entity_id', $entity->id)
+            // Global view: all accounts across entities (single query + eager load)
+            $businessEntities = BusinessEntity::query()
+                ->orderBy('legal_name')
+                ->get();
+
+            if ($businessEntities->isEmpty()) {
+                $accounts = collect();
+            } else {
+                $accounts = ChartOfAccount::query()
+                    ->with('businessEntity')
+                    ->withCount('journalLines')
+                    ->whereIn('business_entity_id', $businessEntities->pluck('id'))
+                    ->orderBy('business_entity_id')
                     ->orderBy('account_code')
                     ->get();
-                $accounts = $accounts->merge($entityAccounts);
             }
-            
-            // Always pass businessEntity (null for global view) to maintain consistency
+
             return view('chart-of-accounts.index', compact('accounts', 'businessEntities', 'businessEntity'));
         }
     }
@@ -98,7 +108,7 @@ class ChartOfAccountController extends Controller
             'current_balance' => $request->opening_balance ?? 0
         ]);
         
-        return redirect()->route('chart-of-accounts.index', $businessEntity)
+        return redirect()->route('business-entities.chart-of-accounts.index', $businessEntity)
             ->with('success', 'Account created successfully!');
     }
     
@@ -133,7 +143,7 @@ class ChartOfAccountController extends Controller
         
         $chartOfAccount->update($request->all());
         
-        return redirect()->route('chart-of-accounts.index', $businessEntity)
+        return redirect()->route('business-entities.chart-of-accounts.index', $businessEntity)
             ->with('success', 'Account updated successfully!');
     }
     
@@ -141,13 +151,13 @@ class ChartOfAccountController extends Controller
     {
         // Check if account has journal lines
         if ($chartOfAccount->journalLines()->count() > 0) {
-            return redirect()->route('chart-of-accounts.index', $businessEntity)
+            return redirect()->route('business-entities.chart-of-accounts.index', $businessEntity)
                 ->with('error', 'Cannot delete account with existing journal entries. Deactivate instead.');
         }
         
         $chartOfAccount->delete();
         
-        return redirect()->route('chart-of-accounts.index', $businessEntity)
+        return redirect()->route('business-entities.chart-of-accounts.index', $businessEntity)
             ->with('success', 'Account deleted successfully!');
     }
 }
