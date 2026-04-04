@@ -18,8 +18,11 @@ class FinancialReportService
     private function normalizeEntityIds($businessEntityIdOrIds): array
     {
         $ids = is_array($businessEntityIdOrIds) ? $businessEntityIdOrIds : [(int) $businessEntityIdOrIds];
-        $ids = array_values(array_unique(array_map('intval', $ids)));
-        if ($ids === [] || in_array(0, $ids, true)) {
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $ids),
+            fn (int $id) => $id > 0
+        )));
+        if ($ids === []) {
             throw new \InvalidArgumentException('At least one valid business entity id is required.');
         }
 

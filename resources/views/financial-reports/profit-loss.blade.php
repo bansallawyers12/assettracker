@@ -51,11 +51,14 @@
             {{-- Quick period shortcuts --}}
             <div class="flex items-end gap-1.5 flex-wrap">
                 @php
+                    $today = \Carbon\Carbon::now();
+                    $lastMonth = $today->copy()->subMonthNoOverflow();
+                    $lastYear = $today->copy()->subYear();
                     $shortcuts = [
-                        'This month'  => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
-                        'Last month'  => [now()->subMonthNoOverflow()->startOfMonth()->toDateString(), now()->subMonthNoOverflow()->endOfMonth()->toDateString()],
-                        'This year'   => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
-                        'Last year'   => [now()->subYear()->startOfYear()->toDateString(), now()->subYear()->endOfYear()->toDateString()],
+                        'This month' => [$today->copy()->startOfMonth()->toDateString(), $today->copy()->endOfMonth()->toDateString()],
+                        'Last month' => [$lastMonth->copy()->startOfMonth()->toDateString(), $lastMonth->copy()->endOfMonth()->toDateString()],
+                        'This year' => [$today->copy()->startOfYear()->toDateString(), $today->copy()->endOfYear()->toDateString()],
+                        'Last year' => [$lastYear->copy()->startOfYear()->toDateString(), $lastYear->copy()->endOfYear()->toDateString()],
                     ];
                 @endphp
                 @foreach($shortcuts as $label => [$s, $e])

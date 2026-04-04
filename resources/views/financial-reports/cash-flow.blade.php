@@ -18,9 +18,10 @@
         }
         return $q;
     };
+    $today = \Carbon\Carbon::now();
     $shortcuts = [
-        'This month' => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
-        'This year' => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+        'This month' => [$today->copy()->startOfMonth()->toDateString(), $today->copy()->endOfMonth()->toDateString()],
+        'This year' => [$today->copy()->startOfYear()->toDateString(), $today->copy()->endOfYear()->toDateString()],
     ];
 @endphp
 
