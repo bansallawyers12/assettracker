@@ -218,13 +218,13 @@ class TransactionPostingService
 
     private function findAccount(string $code): ?ChartOfAccount
     {
-        return ChartOfAccount::where('account_code', $code)
-            ->first();
+        return ChartOfAccount::where('account_code', $code)->where('is_active', true)->first()
+            ?? ChartOfAccount::where('account_code', $code)->first();
     }
 
     private function findByName(string $name): ?ChartOfAccount
     {
-        return ChartOfAccount::where('account_name', $name)
-            ->first();
+        return ChartOfAccount::where('account_name', $name)->where('is_active', true)->first()
+            ?? ChartOfAccount::where('account_name', $name)->first();
     }
 }

@@ -14,6 +14,9 @@ use Illuminate\Database\Seeder;
  *   - New accounts: created with zero balances.
  *
  *   php artisan db:seed --class=ChartOfAccountSeeder
+ *
+ * The optional `php artisan xero:chart-of-accounts` command uses overlapping account codes;
+ * run it with `--force` only if you intend to replace metadata on those codes.
  */
 class ChartOfAccountSeeder extends Seeder
 {

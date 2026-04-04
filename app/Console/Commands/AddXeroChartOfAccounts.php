@@ -7,12 +7,14 @@ use Illuminate\Console\Command;
 
 class AddXeroChartOfAccounts extends Command
 {
-    protected $signature = 'xero:chart-of-accounts';
+    protected $signature = 'xero:chart-of-accounts {--force : Overwrite name, type, and category for accounts that already exist}';
 
-    protected $description = 'Add or update Xero-style default accounts on the global chart of accounts';
+    protected $description = 'Add Xero-style default accounts to the global chart (existing codes are skipped unless --force)';
 
     public function handle(): int
     {
+        $force = $this->option('force');
+
         $accounts = [
             ['1000', 'Bank', 'asset', 'current_asset'],
             ['1100', 'Accounts Receivable', 'asset', 'current_asset'],
@@ -66,13 +68,15 @@ class AddXeroChartOfAccounts extends Command
             $existing = ChartOfAccount::where('account_code', $account[0])->first();
 
             if ($existing) {
-                $existing->update([
-                    'account_name' => $account[1],
-                    'account_type' => $account[2],
-                    'account_category' => $account[3],
-                    'is_active' => true,
-                ]);
-                $updated++;
+                if ($force) {
+                    $existing->update([
+                        'account_name' => $account[1],
+                        'account_type' => $account[2],
+                        'account_category' => $account[3],
+                        'is_active' => true,
+                    ]);
+                    $updated++;
+                }
             } else {
                 ChartOfAccount::create([
                     'account_code' => $account[0],
@@ -87,7 +91,12 @@ class AddXeroChartOfAccounts extends Command
             }
         }
 
-        $this->info("Created: {$created} accounts, Updated: {$updated} accounts");
+        $skipped = count($accounts) - $created - $updated;
+        $this->info("Created: {$created}, updated (with --force): {$updated}, skipped (already exist): {$skipped}");
+
+        if (! $force && $skipped > 0) {
+            $this->comment('Use --force to overwrite existing rows (may conflict with your canonical chart, e.g. code 4100).');
+        }
 
         return self::SUCCESS;
     }

@@ -1267,6 +1267,16 @@
             function populateAccountSelects(accounts) {
                 const accountSelects = document.querySelectorAll('.account-select');
                 accountSelects.forEach(select => {
+                    const keepFirst = select.querySelector('option[value=""]');
+                    select.innerHTML = '';
+                    if (keepFirst) {
+                        select.appendChild(keepFirst);
+                    } else {
+                        const placeholder = document.createElement('option');
+                        placeholder.value = '';
+                        placeholder.textContent = 'Select account...';
+                        select.appendChild(placeholder);
+                    }
                     accounts.forEach(account => {
                         const option = document.createElement('option');
                         option.value = account.id;

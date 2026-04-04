@@ -84,8 +84,8 @@ class InvoicePostingService
 		foreach ($invoice->lines as $line) {
 			$account = null;
 			if ($line->account_code) {
-				$account = ChartOfAccount::where('account_code', $line->account_code)
-					->first();
+				$account = ChartOfAccount::where('account_code', $line->account_code)->where('is_active', true)->first()
+					?? ChartOfAccount::where('account_code', $line->account_code)->first();
 			}
 			if (!$account) {
 				$account = $this->findAccount('4100')
@@ -119,14 +119,14 @@ class InvoicePostingService
 
 	private function findAccount(string $code): ?ChartOfAccount
 	{
-		return ChartOfAccount::where('account_code', $code)
-			->first();
+		return ChartOfAccount::where('account_code', $code)->where('is_active', true)->first()
+			?? ChartOfAccount::where('account_code', $code)->first();
 	}
 
 	private function findByName(string $name): ?ChartOfAccount
 	{
-		return ChartOfAccount::where('account_name', $name)
-			->first();
+		return ChartOfAccount::where('account_name', $name)->where('is_active', true)->first()
+			?? ChartOfAccount::where('account_name', $name)->first();
 	}
 
 	/**

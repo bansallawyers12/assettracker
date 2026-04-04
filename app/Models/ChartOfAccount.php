@@ -59,4 +59,9 @@ class ChartOfAccount extends Model
     {
         return $this->hasMany(JournalLine::class);
     }
+
+    public function assetsAsDepreciationAccount()
+    {
+        return $this->hasMany(Asset::class, 'depreciation_account_id');
+    }
 }

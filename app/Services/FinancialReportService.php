@@ -260,12 +260,17 @@ class FinancialReportService
             }
 
             $amount = $line->debit_amount - $line->credit_amount;
-            
-            if ($line->chartOfAccount->account_type === 'income') {
+
+            $coa = $line->chartOfAccount;
+            if (! $coa) {
+                continue;
+            }
+
+            if ($coa->account_type === 'income') {
                 $trackingData[$categoryName]['sub_categories'][$subCategoryName]['income'] += $amount;
                 $trackingData[$categoryName]['total_income'] += $amount;
                 $totalIncome += $amount;
-            } elseif ($line->chartOfAccount->account_type === 'expense') {
+            } elseif ($coa->account_type === 'expense') {
                 $trackingData[$categoryName]['sub_categories'][$subCategoryName]['expenses'] += abs($amount);
                 $trackingData[$categoryName]['total_expenses'] += abs($amount);
                 $totalExpenses += abs($amount);
