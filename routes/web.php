@@ -229,6 +229,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('/business-entities/{businessEntity}/chart-of-accounts', [ChartOfAccountController::class, 'store'])->name('business-entities.chart-of-accounts.store');
     Route::match(['put', 'patch'], '/business-entities/{businessEntity}/chart-of-accounts/{chart_of_account}', [ChartOfAccountController::class, 'update'])->name('business-entities.chart-of-accounts.update');
     Route::delete('/business-entities/{businessEntity}/chart-of-accounts/{chart_of_account}', [ChartOfAccountController::class, 'destroy'])->name('business-entities.chart-of-accounts.destroy');
+    Route::get('business-entities/{businessEntity}/financial-reports/account-transactions', [FinancialReportController::class, 'accountTransactions'])->name('business-entities.financial-reports.account-transactions');
     Route::get('business-entities/{businessEntity}/financial-reports/profit-loss', [FinancialReportController::class, 'profitLoss'])->name('business-entities.financial-reports.profit-loss');
     Route::get('business-entities/{businessEntity}/financial-reports/balance-sheet', [FinancialReportController::class, 'balanceSheet'])->name('business-entities.financial-reports.balance-sheet');
     Route::get('business-entities/{businessEntity}/financial-reports/cash-flow', [FinancialReportController::class, 'cashFlow'])->name('business-entities.financial-reports.cash-flow');

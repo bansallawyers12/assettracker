@@ -14,47 +14,154 @@ class FinancialReportService
     public function generateProfitLoss($businessEntityId, $startDate, $endDate)
     {
         $businessEntity = BusinessEntity::findOrFail($businessEntityId);
-        
+
+        $categoryLabels = [
+            'operating_income' => 'Operating Income',
+            'other_income'     => 'Other Income',
+            'operating_expense'=> 'Operating Expenses',
+            'other_expense'    => 'Other Expenses',
+        ];
+
         $incomeAccounts = ChartOfAccount::where('account_type', 'income')
             ->where('is_active', true)
+            ->orderBy('account_code')
             ->get();
 
         $expenseAccounts = ChartOfAccount::where('account_type', 'expense')
             ->where('is_active', true)
+            ->orderBy('account_code')
             ->get();
 
-        $income = $this->calculateAccountBalances($incomeAccounts, $startDate, $endDate, $businessEntityId);
-        $expenses = $this->calculateAccountBalances($expenseAccounts, $startDate, $endDate, $businessEntityId);
-        
+        $income   = $this->calculateAccountBalancesGrouped($incomeAccounts,   $startDate, $endDate, $businessEntityId, $categoryLabels);
+        $expenses = $this->calculateAccountBalancesGrouped($expenseAccounts, $startDate, $endDate, $businessEntityId, $categoryLabels);
+
         return [
             'business_entity' => $businessEntity,
             'period' => [
                 'start_date' => $startDate,
-                'end_date' => $endDate
+                'end_date'   => $endDate,
             ],
-            'income' => $income,
-            'expenses' => $expenses,
-            'net_profit' => $income['total'] - $expenses['total']
+            'income'     => $income,
+            'expenses'   => $expenses,
+            'net_profit' => $income['total'] - $expenses['total'],
         ];
     }
     
     public function generateBalanceSheet($businessEntityId, $asOfDate)
     {
         $businessEntity = BusinessEntity::findOrFail($businessEntityId);
-        
-        $assets = $this->getAccountBalancesByType($businessEntityId, 'asset', $asOfDate);
-        $liabilities = $this->getAccountBalancesByType($businessEntityId, 'liability', $asOfDate);
-        $equity = $this->getAccountBalancesByType($businessEntityId, 'equity', $asOfDate);
-        
+
+        $categoryLabels = [
+            'current_asset'        => 'Current Assets',
+            'fixed_asset'          => 'Fixed Assets',
+            'intangible_asset'     => 'Intangible Assets',
+            'current_liability'    => 'Current Liabilities',
+            'long_term_liability'  => 'Long-term Liabilities',
+            'equity'               => 'Equity',
+        ];
+
+        $assets      = $this->getAccountBalancesByTypeGrouped($businessEntityId, 'asset',      $asOfDate, $categoryLabels);
+        $liabilities = $this->getAccountBalancesByTypeGrouped($businessEntityId, 'liability',  $asOfDate, $categoryLabels);
+        $equity      = $this->getAccountBalancesByTypeGrouped($businessEntityId, 'equity',     $asOfDate, $categoryLabels);
+
+        return [
+            'business_entity'          => $businessEntity,
+            'as_of_date'               => $asOfDate,
+            'assets'                   => $assets,
+            'liabilities'              => $liabilities,
+            'equity'                   => $equity,
+            'total_assets'             => $assets['total'],
+            'total_liabilities_equity' => $liabilities['total'] + $equity['total'],
+        ];
+    }
+
+    public function generateAccountTransactions($businessEntityId, $startDate, $endDate, array $accountIds = [])
+    {
+        $businessEntity = BusinessEntity::findOrFail($businessEntityId);
+
+        $start = Carbon::parse($startDate);
+        $end   = Carbon::parse($endDate);
+
+        $accountQuery = ChartOfAccount::where('is_active', true)
+            ->orderBy('account_code');
+
+        if (!empty($accountIds)) {
+            $accountQuery->whereIn('id', $accountIds);
+        }
+
+        $accounts    = $accountQuery->get();
+        $accountData = [];
+
+        foreach ($accounts as $account) {
+            // Opening balance = cumulative balance up to day before start
+            $openingBalance = $this->getAccountBalanceAsOf(
+                $account->id,
+                $start->copy()->subDay()->toDateString(),
+                $businessEntityId
+            );
+
+            // Lines within the selected period
+            $lines = JournalLine::where('chart_of_account_id', $account->id)
+                ->whereHas('journalEntry', function ($q) use ($businessEntityId, $start, $end) {
+                    $q->where('business_entity_id', $businessEntityId)
+                      ->whereDate('entry_date', '>=', $start)
+                      ->whereDate('entry_date', '<=', $end)
+                      ->where('is_posted', true);
+                })
+                ->with(['journalEntry'])
+                ->get()
+                ->sortBy('journalEntry.entry_date');
+
+            // Skip accounts with nothing to show (unless explicitly filtered)
+            if ($lines->isEmpty() && $openingBalance == 0 && empty($accountIds)) {
+                continue;
+            }
+
+            $runningBalance = $openingBalance;
+            $lineData       = [];
+
+            foreach ($lines as $line) {
+                $debit          = (float) ($line->debit_amount  ?? 0);
+                $credit         = (float) ($line->credit_amount ?? 0);
+                $runningBalance += $debit - $credit;
+
+                $lineData[] = [
+                    'date'            => $line->journalEntry->entry_date,
+                    'reference'       => $line->journalEntry->reference_number,
+                    'source_type'     => $line->journalEntry->source_type,
+                    'description'     => $line->description ?: $line->journalEntry->description,
+                    'debit'           => $debit  > 0 ? $debit  : null,
+                    'credit'          => $credit > 0 ? $credit : null,
+                    'running_balance' => $runningBalance,
+                ];
+            }
+
+            $accountData[] = [
+                'account'         => $account,
+                'opening_balance' => $openingBalance,
+                'lines'           => $lineData,
+                'closing_balance' => $runningBalance,
+            ];
+        }
+
         return [
             'business_entity' => $businessEntity,
-            'as_of_date' => $asOfDate,
-            'assets' => $assets,
-            'liabilities' => $liabilities,
-            'equity' => $equity,
-            'total_assets' => $assets['total'],
-            'total_liabilities_equity' => $liabilities['total'] + $equity['total']
+            'period'          => [
+                'start_date' => $startDate,
+                'end_date'   => $endDate,
+            ],
+            'accounts'        => $accountData,
+            'filters'         => [
+                'account_ids' => $accountIds,
+            ],
         ];
+    }
+
+    public function getActiveChartOfAccounts(): \Illuminate\Database\Eloquent\Collection
+    {
+        return ChartOfAccount::where('is_active', true)
+            ->orderBy('account_code')
+            ->get();
     }
     
     public function generateCashFlow($businessEntityId, $startDate, $endDate)
@@ -98,45 +205,83 @@ class FinancialReportService
     private function calculateAccountBalances($accounts, $startDate, $endDate, $businessEntityId)
     {
         $results = [];
-        $total = 0;
+        $total   = 0;
 
         foreach ($accounts as $account) {
-            $balance = $this->getAccountBalance($account->id, $startDate, $endDate, $businessEntityId);
-            $results[] = [
-                'account' => $account,
-                'balance' => $balance
-            ];
-            $total += $balance;
+            $balance   = $this->getAccountBalance($account->id, $startDate, $endDate, $businessEntityId);
+            $results[] = ['account' => $account, 'balance' => $balance];
+            $total    += $balance;
         }
-        
-        return [
-            'accounts' => $results,
-            'total' => $total
-        ];
+
+        return ['accounts' => $results, 'total' => $total];
     }
-    
+
+    private function calculateAccountBalancesGrouped($accounts, $startDate, $endDate, $businessEntityId, array $categoryLabels = [])
+    {
+        $byCategory = [];
+        $total      = 0;
+
+        foreach ($accounts as $account) {
+            $balance  = $this->getAccountBalance($account->id, $startDate, $endDate, $businessEntityId);
+            $catKey   = $account->account_category ?? 'general';
+            $catLabel = $categoryLabels[$catKey] ?? ucwords(str_replace('_', ' ', $catKey));
+
+            if (!isset($byCategory[$catKey])) {
+                $byCategory[$catKey] = ['label' => $catLabel, 'accounts' => [], 'subtotal' => 0];
+            }
+
+            $byCategory[$catKey]['accounts'][]  = ['account' => $account, 'balance' => $balance];
+            $byCategory[$catKey]['subtotal']    += $balance;
+            $total                              += $balance;
+        }
+
+        return ['by_category' => $byCategory, 'total' => $total];
+    }
+
     private function getAccountBalancesByType($businessEntityId, $accountType, $asOfDate)
     {
         $accounts = ChartOfAccount::where('account_type', $accountType)
             ->where('is_active', true)
+            ->orderBy('account_code')
             ->get();
 
         $results = [];
-        $total = 0;
+        $total   = 0;
 
         foreach ($accounts as $account) {
-            $balance = $this->getAccountBalanceAsOf($account->id, $asOfDate, $businessEntityId);
-            $results[] = [
-                'account' => $account,
-                'balance' => $balance
-            ];
-            $total += $balance;
+            $balance   = $this->getAccountBalanceAsOf($account->id, $asOfDate, $businessEntityId);
+            $results[] = ['account' => $account, 'balance' => $balance];
+            $total    += $balance;
         }
-        
-        return [
-            'accounts' => $results,
-            'total' => $total
-        ];
+
+        return ['accounts' => $results, 'total' => $total];
+    }
+
+    private function getAccountBalancesByTypeGrouped($businessEntityId, $accountType, $asOfDate, array $categoryLabels = [])
+    {
+        $accounts = ChartOfAccount::where('account_type', $accountType)
+            ->where('is_active', true)
+            ->orderBy('account_code')
+            ->get();
+
+        $byCategory = [];
+        $total      = 0;
+
+        foreach ($accounts as $account) {
+            $balance  = $this->getAccountBalanceAsOf($account->id, $asOfDate, $businessEntityId);
+            $catKey   = $account->account_category ?? $accountType;
+            $catLabel = $categoryLabels[$catKey] ?? ucwords(str_replace('_', ' ', $catKey));
+
+            if (!isset($byCategory[$catKey])) {
+                $byCategory[$catKey] = ['label' => $catLabel, 'accounts' => [], 'subtotal' => 0];
+            }
+
+            $byCategory[$catKey]['accounts'][]  = ['account' => $account, 'balance' => $balance];
+            $byCategory[$catKey]['subtotal']    += $balance;
+            $total                              += $balance;
+        }
+
+        return ['by_category' => $byCategory, 'total' => $total];
     }
     
     private function getAccountBalancesByCategory($businessEntityId, $accountCategory, $startDate, $endDate)

@@ -110,3 +110,48 @@
     color: rgb(199 210 254);
     background: rgb(31 41 55);
 }
+
+/* ── Financial report print styles ─────────────────────────────── */
+@media print {
+    /* Hide nav, toolbar, filter bar */
+    nav,
+    .print\:hidden {
+        display: none !important;
+    }
+
+    body {
+        background: white !important;
+        font-size: 11pt;
+    }
+
+    /* Remove shadows / borders from the report panel */
+    .print\:shadow-none {
+        box-shadow: none !important;
+    }
+
+    .print\:border-0 {
+        border: none !important;
+    }
+
+    /* Ensure report fills the page */
+    .print\:px-0 {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .print\:py-0,
+    .print\:py-4 {
+        padding-top: 1rem !important;
+        padding-bottom: 0 !important;
+    }
+
+    /* Page breaks: keep account blocks together */
+    table {
+        page-break-inside: auto;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+}

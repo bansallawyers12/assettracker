@@ -1,93 +1,200 @@
-<x-app-layout>
-<div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-3xl font-bold text-gray-900">Profit & Loss Statement - {{ $report['business_entity']->legal_name }}</h1>
-        <div class="flex space-x-4">
-            <a href="{{ route('business-entities.financial-reports.balance-sheet', $report['business_entity']) }}" 
-               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Balance Sheet
-            </a>
-            <a href="{{ route('business-entities.financial-reports.cash-flow', $report['business_entity']) }}" 
-               class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                Cash Flow
-            </a>
-        </div>
-    </div>
+@php
+    $entity    = $report['business_entity'];
+    $startDate = \Carbon\Carbon::parse($report['period']['start_date']);
+    $endDate   = \Carbon\Carbon::parse($report['period']['end_date']);
+    $subtitle  = $startDate->format('j M Y') . ' – ' . $endDate->format('j M Y');
+    $formRoute = route('business-entities.financial-reports.profit-loss', $entity);
+    $netProfit = $report['net_profit'];
+    $isProfit  = $netProfit >= 0;
+@endphp
 
-    <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-        <div class="px-4 py-5 sm:px-6">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">Period</h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500">
-                {{ \Carbon\Carbon::parse($report['period']['start_date'])->format('M d, Y') }} - 
-                {{ \Carbon\Carbon::parse($report['period']['end_date'])->format('M d, Y') }}
-            </p>
-        </div>
-    </div>
+<x-report-shell
+    title="Profit &amp; Loss"
+    :subtitle="$subtitle"
+    :entity="$entity">
 
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <!-- Income Section -->
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div class="px-4 py-5 sm:px-6 bg-green-50">
-                <h3 class="text-lg leading-6 font-medium text-green-900">Income</h3>
+    {{-- ── Filter toolbar ────────────────────────────────────────────── --}}
+    <x-slot:filters>
+        <form method="GET" action="{{ $formRoute }}"
+              class="flex flex-wrap items-end gap-3">
+
+            <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-600">Date range</label>
+                <div class="flex items-center gap-2">
+                    <input type="date" name="start_date"
+                           value="{{ $startDate->toDateString() }}"
+                           class="border border-gray-300 rounded text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
+                    <span class="text-gray-400 text-sm">–</span>
+                    <input type="date" name="end_date"
+                           value="{{ $endDate->toDateString() }}"
+                           class="border border-gray-300 rounded text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
+                </div>
             </div>
-            <div class="border-t border-gray-200">
-                <dl>
-                    @foreach($report['income']['accounts'] as $account)
-                        <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b border-gray-200">
-                            <dt class="text-sm font-medium text-gray-500">{{ $account['account']->account_name }}</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 text-right">
-                                ${{ number_format($account['balance'], 2) }}
-                            </dd>
-                        </div>
-                    @endforeach
-                    <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 bg-green-50 font-bold">
-                        <dt class="text-sm font-medium text-green-900">Total Income</dt>
-                        <dd class="mt-1 text-sm text-green-900 sm:mt-0 sm:col-span-2 text-right">
-                            ${{ number_format($report['income']['total'], 2) }}
-                        </dd>
+
+            {{-- Quick period shortcuts --}}
+            <div class="flex items-end gap-1.5 flex-wrap">
+                @php
+                    $shortcuts = [
+                        'This month'  => [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()],
+                        'Last month'  => [now()->subMonthNoOverflow()->startOfMonth()->toDateString(), now()->subMonthNoOverflow()->endOfMonth()->toDateString()],
+                        'This year'   => [now()->startOfYear()->toDateString(), now()->endOfYear()->toDateString()],
+                        'Last year'   => [now()->subYear()->startOfYear()->toDateString(), now()->subYear()->endOfYear()->toDateString()],
+                    ];
+                @endphp
+                @foreach($shortcuts as $label => [$s, $e])
+                    <a href="{{ $formRoute }}?start_date={{ $s }}&end_date={{ $e }}"
+                       class="text-xs border border-gray-300 rounded px-2 py-1.5 text-gray-600 hover:bg-white hover:border-blue-400 hover:text-blue-600 transition-colors bg-transparent whitespace-nowrap">
+                        {{ $label }}
+                    </a>
+                @endforeach
+            </div>
+
+            <div class="flex items-end gap-2 ml-auto">
+                <div class="relative" x-data="{ open: false }">
+                    <button type="button"
+                            @click="open = !open"
+                            class="inline-flex items-center gap-1.5 border border-gray-300 bg-white text-gray-700 text-sm font-medium rounded px-3 py-1.5 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <svg class="h-4 w-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z"/>
+                        </svg>
+                        More
+                    </button>
+                    <div x-show="open" @click.outside="open = false"
+                         class="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white border border-gray-200 z-20 text-sm">
+                        <a href="javascript:window.print()"
+                           class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Print / PDF</a>
                     </div>
-                </dl>
-            </div>
-        </div>
+                </div>
 
-        <!-- Expenses Section -->
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div class="px-4 py-5 sm:px-6 bg-red-50">
-                <h3 class="text-lg leading-6 font-medium text-red-900">Expenses</h3>
+                <button type="submit"
+                        class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                    Update
+                </button>
             </div>
-            <div class="border-t border-gray-200">
-                <dl>
-                    @foreach($report['expenses']['accounts'] as $account)
-                        <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 border-b border-gray-200">
-                            <dt class="text-sm font-medium text-gray-500">{{ $account['account']->account_name }}</dt>
-                            <dd class="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2 text-right">
-                                ${{ number_format($account['balance'], 2) }}
-                            </dd>
-                        </div>
+        </form>
+    </x-slot:filters>
+
+    {{-- ── Report statement ────────────────────────────────────────── --}}
+    <div class="pb-6">
+        <table class="w-full text-sm">
+            <tbody>
+
+                {{-- ─── INCOME ──────────────────────────────────────── --}}
+                <tr class="border-t border-gray-100">
+                    <td colspan="2"
+                        class="px-6 pt-5 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
+                        Income
+                    </td>
+                </tr>
+
+                @foreach($report['income']['by_category'] as $catKey => $catGroup)
+                    <tr class="border-t border-gray-100">
+                        <td colspan="2" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                            {{ $catGroup['label'] }}
+                        </td>
+                    </tr>
+                    @foreach($catGroup['accounts'] as $row)
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-8 py-1.5 text-gray-700">
+                                {{ $row['account']->account_code }}
+                                &nbsp;{{ $row['account']->account_name }}
+                            </td>
+                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-36">
+                                {{ number_format(abs($row['balance']), 2) }}
+                            </td>
+                        </tr>
                     @endforeach
-                    <div class="px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 bg-red-50 font-bold">
-                        <dt class="text-sm font-medium text-red-900">Total Expenses</dt>
-                        <dd class="mt-1 text-sm text-red-900 sm:mt-0 sm:col-span-2 text-right">
-                            ${{ number_format($report['expenses']['total'], 2) }}
-                        </dd>
-                    </div>
-                </dl>
-            </div>
-        </div>
+                    <tr class="border-t border-gray-100">
+                        <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
+                            Total {{ $catGroup['label'] }}
+                        </td>
+                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-36 border-t border-gray-200">
+                            {{ number_format(abs($catGroup['subtotal']), 2) }}
+                        </td>
+                    </tr>
+                @endforeach
+
+                @if(empty($report['income']['by_category']))
+                    <tr>
+                        <td colspan="2" class="px-8 py-2 text-xs text-gray-400 italic">No income accounts found</td>
+                    </tr>
+                @endif
+
+                {{-- Total Income --}}
+                <tr class="border-t-2 border-gray-200">
+                    <td class="px-6 py-2.5 text-sm font-bold text-gray-800">Total Income</td>
+                    <td class="px-6 py-2.5 text-right text-sm font-bold text-gray-900 tabular-nums w-36">
+                        {{ number_format(abs($report['income']['total']), 2) }}
+                    </td>
+                </tr>
+
+                {{-- spacer --}}
+                <tr><td colspan="2" class="py-3"></td></tr>
+
+                {{-- ─── LESS: EXPENSES ──────────────────────────────── --}}
+                <tr class="border-t border-gray-100">
+                    <td colspan="2"
+                        class="px-6 pt-2 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
+                        Less: Expenses
+                    </td>
+                </tr>
+
+                @foreach($report['expenses']['by_category'] as $catKey => $catGroup)
+                    <tr class="border-t border-gray-100">
+                        <td colspan="2" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                            {{ $catGroup['label'] }}
+                        </td>
+                    </tr>
+                    @foreach($catGroup['accounts'] as $row)
+                        <tr class="hover:bg-gray-50 transition-colors">
+                            <td class="px-8 py-1.5 text-gray-700">
+                                {{ $row['account']->account_code }}
+                                &nbsp;{{ $row['account']->account_name }}
+                            </td>
+                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-36">
+                                {{ number_format($row['balance'], 2) }}
+                            </td>
+                        </tr>
+                    @endforeach
+                    <tr class="border-t border-gray-100">
+                        <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
+                            Total {{ $catGroup['label'] }}
+                        </td>
+                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-36 border-t border-gray-200">
+                            {{ number_format($catGroup['subtotal'], 2) }}
+                        </td>
+                    </tr>
+                @endforeach
+
+                @if(empty($report['expenses']['by_category']))
+                    <tr>
+                        <td colspan="2" class="px-8 py-2 text-xs text-gray-400 italic">No expense accounts found</td>
+                    </tr>
+                @endif
+
+                {{-- Total Expenses --}}
+                <tr class="border-t-2 border-gray-200">
+                    <td class="px-6 py-2.5 text-sm font-bold text-gray-800">Total Expenses</td>
+                    <td class="px-6 py-2.5 text-right text-sm font-bold text-gray-900 tabular-nums w-36">
+                        {{ number_format($report['expenses']['total'], 2) }}
+                    </td>
+                </tr>
+
+                {{-- spacer --}}
+                <tr><td colspan="2" class="py-3"></td></tr>
+
+                {{-- ─── NET PROFIT / LOSS ───────────────────────────── --}}
+                <tr class="{{ $isProfit ? 'bg-green-50 border-t-2 border-green-200' : 'bg-red-50 border-t-2 border-red-200' }}">
+                    <td class="px-6 py-4 text-sm font-bold {{ $isProfit ? 'text-green-800' : 'text-red-800' }}">
+                        {{ $isProfit ? 'Net Profit' : 'Net Loss' }}
+                    </td>
+                    <td class="px-6 py-4 text-right text-sm font-bold {{ $isProfit ? 'text-green-800' : 'text-red-800' }} tabular-nums w-36">
+                        {{ $isProfit ? '' : '(' }}{{ number_format(abs($netProfit), 2) }}{{ $isProfit ? '' : ')' }}
+                    </td>
+                </tr>
+
+            </tbody>
+        </table>
     </div>
 
-    <!-- Net Profit/Loss -->
-    <div class="mt-8 bg-white shadow overflow-hidden sm:rounded-lg">
-        <div class="px-4 py-5 sm:px-6 {{ $report['net_profit'] >= 0 ? 'bg-green-50' : 'bg-red-50' }}">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg leading-6 font-medium {{ $report['net_profit'] >= 0 ? 'text-green-900' : 'text-red-900' }}">
-                    {{ $report['net_profit'] >= 0 ? 'Net Profit' : 'Net Loss' }}
-                </h3>
-                <span class="text-2xl font-bold {{ $report['net_profit'] >= 0 ? 'text-green-900' : 'text-red-900' }}">
-                    ${{ number_format(abs($report['net_profit']), 2) }}
-                </span>
-            </div>
-        </div>
-    </div>
-</div>
-</x-app-layout>
+</x-report-shell>
