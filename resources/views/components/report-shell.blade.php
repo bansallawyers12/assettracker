@@ -1,7 +1,8 @@
 @props([
-    'title'    => '',
+    'title' => '',
     'subtitle' => null,
-    'entity'   => null,
+    'entity' => null,
+    'entityScopeLabel' => null,
 ])
 
 <x-app-layout>
@@ -15,6 +16,11 @@
                        class="text-blue-600 hover:underline font-medium truncate max-w-xs">
                         {{ $entity->legal_name }}
                     </a>
+                    <svg class="h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                @elseif($entityScopeLabel)
+                    <span class="text-gray-600 font-medium truncate max-w-md">{{ $entityScopeLabel }}</span>
                     <svg class="h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
@@ -54,6 +60,8 @@
                 <p class="text-base font-bold text-gray-900">{{ $title }}</p>
                 @if($entity)
                     <p class="text-sm text-gray-700 mt-0.5 font-medium">{{ $entity->legal_name }}</p>
+                @elseif($entityScopeLabel)
+                    <p class="text-sm text-gray-700 mt-0.5 font-medium">{{ $entityScopeLabel }}</p>
                 @endif
                 @if($subtitle)
                     <p class="text-sm text-gray-500 mt-0.5">{{ $subtitle }}</p>

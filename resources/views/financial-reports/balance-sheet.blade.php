@@ -1,20 +1,37 @@
 @php
-    $entity   = $report['business_entity'];
+    $entity = $report['business_entity'];
+    $entities = $report['business_entities'];
+    $isConsolidated = $report['is_consolidated'] ?? false;
+    $entityScopeLabel = $isConsolidated
+        ? 'Consolidated — ' . $entities->pluck('legal_name')->implode(', ')
+        : null;
     $asOfDate = \Carbon\Carbon::parse($report['as_of_date']);
     $subtitle = 'As at ' . $asOfDate->format('j M Y');
-    $formRoute= route('business-entities.financial-reports.balance-sheet', $entity);
+    $formRoute = route('financial-reports.balance-sheet');
+    $reportQuery = function (array $merge = []) use ($report) {
+        $q = array_merge($merge, ['scope' => $report['forms_scope'] ?? 'all']);
+        if (($report['forms_scope'] ?? 'all') === 'selected') {
+            foreach ($report['forms_entity_ids'] ?? [] as $id) {
+                $q['entity_ids'][] = (int) $id;
+            }
+        }
+        return $q;
+    };
     $balanced = abs($report['total_assets'] - $report['total_liabilities_equity']) < 0.01;
 @endphp
 
 <x-report-shell
     title="Balance Sheet"
     :subtitle="$subtitle"
-    :entity="$entity">
+    :entity="$entity"
+    :entity-scope-label="$entityScopeLabel">
 
     {{-- ── Filter toolbar ────────────────────────────────────────────── --}}
     <x-slot:filters>
         <form method="GET" action="{{ $formRoute }}"
               class="flex flex-wrap items-end gap-3">
+
+            @include('financial-reports.partials.report-scope-fields', ['report' => $report])
 
             <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-gray-600">Date</label>
@@ -35,7 +52,7 @@
                     ];
                 @endphp
                 @foreach($bsShortcuts as $label => $date)
-                    <a href="{{ $formRoute }}?as_of_date={{ $date }}"
+                    <a href="{{ route('financial-reports.balance-sheet', $reportQuery(['as_of_date' => $date])) }}"
                        class="text-xs border border-gray-300 rounded px-2 py-1.5 text-gray-600 hover:bg-white hover:border-blue-400 hover:text-blue-600 transition-colors bg-transparent whitespace-nowrap">
                         {{ $label }}
                     </a>
@@ -224,7 +241,7 @@
                 @if(!$balanced)
                     <tr class="bg-red-50">
                         <td colspan="2" class="px-6 py-2 text-xs text-red-700 font-medium">
-                            ⚠ Out of balance by
+                            Warning: out of balance by
                             ${{ number_format(abs($report['total_assets'] - $report['total_liabilities_equity']), 2) }}
                         </td>
                     </tr>

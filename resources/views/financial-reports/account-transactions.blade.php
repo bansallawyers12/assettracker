@@ -1,20 +1,37 @@
 @php
-    $entity    = $report['business_entity'];
+    $entity = $report['business_entity'];
+    $entities = $report['business_entities'];
+    $isConsolidated = $report['is_consolidated'] ?? false;
+    $entityScopeLabel = $isConsolidated
+        ? 'Consolidated — ' . $entities->pluck('legal_name')->implode(', ')
+        : null;
     $startDate = \Carbon\Carbon::parse($report['period']['start_date']);
-    $endDate   = \Carbon\Carbon::parse($report['period']['end_date']);
-    $subtitle  = $startDate->format('j M Y') . ' – ' . $endDate->format('j M Y');
-    $formRoute = route('business-entities.financial-reports.account-transactions', $entity);
+    $endDate = \Carbon\Carbon::parse($report['period']['end_date']);
+    $subtitle = $startDate->format('j M Y') . ' – ' . $endDate->format('j M Y');
+    $formRoute = route('financial-reports.account-transactions');
+    $reportQuery = function (array $merge = []) use ($report) {
+        $q = array_merge($merge, ['scope' => $report['forms_scope'] ?? 'all']);
+        if (($report['forms_scope'] ?? 'all') === 'selected') {
+            foreach ($report['forms_entity_ids'] ?? [] as $id) {
+                $q['entity_ids'][] = (int) $id;
+            }
+        }
+        return $q;
+    };
 @endphp
 
 <x-report-shell
     title="Account Transactions"
     :subtitle="$subtitle"
-    :entity="$entity">
+    :entity="$entity"
+    :entity-scope-label="$entityScopeLabel">
 
     {{-- ── Filter toolbar ────────────────────────────────────────────── --}}
     <x-slot:filters>
         <form method="GET" action="{{ $formRoute }}"
               class="flex flex-wrap items-end gap-3 relative">
+
+            @include('financial-reports.partials.report-scope-fields', ['report' => $report])
 
             {{-- Account dropdown with checkboxes (Xero-style) --}}
             @php
@@ -158,6 +175,9 @@
                     <thead>
                         <tr class="border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wide">
                             <th class="px-6 py-2 text-left w-28">Date</th>
+                            @if($isConsolidated)
+                                <th class="px-4 py-2 text-left min-w-[7rem]">Entity</th>
+                            @endif
                             <th class="px-4 py-2 text-left w-32">Source</th>
                             <th class="px-4 py-2 text-left w-32">Reference</th>
                             <th class="px-4 py-2 text-left">Description</th>
@@ -170,6 +190,9 @@
                         {{-- Opening balance row --}}
                         <tr class="border-b border-gray-50 text-gray-500 italic text-xs">
                             <td class="px-6 py-2 text-left">Opening</td>
+                            @if($isConsolidated)
+                                <td class="px-4 py-2 text-gray-400">—</td>
+                            @endif
                             <td class="px-4 py-2" colspan="5"></td>
                             <td class="px-4 py-2 text-right font-medium text-gray-700">
                                 {{ number_format($accountGroup['opening_balance'], 2) }}
@@ -182,6 +205,11 @@
                                     <td class="px-6 py-2 text-gray-600 whitespace-nowrap">
                                         {{ \Carbon\Carbon::parse($line['date'])->format('j M Y') }}
                                     </td>
+                                    @if($isConsolidated)
+                                        <td class="px-4 py-2 text-gray-600 text-xs truncate max-w-[10rem]" title="{{ $line['entity_name'] ?? '' }}">
+                                            {{ $line['entity_name'] ?? '–' }}
+                                        </td>
+                                    @endif
                                     <td class="px-4 py-2 text-gray-500 capitalize">
                                         {{ $line['source_type'] ?? '–' }}
                                     </td>
@@ -213,13 +241,13 @@
                             @endforeach
                         @else
                             <tr class="border-b border-gray-50">
-                                <td colspan="7" class="px-6 py-2 text-xs text-gray-400 italic">No transactions in this period</td>
+                                <td colspan="{{ $isConsolidated ? 8 : 7 }}" class="px-6 py-2 text-xs text-gray-400 italic">No transactions in this period</td>
                             </tr>
                         @endif
 
                         {{-- Closing balance row --}}
                         <tr class="border-t border-gray-200 bg-gray-50 font-semibold">
-                            <td class="px-6 py-2.5 text-gray-600 text-xs uppercase tracking-wide" colspan="6">
+                            <td class="px-6 py-2.5 text-gray-600 text-xs uppercase tracking-wide" colspan="{{ $isConsolidated ? 7 : 6 }}">
                                 Closing Balance
                             </td>
                             <td class="px-4 py-2.5 text-right text-sm
