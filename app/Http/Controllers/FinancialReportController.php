@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Services\FinancialReportService;
 use App\Models\BusinessEntity;
+use App\Services\FinancialReportService;
 use Illuminate\Http\Request;
 
 class FinancialReportController extends Controller
 {
-    protected $financialReportService;
+    protected FinancialReportService $financialReportService;
 
     public function __construct(FinancialReportService $financialReportService)
     {
@@ -28,6 +28,54 @@ class FinancialReportController extends Controller
         return null;
     }
 
+    /**
+     * @return array<int>|null  null = invalid “selected” with no entities
+     */
+    protected function resolveReportEntityIds(Request $request): ?array
+    {
+        $allowed = BusinessEntity::forFinancialReports()
+            ->orderBy('legal_name')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($allowed === []) {
+            return [];
+        }
+
+        if ($request->input('scope') === 'selected') {
+            $requested = array_values(array_unique(array_map('intval', (array) $request->input('entity_ids', []))));
+            $requested = array_values(array_intersect($requested, $allowed));
+
+            return $requested === [] ? null : $requested;
+        }
+
+        return $allowed;
+    }
+
+    /**
+     * @param  array<int>  $resolvedEntityIds
+     */
+    protected function mergeReportFormScope(array $report, Request $request, array $resolvedEntityIds): array
+    {
+        if ($request->input('scope') === 'selected' || $request->filled('entity_ids')) {
+            $report['forms_scope'] = 'selected';
+            $report['forms_entity_ids'] = $resolvedEntityIds;
+        } else {
+            $report['forms_scope'] = 'all';
+            $report['forms_entity_ids'] = [];
+        }
+
+        return $report;
+    }
+
+    protected function redirectInvalidReportScope(): \Illuminate\Http\RedirectResponse
+    {
+        return redirect()->route('financial-reports.index')
+            ->with('error', 'Choose at least one entity, or select “All reporting entities”.');
+    }
+
     public function index()
     {
         $this->authorize('viewAny', BusinessEntity::class);
@@ -35,6 +83,25 @@ class FinancialReportController extends Controller
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
 
         return view('financial-reports.index', compact('businessEntities'));
+    }
+
+    public function profitLossHub(Request $request)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+        $ids = $this->resolveReportEntityIds($request);
+        if ($ids === null) {
+            return $this->redirectInvalidReportScope();
+        }
+        if ($ids === []) {
+            return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
+        }
+
+        $startDate = $request->get('start_date', now()->startOfYear());
+        $endDate = $request->get('end_date', now()->endOfYear());
+        $report = $this->financialReportService->generateProfitLoss($ids, $startDate, $endDate);
+        $report = $this->mergeReportFormScope($report, $request, $ids);
+
+        return view('financial-reports.profit-loss', compact('report'));
     }
 
     public function profitLoss(BusinessEntity $businessEntity, Request $request)
@@ -45,18 +112,32 @@ class FinancialReportController extends Controller
             return $r;
         }
 
-        $startDate = $request->get('start_date', now()->startOfYear());
-        $endDate = $request->get('end_date', now()->endOfYear());
-        
-        $report = $this->financialReportService->generateProfitLoss(
-            $businessEntity->id, 
-            $startDate, 
-            $endDate
-        );
-        
-        return view('financial-reports.profit-loss', compact('report'));
+        $request->merge([
+            'scope' => 'selected',
+            'entity_ids' => [(int) $businessEntity->id],
+        ]);
+
+        return $this->profitLossHub($request);
     }
-    
+
+    public function balanceSheetHub(Request $request)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+        $ids = $this->resolveReportEntityIds($request);
+        if ($ids === null) {
+            return $this->redirectInvalidReportScope();
+        }
+        if ($ids === []) {
+            return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
+        }
+
+        $asOfDate = $request->get('as_of_date', now());
+        $report = $this->financialReportService->generateBalanceSheet($ids, $asOfDate);
+        $report = $this->mergeReportFormScope($report, $request, $ids);
+
+        return view('financial-reports.balance-sheet', compact('report'));
+    }
+
     public function balanceSheet(BusinessEntity $businessEntity, Request $request)
     {
         $this->authorize('view', $businessEntity);
@@ -65,16 +146,33 @@ class FinancialReportController extends Controller
             return $r;
         }
 
-        $asOfDate = $request->get('as_of_date', now());
-        
-        $report = $this->financialReportService->generateBalanceSheet(
-            $businessEntity->id, 
-            $asOfDate
-        );
-        
-        return view('financial-reports.balance-sheet', compact('report'));
+        $request->merge([
+            'scope' => 'selected',
+            'entity_ids' => [(int) $businessEntity->id],
+        ]);
+
+        return $this->balanceSheetHub($request);
     }
-    
+
+    public function cashFlowHub(Request $request)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+        $ids = $this->resolveReportEntityIds($request);
+        if ($ids === null) {
+            return $this->redirectInvalidReportScope();
+        }
+        if ($ids === []) {
+            return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
+        }
+
+        $startDate = $request->get('start_date', now()->startOfYear());
+        $endDate = $request->get('end_date', now()->endOfYear());
+        $report = $this->financialReportService->generateCashFlow($ids, $startDate, $endDate);
+        $report = $this->mergeReportFormScope($report, $request, $ids);
+
+        return view('financial-reports.cash-flow', compact('report'));
+    }
+
     public function cashFlow(BusinessEntity $businessEntity, Request $request)
     {
         $this->authorize('view', $businessEntity);
@@ -83,18 +181,42 @@ class FinancialReportController extends Controller
             return $r;
         }
 
-        $startDate = $request->get('start_date', now()->startOfYear());
-        $endDate = $request->get('end_date', now()->endOfYear());
-        
-        $report = $this->financialReportService->generateCashFlow(
-            $businessEntity->id, 
-            $startDate, 
-            $endDate
-        );
-        
-        return view('financial-reports.cash-flow', compact('report'));
+        $request->merge([
+            'scope' => 'selected',
+            'entity_ids' => [(int) $businessEntity->id],
+        ]);
+
+        return $this->cashFlowHub($request);
     }
-    
+
+    public function accountTransactionsHub(Request $request)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+        $ids = $this->resolveReportEntityIds($request);
+        if ($ids === null) {
+            return $this->redirectInvalidReportScope();
+        }
+        if ($ids === []) {
+            return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
+        }
+
+        $startDate = $request->get('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->get('end_date', now()->endOfMonth()->toDateString());
+        $accountIds = array_filter((array) $request->get('account_ids', []));
+
+        $report = $this->financialReportService->generateAccountTransactions(
+            $ids,
+            $startDate,
+            $endDate,
+            $accountIds
+        );
+        $report = $this->mergeReportFormScope($report, $request, $ids);
+
+        $allAccounts = $this->financialReportService->getActiveChartOfAccounts();
+
+        return view('financial-reports.account-transactions', compact('report', 'allAccounts'));
+    }
+
     public function accountTransactions(BusinessEntity $businessEntity, Request $request)
     {
         $this->authorize('view', $businessEntity);
@@ -103,20 +225,42 @@ class FinancialReportController extends Controller
             return $r;
         }
 
-        $startDate  = $request->get('start_date', now()->startOfMonth()->toDateString());
-        $endDate    = $request->get('end_date',   now()->endOfMonth()->toDateString());
-        $accountIds = array_filter((array) $request->get('account_ids', []));
+        $request->merge([
+            'scope' => 'selected',
+            'entity_ids' => [(int) $businessEntity->id],
+        ]);
 
-        $report   = $this->financialReportService->generateAccountTransactions(
-            $businessEntity->id,
+        return $this->accountTransactionsHub($request);
+    }
+
+    public function trackingCategoriesHub(Request $request)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+        $ids = $this->resolveReportEntityIds($request);
+        if ($ids === null) {
+            return $this->redirectInvalidReportScope();
+        }
+        if ($ids === []) {
+            return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
+        }
+
+        $startDate = $request->get('start_date', now()->startOfYear());
+        $endDate = $request->get('end_date', now()->endOfYear());
+        $trackingCategoryId = $request->get('tracking_category_id');
+        $trackingSubCategoryId = $request->get('tracking_sub_category_id');
+
+        $report = $this->financialReportService->generateTrackingCategoryReport(
+            $ids,
             $startDate,
             $endDate,
-            $accountIds
+            $trackingCategoryId,
+            $trackingSubCategoryId
         );
+        $report = $this->mergeReportFormScope($report, $request, $ids);
 
-        $allAccounts = $this->financialReportService->getActiveChartOfAccounts();
+        $trackingCategories = $this->financialReportService->getTrackingCategories($ids);
 
-        return view('financial-reports.account-transactions', compact('report', 'allAccounts'));
+        return view('financial-reports.tracking-categories', compact('report', 'trackingCategories'));
     }
 
     public function trackingCategories(BusinessEntity $businessEntity, Request $request)
@@ -127,21 +271,11 @@ class FinancialReportController extends Controller
             return $r;
         }
 
-        $startDate = $request->get('start_date', now()->startOfYear());
-        $endDate = $request->get('end_date', now()->endOfYear());
-        $trackingCategoryId = $request->get('tracking_category_id');
-        $trackingSubCategoryId = $request->get('tracking_sub_category_id');
-        
-        $report = $this->financialReportService->generateTrackingCategoryReport(
-            $businessEntity->id, 
-            $startDate, 
-            $endDate,
-            $trackingCategoryId,
-            $trackingSubCategoryId
-        );
-        
-        $trackingCategories = $this->financialReportService->getTrackingCategories($businessEntity->id);
-        
-        return view('financial-reports.tracking-categories', compact('report', 'trackingCategories'));
+        $request->merge([
+            'scope' => 'selected',
+            'entity_ids' => [(int) $businessEntity->id],
+        ]);
+
+        return $this->trackingCategoriesHub($request);
     }
 }

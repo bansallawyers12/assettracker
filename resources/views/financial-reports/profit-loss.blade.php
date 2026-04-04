@@ -1,22 +1,39 @@
 @php
-    $entity    = $report['business_entity'];
+    $entity = $report['business_entity'];
+    $entities = $report['business_entities'];
+    $isConsolidated = $report['is_consolidated'] ?? false;
+    $entityScopeLabel = $isConsolidated
+        ? 'Consolidated — ' . $entities->pluck('legal_name')->implode(', ')
+        : null;
     $startDate = \Carbon\Carbon::parse($report['period']['start_date']);
-    $endDate   = \Carbon\Carbon::parse($report['period']['end_date']);
-    $subtitle  = $startDate->format('j M Y') . ' – ' . $endDate->format('j M Y');
-    $formRoute = route('business-entities.financial-reports.profit-loss', $entity);
+    $endDate = \Carbon\Carbon::parse($report['period']['end_date']);
+    $subtitle = $startDate->format('j M Y') . ' – ' . $endDate->format('j M Y');
+    $formRoute = route('financial-reports.profit-loss');
+    $reportQuery = function (array $merge = []) use ($report) {
+        $q = array_merge($merge, ['scope' => $report['forms_scope'] ?? 'all']);
+        if (($report['forms_scope'] ?? 'all') === 'selected') {
+            foreach ($report['forms_entity_ids'] ?? [] as $id) {
+                $q['entity_ids'][] = (int) $id;
+            }
+        }
+        return $q;
+    };
     $netProfit = $report['net_profit'];
-    $isProfit  = $netProfit >= 0;
+    $isProfit = $netProfit >= 0;
 @endphp
 
 <x-report-shell
     title="Profit & Loss"
     :subtitle="$subtitle"
-    :entity="$entity">
+    :entity="$entity"
+    :entity-scope-label="$entityScopeLabel">
 
     {{-- ── Filter toolbar ────────────────────────────────────────────── --}}
     <x-slot:filters>
         <form method="GET" action="{{ $formRoute }}"
               class="flex flex-wrap items-end gap-3">
+
+            @include('financial-reports.partials.report-scope-fields', ['report' => $report])
 
             <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-gray-600">Date range</label>
@@ -42,7 +59,7 @@
                     ];
                 @endphp
                 @foreach($shortcuts as $label => [$s, $e])
-                    <a href="{{ $formRoute }}?start_date={{ $s }}&end_date={{ $e }}"
+                    <a href="{{ route('financial-reports.profit-loss', $reportQuery(['start_date' => $s, 'end_date' => $e])) }}"
                        class="text-xs border border-gray-300 rounded px-2 py-1.5 text-gray-600 hover:bg-white hover:border-blue-400 hover:text-blue-600 transition-colors bg-transparent whitespace-nowrap">
                         {{ $label }}
                     </a>

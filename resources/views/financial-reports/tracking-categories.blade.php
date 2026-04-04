@@ -5,9 +5,15 @@
     <div class="max-w-7xl mx-auto">
         <div class="mb-6">
             <h1 class="text-3xl font-bold text-gray-900">Tracking Categories Report</h1>
-            <p class="text-gray-600 mt-2">{{ $report['business_entity']->legal_name }}</p>
+            <p class="text-gray-600 mt-2">
+                @if($report['is_consolidated'] ?? false)
+                    Consolidated — {{ $report['business_entities']->pluck('legal_name')->implode(', ') }}
+                @else
+                    {{ $report['business_entity']?->legal_name ?? '' }}
+                @endif
+            </p>
             <p class="text-sm text-gray-500">
-                {{ \Carbon\Carbon::parse($report['period']['start_date'])->format('M j, Y') }} - 
+                {{ \Carbon\Carbon::parse($report['period']['start_date'])->format('M j, Y') }} -
                 {{ \Carbon\Carbon::parse($report['period']['end_date'])->format('M j, Y') }}
             </p>
         </div>
@@ -16,7 +22,8 @@
         <div class="bg-white shadow sm:rounded-lg mb-6">
             <div class="px-4 py-5 sm:p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Filters</h3>
-                <form method="GET" action="{{ route('business-entities.financial-reports.tracking-categories', $report['business_entity']) }}" class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                <form method="GET" action="{{ route('financial-reports.tracking-categories') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                    @include('financial-reports.partials.report-scope-fields', ['report' => $report])
                     <div>
                         <label for="start_date" class="block text-sm font-medium text-gray-700">Start Date</label>
                         <input type="date" 
@@ -40,9 +47,13 @@
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             <option value="">All Categories</option>
                             @foreach($trackingCategories as $category)
-                                <option value="{{ $category->id }}" 
+                                <option value="{{ $category->id }}"
                                         {{ request('tracking_category_id') == $category->id ? 'selected' : '' }}>
-                                    {{ $category->name }}
+                                    @if($report['is_consolidated'] ?? false)
+                                        {{ $category->name }} — {{ $category->businessEntity->legal_name ?? '' }}
+                                    @else
+                                        {{ $category->name }}
+                                    @endif
                                 </option>
                             @endforeach
                         </select>

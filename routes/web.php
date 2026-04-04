@@ -260,6 +260,11 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/transactions', [BusinessEntityController::class, 'transactionsIndex'])->name('transactions.index');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
+    Route::get('/financial-reports/profit-loss', [FinancialReportController::class, 'profitLossHub'])->name('financial-reports.profit-loss');
+    Route::get('/financial-reports/balance-sheet', [FinancialReportController::class, 'balanceSheetHub'])->name('financial-reports.balance-sheet');
+    Route::get('/financial-reports/cash-flow', [FinancialReportController::class, 'cashFlowHub'])->name('financial-reports.cash-flow');
+    Route::get('/financial-reports/account-transactions', [FinancialReportController::class, 'accountTransactionsHub'])->name('financial-reports.account-transactions');
+    Route::get('/financial-reports/tracking-categories', [FinancialReportController::class, 'trackingCategoriesHub'])->name('financial-reports.tracking-categories');
     Route::get('/bank-import', [BankImportController::class, 'index'])->name('bank-import.index');
 });
 
