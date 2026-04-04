@@ -24,6 +24,25 @@
 
     <div class="entity-show-page py-6 bg-gray-50 dark:bg-gray-800 min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            @if (session('success'))
+                <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200" role="alert">
+                    {{ session('success') }}
+                </div>
+            @endif
+            @if (session('error'))
+                <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200" role="alert">
+                    {{ session('error') }}
+                </div>
+            @endif
+            @if ($errors->any())
+                <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200" role="alert">
+                    <ul class="list-disc list-inside space-y-1">
+                        @foreach ($errors->all() as $err)
+                            <li>{{ $err }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
             <div class="flex flex-col lg:flex-row gap-6">
                 <!-- Left Sidebar: Business Details -->
                 <div class="w-full lg:w-80 flex-shrink-0">
