@@ -97,9 +97,16 @@ class TransactionPostingService
         $gstAmount = $parts['gst'];
         $amountNet = $parts['net'];
 
-        $cashAccount = $this->findAccount($businessEntityId, '1000'); // Cash at Bank
-        $gstPayable = $this->findByName($businessEntityId, 'GST Payable') ?? $this->findAccount($businessEntityId, '2200');
-        $gstReceivable = $this->findByName($businessEntityId, 'GST Receivable') ?? $this->findAccount($businessEntityId, '1300');
+        $cashAccount = $this->findAccount($businessEntityId, '1100')
+            ?? $this->findAccount($businessEntityId, '1000');
+        $gstPayable = $this->findByName($businessEntityId, 'GST Payable')
+            ?? $this->findByName($businessEntityId, 'GST Clearing')
+            ?? $this->findAccount($businessEntityId, '2100')
+            ?? $this->findAccount($businessEntityId, '2200');
+        $gstReceivable = $this->findByName($businessEntityId, 'GST Receivable')
+            ?? $this->findByName($businessEntityId, 'GST Clearing')
+            ?? $this->findAccount($businessEntityId, '2100')
+            ?? $this->findAccount($businessEntityId, '1300');
 
         // GL counter-account per transaction type.
         // Director loan types require balance-sheet accounts not in a standard CoA seed,
@@ -107,36 +114,41 @@ class TransactionPostingService
         $mapping = [
             // Income
             'rental_income' => $this->findByName($businessEntityId, 'Rental Income') ?? $this->findAccount($businessEntityId, '4100'),
-            'reimbursement_of_expenses' => $this->findByName($businessEntityId, 'Other Income') ?? $this->findAccount($businessEntityId, '4000'),
+            'reimbursement_of_expenses' => $this->findByName($businessEntityId, 'Reimbursement of Expenses') ?? $this->findByName($businessEntityId, 'Other Income') ?? $this->findAccount($businessEntityId, '4900'),
             'interest_income' => $this->findByName($businessEntityId, 'Interest Income') ?? $this->findAccount($businessEntityId, '4200'),
-            'other_income' => $this->findByName($businessEntityId, 'Other Income') ?? $this->findAccount($businessEntityId, '4000'),
-            'asset_sales' => $this->findByName($businessEntityId, 'Asset Sales') ?? $this->findAccount($businessEntityId, '4000'),
+            'other_income' => $this->findByName($businessEntityId, 'Other Income') ?? $this->findAccount($businessEntityId, '4900'),
+            'asset_sales' => $this->findByName($businessEntityId, 'Asset Sales') ?? $this->findAccount($businessEntityId, '4900'),
             // Expense
-            'water_service_expenses' => $this->findByName($businessEntityId, 'Utilities Expense') ?? $this->findAccount($businessEntityId, '5200'),
-            'management_fees' => $this->findByName($businessEntityId, 'Management Fees') ?? $this->findByName($businessEntityId, 'Other Expense') ?? $this->findAccount($businessEntityId, '5200'),
-            'legal_expenses' => $this->findByName($businessEntityId, 'Legal & Professional') ?? $this->findAccount($businessEntityId, '7600') ?? $this->findByName($businessEntityId, 'Other Expense') ?? $this->findAccount($businessEntityId, '5200'),
-            'land_tax' => $this->findByName($businessEntityId, 'Land Tax') ?? $this->findAccount($businessEntityId, '5200'),
-            'valuation_and_rates' => $this->findByName($businessEntityId, 'Rates Expense') ?? $this->findAccount($businessEntityId, '5200'),
-            'oc_fees' => $this->findByName($businessEntityId, 'OC Fees') ?? $this->findAccount($businessEntityId, '5200'),
-            'repairs_maintenance' => $this->findByName($businessEntityId, 'Repairs & Maintenance') ?? $this->findAccount($businessEntityId, '5200'),
-            'other_expenses' => $this->findByName($businessEntityId, 'Other Expense') ?? $this->findAccount($businessEntityId, '5200'),
-            'asset_purchase' => $this->findByName($businessEntityId, 'Property & Equipment') ?? $this->findAccount($businessEntityId, '1600'),
-            'other_personal_expenses' => $this->findByName($businessEntityId, 'Other Expense') ?? $this->findAccount($businessEntityId, '5200'),
+            'water_service_expenses' => $this->findByName($businessEntityId, 'Water Service Expenses') ?? $this->findByName($businessEntityId, 'Utilities Expense') ?? $this->findAccount($businessEntityId, '5100'),
+            'management_fees' => $this->findByName($businessEntityId, 'Management Fees') ?? $this->findByName($businessEntityId, 'Other Expenses') ?? $this->findByName($businessEntityId, 'Other Expense') ?? $this->findAccount($businessEntityId, '5110'),
+            'legal_expenses' => $this->findByName($businessEntityId, 'Legal Expenses') ?? $this->findByName($businessEntityId, 'Legal & Professional') ?? $this->findAccount($businessEntityId, '5120') ?? $this->findByName($businessEntityId, 'Other Expenses') ?? $this->findAccount($businessEntityId, '5900'),
+            'land_tax' => $this->findByName($businessEntityId, 'Land Tax') ?? $this->findAccount($businessEntityId, '5130'),
+            'valuation_and_rates' => $this->findByName($businessEntityId, 'Valuation & Rates') ?? $this->findByName($businessEntityId, 'Rates Expense') ?? $this->findAccount($businessEntityId, '5140'),
+            'oc_fees' => $this->findByName($businessEntityId, 'OC Fees') ?? $this->findAccount($businessEntityId, '5150'),
+            'repairs_maintenance' => $this->findByName($businessEntityId, 'Repairs & Maintenance') ?? $this->findAccount($businessEntityId, '5160'),
+            'other_expenses' => $this->findByName($businessEntityId, 'Other Expenses') ?? $this->findByName($businessEntityId, 'Other Expense') ?? $this->findAccount($businessEntityId, '5900'),
+            'asset_purchase' => $this->findByName($businessEntityId, 'Property & Assets (Capital)') ?? $this->findByName($businessEntityId, 'Property & Equipment') ?? $this->findAccount($businessEntityId, '1500'),
+            'other_personal_expenses' => $this->findByName($businessEntityId, 'Other Expenses') ?? $this->findByName($businessEntityId, 'Other Expense') ?? $this->findAccount($businessEntityId, '5900'),
             // Director loans — balance-sheet accounts; not auto-posted
             'director_loan_in' => null,
             'director_loan_out' => null,
             'director_loan_repayment' => null,
         ];
 
+        // Director loan types are intentionally unmapped — no GL posting; silently skip.
+        $unmappedTypes = ['director_loan_in', 'director_loan_out', 'director_loan_repayment'];
+
         $counterAccount = $mapping[$transaction->transaction_type] ?? null;
         if (! $cashAccount || ! $counterAccount) {
-            Log::warning('TransactionPostingService: required GL accounts not found for transaction', [
-                'transaction_id' => $transaction->id,
-                'transaction_type' => $transaction->transaction_type,
-                'business_entity' => $transaction->business_entity_id,
-                'missing_cash' => ! $cashAccount,
-                'missing_counter' => ! $counterAccount,
-            ]);
+            if (! in_array($transaction->transaction_type, $unmappedTypes)) {
+                Log::warning('TransactionPostingService: required GL accounts not found for transaction', [
+                    'transaction_id'   => $transaction->id,
+                    'transaction_type' => $transaction->transaction_type,
+                    'business_entity'  => $transaction->business_entity_id,
+                    'missing_cash'     => ! $cashAccount,
+                    'missing_counter'  => ! $counterAccount,
+                ]);
+            }
 
             return [];
         }
