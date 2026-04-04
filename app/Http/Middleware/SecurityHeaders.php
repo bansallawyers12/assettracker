@@ -25,7 +25,9 @@ class SecurityHeaders
 
         $response = $next($request);
 
-        $allowSameOriginFraming = $request->routeIs('emails.show');
+        // Allow same-origin framing for routes whose responses are intentionally embedded in an iframe
+        // (email viewer, document preview pane).
+        $allowSameOriginFraming = $request->routeIs('emails.show', 'business-entities.documents.content');
 
         // Security Headers
         $response->headers->set('X-Content-Type-Options', 'nosniff');
