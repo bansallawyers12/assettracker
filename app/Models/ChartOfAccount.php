@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 class ChartOfAccount extends Model
 {
     protected $fillable = [
-        'business_entity_id',
         'account_code',
         'account_name',
         'account_type',
@@ -16,13 +15,13 @@ class ChartOfAccount extends Model
         'is_active',
         'description',
         'opening_balance',
-        'current_balance'
+        'current_balance',
     ];
 
     protected $casts = [
         'opening_balance' => 'decimal:2',
         'current_balance' => 'decimal:2',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
     ];
 
     public static $accountTypes = [
@@ -30,7 +29,7 @@ class ChartOfAccount extends Model
         'liability' => 'Liability',
         'equity' => 'Equity',
         'income' => 'Income',
-        'expense' => 'Expense'
+        'expense' => 'Expense',
     ];
 
     public static $accountCategories = [
@@ -43,13 +42,8 @@ class ChartOfAccount extends Model
         'operating_income' => 'Operating Income',
         'other_income' => 'Other Income',
         'operating_expense' => 'Operating Expense',
-        'other_expense' => 'Other Expense'
+        'other_expense' => 'Other Expense',
     ];
-
-    public function businessEntity()
-    {
-        return $this->belongsTo(BusinessEntity::class);
-    }
 
     public function parentAccount()
     {
@@ -64,5 +58,10 @@ class ChartOfAccount extends Model
     public function journalLines()
     {
         return $this->hasMany(JournalLine::class);
+    }
+
+    public function assetsAsDepreciationAccount()
+    {
+        return $this->hasMany(Asset::class, 'depreciation_account_id');
     }
 }

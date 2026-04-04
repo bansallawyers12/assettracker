@@ -150,10 +150,9 @@ class BankImportController extends Controller
                 $bankEntry = BankStatementEntry::findOrFail($match['bank_entry_id']);
                 $chartAccount = ChartOfAccount::findOrFail($match['chart_account_id']);
 
-                // Verify both belong to the same business entity
-                if ($bankEntry->bankAccount->business_entity_id !== $businessEntityId ||
-                    $chartAccount->business_entity_id !== $businessEntityId) {
-                    continue; // Skip invalid matches
+                // Bank entry must belong to the entity being imported
+                if ($bankEntry->bankAccount->business_entity_id !== $businessEntityId) {
+                    continue;
                 }
 
                 // Create transaction

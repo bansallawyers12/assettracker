@@ -67,14 +67,13 @@ class InvoicePostingService
 
 	private function buildLines(Invoice $invoice): array
 	{
-		$entityId = $invoice->business_entity_id;
-		$receivables = $this->findByName($entityId, 'Accounts Receivable')
-			?? $this->findAccount($entityId, '1130')
-			?? $this->ensureAccountsReceivable($entityId);
-		$gstPayable = $this->findByName($entityId, 'GST Payable')
-			?? $this->findByName($entityId, 'GST Clearing')
-			?? $this->findAccount($entityId, '2100')
-			?? $this->findAccount($entityId, '2200');
+		$receivables = $this->findByName('Accounts Receivable')
+			?? $this->findAccount('1130')
+			?? $this->ensureAccountsReceivable();
+		$gstPayable = $this->findByName('GST Payable')
+			?? $this->findByName('GST Clearing')
+			?? $this->findAccount('2100')
+			?? $this->findAccount('2200');
 
 		$lines = [];
 
@@ -85,18 +84,17 @@ class InvoicePostingService
 		foreach ($invoice->lines as $line) {
 			$account = null;
 			if ($line->account_code) {
-				$account = ChartOfAccount::where('business_entity_id', $entityId)
-					->where('account_code', $line->account_code)
-					->first();
+				$account = ChartOfAccount::where('account_code', $line->account_code)->where('is_active', true)->first()
+					?? ChartOfAccount::where('account_code', $line->account_code)->first();
 			}
 			if (!$account) {
-				$account = $this->findAccount($entityId, '4100')
-					?? $this->findAccount($entityId, '4900')
-					?? $this->findAccount($entityId, '4000')
-					?? $this->findAccount($entityId, '6000')
-					?? $this->findByName($entityId, 'Rental Income')
-					?? $this->findByName($entityId, 'Sales')
-					?? $this->ensureDefaultSalesAccount($entityId);
+				$account = $this->findAccount('4100')
+					?? $this->findAccount('4900')
+					?? $this->findAccount('4000')
+					?? $this->findAccount('6000')
+					?? $this->findByName('Rental Income')
+					?? $this->findByName('Sales')
+					?? $this->ensureDefaultSalesAccount();
 			}
 			$net = (float) $line->line_total / (1 + (float) $line->gst_rate);
 			$gst = (float) $line->line_total - $net;
@@ -119,30 +117,25 @@ class InvoicePostingService
 		];
 	}
 
-	private function findAccount(int $businessEntityId, string $code): ?ChartOfAccount
+	private function findAccount(string $code): ?ChartOfAccount
 	{
-		return ChartOfAccount::where('business_entity_id', $businessEntityId)
-			->where('account_code', $code)
-			->first();
+		return ChartOfAccount::where('account_code', $code)->where('is_active', true)->first()
+			?? ChartOfAccount::where('account_code', $code)->first();
 	}
 
-	private function findByName(int $businessEntityId, string $name): ?ChartOfAccount
+	private function findByName(string $name): ?ChartOfAccount
 	{
-		return ChartOfAccount::where('business_entity_id', $businessEntityId)
-			->where('account_name', $name)
-			->first();
+		return ChartOfAccount::where('account_name', $name)->where('is_active', true)->first()
+			?? ChartOfAccount::where('account_name', $name)->first();
 	}
 
 	/**
 	 * Default chart is not always seeded; create the standard AR account used by ChartOfAccountSeeder.
 	 */
-	private function ensureAccountsReceivable(int $businessEntityId): ChartOfAccount
+	private function ensureAccountsReceivable(): ChartOfAccount
 	{
 		return ChartOfAccount::firstOrCreate(
-			[
-				'business_entity_id' => $businessEntityId,
-				'account_code' => '1130',
-			],
+			['account_code' => '1130'],
 			[
 				'account_name' => 'Accounts Receivable',
 				'account_type' => 'asset',
@@ -155,13 +148,10 @@ class InvoicePostingService
 	}
 
 	/** Default income account when an invoice line has no account_code (aligns with seeded Rental Income 4100). */
-	private function ensureDefaultSalesAccount(int $businessEntityId): ChartOfAccount
+	private function ensureDefaultSalesAccount(): ChartOfAccount
 	{
 		return ChartOfAccount::firstOrCreate(
-			[
-				'business_entity_id' => $businessEntityId,
-				'account_code' => '4100',
-			],
+			['account_code' => '4100'],
 			[
 				'account_name' => 'Rental Income',
 				'account_type' => 'income',

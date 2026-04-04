@@ -171,7 +171,7 @@ class RentInvoiceService
             'unit_price' => $rentAmount,
             'line_total' => $rentAmount,
             'gst_rate' => 0.10, // 10% GST
-            'account_code' => $this->getRentalIncomeAccountCode($businessEntity->id)
+            'account_code' => $this->getRentalIncomeAccountCode()
         ]);
 
         // Update invoice totals
@@ -267,17 +267,22 @@ class RentInvoiceService
      * Resolve the rental income account code for the business entity.
      * Lookup order mirrors the seeded chart (4100 = Rental Income).
      */
-    protected function getRentalIncomeAccountCode(int $businessEntityId): string
+    protected function getRentalIncomeAccountCode(): string
     {
-        $account = \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
-            ->where('account_name', 'Rental Income')
+        $account = \App\Models\ChartOfAccount::where('account_name', 'Rental Income')
             ->where('account_type', 'income')
+            ->where('is_active', true)
             ->first()
-            ?? \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
-                ->where('account_code', '4100')
-                ->first()
-            ?? \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
+            ?? \App\Models\ChartOfAccount::where('account_code', '4100')->where('is_active', true)->first()
+            ?? \App\Models\ChartOfAccount::where('account_name', 'Rental Income')
                 ->where('account_type', 'income')
+                ->first()
+            ?? \App\Models\ChartOfAccount::where('account_code', '4100')->first()
+            ?? \App\Models\ChartOfAccount::where('account_type', 'income')
+                ->where('is_active', true)
+                ->orderBy('account_code')
+                ->first()
+            ?? \App\Models\ChartOfAccount::where('account_type', 'income')
                 ->orderBy('account_code')
                 ->first();
 

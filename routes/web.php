@@ -162,8 +162,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/bank-import/entries', [BankImportController::class, 'entries'])->name('business-entities.bank-import.entries');
     Route::post('/business-entities/{businessEntity}/bank-import/save-matches', [BankImportController::class, 'saveMatches'])->name('business-entities.bank-import.save-matches');
 
-    // Chart of Accounts API
-    Route::get('/business-entities/{businessEntity}/chart-of-accounts', [ChartOfAccountController::class, 'getAccountsJson'])->name('business-entities.chart-of-accounts.api');
+    // Chart of Accounts JSON (global list; entity in legacy URL is ignored)
+    Route::get('/api/chart-of-accounts', [ChartOfAccountController::class, 'apiIndex'])->name('chart-of-accounts.api');
+    Route::get('/api/business-entities/{businessEntity}/chart-of-accounts', [ChartOfAccountController::class, 'getAccountsJson'])->name('business-entities.chart-of-accounts.api');
 
     // API for Asset Documents
     Route::get('/api/business-entities/{businessEntity}/assets/{asset}/documents', [DocumentController::class, 'fetchAssetFiles'])->name('api.asset-documents.fetch');
@@ -214,8 +215,20 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('business-entities/{businessEntity}/compose-email-data', [BusinessEntityController::class, 'getComposeEmailData'])->name('business-entities.compose-email-data');
     Route::post('business-entities/{businessEntity}/send-email', [BusinessEntityController::class, 'sendEmail'])->name('business-entities.send-email');
 
-    // Accounting System Routes
-    Route::resource('business-entities.chart-of-accounts', ChartOfAccountController::class);
+    // Accounting System Routes — chart of accounts is global; legacy nested URLs redirect
+    Route::get('/business-entities/{businessEntity}/chart-of-accounts', function () {
+        return redirect()->route('chart-of-accounts.index');
+    })->name('business-entities.chart-of-accounts.index');
+    Route::get('/business-entities/{businessEntity}/chart-of-accounts/create', function () {
+        return redirect()->route('chart-of-accounts.create');
+    })->name('business-entities.chart-of-accounts.create');
+    Route::get('/business-entities/{businessEntity}/chart-of-accounts/{chartOfAccount}/edit', function (\App\Models\ChartOfAccount $chartOfAccount) {
+        return redirect()->route('chart-of-accounts.edit', $chartOfAccount);
+    })->name('business-entities.chart-of-accounts.edit');
+    // Legacy nested write routes (same controller; entity segment ignored — chart is global)
+    Route::post('/business-entities/{businessEntity}/chart-of-accounts', [ChartOfAccountController::class, 'store'])->name('business-entities.chart-of-accounts.store');
+    Route::match(['put', 'patch'], '/business-entities/{businessEntity}/chart-of-accounts/{chart_of_account}', [ChartOfAccountController::class, 'update'])->name('business-entities.chart-of-accounts.update');
+    Route::delete('/business-entities/{businessEntity}/chart-of-accounts/{chart_of_account}', [ChartOfAccountController::class, 'destroy'])->name('business-entities.chart-of-accounts.destroy');
     Route::get('business-entities/{businessEntity}/financial-reports/profit-loss', [FinancialReportController::class, 'profitLoss'])->name('business-entities.financial-reports.profit-loss');
     Route::get('business-entities/{businessEntity}/financial-reports/balance-sheet', [FinancialReportController::class, 'balanceSheet'])->name('business-entities.financial-reports.balance-sheet');
     Route::get('business-entities/{businessEntity}/financial-reports/cash-flow', [FinancialReportController::class, 'cashFlow'])->name('business-entities.financial-reports.cash-flow');
@@ -240,8 +253,8 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('business-entities/{businessEntity}/rent-invoices/suite-assets', [RentInvoiceController::class, 'getSuiteAssets'])->name('business-entities.rent-invoices.suite-assets');
     Route::get('business-entities/{businessEntity}/rent-invoices/upcoming', [RentInvoiceController::class, 'getUpcomingInvoices'])->name('business-entities.rent-invoices.upcoming');
 
-    // Global Accounting Routes
-    Route::get('/chart-of-accounts', [ChartOfAccountController::class, 'index'])->name('chart-of-accounts.index');
+    // Global chart of accounts (single shared GL for all entities)
+    Route::resource('chart-of-accounts', ChartOfAccountController::class)->except(['show']);
     Route::get('/bank-accounts', [BusinessEntityController::class, 'bankAccountsIndex'])->name('bank-accounts.index');
     Route::get('/transactions', [BusinessEntityController::class, 'transactionsIndex'])->name('transactions.index');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
