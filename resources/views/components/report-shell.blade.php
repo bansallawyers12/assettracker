@@ -19,7 +19,8 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                     </svg>
                 @endif
-                <a href="#" class="text-blue-600 hover:underline font-medium shrink-0">Reports</a>
+                <a href="{{ route('financial-reports.index') }}"
+                   class="text-blue-600 hover:underline font-medium shrink-0">Reports</a>
                 <svg class="h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                 </svg>
@@ -36,13 +37,13 @@
     </div>
 
     {{-- ── Filter toolbar ──────────────────────────────────────────── --}}
-    @isset($filters)
+    @if(isset($filters) && $filters->isNotEmpty())
     <div class="bg-gray-50 border-b border-gray-200 print:hidden">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             {{ $filters }}
         </div>
     </div>
-    @endisset
+    @endif
 
     {{-- ── Report body ─────────────────────────────────────────────── --}}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 print:px-0 print:py-4">

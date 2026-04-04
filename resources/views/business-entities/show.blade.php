@@ -863,7 +863,15 @@
                             <!-- Emails Tab -->
                             <div id="tab_emails" class="tab-content hidden">
                                 <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Allocated Emails</h3>
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Allocated Emails</h3>
+                                        <a href="{{ route('email-templates.index') }}" class="inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-medium rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors shrink-0">
+                                            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+                                            </svg>
+                                            {{ __('Email templates') }}
+                                        </a>
+                                    </div>
                                     @php($allocatedEmails = $businessEntity->mailMessages()->latest('sent_date')->with('labels')->paginate(10))
                                     @if ($allocatedEmails->isEmpty())
                                         <p class="text-gray-500 dark:text-gray-400 text-center py-4">No emails allocated yet.</p>

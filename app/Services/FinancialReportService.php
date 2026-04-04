@@ -43,7 +43,9 @@ class FinancialReportService
             ],
             'income'     => $income,
             'expenses'   => $expenses,
-            'net_profit' => $income['total'] - $expenses['total'],
+            // Income accounts carry credit (negative) balances in double-entry.
+            // Net profit = -(income_total) − expense_total
+            'net_profit' => -$income['total'] - $expenses['total'],
         ];
     }
     
@@ -71,7 +73,9 @@ class FinancialReportService
             'liabilities'              => $liabilities,
             'equity'                   => $equity,
             'total_assets'             => $assets['total'],
-            'total_liabilities_equity' => $liabilities['total'] + $equity['total'],
+            // Liabilities and equity carry credit (negative) balances; negate to get
+            // the positive total that should equal total_assets.
+            'total_liabilities_equity' => -($liabilities['total'] + $equity['total']),
         ];
     }
 
