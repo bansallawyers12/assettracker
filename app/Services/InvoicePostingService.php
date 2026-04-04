@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Invoice;
-use App\Models\InvoiceLine;
 use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\ChartOfAccount;
@@ -69,10 +68,13 @@ class InvoicePostingService
 	private function buildLines(Invoice $invoice): array
 	{
 		$entityId = $invoice->business_entity_id;
-		$receivables = $this->findAccount($entityId, '1100')
-			?? $this->findByName($entityId, 'Accounts Receivable')
+		$receivables = $this->findByName($entityId, 'Accounts Receivable')
+			?? $this->findAccount($entityId, '1130')
 			?? $this->ensureAccountsReceivable($entityId);
-		$gstPayable = $this->findByName($entityId, 'GST Payable') ?? $this->findAccount($entityId, '2200');
+		$gstPayable = $this->findByName($entityId, 'GST Payable')
+			?? $this->findByName($entityId, 'GST Clearing')
+			?? $this->findAccount($entityId, '2100')
+			?? $this->findAccount($entityId, '2200');
 
 		$lines = [];
 
@@ -88,8 +90,11 @@ class InvoicePostingService
 					->first();
 			}
 			if (!$account) {
-				$account = $this->findAccount($entityId, '4000')
+				$account = $this->findAccount($entityId, '4100')
+					?? $this->findAccount($entityId, '4900')
+					?? $this->findAccount($entityId, '4000')
 					?? $this->findAccount($entityId, '6000')
+					?? $this->findByName($entityId, 'Rental Income')
 					?? $this->findByName($entityId, 'Sales')
 					?? $this->ensureDefaultSalesAccount($entityId);
 			}
@@ -136,7 +141,7 @@ class InvoicePostingService
 		return ChartOfAccount::firstOrCreate(
 			[
 				'business_entity_id' => $businessEntityId,
-				'account_code' => '1100',
+				'account_code' => '1130',
 			],
 			[
 				'account_name' => 'Accounts Receivable',
@@ -149,16 +154,16 @@ class InvoicePostingService
 		);
 	}
 
-	/** @see ChartOfAccountSeeder — default income account when line has no account_code */
+	/** Default income account when an invoice line has no account_code (aligns with seeded Rental Income 4100). */
 	private function ensureDefaultSalesAccount(int $businessEntityId): ChartOfAccount
 	{
 		return ChartOfAccount::firstOrCreate(
 			[
 				'business_entity_id' => $businessEntityId,
-				'account_code' => '6000',
+				'account_code' => '4100',
 			],
 			[
-				'account_name' => 'Sales',
+				'account_name' => 'Rental Income',
 				'account_type' => 'income',
 				'account_category' => 'operating_income',
 				'is_active' => true,

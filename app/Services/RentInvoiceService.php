@@ -264,26 +264,24 @@ class RentInvoiceService
     }
 
     /**
-     * Get rental income account code for the business entity
+     * Resolve the rental income account code for the business entity.
+     * Lookup order mirrors the seeded chart (4100 = Rental Income).
      */
-    protected function getRentalIncomeAccountCode($businessEntityId)
+    protected function getRentalIncomeAccountCode(int $businessEntityId): string
     {
-        // Try to find a rental income account
-        $rentalAccount = \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
-            ->where('account_name', 'like', '%rental%')
+        $account = \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
+            ->where('account_name', 'Rental Income')
             ->where('account_type', 'income')
-            ->first();
+            ->first()
+            ?? \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
+                ->where('account_code', '4100')
+                ->first()
+            ?? \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
+                ->where('account_type', 'income')
+                ->orderBy('account_code')
+                ->first();
 
-        if ($rentalAccount) {
-            return $rentalAccount->account_code;
-        }
-
-        // Default to general income account
-        $incomeAccount = \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
-            ->where('account_type', 'income')
-            ->first();
-
-        return $incomeAccount ? $incomeAccount->account_code : '4000';
+        return $account ? $account->account_code : '4100';
     }
 
     /**

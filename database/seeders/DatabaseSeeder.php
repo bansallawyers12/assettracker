@@ -41,5 +41,7 @@ class DatabaseSeeder extends Seeder
             'description' => 'Hello [Name],\n\nI would like to schedule a meeting to discuss [topic].\n\nPlease let me know your availability for next week.\n\nBest regards,\n[Your Name]',
             'user_id' => 1,
         ]);
+
+        $this->call(ChartOfAccountSeeder::class);
     }
 }
