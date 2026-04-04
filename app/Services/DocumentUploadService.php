@@ -93,11 +93,18 @@ class DocumentUploadService
         $storedName = "{$entityToken}_{$checklistToken}_{$unique}.{$extension}";
         $path = "{$prefix}/{$storedName}";
 
-        Storage::disk('s3')->put($path, file_get_contents($file->getRealPath()));
+        $mime = $file->getMimeType() ?: $this->mimeTypeForExtension($extension);
+        if ($mime === 'application/octet-stream') {
+            $byExt = $this->mimeTypeForExtension($extension);
+            if ($byExt !== 'application/octet-stream') {
+                $mime = $byExt;
+            }
+        }
+        Storage::disk('s3')->put($path, file_get_contents($file->getRealPath()), ['ContentType' => $mime]);
 
         $document->path = $path;
         $document->file_name = $displayFileName ?? $file->getClientOriginalName();
-        $document->filetype = $file->getClientMimeType();
+        $document->filetype = $mime;
         $document->file_size = $file->getSize();
         $document->user_id = auth()->id();
         $document->save();
@@ -268,20 +275,43 @@ class DocumentUploadService
         $path = "{$prefix}/{$storedName}";
 
         $contents = Storage::disk('s3')->get($sourceS3Path);
-        Storage::disk('s3')->put($path, $contents);
+        $mime = $this->mimeTypeForExtension($extension);
+        try {
+            $detected = Storage::disk('s3')->mimeType($sourceS3Path);
+            if ($detected && $detected !== 'application/octet-stream') {
+                $mime = $detected;
+            }
+        } catch (\Throwable) {
+            // keep extension-based guess
+        }
+        Storage::disk('s3')->put($path, $contents, ['ContentType' => $mime]);
 
         $document->path = $path;
         $document->file_name = $displayFileName;
-        try {
-            $document->filetype = Storage::disk('s3')->mimeType($path);
-        } catch (\Throwable) {
-            $document->filetype = 'application/octet-stream';
-        }
+        $document->filetype = $mime;
         $document->file_size = strlen($contents);
         if (auth()->check()) {
             $document->user_id = auth()->id();
         }
         $document->save();
+    }
+
+    private function mimeTypeForExtension(string $extension): string
+    {
+        $ext = strtolower($extension);
+
+        return match ($ext) {
+            'pdf' => 'application/pdf',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'svg' => 'image/svg+xml',
+            'bmp' => 'image/bmp',
+            'txt' => 'text/plain',
+            'csv' => 'text/csv',
+            default => 'application/octet-stream',
+        };
     }
 
     /**

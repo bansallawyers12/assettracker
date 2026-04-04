@@ -106,6 +106,8 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Asset Document Routes
     Route::post('/business-entities/{businessEntity}/assets/{asset}/documents', [DocumentController::class, 'uploadAssetDocument'])->name('business-entities.assets.documents.store');
+    Route::get('/business-entities/{businessEntity}/documents/{document}/content', [DocumentController::class, 'streamDocument'])
+        ->name('business-entities.documents.content');
 
     // Tenant and Lease Routes
     Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/create', [AssetController::class, 'createTenant'])->name('business-entities.assets.tenants.create');
