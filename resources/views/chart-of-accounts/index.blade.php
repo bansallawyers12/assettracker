@@ -6,52 +6,17 @@
         <div>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">
                 Chart of Accounts
-                @if($businessEntity)
-                    <span class="text-xl font-semibold text-gray-500 dark:text-gray-400 ml-1">— {{ $businessEntity->legal_name }}</span>
-                @endif
             </h1>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                Shared by all business entities. Balances by entity appear on financial reports.
+            </p>
         </div>
 
         <div class="flex flex-col sm:items-end gap-2 shrink-0">
-            @if($businessEntity)
-                <a href="{{ route('business-entities.chart-of-accounts.create', $businessEntity) }}"
-                   class="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
-                    + Add account
-                </a>
-            @else
-                @if(isset($businessEntities) && $businessEntities->count() === 0)
-                    <a href="{{ route('business-entities.create') }}"
-                       class="inline-flex items-center gap-1.5 rounded-md bg-gray-200 dark:bg-gray-700 px-4 py-2 text-sm font-semibold text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600">
-                        New business entity
-                    </a>
-                @elseif(isset($businessEntities) && $businessEntities->count() === 1)
-                    <a href="{{ route('business-entities.chart-of-accounts.create', $businessEntities->first()) }}"
-                       class="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
-                        + Add account
-                    </a>
-                @elseif(isset($businessEntities))
-                    <div class="flex items-center gap-2">
-                        <label for="coa-add-entity" class="sr-only">Entity</label>
-                        <select id="coa-add-entity"
-                                class="block rounded-md border-0 py-2 pl-3 pr-10 text-sm text-gray-900 dark:text-gray-100 dark:bg-gray-800 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 focus:ring-2 focus:ring-indigo-600">
-                            <option value="">Select entity…</option>
-                            @foreach($businessEntities as $entity)
-                                <option value="{{ route('business-entities.chart-of-accounts.create', $entity) }}">{{ $entity->legal_name }}</option>
-                            @endforeach
-                        </select>
-                        <button type="button" id="coa-add-go"
-                                class="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
-                            + Add account
-                        </button>
-                    </div>
-                    <script>
-                        document.getElementById('coa-add-go')?.addEventListener('click', function () {
-                            var s = document.getElementById('coa-add-entity');
-                            if (s && s.value) window.location.href = s.value;
-                        });
-                    </script>
-                @endif
-            @endif
+            <a href="{{ route('chart-of-accounts.create') }}"
+               class="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
+                + Add Chart of Account
+            </a>
         </div>
     </div>
 
@@ -73,7 +38,7 @@
             <p class="font-medium text-gray-700 dark:text-gray-300">No chart of accounts found.</p>
             <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
                 Run <code class="rounded bg-gray-200 dark:bg-gray-700 px-1 text-xs">php artisan db:seed --class=ChartOfAccountSeeder</code>
-                after business entities exist, or use the button above to add accounts manually.
+                or use the button above to add accounts manually.
             </p>
         </div>
     @else
@@ -86,14 +51,13 @@
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Account Name</th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Type</th>
                             <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Category</th>
-                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Balance</th>
+                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Journal lines</th>
                             <th scope="col" class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Status</th>
                             <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @foreach($accounts as $account)
-                            @php $rowEntity = $businessEntity ?? $account->businessEntity; @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
                                 <td class="px-4 py-3 text-sm font-mono text-gray-900 dark:text-gray-100 whitespace-nowrap">
                                     {{ $account->account_code }}
@@ -118,7 +82,7 @@
                                     {{ str_replace('_', ' ', $account->account_category) }}
                                 </td>
                                 <td class="px-4 py-3 text-sm text-right tabular-nums text-gray-900 dark:text-gray-100">
-                                    ${{ number_format($account->current_balance, 2) }}
+                                    {{ (int) ($account->journal_lines_count ?? 0) }}
                                 </td>
                                 <td class="px-4 py-3 text-center text-sm">
                                     @if($account->is_active)
@@ -128,19 +92,17 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
-                                    @if($rowEntity)
-                                        <a href="{{ route('business-entities.chart-of-accounts.edit', [$rowEntity, $account]) }}"
-                                           class="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 mr-3">Edit</a>
-                                        @if((int) ($account->journal_lines_count ?? 0) === 0)
-                                            <form method="POST"
-                                                  action="{{ route('business-entities.chart-of-accounts.destroy', [$rowEntity, $account]) }}"
-                                                  class="inline"
-                                                  onsubmit="return confirm('Delete this account? This cannot be undone.')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Delete</button>
-                                            </form>
-                                        @endif
+                                    <a href="{{ route('chart-of-accounts.edit', $account) }}"
+                                       class="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 mr-3">Edit</a>
+                                    @if((int) ($account->journal_lines_count ?? 0) === 0)
+                                        <form method="POST"
+                                              action="{{ route('chart-of-accounts.destroy', $account) }}"
+                                              class="inline"
+                                              onsubmit="return confirm('Delete this account? This cannot be undone.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="font-medium text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Delete</button>
+                                        </form>
                                     @endif
                                 </td>
                             </tr>

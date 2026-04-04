@@ -15,18 +15,16 @@ class FinancialReportService
     {
         $businessEntity = BusinessEntity::findOrFail($businessEntityId);
         
-        $incomeAccounts = ChartOfAccount::where('business_entity_id', $businessEntityId)
-            ->where('account_type', 'income')
+        $incomeAccounts = ChartOfAccount::where('account_type', 'income')
             ->where('is_active', true)
             ->get();
-            
-        $expenseAccounts = ChartOfAccount::where('business_entity_id', $businessEntityId)
-            ->where('account_type', 'expense')
+
+        $expenseAccounts = ChartOfAccount::where('account_type', 'expense')
             ->where('is_active', true)
             ->get();
-        
-        $income = $this->calculateAccountBalances($incomeAccounts, $startDate, $endDate);
-        $expenses = $this->calculateAccountBalances($expenseAccounts, $startDate, $endDate);
+
+        $income = $this->calculateAccountBalances($incomeAccounts, $startDate, $endDate, $businessEntityId);
+        $expenses = $this->calculateAccountBalances($expenseAccounts, $startDate, $endDate, $businessEntityId);
         
         return [
             'business_entity' => $businessEntity,
@@ -97,13 +95,13 @@ class FinancialReportService
         ];
     }
     
-    private function calculateAccountBalances($accounts, $startDate, $endDate)
+    private function calculateAccountBalances($accounts, $startDate, $endDate, $businessEntityId)
     {
         $results = [];
         $total = 0;
-        
+
         foreach ($accounts as $account) {
-            $balance = $this->getAccountBalance($account->id, $startDate, $endDate);
+            $balance = $this->getAccountBalance($account->id, $startDate, $endDate, $businessEntityId);
             $results[] = [
                 'account' => $account,
                 'balance' => $balance
@@ -119,16 +117,15 @@ class FinancialReportService
     
     private function getAccountBalancesByType($businessEntityId, $accountType, $asOfDate)
     {
-        $accounts = ChartOfAccount::where('business_entity_id', $businessEntityId)
-            ->where('account_type', $accountType)
+        $accounts = ChartOfAccount::where('account_type', $accountType)
             ->where('is_active', true)
             ->get();
-            
+
         $results = [];
         $total = 0;
-        
+
         foreach ($accounts as $account) {
-            $balance = $this->getAccountBalanceAsOf($account->id, $asOfDate);
+            $balance = $this->getAccountBalanceAsOf($account->id, $asOfDate, $businessEntityId);
             $results[] = [
                 'account' => $account,
                 'balance' => $balance
@@ -144,16 +141,15 @@ class FinancialReportService
     
     private function getAccountBalancesByCategory($businessEntityId, $accountCategory, $startDate, $endDate)
     {
-        $accounts = ChartOfAccount::where('business_entity_id', $businessEntityId)
-            ->where('account_category', $accountCategory)
+        $accounts = ChartOfAccount::where('account_category', $accountCategory)
             ->where('is_active', true)
             ->get();
-            
+
         $results = [];
         $total = 0;
-        
+
         foreach ($accounts as $account) {
-            $balance = $this->getAccountBalance($account->id, $startDate, $endDate);
+            $balance = $this->getAccountBalance($account->id, $startDate, $endDate, $businessEntityId);
             $results[] = [
                 'account' => $account,
                 'balance' => $balance
@@ -167,43 +163,47 @@ class FinancialReportService
         ];
     }
     
-    private function getAccountBalance($accountId, $startDate, $endDate)
+    private function getAccountBalance($accountId, $startDate, $endDate, $businessEntityId)
     {
         $debits = JournalLine::where('chart_of_account_id', $accountId)
-            ->whereHas('journalEntry', function($query) use ($startDate, $endDate) {
-                $query->where('entry_date', '>=', $startDate)
-                      ->where('entry_date', '<=', $endDate)
-                      ->where('is_posted', true);
+            ->whereHas('journalEntry', function ($query) use ($startDate, $endDate, $businessEntityId) {
+                $query->where('business_entity_id', $businessEntityId)
+                    ->where('entry_date', '>=', $startDate)
+                    ->where('entry_date', '<=', $endDate)
+                    ->where('is_posted', true);
             })
             ->sum('debit_amount');
-            
+
         $credits = JournalLine::where('chart_of_account_id', $accountId)
-            ->whereHas('journalEntry', function($query) use ($startDate, $endDate) {
-                $query->where('entry_date', '>=', $startDate)
-                      ->where('entry_date', '<=', $endDate)
-                      ->where('is_posted', true);
+            ->whereHas('journalEntry', function ($query) use ($startDate, $endDate, $businessEntityId) {
+                $query->where('business_entity_id', $businessEntityId)
+                    ->where('entry_date', '>=', $startDate)
+                    ->where('entry_date', '<=', $endDate)
+                    ->where('is_posted', true);
             })
             ->sum('credit_amount');
-            
+
         return $debits - $credits;
     }
-    
-    private function getAccountBalanceAsOf($accountId, $asOfDate)
+
+    private function getAccountBalanceAsOf($accountId, $asOfDate, $businessEntityId)
     {
         $debits = JournalLine::where('chart_of_account_id', $accountId)
-            ->whereHas('journalEntry', function($query) use ($asOfDate) {
-                $query->where('entry_date', '<=', $asOfDate)
-                      ->where('is_posted', true);
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $businessEntityId) {
+                $query->where('business_entity_id', $businessEntityId)
+                    ->where('entry_date', '<=', $asOfDate)
+                    ->where('is_posted', true);
             })
             ->sum('debit_amount');
-            
+
         $credits = JournalLine::where('chart_of_account_id', $accountId)
-            ->whereHas('journalEntry', function($query) use ($asOfDate) {
-                $query->where('entry_date', '<=', $asOfDate)
-                      ->where('is_posted', true);
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $businessEntityId) {
+                $query->where('business_entity_id', $businessEntityId)
+                    ->where('entry_date', '<=', $asOfDate)
+                    ->where('is_posted', true);
             })
             ->sum('credit_amount');
-            
+
         return $debits - $credits;
     }
 

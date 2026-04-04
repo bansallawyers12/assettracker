@@ -269,15 +269,12 @@ class RentInvoiceService
      */
     protected function getRentalIncomeAccountCode(int $businessEntityId): string
     {
-        $account = \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
-            ->where('account_name', 'Rental Income')
+        $account = \App\Models\ChartOfAccount::where('account_name', 'Rental Income')
             ->where('account_type', 'income')
             ->first()
-            ?? \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
-                ->where('account_code', '4100')
+            ?? \App\Models\ChartOfAccount::where('account_code', '4100')
                 ->first()
-            ?? \App\Models\ChartOfAccount::where('business_entity_id', $businessEntityId)
-                ->where('account_type', 'income')
+            ?? \App\Models\ChartOfAccount::where('account_type', 'income')
                 ->orderBy('account_code')
                 ->first();
 
