@@ -95,10 +95,10 @@
                 </div>
                 <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4 min-h-[280px]">
                     <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview</h5>
-                    <iframe id="{{ $prefix }}-preview-frame" class="w-full h-[240px] bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600" title="Preview"></iframe>
+                    <iframe class="doc-cat-preview-frame w-full h-[240px] bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600" title="Preview"></iframe>
                     <div class="mt-3 flex gap-2 flex-wrap">
-                        <a id="{{ $prefix }}-dl" href="#" target="_blank" class="text-sm px-3 py-1 bg-blue-600 text-white rounded opacity-50 pointer-events-none">Download</a>
-                        <button type="button" id="{{ $prefix }}-del-preview" class="text-sm px-3 py-1 bg-red-600 text-white rounded opacity-50 pointer-events-none">Delete</button>
+                        <a href="#" target="_blank" class="doc-cat-preview-dl text-sm px-3 py-1 bg-blue-600 text-white rounded opacity-50 pointer-events-none">Download</a>
+                        <button type="button" class="doc-cat-preview-del text-sm px-3 py-1 bg-red-600 text-white rounded opacity-50 pointer-events-none">Delete</button>
                     </div>
                 </div>
             </div>
@@ -309,11 +309,6 @@
                 });
             });
 
-            const frame = document.getElementById(prefix + '-preview-frame');
-            const dl = document.getElementById(prefix + '-dl');
-            const delBtn = document.getElementById(prefix + '-del-preview');
-            let lastDocId = null;
-
             function documentContentUrl(docId, download) {
                 const params = new URLSearchParams();
                 if (assetId !== '' && assetId != null) {
@@ -327,28 +322,42 @@
                 return `${base}/documents/${docId}/content${q ? `?${q}` : ''}`;
             }
 
+            function setCategoryPanelPreview(panel, docId) {
+                const frame = panel.querySelector('.doc-cat-preview-frame');
+                const dl = panel.querySelector('.doc-cat-preview-dl');
+                const delBtn = panel.querySelector('.doc-cat-preview-del');
+                if (!docId || !frame || !dl) {
+                    return;
+                }
+                frame.src = documentContentUrl(docId, false);
+                dl.href = documentContentUrl(docId, true);
+                dl.classList.remove('opacity-50', 'pointer-events-none');
+                delBtn?.classList.remove('opacity-50', 'pointer-events-none');
+                panel.dataset.previewDocId = String(docId);
+            }
+
             root.querySelectorAll('.doc-preview').forEach(btn => {
                 btn.addEventListener('click', () => {
                     const docId = btn.dataset.docId;
-                    if (!docId || !frame || !dl) {
+                    const panel = btn.closest('.doc-cat-panel');
+                    if (!docId || !panel) {
                         return;
                     }
-                    frame.src = documentContentUrl(docId, false);
-                    dl.href = documentContentUrl(docId, true);
-                    dl.classList.remove('opacity-50', 'pointer-events-none');
-                    delBtn?.classList.remove('opacity-50', 'pointer-events-none');
-                    lastDocId = docId;
+                    setCategoryPanelPreview(panel, docId);
                 });
             });
 
-            delBtn?.addEventListener('click', async () => {
-                if (!lastDocId) return;
-                if (!confirm('Remove the file from this checklist row? The row will be kept.')) return;
-                const entityId = root.dataset.entityId;
-                const r = await api(`/business-entities/${entityId}/document-slots/${lastDocId}/clear-file`, { method: 'POST', body: '{}' });
-                const j = await r.json();
-                if (j.status) location.reload();
-                else alert(j.message || 'Failed');
+            root.querySelectorAll('.doc-cat-preview-del').forEach(delBtn => {
+                delBtn.addEventListener('click', async () => {
+                    const panel = delBtn.closest('.doc-cat-panel');
+                    const lastDocId = panel?.dataset.previewDocId;
+                    if (!lastDocId) return;
+                    if (!confirm('Remove the file from this checklist row? The row will be kept.')) return;
+                    const r = await api(`/business-entities/${entityId}/document-slots/${lastDocId}/clear-file`, { method: 'POST', body: '{}' });
+                    const j = await r.json();
+                    if (j.status) location.reload();
+                    else alert(j.message || 'Failed');
+                });
             });
 
             root.querySelectorAll('.doc-clear').forEach(btn => {
