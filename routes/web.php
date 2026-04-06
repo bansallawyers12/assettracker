@@ -22,10 +22,24 @@ use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\RentInvoiceController;
 use App\Http\Controllers\TrackingCategoryController;
 use App\Http\Controllers\TrackingSubCategoryController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
+});
+
+// Gated phpinfo — use when the host sends all requests through Laravel (public/phpinfo.php may 404).
+// URL: /phpinfo?token=... matching PHPINFO_ACCESS_TOKEN in .env. Remove or leave token empty when done.
+Route::get('/phpinfo', function (Request $request) {
+    $expected = (string) config('app.phpinfo_access_token', '');
+    $token = $request->query('token', '');
+    $token = is_string($token) ? $token : '';
+    if ($expected === '' || $token === '' || ! hash_equals($expected, $token)) {
+        abort(403, 'Forbidden. Set PHPINFO_ACCESS_TOKEN in .env and open /phpinfo?token= with that value.');
+    }
+    phpinfo();
+    exit;
 });
 
 // -----------------------------------------------------------------------
