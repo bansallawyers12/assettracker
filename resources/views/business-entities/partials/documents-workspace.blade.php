@@ -67,6 +67,7 @@
                                         @if($doc->path)
                                             <button type="button" class="text-indigo-600 dark:text-indigo-400 hover:underline doc-preview"
                                                     data-doc-id="{{ $doc->id }}"
+                                                    data-asset-scope="{{ $doc->asset_id ?? '' }}"
                                                     data-path="{{ $doc->path }}"
                                                     data-name="{{ addslashes($doc->file_name ?? '') }}">
                                                 {{ $doc->file_name }}
@@ -309,9 +310,15 @@
                 });
             });
 
-            function documentContentUrl(docId, download) {
+            function documentContentUrl(docId, download, previewBtn) {
                 const params = new URLSearchParams();
-                if (assetId !== '' && assetId != null) {
+                let scope = '';
+                if (previewBtn && previewBtn.dataset && previewBtn.dataset.assetScope !== undefined) {
+                    scope = String(previewBtn.dataset.assetScope).trim();
+                }
+                if (scope !== '') {
+                    params.set('asset_id', scope);
+                } else if (assetId !== '' && assetId != null) {
                     params.set('asset_id', String(assetId));
                 }
                 if (download) {
@@ -322,29 +329,35 @@
                 return `${base}/documents/${docId}/content${q ? `?${q}` : ''}`;
             }
 
-            function setCategoryPanelPreview(panel, docId) {
+            function setCategoryPanelPreview(panel, docId, previewBtn) {
                 const frame = panel.querySelector('.doc-cat-preview-frame');
                 const dl = panel.querySelector('.doc-cat-preview-dl');
                 const delBtn = panel.querySelector('.doc-cat-preview-del');
                 if (!docId || !frame || !dl) {
                     return;
                 }
-                frame.src = documentContentUrl(docId, false);
-                dl.href = documentContentUrl(docId, true);
+                const viewUrl = documentContentUrl(docId, false, previewBtn);
+                frame.removeAttribute('src');
+                window.requestAnimationFrame(() => {
+                    frame.src = viewUrl;
+                });
+                dl.href = documentContentUrl(docId, true, previewBtn);
                 dl.classList.remove('opacity-50', 'pointer-events-none');
                 delBtn?.classList.remove('opacity-50', 'pointer-events-none');
                 panel.dataset.previewDocId = String(docId);
             }
 
-            root.querySelectorAll('.doc-preview').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    const docId = btn.dataset.docId;
-                    const panel = btn.closest('.doc-cat-panel');
-                    if (!docId || !panel) {
-                        return;
-                    }
-                    setCategoryPanelPreview(panel, docId);
-                });
+            root.addEventListener('click', function(ev) {
+                const btn = ev.target.closest('.doc-preview');
+                if (!btn || !root.contains(btn)) {
+                    return;
+                }
+                const docId = btn.getAttribute('data-doc-id') || btn.dataset.docId;
+                const panel = btn.closest('.doc-cat-panel');
+                if (!docId || !panel) {
+                    return;
+                }
+                setCategoryPanelPreview(panel, docId, btn);
             });
 
             root.querySelectorAll('.doc-cat-preview-del').forEach(delBtn => {
