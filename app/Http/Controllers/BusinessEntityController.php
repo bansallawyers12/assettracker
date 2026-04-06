@@ -559,123 +559,150 @@ class BusinessEntityController extends Controller
             'payment_document_name' => 'nullable|string|max:255',
         ], $this->transactionReceiptUploadRules(true)), $this->transactionReceiptValidationMessages());
 
-        $targetEntity = $request->filled('business_entity_id')
-            ? BusinessEntity::findOrFail($request->integer('business_entity_id'))
-            : $businessEntity;
+        Log::info('Dashboard add transaction: validation passed, persisting', $this->storeTransactionRequestLogContext($request, $businessEntity));
 
-        $this->ensureOperationalForAccounting($targetEntity);
+        try {
+            $targetEntity = $request->filled('business_entity_id')
+                ? BusinessEntity::findOrFail($request->integer('business_entity_id'))
+                : $businessEntity;
 
-        $this->authorize('update', $targetEntity);
+            $this->ensureOperationalForAccounting($targetEntity);
 
-        if ($request->filled('related_entity_id')
-            && (int) $request->related_entity_id === (int) $targetEntity->id) {
-            throw ValidationException::withMessages([
-                'related_entity_id' => 'Related entity must be different from the business entity.',
+            $this->authorize('update', $targetEntity);
+
+            if ($request->filled('related_entity_id')
+                && (int) $request->related_entity_id === (int) $targetEntity->id) {
+                throw ValidationException::withMessages([
+                    'related_entity_id' => 'Related entity must be different from the business entity.',
+                ]);
+            }
+
+            $this->validateTransactionGstBasis($request);
+
+            $gstResolved = TransactionGstResolver::resolve(
+                (float) $request->amount,
+                $request->input('gst_basis') ?: null,
+                $request->input('gst_amount'),
+                Transaction::directionFromType((string) $request->transaction_type)
+            );
+
+            $asset = $request->filled('asset_id')
+                ? Asset::query()->find($request->integer('asset_id'))
+                : null;
+
+            $paidBy = $this->validatedPaidBy($request);
+
+            $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved, $paidBy) {
+                $receiptPath = null;
+                $documentId = null;
+                $prefillPath = $request->input('receipt_path');
+
+                if ($request->hasFile('document')) {
+                    $file = $request->file('document');
+                    $originalName = $file->getClientOriginalName();
+                    $displayName = $this->buildReceiptUploadDisplayName($request, $file);
+                    $labelBase = $request->filled('document_name')
+                        ? trim((string) $request->input('document_name'))
+                        : pathinfo($originalName, PATHINFO_FILENAME);
+                    $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
+                    $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                        $targetEntity,
+                        $asset,
+                        $file,
+                        $displayName,
+                        $labelBase ?: 'Receipt',
+                        $desc !== '' ? $desc : null
+                    );
+                    $receiptPath = $document->path;
+                    $documentId = $document->id;
+                } elseif (
+                    $prefillPath
+                    && $this->prefillReceiptPathAllowedForEntity($prefillPath, $targetEntity)
+                    && Storage::disk('s3')->exists($prefillPath)
+                ) {
+                    $displayName = basename(str_replace('\\', '/', $prefillPath));
+                    $labelBase = pathinfo($displayName, PATHINFO_FILENAME) ?: 'Receipt';
+                    $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
+                    $document = $this->documentUploadService->createTransactionReceiptFromExistingS3Path(
+                        $targetEntity,
+                        $asset,
+                        $prefillPath,
+                        $displayName,
+                        $labelBase,
+                        $desc !== '' ? $desc : null
+                    );
+                    $receiptPath = $document->path;
+                    $documentId = $document->id;
+                }
+
+                $paymentDocumentId = null;
+                if ($request->hasFile('payment_document')) {
+                    $payFile = $request->file('payment_document');
+                    $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile, 'payment_document_name');
+                    $payLabelBase = $request->filled('payment_document_name')
+                        ? trim((string) $request->input('payment_document_name'))
+                        : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
+                    $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
+                    $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                        $targetEntity,
+                        $asset,
+                        $payFile,
+                        $payDisplayName,
+                        $payLabelBase ?: 'Payment Receipt',
+                        $payDesc !== '' ? $payDesc : null
+                    );
+                    $paymentDocumentId = $payDocument->id;
+                }
+
+                return Transaction::create([
+                    'business_entity_id' => $targetEntity->id,
+                    'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
+                    'related_entity_id' => $request->related_entity_id,
+                    'date' => $request->date,
+                    'amount' => $request->amount,
+                    'description' => $request->description,
+                    'vendor_name' => $request->vendor_name,
+                    'invoice_number' => $request->invoice_number,
+                    'transaction_type' => $request->transaction_type,
+                    'gst_amount' => $gstResolved['gst_amount'],
+                    'gst_status' => $gstResolved['gst_status'],
+                    'gst_basis' => $gstResolved['gst_basis'],
+                    'receipt_path' => $receiptPath,
+                    'document_id' => $documentId,
+                    'payment_status' => $request->payment_status ?? 'paid',
+                    'due_date' => $request->due_date,
+                    'paid_at' => $request->paid_at,
+                    'payment_method' => $request->payment_method,
+                    'paid_by' => $paidBy,
+                    'payment_document_id' => $paymentDocumentId,
+                ]);
+            });
+
+            Log::info('Dashboard add transaction: saved', [
+                'transaction_id' => $transaction->id,
+                'target_business_entity_id' => $transaction->business_entity_id,
+                'user_id' => auth()->id(),
             ]);
+
+            return redirect()->route('dashboard')->with('success', "Transaction '{$transaction->description}' added successfully!");
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            $context = $this->storeTransactionRequestLogContext($request, $businessEntity);
+            if ($e instanceof QueryException) {
+                $context['sql'] = $e->getSql();
+                $context['bindings'] = $e->getBindings();
+            }
+            Log::error('Dashboard add transaction: failed', array_merge($context, [
+                'exception_class' => $e::class,
+                'exception_message' => $e->getMessage(),
+                'exception_file' => $e->getFile(),
+                'exception_line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]));
+
+            throw $e;
         }
-
-        $this->validateTransactionGstBasis($request);
-
-        $gstResolved = TransactionGstResolver::resolve(
-            (float) $request->amount,
-            $request->input('gst_basis') ?: null,
-            $request->input('gst_amount'),
-            Transaction::directionFromType((string) $request->transaction_type)
-        );
-
-        $asset = $request->filled('asset_id')
-            ? Asset::query()->find($request->integer('asset_id'))
-            : null;
-
-        $paidBy = $this->validatedPaidBy($request);
-
-        $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved, $paidBy) {
-            $receiptPath = null;
-            $documentId = null;
-            $prefillPath = $request->input('receipt_path');
-
-            if ($request->hasFile('document')) {
-                $file = $request->file('document');
-                $originalName = $file->getClientOriginalName();
-                $displayName = $this->buildReceiptUploadDisplayName($request, $file);
-                $labelBase = $request->filled('document_name')
-                    ? trim((string) $request->input('document_name'))
-                    : pathinfo($originalName, PATHINFO_FILENAME);
-                $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
-                $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                    $targetEntity,
-                    $asset,
-                    $file,
-                    $displayName,
-                    $labelBase ?: 'Receipt',
-                    $desc !== '' ? $desc : null
-                );
-                $receiptPath = $document->path;
-                $documentId = $document->id;
-            } elseif (
-                $prefillPath
-                && $this->prefillReceiptPathAllowedForEntity($prefillPath, $targetEntity)
-                && Storage::disk('s3')->exists($prefillPath)
-            ) {
-                $displayName = basename(str_replace('\\', '/', $prefillPath));
-                $labelBase = pathinfo($displayName, PATHINFO_FILENAME) ?: 'Receipt';
-                $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
-                $document = $this->documentUploadService->createTransactionReceiptFromExistingS3Path(
-                    $targetEntity,
-                    $asset,
-                    $prefillPath,
-                    $displayName,
-                    $labelBase,
-                    $desc !== '' ? $desc : null
-                );
-                $receiptPath = $document->path;
-                $documentId = $document->id;
-            }
-
-            $paymentDocumentId = null;
-            if ($request->hasFile('payment_document')) {
-                $payFile = $request->file('payment_document');
-                $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile, 'payment_document_name');
-                $payLabelBase = $request->filled('payment_document_name')
-                    ? trim((string) $request->input('payment_document_name'))
-                    : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
-                $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
-                $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                    $targetEntity,
-                    $asset,
-                    $payFile,
-                    $payDisplayName,
-                    $payLabelBase ?: 'Payment Receipt',
-                    $payDesc !== '' ? $payDesc : null
-                );
-                $paymentDocumentId = $payDocument->id;
-            }
-
-            return Transaction::create([
-                'business_entity_id' => $targetEntity->id,
-                'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
-                'related_entity_id' => $request->related_entity_id,
-                'date' => $request->date,
-                'amount' => $request->amount,
-                'description' => $request->description,
-                'vendor_name' => $request->vendor_name,
-                'invoice_number' => $request->invoice_number,
-                'transaction_type' => $request->transaction_type,
-                'gst_amount' => $gstResolved['gst_amount'],
-                'gst_status' => $gstResolved['gst_status'],
-                'gst_basis' => $gstResolved['gst_basis'],
-                'receipt_path' => $receiptPath,
-                'document_id' => $documentId,
-                'payment_status' => $request->payment_status ?? 'paid',
-                'due_date' => $request->due_date,
-                'paid_at' => $request->paid_at,
-                'payment_method' => $request->payment_method,
-                'paid_by' => $paidBy,
-                'payment_document_id' => $paymentDocumentId,
-            ]);
-        });
-
-        return redirect()->route('dashboard')->with('success', "Transaction '{$transaction->description}' added successfully!");
     }
 
     /**
@@ -1880,6 +1907,33 @@ class BusinessEntityController extends Controller
         $transactions = $query->get();
 
         return view('transactions.index', compact('transactions', 'businessEntities'));
+    }
+
+    /**
+     * Request fields safe for logs (no uploads, tokens, or full request dump).
+     *
+     * @return array<string, mixed>
+     */
+    private function storeTransactionRequestLogContext(Request $request, BusinessEntity $routeBusinessEntity): array
+    {
+        return [
+            'route_business_entity_id' => $routeBusinessEntity->id,
+            'request_business_entity_id' => $request->input('business_entity_id'),
+            'payment_status' => $request->input('payment_status'),
+            'due_date' => $request->input('due_date'),
+            'paid_at' => $request->input('paid_at'),
+            'transaction_type' => $request->input('transaction_type'),
+            'date' => $request->input('date'),
+            'amount' => $request->input('amount'),
+            'description' => $request->input('description'),
+            'asset_id' => $request->input('asset_id'),
+            'related_entity_id' => $request->input('related_entity_id'),
+            'gst_basis' => $request->input('gst_basis'),
+            'has_document_upload' => $request->hasFile('document'),
+            'has_payment_document' => $request->hasFile('payment_document'),
+            'has_receipt_path_prefill' => $request->filled('receipt_path'),
+            'user_id' => auth()->id(),
+        ];
     }
 
     /**
