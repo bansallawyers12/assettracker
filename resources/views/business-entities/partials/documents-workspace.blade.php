@@ -8,6 +8,8 @@
     $bulkUploadUrl = route('entities.documents.bulk-upload', $entityId);
     $autoMatchUrl = route('entities.documents.auto-match', $entityId);
     $prefix = $wsAssetId ? 'asset-doc-'.$wsAssetId : 'entity-doc';
+    $wsDocMaxKb = max(1, (int) config('documents.max_kilobytes', 10240));
+    $wsDocAccept = config('documents.transaction_file_accept');
 @endphp
 
 <div id="{{ $prefix }}-workspace" class="documents-workspace"
@@ -16,7 +18,8 @@
      data-upload-action="{{ $uploadAction }}"
      data-bulk-url="{{ $bulkUploadUrl }}"
      data-auto-match-url="{{ $autoMatchUrl }}"
-     data-csrf="{{ csrf_token() }}">
+     data-csrf="{{ csrf_token() }}"
+     data-max-file-bytes="{{ $wsDocMaxKb * 1024 }}">
 
     <div class="flex flex-wrap gap-2 mb-4 items-center border-b border-gray-200 dark:border-gray-700 pb-3" id="{{ $prefix }}-category-tabs">
         @forelse($documentCategories as $index => $cat)
@@ -35,6 +38,10 @@
             Bulk upload
         </button>
     </div>
+    <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-4">
+        Up to {{ number_format($wsDocMaxKb / 1024, 1) }} MB per file (set <span class="font-mono">DOCUMENTS_MAX_KB</span> in <span class="font-mono">.env</span> to change).
+        Ensure PHP <span class="font-mono">upload_max_filesize</span> and <span class="font-mono">post_max_size</span> are not smaller.
+    </p>
 
     @foreach($documentCategories as $index => $category)
         <div class="doc-cat-panel {{ $index === 0 ? '' : 'hidden' }}" data-category-panel="{{ $category->id }}">
@@ -79,11 +86,11 @@
                                     <td class="px-3 py-2 align-top text-right whitespace-nowrap">
                                         @if(!$doc->path)
                                             <label class="cursor-pointer text-indigo-600 text-xs">Upload
-                                                <input type="file" class="hidden doc-slot-file" data-document-id="{{ $doc->id }}" data-replace="0">
+                                                <input type="file" class="hidden doc-slot-file" accept="{{ $wsDocAccept }}" data-document-id="{{ $doc->id }}" data-replace="0">
                                             </label>
                                         @else
                                             <label class="cursor-pointer text-xs text-gray-600 dark:text-gray-400 mr-1">Replace
-                                                <input type="file" class="hidden doc-slot-file" data-document-id="{{ $doc->id }}" data-replace="1">
+                                                <input type="file" class="hidden doc-slot-file" accept="{{ $wsDocAccept }}" data-document-id="{{ $doc->id }}" data-replace="1">
                                             </label>
                                         @endif
                                         <button type="button" class="doc-clear text-xs text-amber-600 {{ $doc->path ? '' : 'opacity-40 pointer-events-none' }}" data-doc-id="{{ $doc->id }}">Clear</button>
@@ -109,7 +116,8 @@
     <div id="{{ $prefix }}-bulk-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
             <h3 class="text-lg font-semibold mb-3 dark:text-white">Bulk upload</h3>
-            <input type="file" id="{{ $prefix }}-bulk-files" multiple class="block w-full text-sm mb-3">
+            <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Each file max {{ number_format($wsDocMaxKb / 1024, 1) }} MB (same as single upload).</p>
+            <input type="file" id="{{ $prefix }}-bulk-files" multiple accept="{{ $wsDocAccept }}" class="block w-full text-sm mb-3">
             <label class="flex items-center gap-2 text-sm mb-3 dark:text-gray-300">
                 <input type="checkbox" id="{{ $prefix }}-bulk-autocreate"> Auto-create checklist for unmatched files
             </label>
@@ -146,6 +154,15 @@
             const bulkUrl = root.dataset.bulkUrl;
             const autoMatchUrl = root.dataset.autoMatchUrl;
             const prefix = root.id.replace('-workspace', '');
+            const maxFileBytes = parseInt(root.dataset.maxFileBytes || '0', 10) || 0;
+            function fileExceedsLimit(file) {
+                if (!maxFileBytes || !file) return false;
+                return file.size > maxFileBytes;
+            }
+            function alertFileTooLarge() {
+                const mb = (maxFileBytes / (1024 * 1024)).toFixed(1);
+                alert(`This file is too large. Maximum is ${mb} MB per file (DOCUMENTS_MAX_KB / server PHP limits may also apply).`);
+            }
 
             const tabs = root.querySelectorAll('.doc-cat-tab');
             const panels = root.querySelectorAll('.doc-cat-panel');
@@ -207,6 +224,12 @@
                     const docId = input.dataset.documentId;
                     const file = input.files && input.files[0];
                     if (!docId || !file) {
+                        input.value = '';
+
+                        return;
+                    }
+                    if (fileExceedsLimit(file)) {
+                        alertFileTooLarge();
                         input.value = '';
 
                         return;
@@ -454,6 +477,12 @@
             document.getElementById(prefix + '-bulk-go')?.addEventListener('click', async () => {
                 const files = bulkFiles?.files;
                 if (!files?.length) return alert('Choose files');
+                for (let i = 0; i < files.length; i++) {
+                    if (fileExceedsLimit(files[i])) {
+                        alertFileTooLarge();
+                        return;
+                    }
+                }
                 const autoCreate = document.getElementById(prefix + '-bulk-autocreate')?.checked;
                 const formData = new FormData();
                 formData.append('_token', root.dataset.csrf);
