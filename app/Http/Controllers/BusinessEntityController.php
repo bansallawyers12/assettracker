@@ -525,6 +525,7 @@ class BusinessEntityController extends Controller
         $this->ensureOperationalForAccounting($businessEntity);
 
         $this->normalizeOptionalTransactionAssetId($request);
+        $this->normalizeOptionalRelatedEntityId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
         $resolvedEntityId = $request->filled('business_entity_id')
@@ -722,6 +723,7 @@ class BusinessEntityController extends Controller
         }
 
         $this->normalizeOptionalTransactionAssetId($request);
+        $this->normalizeOptionalRelatedEntityId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
         $this->prepareTransactionUploadValidation($request, ['document', 'payment_document']);
@@ -899,6 +901,7 @@ class BusinessEntityController extends Controller
         }
 
         $this->normalizeOptionalTransactionAssetId($request);
+        $this->normalizeOptionalRelatedEntityId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
         $this->prepareTransactionUploadValidation($request, ['payment_document']);
@@ -937,6 +940,7 @@ class BusinessEntityController extends Controller
         );
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
+        $data['related_entity_id'] = $request->filled('related_entity_id') ? (int) $data['related_entity_id'] : null;
 
         $this->detachIncompatibleReceiptDocument($transaction, $data['asset_id']);
 
@@ -1037,6 +1041,7 @@ class BusinessEntityController extends Controller
         }
 
         $this->normalizeOptionalTransactionAssetId($request);
+        $this->normalizeOptionalRelatedEntityId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
         $this->prepareTransactionUploadValidation($request, ['payment_document']);
@@ -1075,6 +1080,7 @@ class BusinessEntityController extends Controller
         );
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
+        $data['related_entity_id'] = $request->filled('related_entity_id') ? (int) $data['related_entity_id'] : null;
 
         $this->detachIncompatibleReceiptDocument($transaction, $data['asset_id']);
 
@@ -1943,6 +1949,16 @@ class BusinessEntityController extends Controller
     {
         if ($request->has('asset_id') && $request->input('asset_id') === '') {
             $request->merge(['asset_id' => null]);
+        }
+    }
+
+    /**
+     * HTML selects submit "" for "no related entity"; PostgreSQL rejects '' for nullable bigint FKs.
+     */
+    private function normalizeOptionalRelatedEntityId(Request $request): void
+    {
+        if ($request->has('related_entity_id') && $request->input('related_entity_id') === '') {
+            $request->merge(['related_entity_id' => null]);
         }
     }
 

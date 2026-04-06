@@ -70,10 +70,15 @@ class BusinessEntity extends Model
 
     /**
      * Exists rule limited to operating entities (excludes tenancy/property-manager contacts).
+     *
+     * Use query callbacks instead of ->where(..., false): when the rule is stringified for validation,
+     * boolean false is serialized as an empty string and PostgreSQL rejects "" for a boolean column.
      */
     public static function ruleExistsOperational(string $column = 'id'): \Illuminate\Validation\Rules\Exists
     {
-        return Rule::exists('business_entities', $column)->where('exclude_from_financial_reports', false);
+        return Rule::exists('business_entities', $column)->using(
+            fn ($query) => $query->where('exclude_from_financial_reports', false)
+        );
     }
 
     /**
@@ -81,8 +86,9 @@ class BusinessEntity extends Model
      */
     public static function ruleExistsOperationalAppointorCompany(): \Illuminate\Validation\Rules\Exists
     {
-        return self::ruleExistsOperational()
-            ->where('entity_type', '!=', 'Trust');
+        return self::ruleExistsOperational()->using(
+            fn ($query) => $query->where('entity_type', '!=', 'Trust')
+        );
     }
 
     public function user()
