@@ -399,7 +399,7 @@
                             <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
                                 Reminders
-                                <span class="text-xs font-normal text-gray-500 dark:text-gray-400">Next 15 days</span>
+                                <span class="text-xs font-normal text-gray-500 dark:text-gray-400">Overdue/Next 15 days</span>
                             </h3>
                             <div class="flex items-center gap-2">
                             <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="inline-flex text-xs font-semibold text-amber-700 dark:text-amber-300 hover:underline shrink-0">Full list</a>
@@ -472,7 +472,7 @@
                             @if ($allReminders->isEmpty())
                                 <div class="text-center py-6">
                                     <svg class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400">No reminders due in the next 15 days.</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400">No overdue reminders and nothing due in the next 15 days.</p>
                                 </div>
                             @else
                                 <div class="space-y-3">

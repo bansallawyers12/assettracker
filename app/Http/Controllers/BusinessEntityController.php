@@ -400,18 +400,23 @@ class BusinessEntityController extends Controller
             ->orderBy('id')
             ->get();
 
-        // Fetch Reminder records
+        // Fetch Reminder records (overdue by calendar date, or due in the next 15 days)
         $reminders = Reminder::query()
             ->active()
-            ->dueWithinDays(15)
+            ->dueOverdueOrWithinDays(15)
             ->with(['businessEntity', 'asset', 'user'])
             ->orderBy('next_due_date')
             ->get();
 
         // Fetch Note-based reminders
         $noteReminders = Note::where('is_reminder', true)
-            ->whereDate('reminder_date', '>=', now())
-            ->whereDate('reminder_date', '<=', now()->addDays(15))
+            ->where(function ($q) {
+                $q->whereDate('reminder_date', '<', now()->startOfDay())
+                    ->orWhere(function ($q2) {
+                        $q2->whereDate('reminder_date', '>=', now()->startOfDay())
+                            ->whereDate('reminder_date', '<=', now()->addDays(15));
+                    });
+            })
             ->with(['businessEntity', 'asset', 'user'])
             ->orderBy('reminder_date')
             ->get()
@@ -437,8 +442,13 @@ class BusinessEntityController extends Controller
         $transactionDueReminders = Transaction::query()
             ->where('payment_status', 'unpaid')
             ->whereNotNull('due_date')
-            ->whereDate('due_date', '>=', now()->startOfDay())
-            ->whereDate('due_date', '<=', now()->addDays(15))
+            ->where(function ($q) {
+                $q->whereDate('due_date', '<', now()->startOfDay())
+                    ->orWhere(function ($q2) {
+                        $q2->whereDate('due_date', '>=', now()->startOfDay())
+                            ->whereDate('due_date', '<=', now()->addDays(15));
+                    });
+            })
             ->with(['businessEntity.user', 'asset'])
             ->orderBy('due_date')
             ->get()
