@@ -23,7 +23,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Bills & tasks</h1>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Full lists of unpaid bills, everything with a due date, paid bills, and completed reminders. The dashboard still shows the next 15 days only.</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Full lists of unpaid bills, everything with a due date, paid bills, and completed reminders. The dashboard Reminders section shows overdue items plus the next 15 days.</p>
                 </div>
                 <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
