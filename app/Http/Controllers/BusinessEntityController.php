@@ -474,7 +474,7 @@ class BusinessEntityController extends Controller
             });
 
         // Combine reminders, sort by due date
-        $allReminders = $reminders->concat($noteReminders)->concat($transactionDueReminders)->sortBy('next_due_date');
+        $allReminders = $reminders->concat($noteReminders)->concat($transactionDueReminders)->sortByDesc('next_due_date')->values();
 
         $persons = EntityPerson::with(['person', 'trusteeEntity', 'businessEntity'])->get();
 
