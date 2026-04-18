@@ -4,7 +4,10 @@ namespace App\Services;
 
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
+use App\Models\Invoice;
+use App\Models\JournalEntry;
 use App\Models\JournalLine;
+use App\Models\Transaction;
 use App\Models\TrackingCategory;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -147,7 +150,7 @@ class FinancialReportService
                         ->whereDate('entry_date', '<=', $end)
                         ->where('is_posted', true);
                 })
-                ->with(['journalEntry.businessEntity'])
+                ->with(['journalEntry.businessEntity', 'journalEntry.source'])
                 ->get()
                 ->sortBy(function ($line) {
                     $entry = $line->journalEntry;
@@ -168,13 +171,13 @@ class FinancialReportService
                 $debit = (float) ($line->debit_amount ?? 0);
                 $credit = (float) ($line->credit_amount ?? 0);
                 $runningBalance += $debit - $credit;
-                $entityName = $line->journalEntry->businessEntity->legal_name ?? '';
+                $entry = $line->journalEntry;
+                $entityName = $entry->businessEntity->legal_name ?? '';
 
                 $lineData[] = [
-                    'date' => $line->journalEntry->entry_date,
-                    'reference' => $line->journalEntry->reference_number,
-                    'source_type' => $line->journalEntry->source_type,
-                    'description' => $line->description ?: $line->journalEntry->description,
+                    'date' => $this->accountTransactionPaymentDate($entry),
+                    'reference' => $this->accountTransactionReference($entry),
+                    'description' => $this->accountTransactionDescription($line),
                     'entity_name' => $entityName,
                     'debit' => $debit > 0 ? $debit : null,
                     'credit' => $credit > 0 ? $credit : null,
@@ -200,6 +203,62 @@ class FinancialReportService
                 'account_ids' => $accountIds,
             ],
         ], $ids);
+    }
+
+    /**
+     * Date shown on account transaction lines (prefers actual payment date from source).
+     */
+    private function accountTransactionPaymentDate(JournalEntry $entry): \Carbon\Carbon|\DateTimeInterface|string
+    {
+        $source = $entry->relationLoaded('source') ? $entry->source : null;
+
+        if ($source instanceof Transaction) {
+            return $source->paid_at ?? $source->date ?? $entry->entry_date;
+        }
+
+        if ($source instanceof Invoice) {
+            return $source->paid_at ?? $source->issue_date ?? $entry->entry_date;
+        }
+
+        return $entry->entry_date;
+    }
+
+    /**
+     * Reference column: invoice number when the source provides one, else journal reference.
+     */
+    private function accountTransactionReference(JournalEntry $entry): ?string
+    {
+        $source = $entry->relationLoaded('source') ? $entry->source : null;
+
+        if ($source instanceof Transaction || $source instanceof Invoice) {
+            $num = $source->invoice_number ?? null;
+            if ($num !== null && $num !== '') {
+                return (string) $num;
+            }
+        }
+
+        return $entry->reference_number;
+    }
+
+    /**
+     * Description from the originating transaction (or journal), not the generic GL line label.
+     */
+    private function accountTransactionDescription(JournalLine $line): ?string
+    {
+        $entry = $line->journalEntry;
+        $source = $entry->relationLoaded('source') ? $entry->source : null;
+
+        if ($source instanceof Transaction) {
+            return $source->description
+                ?: $entry->description
+                ?: $line->description;
+        }
+
+        if ($source instanceof Invoice) {
+            return $entry->description ?: $line->description;
+        }
+
+        return $line->description ?: $entry->description;
     }
 
     public function getActiveChartOfAccounts(): EloquentCollection
