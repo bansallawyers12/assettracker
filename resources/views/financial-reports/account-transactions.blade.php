@@ -208,8 +208,11 @@
                                         {{ \Carbon\Carbon::parse($line['date'])->format('j M Y') }}
                                     </td>
                                     @if($isConsolidated)
-                                        <td class="px-4 py-2 text-gray-600 text-xs truncate max-w-[10rem]" title="{{ $line['entity_name'] ?? '' }}">
-                                            {{ $line['entity_name'] ?? '–' }}
+                                        @php
+                                            $paidBy = trim((string) ($line['paid_by_display'] ?? ''));
+                                        @endphp
+                                        <td class="px-4 py-2 text-gray-600 text-xs truncate max-w-[10rem]" title="{{ $paidBy }}">
+                                            {{ $paidBy !== '' ? $paidBy : '–' }}
                                         </td>
                                     @endif
                                     <td class="px-4 py-2 text-gray-600">

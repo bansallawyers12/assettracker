@@ -9,6 +9,7 @@ use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\Transaction;
 use App\Models\TrackingCategory;
+use App\Support\TransactionPayerResolver;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 
@@ -172,13 +173,12 @@ class FinancialReportService
                 $credit = (float) ($line->credit_amount ?? 0);
                 $runningBalance += $debit - $credit;
                 $entry = $line->journalEntry;
-                $entityName = $entry->businessEntity->legal_name ?? '';
 
                 $lineData[] = [
                     'date' => $this->accountTransactionPaymentDate($entry),
                     'reference' => $this->accountTransactionReference($entry),
                     'description' => $this->accountTransactionDescription($line),
-                    'entity_name' => $entityName,
+                    'paid_by_display' => $this->accountTransactionPaidByDisplay($entry),
                     'debit' => $debit > 0 ? $debit : null,
                     'credit' => $credit > 0 ? $credit : null,
                     'running_balance' => $runningBalance,
@@ -221,6 +221,20 @@ class FinancialReportService
         }
 
         return $entry->entry_date;
+    }
+
+    /**
+     * Paid-by label from the bank transaction when the journal was posted from one.
+     */
+    private function accountTransactionPaidByDisplay(JournalEntry $entry): string
+    {
+        $source = $entry->relationLoaded('source') ? $entry->source : null;
+
+        if ($source instanceof Transaction) {
+            return TransactionPayerResolver::paidByLabel($source->paid_by);
+        }
+
+        return '';
     }
 
     /**
