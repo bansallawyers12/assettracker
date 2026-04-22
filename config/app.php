@@ -102,6 +102,12 @@ return [
 
     'key' => env('APP_KEY'),
 
+    /*
+    | Optional shared secret for gated phpinfo (/phpinfo route and public/phpinfo.php).
+    | If you use config:cache after changing .env, run php artisan config:cache again.
+    */
+    'phpinfo_access_token' => env('PHPINFO_ACCESS_TOKEN', ''),
+
     'previous_keys' => [
         ...array_filter(
             explode(',', env('APP_PREVIOUS_KEYS', ''))

@@ -90,6 +90,21 @@ class Reminder extends Model
         return $query->whereBetween('next_due_date', [now(), now()->addDays($days)]);
     }
 
+    /**
+     * Due before today (calendar) or due from start of today through the next X days.
+     * Used by the dashboard reminders widget; does not alter {@see scopeDueWithinDays}.
+     */
+    public function scopeDueOverdueOrWithinDays(Builder $query, int $days): Builder
+    {
+        $todayStart = now()->startOfDay();
+        $windowEnd = now()->addDays($days)->endOfDay();
+
+        return $query->where(function (Builder $q) use ($todayStart, $windowEnd) {
+            $q->whereDate('next_due_date', '<', $todayStart)
+                ->orWhereBetween('next_due_date', [$todayStart, $windowEnd]);
+        });
+    }
+
     public function scopeOverdue($query)
     {
         return $query->where('next_due_date', '<', now())
