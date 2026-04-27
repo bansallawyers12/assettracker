@@ -441,8 +441,8 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
-                                    <input type="date" name="next_due_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('next_due_date') }}" required>
-                                    @error('next_due_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                                    <input type="date" name="reminder_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('reminder_date', old('next_due_date')) }}" required>
+                                    @error('reminder_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repeat</label>
