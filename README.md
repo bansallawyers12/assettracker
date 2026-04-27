@@ -157,12 +157,20 @@ A comprehensive Laravel-based asset management and accounting system designed fo
    DB_USERNAME=your_username
    DB_PASSWORD=your_password
 
-   # AWS S3 (optional; omit for local-only storage)
+
+
+   # AWS S3
+AWS_ACCESS_KEY_ID=your_aws_key
+AWS_SECRET_ACCESS_KEY=your_aws_secret
+AWS_DEFAULT_REGION=your_aws_region
+AWS_BUCKET=your_bucket_name
+
+   # AWS S3 (optional)
    AWS_ACCESS_KEY_ID=your_aws_key
    AWS_SECRET_ACCESS_KEY=your_aws_secret
    AWS_DEFAULT_REGION=your_aws_region
    AWS_BUCKET=your_bucket_name
-
+   
    # Gmail API (for Emails section)
    GMAIL_ENABLED=false
    GMAIL_CLIENT_ID=
