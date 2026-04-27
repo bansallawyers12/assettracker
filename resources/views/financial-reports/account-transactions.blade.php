@@ -174,11 +174,10 @@
                 <table class="w-full text-sm">
                     <thead>
                         <tr class="border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wide">
-                            <th class="px-6 py-2 text-left w-28">Date</th>
+                            <th class="px-6 py-2 text-left w-28">Payment date</th>
                             @if($isConsolidated)
                                 <th class="px-4 py-2 text-left min-w-[7rem]">Entity</th>
                             @endif
-                            <th class="px-4 py-2 text-left w-32">Source</th>
                             <th class="px-4 py-2 text-left w-32">Reference</th>
                             <th class="px-4 py-2 text-left">Description</th>
                             <th class="px-4 py-2 text-right w-28">Debit</th>
@@ -187,14 +186,17 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {{-- Opening balance row --}}
+                        {{-- Opening balance row (date = start of report period) --}}
                         <tr class="border-b border-gray-50 text-gray-500 italic text-xs">
-                            <td class="px-6 py-2 text-left">Opening</td>
+                            <td class="px-6 py-2 text-left whitespace-nowrap">{{ $startDate->format('j M Y') }}</td>
                             @if($isConsolidated)
                                 <td class="px-4 py-2 text-gray-400">—</td>
                             @endif
-                            <td class="px-4 py-2" colspan="5"></td>
-                            <td class="px-4 py-2 text-right font-medium text-gray-700">
+                            <td class="px-4 py-2 text-gray-400">—</td>
+                            <td class="px-4 py-2 text-gray-400">—</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right text-gray-300">—</td>
+                            <td class="px-4 py-2 text-right font-medium text-gray-700 not-italic">
                                 {{ number_format($accountGroup['opening_balance'], 2) }}
                             </td>
                         </tr>
@@ -210,9 +212,6 @@
                                             {{ $line['entity_name'] ?? '–' }}
                                         </td>
                                     @endif
-                                    <td class="px-4 py-2 text-gray-500 capitalize">
-                                        {{ $line['source_type'] ?? '–' }}
-                                    </td>
                                     <td class="px-4 py-2 text-gray-600">
                                         {{ $line['reference'] ?? '–' }}
                                     </td>
@@ -241,13 +240,13 @@
                             @endforeach
                         @else
                             <tr class="border-b border-gray-50">
-                                <td colspan="{{ $isConsolidated ? 8 : 7 }}" class="px-6 py-2 text-xs text-gray-400 italic">No transactions in this period</td>
+                                <td colspan="{{ $isConsolidated ? 7 : 6 }}" class="px-6 py-2 text-xs text-gray-400 italic">No transactions in this period</td>
                             </tr>
                         @endif
 
                         {{-- Closing balance row --}}
                         <tr class="border-t border-gray-200 bg-gray-50 font-semibold">
-                            <td class="px-6 py-2.5 text-gray-600 text-xs uppercase tracking-wide" colspan="{{ $isConsolidated ? 7 : 6 }}">
+                            <td class="px-6 py-2.5 text-gray-600 text-xs uppercase tracking-wide" colspan="{{ $isConsolidated ? 6 : 5 }}">
                                 Closing Balance
                             </td>
                             <td class="px-4 py-2.5 text-right text-sm
