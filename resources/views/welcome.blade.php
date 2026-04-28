@@ -1,3 +1,4 @@
+{{-- CI/CD auto-trigger test --}}
 <x-app-layout>
     <div class="min-h-[calc(100vh-4rem)] bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center p-6">
         <div class="max-w-4xl w-full">
