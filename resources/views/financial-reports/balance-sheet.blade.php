@@ -18,6 +18,16 @@
         return $q;
     };
     $balanced = abs($report['total_assets'] - $report['total_liabilities_equity']) < 0.01;
+
+    /** Debit − credit: + net debit, − net credit */
+    $formatSignedGl = function (float $v): string {
+        if (abs($v) < 0.00001) {
+            return '0.00';
+        }
+        $formatted = number_format($v, 2);
+
+        return $v > 0 ? '+'.$formatted : $formatted;
+    };
 @endphp
 
 <x-report-shell
@@ -109,8 +119,8 @@
                             <td class="px-8 py-1.5 text-gray-700">
                                 {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
                             </td>
-                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-40">
-                                {{ number_format($row['balance'], 2) }}
+                            <td class="px-6 py-1.5 text-right tabular-nums w-40 font-medium {{ ($row['balance'] ?? 0) < 0 ? 'text-rose-700' : 'text-gray-800' }}">
+                                {{ $formatSignedGl((float) ($row['balance'] ?? 0)) }}
                             </td>
                         </tr>
                     @endforeach
@@ -118,8 +128,9 @@
                         <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
                             Total {{ $catGroup['label'] }}
                         </td>
-                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-40 border-t border-gray-200">
-                            {{ number_format($catGroup['subtotal'], 2) }}
+                        <td class="px-6 py-1.5 text-right font-semibold tabular-nums w-40 border-t border-gray-200
+                            {{ $catGroup['subtotal'] < 0 ? 'text-rose-800' : 'text-gray-800' }}">
+                            {{ $formatSignedGl((float) $catGroup['subtotal']) }}
                         </td>
                     </tr>
                 @empty
@@ -130,8 +141,9 @@
 
                 <tr class="border-t-2 border-gray-300 bg-gray-50">
                     <td class="px-6 py-3 text-sm font-bold text-gray-900">Total Assets</td>
-                    <td class="px-6 py-3 text-right text-sm font-bold text-gray-900 tabular-nums w-40">
-                        {{ number_format($report['total_assets'], 2) }}
+                    <td class="px-6 py-3 text-right text-sm font-bold tabular-nums w-40
+                        {{ $report['total_assets'] < 0 ? 'text-rose-900' : 'text-gray-900' }}">
+                        {{ $formatSignedGl((float) $report['total_assets']) }}
                     </td>
                 </tr>
 
@@ -142,6 +154,13 @@
                     <td colspan="2"
                         class="px-6 pt-2 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
                         Liabilities
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" class="px-6 pb-2 text-[11px] text-gray-500 leading-snug">
+                        Amounts show <span class="font-medium text-gray-700">debit − credit</span>:
+                        <span class="tabular-nums">+</span> net debit,
+                        <span class="tabular-nums">−</span> net credit.
                     </td>
                 </tr>
 
@@ -156,9 +175,9 @@
                             <td class="px-8 py-1.5 text-gray-700">
                                 {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
                             </td>
-                            {{-- Liabilities carry credit (negative) balances — display as positive --}}
-                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-40">
-                                {{ number_format(abs($row['balance']), 2) }}
+                            <td class="px-6 py-1.5 text-right tabular-nums w-40 font-medium
+                                {{ ($row['balance'] ?? 0) < 0 ? 'text-emerald-700' : (($row['balance'] ?? 0) > 0 ? 'text-amber-800' : 'text-gray-800') }}">
+                                {{ $formatSignedGl((float) ($row['balance'] ?? 0)) }}
                             </td>
                         </tr>
                     @endforeach
@@ -166,8 +185,9 @@
                         <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
                             Total {{ $catGroup['label'] }}
                         </td>
-                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-40 border-t border-gray-200">
-                            {{ number_format(abs($catGroup['subtotal']), 2) }}
+                        <td class="px-6 py-1.5 text-right font-semibold tabular-nums w-40 border-t border-gray-200
+                            {{ $catGroup['subtotal'] < 0 ? 'text-emerald-800' : ($catGroup['subtotal'] > 0 ? 'text-amber-900' : 'text-gray-700') }}">
+                            {{ $formatSignedGl((float) $catGroup['subtotal']) }}
                         </td>
                     </tr>
                 @empty
@@ -178,8 +198,9 @@
 
                 <tr class="border-t-2 border-gray-200">
                     <td class="px-6 py-2 text-xs font-semibold text-gray-600">Total Liabilities</td>
-                    <td class="px-6 py-2 text-right font-semibold text-gray-700 tabular-nums w-40">
-                        {{ number_format(abs($report['liabilities']['total']), 2) }}
+                    <td class="px-6 py-2 text-right font-semibold tabular-nums w-40
+                        {{ $report['liabilities']['total'] < 0 ? 'text-emerald-800' : ($report['liabilities']['total'] > 0 ? 'text-amber-900' : 'text-gray-700') }}">
+                        {{ $formatSignedGl((float) $report['liabilities']['total']) }}
                     </td>
                 </tr>
 
@@ -190,6 +211,12 @@
                     <td colspan="2"
                         class="px-6 pt-2 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
                         Equity
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="2" class="px-6 pb-2 text-[11px] text-gray-500 leading-snug">
+                        Same convention: <span class="font-medium text-gray-700">debit − credit</span>
+                        (<span class="tabular-nums">+</span> debit, <span class="tabular-nums">−</span> credit).
                     </td>
                 </tr>
 
@@ -204,9 +231,9 @@
                             <td class="px-8 py-1.5 text-gray-700">
                                 {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
                             </td>
-                            {{-- Equity carries credit (negative) balances — display as positive --}}
-                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-40">
-                                {{ number_format(abs($row['balance']), 2) }}
+                            <td class="px-6 py-1.5 text-right tabular-nums w-40 font-medium
+                                {{ ($row['balance'] ?? 0) < 0 ? 'text-emerald-700' : (($row['balance'] ?? 0) > 0 ? 'text-amber-800' : 'text-gray-800') }}">
+                                {{ $formatSignedGl((float) ($row['balance'] ?? 0)) }}
                             </td>
                         </tr>
                     @endforeach
@@ -214,8 +241,9 @@
                         <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
                             Total {{ $catGroup['label'] }}
                         </td>
-                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-40 border-t border-gray-200">
-                            {{ number_format(abs($catGroup['subtotal']), 2) }}
+                        <td class="px-6 py-1.5 text-right font-semibold tabular-nums w-40 border-t border-gray-200
+                            {{ $catGroup['subtotal'] < 0 ? 'text-emerald-800' : ($catGroup['subtotal'] > 0 ? 'text-amber-900' : 'text-gray-700') }}">
+                            {{ $formatSignedGl((float) $catGroup['subtotal']) }}
                         </td>
                     </tr>
                 @empty
@@ -226,16 +254,18 @@
 
                 <tr class="border-t-2 border-gray-200">
                     <td class="px-6 py-2 text-xs font-semibold text-gray-600">Total Equity</td>
-                    <td class="px-6 py-2 text-right font-semibold text-gray-700 tabular-nums w-40">
-                        {{ number_format(abs($report['equity']['total']), 2) }}
+                    <td class="px-6 py-2 text-right font-semibold tabular-nums w-40
+                        {{ $report['equity']['total'] < 0 ? 'text-emerald-800' : ($report['equity']['total'] > 0 ? 'text-amber-900' : 'text-gray-700') }}">
+                        {{ $formatSignedGl((float) $report['equity']['total']) }}
                     </td>
                 </tr>
 
                 {{-- ─── TOTAL LIABILITIES & EQUITY ──────────────────────── --}}
                 <tr class="border-t-2 border-gray-300 bg-gray-50">
                     <td class="px-6 py-3 text-sm font-bold text-gray-900">Total Liabilities &amp; Equity</td>
-                    <td class="px-6 py-3 text-right text-sm font-bold text-gray-900 tabular-nums w-40">
-                        {{ number_format($report['total_liabilities_equity'], 2) }}
+                    <td class="px-6 py-3 text-right text-sm font-bold tabular-nums w-40
+                        {{ $report['total_liabilities_equity'] < 0 ? 'text-emerald-900' : ($report['total_liabilities_equity'] > 0 ? 'text-amber-900' : 'text-gray-900') }}">
+                        {{ $formatSignedGl((float) $report['total_liabilities_equity']) }}
                     </td>
                 </tr>
 
