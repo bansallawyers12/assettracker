@@ -108,11 +108,10 @@ return [
     */
     'phpinfo_access_token' => env('PHPINFO_ACCESS_TOKEN', ''),
 
-    'previous_keys' => [
-        ...array_filter(
-            explode(',', env('APP_PREVIOUS_KEYS', ''))
-        ),
-    ],
+    'previous_keys' => array_values(array_filter(array_map(
+        static fn (string $key): string => trim($key),
+        explode(',', (string) env('APP_PREVIOUS_KEYS', ''))
+    ))),
 
     /*
     |--------------------------------------------------------------------------
