@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\BankAccount;
 use App\Models\Person;
 use App\Models\User;
+use App\Support\EncryptionHelper;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
@@ -43,6 +44,15 @@ class BackfillPersonsEncryption extends Command
         $dryRun  = (bool) $this->option('dry-run');
         $chunk   = (int) $this->option('chunk');
 
+        $previousKeyCount = EncryptionHelper::previousKeyCount();
+        $this->line('APP_KEY fingerprint: '.EncryptionHelper::currentKeyFingerprint());
+        $this->line("APP_PREVIOUS_KEYS configured: {$previousKeyCount}");
+
+        if ($previousKeyCount === 0) {
+            $this->warn('No APP_PREVIOUS_KEYS set. Rows encrypted with a rotated key cannot be decrypted until the old key is listed.');
+            $this->warn('After updating .env, run: php artisan config:clear (or php artisan config:cache).');
+        }
+
         $toProcess = $target === 'all'
             ? $this->specs
             : [$target => $this->specs[$target] ?? null];
@@ -76,6 +86,7 @@ class BackfillPersonsEncryption extends Command
 
         $plaintext     = 0;
         $doubleEnc     = 0;
+        $rotated       = 0;
         $alreadyOk     = 0;
         $locked        = 0;
         $skipped       = 0;
@@ -85,7 +96,7 @@ class BackfillPersonsEncryption extends Command
             ->orderBy($dummy->getKeyName())
             ->chunkById($chunk, function ($models) use (
                 $fields, $table, $dryRun,
-                &$plaintext, &$doubleEnc, &$alreadyOk, &$locked, &$skipped, &$writes
+                &$plaintext, &$doubleEnc, &$rotated, &$alreadyOk, &$locked, &$skipped, &$writes
             ) {
                 foreach ($models as $model) {
                     $updates  = [];
@@ -108,6 +119,11 @@ class BackfillPersonsEncryption extends Command
 
                             case 'double':
                                 $doubleEnc++;
+                                $updates[$field] = Crypt::encrypt($plain);
+                                break;
+
+                            case 'rotate':
+                                $rotated++;
                                 $updates[$field] = Crypt::encrypt($plain);
                                 break;
 
@@ -167,10 +183,15 @@ class BackfillPersonsEncryption extends Command
         $label = $dryRun ? 'Would write' : 'Wrote';
         $this->line("  Plaintext rows found  : {$plaintext}");
         $this->line("  Double-encrypted found: {$doubleEnc}");
+        $this->line("  Previous-key re-enc.  : {$rotated}");
         $this->line("  Already correct       : {$alreadyOk}");
         $this->line("  Locked (wrong key)    : {$locked}");
         $this->line("  Skipped (errors)      : {$skipped}");
         $this->line("  {$label}              : {$writes}");
+
+        if ($locked > 0) {
+            $this->warn('Locked rows: add the key that originally encrypted this data to APP_PREVIOUS_KEYS, then clear config cache and re-run.');
+        }
     }
 
     /**
@@ -179,50 +200,35 @@ class BackfillPersonsEncryption extends Command
      * Returns [$state, $plaintext, $errorMessage] where $state is one of:
      *   'plaintext' – raw value was never encrypted; $plaintext = $raw
      *   'double'    – raw value was encrypted twice;  $plaintext = inner plaintext
+     *   'rotate'    – decrypts with APP_PREVIOUS_KEYS only; re-encrypt with APP_KEY
      *   'ok'        – raw value is correctly encrypted; $plaintext = decrypted value
-     *   'locked'    – looks encrypted but APP_KEY cannot decrypt; $plaintext = null
+     *   'locked'    – looks encrypted but no configured key can decrypt; $plaintext = null
      *   'error'     – could not determine state; $plaintext = null
      *
      * @return array{0: string, 1: string|null, 2: string|null}
      */
     private function classify(string $raw): array
     {
-        // Try first-layer decrypt.
-        try {
-            $firstDecrypt = Crypt::decrypt($raw);
-        } catch (\Throwable $e) {
-            if ($this->looksLikeLaravelCiphertext($raw)) {
-                return ['locked', null, 'Ciphertext cannot be decrypted with APP_KEY (set APP_PREVIOUS_KEYS or re-encrypt manually)'];
+        $plain = EncryptionHelper::attemptDecrypt($raw);
+
+        if ($plain === null) {
+            if (EncryptionHelper::looksLikeLaravelCiphertext($raw)) {
+                return ['locked', null, 'Ciphertext cannot be decrypted with APP_KEY or APP_PREVIOUS_KEYS (check keys and config cache)'];
             }
 
-            // Cannot decrypt and not ciphertext-shaped → legacy plaintext row.
             return ['plaintext', $raw, null];
         }
 
-        // First decrypt succeeded. Try second-layer decrypt to detect double-encryption.
-        if (is_string($firstDecrypt) && !empty($firstDecrypt)) {
-            try {
-                $secondDecrypt = Crypt::decrypt($firstDecrypt);
-                // Both decrypts succeeded → was double-encrypted; $secondDecrypt is the real plaintext.
-                return ['double', $secondDecrypt, null];
-            } catch (\Throwable) {
-                // Second decrypt failed → $firstDecrypt is the real plaintext; already single-encrypted. Correct.
-                return ['ok', $firstDecrypt, null];
-            }
+        if (EncryptionHelper::attemptDecryptWithCurrentKeyOnly($raw) === null) {
+            return ['rotate', $plain, null];
         }
 
-        return ['ok', $firstDecrypt, null];
-    }
+        $innerPlain = EncryptionHelper::attemptDecrypt($plain);
 
-    private function looksLikeLaravelCiphertext(string $raw): bool
-    {
-        if (! str_starts_with($raw, 'eyJ')) {
-            return false;
+        if ($innerPlain !== null) {
+            return ['double', $innerPlain, null];
         }
 
-        $payload = json_decode(base64_decode($raw, true) ?: '', true);
-
-        return is_array($payload)
-            && isset($payload['iv'], $payload['value'], $payload['mac']);
+        return ['ok', $plain, null];
     }
 }

@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\BankAccount;
 use App\Models\Person;
 use App\Models\User;
+use App\Support\EncryptionHelper;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Crypt;
@@ -20,6 +21,9 @@ class ReencryptModelAttributes extends Command
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run');
+
+        $this->line('APP_KEY fingerprint: '.EncryptionHelper::currentKeyFingerprint());
+        $this->line('APP_PREVIOUS_KEYS configured: '.EncryptionHelper::previousKeyCount());
 
         $specs = [
             [User::class, 'users'],
@@ -61,10 +65,12 @@ class ReencryptModelAttributes extends Command
                     if ($raw === null || $raw === '') {
                         continue;
                     }
-                    try {
-                        $plain = Crypt::decrypt($raw);
-                    } catch (\Throwable) {
-                        $this->warn("  Skip {$table} id={$model->getKey()}: cannot decrypt `{$attr}` (wrong APP_KEY or corrupt data).");
+                    $plain = EncryptionHelper::attemptDecrypt($raw);
+                    if ($plain === null) {
+                        $hint = EncryptionHelper::looksLikeLaravelCiphertext($raw)
+                            ? 'set APP_PREVIOUS_KEYS and clear config cache'
+                            : 'corrupt or non-encrypted data';
+                        $this->warn("  Skip {$table} id={$model->getKey()}: cannot decrypt `{$attr}` ({$hint}).");
                         $skipRow = true;
                         break;
                     }
