@@ -77,6 +77,7 @@ class BackfillPersonsEncryption extends Command
         $plaintext     = 0;
         $doubleEnc     = 0;
         $alreadyOk     = 0;
+        $locked        = 0;
         $skipped       = 0;
         $writes        = 0;
 
@@ -84,7 +85,7 @@ class BackfillPersonsEncryption extends Command
             ->orderBy($dummy->getKeyName())
             ->chunkById($chunk, function ($models) use (
                 $fields, $table, $dryRun,
-                &$plaintext, &$doubleEnc, &$alreadyOk, &$skipped, &$writes
+                &$plaintext, &$doubleEnc, &$alreadyOk, &$locked, &$skipped, &$writes
             ) {
                 foreach ($models as $model) {
                     $updates  = [];
@@ -112,6 +113,18 @@ class BackfillPersonsEncryption extends Command
 
                             case 'ok':
                                 $alreadyOk++;
+                                break;
+
+                            case 'locked':
+                                $locked++;
+                                $this->warn("  [{$table} id={$model->getKey()}] field={$field}: {$err}");
+                                Log::warning('BackfillPersonsEncryption: locked ciphertext', [
+                                    'table' => $table,
+                                    'id'    => $model->getKey(),
+                                    'field' => $field,
+                                    'error' => $err,
+                                ]);
+                                $hasError = true;
                                 break;
 
                             case 'error':
@@ -155,6 +168,7 @@ class BackfillPersonsEncryption extends Command
         $this->line("  Plaintext rows found  : {$plaintext}");
         $this->line("  Double-encrypted found: {$doubleEnc}");
         $this->line("  Already correct       : {$alreadyOk}");
+        $this->line("  Locked (wrong key)    : {$locked}");
         $this->line("  Skipped (errors)      : {$skipped}");
         $this->line("  {$label}              : {$writes}");
     }
@@ -166,6 +180,7 @@ class BackfillPersonsEncryption extends Command
      *   'plaintext' – raw value was never encrypted; $plaintext = $raw
      *   'double'    – raw value was encrypted twice;  $plaintext = inner plaintext
      *   'ok'        – raw value is correctly encrypted; $plaintext = decrypted value
+     *   'locked'    – looks encrypted but APP_KEY cannot decrypt; $plaintext = null
      *   'error'     – could not determine state; $plaintext = null
      *
      * @return array{0: string, 1: string|null, 2: string|null}
@@ -176,7 +191,11 @@ class BackfillPersonsEncryption extends Command
         try {
             $firstDecrypt = Crypt::decrypt($raw);
         } catch (\Throwable $e) {
-            // Cannot decrypt → raw value is plaintext (legacy unencrypted row).
+            if ($this->looksLikeLaravelCiphertext($raw)) {
+                return ['locked', null, 'Ciphertext cannot be decrypted with APP_KEY (set APP_PREVIOUS_KEYS or re-encrypt manually)'];
+            }
+
+            // Cannot decrypt and not ciphertext-shaped → legacy plaintext row.
             return ['plaintext', $raw, null];
         }
 
@@ -193,5 +212,17 @@ class BackfillPersonsEncryption extends Command
         }
 
         return ['ok', $firstDecrypt, null];
+    }
+
+    private function looksLikeLaravelCiphertext(string $raw): bool
+    {
+        if (! str_starts_with($raw, 'eyJ')) {
+            return false;
+        }
+
+        $payload = json_decode(base64_decode($raw, true) ?: '', true);
+
+        return is_array($payload)
+            && isset($payload['iv'], $payload['value'], $payload['mac']);
     }
 }
