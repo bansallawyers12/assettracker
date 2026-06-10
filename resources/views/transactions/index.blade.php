@@ -4,7 +4,7 @@
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
                 All Transactions
             </h2>
-            <a href="{{ route('dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium shadow transition-colors">
+            <a href="{{ route('dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium shadow-xs transition-colors">
                 Back to Dashboard
             </a>
         </div>
@@ -22,7 +22,7 @@
             <div>
                 <label for="entity_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Filter by Entity</label>
                 <select id="entity_filter" name="entity_id" onchange="this.form.submit()"
-                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-purple-500 focus:border-purple-500">
                     <option value="">All Entities</option>
                     @foreach ($businessEntities as $entity)
                         <option value="{{ $entity->id }}" {{ request('entity_id') == $entity->id ? 'selected' : '' }}>
@@ -34,7 +34,7 @@
             <div>
                 <label for="type_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Filter by Type</label>
                 <select id="type_filter" name="type" onchange="this.form.submit()"
-                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-purple-500 focus:border-purple-500">
                     <option value="">All Types</option>
                     @foreach (\App\Models\Transaction::$transactionTypes as $key => $label)
                         <option value="{{ $key }}" {{ request('type') === $key ? 'selected' : '' }}>{{ $label }}</option>
@@ -44,7 +44,7 @@
             <div>
                 <label for="direction_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Income / Expense</label>
                 <select id="direction_filter" name="direction" onchange="this.form.submit()"
-                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-purple-500 focus:border-purple-500">
                     <option value="">All</option>
                     <option value="income" {{ request('direction') === 'income' ? 'selected' : '' }}>Income</option>
                     <option value="expense" {{ request('direction') === 'expense' ? 'selected' : '' }}>Expense</option>
@@ -53,7 +53,7 @@
             <div>
                 <label for="payment_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Payment</label>
                 <select id="payment_filter" name="payment_status" onchange="this.form.submit()"
-                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-sm focus:ring-purple-500 focus:border-purple-500">
+                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-purple-500 focus:border-purple-500">
                     <option value="">All</option>
                     <option value="paid" {{ request('payment_status') === 'paid' ? 'selected' : '' }}>Paid</option>
                     <option value="unpaid" {{ request('payment_status') === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
@@ -133,7 +133,7 @@
                                 <td class="px-4 py-3 max-w-xs truncate text-gray-900 dark:text-gray-100" title="{{ $tx->description }}">
                                     {{ $tx->description ?? '—' }}
                                 </td>
-                                <td class="px-4 py-3 max-w-[8rem] truncate text-gray-700 dark:text-gray-300" title="{{ $tx->vendor_name }}">
+                                <td class="px-4 py-3 max-w-32 truncate text-gray-700 dark:text-gray-300" title="{{ $tx->vendor_name }}">
                                     {{ $tx->vendor_name ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3 text-right font-medium whitespace-nowrap">
@@ -158,13 +158,13 @@
                                     <div class="inline-flex gap-2 justify-end">
                                         @if ($tx->businessEntity && $tx->bankAccount)
                                             <a href="{{ route('business-entities.bank-accounts.transactions.show', [$tx->businessEntity, $tx->bankAccount, $tx]) }}"
-                                               class="inline-flex items-center px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900 dark:hover:bg-purple-800 dark:text-purple-200 rounded text-xs font-medium transition-colors">
+                                               class="inline-flex items-center px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900 dark:hover:bg-purple-800 dark:text-purple-200 rounded-sm text-xs font-medium transition-colors">
                                                 View
                                             </a>
                                         @endif
                                         @if ($tx->businessEntity)
                                             <a href="{{ route('business-entities.transactions.edit', [$tx->businessEntity, $tx]) }}"
-                                               class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded text-xs font-medium transition-colors">
+                                               class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs font-medium transition-colors">
                                                 Edit
                                             </a>
                                         @endif

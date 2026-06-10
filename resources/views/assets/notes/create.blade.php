@@ -7,7 +7,7 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <form method="POST" action="{{ route('business-entities.assets.notes.store', [$businessEntity->id, $asset->id]) }}" class="space-y-6">
                         @csrf
@@ -20,7 +20,7 @@
 
                         <div class="mt-4">
                             <label for="is_reminder" class="inline-flex items-center">
-                                <input id="is_reminder" type="checkbox" name="is_reminder" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" {{ old('is_reminder') ? 'checked' : '' }}>
+                                <input id="is_reminder" type="checkbox" name="is_reminder" value="1" class="rounded-sm border-gray-300 text-indigo-600 shadow-xs focus:ring-indigo-500" {{ old('is_reminder') ? 'checked' : '' }}>
                                 <span class="ml-2 text-sm text-gray-600">{{ __('Set as Reminder') }}</span>
                             </label>
                         </div>
@@ -33,7 +33,7 @@
 
                         <div class="flex items-center gap-4">
                             <x-primary-button>{{ __('Save Note') }}</x-primary-button>
-                            <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-gray-300 border border-transparent rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-400 focus:bg-gray-400 active:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                            <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-gray-300 border border-transparent rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-400 focus:bg-gray-400 active:bg-gray-500 focus:outline-hidden focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150">
                                 {{ __('Cancel') }}
                             </a>
                         </div>

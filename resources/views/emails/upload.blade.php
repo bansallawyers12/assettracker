@@ -65,7 +65,7 @@
                             <button class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-md transition-colors">Filter</button>
                         </form>
 
-                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-blue-200 dark:border-blue-700">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xs border border-blue-200 dark:border-blue-700">
                             <div class="p-3 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">{{ $messages->total() }} results</div>
                             <div class="divide-y divide-gray-200 dark:divide-gray-700 max-h-[45vh] overflow-y-auto">
                                 @forelse ($messages as $message)
@@ -86,7 +86,7 @@
                     </div>
 
                     <div class="xl:col-span-8">
-                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow border border-blue-200 dark:border-blue-700 overflow-hidden h-full min-h-[70vh]">
+                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xs border border-blue-200 dark:border-blue-700 overflow-hidden h-full min-h-[70vh]">
                             @if ($messages->first())
                                 <iframe name="emailViewerUpload" src="{{ route('emails.show', $messages->first()->id) }}" class="w-full h-full min-h-[70vh]"></iframe>
                             @else

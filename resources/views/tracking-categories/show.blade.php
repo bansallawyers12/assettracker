@@ -13,41 +13,41 @@
             </div>
             <div class="flex space-x-3">
                 <a href="{{ route('business-entities.tracking-categories.edit', [$businessEntity, $trackingCategory]) }}" 
-                   class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                   class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-sm">
                     Edit Category
                 </a>
                 <a href="{{ route('business-entities.tracking-categories.index', $businessEntity) }}" 
-                   class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                   class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-sm">
                     Back to Categories
                 </a>
             </div>
         </div>
 
         @if(session('success'))
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-sm mb-4">
                 {{ session('success') }}
             </div>
         @endif
 
         @if(session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-sm mb-4">
                 {{ session('error') }}
             </div>
         @endif
 
         <!-- Sub-categories Section -->
-        <div class="bg-white shadow sm:rounded-lg mb-6">
+        <div class="bg-white shadow-xs sm:rounded-lg mb-6">
             <div class="px-4 py-5 sm:p-6">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-medium text-gray-900">Sub-categories</h3>
                     <a href="{{ route('business-entities.tracking-categories.tracking-sub-categories.create', [$businessEntity, $trackingCategory]) }}" 
-                       class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm">
+                       class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-sm text-sm">
                         Add Sub-category
                     </a>
                 </div>
 
                 @if($trackingCategory->subCategories->count() > 0)
-                    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                    <div class="overflow-hidden shadow-xs ring-1 ring-black/5 md:rounded-lg">
                         <table class="min-w-full divide-y divide-gray-300">
                             <thead class="bg-gray-50">
                                 <tr>
@@ -108,7 +108,7 @@
                         <p class="mt-1 text-sm text-gray-500">Get started by creating a new sub-category.</p>
                         <div class="mt-6">
                             <a href="{{ route('business-entities.tracking-categories.tracking-sub-categories.create', [$businessEntity, $trackingCategory]) }}" 
-                               class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                               class="inline-flex items-center px-4 py-2 border border-transparent shadow-xs text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
                                 Add Sub-category
                             </a>
                         </div>
@@ -118,7 +118,7 @@
         </div>
 
         <!-- Category Details -->
-        <div class="bg-white shadow sm:rounded-lg">
+        <div class="bg-white shadow-xs sm:rounded-lg">
             <div class="px-4 py-5 sm:p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Category Details</h3>
                 <dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">

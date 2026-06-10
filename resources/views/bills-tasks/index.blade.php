@@ -11,7 +11,7 @@
 @endphp
 
 <x-app-layout>
-    <div class="py-6 lg:py-8 bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 min-h-screen">
+    <div class="py-6 lg:py-8 bg-linear-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
             @if (session('success'))
                 <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200 text-sm border border-emerald-200 dark:border-emerald-800">{{ session('success') }}</div>
@@ -41,7 +41,7 @@
                     <a href="{{ route('bills-tasks.index', ['tab' => $key]) }}"
                        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-colors
                            {{ $tab === $key
-                               ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm border border-gray-200 dark:border-gray-600'
+                               ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-xs border border-gray-200 dark:border-gray-600'
                                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white' }}">
                         {{ $label }}
                         <span class="text-xs font-medium tabular-nums opacity-70">({{ $tabCounts[$key] ?? 0 }})</span>
@@ -49,7 +49,7 @@
                 @endforeach
             </div>
 
-            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                 @if ($tab === 'unpaid')
                     <div class="p-5 border-b border-gray-100 dark:border-gray-700">
                         <h2 class="text-base font-bold text-gray-900 dark:text-white">Unpaid bills</h2>
@@ -166,13 +166,13 @@
                                 @foreach ($duePaginator as $row)
                                     @php $d = $row->sort_date instanceof \Carbon\Carbon ? $row->sort_date : null; @endphp
                                     <div class="flex items-start gap-4 p-4 rounded-xl border {{ $isOverdue($d) ? 'border-red-200 dark:border-red-900/40 bg-red-50/40 dark:bg-red-900/10' : 'border-gray-100 dark:border-gray-600 bg-gray-50/50 dark:bg-gray-700/30' }}">
-                                        <div class="flex-shrink-0 w-2 h-2 mt-2 rounded-full {{ $isOverdue($d) ? 'bg-red-500' : 'bg-amber-400' }}"></div>
+                                        <div class="shrink-0 w-2 h-2 mt-2 rounded-full {{ $isOverdue($d) ? 'bg-red-500' : 'bg-amber-400' }}"></div>
                                         <div class="flex-1 min-w-0">
                                             @if ($row->kind === 'reminder')
                                                 @php $r = $row->reminder; @endphp
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
                                                     {{ $r->title }}
-                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">REMINDER</span>
+                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-200">REMINDER</span>
                                                 </p>
                                                 <p class="text-xs text-gray-600 dark:text-gray-300 mt-1">{{ $r->content }}</p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $r->businessEntity?->legal_name }} · {{ $r->user?->name }}</p>
@@ -181,7 +181,7 @@
                                                 @php $n = $row->note; @endphp
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
                                                     {{ Str::limit($n->content, 120) }}
-                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200">NOTE</span>
+                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-gray-200 text-gray-700 dark:bg-gray-600 dark:text-gray-200">NOTE</span>
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $n->businessEntity?->legal_name }} · {{ $n->user?->name }}</p>
                                                 <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">{{ $n->reminder_date?->format('d/m/Y') }}</span>
@@ -189,7 +189,7 @@
                                                 @php $t = $row->transaction; @endphp
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
                                                     Bill: {{ $t->description ?: 'Unpaid' }}{{ $t->vendor_name ? ' · '.$t->vendor_name : '' }} — ${{ number_format((float) $t->amount, 2) }}
-                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">BILL</span>
+                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">BILL</span>
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $t->businessEntity?->legal_name }}</p>
                                                 <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium {{ $isOverdue($t->due_date) ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200' : 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' }}">{{ $t->due_date?->format('d/m/Y') }}</span>
@@ -197,7 +197,7 @@
                                                 @php $a = $row->asset; @endphp
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
                                                     Registration due — {{ $a->name }} ({{ $a->asset_type }})
-                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">ASSET</span>
+                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">ASSET</span>
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $a->businessEntity?->legal_name }}</p>
                                                 <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200">{{ $a->registration_due_date?->format('d/m/Y') }}</span>
@@ -205,13 +205,13 @@
                                                 @php $ep = $row->entityPerson; @endphp
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
                                                     ASIC due — @if($ep->person){{ trim($ep->person->first_name.' '.$ep->person->last_name) }}@else{{ $ep->role ?? 'Director' }}@endif
-                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">ASIC</span>
+                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">ASIC</span>
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $ep->businessEntity?->legal_name }} · {{ $ep->role }}</p>
                                                 <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200">{{ $ep->asic_due_date?->format('d/m/Y') }}</span>
                                             @endif
                                         </div>
-                                        <div class="flex-shrink-0 flex flex-col items-end gap-2 min-w-[8rem]">
+                                        <div class="shrink-0 flex flex-col items-end gap-2 min-w-32">
                                             @if ($row->kind === 'reminder')
                                                 @php $r = $row->reminder; @endphp
                                                 <div class="flex flex-wrap gap-1.5 justify-end">

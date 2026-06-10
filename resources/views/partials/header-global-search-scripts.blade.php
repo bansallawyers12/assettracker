@@ -29,7 +29,7 @@
                     const frag = document.createDocumentFragment();
                     frag.appendChild(document.createTextNode(text.slice(0, idx)));
                     const mark = document.createElement('mark');
-                    mark.className = 'bg-yellow-200 dark:bg-yellow-600/50 text-gray-900 dark:text-white rounded-sm';
+                    mark.className = 'bg-yellow-200 dark:bg-yellow-600/50 text-gray-900 dark:text-white rounded-xs';
                     mark.textContent = text.slice(idx, idx + q.length);
                     frag.appendChild(mark);
                     frag.appendChild(document.createTextNode(text.slice(idx + q.length)));
@@ -155,7 +155,7 @@
                             a.className = 'flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700/80 transition-colors group cursor-pointer';
 
                             const badge = document.createElement('span');
-                            badge.className = 'shrink-0 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded ' + (BADGE[item.type] || BADGE.entity);
+                            badge.className = 'shrink-0 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-sm ' + (BADGE[item.type] || BADGE.entity);
                             badge.textContent = BADGE_LABEL[item.type] || item.type;
 
                             const text = document.createElement('div');

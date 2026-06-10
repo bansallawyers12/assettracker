@@ -1,9 +1,9 @@
 <x-app-layout>
-    <div class="py-6 lg:py-8 bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 min-h-screen">
+    <div class="py-6 lg:py-8 bg-linear-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
 
             {{-- Hero / Greeting --}}
-            <div class="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-blue-700 to-indigo-700 p-6 lg:p-8 text-white shadow-xl">
+            <div class="relative overflow-hidden rounded-2xl bg-linear-to-r from-blue-600 via-blue-700 to-indigo-700 p-6 lg:p-8 text-white shadow-xl">
                 <div class="absolute top-0 right-0 -mt-4 -mr-4 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
                 <div class="absolute bottom-0 left-1/2 -mb-8 w-60 h-60 bg-white/5 rounded-full blur-3xl"></div>
                 <div class="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -13,22 +13,22 @@
                     </div>
                     <div class="flex flex-wrap gap-3">
                         <a href="{{ route('business-entities.create') }}"
-                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
+                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                             New Entity
                         </a>
                         <button id="add-transaction-btn"
-                                class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
+                                class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                             Add Transaction
                         </button>
                         <a href="{{ route('bills-tasks.index') }}"
-                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
+                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
                             Bills &amp; tasks
                         </a>
                         <a href="{{ route('emails.index') }}"
-                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
+                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                             Emails
                         </a>
@@ -62,7 +62,7 @@
                         <p class="font-semibold mb-2">Could not save this transaction:</p>
                         <ul class="list-disc list-inside space-y-1.5 text-sm leading-snug">
                             @foreach ($errors->all() as $err)
-                                <li class="whitespace-normal break-words">{{ $err }}</li>
+                                <li class="whitespace-normal wrap-break-word">{{ $err }}</li>
                             @endforeach
                         </ul>
                     </div>
@@ -96,7 +96,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Business Entity</label>
                             <select name="business_entity_id" id="business_entity_id"
-                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
+                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
                                 <option value="">Select Entity</option>
                                 @foreach ($businessEntities as $entity)
                                     <option value="{{ $entity->id }}" {{ old('business_entity_id', session('transactionData.business_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
@@ -109,7 +109,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset <span class="text-gray-400 font-normal">(optional)</span></label>
                             <select name="asset_id" id="transaction_asset_id"
-                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                                 <option value="">None — entity only</option>
                                 @foreach ($assets as $asset)
                                     <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}"
@@ -123,7 +123,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
                             <input type="date" name="date" value="{{ old('date', session('transactionData.date', now()->toDateString())) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
+                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
                             @error('date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
@@ -131,7 +131,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount</label>
                             <input type="number" name="amount" id="dashboard_txn_amount" step="0.01" value="{{ old('amount', session('transactionData.amount')) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
+                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
                             @error('amount') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
@@ -139,7 +139,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                             <input type="text" name="description" value="{{ old('description', session('transactionData.description')) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                             @error('description') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
@@ -147,7 +147,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vendor name</label>
                             <input type="text" name="vendor_name" value="{{ old('vendor_name', session('transactionData.vendor_name')) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
                                    placeholder="Supplier or party name">
                             @error('vendor_name') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
@@ -156,7 +156,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invoice Number <span class="text-gray-400 font-normal">(optional)</span></label>
                             <input type="text" name="invoice_number" value="{{ old('invoice_number', session('transactionData.invoice_number')) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
                                    placeholder="e.g., INV-0042">
                             @error('invoice_number') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
@@ -164,7 +164,7 @@
                         {{-- Transaction Type (filtered by direction via JS) --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Transaction Type</label>
-                            <select name="transaction_type" id="transaction_type" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
+                            <select name="transaction_type" id="transaction_type" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
                                 <option value="">Select Type</option>
                                 @foreach (\App\Models\Transaction::$incomeTypes as $value => $label)
                                     <option value="{{ $value }}" data-direction="income" {{ old('transaction_type', session('transactionData.transaction_type')) == $value ? 'selected' : '' }}>{{ $label }}</option>
@@ -179,7 +179,7 @@
                         {{-- Related Entity (shown for related-party types) --}}
                         <div id="related_entity_field" style="display: none;">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Related Entity</label>
-                            <select name="related_entity_id" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                            <select name="related_entity_id" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                                 <option value="">Select Related Entity</option>
                                 @foreach($businessEntities->sortBy('legal_name') as $entity)
                                     <option value="{{ $entity->id }}" {{ old('related_entity_id', session('transactionData.related_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
@@ -214,7 +214,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST amount <span class="text-gray-400 font-normal">(optional)</span></label>
                             <input type="number" name="gst_amount" id="dashboard_gst_amount" step="0.01" value="{{ old('gst_amount', session('transactionData.gst_amount')) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                             @error('gst_amount') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
@@ -233,7 +233,7 @@
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invoice / Bill Name</label>
                             <input type="text" name="document_name" value="{{ old('document_name') }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
                                    placeholder="e.g., Invoice123">
                             @error('document_name') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
@@ -266,7 +266,7 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
                                 <input type="date" name="due_date" value="{{ old('due_date', session('transactionData.due_date')) }}"
-                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                                 @error('due_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                         </div>
@@ -276,12 +276,12 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Date</label>
                                 <input type="date" name="paid_at" value="{{ old('paid_at', session('transactionData.paid_at')) }}"
-                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                                 @error('paid_at') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Method</label>
-                                <select name="payment_method" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                <select name="payment_method" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                                     <option value="">Select Method</option>
                                     @foreach (\App\Models\Transaction::$paymentMethods as $val => $lbl)
                                         <option value="{{ $val }}" {{ old('payment_method', session('transactionData.payment_method')) == $val ? 'selected' : '' }}>{{ $lbl }}</option>
@@ -298,7 +298,7 @@
                                     'paidBySelect' => $pbSplit['select'],
                                     'paidByOther' => $pbSplit['other'],
                                     'labelClass' => 'mb-1',
-                                    'selectClass' => 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm',
+                                    'selectClass' => 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm',
                                     'errorClass' => 'text-xs mt-1',
                                 ])
                             </div>
@@ -312,7 +312,7 @@
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Receipt Name</label>
                                 <input type="text" name="payment_document_name" value="{{ old('payment_document_name') }}"
-                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
                                        placeholder="e.g., Bank Transfer Confirmation">
                                 @error('payment_document_name') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
@@ -321,7 +321,7 @@
 
                     <input type="hidden" name="receipt_path" value="{{ old('receipt_path', session('transactionData.receipt_path')) }}">
                     <div class="flex gap-3 pt-2">
-                        <button type="submit" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-xl text-sm shadow-sm transition-colors">
+                        <button type="submit" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-xl text-sm shadow-xs transition-colors">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                             Add Transaction
                         </button>
@@ -331,7 +331,7 @@
 
             {{-- Stats Grid --}}
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                             <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
@@ -340,7 +340,7 @@
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $businessEntities->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Entities</div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
                             <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
@@ -349,7 +349,7 @@
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assets->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Assets</div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
                             <svg class="w-5 h-5 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
@@ -358,7 +358,7 @@
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $persons->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Persons</div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                             <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
@@ -367,7 +367,7 @@
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $allReminders->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Reminders</div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                             <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -376,7 +376,7 @@
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assetDueDates->count() + $entityDueDates->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Due Soon</div>
                 </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
                             <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
@@ -394,7 +394,7 @@
                 <div class="xl:col-span-2 space-y-6">
 
                     {{-- Reminders --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                         <div class="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
                             <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
@@ -416,7 +416,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Business Entity</label>
-                                    <select name="business_entity_id" id="reminder_business_entity_id" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm">
+                                    <select name="business_entity_id" id="reminder_business_entity_id" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm">
                                         <option value="">Select Entity (Optional)</option>
                                         @foreach ($businessEntities as $entity)
                                             <option value="{{ $entity->id }}">{{ $entity->legal_name }}</option>
@@ -426,7 +426,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset</label>
-                                    <select name="asset_id" id="reminder_asset_id" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" disabled>
+                                    <select name="asset_id" id="reminder_asset_id" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" disabled>
                                         <option value="">Select Asset (Optional)</option>
                                         @foreach ($assets as $asset)
                                             <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}">{{ $asset->name }} ({{ $asset->asset_type }})</option>
@@ -436,17 +436,17 @@
                                 </div>
                                 <div class="md:col-span-2">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reminder</label>
-                                    <textarea name="content" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" rows="2" required>{{ old('content') }}</textarea>
+                                    <textarea name="content" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" rows="2" required>{{ old('content') }}</textarea>
                                     @error('content') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
-                                    <input type="date" name="reminder_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('reminder_date', old('next_due_date')) }}" required>
+                                    <input type="date" name="reminder_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('reminder_date', old('next_due_date')) }}" required>
                                     @error('reminder_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repeat</label>
-                                    <select name="repeat_type" id="repeat_type" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm">
+                                    <select name="repeat_type" id="repeat_type" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm">
                                         <option value="none">One-off (No repeat)</option>
                                         <option value="monthly">Monthly</option>
                                         <option value="quarterly">Quarterly</option>
@@ -456,12 +456,12 @@
                                 </div>
                                 <div id="repeat_end_date_container" style="display: none;">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date (Optional)</label>
-                                    <input type="date" name="repeat_end_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-sm focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('repeat_end_date') }}">
+                                    <input type="date" name="repeat_end_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('repeat_end_date') }}">
                                     @error('repeat_end_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                             <div class="flex justify-end mt-4">
-                                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-sm transition-colors">
+                                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-xs transition-colors">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                     Save Reminder
                                 </button>
@@ -478,14 +478,14 @@
                                 <div class="space-y-3">
                                     @foreach ($allReminders as $reminder)
                                         <div class="flex items-start gap-4 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600 hover:border-amber-200 dark:hover:border-amber-700 transition-colors">
-                                            <div class="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-amber-400"></div>
+                                            <div class="shrink-0 w-2 h-2 mt-2 rounded-full bg-amber-400"></div>
                                             <div class="flex-1 min-w-0">
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
                                                     {{ $reminder->content }}
                                                     @if (!empty($reminder->is_transaction))
-                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 flex-shrink-0">BILL DUE</span>
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 shrink-0">BILL DUE</span>
                                                     @elseif (!empty($reminder->is_note))
-                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 flex-shrink-0">NOTE</span>
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 shrink-0">NOTE</span>
                                                     @endif
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
@@ -505,7 +505,7 @@
                                                     @endif
                                                 </div>
                                             </div>
-                                            <div class="flex-shrink-0 flex gap-1.5">
+                                            <div class="shrink-0 flex gap-1.5">
                                                 @if (!empty($reminder->is_transaction))
                                                     <a href="{{ route('business-entities.show', [$reminder->business_entity_id, 'transaction_id' => $reminder->transaction_id]) }}#tab_transactions" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/30 dark:text-indigo-400 transition-colors text-xs font-medium px-2" title="Open transaction">View</a>
                                                 @else
@@ -534,7 +534,7 @@
                     </div>
 
                     {{-- Due Dates --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                         <div class="p-5 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
                             <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -549,7 +549,7 @@
                                     @foreach ($assetDueDates as $asset)
                                         @if ($asset->registration_due_date)
                                             <div class="flex items-start gap-4 p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
-                                                <div class="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-red-400"></div>
+                                                <div class="shrink-0 w-2 h-2 mt-2 rounded-full bg-red-400"></div>
                                                 <div class="flex-1 min-w-0">
                                                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Registration Due &mdash; {{ $asset->name }} ({{ $asset->asset_type }})</p>
                                                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $asset->businessEntity->legal_name ?? 'Unknown Entity' }} &middot; {{ $asset->registration_due_date->format('d/m/Y') }}</p>
@@ -573,7 +573,7 @@
                                     @foreach ($entityDueDates as $entityDueDate)
                                         @if ($entityDueDate->asic_due_date)
                                             <div class="flex items-start gap-4 p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
-                                                <div class="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-red-400"></div>
+                                                <div class="shrink-0 w-2 h-2 mt-2 rounded-full bg-red-400"></div>
                                                 <div class="flex-1 min-w-0">
                                                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100">ASIC Due &mdash; {{ $entityDueDate->businessEntity->legal_name }} ({{ $entityDueDate->role ?? 'Unknown Role' }})</p>
                                                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $entityDueDate->asic_due_date->format('d/m/Y') }}</p>
@@ -604,7 +604,7 @@
                     {{-- Recent Items --}}
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         {{-- Business Entities --}}
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div class="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
                                 <h3 class="text-sm font-bold text-gray-900 dark:text-white">Entities</h3>
                                 <a href="{{ route('business-entities.index') }}" class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">View All</a>
@@ -620,7 +620,7 @@
                                                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{{ $entity->legal_name }}</p>
                                                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ $entity->entity_type ?? 'N/A' }}</p>
                                                 </div>
-                                                <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                                <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-500 shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                             </a>
                                         @endforeach
                                     </div>
@@ -629,7 +629,7 @@
                         </div>
 
                         {{-- Assets --}}
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div class="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
                                 <h3 class="text-sm font-bold text-gray-900 dark:text-white">Assets</h3>
                                 <a href="{{ route('assets.index') }}" class="text-xs font-medium text-emerald-600 dark:text-emerald-400 hover:underline">View All</a>
@@ -645,7 +645,7 @@
                                                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{{ $asset->name }}</p>
                                                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ $asset->asset_type }}</p>
                                                 </div>
-                                                <svg class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                                <svg class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                             </a>
                                         @endforeach
                                     </div>
@@ -654,7 +654,7 @@
                         </div>
 
                         {{-- Persons --}}
-                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                             <div class="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
                                 <h3 class="text-sm font-bold text-gray-900 dark:text-white">Persons</h3>
                                 <a href="{{ route('persons.index') }}" class="text-xs font-medium text-violet-600 dark:text-violet-400 hover:underline">View All</a>
@@ -675,7 +675,7 @@
                                                         @endif
                                                     </div>
                                                 </div>
-                                                <svg class="w-4 h-4 text-gray-400 group-hover:text-violet-500 flex-shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                                <svg class="w-4 h-4 text-gray-400 group-hover:text-violet-500 shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                                             </a>
                                         @endforeach
                                     </div>
@@ -689,31 +689,31 @@
                 <div class="space-y-6">
 
                     {{-- Quick Actions --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                         <div class="p-5 border-b border-gray-100 dark:border-gray-700">
                             <h3 class="text-sm font-bold text-gray-900 dark:text-white">Quick Actions</h3>
                         </div>
                         <div class="p-4 space-y-1.5">
                             <a href="{{ route('business-entities.create') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group">
-                                <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                                     <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">Add Entity</span>
                             </a>
                             <a href="{{ route('business-entities.assets.create', $businessEntities->first()?->id ?? 0) }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors group">
-                                <div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
                                     <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">Add Asset</span>
                             </a>
                             <a href="{{ route('persons.create') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors group">
-                                <div class="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center flex-shrink-0">
+                                <div class="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
                                     <svg class="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">Add Person</span>
                             </a>
                             <a href="{{ route('emails.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors group">
-                                <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                                <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
                                     <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">Emails</span>
@@ -722,31 +722,31 @@
                     </div>
 
                     {{-- Accounting & Finance --}}
-                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                         <div class="p-5 border-b border-gray-100 dark:border-gray-700">
                             <h3 class="text-sm font-bold text-gray-900 dark:text-white">Accounting & Finance</h3>
                         </div>
                         <div class="p-4 space-y-1.5">
                             <a href="{{ route('chart-of-accounts.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors group">
-                                <div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
                                     <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">Chart of Accounts</span>
                             </a>
                             <a href="{{ route('bank-accounts.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group">
-                                <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                                <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                                     <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">Bank Accounts</span>
                             </a>
                             <a href="{{ route('transactions.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors group">
-                                <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                                <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
                                     <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">Transactions</span>
                             </a>
                             <a href="{{ route('invoices.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors group">
-                                <div class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center flex-shrink-0">
+                                <div class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
                                     <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-orange-700 dark:group-hover:text-orange-300 transition-colors">Invoices</span>

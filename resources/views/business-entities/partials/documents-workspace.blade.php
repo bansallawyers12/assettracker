@@ -48,9 +48,9 @@
             <div class="flex justify-between items-center mb-3">
                 <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100">{{ $category->title }} — checklist</h4>
                 <div class="flex gap-2">
-                    <button type="button" class="doc-add-slot text-sm px-2 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded" data-category-id="{{ $category->id }}">+ Checklist</button>
-                    <button type="button" class="doc-rename-cat text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded dark:text-gray-300" data-category-id="{{ $category->id }}" data-title="{{ $category->title }}">Rename</button>
-                    <button type="button" class="doc-delete-cat text-xs px-2 py-1 border border-red-300 text-red-600 rounded" data-category-id="{{ $category->id }}">Delete</button>
+                    <button type="button" class="doc-add-slot text-sm px-2 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-sm" data-category-id="{{ $category->id }}">+ Checklist</button>
+                    <button type="button" class="doc-rename-cat text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-sm dark:text-gray-300" data-category-id="{{ $category->id }}" data-title="{{ $category->title }}">Rename</button>
+                    <button type="button" class="doc-delete-cat text-xs px-2 py-1 border border-red-300 text-red-600 rounded-sm" data-category-id="{{ $category->id }}">Delete</button>
                 </div>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -103,10 +103,10 @@
                 </div>
                 <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4 min-h-[280px]">
                     <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview</h5>
-                    <iframe class="doc-cat-preview-frame w-full h-[240px] bg-gray-50 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-600" title="Preview"></iframe>
+                    <iframe class="doc-cat-preview-frame w-full h-[240px] bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-600" title="Preview"></iframe>
                     <div class="mt-3 flex gap-2 flex-wrap">
-                        <a href="#" target="_blank" class="doc-cat-preview-dl text-sm px-3 py-1 bg-blue-600 text-white rounded opacity-50 pointer-events-none">Download</a>
-                        <button type="button" class="doc-cat-preview-del text-sm px-3 py-1 bg-red-600 text-white rounded opacity-50 pointer-events-none">Delete</button>
+                        <a href="#" target="_blank" class="doc-cat-preview-dl text-sm px-3 py-1 bg-blue-600 text-white rounded-sm opacity-50 pointer-events-none">Download</a>
+                        <button type="button" class="doc-cat-preview-del text-sm px-3 py-1 bg-red-600 text-white rounded-sm opacity-50 pointer-events-none">Delete</button>
                     </div>
                 </div>
             </div>
@@ -122,12 +122,12 @@
                 <input type="checkbox" id="{{ $prefix }}-bulk-autocreate"> Auto-create checklist for unmatched files
             </label>
             <div id="{{ $prefix }}-bulk-map" class="space-y-2 mb-4 text-sm max-h-48 overflow-y-auto"></div>
-            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded h-2 mb-2 hidden" id="{{ $prefix }}-bulk-progress-wrap">
-                <div id="{{ $prefix }}-bulk-progress" class="bg-indigo-600 h-2 rounded" style="width:0%"></div>
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-sm h-2 mb-2 hidden" id="{{ $prefix }}-bulk-progress-wrap">
+                <div id="{{ $prefix }}-bulk-progress" class="bg-indigo-600 h-2 rounded-sm" style="width:0%"></div>
             </div>
             <div class="flex justify-end gap-2">
-                <button type="button" id="{{ $prefix }}-bulk-cancel" class="px-3 py-1 border rounded dark:border-gray-600 dark:text-gray-300">Cancel</button>
-                <button type="button" id="{{ $prefix }}-bulk-go" class="px-3 py-1 bg-indigo-600 text-white rounded">Upload</button>
+                <button type="button" id="{{ $prefix }}-bulk-cancel" class="px-3 py-1 border rounded-sm dark:border-gray-600 dark:text-gray-300">Cancel</button>
+                <button type="button" id="{{ $prefix }}-bulk-go" class="px-3 py-1 bg-indigo-600 text-white rounded-sm">Upload</button>
             </div>
         </div>
     </div>
@@ -447,7 +447,7 @@
                 Array.from(files).forEach((file, i) => {
                     const m = matches[file.name];
                     const sel = document.createElement('select');
-                    sel.className = 'w-full border rounded dark:bg-gray-800 dark:text-white text-xs';
+                    sel.className = 'w-full border rounded-sm dark:bg-gray-800 dark:text-white text-xs';
                     sel.dataset.fileIndex = String(i);
                     const empty = document.createElement('option');
                     empty.value = '';

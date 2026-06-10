@@ -29,7 +29,7 @@
         }
         
         .btn-primary {
-            @apply bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+            @apply bg-linear-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium py-3 px-6 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
         }
         
         .btn-secondary {
@@ -37,7 +37,7 @@
         }
         
         .btn-success {
-            @apply bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
+            @apply bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5;
         }
     </style>
 
@@ -71,7 +71,7 @@
                     <!-- From Email Selection -->
                     <div>
                         <label for="from_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">From Email *</label>
-                        <select id="from_email" name="from_email" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" required>
+                        <select id="from_email" name="from_email" class="w-full rounded-lg border-gray-300 shadow-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" required>
                             <option value="">Select sender email...</option>
                             <!-- Always include user's primary email as first option -->
                             <option value="{{ auth()->user()->email }}" selected>{{ auth()->user()->email }} (Primary)</option>
@@ -91,18 +91,18 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label for="to_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">To *</label>
-                            <input type="text" id="to_email" name="to_email" value="{{ $message->sender_email }}" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" placeholder="recipient@example.com, recipient2@example.com" required>
+                            <input type="text" id="to_email" name="to_email" value="{{ $message->sender_email }}" class="w-full rounded-lg border-gray-300 shadow-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" placeholder="recipient@example.com, recipient2@example.com" required>
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Forward to: {{ $message->sender_name ?: $message->sender_email }} (use commas to separate multiple recipients)</p>
                         </div>
 
                         <div>
                             <label for="cc_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">CC</label>
-                            <input type="text" id="cc_email" name="cc_email" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" placeholder="cc@example.com, cc2@example.com">
+                            <input type="text" id="cc_email" name="cc_email" class="w-full rounded-lg border-gray-300 shadow-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" placeholder="cc@example.com, cc2@example.com">
                         </div>
 
                         <div>
                             <label for="bcc_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">BCC</label>
-                            <input type="text" id="bcc_email" name="bcc_email" class="w-full rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" placeholder="bcc@example.com, bcc2@example.com">
+                            <input type="text" id="bcc_email" name="bcc_email" class="w-full rounded-lg border-gray-300 shadow-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" placeholder="bcc@example.com, bcc2@example.com">
                         </div>
                     </div>
 
@@ -110,8 +110,8 @@
                     <div>
                         <label for="subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject *</label>
                         <div class="flex gap-3">
-                            <input type="text" id="subject" name="subject" value="Fwd: {{ $message->subject ?: '(No subject)' }}" class="flex-1 rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" placeholder="Enter email subject" required>
-                            <button type="button" id="enhance-subject-btn" class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                            <input type="text" id="subject" name="subject" value="Fwd: {{ $message->subject ?: '(No subject)' }}" class="flex-1 rounded-lg border-gray-300 shadow-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" placeholder="Enter email subject" required>
+                            <button type="button" id="enhance-subject-btn" class="px-4 py-2 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                                 </svg>
@@ -124,8 +124,8 @@
                     <div>
                         <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message *</label>
                         <div class="flex gap-3">
-                            <textarea id="message" name="message" rows="12" class="flex-1 rounded-lg border-gray-300 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors resize-none" placeholder="Add your forward message here..." required></textarea>
-                            <button type="button" id="enhance-message-btn" class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                            <textarea id="message" name="message" rows="12" class="flex-1 rounded-lg border-gray-300 shadow-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors resize-none" placeholder="Add your forward message here..." required></textarea>
+                            <button type="button" id="enhance-message-btn" class="px-4 py-2 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                                 </svg>
@@ -163,7 +163,7 @@
                                     <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                                 </svg>
                                 <div class="text-sm text-gray-600 dark:text-gray-400">
-                                    <label for="attachments" class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
+                                    <label for="attachments" class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-hidden focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
                                         <span>Upload files</span>
                                     </label>
                                     <p class="pl-1">or drag and drop</p>
@@ -176,7 +176,7 @@
                     <!-- Business Entity Association -->
                     <div>
                         <label for="business_entity_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Associate with Business Entity (Optional)</label>
-                        <select id="business_entity_id" name="business_entity_id" class="w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <select id="business_entity_id" name="business_entity_id" class="w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             <option value="">No association</option>
                             @try
                                 @foreach(\App\Models\BusinessEntity::operationalEntities()->orderBy('legal_name')->get() as $entity)
@@ -226,21 +226,21 @@
              <div class="space-y-4">
                  <div>
                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">To:</label>
-                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded border text-gray-900 dark:text-gray-100">
+                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100">
                          <span id="preview-to"></span>
                      </div>
                  </div>
                  
                  <div>
                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject:</label>
-                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded border text-gray-900 dark:text-gray-100">
+                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100">
                          <span id="preview-subject"></span>
                      </div>
                  </div>
                  
                  <div>
                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message:</label>
-                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded border text-gray-900 dark:text-gray-100 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
                          <span id="preview-message"></span>
                      </div>
                  </div>
@@ -269,12 +269,12 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Original Text</label>
-                    <div id="original-text" class="p-3 bg-gray-50 dark:bg-gray-800 rounded border text-gray-900 dark:text-gray-100 min-h-[100px]"></div>
+                    <div id="original-text" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100 min-h-[100px]"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enhanced Text</label>
-                    <div id="enhanced-text" class="p-3 bg-gray-50 dark:bg-gray-800 rounded border text-gray-900 dark:text-gray-100 min-h-[100px]">
+                    <div id="enhanced-text" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100 min-h-[100px]">
                         <div class="text-center text-gray-500 dark:text-gray-400">
                             <svg class="mx-auto h-8 w-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
@@ -433,7 +433,7 @@
                 
                 Array.from(files).forEach(file => {
                     const fileDiv = document.createElement('div');
-                    fileDiv.className = 'flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded border';
+                    fileDiv.className = 'flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-sm border';
                     
                     const fileInfo = document.createElement('div');
                     fileInfo.className = 'flex items-center space-x-2';
@@ -580,7 +580,7 @@
                     document.getElementById('enhanced-text').innerHTML = `
                         <div class="space-y-2">
                             <div class="text-sm text-gray-600 dark:text-gray-400">Enhanced version:</div>
-                            <div class="p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded">
+                            <div class="p-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-sm">
                                 ${enhancedText}
                             </div>
                         </div>

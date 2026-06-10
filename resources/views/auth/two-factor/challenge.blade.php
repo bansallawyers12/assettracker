@@ -26,7 +26,7 @@
             maxlength="6"
             placeholder="000000"
                 autofocus
-                class="block mt-1.5 w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500 dark:focus:ring-blue-500 shadow-sm text-sm placeholder-gray-400 dark:placeholder-gray-500 text-center tracking-widest text-lg font-mono"
+                class="block mt-1.5 w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500 dark:focus:ring-blue-500 shadow-xs text-sm placeholder-gray-400 dark:placeholder-gray-500 text-center tracking-widest text-lg font-mono"
             />
             <x-input-error :messages="$errors->get('code')" class="mt-1.5" />
         </div>
@@ -41,7 +41,7 @@
                 autocomplete="off"
                 maxlength="8"
                 placeholder="XXXXXXXX"
-                class="block mt-1.5 w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500 dark:focus:ring-blue-500 shadow-sm text-sm placeholder-gray-400 dark:placeholder-gray-500 text-center tracking-widest font-mono uppercase"
+                class="block mt-1.5 w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500 dark:focus:ring-blue-500 shadow-xs text-sm placeholder-gray-400 dark:placeholder-gray-500 text-center tracking-widest font-mono uppercase"
             />
             <x-input-error :messages="$errors->get('code')" class="mt-1.5" />
             <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Enter one of your 8-character backup codes.</p>

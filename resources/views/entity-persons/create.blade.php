@@ -18,10 +18,10 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     @if ($errors->any())
-                        <div class="mb-4 p-4 bg-red-100 text-red-700 border border-red-300 rounded">
+                        <div class="mb-4 p-4 bg-red-100 text-red-700 border border-red-300 rounded-sm">
                             <ul>
                                 @foreach ($errors->all() as $error)
                                     <li>{{ $error }}</li>
@@ -30,7 +30,7 @@
                         </div>
                     @endif
 
-                    <div class="mb-4 p-4 bg-blue-100 text-blue-700 border border-blue-300 rounded">
+                    <div class="mb-4 p-4 bg-blue-100 text-blue-700 border border-blue-300 rounded-sm">
                         <p><strong>Note:</strong> You can assign multiple roles to the same person. For example, a person can be both a Director and a Shareholder.</p>
                     </div>
 
@@ -193,7 +193,7 @@
                             @error('asic_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
-                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
+                        <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-sm">Save</button>
                     </form>
                 </div>
             </div>

@@ -10,30 +10,30 @@
             </div>
             <div class="flex space-x-3">
                 <button onclick="document.getElementById('generate-all-modal').classList.remove('hidden')" 
-                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-sm">
                     Generate All Invoices
                 </button>
                 <a href="{{ route('business-entities.show', $businessEntity) }}" 
-                   class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+                   class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-sm">
                     Back to Entity
                 </a>
             </div>
         </div>
 
         @if(session('success'))
-            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+            <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-sm mb-4">
                 {{ session('success') }}
             </div>
         @endif
 
         @if(session('error'))
-            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-sm mb-4">
                 {{ session('error') }}
             </div>
         @endif
 
         <!-- Leasable assets & leases -->
-        <div class="bg-white shadow sm:rounded-lg mb-6">
+        <div class="bg-white shadow-xs sm:rounded-lg mb-6">
             <div class="px-4 py-5 sm:p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Properties & leases</h3>
                 
@@ -46,7 +46,7 @@
                                 
                                 @if($asset->leases->count() > 0)
                                     @foreach($asset->leases as $lease)
-                                        <div class="mt-3 p-3 bg-gray-50 rounded">
+                                        <div class="mt-3 p-3 bg-gray-50 rounded-sm">
                                             <div class="flex justify-between items-start">
                                                 <div>
                                                     <p class="text-sm font-medium text-gray-900">
@@ -98,13 +98,13 @@
 
         <!-- Current Month Invoices -->
         @if($existingInvoices->count() > 0)
-            <div class="bg-white shadow sm:rounded-lg mb-6">
+            <div class="bg-white shadow-xs sm:rounded-lg mb-6">
                 <div class="px-4 py-5 sm:p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">
                         Current Month Invoices ({{ \Carbon\Carbon::now()->format('F Y') }})
                     </h3>
                     
-                    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                    <div class="overflow-hidden shadow-xs ring-1 ring-black/5 md:rounded-lg">
                         <table class="min-w-full divide-y divide-gray-300">
                             <thead class="bg-gray-50">
                                 <tr>
@@ -154,11 +154,11 @@
 
         <!-- Upcoming Invoices -->
         @if(count($upcomingInvoices) > 0)
-            <div class="bg-white shadow sm:rounded-lg">
+            <div class="bg-white shadow-xs sm:rounded-lg">
                 <div class="px-4 py-5 sm:p-6">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Upcoming Rent Invoices (Next 6 Months)</h3>
                     
-                    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                    <div class="overflow-hidden shadow-xs ring-1 ring-black/5 md:rounded-lg">
                         <table class="min-w-full divide-y divide-gray-300">
                             <thead class="bg-gray-50">
                                 <tr>
@@ -213,16 +213,16 @@
                            name="invoice_date" 
                            id="invoice_date" 
                            value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}"
-                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                           class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                 </div>
                 <div class="flex justify-end space-x-3">
                     <button type="button" 
                             onclick="document.getElementById('generate-all-modal').classList.add('hidden')"
-                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-sm">
                         Cancel
                     </button>
                     <button type="submit" 
-                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                            class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-sm">
                         Generate All
                     </button>
                 </div>

@@ -12,7 +12,7 @@
                     {{ session('status') }}
                 </div>
             @endif
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs sm:rounded-lg">
                 <div class="max-w-xl">
                     <div class="mb-6">
                         <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100">
@@ -24,10 +24,10 @@
                     </div>
 
                     <div class="flex justify-center mb-6">
-                        <div class="bg-white p-4 rounded-lg shadow" id="qrcode-container"></div>
+                        <div class="bg-white p-4 rounded-lg shadow-xs" id="qrcode-container"></div>
                     </div>
                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-6">
-                        Can't scan? Manually enter this secret in your app: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">{{ $secret }}</code>
+                        Can't scan? Manually enter this secret in your app: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded-sm">{{ $secret }}</code>
                     </p>
 
                     @push('scripts')

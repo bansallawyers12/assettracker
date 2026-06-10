@@ -9,19 +9,19 @@
                 <p class="text-gray-600 mt-2">{{ $businessEntity->legal_name }}</p>
             </div>
             <a href="{{ route('business-entities.rent-invoices.index', $businessEntity) }}" 
-               class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded">
+               class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-sm">
                 Back to Rent Invoices
             </a>
         </div>
 
         @if($existingInvoice)
-            <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
+            <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-sm mb-4">
                 <strong>Note:</strong> An invoice already exists for this lease and period.
             </div>
         @endif
 
         <!-- Invoice Preview -->
-        <div class="bg-white shadow sm:rounded-lg">
+        <div class="bg-white shadow-xs sm:rounded-lg">
             <div class="px-4 py-5 sm:p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Invoice Preview</h3>
                 
@@ -79,7 +79,7 @@
                 <!-- Invoice Line Items -->
                 <div class="mt-6">
                     <h4 class="text-md font-medium text-gray-900 mb-3">Line Items</h4>
-                    <div class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
+                    <div class="overflow-hidden shadow-xs ring-1 ring-black/5 md:rounded-lg">
                         <table class="min-w-full divide-y divide-gray-300">
                             <thead class="bg-gray-50">
                                 <tr>
@@ -132,13 +132,13 @@
                               method="POST" class="inline">
                             @csrf
                             <button type="submit" 
-                                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-sm">
                                 Generate Invoice
                             </button>
                         </form>
                     @else
                         <a href="{{ route('business-entities.invoices.show', [$businessEntity, $existingInvoice]) }}" 
-                           class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                           class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-sm">
                             View Existing Invoice
                         </a>
                     @endif

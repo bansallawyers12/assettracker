@@ -9,7 +9,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="flex flex-col md:flex-row gap-6">
                 <!-- Left Side: Company Details -->
-                <div class="w-full md:w-1/3 bg-white shadow-sm rounded-lg p-6">
+                <div class="w-full md:w-1/3 bg-white shadow-xs rounded-lg p-6">
                     <h3 class="text-lg font-semibold mb-4">Business Entity Details</h3>
                     <div class="mb-4">
                         <p><strong>Legal Name:</strong> {{ $businessEntity->legal_name }}</p>
@@ -25,11 +25,11 @@
                         <p><strong>ASIC Renewal Date:</strong> {{ $businessEntity->asic_renewal_date instanceof \Carbon\Carbon ? $businessEntity->asic_renewal_date->format('d/m/Y') : ($businessEntity->asic_renewal_date ?? 'N/A') }}</p>
                         <p><strong>Created by:</strong> {{ $businessEntity->user->name ?? 'Unknown' }}</p>
                     </div>
-                    <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="bg-blue-500 text-white px-4 py-2 rounded">Edit</a>
+                    <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="bg-blue-500 text-white px-4 py-2 rounded-sm">Edit</a>
                 </div>
 
                 <!-- Right Side: Entity Person Details -->
-                <div class="w-full md:w-2/3 bg-white shadow-sm rounded-lg p-6">
+                <div class="w-full md:w-2/3 bg-white shadow-xs rounded-lg p-6">
                     <h3 class="text-lg font-semibold mb-4">Person Details</h3>
                     <div class="mb-4">
                         <p><strong>Name:</strong> 
@@ -52,8 +52,8 @@
                         <p><strong>ASIC Due Date:</strong> {{ $entityPerson->asic_due_date ? $entityPerson->asic_due_date->format('d/m/Y') : 'N/A' }}</p>
                     </div>
                     <div class="flex space-x-4">
-                        <a href="{{ route('entity-persons.edit', $entityPerson->id) }}" class="bg-blue-500 text-white px-4 py-2 rounded">Edit</a>
-                        <a href="{{ url()->previous() }}" class="bg-gray-500 text-white px-4 py-2 rounded">Back</a>
+                        <a href="{{ route('entity-persons.edit', $entityPerson->id) }}" class="bg-blue-500 text-white px-4 py-2 rounded-sm">Edit</a>
+                        <a href="{{ url()->previous() }}" class="bg-gray-500 text-white px-4 py-2 rounded-sm">Back</a>
                     </div>
                 </div>
             </div>

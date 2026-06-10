@@ -6,18 +6,18 @@
             <div>
                 <label for="to_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">To *</label>
                 {{-- Value will be set by the parent view --}}
-                <input type="email" id="to_email" name="to_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" readonly required>
+                <input type="email" id="to_email" name="to_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" readonly required>
             </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
                 <label for="cc_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">CC</label>
-                <input type="email" id="cc_email" name="cc_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                <input type="email" id="cc_email" name="cc_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
             </div>
             <div>
                 <label for="template_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Templates</label>
-                <select id="template_id" name="template_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                <select id="template_id" name="template_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
                     <option value="">Select Template</option>
                     {{-- Options will be loaded via JavaScript --}}
                 </select>
@@ -27,7 +27,7 @@
         <div class="mb-4">
             <label for="subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Subject *</label>
             <div class="flex items-center space-x-2">
-                <input type="text" id="subject" name="subject" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
+                <input type="text" id="subject" name="subject" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
                 <button type="button" id="open-enhance-modal-subject" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 text-sm">
                     ChatGPT Enhance
                 </button>
@@ -37,7 +37,7 @@
         <div class="mb-4">
             <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Message *</label>
             <div class="flex items-center space-x-2">
-                <textarea id="message" name="message" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required></textarea>
+                <textarea id="message" name="message" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required></textarea>
                 <button type="button" id="open-enhance-modal-message" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 text-sm">
                     ChatGPT Enhance
                 </button>
@@ -46,7 +46,7 @@
 
         <div class="mb-4">
             <label for="attachment" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Attachment</label>
-            <input type="file" id="attachment" name="attachments[]" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" multiple>
+            <input type="file" id="attachment" name="attachments[]" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500" multiple>
         </div>
 
         <div class="flex justify-end">
@@ -60,7 +60,7 @@
 <div id="chatgpt-enhance-modal" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center z-50 hidden">
     <div class="bg-white dark:bg-gray-700 rounded-lg shadow-xl p-6 w-11/12 md:w-1/2 lg:w-1/3">
         <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Enhance Text with ChatGPT</h4>
-        <textarea id="enhance-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm p-2" rows="10" placeholder="Enter your message to enhance..."></textarea>
+        <textarea id="enhance-input" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white sm:text-sm p-2" rows="10" placeholder="Enter your message to enhance..."></textarea>
         <div class="flex justify-end space-x-2 mt-4">
             <button type="button" id="enhance-confirm-button" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105 text-sm">
                 Enhance

@@ -29,7 +29,7 @@
                         <p class="font-semibold mb-2">Could not save this transaction:</p>
                         <ul class="list-disc list-inside space-y-1.5 leading-snug">
                             @foreach ($errors->all() as $err)
-                                <li class="whitespace-normal break-words">{{ $err }}</li>
+                                <li class="whitespace-normal wrap-break-word">{{ $err }}</li>
                             @endforeach
                         </ul>
                     </div>
@@ -43,7 +43,7 @@
                         <input type="file" name="document" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-gray-700 dark:file:text-purple-300" accept="{{ config('documents.transaction_file_accept') }}">
                         @error('document') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
-                    <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md shadow-sm transition duration-200 text-sm font-medium">Extract Data</button>
+                    <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md shadow-xs transition duration-200 text-sm font-medium">Extract Data</button>
                 </form>
 
                 <form method="POST" action="{{ route('business-entities.bank-accounts.transactions.store', [$businessEntity->id, $bankAccount->id]) }}" enctype="multipart/form-data" id="bank-store-transaction-form">
@@ -67,32 +67,32 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
-                            <input type="date" name="date" value="{{ old('date', $td['date'] ?? now()->toDateString()) }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" required>
+                            <input type="date" name="date" value="{{ old('date', $td['date'] ?? now()->toDateString()) }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" required>
                             @error('date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Amount</label>
-                            <input type="number" name="amount" id="bank_create_amount" step="0.01" value="{{ old('amount', $td['amount'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" required>
+                            <input type="number" name="amount" id="bank_create_amount" step="0.01" value="{{ old('amount', $td['amount'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" required>
                             @error('amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Description</label>
-                            <input type="text" name="description" value="{{ old('description', $td['description'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
+                            <input type="text" name="description" value="{{ old('description', $td['description'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
                             @error('description') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor name</label>
-                            <input type="text" name="vendor_name" value="{{ old('vendor_name', $td['vendor_name'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" placeholder="Supplier or party name">
+                            <input type="text" name="vendor_name" value="{{ old('vendor_name', $td['vendor_name'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" placeholder="Supplier or party name">
                             @error('vendor_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Invoice Number <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <input type="text" name="invoice_number" value="{{ old('invoice_number', $td['invoice_number'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" placeholder="e.g., INV-0042">
+                            <input type="text" name="invoice_number" value="{{ old('invoice_number', $td['invoice_number'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" placeholder="e.g., INV-0042">
                             @error('invoice_number') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Transaction Type</label>
-                            <select name="transaction_type" id="transaction_type" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" required>
+                            <select name="transaction_type" id="transaction_type" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" required>
                                 <option value="">Select Type</option>
                                 @foreach (\App\Models\Transaction::$incomeTypes as $value => $label)
                                     <option value="{{ $value }}" data-direction="income" {{ old('transaction_type', $td['transaction_type'] ?? '') == $value ? 'selected' : '' }}>{{ $label }}</option>
@@ -105,7 +105,7 @@
                         </div>
                         <div id="related_entity_field" style="display: none;">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Related Entity</label>
-                            <select name="related_entity_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
+                            <select name="related_entity_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
                                 <option value="">Select Related Entity</option>
                                 @foreach(\App\Models\BusinessEntity::operationalEntities()->where('id', '!=', $businessEntity->id)->orderBy('legal_name')->get() as $entity)
                                     <option value="{{ $entity->id }}" {{ old('related_entity_id', $td['related_entity_id'] ?? '') == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
@@ -115,7 +115,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <select name="asset_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
+                            <select name="asset_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
                                 <option value="">None — entity only</option>
                                 @foreach ($businessEntity->assets()->orderBy('name')->get() as $asset)
                                     <option value="{{ $asset->id }}" {{ (string) old('asset_id', $td['asset_id'] ?? '') === (string) $asset->id ? 'selected' : '' }}>{{ $asset->name }}</option>
@@ -142,12 +142,12 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST amount <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <input type="number" name="gst_amount" id="bank_create_gst_amount" step="0.01" value="{{ old('gst_amount', $td['gst_amount'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
+                            <input type="number" name="gst_amount" id="bank_create_gst_amount" step="0.01" value="{{ old('gst_amount', $td['gst_amount'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
                             @error('gst_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Business Entity</label>
-                            <select name="business_entity_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" required>
+                            <select name="business_entity_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" required>
                                 @foreach ($businessEntities as $entity)
                                     <option value="{{ $entity->id }}" {{ old('business_entity_id', $businessEntity->id) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
                                 @endforeach
@@ -161,7 +161,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Invoice / Bill Name</label>
-                            <input type="text" name="document_name" value="{{ old('document_name') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" placeholder="e.g., Invoice123">
+                            <input type="text" name="document_name" value="{{ old('document_name') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" placeholder="e.g., Invoice123">
                             @error('document_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
@@ -182,7 +182,7 @@
                         <div id="unpaid_block" class="{{ $oldPay === 'unpaid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Due Date</label>
-                                <input type="date" name="due_date" value="{{ old('due_date', $td['due_date'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
+                                <input type="date" name="due_date" value="{{ old('due_date', $td['due_date'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
                                 @error('due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                         </div>
@@ -190,12 +190,12 @@
                         <div id="paid_block" class="{{ $oldPay === 'paid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Date</label>
-                                <input type="date" name="paid_at" value="{{ old('paid_at', $td['paid_at'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
+                                <input type="date" name="paid_at" value="{{ old('paid_at', $td['paid_at'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
                                 @error('paid_at') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Method</label>
-                                <select name="payment_method" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm">
+                                <select name="payment_method" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
                                     <option value="">Select Method</option>
                                     @foreach (\App\Models\Transaction::$paymentMethods as $val => $lbl)
                                         <option value="{{ $val }}" {{ old('payment_method', $td['payment_method'] ?? '') == $val ? 'selected' : '' }}>{{ $lbl }}</option>
@@ -219,7 +219,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Receipt Name</label>
-                                <input type="text" name="payment_document_name" value="{{ old('payment_document_name') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-sm" placeholder="e.g., Transfer confirmation">
+                                <input type="text" name="payment_document_name" value="{{ old('payment_document_name') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" placeholder="e.g., Transfer confirmation">
                                 @error('payment_document_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                         </div>
@@ -228,8 +228,8 @@
                     <input type="hidden" name="receipt_path" value="{{ $td['receipt_path'] ?? '' }}">
 
                     <div class="flex gap-4 mt-6">
-                        <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md shadow-sm transition duration-200 font-medium">Add Transaction</button>
-                        <a href="{{ route('business-entities.show', ['business_entity' => $businessEntity->id, 'bank_account_id' => $bankAccount->id]) }}#tab_bank_accounts" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 text-gray-700 px-4 py-2 rounded-md shadow-sm transition duration-200 font-medium">Cancel</a>
+                        <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md shadow-xs transition duration-200 font-medium">Add Transaction</button>
+                        <a href="{{ route('business-entities.show', ['business_entity' => $businessEntity->id, 'bank_account_id' => $bankAccount->id]) }}#tab_bank_accounts" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 text-gray-700 px-4 py-2 rounded-md shadow-xs transition duration-200 font-medium">Cancel</a>
                     </div>
                 </form>
             </div>

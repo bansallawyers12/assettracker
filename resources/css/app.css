@@ -1,53 +1,85 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-.hidden {
-    display: none;
+@plugin '@tailwindcss/forms';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../views/**/*.blade.php';
+
+@theme {
+  --font-sans:
+    Figtree, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
-.tab-link {
-    @apply border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm;
-}
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
 
-.tab-link.active {
-    @apply border-indigo-500 text-indigo-600;
-}
-
-.tab-content {
-    @apply p-6;
-}
-
-.tab-content.active {
-    @apply block;
-}
-
-/* Widen global containers that use Tailwind's max-w-7xl */
-.max-w-7xl {
-    max-width: 96rem !important; /* 1536px, wider than default 80rem */
-}
-
-/* Google PlaceAutocompleteElement (new Places widget) */
-[data-au-addr-mount] gmp-place-autocomplete {
-    display: block;
-    width: 100%;
-}
-
-/* Business entity page polish */
-.entity-show-page .entity-details-card,
-.entity-show-page .entity-main-card {
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 8px 24px rgba(15, 23, 42, 0.04);
-}
-
-.entity-show-page .entity-toolbar {
-    border-bottom: 1px solid rgb(229 231 235);
-    padding-bottom: 1rem;
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
 }
 
 @layer components {
-    .entity-show-page .entity-btn-primary {
-        @apply inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-gray-900;
-    }
+  .entity-show-page .entity-btn-primary {
+    @apply inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors shadow-xs focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-gray-900;
+  }
+}
+
+@layer utilities {
+  .hidden {
+    display: none;
+  }
+
+  .tab-link {
+    @apply border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm;
+  }
+
+  .tab-link.active {
+    @apply border-indigo-500 text-indigo-600;
+  }
+
+  .tab-content {
+    @apply p-6;
+  }
+
+  .tab-content.active {
+    @apply block;
+  }
+
+  /* Widen global containers that use Tailwind's max-w-7xl */
+  .max-w-7xl {
+    max-width: 96rem !important; /* 1536px, wider than default 80rem */
+  }
+
+  /* Google PlaceAutocompleteElement (new Places widget) */
+  [data-au-addr-mount] gmp-place-autocomplete {
+    display: block;
+    width: 100%;
+  }
+
+  /* Business entity page polish */
+  .entity-show-page .entity-details-card,
+  .entity-show-page .entity-main-card {
+    box-shadow:
+      0 1px 3px rgba(15, 23, 42, 0.06),
+      0 8px 24px rgba(15, 23, 42, 0.04);
+  }
+
+  .entity-show-page .entity-toolbar {
+    border-bottom: 1px solid rgb(229 231 235);
+    padding-bottom: 1rem;
+  }
 }
 
 .entity-show-page .entity-tab-nav {

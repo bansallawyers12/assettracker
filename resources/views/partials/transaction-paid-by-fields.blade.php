@@ -15,7 +15,7 @@
         {{ $paidByLabelText ?? 'Paid By' }}
     </label>
     <select name="paid_by_select" id="paid_by_select"
-            class="{{ $selectClass ?? 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white' }}">
+            class="{{ $selectClass ?? 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white' }}">
         <option value="">— Not specified —</option>
         @if (count($payerCompanies))
             <optgroup label="Entities">
@@ -38,7 +38,7 @@
 <div id="paid_by_other_wrap" class="mt-2 {{ $showOther ? '' : 'hidden' }}">
     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 {{ $labelClass ?? 'mb-1' }}">Other payer</label>
     <input type="text" name="paid_by_other" id="paid_by_other" value="{{ old('paid_by_other', $oth) }}"
-           class="{{ $selectClass ?? 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white' }}"
+           class="{{ $selectClass ?? 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white' }}"
            placeholder="e.g., external account name"
            autocomplete="off">
     @error('paid_by_other') <span class="text-red-500 {{ $errorClass ?? 'text-sm' }}">{{ $message }}</span> @enderror

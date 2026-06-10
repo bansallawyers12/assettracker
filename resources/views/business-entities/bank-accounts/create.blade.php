@@ -6,7 +6,7 @@
     </x-slot>
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white shadow-sm rounded-lg p-6">
+            <div class="bg-white shadow-xs rounded-lg p-6">
                 <form method="POST" action="{{ route('business-entities.bank-accounts.store', $businessEntity->id) }}">
                     @csrf
                     <div class="mb-4">
@@ -29,7 +29,7 @@
                         <input type="text" name="nickname" value="{{ old('nickname') }}" class="mt-1 block w-full border-gray-300 rounded-md">
                         @error('nickname') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
-                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
+                    <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-sm">Save</button>
                     <a href="{{ route('business-entities.show', $businessEntity->id) }}" class="ml-4 text-gray-600">Cancel</a>
                 </form>
             </div>

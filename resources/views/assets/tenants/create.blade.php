@@ -19,7 +19,7 @@
                     <div class="grid gap-6">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tenant Name</label>
-                            <input type="text" name="name" value="{{ old('name') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                            <input type="text" name="name" value="{{ old('name') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
                             @error('name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="rounded-lg border border-gray-200 dark:border-gray-700 p-4">
@@ -35,7 +35,7 @@
                                         name="is_real_estate_managed"
                                         value="1"
                                         {{ old('is_real_estate_managed') ? 'checked' : '' }}
-                                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500"
+                                        class="rounded-sm border-gray-300 text-indigo-600 shadow-xs focus:ring-indigo-500"
                                     >
                                     <span class="text-sm text-gray-600 dark:text-gray-400">Yes</span>
                                 </div>
@@ -61,7 +61,7 @@
 
                                 <div id="existing-company-section" class="{{ old('create_real_estate_company') ? 'hidden' : '' }}">
                                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Agencies are stored separately from your business entities.</p>
-                                    <select name="real_estate_company_id" id="real_estate_company_id" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                    <select name="real_estate_company_id" id="real_estate_company_id" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                         <option value="">Select an agency</option>
                                         @foreach ($realEstateCompanies as $realEstateCompany)
                                             <option value="{{ $realEstateCompany->id }}" {{ old('real_estate_company_id') == $realEstateCompany->id ? 'selected' : '' }}>
@@ -75,7 +75,7 @@
                                 <div id="new-company-section" class="space-y-4 {{ old('create_real_estate_company') ? '' : 'hidden' }}">
                                     <div>
                                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Real Estate Company Name</label>
-                                        <input type="text" name="real_estate_company_name" value="{{ old('real_estate_company_name') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                        <input type="text" name="real_estate_company_name" value="{{ old('real_estate_company_name') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                         @error('real_estate_company_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                     </div>
 
@@ -91,12 +91,12 @@
                                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3 p-3 rounded-lg border border-gray-200 dark:border-gray-700" data-contact-row>
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Contact Person Name</label>
-                                                        <input type="text" name="real_estate_contacts[{{ $index }}][contact_person_name]" value="{{ $contact['contact_person_name'] ?? '' }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                                        <input type="text" name="real_estate_contacts[{{ $index }}][contact_person_name]" value="{{ $contact['contact_person_name'] ?? '' }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                                         @error('real_estate_contacts.' . $index . '.contact_person_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                                     </div>
                                                     <div>
                                                         <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Email</label>
-                                                        <input type="email" name="real_estate_contacts[{{ $index }}][email]" value="{{ $contact['email'] ?? '' }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                                        <input type="email" name="real_estate_contacts[{{ $index }}][email]" value="{{ $contact['email'] ?? '' }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                                         @error('real_estate_contacts.' . $index . '.email') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                                     </div>
                                                     <div>
@@ -106,7 +106,7 @@
                                                                 <button type="button" class="remove-contact-row text-red-600 hover:text-red-700 text-xs">Remove</button>
                                                             @endif
                                                         </div>
-                                                        <input type="text" name="real_estate_contacts[{{ $index }}][phone]" value="{{ $contact['phone'] ?? '' }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                                        <input type="text" name="real_estate_contacts[{{ $index }}][phone]" value="{{ $contact['phone'] ?? '' }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                                         @error('real_estate_contacts.' . $index . '.phone') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                                     </div>
                                                 </div>
@@ -119,33 +119,33 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
-                            <input type="email" name="email" value="{{ old('email') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <input type="email" name="email" value="{{ old('email') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             @error('email') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
-                            <input type="text" name="phone" value="{{ old('phone') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <input type="text" name="phone" value="{{ old('phone') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             @error('phone') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label for="address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Address</label>
-                            <x-google-address-input name="address" id="address" :value="old('address')" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
+                            <x-google-address-input name="address" id="address" :value="old('address')" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
                             @error('address') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Lease Start Date</label>
-                            <input type="date" name="move_in_date" value="{{ old('move_in_date') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <input type="date" name="move_in_date" value="{{ old('move_in_date') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             @error('move_in_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Lease Duration</label>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1">
                                 <div>
-                                    <input type="number" min="1" name="lease_duration_value" value="{{ old('lease_duration_value') }}" placeholder="Duration" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                    <input type="number" min="1" name="lease_duration_value" value="{{ old('lease_duration_value') }}" placeholder="Duration" class="block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                     @error('lease_duration_value') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
-                                    <select name="lease_duration_unit" class="block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                    <select name="lease_duration_unit" class="block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                         <option value="">Select unit</option>
                                         <option value="days" {{ old('lease_duration_unit') === 'days' ? 'selected' : '' }}>Days</option>
                                         <option value="weeks" {{ old('lease_duration_unit') === 'weeks' ? 'selected' : '' }}>Weeks</option>
@@ -158,18 +158,18 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reminder Before Expiry (Days)</label>
-                            <input type="number" min="0" name="lease_expiry_reminder_days" value="{{ old('lease_expiry_reminder_days', 30) }}" placeholder="30" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <input type="number" min="0" name="lease_expiry_reminder_days" value="{{ old('lease_expiry_reminder_days', 30) }}" placeholder="30" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             @error('lease_expiry_reminder_days') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">A reminder note will be created automatically.</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Rent Amount</label>
-                            <input type="number" min="0" step="0.01" name="rent_amount" value="{{ old('rent_amount') }}" placeholder="e.g. 1800" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <input type="number" min="0" step="0.01" name="rent_amount" value="{{ old('rent_amount') }}" placeholder="e.g. 1800" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             @error('rent_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Rent Frequency</label>
-                            <select name="rent_frequency" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <select name="rent_frequency" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                 <option value="">Select frequency</option>
                                 <option value="Weekly" {{ old('rent_frequency') === 'Weekly' ? 'selected' : '' }}>Weekly</option>
                                 <option value="Monthly" {{ old('rent_frequency') === 'Monthly' ? 'selected' : '' }}>Monthly</option>
@@ -178,7 +178,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Notes</label>
-                            <textarea name="notes" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" rows="4">{{ old('notes') }}</textarea>
+                            <textarea name="notes" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" rows="4">{{ old('notes') }}</textarea>
                             @error('notes') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="flex justify-end space-x-2">
@@ -233,18 +233,18 @@
                 row.innerHTML = `
                     <div>
                         <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Contact Person Name</label>
-                        <input type="text" name="real_estate_contacts[${rowCount}][contact_person_name]" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <input type="text" name="real_estate_contacts[${rowCount}][contact_person_name]" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Email</label>
-                        <input type="email" name="real_estate_contacts[${rowCount}][email]" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <input type="email" name="real_estate_contacts[${rowCount}][email]" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     </div>
                     <div>
                         <div class="flex items-center justify-between">
                             <label class="block text-xs font-medium text-gray-600 dark:text-gray-400">Phone</label>
                             <button type="button" class="remove-contact-row text-red-600 hover:text-red-700 text-xs">Remove</button>
                         </div>
-                        <input type="text" name="real_estate_contacts[${rowCount}][phone]" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <input type="text" name="real_estate_contacts[${rowCount}][phone]" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                     </div>
                 `;
 

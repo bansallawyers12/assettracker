@@ -45,15 +45,15 @@
                   @submit="validate($event)">
 
                 {{-- Report types (fixed on top) --}}
-                <div class="sticky top-0 z-20 -mx-4 px-4 sm:mx-0 sm:px-0 pt-2 pb-3 bg-gray-50/95 backdrop-blur-sm border-b border-gray-200/80 sm:border-0 sm:bg-transparent sm:backdrop-blur-none">
+                <div class="sticky top-0 z-20 -mx-4 px-4 sm:mx-0 sm:px-0 pt-2 pb-3 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200/80 sm:border-0 sm:bg-transparent sm:backdrop-blur-none">
                     <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Reports</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
 
                         <button type="submit" formaction="{{ route('financial-reports.account-transactions') }}"
                                 form="financial-reports-hub-form"
-                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-sm transition-all">
+                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
-                                <div class="flex-shrink-0 w-9 h-9 rounded-md bg-blue-50 flex items-center justify-center group-hover:bg-blue-100">
+                                <div class="shrink-0 w-9 h-9 rounded-md bg-blue-50 flex items-center justify-center group-hover:bg-blue-100">
                                     <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -68,9 +68,9 @@
 
                         <button type="submit" formaction="{{ route('financial-reports.balance-sheet') }}"
                                 form="financial-reports-hub-form"
-                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-400 hover:shadow-sm transition-all">
+                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
-                                <div class="flex-shrink-0 w-9 h-9 rounded-md bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100">
+                                <div class="shrink-0 w-9 h-9 rounded-md bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100">
                                     <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
@@ -85,9 +85,9 @@
 
                         <button type="submit" formaction="{{ route('financial-reports.profit-loss') }}"
                                 form="financial-reports-hub-form"
-                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-green-400 hover:shadow-sm transition-all">
+                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-green-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
-                                <div class="flex-shrink-0 w-9 h-9 rounded-md bg-green-50 flex items-center justify-center group-hover:bg-green-100">
+                                <div class="shrink-0 w-9 h-9 rounded-md bg-green-50 flex items-center justify-center group-hover:bg-green-100">
                                     <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
@@ -102,9 +102,9 @@
 
                         <button type="submit" formaction="{{ route('financial-reports.cash-flow') }}"
                                 form="financial-reports-hub-form"
-                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-400 hover:shadow-sm transition-all">
+                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
-                                <div class="flex-shrink-0 w-9 h-9 rounded-md bg-purple-50 flex items-center justify-center group-hover:bg-purple-100">
+                                <div class="shrink-0 w-9 h-9 rounded-md bg-purple-50 flex items-center justify-center group-hover:bg-purple-100">
                                     <svg class="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
@@ -119,9 +119,9 @@
 
                         <button type="submit" formaction="{{ route('financial-reports.tracking-categories') }}"
                                 form="financial-reports-hub-form"
-                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-orange-400 hover:shadow-sm transition-all">
+                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-orange-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
-                                <div class="flex-shrink-0 w-9 h-9 rounded-md bg-orange-50 flex items-center justify-center group-hover:bg-orange-100">
+                                <div class="shrink-0 w-9 h-9 rounded-md bg-orange-50 flex items-center justify-center group-hover:bg-orange-100">
                                     <svg class="h-5 w-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                               d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
@@ -137,7 +137,7 @@
                 </div>
 
                 {{-- Entity scope --}}
-                <div class="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-sm">
+                <div class="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-xs">
                     <h2 class="text-sm font-semibold text-gray-900 mb-4">Entity scope</h2>
 
                     <div class="space-y-4">
@@ -166,7 +166,7 @@
                                 @foreach($businessEntities as $entity)
                                     <label class="flex items-center gap-2 rounded-md border border-gray-100 px-3 py-2 hover:bg-gray-50 cursor-pointer">
                                         <input type="checkbox" name="entity_ids[]" value="{{ $entity->id }}"
-                                               class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                               class="h-4 w-4 rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500">
                                         <span class="text-sm text-gray-700 truncate">{{ $entity->legal_name }}</span>
                                     </label>
                                 @endforeach
