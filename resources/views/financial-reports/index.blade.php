@@ -15,39 +15,42 @@
         @endif
 
         @if($businessEntities->isEmpty())
-            <div class="text-center py-16 text-gray-400">
-                <p class="text-sm">No reporting entities are set up yet.</p>
+            <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="status">
+                No reporting entities are set up yet. Entity-scoped GL reports need at least one operating entity.
+                You can still open <a href="{{ route('financial-reports.commitments') }}" class="font-medium underline">Future commitments</a>
+                or <a href="{{ route('commitments.index') }}" class="font-medium underline">manage commitments</a>.
             </div>
-        @else
-            {{-- Scope: shared by all report actions --}}
-            <form id="financial-reports-hub-form" method="get" action="#" class="space-y-8"
-                  x-data="{
-                      scope: 'all',
-                      validate(ev) {
-                          const boxes = this.$el.querySelectorAll('input[name=\'entity_ids[]\']');
-                          if (this.scope === 'all') {
-                              boxes.forEach(cb => { cb.disabled = true; });
-                              return true;
-                          }
-                          boxes.forEach(cb => { cb.disabled = false; });
-                          const n = this.$el.querySelectorAll('input[name=\'entity_ids[]\']:checked').length;
-                          if (n === 0) {
-                              ev.preventDefault();
-                              alert('Select at least one entity, or choose “All reporting entities”.');
-                              return false;
-                          }
+        @endif
+
+        {{-- Scope: shared by entity-scoped report actions --}}
+        <form id="financial-reports-hub-form" method="get" action="#" class="space-y-8"
+              x-data="{
+                  scope: 'all',
+                  validate(ev) {
+                      const boxes = this.$el.querySelectorAll('input[name=\'entity_ids[]\']');
+                      if (this.scope === 'all') {
+                          boxes.forEach(cb => { cb.disabled = true; });
                           return true;
                       }
-                  }"
-                  x-init="window.addEventListener('pageshow', () => {
-                      document.querySelectorAll('#financial-reports-hub-form input[name=\'entity_ids[]\']').forEach(cb => { cb.disabled = false; });
-                  })"
-                  @submit="validate($event)">
+                      boxes.forEach(cb => { cb.disabled = false; });
+                      const n = this.$el.querySelectorAll('input[name=\'entity_ids[]\']:checked').length;
+                      if (n === 0) {
+                          ev.preventDefault();
+                          alert('Select at least one entity, or choose “All reporting entities”.');
+                          return false;
+                      }
+                      return true;
+                  }
+              }"
+              x-init="window.addEventListener('pageshow', () => {
+                  document.querySelectorAll('#financial-reports-hub-form input[name=\'entity_ids[]\']').forEach(cb => { cb.disabled = false; });
+              })"
+              @submit="validate($event)">
 
-                {{-- Report types (fixed on top) --}}
-                <div class="sticky top-0 z-20 -mx-4 px-4 sm:mx-0 sm:px-0 pt-2 pb-3 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200/80 sm:border-0 sm:bg-transparent sm:backdrop-blur-none">
-                    <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Reports</h2>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+            {{-- Report types (fixed on top) --}}
+            <div class="sticky top-0 z-20 -mx-4 px-4 sm:mx-0 sm:px-0 pt-2 pb-3 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200/80 sm:border-0 sm:bg-transparent sm:backdrop-blur-none">
+                <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Reports</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
 
                         <a href="{{ route('financial-reports.entity-summary') }}"
                            class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-amber-400 hover:shadow-xs transition-all">
@@ -203,6 +206,7 @@
                 </div>
 
                 {{-- Entity scope --}}
+                @if($businessEntities->isNotEmpty())
                 <div class="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-xs">
                     <h2 class="text-sm font-semibold text-gray-900 mb-4">Entity scope</h2>
 
@@ -240,7 +244,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
             </form>
-        @endif
     </div>
 </x-app-layout>

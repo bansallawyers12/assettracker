@@ -81,8 +81,7 @@ class CommitmentController extends Controller
 
     public function show(BusinessEntity $businessEntity, Commitment $commitment): View
     {
-        $this->ensureCommitmentBelongsToEntity($businessEntity, $commitment);
-        $this->authorize('view', $commitment);
+        $this->authorizeCommitmentAccess($businessEntity, $commitment, 'view');
 
         $commitment->load(['businessEntity', 'payments', 'asset']);
 
@@ -91,8 +90,7 @@ class CommitmentController extends Controller
 
     public function edit(BusinessEntity $businessEntity, Commitment $commitment): View|RedirectResponse
     {
-        $this->ensureCommitmentBelongsToEntity($businessEntity, $commitment);
-        $this->authorize('update', $commitment);
+        $this->authorizeCommitmentAccess($businessEntity, $commitment, 'update');
 
         if (! $commitment->isEditable()) {
             return redirect()
@@ -105,8 +103,7 @@ class CommitmentController extends Controller
 
     public function update(Request $request, BusinessEntity $businessEntity, Commitment $commitment): RedirectResponse
     {
-        $this->ensureCommitmentBelongsToEntity($businessEntity, $commitment);
-        $this->authorize('update', $commitment);
+        $this->authorizeCommitmentAccess($businessEntity, $commitment, 'update');
 
         if (! $commitment->isEditable()) {
             return redirect()
@@ -124,8 +121,7 @@ class CommitmentController extends Controller
 
     public function destroy(BusinessEntity $businessEntity, Commitment $commitment): RedirectResponse
     {
-        $this->ensureCommitmentBelongsToEntity($businessEntity, $commitment);
-        $this->authorize('delete', $commitment);
+        $this->authorizeCommitmentAccess($businessEntity, $commitment, 'delete');
 
         $commitment->delete();
 
@@ -136,8 +132,7 @@ class CommitmentController extends Controller
 
     public function storePayment(Request $request, BusinessEntity $businessEntity, Commitment $commitment): RedirectResponse
     {
-        $this->ensureCommitmentBelongsToEntity($businessEntity, $commitment);
-        $this->authorize('update', $commitment);
+        $this->authorizeCommitmentAccess($businessEntity, $commitment, 'update');
 
         if (! $commitment->isEditable()) {
             return redirect()
@@ -164,8 +159,7 @@ class CommitmentController extends Controller
         Commitment $commitment,
         CommitmentPayment $payment
     ): RedirectResponse {
-        $this->ensureCommitmentBelongsToEntity($businessEntity, $commitment);
-        $this->authorize('update', $commitment);
+        $this->authorizeCommitmentAccess($businessEntity, $commitment, 'update');
 
         if ((int) $payment->commitment_id !== (int) $commitment->id) {
             abort(404);
@@ -186,8 +180,7 @@ class CommitmentController extends Controller
 
     public function settle(Request $request, BusinessEntity $businessEntity, Commitment $commitment): RedirectResponse
     {
-        $this->ensureCommitmentBelongsToEntity($businessEntity, $commitment);
-        $this->authorize('update', $commitment);
+        $this->authorizeCommitmentAccess($businessEntity, $commitment, 'update');
 
         if ($commitment->status !== 'Active') {
             return redirect()
@@ -205,13 +198,18 @@ class CommitmentController extends Controller
         $asset = null;
 
         if ($createAsset) {
+            $this->authorize('create', Asset::class);
+
             $settlementDate = $commitment->settlement_date ?? now();
             $asset = Asset::create([
                 'business_entity_id' => $businessEntity->id,
                 'user_id' => $request->user()?->id,
                 'asset_type' => $validated['asset_type'] ?? $commitment->defaultAssetType(),
                 'name' => $commitment->name,
-                'acquisition_date' => $validated['acquisition_date'] ?? $settlementDate,
+                'acquisition_date' => $validated['acquisition_date']
+                    ?? ($settlementDate instanceof \Carbon\CarbonInterface
+                        ? $settlementDate->toDateString()
+                        : $settlementDate),
                 'acquisition_cost' => $commitment->contract_price,
                 'current_value' => $commitment->contract_price,
                 'status' => 'Active',
@@ -316,5 +314,13 @@ class CommitmentController extends Controller
         if ((int) $commitment->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
         }
+    }
+
+    protected function authorizeCommitmentAccess(BusinessEntity $businessEntity, Commitment $commitment, string $ability): void
+    {
+        $this->ensureCommitmentBelongsToEntity($businessEntity, $commitment);
+        $this->authorize('view', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorize($ability, $commitment);
     }
 }

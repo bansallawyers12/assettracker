@@ -122,6 +122,14 @@
             <p class="text-sm">No car assets found for the selected scope.</p>
         </div>
     @else
+        @php
+            $statusColors = [
+                'Active'            => 'bg-green-100 text-green-700',
+                'Inactive'          => 'bg-gray-100 text-gray-600',
+                'Sold'              => 'bg-red-100 text-red-700',
+                'Under Maintenance' => 'bg-amber-100 text-amber-700',
+            ];
+        @endphp
         <div class="px-4 sm:px-6 pb-6 overflow-x-auto">
             <table class="min-w-full text-sm border-collapse mt-4">
                 <thead>
@@ -145,13 +153,6 @@
                             $regoDue      = $car->registration_due_date;
                             $insuranceDue = $car->insurance_due_date;
                             $serviceDue   = $car->service_due_date;
-
-                            $statusColors = [
-                                'Active'            => 'bg-green-100 text-green-700',
-                                'Inactive'          => 'bg-gray-100 text-gray-600',
-                                'Sold'              => 'bg-red-100 text-red-700',
-                                'Under Maintenance' => 'bg-amber-100 text-amber-700',
-                            ];
                         @endphp
                         <tr class="hover:bg-blue-50/40 transition-colors">
                             <td class="py-2.5 pr-3 text-gray-400 tabular-nums">{{ $i + 1 }}</td>

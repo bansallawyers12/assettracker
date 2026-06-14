@@ -26,7 +26,13 @@ class CarReportController extends Controller
                 ->with('error', 'Choose at least one entity, or select "All reporting entities".');
         }
 
-        $report  = $this->carReportService->fleetRegister($entityIds === [] ? null : $entityIds);
+        if ($entityIds === []) {
+            return redirect()
+                ->route('financial-reports.index')
+                ->with('error', 'No reporting entities are available.');
+        }
+
+        $report  = $this->carReportService->fleetRegister($entityIds);
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
         $formsScope      = $request->input('scope') === 'selected' ? 'selected' : 'all';
         $formsEntityIds  = $formsScope === 'selected' ? ($entityIds ?? []) : [];
