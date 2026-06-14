@@ -27,7 +27,7 @@
 
                         <div class="mt-4" id="reminder_date_container" style="display: none;">
                             <x-input-label for="reminder_date" :value="__('Reminder Date')" />
-                            <x-text-input id="reminder_date" type="date" name="reminder_date" class="mt-1 block w-full" :value="old('reminder_date')" />
+                            <x-date-input id="reminder_date" name="reminder_date" class="mt-1 block w-full" value="{{ old('reminder_date') }}" />
                             <x-input-error :messages="$errors->get('reminder_date')" class="mt-2" />
                         </div>
 

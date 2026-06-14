@@ -853,7 +853,7 @@
 
                                         <div class="mb-4">
                                             <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Message *</label>
-                                            <textarea id="message" name="message" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required></textarea>
+                                            <x-rich-text-editor id="message" name="message" :rows="8" :height="200" defer required />
                                         </div>
 
                                         <div class="mb-4">
@@ -1011,9 +1011,6 @@
         </div> {{-- End of max-w-7xl container --}}
     </div> {{-- End of py-8 background div --}}
 
-    <!-- TinyMCE (self-hosted: npm `tinymce` → postinstall copies to public/vendor/tinymce) -->
-    <script src="{{ asset('vendor/tinymce/tinymce.min.js') }}"></script>
-
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const tabsRoot = document.getElementById('entity-tabs');
@@ -1022,7 +1019,6 @@
             const composeEmailForm = document.getElementById('compose-email-form');
             const fromEmailSelect = document.getElementById('from_email');
             const subjectInput = document.getElementById('subject');
-            const tinymceBaseUrl = @json(asset('vendor/tinymce'));
 
             function escapeHashId(id) {
                 return (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(id) : id.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -1047,6 +1043,10 @@
                 const selectedTab = document.getElementById(resolvedId);
                 if (selectedTab) {
                     selectedTab.classList.remove('hidden');
+                }
+
+                if (resolvedId === 'tab_compose_email') {
+                    window.initRichTextEditors?.(selectedTab, { includeDeferred: true });
                 }
 
                 tabs.forEach(tab => {
@@ -1130,8 +1130,7 @@
                     e.preventDefault();
 
                     const formData = new FormData(this);
-                    const messageEditor = tinymce.get('message');
-                    formData.set('message', messageEditor ? messageEditor.getContent() : (document.getElementById('message')?.value ?? ''));
+                    formData.set('message', window.getRichTextContent?.('message') ?? (document.getElementById('message')?.value ?? ''));
 
                     formData.append('_method', 'POST');
                     formData.append('business_entity_id', "{{ $businessEntity->id }}");
@@ -1148,30 +1147,12 @@
                         console.log(data);
                         alert(data.message);
                         composeEmailForm.reset();
-                        tinymce.get('message')?.setContent('');
+                        window.setRichTextContent?.('message', '');
                     })
                     .catch(error => {
                         console.error('Error sending email:', error);
                         alert('Error sending email.');
                     });
-                });
-            }
-
-            if (document.getElementById('message')) {
-                tinymce.init({
-                    selector: '#message',
-                    base_url: tinymceBaseUrl,
-                    suffix: '.min',
-                    license_key: 'gpl',
-                    promotion: false,
-                    branding: false,
-                    height: 200,
-                    menubar: false,
-                    placeholder: 'Write your message here...',
-                    plugins: 'lists advlist autolink link image media table code fullscreen help',
-                    toolbar: 'undo redo | blocks | bold italic underline removeformat | forecolor | alignleft aligncenter alignright | bullist numlist | table | link image media | code fullscreen help',
-                    relative_urls: false,
-                    remove_script_host: false,
                 });
             }
 

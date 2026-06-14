@@ -3,8 +3,7 @@
     "type": "module",
     "scripts": {
         "build": "vite build",
-        "dev": "vite",
-        "postinstall": "node -e \"const fs=require('fs');const s='node_modules/tinymce',d='public/vendor/tinymce';if(fs.existsSync(s)){fs.mkdirSync('public/vendor',{recursive:true});fs.rmSync(d,{recursive:true,force:true});fs.cpSync(s,d,{recursive:true});}\""
+        "dev": "vite"
     },
     "devDependencies": {
         "@tailwindcss/forms": "^0.5.11",

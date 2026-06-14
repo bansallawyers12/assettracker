@@ -124,8 +124,10 @@
                     <div>
                         <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message *</label>
                         <div class="flex gap-3">
-                            <textarea id="message" name="message" rows="12" class="flex-1 rounded-lg border-gray-300 shadow-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors resize-none" placeholder="Add your forward message here..." required></textarea>
-                            <button type="button" id="enhance-message-btn" class="px-4 py-2 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                            <div class="flex-1 min-w-0">
+                                <x-rich-text-editor id="message" name="message" :rows="12" :height="300" placeholder="Add your forward message here..." required />
+                            </div>
+                            <button type="button" id="enhance-message-btn" class="px-4 py-2 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 shrink-0">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                                 </svg>
@@ -358,9 +360,26 @@
                 return emails.every(email => emailRegex.test(email));
             }
 
+            function getFieldValue(field) {
+                if (field === 'message') {
+                    return (window.getRichTextContent?.('message') ?? document.getElementById('message')?.value ?? '').trim();
+                }
+
+                return document.getElementById(field).value.trim();
+            }
+
+            function setFieldValue(field, value) {
+                if (field === 'message') {
+                    window.setRichTextContent?.('message', value);
+                    return;
+                }
+
+                document.getElementById(field).value = value;
+            }
+
             function previewForward() {
                 // Get the user's message
-                const userMessage = document.getElementById('message').value.trim();
+                const userMessage = getFieldValue('message');
                 
                 // Get the original email content
                 const originalFrom = '{{ $message->sender_name ?: $message->sender_email }}';
@@ -475,7 +494,7 @@
                 const formData = new FormData(form);
                 
                 // Get the user's message
-                const userMessage = document.getElementById('message').value.trim();
+                const userMessage = getFieldValue('message');
                 
                 // Get the original email content
                 const originalFrom = '{{ $message->sender_name ?: $message->sender_email }}';
@@ -495,8 +514,7 @@
                 fullMessage += 'Subject: ' + originalSubject + '\n\n';
                 fullMessage += originalContent;
                 
-                // Update the message field with the combined content
-                document.getElementById('message').value = fullMessage;
+                formData.set('message', fullMessage);
                 
                 fetch('{{ route("emails.send") }}', {
                     method: 'POST',
@@ -526,7 +544,7 @@
                 formData.append('original_message_id', '{{ $message->id }}');
                 
                 // Get the user's message
-                const userMessage = document.getElementById('message').value.trim();
+                const userMessage = getFieldValue('message');
                 
                 // Get the original email content
                 const originalFrom = '{{ $message->sender_name ?: $message->sender_email }}';
@@ -546,8 +564,7 @@
                 fullMessage += 'Subject: ' + originalSubject + '\n\n';
                 fullMessage += originalContent;
                 
-                // Update the message field with the combined content
-                document.getElementById('message').value = fullMessage;
+                formData.set('message', fullMessage);
                 
                 fetch('{{ route("emails.save-draft") }}', {
                     method: 'POST',
@@ -571,7 +588,7 @@
             }
 
             function showAIModal(field) {
-                const originalText = document.getElementById(field).value;
+                const originalText = getFieldValue(field);
                 document.getElementById('original-text').textContent = originalText;
                 
                 // Simulate AI enhancement (replace with actual AI service)
@@ -592,7 +609,7 @@
                 // Set up apply button
                 document.getElementById('apply-enhancement-btn').onclick = function() {
                     const enhancedText = document.getElementById('enhanced-text').textContent.replace('AI Enhanced: ', '');
-                    document.getElementById(field).value = enhancedText;
+                    setFieldValue(field, enhancedText);
                     closeAIModal();
                 };
             }

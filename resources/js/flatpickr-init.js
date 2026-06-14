@@ -20,3 +20,34 @@ export function initFlatpickr(root = document) {
         });
     });
 }
+
+let flatpickrObserverStarted = false;
+
+/**
+ * Re-initialize Flatpickr when Alpine/JS injects new date fields after page load.
+ */
+export function watchFlatpickr() {
+    if (flatpickrObserverStarted) {
+        return;
+    }
+
+    flatpickrObserverStarted = true;
+
+    const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    continue;
+                }
+
+                if (node.matches?.('input[type="date"]')) {
+                    initFlatpickr(node.parentElement ?? document);
+                } else if (node.querySelectorAll?.('input[type="date"]').length) {
+                    initFlatpickr(node);
+                }
+            }
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+}
