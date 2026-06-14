@@ -165,6 +165,40 @@
                                 </div>
                             </div>
                         </a>
+
+                        <a href="{{ route('financial-reports.fleet-register') }}"
+                           class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-sky-400 hover:shadow-xs transition-all">
+                            <div class="flex items-start gap-3">
+                                <div class="shrink-0 w-9 h-9 rounded-md bg-sky-50 flex items-center justify-center group-hover:bg-sky-100">
+                                    <svg class="h-5 w-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2m8-2H5m8 0h2m2 0h2a1 1 0 001-1v-5l-3-4H9"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-800 group-hover:text-sky-700">Fleet register</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">Rego, insurance &amp; service due dates for all cars</p>
+                                </div>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('financial-reports.commitments') }}"
+                           class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-rose-400 hover:shadow-xs transition-all">
+                            <div class="flex items-start gap-3">
+                                <div class="shrink-0 w-9 h-9 rounded-md bg-rose-50 flex items-center justify-center group-hover:bg-rose-100">
+                                    <svg class="h-5 w-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-800 group-hover:text-rose-700">Future commitments</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">Pending contracts, deposits &amp; settlement dates</p>
+                                </div>
+                            </div>
+                        </a>
                     </div>
                 </div>
 

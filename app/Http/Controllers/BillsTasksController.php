@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\BusinessEntity;
+use App\Models\Commitment;
 use App\Models\EntityPerson;
 use App\Models\Note;
 use App\Models\Reminder;
@@ -91,7 +92,8 @@ class BillsTasksController extends Controller
             + $this->noteReminderOperationalQuery($opIds)->whereNotNull('reminder_date')->count()
             + $this->transactionOperationalQuery($opIds)->where('payment_status', 'unpaid')->whereNotNull('due_date')->count()
             + $this->assetOperationalQuery($opIds)->whereNotNull('registration_due_date')->count()
-            + $this->entityPersonOperationalQuery($opIds)->whereNotNull('asic_due_date')->count();
+            + $this->entityPersonOperationalQuery($opIds)->whereNotNull('asic_due_date')->count()
+            + $this->commitmentOperationalQuery($opIds)->active()->whereNotNull('settlement_date')->count();
     }
 
     /**
@@ -186,6 +188,25 @@ class BillsTasksController extends Controller
                     'transaction' => null,
                     'asset' => null,
                     'entityPerson' => $ep,
+                ]);
+            });
+
+        $this->commitmentOperationalQuery($opIds)
+            ->active()
+            ->whereNotNull('settlement_date')
+            ->with(['businessEntity', 'payments'])
+            ->orderBy('settlement_date')
+            ->get()
+            ->each(function (Commitment $commitment) use ($items) {
+                $items->push((object) [
+                    'kind' => 'commitment',
+                    'sort_date' => $commitment->settlement_date,
+                    'reminder' => null,
+                    'note' => null,
+                    'transaction' => null,
+                    'asset' => null,
+                    'entityPerson' => null,
+                    'commitment' => $commitment,
                 ]);
             });
 
@@ -286,6 +307,20 @@ class BillsTasksController extends Controller
     private function entityPersonOperationalQuery(array $opIds): Builder
     {
         $q = EntityPerson::query();
+        if ($opIds === []) {
+            return $q->whereRaw('0 = 1');
+        }
+
+        return $q->whereIn('business_entity_id', $opIds);
+    }
+
+    /**
+     * @param  list<int>  $opIds
+     * @return Builder<Commitment>
+     */
+    private function commitmentOperationalQuery(array $opIds): Builder
+    {
+        $q = Commitment::query();
         if ($opIds === []) {
             return $q->whereRaw('0 = 1');
         }

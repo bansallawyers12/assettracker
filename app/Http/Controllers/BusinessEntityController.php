@@ -15,6 +15,7 @@ use App\Models\Note;
 use App\Models\Person; // Added for date manipulation
 use App\Models\Reminder; // Added for logging
 use App\Models\Transaction; // Added for file storage
+use App\Services\CommitmentReportService;
 use App\Services\DocumentUploadService;
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Support\TransactionGstResolver;
@@ -506,6 +507,10 @@ class BusinessEntityController extends Controller
 
         $payerOptions = TransactionPayerResolver::payerOptions();
 
+        $commitmentSummary = app(CommitmentReportService::class)->dashboardSummary(
+            $businessEntities->modelKeys()
+        );
+
         return view('dashboard', compact(
             'businessEntities',
             'assets',
@@ -514,7 +519,8 @@ class BusinessEntityController extends Controller
             'uniquePersons',
             'assetDueDates',
             'entityDueDates',
-            'payerOptions'
+            'payerOptions',
+            'commitmentSummary'
         ));
     }
 

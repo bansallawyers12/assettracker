@@ -209,6 +209,14 @@
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $ep->businessEntity?->legal_name }} · {{ $ep->role }}</p>
                                                 <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200">{{ $ep->asic_due_date?->format('d/m/Y') }}</span>
+                                            @elseif ($row->kind === 'commitment')
+                                                @php $c = $row->commitment; @endphp
+                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
+                                                    Settlement — {{ $c->name }} ({{ $c->commitment_type }})
+                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-rose-100 text-rose-800 dark:bg-rose-900/40 dark:text-rose-200">COMMIT</span>
+                                                </p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $c->businessEntity?->legal_name }} · ${{ number_format($c->balance_due, 2) }} balance due</p>
+                                                <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium bg-rose-50 text-rose-800 dark:bg-rose-900/30 dark:text-rose-200">{{ $c->settlement_date?->format('d/m/Y') }}</span>
                                             @endif
                                         </div>
                                         <div class="shrink-0 flex flex-col items-end gap-2 min-w-32">
@@ -279,6 +287,9 @@
                                                         </form>
                                                     </div>
                                                 </div>
+                                            @elseif ($row->kind === 'commitment')
+                                                @php $c = $row->commitment; @endphp
+                                                <a href="{{ route('business-entities.commitments.show', [$c->business_entity_id, $c->id]) }}" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-medium px-2 dark:bg-rose-900/20 dark:text-rose-300">View</a>
                                             @endif
                                         </div>
                                     </div>

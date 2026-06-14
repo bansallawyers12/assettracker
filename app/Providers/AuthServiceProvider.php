@@ -15,7 +15,9 @@ use App\Models\ContactList;
 use App\Policies\ContactListPolicy;
 use App\Models\EmailTemplate;
 use App\Policies\EmailTemplatePolicy;
+use App\Models\Commitment;
 use App\Models\Reminder;
+use App\Policies\CommitmentPolicy;
 use App\Policies\ReminderPolicy;
 
 class AuthServiceProvider extends ServiceProvider
@@ -32,6 +34,7 @@ class AuthServiceProvider extends ServiceProvider
         ContactList::class => ContactListPolicy::class,
         EmailTemplate::class => EmailTemplatePolicy::class,
         Reminder::class => ReminderPolicy::class,
+        Commitment::class => CommitmentPolicy::class,
     ];
 
     /**

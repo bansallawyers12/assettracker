@@ -106,6 +106,11 @@ class BusinessEntity extends Model
         return $this->hasMany(Asset::class, 'business_entity_id');
     }
 
+    public function commitments()
+    {
+        return $this->hasMany(Commitment::class, 'business_entity_id');
+    }
+
     public function persons()
     {
         return $this->hasMany(EntityPerson::class, 'business_entity_id');
