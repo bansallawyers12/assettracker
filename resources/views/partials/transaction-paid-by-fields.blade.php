@@ -14,7 +14,7 @@
     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 {{ $labelClass ?? 'mb-1' }}" id="paid_by_label">
         {{ $paidByLabelText ?? 'Paid By' }}
     </label>
-    <select name="paid_by_select" id="paid_by_select"
+    <select name="paid_by_select" id="paid_by_select" data-tomselect
             class="{{ $selectClass ?? 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white' }}">
         <option value="">— Not specified —</option>
         @if (count($payerCompanies))

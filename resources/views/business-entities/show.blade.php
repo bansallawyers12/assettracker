@@ -1265,12 +1265,13 @@
                                 </div>
                             </div>
                             <div class="mt-2">
-                                <select class="w-full text-xs border border-gray-300 dark:border-gray-600 rounded-sm px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 account-select">
+                                <select class="w-full text-xs border border-gray-300 dark:border-gray-600 rounded-sm px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 account-select" data-tomselect>
                                     <option value="">Select account...</option>
                                 </select>
                             </div>
                         `;
                         bankEntriesList.appendChild(entryDiv);
+                        window.initTomSelect?.(entryDiv);
                     });
                 })
                 .catch(error => {
@@ -1309,6 +1310,9 @@
             function populateAccountSelects(accounts) {
                 const accountSelects = document.querySelectorAll('.account-select');
                 accountSelects.forEach(select => {
+                    if (select.tomselect) {
+                        select.tomselect.destroy();
+                    }
                     const keepFirst = select.querySelector('option[value=""]');
                     select.innerHTML = '';
                     if (keepFirst) {
@@ -1325,6 +1329,7 @@
                         option.textContent = `${account.account_code} - ${account.account_name}`;
                         select.appendChild(option);
                     });
+                    window.reinitTomSelect?.(select);
                 });
             }
 
@@ -1357,7 +1362,7 @@
                     }
                     
                     if (matchedAccount) {
-                        select.value = matchedAccount.dataset.accountId;
+                        window.setSelectValue?.(select, matchedAccount.dataset.accountId);
                     }
                 });
             });

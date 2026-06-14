@@ -32,7 +32,7 @@
 
                 <div>
                     <label for="business_entity_id" class="block text-sm font-medium text-gray-700">Business Entity</label>
-                    <select name="business_entity_id" id="business_entity_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500">
+                    <select name="business_entity_id" id="business_entity_id" data-tomselect class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="">Select Business Entity</option>
                         @foreach($businessEntities as $entity)
                             <option value="{{ $entity->id }}" {{ isset($selectedEntity) && $selectedEntity->id == $entity->id ? 'selected' : '' }}>{{ $entity->name }}</option>
@@ -45,7 +45,7 @@
 
                 <div>
                     <label for="asset_id" class="block text-sm font-medium text-gray-700">Asset (Optional)</label>
-                    <select name="asset_id" id="asset_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500">
+                    <select name="asset_id" id="asset_id" data-tomselect class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="">Select Asset</option>
                         @if(isset($selectedAsset))
                             <option value="{{ $selectedAsset->id }}" selected>{{ $selectedAsset->name }}</option>
@@ -114,8 +114,11 @@
                                 option.textContent = asset.name;
                                 assetSelect.appendChild(option);
                             });
+                            window.reinitTomSelect?.(assetSelect);
                         })
                         .catch(error => console.error('Error loading assets:', error));
+                } else {
+                    window.reinitTomSelect?.(assetSelect);
                 }
             });
 

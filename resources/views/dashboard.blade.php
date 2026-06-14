@@ -95,7 +95,7 @@
                         {{-- Business Entity --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Business Entity</label>
-                            <select name="business_entity_id" id="business_entity_id"
+                            <select name="business_entity_id" id="business_entity_id" data-tomselect
                                     class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
                                 <option value="">Select Entity</option>
                                 @foreach ($businessEntities as $entity)
@@ -108,7 +108,7 @@
                         {{-- Asset --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <select name="asset_id" id="transaction_asset_id"
+                            <select name="asset_id" id="transaction_asset_id" data-tomselect
                                     class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                                 <option value="">None — entity only</option>
                                 @foreach ($assets as $asset)
@@ -179,7 +179,7 @@
                         {{-- Related Entity (shown for related-party types) --}}
                         <div id="related_entity_field" style="display: none;">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Related Entity</label>
-                            <select name="related_entity_id" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                            <select name="related_entity_id" data-tomselect class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
                                 <option value="">Select Related Entity</option>
                                 @foreach($businessEntities->sortBy('legal_name') as $entity)
                                     <option value="{{ $entity->id }}" {{ old('related_entity_id', session('transactionData.related_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
@@ -416,7 +416,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Business Entity</label>
-                                    <select name="business_entity_id" id="reminder_business_entity_id" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm">
+                                    <select name="business_entity_id" id="reminder_business_entity_id" data-tomselect class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm">
                                         <option value="">Select Entity (Optional)</option>
                                         @foreach ($businessEntities as $entity)
                                             <option value="{{ $entity->id }}">{{ $entity->legal_name }}</option>
@@ -426,7 +426,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset</label>
-                                    <select name="asset_id" id="reminder_asset_id" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" disabled>
+                                    <select name="asset_id" id="reminder_asset_id" data-tomselect class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" disabled>
                                         <option value="">Select Asset (Optional)</option>
                                         @foreach ($assets as $asset)
                                             <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}">{{ $asset->name }} ({{ $asset->asset_type }})</option>
@@ -808,9 +808,11 @@
                             o => o.value === keepValue && !o.disabled
                         );
                         if (!stillValid) {
-                            transactionAssetSelect.value = '';
+                            window.setSelectValue(transactionAssetSelect, '');
                         }
+                        window.refreshTomSelect?.(transactionAssetSelect);
                     }
+                    window.refreshTomSelect?.(relatedSel);
                 }
 
                 entitySelect.addEventListener('change', syncTransactionFormFromEntitySelect);
@@ -874,12 +876,13 @@
 
                 if (entitySelect && assetSelect) {
                     entitySelect.addEventListener('change', function() {
-                        assetSelect.disabled = !this.value;
+                        window.setSelectDisabled?.(assetSelect, !this.value);
                         Array.from(assetSelect.options).forEach(option => {
                             if (option.value && option.dataset.entityId) {
                                 option.style.display = option.dataset.entityId === entitySelect.value || !entitySelect.value ? 'block' : 'none';
                             }
                         });
+                        window.refreshTomSelect?.(assetSelect);
                     });
                 }
             }
@@ -964,8 +967,9 @@
                         relatedEntityField.querySelector('select').required = true;
                     } else {
                         relatedEntityField.style.display = 'none';
-                        relatedEntityField.querySelector('select').required = false;
-                        relatedEntityField.querySelector('select').value = '';
+                        const relatedSelect = relatedEntityField.querySelector('select');
+                        relatedSelect.required = false;
+                        window.setSelectValue?.(relatedSelect, '');
                     }
                 });
 

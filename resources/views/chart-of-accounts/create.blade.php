@@ -70,7 +70,7 @@
 
                 <div>
                     <label for="parent_account_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Parent account (optional)</label>
-                    <select id="parent_account_id" name="parent_account_id"
+                    <select id="parent_account_id" name="parent_account_id" data-tomselect
                             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500">
                         <option value="">No parent account</option>
                         @foreach($parentAccounts as $parent)

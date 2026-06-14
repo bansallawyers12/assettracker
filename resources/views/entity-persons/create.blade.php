@@ -52,7 +52,7 @@
                         <!-- Existing Person Selection -->
                         <div id="existing_person" class="mb-4">
                             <label for="person_id" class="block text-sm font-medium text-gray-700">{{$existingPersonLabel}}</label>
-                            <select name="person_id" id="person_id" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <select name="person_id" id="person_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md">
                                 <option value="">{{$existingPersonDropDownLabel}}</option>
                                 @foreach ($persons as $person)
                                     <option value="{{ $person->id }}">{{ $person->first_name }} {{ $person->last_name }}</option>
@@ -133,7 +133,7 @@
 
                                 <div id="appointor_person_selection" class="hidden">
                                     <label for="appointor_person_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Person</label>
-                                    <select name="appointor_person_id" id="appointor_person_id" class="mt-1 block w-full border-gray-300 rounded-md" disabled>
+                                    <select name="appointor_person_id" id="appointor_person_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md" disabled>
                                         <option value="">Select a person</option>
                                         @foreach ($persons as $person)
                                             <option value="{{ $person->id }}">{{ $person->first_name }} {{ $person->last_name }}</option>
@@ -144,7 +144,7 @@
 
                                 <div id="appointor_entity_selection" class="hidden">
                                     <label for="appointor_entity_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Entity</label>
-                                    <select name="appointor_entity_id" id="appointor_entity_id" class="mt-1 block w-full border-gray-300 rounded-md" disabled>
+                                    <select name="appointor_entity_id" id="appointor_entity_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md" disabled>
                                         <option value="">Select an entity</option>
                                         @foreach ($businessEntities as $entity)
                                             <option value="{{ $entity->id }}">{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
@@ -259,10 +259,10 @@
                 document.getElementById('appointor_entity_selection').classList.add('hidden');
                 const personSelect = document.getElementById('appointor_person_id');
                 const entitySelect = document.getElementById('appointor_entity_id');
-                personSelect.value = '';
-                personSelect.disabled = true;
-                entitySelect.value = '';
-                entitySelect.disabled = true;
+                window.setSelectValue?.(personSelect, '');
+                window.setSelectDisabled?.(personSelect, true);
+                window.setSelectValue?.(entitySelect, '');
+                window.setSelectDisabled?.(entitySelect, true);
             }
         }
 
@@ -276,22 +276,22 @@
             if (appointorType === 'person') {
                 personSelection.classList.remove('hidden');
                 entitySelection.classList.add('hidden');
-                personSelect.disabled = false;
-                entitySelect.disabled = true;
-                entitySelect.value = '';
+                window.setSelectDisabled?.(personSelect, false);
+                window.setSelectDisabled?.(entitySelect, true);
+                window.setSelectValue?.(entitySelect, '');
             } else if (appointorType === 'entity') {
                 personSelection.classList.add('hidden');
                 entitySelection.classList.remove('hidden');
-                personSelect.disabled = true;
-                entitySelect.disabled = false;
-                personSelect.value = '';
+                window.setSelectDisabled?.(personSelect, true);
+                window.setSelectDisabled?.(entitySelect, false);
+                window.setSelectValue?.(personSelect, '');
             } else {
                 personSelection.classList.add('hidden');
                 entitySelection.classList.add('hidden');
-                personSelect.disabled = true;
-                entitySelect.disabled = true;
-                personSelect.value = '';
-                entitySelect.value = '';
+                window.setSelectDisabled?.(personSelect, true);
+                window.setSelectDisabled?.(entitySelect, true);
+                window.setSelectValue?.(personSelect, '');
+                window.setSelectValue?.(entitySelect, '');
             }
         }
 

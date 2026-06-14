@@ -1,15 +1,30 @@
 import './bootstrap';
 import './documents.js';
 import { initFlatpickr } from './flatpickr-init';
+import {
+    initTomSelect,
+    destroyTomSelect,
+    refreshTomSelect,
+    reinitTomSelect,
+    setSelectValue,
+    setSelectDisabled,
+} from './tomselect-init';
 
 import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
+window.initTomSelect = initTomSelect;
+window.destroyTomSelect = destroyTomSelect;
+window.refreshTomSelect = refreshTomSelect;
+window.reinitTomSelect = reinitTomSelect;
+window.setSelectValue = setSelectValue;
+window.setSelectDisabled = setSelectDisabled;
 
 Alpine.start();
 
 document.addEventListener('DOMContentLoaded', function() {
     initFlatpickr();
+    initTomSelect();
 
     if (!document.getElementById('entity-tabs')) {
         const tabLinks = document.querySelectorAll('.tab-link');

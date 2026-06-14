@@ -101,7 +101,7 @@
 
                         <div id="related_entity_field" style="display: none;">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Related Entity</label>
-                            <select name="related_entity_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                            <select name="related_entity_id" data-tomselect class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
                                 <option value="">Select Related Entity</option>
                                 @foreach(\App\Models\BusinessEntity::operationalEntities()->where('id', '!=', $transaction->business_entity_id)->orderBy('legal_name')->get() as $entity)
                                     <option value="{{ $entity->id }}" {{ old('related_entity_id', $transaction->related_entity_id) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
@@ -112,7 +112,7 @@
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <select name="asset_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                            <select name="asset_id" data-tomselect class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
                                 <option value="">None — entity only</option>
                                 @foreach ($businessEntity->assets()->orderBy('name')->get() as $asset)
                                     <option value="{{ $asset->id }}" {{ (string) old('asset_id', $transaction->asset_id) === (string) $asset->id ? 'selected' : '' }}>{{ $asset->name }}</option>
@@ -315,7 +315,7 @@
                     const show = relatedPartyTypes.includes(this.value);
                     relatedEntityField.style.display = show ? 'block' : 'none';
                     relatedEntityField.querySelector('select').required = show;
-                    if (!show) relatedEntityField.querySelector('select').value = '';
+                    if (!show) window.setSelectValue?.(relatedEntityField.querySelector('select'), '');
                 });
                 if (relatedPartyTypes.includes(transactionTypeSelect.value)) {
                     relatedEntityField.style.display = 'block';

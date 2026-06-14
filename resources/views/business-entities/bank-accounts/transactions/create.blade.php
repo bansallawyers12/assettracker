@@ -105,7 +105,7 @@
                         </div>
                         <div id="related_entity_field" style="display: none;">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Related Entity</label>
-                            <select name="related_entity_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
+                            <select name="related_entity_id" data-tomselect class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
                                 <option value="">Select Related Entity</option>
                                 @foreach(\App\Models\BusinessEntity::operationalEntities()->where('id', '!=', $businessEntity->id)->orderBy('legal_name')->get() as $entity)
                                     <option value="{{ $entity->id }}" {{ old('related_entity_id', $td['related_entity_id'] ?? '') == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
@@ -115,7 +115,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <select name="asset_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
+                            <select name="asset_id" data-tomselect class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
                                 <option value="">None — entity only</option>
                                 @foreach ($businessEntity->assets()->orderBy('name')->get() as $asset)
                                     <option value="{{ $asset->id }}" {{ (string) old('asset_id', $td['asset_id'] ?? '') === (string) $asset->id ? 'selected' : '' }}>{{ $asset->name }}</option>
@@ -147,7 +147,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Business Entity</label>
-                            <select name="business_entity_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" required>
+                            <select name="business_entity_id" data-tomselect class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" required>
                                 @foreach ($businessEntities as $entity)
                                     <option value="{{ $entity->id }}" {{ old('business_entity_id', $businessEntity->id) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
                                 @endforeach
@@ -303,7 +303,7 @@
                     const show = relatedPartyTypes.includes(this.value);
                     relatedEntityField.style.display = show ? 'block' : 'none';
                     const rs = relatedEntityField.querySelector('select');
-                    if (rs) { rs.required = show; if (!show) rs.value = ''; }
+                    if (rs) { rs.required = show; if (!show) window.setSelectValue?.(rs, ''); }
                 });
                 if (relatedPartyTypes.includes(transactionTypeSelect.value)) {
                     relatedEntityField.style.display = 'block';
