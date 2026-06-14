@@ -13,7 +13,8 @@ class TwoFactorServiceTest extends TestCase
         $secret = $google2fa->generateSecretKey();
         $qrCode = $google2fa->getQRCodeInline('TestApp', 'user@example.com', $secret, 200);
 
+        $this->assertSame(32, strlen($secret));
         $this->assertNotEmpty($qrCode);
-        $this->assertMatchesRegularExpression('/(<svg|data:image\/png;base64,)/', $qrCode);
+        $this->assertMatchesRegularExpression('/(<svg|data:image\/(?:svg\+xml|png);base64,)/', $qrCode);
     }
 }

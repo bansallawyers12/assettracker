@@ -14,8 +14,8 @@
         "laravel/tinker": "^3.0",
         "league/flysystem": "^3.29",
         "league/flysystem-aws-s3-v3": "^3.29",
-        "pragmarx/google2fa": "^8.0",
-        "pragmarx/google2fa-laravel": "^3.0",
+        "pragmarx/google2fa": "^9.0",
+        "pragmarx/google2fa-qrcode": "^4.0",
         "pusher/pusher-php-server": "^7.2"
     },
     "require-dev": {
