@@ -21,6 +21,10 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
+  [x-cloak] {
+    display: none !important;
+  }
+
   *,
   ::after,
   ::before,
@@ -37,9 +41,7 @@
 }
 
 @layer utilities {
-  .hidden {
-    display: none;
-  }
+  /* Do not redefine .hidden here — it breaks responsive display utilities (e.g. hidden sm:flex). */
 
   .tab-link {
     @apply border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm;
