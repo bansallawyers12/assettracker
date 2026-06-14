@@ -92,15 +92,10 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Transaction Type</label>
-                            <select name="transaction_type" id="transaction_type" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" required>
-                                <option value="">Select Type</option>
-                                @foreach (\App\Models\Transaction::$incomeTypes as $value => $label)
-                                    <option value="{{ $value }}" data-direction="income" {{ old('transaction_type', $td['transaction_type'] ?? '') == $value ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
-                                @foreach (\App\Models\Transaction::$expenseTypes as $value => $label)
-                                    <option value="{{ $value }}" data-direction="expense" {{ old('transaction_type', $td['transaction_type'] ?? '') == $value ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
-                            </select>
+                            @include('partials.transaction-type-select', [
+                                'selected' => old('transaction_type', $td['transaction_type'] ?? ''),
+                                'class' => 'mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs',
+                            ])
                             @error('transaction_type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div id="related_entity_field" style="display: none;">
@@ -298,6 +293,9 @@
                     'director_loan_in',
                     'director_loan_out',
                     'director_loan_repayment',
+                    'directors_loans_to_company',
+                    'repayment_directors_loans',
+                    'company_loans_to_directors',
                 ];
                 transactionTypeSelect.addEventListener('change', function () {
                     const show = relatedPartyTypes.includes(this.value);

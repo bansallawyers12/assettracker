@@ -354,7 +354,7 @@
                                                                     <span class="text-gray-400">—</span>
                                                                 @endif
                                                             </td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ Transaction::$transactionTypes[$transaction->transaction_type] ?? 'Unknown' }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ Transaction::allTypes()[$transaction->transaction_type] ?? 'Unknown' }}</td>
                                                             <td class="px-6 py-4">
                                                                 @if (($transaction->payment_status ?? 'paid') === 'unpaid')
                                                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Unpaid</span>
@@ -448,7 +448,7 @@
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Description:</span> {{ $selectedTransaction->description ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Vendor:</span> {{ $selectedTransaction->vendor_name ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Invoice #:</span> {{ $selectedTransaction->invoice_number ?? '—' }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> {{ Transaction::$transactionTypes[$selectedTransaction->transaction_type] ?? 'N/A' }}</p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> {{ Transaction::allTypes()[$selectedTransaction->transaction_type] ?? 'N/A' }}</p>
                                                             @if ($selectedTransaction->relatedEntity)
                                                                 <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Director / Related Entity:</span> {{ $selectedTransaction->relatedEntity->legal_name }}</p>
                                                             @endif

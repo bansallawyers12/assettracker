@@ -36,7 +36,7 @@
                 <select id="type_filter" name="type" onchange="this.form.submit()"
                     class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-purple-500 focus:border-purple-500">
                     <option value="">All Types</option>
-                    @foreach (\App\Models\Transaction::$transactionTypes as $key => $label)
+                    @foreach (\App\Models\Transaction::allTypes() as $key => $label)
                         <option value="{{ $key }}" {{ request('type') === $key ? 'selected' : '' }}>{{ $label }}</option>
                     @endforeach
                 </select>
@@ -115,7 +115,7 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
-                                    {{ \App\Models\Transaction::$transactionTypes[$tx->transaction_type] ?? '—' }}
+                                    {{ \App\Models\Transaction::allTypes()[$tx->transaction_type] ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                     {{ $tx->invoice_number ?? '—' }}

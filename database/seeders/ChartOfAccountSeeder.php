@@ -64,6 +64,8 @@ class ChartOfAccountSeeder extends Seeder
 
             // ── LIABILITIES ─────────────────────────────────────────────────────
             ['2100', 'GST Clearing', 'liability', 'current_liability', 'Net GST payable or refundable — cleared each BAS period'],
+            ['2120', 'PAYG Payable', 'liability', 'current_liability', 'Pay As You Go withholding payable to the ATO'],
+            ['2130', 'Super Payable', 'liability', 'current_liability', 'Superannuation contributions accrued but not yet paid'],
             ['2500', 'Director / Entity Loan', 'liability', 'long_term_liability', 'Loans from directors or related entities'],
 
             // ── EQUITY ──────────────────────────────────────────────────────────
@@ -84,6 +86,8 @@ class ChartOfAccountSeeder extends Seeder
             ['5140', 'Valuation & Rates', 'expense', 'operating_expense', 'Council rates, water rates, and independent property valuations'],
             ['5150', 'OC Fees', 'expense', 'operating_expense', "Owners' corporation / body corporate levies"],
             ['5160', 'Repairs & Maintenance', 'expense', 'operating_expense', 'Routine repairs and maintenance costs for investment properties'],
+            ['5170', 'Wages & Salaries', 'expense', 'operating_expense', 'Employee wages and salaries (excludes super)'],
+            ['5180', 'Superannuation', 'expense', 'operating_expense', 'Superannuation contributions paid or accrued'],
             ['5900', 'Other Expenses', 'expense', 'other_expense', 'Miscellaneous expenses not classified elsewhere'],
         ];
     }

@@ -164,15 +164,10 @@
                         {{-- Transaction Type (filtered by direction via JS) --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Transaction Type</label>
-                            <select name="transaction_type" id="transaction_type" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
-                                <option value="">Select Type</option>
-                                @foreach (\App\Models\Transaction::$incomeTypes as $value => $label)
-                                    <option value="{{ $value }}" data-direction="income" {{ old('transaction_type', session('transactionData.transaction_type')) == $value ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
-                                @foreach (\App\Models\Transaction::$expenseTypes as $value => $label)
-                                    <option value="{{ $value }}" data-direction="expense" {{ old('transaction_type', session('transactionData.transaction_type')) == $value ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
-                            </select>
+                            @include('partials.transaction-type-select', [
+                                'selected' => old('transaction_type', session('transactionData.transaction_type')),
+                                'class' => 'block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm',
+                            ])
                             @error('transaction_type') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
@@ -962,6 +957,9 @@
                     'director_loan_in',
                     'director_loan_out',
                     'director_loan_repayment',
+                    'directors_loans_to_company',
+                    'repayment_directors_loans',
+                    'company_loans_to_directors',
                 ];
 
                 transactionTypeSelect.addEventListener('change', function() {

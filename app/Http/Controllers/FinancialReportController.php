@@ -287,4 +287,35 @@ class FinancialReportController extends Controller
 
         return $this->trackingCategoriesHub($request);
     }
+
+    public function entitySummaryHub(Request $request)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $ids = BusinessEntity::forFinancialReports()
+            ->orderBy('legal_name')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+
+        if ($ids === []) {
+            return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
+        }
+
+        $fyStart = Carbon::parse($request->get('fy_start_date', FinancialYear::currentStart()->toDateString()))->toDateString();
+        $fyEnd = Carbon::parse($request->get('fy_end_date', FinancialYear::currentEnd()->toDateString()))->toDateString();
+        $periodStart = Carbon::parse($request->get('period_start_date', $fyStart))->toDateString();
+        $periodEnd = Carbon::parse($request->get('period_end_date', now()->toDateString()))->toDateString();
+
+        $report = $this->financialReportService->generateEntitySummary(
+            $ids,
+            $periodStart,
+            $periodEnd,
+            $fyStart,
+            $fyEnd
+        );
+
+        return view('financial-reports.entity-summary', compact('report'));
+    }
 }

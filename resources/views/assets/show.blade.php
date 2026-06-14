@@ -621,7 +621,7 @@
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ $tx->date->format('d/m/Y') }}</td>
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">${{ number_format($tx->amount, 2) }}</td>
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ $tx->description }}</td>
-                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ Transaction::$transactionTypes[$tx->transaction_type] ?? $tx->transaction_type }}</td>
+                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ Transaction::allTypes()[$tx->transaction_type] ?? $tx->transaction_type }}</td>
                                                             <td class="px-4 py-2 text-sm">
                                                                 <div class="flex flex-wrap gap-2 items-center">
                                                                     <a href="{{ route('business-entities.transactions.edit', [$businessEntity->id, $tx->id]) }}" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium">Edit</a>

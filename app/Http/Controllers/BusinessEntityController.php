@@ -551,7 +551,7 @@ class BusinessEntityController extends Controller
             'description' => 'nullable|string|max:255',
             'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
-            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
+            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::allTypes())),
             'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => [
                 'nullable',
@@ -745,7 +745,7 @@ class BusinessEntityController extends Controller
             'description' => 'nullable|string|max:255',
             'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
-            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
+            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::allTypes())),
             'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => [
                 'nullable',
@@ -922,7 +922,7 @@ class BusinessEntityController extends Controller
             'description' => 'nullable|string|max:255',
             'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
-            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
+            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::allTypes())),
             'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => [
                 'nullable',
@@ -1062,7 +1062,7 @@ class BusinessEntityController extends Controller
             'description' => 'nullable|string|max:255',
             'vendor_name' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:100',
-            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::$transactionTypes)),
+            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::allTypes())),
             'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => [
                 'nullable',
@@ -2078,3 +2078,4 @@ class BusinessEntityController extends Controller
         }
     }
 }
+

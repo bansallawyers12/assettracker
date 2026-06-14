@@ -49,6 +49,22 @@
                     <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Reports</h2>
                     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
 
+                        <a href="{{ route('financial-reports.entity-summary') }}"
+                           class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-amber-400 hover:shadow-xs transition-all">
+                            <div class="flex items-start gap-3">
+                                <div class="shrink-0 w-9 h-9 rounded-md bg-amber-50 flex items-center justify-center group-hover:bg-amber-100">
+                                    <svg class="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-800 group-hover:text-amber-700">Entity summary</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">Cross-entity sales, tax, profit &amp; loans</p>
+                                </div>
+                            </div>
+                        </a>
+
                         <button type="submit" formaction="{{ route('financial-reports.account-transactions') }}"
                                 form="financial-reports-hub-form"
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-xs transition-all">

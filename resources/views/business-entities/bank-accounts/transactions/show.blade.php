@@ -58,7 +58,7 @@
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Transaction Type</p>
                     <p class="text-sm text-gray-900 dark:text-gray-100">
-                        {{ \App\Models\Transaction::$transactionTypes[$transaction->transaction_type] ?? '—' }}
+                        {{ \App\Models\Transaction::allTypes()[$transaction->transaction_type] ?? '—' }}
                     </p>
                 </div>
 
