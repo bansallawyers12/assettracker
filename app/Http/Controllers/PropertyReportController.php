@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Services\PropertyReportService;
+use App\Support\FinancialYear;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,8 +27,8 @@ class PropertyReportController extends Controller
         }
 
         $basis = $request->get('basis', PropertyReportService::BASIS_CASH);
-        $startDate = Carbon::parse($request->get('start_date', now()->copy()->startOfYear()))->toDateString();
-        $endDate = Carbon::parse($request->get('end_date', now()->copy()->endOfYear()))->toDateString();
+        $startDate = Carbon::parse($request->get('start_date', FinancialYear::currentStart()->toDateString()))->toDateString();
+        $endDate = Carbon::parse($request->get('end_date', FinancialYear::currentEnd()->toDateString()))->toDateString();
 
         $report = $this->propertyReportService->propertyProfitLoss($asset, $startDate, $endDate, $basis);
 
@@ -46,8 +47,8 @@ class PropertyReportController extends Controller
         }
 
         $basis = $request->get('basis', PropertyReportService::BASIS_CASH);
-        $startDate = Carbon::parse($request->get('start_date', now()->copy()->startOfYear()))->toDateString();
-        $endDate = Carbon::parse($request->get('end_date', now()->copy()->endOfYear()))->toDateString();
+        $startDate = Carbon::parse($request->get('start_date', FinancialYear::currentStart()->toDateString()))->toDateString();
+        $endDate = Carbon::parse($request->get('end_date', FinancialYear::currentEnd()->toDateString()))->toDateString();
         $showDisposed = $request->boolean('show_disposed');
 
         $report = $this->propertyReportService->portfolio(

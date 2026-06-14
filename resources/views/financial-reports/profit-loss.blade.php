@@ -52,14 +52,10 @@
             <div class="flex items-end gap-1.5 flex-wrap">
                 @php
                     $today = \Carbon\Carbon::now();
-                    $lastMonth = $today->copy()->subMonthNoOverflow();
-                    $lastYear = $today->copy()->subYear();
-                    $shortcuts = [
-                        'This month' => [$today->copy()->startOfMonth()->toDateString(), $today->copy()->endOfMonth()->toDateString()],
-                        'Last month' => [$lastMonth->copy()->startOfMonth()->toDateString(), $lastMonth->copy()->endOfMonth()->toDateString()],
-                        'This year' => [$today->copy()->startOfYear()->toDateString(), $today->copy()->endOfYear()->toDateString()],
-                        'Last year' => [$lastYear->copy()->startOfYear()->toDateString(), $lastYear->copy()->endOfYear()->toDateString()],
-                    ];
+                    $shortcuts = array_merge(
+                        \App\Support\FinancialYear::monthShortcuts($today),
+                        \App\Support\FinancialYear::periodShortcuts($today)
+                    );
                 @endphp
                 @foreach($shortcuts as $label => [$s, $e])
                     <a href="{{ route('financial-reports.profit-loss', $reportQuery(['start_date' => $s, 'end_date' => $e])) }}"

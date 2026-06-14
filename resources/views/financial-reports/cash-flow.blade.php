@@ -19,10 +19,10 @@
         return $q;
     };
     $today = \Carbon\Carbon::now();
-    $shortcuts = [
-        'This month' => [$today->copy()->startOfMonth()->toDateString(), $today->copy()->endOfMonth()->toDateString()],
-        'This year' => [$today->copy()->startOfYear()->toDateString(), $today->copy()->endOfYear()->toDateString()],
-    ];
+    $shortcuts = array_merge(
+        ['This month' => \App\Support\FinancialYear::monthShortcuts($today)['This month']],
+        \App\Support\FinancialYear::periodShortcuts($today)
+    );
 @endphp
 
 <x-report-shell

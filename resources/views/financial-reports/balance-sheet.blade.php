@@ -57,9 +57,7 @@
                     $bsShortcuts = [
                         'Today' => $today->toDateString(),
                         'End of month' => $today->copy()->endOfMonth()->toDateString(),
-                        'End of FY' => $today->month >= 7
-                            ? $today->year.'-06-30'
-                            : ($today->year - 1).'-06-30',
+                        'End of FY' => \App\Support\FinancialYear::currentEnd($today)->toDateString(),
                     ];
                 @endphp
                 @foreach($bsShortcuts as $label => $date)

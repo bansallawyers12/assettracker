@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\BusinessEntity;
 use App\Services\FinancialReportService;
+use App\Support\FinancialYear;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class FinancialReportController extends Controller
@@ -17,7 +19,7 @@ class FinancialReportController extends Controller
     }
 
     /**
-     * @return \Illuminate\Http\RedirectResponse|null
+     * @return RedirectResponse|null
      */
     protected function redirectIfExcludedFromFinancialReports(BusinessEntity $businessEntity)
     {
@@ -30,7 +32,7 @@ class FinancialReportController extends Controller
     }
 
     /**
-     * @return array<int>|null  null = invalid “selected” with no entities
+     * @return array<int>|null null = invalid “selected” with no entities
      */
     protected function resolveReportEntityIds(Request $request): ?array
     {
@@ -73,7 +75,7 @@ class FinancialReportController extends Controller
         return $report;
     }
 
-    protected function redirectInvalidReportScope(): \Illuminate\Http\RedirectResponse
+    protected function redirectInvalidReportScope(): RedirectResponse
     {
         return redirect()->route('financial-reports.index')
             ->with('error', 'Choose at least one entity, or select “All reporting entities”.');
@@ -99,8 +101,8 @@ class FinancialReportController extends Controller
             return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
         }
 
-        $startDate = Carbon::parse($request->get('start_date', now()->copy()->startOfYear()))->toDateString();
-        $endDate = Carbon::parse($request->get('end_date', now()->copy()->endOfYear()))->toDateString();
+        $startDate = Carbon::parse($request->get('start_date', FinancialYear::currentStart()->toDateString()))->toDateString();
+        $endDate = Carbon::parse($request->get('end_date', FinancialYear::currentEnd()->toDateString()))->toDateString();
         $report = $this->financialReportService->generateProfitLoss($ids, $startDate, $endDate);
         $report = $this->mergeReportFormScope($report, $request, $ids);
 
@@ -168,8 +170,8 @@ class FinancialReportController extends Controller
             return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
         }
 
-        $startDate = Carbon::parse($request->get('start_date', now()->copy()->startOfYear()))->toDateString();
-        $endDate = Carbon::parse($request->get('end_date', now()->copy()->endOfYear()))->toDateString();
+        $startDate = Carbon::parse($request->get('start_date', FinancialYear::currentStart()->toDateString()))->toDateString();
+        $endDate = Carbon::parse($request->get('end_date', FinancialYear::currentEnd()->toDateString()))->toDateString();
         $report = $this->financialReportService->generateCashFlow($ids, $startDate, $endDate);
         $report = $this->mergeReportFormScope($report, $request, $ids);
 
@@ -247,8 +249,8 @@ class FinancialReportController extends Controller
             return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
         }
 
-        $startDate = Carbon::parse($request->get('start_date', now()->copy()->startOfYear()))->toDateString();
-        $endDate = Carbon::parse($request->get('end_date', now()->copy()->endOfYear()))->toDateString();
+        $startDate = Carbon::parse($request->get('start_date', FinancialYear::currentStart()->toDateString()))->toDateString();
+        $endDate = Carbon::parse($request->get('end_date', FinancialYear::currentEnd()->toDateString()))->toDateString();
         $trackingCategoryId = $request->filled('tracking_category_id')
             ? max(0, (int) $request->get('tracking_category_id')) ?: null
             : null;
