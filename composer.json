@@ -7,7 +7,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
-        "bacon/bacon-qr-code": "^3.0",
+        "bacon/bacon-qr-code": "^3.1",
         "fakerphp/faker": "^1.23",
         "laravel/framework": "^13.0",
         "laravel/reverb": "^1.9",

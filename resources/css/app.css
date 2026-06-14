@@ -173,6 +173,7 @@
     background: white;
     font-size: 0.875rem;
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    z-index: 9999;
 }
 
 .ts-dropdown .option {

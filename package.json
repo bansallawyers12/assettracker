@@ -7,17 +7,17 @@
         "postinstall": "node -e \"const fs=require('fs');const s='node_modules/tinymce',d='public/vendor/tinymce';if(fs.existsSync(s)){fs.mkdirSync('public/vendor',{recursive:true});fs.rmSync(d,{recursive:true,force:true});fs.cpSync(s,d,{recursive:true});}\""
     },
     "devDependencies": {
-        "@tailwindcss/forms": "^0.5.2",
-        "@tailwindcss/vite": "^4.3.0",
-        "alpinejs": "^3.4.2",
-        "axios": "^1.7.4",
-        "concurrently": "^10.0.0",
-        "laravel-echo": "^2.3.1",
+        "@tailwindcss/forms": "^0.5.11",
+        "@tailwindcss/vite": "^4.3.1",
+        "alpinejs": "^3.15.12",
+        "axios": "^1.17.0",
+        "concurrently": "^10.0.3",
+        "laravel-echo": "^2.3.7",
         "laravel-vite-plugin": "^3.1.0",
-        "pusher-js": "^8.4.3",
-        "tailwindcss": "^4.3.0",
-        "tinymce": "^8.3.2",
-        "vite": "^8.0.0"
+        "pusher-js": "^8.5.0",
+        "tailwindcss": "^4.3.1",
+        "tinymce": "^8.6.0",
+        "vite": "^8.0.16"
     },
     "dependencies": {
         "flatpickr": "^4.6.13",

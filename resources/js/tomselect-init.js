@@ -22,10 +22,32 @@ function buildOptions(select) {
         create,
         maxOptions: null,
         placeholder: placeholderFromSelect(select),
+        dropdownParent: 'body',
         onChange() {
             select.dispatchEvent(new Event('change', { bubbles: true }));
         },
     };
+}
+
+function addNativeOptionToTomSelect(ts, opt) {
+    if (opt.hidden || (opt.disabled && opt.value)) {
+        return;
+    }
+
+    const option = {
+        value: opt.value,
+        text: opt.textContent?.trim() ?? '',
+    };
+
+    if (opt.disabled) {
+        option.disabled = true;
+    }
+
+    if (opt.parentElement?.tagName === 'OPTGROUP') {
+        option.optgroup = opt.parentElement.label;
+    }
+
+    ts.addOption(option);
 }
 
 /**
@@ -48,8 +70,28 @@ export function destroyTomSelect(select) {
 }
 
 export function refreshTomSelect(select) {
+    rebuildTomSelectFromNative(select);
+}
+
+/** Re-read visible/enabled native <option>s into an existing Tom Select instance. */
+export function rebuildTomSelectFromNative(select) {
     const el = resolveSelect(select);
-    el?.tomselect?.sync();
+    if (!el?.tomselect) {
+        return;
+    }
+
+    const ts = el.tomselect;
+    const selected = el.value;
+
+    ts.clear(true);
+    ts.clearOptions();
+
+    Array.from(el.options).forEach((opt) => addNativeOptionToTomSelect(ts, opt));
+
+    ts.refreshOptions(false);
+
+    const stillValid = selected && ts.options[selected] && !ts.options[selected].disabled;
+    ts.setValue(stillValid ? selected : '', true);
 }
 
 export function reinitTomSelect(select) {

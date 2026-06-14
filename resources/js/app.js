@@ -5,6 +5,7 @@ import {
     initTomSelect,
     destroyTomSelect,
     refreshTomSelect,
+    rebuildTomSelectFromNative,
     reinitTomSelect,
     setSelectValue,
     setSelectDisabled,
@@ -16,6 +17,7 @@ window.Alpine = Alpine;
 window.initTomSelect = initTomSelect;
 window.destroyTomSelect = destroyTomSelect;
 window.refreshTomSelect = refreshTomSelect;
+window.rebuildTomSelectFromNative = rebuildTomSelectFromNative;
 window.reinitTomSelect = reinitTomSelect;
 window.setSelectValue = setSelectValue;
 window.setSelectDisabled = setSelectDisabled;

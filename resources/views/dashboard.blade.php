@@ -878,11 +878,14 @@
                     entitySelect.addEventListener('change', function() {
                         window.setSelectDisabled?.(assetSelect, !this.value);
                         Array.from(assetSelect.options).forEach(option => {
-                            if (option.value && option.dataset.entityId) {
-                                option.style.display = option.dataset.entityId === entitySelect.value || !entitySelect.value ? 'block' : 'none';
+                            if (!option.value || !option.dataset.entityId) {
+                                return;
                             }
+                            const match = option.dataset.entityId === entitySelect.value;
+                            option.hidden = !match;
+                            option.disabled = !match;
                         });
-                        window.refreshTomSelect?.(assetSelect);
+                        window.rebuildTomSelectFromNative?.(assetSelect);
                     });
                 }
             }

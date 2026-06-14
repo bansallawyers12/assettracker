@@ -1183,6 +1183,7 @@
             const matchingInterface = document.getElementById('matching-interface');
             const autoMatchBtn = document.getElementById('auto-match-btn');
             const saveMatchesBtn = document.getElementById('save-matches-btn');
+            let cachedChartAccounts = [];
 
             if (uploadStatementBtn && uploadForm && cancelUploadBtn && bankImportForm && matchingInterface && autoMatchBtn && saveMatchesBtn) {
 
@@ -1273,6 +1274,10 @@
                         bankEntriesList.appendChild(entryDiv);
                         window.initTomSelect?.(entryDiv);
                     });
+
+                    if (cachedChartAccounts.length) {
+                        populateAccountSelects(cachedChartAccounts);
+                    }
                 })
                 .catch(error => {
                     console.error('Error loading bank entries:', error);
@@ -1308,6 +1313,7 @@
 
             // Populate account select dropdowns
             function populateAccountSelects(accounts) {
+                cachedChartAccounts = accounts;
                 const accountSelects = document.querySelectorAll('.account-select');
                 accountSelects.forEach(select => {
                     if (select.tomselect) {

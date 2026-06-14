@@ -212,7 +212,7 @@
             if (checkbox.checked) {
                 existingPerson.classList.add('hidden');
                 newPersonFields.classList.remove('hidden');
-                personId.value = '';
+                window.setSelectValue?.(personId, '');
                 
                 // Clear any error messages that might be visible
                 const errorMessages = document.querySelectorAll('.text-red-500');
