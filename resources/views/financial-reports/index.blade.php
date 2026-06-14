@@ -17,7 +17,8 @@
         @if($businessEntities->isEmpty())
             <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800" role="status">
                 No reporting entities are set up yet. Entity-scoped GL reports need at least one operating entity.
-                You can still open <a href="{{ route('financial-reports.commitments') }}" class="font-medium underline">Future commitments</a>
+                You can still open <a href="{{ route('financial-reports.car-register') }}" class="font-medium underline">Car Register</a>,
+                <a href="{{ route('financial-reports.commitments') }}" class="font-medium underline">Future commitments</a>,
                 or <a href="{{ route('commitments.index') }}" class="font-medium underline">manage commitments</a>.
             </div>
         @endif
@@ -169,7 +170,23 @@
                             </div>
                         </a>
 
-                        <a href="{{ route('financial-reports.fleet-register') }}"
+                        <a href="{{ route('financial-reports.asset-summary') }}"
+                           class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-emerald-400 hover:shadow-xs transition-all">
+                            <div class="flex items-start gap-3">
+                                <div class="shrink-0 w-9 h-9 rounded-md bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100">
+                                    <svg class="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                              d="M3 10h18M3 14h18M10 4v16M6 4v16"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold text-gray-800 group-hover:text-emerald-700">Asset summary</p>
+                                    <p class="text-xs text-gray-500 mt-0.5">Property register — ownership, tenants &amp; loan details</p>
+                                </div>
+                            </div>
+                        </a>
+
+                        <a href="{{ route('financial-reports.car-register') }}"
                            class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-sky-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-sky-50 flex items-center justify-center group-hover:bg-sky-100">
@@ -181,7 +198,7 @@
                                     </svg>
                                 </div>
                                 <div>
-                                    <p class="text-sm font-semibold text-gray-800 group-hover:text-sky-700">Fleet register</p>
+                                    <p class="text-sm font-semibold text-gray-800 group-hover:text-sky-700">Car Register</p>
                                     <p class="text-xs text-gray-500 mt-0.5">Rego, insurance &amp; service due dates for all cars</p>
                                 </div>
                             </div>

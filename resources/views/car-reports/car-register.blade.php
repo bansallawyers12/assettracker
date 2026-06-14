@@ -20,11 +20,13 @@
 @endphp
 
 <x-report-shell
-    title="Fleet register"
-    entity-scope-label="Cars across all reporting entities">
+    title="Car Register"
+    :entity-scope-label="$formsScope === 'selected' && count($formsEntityIds) === 1
+        ? 'Cars for ' . ($businessEntities->firstWhere('id', $formsEntityIds[0])?->legal_name ?? 'selected entity')
+        : ($formsScope === 'selected' ? 'Cars for selected entities' : 'Cars across all reporting entities')">
 
     <x-slot:filters>
-        <form method="GET" action="{{ route('financial-reports.fleet-register') }}"
+        <form method="GET" action="{{ route('financial-reports.car-register') }}"
               class="flex flex-wrap items-end gap-3">
 
             {{-- Carry selected entity ids when scope=selected --}}
@@ -55,6 +57,8 @@
                         </label>
                     @endforeach
                 </div>
+            @else
+                <p class="text-xs text-gray-500">No reporting entities are configured. Showing cars from all operational entities.</p>
             @endif
 
             <div class="flex items-end gap-2 ml-auto">
@@ -73,7 +77,7 @@
     @endif
 
     {{-- ── Summary tiles ─────────────────────────────────────────── --}}
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 px-6 py-5 border-b border-gray-100 bg-gray-50/70">
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 px-6 py-5 border-b border-gray-100 bg-gray-50/70">
 
         <div class="text-center">
             <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Total cars</p>
@@ -109,9 +113,16 @@
         </div>
 
         <div class="text-center">
+            <p class="text-xs font-semibold uppercase tracking-wide text-red-500">Service overdue</p>
+            <p class="text-2xl font-bold {{ $totals['service_overdue'] > 0 ? 'text-red-600' : 'text-gray-400' }} mt-0.5">
+                {{ $totals['service_overdue'] }}
+            </p>
+        </div>
+
+        <div class="text-center">
             <p class="text-xs font-semibold uppercase tracking-wide text-amber-500">Service due ≤30 days</p>
-            <p class="text-2xl font-bold {{ ($totals['service_overdue'] + $totals['service_due_soon']) > 0 ? 'text-amber-600' : 'text-gray-400' }} mt-0.5">
-                {{ $totals['service_overdue'] + $totals['service_due_soon'] }}
+            <p class="text-2xl font-bold {{ $totals['service_due_soon'] > 0 ? 'text-amber-600' : 'text-gray-400' }} mt-0.5">
+                {{ $totals['service_due_soon'] }}
             </p>
         </div>
     </div>
@@ -120,6 +131,7 @@
     @if($cars->isEmpty())
         <div class="px-6 py-16 text-center text-gray-400">
             <p class="text-sm">No car assets found for the selected scope.</p>
+            <p class="text-xs mt-2">Add car assets under a business entity to see them here.</p>
         </div>
     @else
         @php

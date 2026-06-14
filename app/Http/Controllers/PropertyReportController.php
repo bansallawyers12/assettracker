@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\BusinessEntity;
+use App\Services\AssetSummaryReportService;
 use App\Services\PropertyReportService;
 use App\Support\FinancialYear;
 use Carbon\Carbon;
@@ -14,7 +15,8 @@ use Illuminate\View\View;
 class PropertyReportController extends Controller
 {
     public function __construct(
-        protected PropertyReportService $propertyReportService
+        protected PropertyReportService $propertyReportService,
+        protected AssetSummaryReportService $assetSummaryReportService,
     ) {}
 
     public function show(BusinessEntity $businessEntity, Asset $asset, Request $request): View
@@ -72,6 +74,43 @@ class PropertyReportController extends Controller
             'showDisposed',
             'formsScope',
             'formsEntityIds'
+        ));
+    }
+
+    public function assetSummary(Request $request): View|RedirectResponse
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $entityIds = $this->resolveReportEntityIds($request);
+        if ($entityIds === null) {
+            return redirect()
+                ->route('financial-reports.asset-summary', $request->except('entity_ids'))
+                ->with('error', 'Choose at least one entity, or select "All reporting entities".');
+        }
+
+        if ($entityIds === []) {
+            return redirect()
+                ->route('financial-reports.index')
+                ->with('error', 'No reporting entities are available.');
+        }
+
+        $showDisposed = $request->boolean('show_disposed');
+
+        $report = $this->assetSummaryReportService->report(
+            $entityIds,
+            $showDisposed,
+        );
+
+        $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+        $formsScope      = $request->input('scope') === 'selected' ? 'selected' : 'all';
+        $formsEntityIds  = $formsScope === 'selected' ? ($entityIds ?? []) : [];
+
+        return view('property-reports.asset-summary', compact(
+            'report',
+            'businessEntities',
+            'showDisposed',
+            'formsScope',
+            'formsEntityIds',
         ));
     }
 

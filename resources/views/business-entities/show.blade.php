@@ -694,6 +694,29 @@
                                                 </a>
                                             </div>
                                         </div>
+
+                                        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200">
+                                            <div class="flex items-center">
+                                                <div class="shrink-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2m8-2H5m8 0h2m2 0h2a1 1 0 001-1v-5l-3-4H9" />
+                                                    </svg>
+                                                </div>
+                                                <div class="ml-4">
+                                                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Car Register</h4>
+                                                    <p class="text-sm text-gray-500 dark:text-gray-400">Rego, insurance &amp; service due dates</p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-4">
+                                                <a href="{{ route('financial-reports.car-register', ['scope' => 'selected', 'entity_ids' => [$businessEntity->id]]) }}" class="inline-flex items-center px-3 py-2 bg-sky-100 hover:bg-sky-200 text-sky-700 dark:bg-sky-900 dark:hover:bg-sky-800 dark:text-sky-200 rounded-lg text-sm transition-all duration-200">
+                                                    View Report
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        </div>
                                     </div>
                                     @endif
                                 </div>

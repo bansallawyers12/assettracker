@@ -4,70 +4,68 @@ namespace App\Services;
 
 use App\Models\Asset;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class CarReportService
 {
     /**
-     * Build the fleet register dataset.
+     * Build the Car Register dataset.
      *
-     * @param  array<int>|null  $entityIds  null = all reporting entities
+     * @param  array<int>|null  $entityIds  null = all operational reporting entities
+     * @return array{cars: Collection<int, Asset>, totals: array<string, int>}
      */
-    public function fleetRegister(?array $entityIds): array
+    public function carRegister(?array $entityIds = null): array
     {
-        $query = Asset::where('asset_type', 'Car')
-            ->with('businessEntity')
-            ->orderBy('name');
+        $query = Asset::query()
+            ->where('asset_type', 'Car')
+            ->whereHas('businessEntity', fn ($q) => $q->operationalEntities())
+            ->with(['businessEntity', 'user']);
 
         if ($entityIds !== null && $entityIds !== []) {
             $query->whereIn('business_entity_id', $entityIds);
         }
 
-        $cars = $query->get();
+        $cars = $query->get()->sortBy([
+            fn (Asset $car) => strtolower($car->businessEntity?->legal_name ?? ''),
+            fn (Asset $car) => strtolower($car->name),
+        ])->values();
 
         $now = Carbon::now()->startOfDay();
         $in30 = Carbon::now()->addDays(30)->endOfDay();
-
-        $regoOverdue = $cars->filter(
-            fn (Asset $c) => $c->registration_due_date && $c->registration_due_date->lt($now)
-        )->count();
-
-        $regoDueSoon = $cars->filter(
-            fn (Asset $c) => $c->registration_due_date
-                && $c->registration_due_date->gte($now)
-                && $c->registration_due_date->lte($in30)
-        )->count();
-
-        $insuranceOverdue = $cars->filter(
-            fn (Asset $c) => $c->insurance_due_date && $c->insurance_due_date->lt($now)
-        )->count();
-
-        $insuranceDueSoon = $cars->filter(
-            fn (Asset $c) => $c->insurance_due_date
-                && $c->insurance_due_date->gte($now)
-                && $c->insurance_due_date->lte($in30)
-        )->count();
-
-        $serviceDueSoon = $cars->filter(
-            fn (Asset $c) => $c->service_due_date
-                && $c->service_due_date->gte($now)
-                && $c->service_due_date->lte($in30)
-        )->count();
-
-        $serviceOverdue = $cars->filter(
-            fn (Asset $c) => $c->service_due_date && $c->service_due_date->lt($now)
-        )->count();
 
         return [
             'cars' => $cars,
             'totals' => [
                 'total_cars'         => $cars->count(),
-                'rego_overdue'       => $regoOverdue,
-                'rego_due_soon'      => $regoDueSoon,
-                'insurance_overdue'  => $insuranceOverdue,
-                'insurance_due_soon' => $insuranceDueSoon,
-                'service_overdue'    => $serviceOverdue,
-                'service_due_soon'   => $serviceDueSoon,
+                'rego_overdue'       => $this->countDueBefore($cars, 'registration_due_date', $now),
+                'rego_due_soon'      => $this->countDueBetween($cars, 'registration_due_date', $now, $in30),
+                'insurance_overdue'  => $this->countDueBefore($cars, 'insurance_due_date', $now),
+                'insurance_due_soon' => $this->countDueBetween($cars, 'insurance_due_date', $now, $in30),
+                'service_overdue'    => $this->countDueBefore($cars, 'service_due_date', $now),
+                'service_due_soon'   => $this->countDueBetween($cars, 'service_due_date', $now, $in30),
             ],
         ];
+    }
+
+    /**
+     * @param  Collection<int, Asset>  $cars
+     */
+    private function countDueBefore(Collection $cars, string $field, Carbon $before): int
+    {
+        return $cars->filter(
+            fn (Asset $car) => $car->{$field} && $car->{$field}->lt($before)
+        )->count();
+    }
+
+    /**
+     * @param  Collection<int, Asset>  $cars
+     */
+    private function countDueBetween(Collection $cars, string $field, Carbon $from, Carbon $to): int
+    {
+        return $cars->filter(
+            fn (Asset $car) => $car->{$field}
+                && $car->{$field}->gte($from)
+                && $car->{$field}->lte($to)
+        )->count();
     }
 }

@@ -298,7 +298,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/financial-reports/commitments', [CommitmentController::class, 'report'])->name('financial-reports.commitments');
     Route::get('/bank-import', [BankImportController::class, 'index'])->name('bank-import.index');
 
-    Route::get('/financial-reports/fleet-register', [CarReportController::class, 'fleetRegister'])->name('financial-reports.fleet-register');
+    Route::get('/financial-reports/car-register', [CarReportController::class, 'carRegister'])->name('financial-reports.car-register');
+    Route::redirect('/financial-reports/fleet-register', '/financial-reports/car-register');
+    Route::get('/financial-reports/asset-summary', [PropertyReportController::class, 'assetSummary'])->name('financial-reports.asset-summary');
     Route::get('/portfolio', [PropertyReportController::class, 'portfolio'])->name('portfolio.index');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/financials', [PropertyReportController::class, 'show'])->name('assets.financials');
 });

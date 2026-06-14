@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Services\CarReportService;
 use Illuminate\Http\RedirectResponse;
@@ -14,30 +15,27 @@ class CarReportController extends Controller
         protected CarReportService $carReportService
     ) {}
 
-    public function fleetRegister(Request $request): View|RedirectResponse
+    public function carRegister(Request $request): View|RedirectResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('viewAny', Asset::class);
 
         $entityIds = $this->resolveReportEntityIds($request);
 
         if ($entityIds === null) {
             return redirect()
-                ->route('financial-reports.fleet-register', $request->except('entity_ids'))
+                ->route('financial-reports.car-register', $request->except('entity_ids'))
                 ->with('error', 'Choose at least one entity, or select "All reporting entities".');
         }
 
-        if ($entityIds === []) {
-            return redirect()
-                ->route('financial-reports.index')
-                ->with('error', 'No reporting entities are available.');
-        }
+        $report = $this->carReportService->carRegister(
+            $entityIds === [] ? null : $entityIds
+        );
 
-        $report  = $this->carReportService->fleetRegister($entityIds);
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
-        $formsScope      = $request->input('scope') === 'selected' ? 'selected' : 'all';
-        $formsEntityIds  = $formsScope === 'selected' ? ($entityIds ?? []) : [];
+        $formsScope = $request->input('scope') === 'selected' ? 'selected' : 'all';
+        $formsEntityIds = $formsScope === 'selected' ? ($entityIds ?? []) : [];
 
-        return view('car-reports.fleet-register', compact(
+        return view('car-reports.car-register', compact(
             'report',
             'businessEntities',
             'formsScope',
