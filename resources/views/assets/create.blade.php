@@ -28,6 +28,7 @@
                                             <option value="Office" {{ old('asset_type') === 'Office' ? 'selected' : '' }}>Office</option>
                                             <option value="Shop" {{ old('asset_type') === 'Shop' ? 'selected' : '' }}>Shop</option>
                                             <option value="Real Estate" {{ old('asset_type') === 'Real Estate' ? 'selected' : '' }}>Real Estate</option>
+                                            <option value="Suite" {{ old('asset_type') === 'Suite' ? 'selected' : '' }}>Suite</option>
                                         </select>
                                         @error('asset_type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                     </div>

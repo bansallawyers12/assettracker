@@ -64,7 +64,7 @@ class AssetController extends Controller
         $this->authorize('view', $businessEntity);
 
         $validatedData = $request->validate([
-            'asset_type' => 'nullable|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate',
+            'asset_type' => 'nullable|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
             'name' => 'required|string|max:255',
             'acquisition_cost' => 'required|numeric|min:0',
             'current_value' => 'nullable|numeric|min:0',
@@ -170,7 +170,7 @@ class AssetController extends Controller
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
         $validatedData = $request->validate([
-            'asset_type' => 'required|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate',
+            'asset_type' => 'required|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
             'name' => 'required|string|max:255',
             'acquisition_cost' => 'nullable|numeric|min:0',
             'current_value' => 'nullable|numeric|min:0',
