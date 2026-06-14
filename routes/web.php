@@ -18,10 +18,12 @@ use App\Http\Controllers\EntityPersonController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PropertyReportController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\RentInvoiceController;
 use App\Http\Controllers\TrackingCategoryController;
 use App\Http\Controllers\TrackingSubCategoryController;
+use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -236,7 +238,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/chart-of-accounts/create', function () {
         return redirect()->route('chart-of-accounts.create');
     })->name('business-entities.chart-of-accounts.create');
-    Route::get('/business-entities/{businessEntity}/chart-of-accounts/{chartOfAccount}/edit', function (\App\Models\ChartOfAccount $chartOfAccount) {
+    Route::get('/business-entities/{businessEntity}/chart-of-accounts/{chartOfAccount}/edit', function (ChartOfAccount $chartOfAccount) {
         return redirect()->route('chart-of-accounts.edit', $chartOfAccount);
     })->name('business-entities.chart-of-accounts.edit');
     // Legacy nested write routes (same controller; entity segment ignored — chart is global)
@@ -280,6 +282,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/financial-reports/account-transactions', [FinancialReportController::class, 'accountTransactionsHub'])->name('financial-reports.account-transactions');
     Route::get('/financial-reports/tracking-categories', [FinancialReportController::class, 'trackingCategoriesHub'])->name('financial-reports.tracking-categories');
     Route::get('/bank-import', [BankImportController::class, 'index'])->name('bank-import.index');
+
+    Route::get('/portfolio', [PropertyReportController::class, 'portfolio'])->name('portfolio.index');
+    Route::get('/business-entities/{businessEntity}/assets/{asset}/financials', [PropertyReportController::class, 'show'])->name('assets.financials');
 });
 
 Route::middleware(['auth', 'super.admin'])->group(function () {

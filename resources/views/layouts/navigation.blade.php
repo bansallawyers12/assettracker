@@ -24,6 +24,10 @@
                         class="px-3 py-2 rounded-lg text-sm font-medium transition-colors">
                         {{ __('Reports') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('portfolio.index')" :active="request()->routeIs('portfolio.*', 'assets.financials')"
+                        class="px-3 py-2 rounded-lg text-sm font-medium transition-colors">
+                        {{ __('Portfolio') }}
+                    </x-nav-link>
                 </div>
             </div>
 
@@ -106,6 +110,9 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('financial-reports.index')" :active="request()->routeIs('financial-reports.*', 'business-entities.financial-reports.*')">
                 {{ __('Reports') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('portfolio.index')" :active="request()->routeIs('portfolio.*', 'assets.financials')">
+                {{ __('Portfolio') }}
             </x-responsive-nav-link>
         </div>
 
