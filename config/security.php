@@ -199,7 +199,7 @@ return [
         // bucket.s3.region.amazonaws.com).
         'content_security_policy' => env(
             'CONTENT_SECURITY_POLICY',
-            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteDevHttp} https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:; style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com{$viteDevHttp}; img-src 'self' data: https:; font-src 'self' data: https://fonts.bunny.net https://fonts.gstatic.com; connect-src 'self'{$viteDevHttp}{$viteDevWs}{$reverbConnect} https://*.googleapis.com *.google.com https://*.gstatic.com https: data: blob:; frame-src 'self' https://view.officeapps.live.com *.google.com https:; worker-src blob:; frame-ancestors 'none';"
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteDevHttp} https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com{$viteDevHttp}; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'{$viteDevHttp}{$viteDevWs}{$reverbConnect} https://*.googleapis.com *.google.com https://*.gstatic.com https: data: blob:; frame-src 'self' https://view.officeapps.live.com *.google.com https:; worker-src blob:; frame-ancestors 'none';"
         ),
         'x_frame_options' => 'DENY',
         'x_content_type_options' => 'nosniff',

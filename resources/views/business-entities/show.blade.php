@@ -1096,34 +1096,9 @@
                             fromEmailSelect.appendChild(option);
                         });
 
-                        // Populate 'Templates' select
-                        // data.emailTemplates.forEach(template => { // Removed
-                        //     const option = document.createElement('option');
-                        //     option.value = template.id;
-                        //     option.textContent = template.name;
-                        //     templateSelect.appendChild(option);
-                        // });
-
-                        // Store templates data for easy lookup
-                        // templateSelect.dataset.templates = JSON.stringify(data.emailTemplates); // Removed
                     })
                     .catch(error => console.error('Error fetching email compose data:', error));
             }
-
-            // Template selection change listener
-            // templateSelect.addEventListener('change', function () { // Removed
-            //     const selectedTemplateId = this.value;
-            //     const templates = JSON.parse(this.dataset.templates);
-            //     const selectedTemplate = templates.find(template => template.id == selectedTemplateId);
-
-            //     if (selectedTemplate) {
-            //         subjectInput.value = selectedTemplate.subject;
-            //         tinymce.get('message')?.setContent(selectedTemplate.description);
-            //     } else {
-            //         subjectInput.value = '';
-            //         tinymce.get('message')?.setContent('');
-            //     }
-            // });
 
             if (composeEmailForm) {
                 composeEmailForm.addEventListener('submit', function (e) {
