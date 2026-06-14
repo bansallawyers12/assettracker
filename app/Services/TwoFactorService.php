@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
-use PragmaRX\Google2FA\Google2FA;
+use PragmaRX\Google2FAQRCode\Google2FA;
 
 class TwoFactorService
 {
@@ -25,16 +25,17 @@ class TwoFactorService
     }
 
     /**
-     * Generate QR code URL for the user.
+     * Generate an inline QR code (SVG or PNG data URI) for 2FA setup.
      */
-    public function getQRCodeUrl(User $user, string $secret): string
+    public function getQRCodeInline(User $user, string $secret, int $size = 200): string
     {
         $issuer = config('security.two_factor.issuer', config('app.name'));
-        
-        return $this->google2fa->getQRCodeUrl(
+
+        return $this->google2fa->getQRCodeInline(
             $issuer,
             $user->email,
-            $secret
+            $secret,
+            $size
         );
     }
 
@@ -59,7 +60,7 @@ class TwoFactorService
     /**
      * Generate backup codes for the user.
      */
-    public function generateBackupCodes(int $count = null): array
+    public function generateBackupCodes(?int $count = null): array
     {
         $count = $count ?? config('security.two_factor.backup_codes_count', 10);
         $codes = [];
