@@ -118,6 +118,7 @@ class FinancialReportService
             $categoryLabels
         );
         $equity = $this->getAccountBalancesByTypeGrouped($ids, 'equity', $asOfDate, $categoryLabels);
+        $equity = $this->appendAccumulatedEarningsToEquity($equity, $ids, $asOfDate);
 
         return $this->appendEntityScopeToReport([
             'as_of_date' => $asOfDate,
@@ -793,6 +794,77 @@ class FinancialReportService
         }
 
         return ['by_category' => $byCategory, 'total' => $total];
+    }
+
+    /**
+     * Income and expense accounts are excluded from the balance sheet GL sections; their cumulative
+     * net effect is injected here as a computed accumulated earnings line (QuickBooks-style).
+     *
+     * @param  array<string, mixed>  $equity
+     * @param  array<int>  $entityIds
+     * @return array<string, mixed>
+     */
+    private function appendAccumulatedEarningsToEquity(array $equity, array $entityIds, string $asOfDate): array
+    {
+        $incomeTotal = $this->sumAccountTypeBalancesAsOf($entityIds, 'income', $asOfDate);
+        $expenseTotal = $this->sumAccountTypeBalancesAsOf($entityIds, 'expense', $asOfDate);
+
+        // GL debit − credit: profit is a credit equity balance (negative).
+        $balance = $incomeTotal + $expenseTotal;
+
+        if (abs($balance) < 0.00001) {
+            return $equity;
+        }
+
+        $equity['by_category']['accumulated_earnings'] = [
+            'label' => 'Accumulated Earnings',
+            'accounts' => [
+                [
+                    'is_computed' => true,
+                    'label' => 'Accumulated Earnings (computed)',
+                    'balance' => $balance,
+                ],
+            ],
+            'subtotal' => $balance,
+        ];
+        $equity['total'] += $balance;
+
+        return $equity;
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     */
+    private function sumAccountTypeBalancesAsOf(array $entityIds, string $accountType, string $asOfDate): float
+    {
+        $accountIds = ChartOfAccount::query()
+            ->where('account_type', $accountType)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        if ($accountIds->isEmpty()) {
+            return 0.0;
+        }
+
+        $debits = JournalLine::query()
+            ->whereIn('chart_of_account_id', $accountIds)
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
+                $query->whereIn('business_entity_id', $entityIds)
+                    ->where('entry_date', '<=', $asOfDate)
+                    ->where('is_posted', true);
+            })
+            ->sum('debit_amount');
+
+        $credits = JournalLine::query()
+            ->whereIn('chart_of_account_id', $accountIds)
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
+                $query->whereIn('business_entity_id', $entityIds)
+                    ->where('entry_date', '<=', $asOfDate)
+                    ->where('is_posted', true);
+            })
+            ->sum('credit_amount');
+
+        return (float) $debits - (float) $credits;
     }
 
     /**

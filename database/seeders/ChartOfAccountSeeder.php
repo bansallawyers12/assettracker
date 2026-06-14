@@ -68,6 +68,7 @@ class ChartOfAccountSeeder extends Seeder
 
             // ── EQUITY ──────────────────────────────────────────────────────────
             ['3100', 'Owner Drawings (Personal)', 'equity', 'equity', 'Withdrawals made by the owner for personal use'],
+            ['3120', 'Retained Earnings', 'equity', 'equity', 'Accumulated profits from prior periods — use for manual year-end closing entries if required'],
 
             // ── INCOME ──────────────────────────────────────────────────────────
             ['4100', 'Rental Income', 'income', 'operating_income', 'Rent received from tenants for leased properties'],

@@ -217,6 +217,8 @@
                     <td colspan="2" class="px-6 pb-2 text-[11px] text-gray-500 leading-snug">
                         Same convention: <span class="font-medium text-gray-700">debit − credit</span>
                         (<span class="tabular-nums">+</span> debit, <span class="tabular-nums">−</span> credit).
+                        Accumulated profit or loss from income and expense accounts is shown as a computed earnings line
+                        (a <span class="tabular-nums">−</span> amount is profit, matching credit equity).
                     </td>
                 </tr>
 
@@ -228,8 +230,12 @@
                     </tr>
                     @foreach($catGroup['accounts'] as $row)
                         <tr class="hover:bg-gray-50 transition-colors">
-                            <td class="px-8 py-1.5 text-gray-700">
-                                {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
+                            <td class="px-8 py-1.5 text-gray-700 {{ ($row['is_computed'] ?? false) ? 'italic' : '' }}">
+                                @if($row['is_computed'] ?? false)
+                                    {{ $row['label'] }}
+                                @else
+                                    {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
+                                @endif
                             </td>
                             <td class="px-6 py-1.5 text-right tabular-nums w-40 font-medium
                                 {{ ($row['balance'] ?? 0) < 0 ? 'text-emerald-700' : (($row['balance'] ?? 0) > 0 ? 'text-amber-800' : 'text-gray-800') }}">
