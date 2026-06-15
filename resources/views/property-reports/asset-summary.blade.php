@@ -133,14 +133,20 @@
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[100px]">Direct Debit</th>
                         <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[130px]">Rent Paid By</th>
                         <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[90px]">Purchased</th>
+                        <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[100px]">Land Tax</th>
+                        <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[90px]">LT Due</th>
+                        <th class="py-2.5 px-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[60px]">SRO</th>
                         <th class="py-2.5 pl-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide w-16"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @foreach($active as $i => $row)
                         @php
-                            $a   = $row['asset'];
-                            $bg  = $row['is_vacant'] ? 'bg-gray-50' : '';
+                            $a        = $row['asset'];
+                            $bg       = $row['is_vacant'] ? 'bg-gray-50' : '';
+                            $ltDue    = $row['land_tax_due_date'];
+                            $ltOverdue = $ltDue && $ltDue->copy()->startOfDay()->lt(now()->startOfDay());
+                            $ltSoon   = $ltDue && ! $ltOverdue && $ltDue->copy()->startOfDay()->lte(now()->addDays(15)->startOfDay());
                         @endphp
                         <tr class="hover:bg-blue-50/30 transition-colors {{ $bg }}">
                             <td class="py-2 pr-2 text-gray-400 tabular-nums text-xs">{{ $i + 1 }}</td>
@@ -241,6 +247,28 @@
                                 {{ $row['acquisition_date'] ? $row['acquisition_date']->format('M Y') : '—' }}
                             </td>
 
+                            {{-- Land Tax Amount --}}
+                            <td class="py-2 px-2 text-right tabular-nums text-xs {{ $ltOverdue ? 'text-red-700 font-semibold' : ($ltSoon ? 'text-yellow-700 font-semibold' : 'text-gray-600') }}">
+                                {{ $row['land_tax_amount'] !== null ? '$'.number_format($row['land_tax_amount'], 0) : '—' }}
+                            </td>
+
+                            {{-- Land Tax Due Date --}}
+                            <td class="py-2 px-2 text-xs whitespace-nowrap {{ $ltOverdue ? 'text-red-600 font-medium' : ($ltSoon ? 'text-yellow-600 font-medium' : 'text-gray-500') }}">
+                                {{ $ltDue ? $ltDue->format('d/m/Y') : '—' }}
+                                @if($ltOverdue) <span title="Overdue">⚠</span> @endif
+                            </td>
+
+                            {{-- SRO Updated --}}
+                            <td class="py-2 px-2 text-center">
+                                @if($row['sro_updated'])
+                                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 text-green-700" title="SRO Updated">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                    </span>
+                                @else
+                                    <span class="text-gray-300 text-xs">—</span>
+                                @endif
+                            </td>
+
                             {{-- Actions --}}
                             <td class="py-2 pl-2">
                                 <div class="flex items-center gap-2">
@@ -296,6 +324,10 @@
                                 @if($eqTotal > 0) ${{ number_format($eqTotal, 0) }} @endif
                             </td>
                             <td colspan="4" class="py-2.5 px-2"></td>
+                            <td class="py-2.5 px-2 text-right tabular-nums text-xs text-gray-700">
+                                @if($totals['total_land_tax']) ${{ number_format($totals['total_land_tax'], 0) }} @endif
+                            </td>
+                            <td colspan="2" class="py-2.5 px-2"></td>
                             <td class="py-2.5 px-2"></td>
                         </tr>
                     </tfoot>
@@ -343,6 +375,7 @@
                             <th class="py-2 px-2 text-right text-xs font-semibold text-red-400 uppercase tracking-wide min-w-[100px]">Loan Payment</th>
                             <th class="py-2 px-2 text-right text-xs font-semibold text-red-400 uppercase tracking-wide min-w-[110px]">Loan Balance</th>
                             <th class="py-2 px-2 text-left text-xs font-semibold text-red-400 uppercase tracking-wide min-w-[90px]">Purchased</th>
+                            <th class="py-2 px-2 text-right text-xs font-semibold text-red-400 uppercase tracking-wide min-w-[100px]">Land Tax</th>
                             <th class="py-2 pl-2 text-left text-xs font-semibold text-red-400 uppercase tracking-wide w-12"></th>
                         </tr>
                     </thead>
@@ -386,6 +419,10 @@
 
                                 <td class="py-2 px-2 text-xs text-red-600 whitespace-nowrap">
                                     {{ $row['acquisition_date'] ? $row['acquisition_date']->format('M Y') : '—' }}
+                                </td>
+
+                                <td class="py-2 px-2 text-right tabular-nums text-xs text-red-600">
+                                    {{ $row['land_tax_amount'] !== null ? '$'.number_format($row['land_tax_amount'], 0) : '—' }}
                                 </td>
 
                                 <td class="py-2 pl-2">
