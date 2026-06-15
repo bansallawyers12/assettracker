@@ -56,14 +56,16 @@ class AssetController extends Controller
     {
         $this->authorize('view', $businessEntity);
 
-        return view('assets.create', compact('businessEntity'));
+        $rentPaidBySuggestions = $this->rentPaidBySuggestions($businessEntity);
+
+        return view('assets.create', compact('businessEntity', 'rentPaidBySuggestions'));
     }
 
     public function store(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
 
-        $validatedData = $request->validate([
+        $validatedData = $request->validate(array_merge([
             'asset_type' => 'nullable|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
             'name' => 'required|string|max:255',
             'acquisition_cost' => 'required|numeric|min:0',
@@ -92,11 +94,12 @@ class AssetController extends Controller
             'sro_updated' => 'nullable|boolean',
             'real_estate_percentage' => 'nullable|numeric|min:0|max:100',
             'rental_income' => 'nullable|numeric|min:0',
-        ]);
+        ], $this->phaseTwoFinanceRules()));
 
         $validatedData['asset_type'] = $validatedData['asset_type'] ?? 'Car';
         $validatedData['current_value'] = $validatedData['current_value'] ?? 0;
         $validatedData['status'] = $validatedData['status'] ?? 'Active';
+        $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
 
         $assetData = array_merge($validatedData, [
             'business_entity_id' => $businessEntity->id,
@@ -162,14 +165,16 @@ class AssetController extends Controller
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
-        return view('assets.edit', compact('businessEntity', 'asset'));
+        $rentPaidBySuggestions = $this->rentPaidBySuggestions($businessEntity, $asset);
+
+        return view('assets.edit', compact('businessEntity', 'asset', 'rentPaidBySuggestions'));
     }
 
     public function update(Request $request, BusinessEntity $businessEntity, Asset $asset)
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
-        $validatedData = $request->validate([
+        $validatedData = $request->validate(array_merge([
             'asset_type' => 'required|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
             'name' => 'required|string|max:255',
             'acquisition_cost' => 'nullable|numeric|min:0',
@@ -197,7 +202,9 @@ class AssetController extends Controller
             'sro_updated' => 'nullable|boolean',
             'real_estate_percentage' => 'nullable|numeric|min:0|max:100',
             'rental_income' => 'nullable|numeric|min:0',
-        ]);
+        ], $this->phaseTwoFinanceRules()));
+
+        $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
 
         $asset->update($validatedData);
 
@@ -631,5 +638,61 @@ class AssetController extends Controller
         ]);
 
         return true;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function phaseTwoFinanceRules(): array
+    {
+        return [
+            'loan_provider' => 'nullable|string|max:255',
+            'loan_payment_amount' => 'nullable|numeric|min:0',
+            'loan_balance' => 'nullable|numeric|min:0',
+            'equity_required' => 'nullable|numeric|min:0',
+            'rent_bsb' => 'nullable|string|max:10',
+            'rent_account_number' => 'nullable|string|max:20',
+            'direct_debit_amount' => 'nullable|numeric|min:0',
+            'rent_paid_by' => 'nullable|string|max:255',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizeFinanceFieldsForAssetType(array $data): array
+    {
+        if (in_array($data['asset_type'] ?? '', Asset::PROPERTY_ASSET_TYPES, true)) {
+            return $data;
+        }
+
+        foreach (array_keys($this->phaseTwoFinanceRules()) as $field) {
+            $data[$field] = null;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function rentPaidBySuggestions(BusinessEntity $businessEntity, ?Asset $asset = null): array
+    {
+        $suggestions = collect([$businessEntity->legal_name]);
+
+        if ($asset) {
+            $asset->loadMissing(['tenants', 'leases.tenant']);
+
+            $suggestions = $suggestions
+                ->merge($asset->tenants->pluck('name'))
+                ->merge($asset->leases->map(fn ($lease) => $lease->tenant?->name));
+        }
+
+        return $suggestions
+            ->filter(fn ($name) => is_string($name) && trim($name) !== '')
+            ->unique()
+            ->values()
+            ->all();
     }
 }

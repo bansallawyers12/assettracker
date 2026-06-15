@@ -3,13 +3,20 @@
     'subtitle' => null,
     'entity' => null,
     'entityScopeLabel' => null,
+    'fullWidth' => false,
 ])
+
+@php
+    $containerClass = $fullWidth
+        ? 'w-full px-4 sm:px-6 lg:px-8'
+        : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8';
+@endphp
 
 <x-app-layout>
 
     {{-- ── Breadcrumb ──────────────────────────────────────────────── --}}
     <div class="bg-white border-b border-gray-200 print:hidden">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+        <div class="{{ $containerClass }} py-2">
             <nav class="flex items-center gap-1.5 text-sm">
                 @if($entity)
                     <a href="{{ route('business-entities.show', $entity) }}"
@@ -37,7 +44,7 @@
 
     {{-- ── Page title ──────────────────────────────────────────────── --}}
     <div class="bg-white border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="{{ $containerClass }} py-4">
             <h1 class="text-xl font-semibold text-gray-900">{{ $title }}</h1>
         </div>
     </div>
@@ -45,14 +52,14 @@
     {{-- ── Filter toolbar ──────────────────────────────────────────── --}}
     @if(isset($filters) && $filters->isNotEmpty())
     <div class="bg-gray-50 border-b border-gray-200 print:hidden">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div class="{{ $containerClass }} py-3">
             {{ $filters }}
         </div>
     </div>
     @endif
 
     {{-- ── Report body ─────────────────────────────────────────────── --}}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 print:px-0 print:py-4">
+    <div class="{{ $containerClass }} py-6 print:px-0 print:py-4">
         <div class="bg-white shadow-xs rounded-lg border border-gray-200 print:shadow-none print:border-0">
 
             {{-- Report heading inside the white panel --}}

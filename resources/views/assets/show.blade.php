@@ -502,6 +502,7 @@
                                                 <dd class="text-gray-900 dark:text-gray-200">${{ $asset->rental_income ? number_format($asset->rental_income, 2) : 'N/A' }}</dd>
                                             </div>
                                         </dl>
+                                        @include('assets.partials.loan-banking-show')
                                         @if ($asset->council_rates_due_date || $asset->owners_corp_due_date || $asset->land_tax_due_date)
                                             <div class="mt-4 flex space-x-2 flex-wrap gap-2">
                                                 @if ($asset->council_rates_due_date)
@@ -576,6 +577,9 @@
                                                 <dd class="text-gray-900 dark:text-gray-200">${{ $asset->insurance_amount ? number_format($asset->insurance_amount, 2) : 'N/A' }}</dd>
                                             </div>
                                         </dl>
+                                        @if ($asset->isPropertyType())
+                                            @include('assets.partials.loan-banking-show')
+                                        @endif
                                         @if ($asset->insurance_due_date)
                                             <div class="mt-4 flex space-x-2">
                                                 <form action="{{ route('assets.finalize-due-date', [$businessEntity->id, $asset->id, 'insurance']) }}" method="POST">

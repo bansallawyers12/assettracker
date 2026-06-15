@@ -2,7 +2,10 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 
 class Asset extends Model
 {
@@ -18,6 +21,29 @@ class Asset extends Model
         'Shop',
         'Real Estate',
         'Suite',
+    ];
+
+    /**
+     * Property asset types (non-car) that support loan & banking fields.
+     */
+    public const PROPERTY_ASSET_TYPES = [
+        'House Owned',
+        'House Rented',
+        'Warehouse',
+        'Land',
+        'Office',
+        'Shop',
+        'Real Estate',
+        'Suite',
+    ];
+
+    public const DUE_DATE_REMINDERS = [
+        ['label' => 'Registration', 'field' => 'registration_due_date', 'color' => 'red', 'finalize_type' => 'registration'],
+        ['label' => 'Insurance', 'field' => 'insurance_due_date', 'color' => 'orange', 'finalize_type' => 'insurance'],
+        ['label' => 'Service', 'field' => 'service_due_date', 'color' => 'blue', 'finalize_type' => 'service'],
+        ['label' => 'Council Rates', 'field' => 'council_rates_due_date', 'color' => 'purple', 'finalize_type' => 'council_rates'],
+        ['label' => 'Owners Corp', 'field' => 'owners_corp_due_date', 'color' => 'green', 'finalize_type' => 'owners_corp'],
+        ['label' => 'Land Tax', 'field' => 'land_tax_due_date', 'color' => 'yellow', 'finalize_type' => 'land_tax'],
     ];
 
     protected $fillable = [
@@ -60,6 +86,14 @@ class Asset extends Model
         'depreciation_account_id',
         'disposal_date',
         'disposal_amount',
+        'loan_provider',
+        'loan_payment_amount',
+        'loan_balance',
+        'equity_required',
+        'rent_bsb',
+        'rent_account_number',
+        'direct_debit_amount',
+        'rent_paid_by',
     ];
 
     protected $casts = [
@@ -91,7 +125,16 @@ class Asset extends Model
         'useful_life_years' => 'integer',
         'real_estate_percentage' => 'decimal:2',
         'rental_income' => 'decimal:2',
+        'loan_payment_amount' => 'decimal:2',
+        'loan_balance' => 'decimal:2',
+        'equity_required' => 'decimal:2',
+        'direct_debit_amount' => 'decimal:2',
     ];
+
+    public function isPropertyType(): bool
+    {
+        return in_array($this->asset_type, self::PROPERTY_ASSET_TYPES, true);
+    }
 
     public function businessEntity()
     {
@@ -243,7 +286,59 @@ class Asset extends Model
         return $this->reminders()->overdue();
     }
 
-    public static function dueWithin15Days($includeInactive = false)
+    /**
+     * @return list<string>
+     */
+    public static function dueDateFieldNames(): array
+    {
+        return array_column(self::DUE_DATE_REMINDERS, 'field');
+    }
+
+    /**
+     * Due dates that are overdue or fall within the next N days (inclusive).
+     */
+    public function dueDateReminderItems(int $withinDays = 15): Collection
+    {
+        $cutoff = now()->startOfDay()->addDays($withinDays);
+
+        return collect(self::DUE_DATE_REMINDERS)
+            ->map(function (array $def) {
+                $date = $this->{$def['field']};
+
+                return array_merge($def, [
+                    'date' => $date ? Carbon::parse($date)->startOfDay() : null,
+                ]);
+            })
+            ->filter(fn (array $item) => $item['date'] !== null && $item['date']->lte($cutoff))
+            ->sortBy('date')
+            ->values();
+    }
+
+    /**
+     * Flat list of upcoming asset due-date rows for dashboard and reports.
+     *
+     * @param  list<int>|null  $entityIds
+     */
+    public static function upcomingDueDateRows(int $withinDays = 15, ?array $entityIds = null, bool $includeInactive = false): Collection
+    {
+        $query = self::dueWithinDays($withinDays, $includeInactive)->with('businessEntity');
+
+        if ($entityIds !== null) {
+            $query->whereIn('business_entity_id', $entityIds);
+        }
+
+        return $query->get()->flatMap(function (self $asset) use ($withinDays) {
+            return $asset->dueDateReminderItems($withinDays)->map(fn (array $item) => (object) [
+                'asset' => $asset,
+                'label' => $item['label'],
+                'date' => $item['date'],
+                'color' => $item['color'],
+                'finalize_type' => $item['finalize_type'],
+            ]);
+        })->sortBy('date')->values();
+    }
+
+    public static function dueWithinDays(int $days = 15, bool $includeInactive = false): Builder
     {
         $query = self::whereNotNull('business_entity_id');
 
@@ -251,26 +346,20 @@ class Asset extends Model
             $query->where('status', 'Active');
         }
 
-        return $query->where(function ($query) {
-            $startDate = now();
-            $endDate = now()->addDays(15);
-            $dateFields = [
-                'registration_due_date',
-                'insurance_due_date',
-                'service_due_date',
-                'council_rates_due_date',
-                'owners_corp_due_date',
-                'land_tax_due_date',
-            ];
+        $cutoff = now()->startOfDay()->addDays($days);
 
-            foreach ($dateFields as $field) {
-                $query->orWhere(function ($q) use ($field, $startDate, $endDate) {
+        return $query->where(function ($query) use ($cutoff) {
+            foreach (self::dueDateFieldNames() as $field) {
+                $query->orWhere(function ($q) use ($field, $cutoff) {
                     $q->whereNotNull($field)
-                        ->whereBetween($field, [$startDate, $endDate]);
+                        ->whereDate($field, '<=', $cutoff);
                 });
             }
-
-            return $query;
         });
+    }
+
+    public static function dueWithin15Days($includeInactive = false): Builder
+    {
+        return self::dueWithinDays(15, $includeInactive);
     }
 }

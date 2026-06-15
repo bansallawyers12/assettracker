@@ -4,8 +4,6 @@
     $disposed = $report['disposed'];
     $formRoute = route('financial-reports.asset-summary');
 
-    $phaseTwo = false; // flip to true once Phase 2 migration is applied
-
     /**
      * Row background class based on row state.
      */
@@ -18,7 +16,8 @@
 <x-report-shell
     title="Asset summary"
     subtitle="Property register — ownership, tenants &amp; loan details"
-    entity-scope-label="All reporting properties">
+    entity-scope-label="All reporting properties"
+    :full-width="true">
 
     <x-slot:filters>
         <form method="GET" action="{{ $formRoute }}" class="flex flex-wrap items-end gap-3">
@@ -305,7 +304,7 @@
         </div>
 
         {{-- Phase 2 hint banner (shown while loan columns are empty) --}}
-        @php $hasAnyLoanData = collect($active)->contains(fn ($r) => $r['loan_provider'] !== null); @endphp
+        @php $hasAnyLoanData = collect($active)->contains(fn ($r) => filled($r['loan_provider'])); @endphp
         @if(! $hasAnyLoanData)
             <div class="mx-6 mb-4 rounded-md border border-blue-100 bg-blue-50 px-4 py-2.5 text-xs text-blue-700 flex items-start gap-2">
                 <svg class="w-4 h-4 mt-0.5 shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
