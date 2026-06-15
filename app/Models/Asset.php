@@ -20,6 +20,20 @@ class Asset extends Model
         'Suite',
     ];
 
+    /**
+     * Property asset types (non-car) that support loan & banking fields.
+     */
+    public const PROPERTY_ASSET_TYPES = [
+        'House Owned',
+        'House Rented',
+        'Warehouse',
+        'Land',
+        'Office',
+        'Shop',
+        'Real Estate',
+        'Suite',
+    ];
+
     protected $fillable = [
         'business_entity_id',
         'user_id',
@@ -60,6 +74,14 @@ class Asset extends Model
         'depreciation_account_id',
         'disposal_date',
         'disposal_amount',
+        'loan_provider',
+        'loan_payment_amount',
+        'loan_balance',
+        'equity_required',
+        'rent_bsb',
+        'rent_account_number',
+        'direct_debit_amount',
+        'rent_paid_by',
     ];
 
     protected $casts = [
@@ -91,7 +113,16 @@ class Asset extends Model
         'useful_life_years' => 'integer',
         'real_estate_percentage' => 'decimal:2',
         'rental_income' => 'decimal:2',
+        'loan_payment_amount' => 'decimal:2',
+        'loan_balance' => 'decimal:2',
+        'equity_required' => 'decimal:2',
+        'direct_debit_amount' => 'decimal:2',
     ];
+
+    public function isPropertyType(): bool
+    {
+        return in_array($this->asset_type, self::PROPERTY_ASSET_TYPES, true);
+    }
 
     public function businessEntity()
     {

@@ -216,6 +216,10 @@
                                         <input type="number" step="0.01" name="rental_income" id="rental_income" value="{{ old('rental_income') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
                                         @error('rental_income') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                     </div>
+
+                                    @include('assets.partials.loan-banking-fields', [
+                                        'rentPaidBySuggestions' => $rentPaidBySuggestions ?? [],
+                                    ])
                                 </div>
                             </div>
                         </div>
@@ -249,15 +253,21 @@
                             const assetType = this.value;
                             const carSection = document.getElementById('car-section');
                             const propertySection = document.getElementById('property-section');
+                            const propertyTypes = @json(\App\Models\Asset::PROPERTY_ASSET_TYPES);
+                            const isProperty = propertyTypes.includes(assetType);
 
                             carSection.classList.add('hidden');
                             propertySection.classList.add('hidden');
 
                             if (assetType === 'Car') {
                                 carSection.classList.remove('hidden');
-                            } else if (['House Owned', 'House Rented', 'Warehouse', 'Land', 'Office', 'Shop', 'Real Estate'].includes(assetType)) {
+                            } else if (isProperty) {
                                 propertySection.classList.remove('hidden');
                             }
+
+                            propertySection.querySelectorAll('input, select, textarea').forEach(function (el) {
+                                el.disabled = !isProperty;
+                            });
                         });
                         document.getElementById('asset_type').dispatchEvent(new Event('change'));
                     </script>

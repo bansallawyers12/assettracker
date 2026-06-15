@@ -148,6 +148,11 @@
                             <label for="rental_income" class="block text-sm font-medium text-gray-700">Rental Income</label>
                             <input type="number" step="0.01" name="rental_income" id="rental_income" value="{{ old('rental_income', $asset->rental_income) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
                             @error('rental_income') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+
+                            @include('assets.partials.loan-banking-fields', [
+                                'asset' => $asset,
+                                'rentPaidBySuggestions' => $rentPaidBySuggestions ?? [],
+                            ])
                         </div>
 
                         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-sm transition duration-200">
@@ -170,15 +175,21 @@
                             const assetType = this.value;
                             const carFields = document.getElementById('car-fields');
                             const propertyFields = document.getElementById('property-fields');
+                            const propertyTypes = @json(\App\Models\Asset::PROPERTY_ASSET_TYPES);
+                            const isProperty = propertyTypes.includes(assetType);
 
                             carFields.classList.add('hidden');
                             propertyFields.classList.add('hidden');
 
                             if (assetType === 'Car') {
                                 carFields.classList.remove('hidden');
-                            } else if (['House Owned', 'House Rented', 'Warehouse', 'Land', 'Office', 'Shop', 'Real Estate'].includes(assetType)) {
+                            } else if (isProperty) {
                                 propertyFields.classList.remove('hidden');
                             }
+
+                            propertyFields.querySelectorAll('input, select, textarea').forEach(function (el) {
+                                el.disabled = !isProperty;
+                            });
                         });
                         document.getElementById('asset_type').dispatchEvent(new Event('change'));
                     </script>

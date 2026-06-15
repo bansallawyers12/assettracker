@@ -53,6 +53,8 @@ class AssetSummaryReportService
 
         $activeRented  = $active->filter(fn ($r) => ! $r['is_vacant'] && ! $r['is_disposed'])->count();
         $activeVacant  = $active->filter(fn ($r) => $r['is_vacant'])->count();
+        $totalLoanBalance = $active->sum(fn ($r) => $r['loan_balance'] ?? 0);
+        $totalEquityRequired = $active->sum(fn ($r) => $r['equity_required'] ?? 0);
 
         return [
             'active'   => $active->values()->all(),
@@ -62,9 +64,8 @@ class AssetSummaryReportService
                 'rented_count'   => $activeRented,
                 'vacant_count'   => $activeVacant,
                 'disposed_count' => $disposed->count(),
-                // Phase 2: loan totals added here once fields exist
-                'total_loan_balance'    => null,
-                'total_equity_required' => null,
+                'total_loan_balance'    => $totalLoanBalance > 0 ? $totalLoanBalance : null,
+                'total_equity_required' => $totalEquityRequired > 0 ? $totalEquityRequired : null,
             ],
         ];
     }
@@ -142,15 +143,14 @@ class AssetSummaryReportService
             'is_vacant'       => $isVacant,
             're_managed'      => $reManaged,
             're_company'      => $reCompany,
-            // Phase 2 finance fields — null until migration adds them
-            'loan_provider'        => $asset->loan_provider ?? null,
-            'loan_payment_amount'  => isset($asset->loan_payment_amount) ? (float) $asset->loan_payment_amount : null,
-            'loan_balance'         => isset($asset->loan_balance) ? (float) $asset->loan_balance : null,
-            'equity_required'      => isset($asset->equity_required) ? (float) $asset->equity_required : null,
-            'rent_bsb'             => $asset->rent_bsb ?? null,
-            'rent_account_number'  => $asset->rent_account_number ?? null,
-            'direct_debit_amount'  => isset($asset->direct_debit_amount) ? (float) $asset->direct_debit_amount : null,
-            'rent_paid_by'         => $asset->rent_paid_by ?? null,
+            'loan_provider'        => filled($asset->loan_provider) ? $asset->loan_provider : null,
+            'loan_payment_amount'  => $asset->loan_payment_amount !== null ? (float) $asset->loan_payment_amount : null,
+            'loan_balance'         => $asset->loan_balance !== null ? (float) $asset->loan_balance : null,
+            'equity_required'      => $asset->equity_required !== null ? (float) $asset->equity_required : null,
+            'rent_bsb'             => filled($asset->rent_bsb) ? $asset->rent_bsb : null,
+            'rent_account_number'  => filled($asset->rent_account_number) ? $asset->rent_account_number : null,
+            'direct_debit_amount'  => $asset->direct_debit_amount !== null ? (float) $asset->direct_debit_amount : null,
+            'rent_paid_by'         => filled($asset->rent_paid_by) ? $asset->rent_paid_by : null,
         ];
     }
 
