@@ -222,6 +222,15 @@
                                     ])
                                 </div>
                             </div>
+
+                            <div class="border border-gray-200 rounded-lg">
+                                <div class="w-full px-4 py-3 bg-gray-50 rounded-t-lg">
+                                    <span class="font-semibold text-gray-800">Linked Accounts</span>
+                                </div>
+                                <div class="p-4">
+                                    @include('assets.partials.linked-bank-accounts-fields')
+                                </div>
+                            </div>
                         </div>
 
                         <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-sm shadow-md transition duration-200">

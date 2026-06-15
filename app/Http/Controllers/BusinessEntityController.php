@@ -731,7 +731,7 @@ class BusinessEntityController extends Controller
         $this->ensureOperationalForAccounting($businessEntity);
 
         // Authorization check
-        if ($bankAccount->business_entity_id !== $businessEntity->id) {
+        if (! $bankAccount->canUseForTransaction($businessEntity)) {
             abort(403, 'Unauthorized');
         }
 
@@ -1160,10 +1160,10 @@ class BusinessEntityController extends Controller
         ]);
 
         // Find the bank statement entry
-        $entry = BankStatementEntry::findOrFail($request->bank_statement_entry_id);
+        $entry = BankStatementEntry::with('bankAccount')->findOrFail($request->bank_statement_entry_id);
 
         // Further authorization: ensure the bank statement entry belongs to the same business entity
-        if ($entry->bankAccount->business_entity_id !== $businessEntity->id) {
+        if (! $entry->bankAccount || ! $entry->bankAccount->canUseForBankImport($businessEntity)) {
             abort(403, 'Bank statement entry does not belong to this business entity.');
         }
 
@@ -1184,7 +1184,7 @@ class BusinessEntityController extends Controller
      *
      * @return JsonResponse
      */
-    public function getBankAccounts(BusinessEntity $businessEntity)
+    public function getBankAccounts(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
 
@@ -1192,7 +1192,36 @@ class BusinessEntityController extends Controller
             return response()->json([]);
         }
 
-        return response()->json($businessEntity->bankAccounts()->select('id', 'bank_name', 'nickname')->get());
+        $purpose = $request->query('purpose');
+
+        $query = BankAccount::query()
+            ->select('id', 'account_name', 'bank_name', 'bsb', 'account_purpose', 'business_entity_id')
+            ->where(function ($inner) use ($businessEntity) {
+                $inner->where('business_entity_id', $businessEntity->id);
+
+                if ($purpose === BankAccount::PURPOSE_LOAN_REPAYMENT) {
+                    $inner->orWhere(function ($portfolio) {
+                        $portfolio->whereNull('business_entity_id')
+                            ->where('user_id', auth()->id())
+                            ->where('account_purpose', BankAccount::PURPOSE_LOAN_REPAYMENT);
+                    });
+                }
+            });
+
+        if ($purpose) {
+            $query->where('account_purpose', $purpose);
+        }
+
+        return response()->json(
+            $query->orderBy('account_name')->get()->map(fn (BankAccount $account) => [
+                'id' => $account->id,
+                'account_name' => $account->account_name,
+                'bank_name' => $account->bank_name,
+                'bsb' => BankAccount::formatBsb($account->bsb),
+                'account_purpose' => $account->account_purpose,
+                'label' => $account->displayLabel(),
+            ])
+        );
     }
 
     /**
@@ -1335,20 +1364,11 @@ class BusinessEntityController extends Controller
         $this->ensureOperationalForAccounting($businessEntity);
 
         // Validate bank account details
-        $request->validate([
-            'bank_name' => 'required|string|max:255',
-            'bsb' => 'required|string|size:6', // Australian BSB format
-            'account_number' => 'required|string|max:255', // Varies by bank
-            'nickname' => 'nullable|string|max:255', // Optional friendly name
-        ]);
+        $validated = $request->validate($this->entityBankAccountValidationRules());
 
-        // Create the bank account associated with the business entity
-        $businessEntity->bankAccounts()->create([
-            'bank_name' => $request->bank_name,
-            'bsb' => $request->bsb,
-            'account_number' => $request->account_number,
-            'nickname' => $request->nickname,
-        ]);
+        $businessEntity->bankAccounts()->create(
+            $this->bankAccountAttributesFromRequest($validated, $businessEntity)
+        );
 
         // Redirect back to the entity show page (likely bank accounts tab) with success message
         return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
@@ -1392,20 +1412,11 @@ class BusinessEntityController extends Controller
         }
 
         // Validate the updated bank account details
-        $request->validate([
-            'bank_name' => 'required|string|max:255',
-            'bsb' => 'required|string|size:6',
-            'account_number' => 'required|string|max:255',
-            'nickname' => 'nullable|string|max:255',
-        ]);
+        $validated = $request->validate($this->entityBankAccountValidationRules());
 
-        // Update the bank account record
-        $bankAccount->update([
-            'bank_name' => $request->bank_name,
-            'bsb' => $request->bsb,
-            'account_number' => $request->account_number,
-            'nickname' => $request->nickname,
-        ]);
+        $bankAccount->update(
+            $this->bankAccountAttributesFromRequest($validated, $businessEntity)
+        );
 
         // Redirect back to the entity show page (bank accounts tab) with success message
         return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
@@ -1424,7 +1435,7 @@ class BusinessEntityController extends Controller
         $this->ensureOperationalForAccounting($businessEntity);
 
         // Authorization checks
-        if ($bankStatementEntry->bank_account_id !== $bankAccount->id || $bankAccount->business_entity_id !== $businessEntity->id) {
+        if ($bankStatementEntry->bank_account_id !== $bankAccount->id || ! $bankAccount->canUseForTransaction($businessEntity)) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -1475,7 +1486,7 @@ class BusinessEntityController extends Controller
         $this->ensureOperationalForAccounting($businessEntity);
 
         // Authorization check
-        if ($bankAccount->business_entity_id !== $businessEntity->id) {
+        if (! $bankAccount->canUseForTransaction($businessEntity)) {
             abort(403, 'Unauthorized');
         }
 
@@ -1521,7 +1532,7 @@ class BusinessEntityController extends Controller
         $this->authorize('view', $businessEntity);
 
         // Authorization checks
-        if ($transaction->bank_account_id !== $bankAccount->id || $bankAccount->business_entity_id !== $businessEntity->id) {
+        if ($transaction->bank_account_id !== $bankAccount->id || ! $bankAccount->canUseForTransaction($businessEntity)) {
             abort(404); // Or abort(403) if preferred
         }
 
@@ -1885,9 +1896,61 @@ class BusinessEntityController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
 
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
-        $bankAccounts = BankAccount::with(['businessEntity', 'bankStatementEntries.transaction'])->get();
+        $bankAccounts = BankAccount::query()
+            ->forUser((int) auth()->id())
+            ->with(['businessEntity', 'bankStatementEntries.transaction'])
+            ->orderBy('account_name')
+            ->get();
 
         return view('bank-accounts.index', compact('bankAccounts', 'businessEntities'));
+    }
+
+    public function createPortfolioBankAccount()
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
+
+        return view('bank-accounts.create', compact('businessEntities'));
+    }
+
+    public function storePortfolioBankAccount(Request $request)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $validated = $request->validate($this->portfolioBankAccountValidationRules());
+
+        BankAccount::create(
+            $this->portfolioBankAccountAttributesFromRequest($validated)
+        );
+
+        return redirect()->route('bank-accounts.index')
+            ->with('success', 'Bank account added successfully!');
+    }
+
+    public function editPortfolioBankAccount(BankAccount $bankAccount)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+        $this->ensureBankAccountOwnedByUser($bankAccount);
+
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
+
+        return view('bank-accounts.edit', compact('bankAccount', 'businessEntities'));
+    }
+
+    public function updatePortfolioBankAccount(Request $request, BankAccount $bankAccount)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+        $this->ensureBankAccountOwnedByUser($bankAccount);
+
+        $validated = $request->validate($this->portfolioBankAccountValidationRules($bankAccount));
+
+        $bankAccount->update(
+            $this->portfolioBankAccountAttributesFromRequest($validated)
+        );
+
+        return redirect()->route('bank-accounts.index')
+            ->with('success', 'Bank account updated successfully!');
     }
 
     /**
@@ -2079,6 +2142,105 @@ class BusinessEntityController extends Controller
         if ($docAsset !== $new) {
             $transaction->forceFill(['document_id' => null, 'receipt_path' => null])->save();
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function entityBankAccountValidationRules(): array
+    {
+        return [
+            'account_name' => 'required|string|max:255',
+            'bank_name' => 'required|string|max:255',
+            'bsb' => ['required', 'string', 'max:10', function ($attribute, $value, $fail) {
+                $normalized = BankAccount::normalizeBsb($value);
+                if ($normalized === null || strlen($normalized) !== 6) {
+                    $fail('The BSB must be 6 digits (with or without a hyphen).');
+                }
+            }],
+            'account_number' => 'required|string|max:255',
+            'account_purpose' => ['required', Rule::in(BankAccount::ENTITY_PURPOSES)],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function portfolioBankAccountValidationRules(?BankAccount $existing = null): array
+    {
+        return [
+            'account_name' => 'required|string|max:255',
+            'bank_name' => 'required|string|max:255',
+            'bsb' => ['required', 'string', 'max:10', function ($attribute, $value, $fail) {
+                $normalized = BankAccount::normalizeBsb($value);
+                if ($normalized === null || strlen($normalized) !== 6) {
+                    $fail('The BSB must be 6 digits (with or without a hyphen).');
+                }
+            }],
+            'account_number' => 'required|string|max:255',
+            'account_purpose' => ['required', Rule::in(BankAccount::PURPOSES)],
+            'business_entity_id' => [
+                Rule::requiredIf(fn () => request('account_purpose') !== BankAccount::PURPOSE_LOAN_REPAYMENT),
+                'nullable',
+                BusinessEntity::ruleExistsOperational(),
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function bankAccountAttributesFromRequest(array $validated, BusinessEntity $businessEntity): array
+    {
+        return [
+            'business_entity_id' => $businessEntity->id,
+            'user_id' => $businessEntity->user_id ?? auth()->id(),
+            'account_name' => $validated['account_name'],
+            'bank_name' => $validated['bank_name'],
+            'bsb' => BankAccount::normalizeBsb($validated['bsb']),
+            'account_number' => $validated['account_number'],
+            'account_purpose' => $validated['account_purpose'],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function portfolioBankAccountAttributesFromRequest(array $validated): array
+    {
+        $purpose = $validated['account_purpose'];
+        $entityId = $purpose === BankAccount::PURPOSE_LOAN_REPAYMENT
+            ? null
+            : (int) $validated['business_entity_id'];
+
+        $entity = $entityId ? BusinessEntity::findOrFail($entityId) : null;
+
+        return [
+            'business_entity_id' => $entityId,
+            'user_id' => $entity?->user_id ?? auth()->id(),
+            'account_name' => $validated['account_name'],
+            'bank_name' => $validated['bank_name'],
+            'bsb' => BankAccount::normalizeBsb($validated['bsb']),
+            'account_number' => $validated['account_number'],
+            'account_purpose' => $purpose,
+        ];
+    }
+
+    private function ensureBankAccountOwnedByUser(BankAccount $bankAccount): void
+    {
+        $userId = (int) auth()->id();
+
+        if ((int) $bankAccount->user_id === $userId) {
+            return;
+        }
+
+        if ($bankAccount->businessEntity && (int) $bankAccount->businessEntity->user_id === $userId) {
+            return;
+        }
+
+        abort(403, 'Unauthorized action.');
     }
 }
 

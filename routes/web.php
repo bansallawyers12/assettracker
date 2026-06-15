@@ -286,6 +286,10 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     // Global chart of accounts (single shared GL for all entities)
     Route::resource('chart-of-accounts', ChartOfAccountController::class)->except(['show']);
     Route::get('/bank-accounts', [BusinessEntityController::class, 'bankAccountsIndex'])->name('bank-accounts.index');
+    Route::get('/bank-accounts/create', [BusinessEntityController::class, 'createPortfolioBankAccount'])->name('bank-accounts.create');
+    Route::post('/bank-accounts', [BusinessEntityController::class, 'storePortfolioBankAccount'])->name('bank-accounts.store');
+    Route::get('/bank-accounts/{bankAccount}/edit', [BusinessEntityController::class, 'editPortfolioBankAccount'])->name('bank-accounts.edit');
+    Route::put('/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'updatePortfolioBankAccount'])->name('bank-accounts.update');
     Route::get('/transactions', [BusinessEntityController::class, 'transactionsIndex'])->name('transactions.index');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');

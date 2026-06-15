@@ -963,7 +963,7 @@
                                                     <label for="bank_account_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Bank Account *</label>
                                                     <select id="bank_account_id" name="bank_account_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
                                                         <option value="">Choose a bank account...</option>
-                                                        @foreach($businessEntity->bankAccounts as $bankAccount)
+                                                        @foreach($businessEntity->bankAccounts->where('account_purpose', 'general') as $bankAccount)
                                                             <option value="{{ $bankAccount->id }}">{{ $bankAccount->bank_name }} - {{ $bankAccount->account_number }}</option>
                                                         @endforeach
                                                     </select>

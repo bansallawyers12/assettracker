@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
+use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use App\Models\Invoice;
 use App\Models\Lease;
@@ -58,7 +59,10 @@ class AssetController extends Controller
 
         $rentPaidBySuggestions = $this->rentPaidBySuggestions($businessEntity);
 
-        return view('assets.create', compact('businessEntity', 'rentPaidBySuggestions'));
+        return view('assets.create', array_merge(
+            compact('businessEntity', 'rentPaidBySuggestions'),
+            $this->bankAccountPickerData($businessEntity)
+        ));
     }
 
     public function store(Request $request, BusinessEntity $businessEntity)
@@ -94,12 +98,13 @@ class AssetController extends Controller
             'sro_updated' => 'nullable|boolean',
             'real_estate_percentage' => 'nullable|numeric|min:0|max:100',
             'rental_income' => 'nullable|numeric|min:0',
-        ], $this->phaseTwoFinanceRules()));
+        ], $this->phaseTwoFinanceRules(), $this->bankAccountLinkRules()));
 
         $validatedData['asset_type'] = $validatedData['asset_type'] ?? 'Car';
         $validatedData['current_value'] = $validatedData['current_value'] ?? 0;
         $validatedData['status'] = $validatedData['status'] ?? 'Active';
         $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
+        $bankAccountLinks = $this->extractBankAccountLinks($validatedData);
 
         $assetData = array_merge($validatedData, [
             'business_entity_id' => $businessEntity->id,
@@ -107,6 +112,7 @@ class AssetController extends Controller
         ]);
 
         $asset = $businessEntity->assets()->create($assetData);
+        $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity);
 
         return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
             ->with('success', 'Asset created successfully');
@@ -120,6 +126,7 @@ class AssetController extends Controller
             'notes',
             'leases.tenant',
             'tenants.realEstateCompany.contacts',
+            'bankAccounts',
             'transactions' => fn ($q) => $q->orderBy('date', 'desc'),
         ]);
 
@@ -165,9 +172,13 @@ class AssetController extends Controller
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
+        $asset->load('bankAccounts');
         $rentPaidBySuggestions = $this->rentPaidBySuggestions($businessEntity, $asset);
 
-        return view('assets.edit', compact('businessEntity', 'asset', 'rentPaidBySuggestions'));
+        return view('assets.edit', array_merge(
+            compact('businessEntity', 'asset', 'rentPaidBySuggestions'),
+            $this->bankAccountPickerData($businessEntity, $asset)
+        ));
     }
 
     public function update(Request $request, BusinessEntity $businessEntity, Asset $asset)
@@ -202,11 +213,13 @@ class AssetController extends Controller
             'sro_updated' => 'nullable|boolean',
             'real_estate_percentage' => 'nullable|numeric|min:0|max:100',
             'rental_income' => 'nullable|numeric|min:0',
-        ], $this->phaseTwoFinanceRules()));
+        ], $this->phaseTwoFinanceRules(), $this->bankAccountLinkRules()));
 
         $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
+        $bankAccountLinks = $this->extractBankAccountLinks($validatedData);
 
         $asset->update($validatedData);
+        $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity);
 
         return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
             ->with('success', 'Asset updated successfully');
@@ -641,19 +654,116 @@ class AssetController extends Controller
     }
 
     /**
+     * @var list<string>
+     */
+    private const PROPERTY_ONLY_FINANCE_FIELDS = [
+        'loan_provider',
+        'loan_payment_amount',
+        'loan_balance',
+        'equity_required',
+        'direct_debit_amount',
+        'rent_paid_by',
+    ];
+
+    /**
      * @return array<string, string>
      */
     private function phaseTwoFinanceRules(): array
     {
+        $rules = [];
+        foreach (self::PROPERTY_ONLY_FINANCE_FIELDS as $field) {
+            $rules[$field] = match ($field) {
+                'loan_provider', 'rent_paid_by' => 'nullable|string|max:255',
+                default => 'nullable|numeric|min:0',
+            };
+        }
+
+        return $rules;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function bankAccountLinkRules(): array
+    {
         return [
-            'loan_provider' => 'nullable|string|max:255',
-            'loan_payment_amount' => 'nullable|numeric|min:0',
-            'loan_balance' => 'nullable|numeric|min:0',
-            'equity_required' => 'nullable|numeric|min:0',
-            'rent_bsb' => 'nullable|string|max:10',
-            'rent_account_number' => 'nullable|string|max:20',
-            'direct_debit_amount' => 'nullable|numeric|min:0',
-            'rent_paid_by' => 'nullable|string|max:255',
+            'loan_bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'loan_repayment_bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'offset_bank_account_id' => 'nullable|exists:bank_accounts,id',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, int|null>
+     */
+    private function extractBankAccountLinks(array &$data): array
+    {
+        $links = [
+            BankAccount::PURPOSE_LOAN => $data['loan_bank_account_id'] ?? null,
+            BankAccount::PURPOSE_LOAN_REPAYMENT => $data['loan_repayment_bank_account_id'] ?? null,
+            BankAccount::PURPOSE_OFFSET => $data['offset_bank_account_id'] ?? null,
+        ];
+
+        unset(
+            $data['loan_bank_account_id'],
+            $data['loan_repayment_bank_account_id'],
+            $data['offset_bank_account_id']
+        );
+
+        return $links;
+    }
+
+    /**
+     * @param  array<string, int|null>  $links
+     */
+    private function syncBankAccountLinks(Asset $asset, array $links, BusinessEntity $businessEntity): void
+    {
+        foreach (BankAccount::ASSET_ROLES as $role) {
+            $accountId = $links[$role] ?? null;
+
+            $asset->bankAccounts()->wherePivot('role', $role)->detach();
+
+            if (! $accountId) {
+                continue;
+            }
+
+            $bankAccount = BankAccount::find($accountId);
+            if (! $bankAccount || ! $bankAccount->isValidForAssetRole($businessEntity, $role)) {
+                continue;
+            }
+
+            $asset->bankAccounts()->attach($bankAccount->id, ['role' => $role]);
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function bankAccountPickerData(BusinessEntity $businessEntity, ?Asset $asset = null): array
+    {
+        return [
+            'loanAccounts' => BankAccount::selectableForEntity($businessEntity, BankAccount::PURPOSE_LOAN)
+                ->orderBy('account_name')
+                ->get(),
+            'loanRepaymentAccounts' => BankAccount::selectableForEntity($businessEntity, BankAccount::PURPOSE_LOAN_REPAYMENT)
+                ->orderBy('account_name')
+                ->get(),
+            'offsetAccounts' => BankAccount::selectableForEntity($businessEntity, BankAccount::PURPOSE_OFFSET)
+                ->orderBy('account_name')
+                ->get(),
+            'selectedLoanBankAccountId' => old(
+                'loan_bank_account_id',
+                $asset?->bankAccountForRole(BankAccount::PURPOSE_LOAN)?->id
+            ),
+            'selectedLoanRepaymentBankAccountId' => old(
+                'loan_repayment_bank_account_id',
+                $asset?->bankAccountForRole(BankAccount::PURPOSE_LOAN_REPAYMENT)?->id
+            ),
+            'selectedOffsetBankAccountId' => old(
+                'offset_bank_account_id',
+                $asset?->bankAccountForRole(BankAccount::PURPOSE_OFFSET)?->id
+            ),
         ];
     }
 
@@ -667,7 +777,7 @@ class AssetController extends Controller
             return $data;
         }
 
-        foreach (array_keys($this->phaseTwoFinanceRules()) as $field) {
+        foreach (self::PROPERTY_ONLY_FINANCE_FIELDS as $field) {
             $data[$field] = null;
         }
 

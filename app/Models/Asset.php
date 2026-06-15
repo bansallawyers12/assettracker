@@ -90,8 +90,6 @@ class Asset extends Model
         'loan_payment_amount',
         'loan_balance',
         'equity_required',
-        'rent_bsb',
-        'rent_account_number',
         'direct_debit_amount',
         'rent_paid_by',
     ];
@@ -194,6 +192,22 @@ class Asset extends Model
     public function documentCategories()
     {
         return $this->hasMany(DocumentCategory::class, 'asset_id');
+    }
+
+    public function bankAccounts()
+    {
+        return $this->belongsToMany(BankAccount::class, 'asset_bank_account')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function bankAccountForRole(string $role): ?BankAccount
+    {
+        if ($this->relationLoaded('bankAccounts')) {
+            return $this->bankAccounts->first(fn (BankAccount $account) => $account->pivot->role === $role);
+        }
+
+        return $this->bankAccounts()->wherePivot('role', $role)->first();
     }
 
     public static $depreciationMethods = [

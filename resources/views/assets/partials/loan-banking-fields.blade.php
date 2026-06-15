@@ -39,23 +39,6 @@
     </div>
 
     <div class="mb-4">
-        <label for="rent_bsb" class="block text-sm font-medium text-gray-700">Rent BSB</label>
-        <input type="text" name="rent_bsb" id="rent_bsb"
-               value="{{ old('rent_bsb', $assetModel?->rent_bsb) }}"
-               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500 font-mono"
-               placeholder="e.g. 063-000">
-        @error('rent_bsb') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-    </div>
-
-    <div class="mb-4">
-        <label for="rent_account_number" class="block text-sm font-medium text-gray-700">Rent Account Number</label>
-        <input type="text" name="rent_account_number" id="rent_account_number"
-               value="{{ old('rent_account_number', $assetModel?->rent_account_number) }}"
-               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500 font-mono">
-        @error('rent_account_number') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-    </div>
-
-    <div class="mb-4">
         <label for="direct_debit_amount" class="block text-sm font-medium text-gray-700">Direct Debit</label>
         <input type="number" step="0.01" name="direct_debit_amount" id="direct_debit_amount"
                value="{{ old('direct_debit_amount', $assetModel?->direct_debit_amount) }}"
