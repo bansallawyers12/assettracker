@@ -1393,13 +1393,14 @@ class BusinessEntityController extends Controller
 
         $this->ensureOperationalForAccounting($businessEntity);
 
-        // Authorization: Ensure the bank account belongs to the specified business entity
         if ($bankAccount->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized action.');
         }
 
-        // Return the edit view, passing entity and bank account data
-        return view('business-entities.bank-accounts.edit', compact('businessEntity', 'bankAccount'));
+        $bankAccount->load(['holderEntity', 'holderPerson']);
+        $persons = $this->personOptionsForHolder();
+
+        return view('business-entities.bank-accounts.edit', compact('businessEntity', 'bankAccount', 'persons'));
     }
 
     /**
@@ -1905,7 +1906,7 @@ class BusinessEntityController extends Controller
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $bankAccounts = BankAccount::query()
             ->forUser((int) auth()->id())
-            ->with(['businessEntity', 'bankStatementEntries.transaction'])
+            ->with(['businessEntity', 'holderEntity', 'holderPerson', 'bankStatementEntries.transaction'])
             ->orderBy('account_name')
             ->get();
 
@@ -1917,8 +1918,9 @@ class BusinessEntityController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
 
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
+        $persons = $this->personOptionsForHolder();
 
-        return view('bank-accounts.create', compact('businessEntities'));
+        return view('bank-accounts.create', compact('businessEntities', 'persons'));
     }
 
     public function storePortfolioBankAccount(Request $request)
@@ -1940,9 +1942,11 @@ class BusinessEntityController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
         $this->ensureBankAccountOwnedByUser($bankAccount);
 
+        $bankAccount->load(['holderEntity', 'holderPerson']);
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
+        $persons = $this->personOptionsForHolder();
 
-        return view('bank-accounts.edit', compact('bankAccount', 'businessEntities'));
+        return view('bank-accounts.edit', compact('bankAccount', 'businessEntities', 'persons'));
     }
 
     public function updatePortfolioBankAccount(Request $request, BankAccount $bankAccount)
@@ -2156,7 +2160,7 @@ class BusinessEntityController extends Controller
      */
     private function entityBankAccountValidationRules(): array
     {
-        return [
+        return array_merge([
             'account_name' => 'required|string|max:255',
             'bank_name' => 'required|string|max:255',
             'bsb' => ['required', 'string', 'max:10', function ($attribute, $value, $fail) {
@@ -2167,7 +2171,7 @@ class BusinessEntityController extends Controller
             }],
             'account_number' => 'required|string|max:255',
             'account_purpose' => ['required', Rule::in(BankAccount::ENTITY_PURPOSES)],
-        ];
+        ], $this->holderValidationRules());
     }
 
     /**
@@ -2175,7 +2179,7 @@ class BusinessEntityController extends Controller
      */
     private function portfolioBankAccountValidationRules(?BankAccount $existing = null): array
     {
-        return [
+        return array_merge([
             'account_name' => 'required|string|max:255',
             'bank_name' => 'required|string|max:255',
             'bsb' => ['required', 'string', 'max:10', function ($attribute, $value, $fail) {
@@ -2191,6 +2195,34 @@ class BusinessEntityController extends Controller
                 'nullable',
                 BusinessEntity::ruleExistsOperational(),
             ],
+        ], $this->holderValidationRules());
+    }
+
+    /**
+     * Shared validation rules for the Account Holder section on bank account forms.
+     *
+     * @return array<string, mixed>
+     */
+    private function holderValidationRules(): array
+    {
+        return [
+            'holder_type'      => ['nullable', Rule::in(BankAccount::HOLDER_TYPES)],
+            'holder_entity_id' => [
+                'nullable',
+                Rule::requiredIf(fn () => request('holder_type') === BankAccount::HOLDER_ENTITY),
+                Rule::exists('business_entities', 'id'),
+            ],
+            'holder_person_id' => [
+                'nullable',
+                Rule::requiredIf(fn () => request('holder_type') === BankAccount::HOLDER_PERSON),
+                Rule::exists('persons', 'id'),
+            ],
+            'holder_other'     => [
+                'nullable',
+                Rule::requiredIf(fn () => request('holder_type') === BankAccount::HOLDER_OTHER),
+                'string',
+                'max:255',
+            ],
         ];
     }
 
@@ -2200,15 +2232,15 @@ class BusinessEntityController extends Controller
      */
     private function bankAccountAttributesFromRequest(array $validated, BusinessEntity $businessEntity): array
     {
-        return [
+        return array_merge([
             'business_entity_id' => $businessEntity->id,
-            'user_id' => $businessEntity->user_id ?? auth()->id(),
-            'account_name' => $validated['account_name'],
-            'bank_name' => $validated['bank_name'],
-            'bsb' => BankAccount::normalizeBsb($validated['bsb']),
-            'account_number' => $validated['account_number'],
-            'account_purpose' => $validated['account_purpose'],
-        ];
+            'user_id'            => $businessEntity->user_id ?? auth()->id(),
+            'account_name'       => $validated['account_name'],
+            'bank_name'          => $validated['bank_name'],
+            'bsb'                => BankAccount::normalizeBsb($validated['bsb']),
+            'account_number'     => $validated['account_number'],
+            'account_purpose'    => $validated['account_purpose'],
+        ], $this->holderAttributesFromValidated($validated));
     }
 
     /**
@@ -2217,7 +2249,7 @@ class BusinessEntityController extends Controller
      */
     private function portfolioBankAccountAttributesFromRequest(array $validated): array
     {
-        $purpose = $validated['account_purpose'];
+        $purpose  = $validated['account_purpose'];
         $entityId = $purpose === BankAccount::PURPOSE_LOAN_REPAYMENT
             ? null
             : (isset($validated['business_entity_id']) ? (int) $validated['business_entity_id'] : null);
@@ -2228,15 +2260,53 @@ class BusinessEntityController extends Controller
             abort_unless((int) $entity->user_id === (int) auth()->id(), 403, 'Unauthorized action.');
         }
 
-        return [
+        return array_merge([
             'business_entity_id' => $entityId,
-            'user_id' => $entity?->user_id ?? auth()->id(),
-            'account_name' => $validated['account_name'],
-            'bank_name' => $validated['bank_name'],
-            'bsb' => BankAccount::normalizeBsb($validated['bsb']),
-            'account_number' => $validated['account_number'],
-            'account_purpose' => $purpose,
+            'user_id'            => $entity?->user_id ?? auth()->id(),
+            'account_name'       => $validated['account_name'],
+            'bank_name'          => $validated['bank_name'],
+            'bsb'                => BankAccount::normalizeBsb($validated['bsb']),
+            'account_number'     => $validated['account_number'],
+            'account_purpose'    => $purpose,
+        ], $this->holderAttributesFromValidated($validated));
+    }
+
+    /**
+     * Extract and normalise holder fields from validated data.
+     * Only the fields relevant to the chosen holder_type are kept non-null.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function holderAttributesFromValidated(array $validated): array
+    {
+        $type = $validated['holder_type'] ?? null;
+
+        return [
+            'holder_type'      => $type,
+            'holder_entity_id' => $type === BankAccount::HOLDER_ENTITY
+                ? (isset($validated['holder_entity_id']) ? (int) $validated['holder_entity_id'] : null)
+                : null,
+            'holder_person_id' => $type === BankAccount::HOLDER_PERSON
+                ? (isset($validated['holder_person_id']) ? (int) $validated['holder_person_id'] : null)
+                : null,
+            'holder_other'     => $type === BankAccount::HOLDER_OTHER
+                ? ($validated['holder_other'] ?? null)
+                : null,
         ];
+    }
+
+    /**
+     * Persons linked to any of the authenticated user's entities, suitable for the holder picker.
+     *
+     * @return \Illuminate\Support\Collection<int, \App\Models\Person>
+     */
+    private function personOptionsForHolder(): \Illuminate\Support\Collection
+    {
+        return \App\Models\Person::query()
+            ->whereHas('businessEntities', fn ($q) => $q->where('business_entities.user_id', auth()->id()))
+            ->orderByRaw('first_name, last_name')
+            ->get();
     }
 
     private function ensureBankAccountOwnedByUser(BankAccount $bankAccount): void

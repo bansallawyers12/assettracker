@@ -34,6 +34,7 @@
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Account Name</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Bank</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">BSB</th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Holder</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Purpose</th>
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Scope</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-600">Actions</th>
@@ -45,6 +46,14 @@
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ $account->account_name }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ $account->bank_name }}</td>
                                 <td class="px-4 py-3 text-sm font-mono text-gray-700">{{ BankAccount::formatBsb($account->bsb) }}</td>
+                                <td class="px-4 py-3 text-sm text-gray-700">
+                                    @if($account->holder_type)
+                                        <span class="font-medium">{{ $account->holderLabel() }}</span>
+                                        <span class="ml-1 text-xs text-gray-400">({{ BankAccount::holderTypeLabel($account->holder_type) }})</span>
+                                    @else
+                                        <span class="text-gray-400">—</span>
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 text-sm text-gray-700">{{ BankAccount::purposeLabel($account->account_purpose) }}</td>
                                 <td class="px-4 py-3 text-sm text-gray-700">
                                     @if($account->isPortfolioWide())

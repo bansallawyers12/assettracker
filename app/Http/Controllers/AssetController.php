@@ -690,42 +690,46 @@ class AssetController extends Controller
     private function bankAccountLinkRules(): array
     {
         return [
-            'loan_bank_account_id' => 'nullable|exists:bank_accounts,id',
-            'loan_repayment_bank_account_id' => 'nullable|exists:bank_accounts,id',
-            'offset_bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'loan_bank_account_id'             => 'nullable|exists:bank_accounts,id',
+            'loan_repayment_bank_account_id'   => 'nullable|exists:bank_accounts,id',
+            'offset_bank_account_id'           => 'nullable|exists:bank_accounts,id',
+            'rent_collection_bank_account_id'  => 'nullable|exists:bank_accounts,id',
         ];
     }
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array<string, int|null>
+     * @return array<string, int|null>  keyed by pivot role
      */
     private function extractBankAccountLinks(array &$data): array
     {
         $links = [
-            BankAccount::PURPOSE_LOAN => $data['loan_bank_account_id'] ?? null,
-            BankAccount::PURPOSE_LOAN_REPAYMENT => $data['loan_repayment_bank_account_id'] ?? null,
-            BankAccount::PURPOSE_OFFSET => $data['offset_bank_account_id'] ?? null,
+            BankAccount::ROLE_LOAN             => $data['loan_bank_account_id'] ?? null,
+            BankAccount::ROLE_LOAN_REPAYMENT   => $data['loan_repayment_bank_account_id'] ?? null,
+            BankAccount::ROLE_OFFSET           => $data['offset_bank_account_id'] ?? null,
+            BankAccount::ROLE_RENT_COLLECTION  => $data['rent_collection_bank_account_id'] ?? null,
         ];
 
         unset(
             $data['loan_bank_account_id'],
             $data['loan_repayment_bank_account_id'],
-            $data['offset_bank_account_id']
+            $data['offset_bank_account_id'],
+            $data['rent_collection_bank_account_id'],
         );
 
         return $links;
     }
 
     /**
-     * @param  array<string, int|null>  $links
+     * @param  array<string, int|null>  $links  keyed by pivot role
      */
     private function validateBankAccountLinks(array $links, BusinessEntity $businessEntity): void
     {
         $fieldMap = [
-            BankAccount::PURPOSE_LOAN => 'loan_bank_account_id',
-            BankAccount::PURPOSE_LOAN_REPAYMENT => 'loan_repayment_bank_account_id',
-            BankAccount::PURPOSE_OFFSET => 'offset_bank_account_id',
+            BankAccount::ROLE_LOAN            => 'loan_bank_account_id',
+            BankAccount::ROLE_LOAN_REPAYMENT  => 'loan_repayment_bank_account_id',
+            BankAccount::ROLE_OFFSET          => 'offset_bank_account_id',
+            BankAccount::ROLE_RENT_COLLECTION => 'rent_collection_bank_account_id',
         ];
 
         $errors = [];
@@ -750,7 +754,7 @@ class AssetController extends Controller
     }
 
     /**
-     * @param  array<string, int|null>  $links
+     * @param  array<string, int|null>  $links  keyed by pivot role
      */
     private function syncBankAccountLinks(Asset $asset, array $links, BusinessEntity $businessEntity): void
     {
@@ -777,26 +781,37 @@ class AssetController extends Controller
     private function bankAccountPickerData(BusinessEntity $businessEntity, ?Asset $asset = null): array
     {
         return [
-            'loanAccounts' => BankAccount::selectableForEntity($businessEntity, BankAccount::PURPOSE_LOAN)
+            'loanAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_LOAN)
+                ->with('businessEntity')
                 ->orderBy('account_name')
                 ->get(),
-            'loanRepaymentAccounts' => BankAccount::selectableForEntity($businessEntity, BankAccount::PURPOSE_LOAN_REPAYMENT)
+            'loanRepaymentAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_LOAN_REPAYMENT)
                 ->orderBy('account_name')
                 ->get(),
-            'offsetAccounts' => BankAccount::selectableForEntity($businessEntity, BankAccount::PURPOSE_OFFSET)
+            'offsetAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_OFFSET)
+                ->with('businessEntity')
                 ->orderBy('account_name')
                 ->get(),
+            'rentCollectionAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_RENT_COLLECTION)
+                ->with('businessEntity')
+                ->orderBy('account_name')
+                ->get(),
+
             'selectedLoanBankAccountId' => old(
                 'loan_bank_account_id',
-                $asset?->bankAccountForRole(BankAccount::PURPOSE_LOAN)?->id
+                $asset?->bankAccountForRole(BankAccount::ROLE_LOAN)?->id
             ),
             'selectedLoanRepaymentBankAccountId' => old(
                 'loan_repayment_bank_account_id',
-                $asset?->bankAccountForRole(BankAccount::PURPOSE_LOAN_REPAYMENT)?->id
+                $asset?->bankAccountForRole(BankAccount::ROLE_LOAN_REPAYMENT)?->id
             ),
             'selectedOffsetBankAccountId' => old(
                 'offset_bank_account_id',
-                $asset?->bankAccountForRole(BankAccount::PURPOSE_OFFSET)?->id
+                $asset?->bankAccountForRole(BankAccount::ROLE_OFFSET)?->id
+            ),
+            'selectedRentCollectionBankAccountId' => old(
+                'rent_collection_bank_account_id',
+                $asset?->bankAccountForRole(BankAccount::ROLE_RENT_COLLECTION)?->id
             ),
         ];
     }
