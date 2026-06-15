@@ -53,19 +53,21 @@ class AssetSummaryReportService
 
         $activeRented  = $active->filter(fn ($r) => ! $r['is_vacant'] && ! $r['is_disposed'])->count();
         $activeVacant  = $active->filter(fn ($r) => $r['is_vacant'])->count();
-        $totalLoanBalance = $active->sum(fn ($r) => $r['loan_balance'] ?? 0);
+        $totalLoanBalance    = $active->sum(fn ($r) => $r['loan_balance'] ?? 0);
         $totalEquityRequired = $active->sum(fn ($r) => $r['equity_required'] ?? 0);
+        $totalLandTax        = $active->sum(fn ($r) => $r['land_tax_amount'] ?? 0);
 
         return [
             'active'   => $active->values()->all(),
             'disposed' => $disposed->values()->all(),
             'totals'   => [
-                'active_count'   => $active->count(),
-                'rented_count'   => $activeRented,
-                'vacant_count'   => $activeVacant,
-                'disposed_count' => $disposed->count(),
+                'active_count'          => $active->count(),
+                'rented_count'          => $activeRented,
+                'vacant_count'          => $activeVacant,
+                'disposed_count'        => $disposed->count(),
                 'total_loan_balance'    => $totalLoanBalance > 0 ? $totalLoanBalance : null,
                 'total_equity_required' => $totalEquityRequired > 0 ? $totalEquityRequired : null,
+                'total_land_tax'        => $totalLandTax > 0 ? $totalLandTax : null,
             ],
         ];
     }
@@ -151,6 +153,9 @@ class AssetSummaryReportService
             'rent_account_number'  => filled($asset->rent_account_number) ? $asset->rent_account_number : null,
             'direct_debit_amount'  => $asset->direct_debit_amount !== null ? (float) $asset->direct_debit_amount : null,
             'rent_paid_by'         => filled($asset->rent_paid_by) ? $asset->rent_paid_by : null,
+            'land_tax_amount'      => $asset->land_tax_amount !== null ? (float) $asset->land_tax_amount : null,
+            'land_tax_due_date'    => $asset->land_tax_due_date,
+            'sro_updated'          => (bool) $asset->sro_updated,
         ];
     }
 

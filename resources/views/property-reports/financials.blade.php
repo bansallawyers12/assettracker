@@ -45,6 +45,36 @@
         {{ $report['transaction_count'] }} transaction(s) in period
     </div>
 
+    @if($asset->land_tax_amount || $asset->land_tax_due_date)
+        @php
+            $ltDue     = $asset->land_tax_due_date;
+            $ltOverdue = $ltDue && $ltDue->copy()->startOfDay()->lt(now()->startOfDay());
+            $ltSoon    = $ltDue && ! $ltOverdue && $ltDue->copy()->startOfDay()->lte(now()->addDays(15)->startOfDay());
+        @endphp
+        <div class="px-6 py-3 border-b border-yellow-100 bg-yellow-50/60 text-sm flex flex-wrap items-center gap-x-4 gap-y-1">
+            <span class="font-medium text-yellow-800">Land Tax</span>
+            @if($asset->land_tax_amount)
+                <span class="text-gray-700">Assessed: <span class="font-medium tabular-nums">${{ number_format((float) $asset->land_tax_amount, 2) }}</span></span>
+            @endif
+            @if($ltDue)
+                <span class="{{ $ltOverdue ? 'text-red-700 font-semibold' : ($ltSoon ? 'text-yellow-700 font-semibold' : 'text-gray-700') }}">
+                    Due: {{ $ltDue->format('d/m/Y') }}
+                    @if($ltOverdue) <span title="Overdue">⚠</span> @elseif($ltSoon) <span title="Due within 15 days">⚑</span> @endif
+                </span>
+            @endif
+            @if($asset->sro_updated)
+                <span class="inline-flex items-center gap-1 text-green-700 text-xs font-medium">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+                    SRO Updated
+                </span>
+            @else
+                <span class="text-xs text-gray-400">SRO not updated</span>
+            @endif
+            <a href="{{ route('business-entities.assets.edit', [$businessEntity, $asset]) }}"
+               class="ml-auto text-xs text-blue-500 hover:underline print:hidden">Edit land tax</a>
+        </div>
+    @endif
+
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 px-6 py-5 border-b border-gray-100">
         <div class="rounded-lg border border-green-200 bg-green-50 p-4">
             <p class="text-xs font-semibold uppercase tracking-wide text-green-700">Gross yield</p>
