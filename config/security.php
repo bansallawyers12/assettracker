@@ -73,7 +73,7 @@ return [
     'database' => [
         'encrypt_fields' => [
             'users' => ['email', 'phone', 'address'],
-            'bank_accounts' => ['account_number', 'routing_number', 'swift_code'],
+            'bank_accounts' => ['account_number'],
             'business_entities' => ['tax_id', 'registration_number'],
             'persons' => ['ssn', 'passport_number', 'drivers_license'],
             'invoices' => ['notes'],

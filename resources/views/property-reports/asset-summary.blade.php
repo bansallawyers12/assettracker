@@ -129,7 +129,7 @@
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[100px]">Loan Payment</th>
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[110px]">Loan Balance</th>
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[110px]">Need to Put</th>
-                        <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[160px]">Rent Account</th>
+                        <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[160px]">Loan Repayment</th>
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[100px]">Direct Debit</th>
                         <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[130px]">Rent Paid By</th>
                         <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[90px]">Purchased</th>
@@ -222,11 +222,11 @@
                                 {{ $row['equity_required'] !== null ? '$'.number_format($row['equity_required'], 0) : '—' }}
                             </td>
 
-                            {{-- Phase 2: Rent Account (BSB + Acc) --}}
+                            {{-- Loan repayment account (BSB + Acc) --}}
                             <td class="py-2 px-2 text-xs text-gray-600 font-mono">
-                                @if($row['rent_bsb'] || $row['rent_account_number'])
-                                    @if($row['rent_bsb'])BSB {{ $row['rent_bsb'] }}@endif
-                                    @if($row['rent_account_number']) Acc: {{ $row['rent_account_number'] }}@endif
+                                @if($row['loan_repayment_bsb'] || $row['loan_repayment_account_number'])
+                                    @if($row['loan_repayment_bsb'])BSB {{ $row['loan_repayment_bsb'] }}@endif
+                                    @if($row['loan_repayment_account_number']) Acc: {{ $row['loan_repayment_account_number'] }}@endif
                                 @else
                                     <span class="text-gray-300">—</span>
                                 @endif

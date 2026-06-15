@@ -29,7 +29,7 @@
                 <div class="text-right">
                     <p class="text-xs text-gray-500 dark:text-gray-400">Bank Account</p>
                     <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                        {{ $bankAccount->bank_name }}{{ $bankAccount->nickname ? ' ('.$bankAccount->nickname.')' : '' }}
+                        {{ $bankAccount->bank_name }}{{ $bankAccount->account_name ? ' ('.$bankAccount->account_name.')' : '' }}
                     </p>
                 </div>
             </div>

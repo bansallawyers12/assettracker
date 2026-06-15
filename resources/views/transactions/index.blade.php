@@ -109,7 +109,7 @@
                                 </td>
                                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
                                     @if ($tx->bankAccount)
-                                        {{ $tx->bankAccount->bank_name }}{{ $tx->bankAccount->nickname ? ' ('.$tx->bankAccount->nickname.')' : '' }}
+                                        {{ $tx->bankAccount->bank_name }}{{ $tx->bankAccount->account_name ? ' ('.$tx->bankAccount->account_name.')' : '' }}
                                     @else
                                         <span class="text-gray-400">—</span>
                                     @endif

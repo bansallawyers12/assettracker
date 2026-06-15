@@ -24,14 +24,6 @@
             </dd>
         </div>
         <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Rent BSB</dt>
-            <dd class="text-gray-900 dark:text-gray-200 font-mono">{{ $asset->rent_bsb ?: '—' }}</dd>
-        </div>
-        <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Rent Account Number</dt>
-            <dd class="text-gray-900 dark:text-gray-200 font-mono">{{ $asset->rent_account_number ?: '—' }}</dd>
-        </div>
-        <div>
             <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Direct Debit</dt>
             <dd class="text-gray-900 dark:text-gray-200">
                 {{ $asset->direct_debit_amount !== null ? '$'.number_format($asset->direct_debit_amount, 2) : '—' }}

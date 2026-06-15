@@ -9,7 +9,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('business-entities.assets.update', [$asset->business_entity_id, $asset->id]) }}">
+                    <form id="asset-update-form" method="POST" action="{{ route('business-entities.assets.update', [$asset->business_entity_id, $asset->id]) }}">
                         @csrf
                         @method('PATCH')
                         <div class="mb-4">
@@ -155,20 +155,27 @@
                             ])
                         </div>
 
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-sm transition duration-200">
-                            Update Asset
-                        </button>
-                        <a href="{{ route('business-entities.assets.show', [$asset->business_entity_id, $asset->id]) }}" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-sm ml-2 transition duration-200">
-                            Cancel
-                        </a>
+                        @include('assets.partials.linked-bank-accounts-fields', ['asset' => $asset, 'businessEntity' => $businessEntity])
+
                     </form>
-                    <form action="{{ route('business-entities.assets.destroy', [$asset->business_entity_id, $asset->id]) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this asset?');">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-sm ml-2 transition duration-200">
-                            Delete Asset
-                        </button>
-                    </form>
+
+                    <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
+                        <form action="{{ route('business-entities.assets.destroy', [$asset->business_entity_id, $asset->id]) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this asset?');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-sm transition duration-200">
+                                Delete Asset
+                            </button>
+                        </form>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button type="submit" form="asset-update-form" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-sm transition duration-200">
+                                Update Asset
+                            </button>
+                            <a href="{{ route('business-entities.assets.show', [$asset->business_entity_id, $asset->id]) }}" class="bg-gray-500 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-sm transition duration-200">
+                                Cancel
+                            </a>
+                        </div>
+                    </div>
 
                     <script>
                         document.getElementById('asset_type').addEventListener('change', function() {

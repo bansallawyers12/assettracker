@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Asset;
+use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use App\Models\EntityPerson;
 use Carbon\Carbon;
@@ -22,6 +23,7 @@ class AssetSummaryReportService
             ->whereHas('businessEntity', fn ($q) => $q->forFinancialReports())
             ->with([
                 'businessEntity',
+                'bankAccounts',
                 'tenants' => fn ($q) => $q->orderByRaw('move_out_date IS NULL DESC')->orderBy('move_in_date', 'desc'),
                 'leases'  => fn ($q) => $q->with('tenant')->orderBy('start_date', 'desc'),
             ])
@@ -129,6 +131,7 @@ class AssetSummaryReportService
         // Real-estate managed?
         $reManaged   = $activeTenant?->is_real_estate_managed ?? false;
         $reCompany   = $reManaged ? ($activeTenant?->realEstateCompany?->name ?? null) : null;
+        $loanRepaymentAccount = $asset->bankAccountForRole(BankAccount::ROLE_LOAN_REPAYMENT);
 
         return [
             'asset'           => $asset,
@@ -149,8 +152,8 @@ class AssetSummaryReportService
             'loan_payment_amount'  => $asset->loan_payment_amount !== null ? (float) $asset->loan_payment_amount : null,
             'loan_balance'         => $asset->loan_balance !== null ? (float) $asset->loan_balance : null,
             'equity_required'      => $asset->equity_required !== null ? (float) $asset->equity_required : null,
-            'rent_bsb'             => filled($asset->rent_bsb) ? $asset->rent_bsb : null,
-            'rent_account_number'  => filled($asset->rent_account_number) ? $asset->rent_account_number : null,
+            'loan_repayment_bsb'   => $loanRepaymentAccount ? BankAccount::formatBsb($loanRepaymentAccount->bsb) : null,
+            'loan_repayment_account_number' => $loanRepaymentAccount?->account_number,
             'direct_debit_amount'  => $asset->direct_debit_amount !== null ? (float) $asset->direct_debit_amount : null,
             'rent_paid_by'         => filled($asset->rent_paid_by) ? $asset->rent_paid_by : null,
             'land_tax_amount'      => $asset->land_tax_amount !== null ? (float) $asset->land_tax_amount : null,

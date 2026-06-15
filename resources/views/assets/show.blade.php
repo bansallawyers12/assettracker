@@ -168,6 +168,7 @@
                                             <dd class="text-gray-900 dark:text-gray-200">${{ $asset->insurance_amount ? number_format($asset->insurance_amount, 2) : 'N/A' }}</dd>
                                         </div>
                                     </dl>
+                                    @include('assets.partials.linked-bank-accounts-show', compact('businessEntity', 'asset'))
                                 </div>
                             </div>
 
