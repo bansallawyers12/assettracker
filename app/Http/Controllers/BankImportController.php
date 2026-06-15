@@ -283,14 +283,14 @@ class BankImportController extends Controller
     private function mapTransactionType($accountType, $amount)
     {
         $isIncome = $amount >= 0;
-        
+
         switch ($accountType) {
             case 'income':
                 return $isIncome ? 'sales_revenue' : 'cogs';
             case 'expense':
                 return $isIncome ? 'sales_revenue' : 'cogs';
             case 'asset':
-                return $isIncome ? 'capital_expenditure' : 'cogs';
+                return $isIncome ? 'capital_expenditure' : 'asset_purchase';
             case 'liability':
                 return $isIncome ? 'directors_loans_to_company' : 'loan_repayments';
             case 'equity':

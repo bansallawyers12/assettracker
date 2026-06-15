@@ -8,6 +8,7 @@ use App\Http\Controllers\BankImportController;
 use App\Http\Controllers\BillsTasksController;
 use App\Http\Controllers\BusinessEntityController;
 use App\Http\Controllers\ChartOfAccountController;
+use App\Http\Controllers\CommitmentController;
 use App\Http\Controllers\ContactListController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentWorkspaceController;
@@ -18,10 +19,13 @@ use App\Http\Controllers\EntityPersonController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\CarReportController;
+use App\Http\Controllers\PropertyReportController;
 use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\RentInvoiceController;
 use App\Http\Controllers\TrackingCategoryController;
 use App\Http\Controllers\TrackingSubCategoryController;
+use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -107,6 +111,17 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // All assets (cross-entity; dashboard "View All")
     Route::get('/assets', [AssetController::class, 'indexAll'])->name('assets.index');
+
+    // Future commitments
+    Route::get('/commitments', [CommitmentController::class, 'index'])->name('commitments.index');
+    Route::resource('business-entities.commitments', CommitmentController::class)
+        ->only(['create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::post('business-entities/{businessEntity}/commitments/{commitment}/payments', [CommitmentController::class, 'storePayment'])
+        ->name('business-entities.commitments.payments.store');
+    Route::delete('business-entities/{businessEntity}/commitments/{commitment}/payments/{payment}', [CommitmentController::class, 'destroyPayment'])
+        ->name('business-entities.commitments.payments.destroy');
+    Route::post('business-entities/{businessEntity}/commitments/{commitment}/settle', [CommitmentController::class, 'settle'])
+        ->name('business-entities.commitments.settle');
 
     // Assets (Nested under Business Entities)
     Route::resource('business-entities.assets', AssetController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
@@ -236,7 +251,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/chart-of-accounts/create', function () {
         return redirect()->route('chart-of-accounts.create');
     })->name('business-entities.chart-of-accounts.create');
-    Route::get('/business-entities/{businessEntity}/chart-of-accounts/{chartOfAccount}/edit', function (\App\Models\ChartOfAccount $chartOfAccount) {
+    Route::get('/business-entities/{businessEntity}/chart-of-accounts/{chartOfAccount}/edit', function (ChartOfAccount $chartOfAccount) {
         return redirect()->route('chart-of-accounts.edit', $chartOfAccount);
     })->name('business-entities.chart-of-accounts.edit');
     // Legacy nested write routes (same controller; entity segment ignored — chart is global)
@@ -274,12 +289,20 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/transactions', [BusinessEntityController::class, 'transactionsIndex'])->name('transactions.index');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
+    Route::get('/financial-reports/entity-summary', [FinancialReportController::class, 'entitySummaryHub'])->name('financial-reports.entity-summary');
     Route::get('/financial-reports/profit-loss', [FinancialReportController::class, 'profitLossHub'])->name('financial-reports.profit-loss');
     Route::get('/financial-reports/balance-sheet', [FinancialReportController::class, 'balanceSheetHub'])->name('financial-reports.balance-sheet');
     Route::get('/financial-reports/cash-flow', [FinancialReportController::class, 'cashFlowHub'])->name('financial-reports.cash-flow');
     Route::get('/financial-reports/account-transactions', [FinancialReportController::class, 'accountTransactionsHub'])->name('financial-reports.account-transactions');
     Route::get('/financial-reports/tracking-categories', [FinancialReportController::class, 'trackingCategoriesHub'])->name('financial-reports.tracking-categories');
+    Route::get('/financial-reports/commitments', [CommitmentController::class, 'report'])->name('financial-reports.commitments');
     Route::get('/bank-import', [BankImportController::class, 'index'])->name('bank-import.index');
+
+    Route::get('/financial-reports/car-register', [CarReportController::class, 'carRegister'])->name('financial-reports.car-register');
+    Route::redirect('/financial-reports/fleet-register', '/financial-reports/car-register');
+    Route::get('/financial-reports/asset-summary', [PropertyReportController::class, 'assetSummary'])->name('financial-reports.asset-summary');
+    Route::get('/portfolio', [PropertyReportController::class, 'portfolio'])->name('portfolio.index');
+    Route::get('/business-entities/{businessEntity}/assets/{asset}/financials', [PropertyReportController::class, 'show'])->name('assets.financials');
 });
 
 Route::middleware(['auth', 'super.admin'])->group(function () {

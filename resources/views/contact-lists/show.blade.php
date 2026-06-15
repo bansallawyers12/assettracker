@@ -5,13 +5,13 @@
                 {{ __('Contact Details for ') }}{{ $businessEntity->legal_name }}
             </h2>
             <div class="flex space-x-4">
-                <a href="{{ route('business-entities.contact-lists.edit', [$businessEntity, $contactList]) }}" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded">
+                <a href="{{ route('business-entities.contact-lists.edit', [$businessEntity, $contactList]) }}" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-sm">
                     Edit Contact
                 </a>
                 <form action="{{ route('business-entities.contact-lists.destroy', [$businessEntity, $contactList]) }}" method="POST" class="inline">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded" onclick="return confirm('Are you sure you want to delete this contact?')">
+                    <button type="submit" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-sm" onclick="return confirm('Are you sure you want to delete this contact?')">
                         Delete Contact
                     </button>
                 </form>
@@ -21,7 +21,7 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="bg-white overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>

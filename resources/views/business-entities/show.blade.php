@@ -51,8 +51,8 @@
             @endif
             <div class="flex flex-col lg:flex-row gap-6">
                 <!-- Left Sidebar: Business Details -->
-                <div class="w-full lg:w-80 flex-shrink-0">
-                    <div class="entity-details-card bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-5">
+                <div class="w-full lg:w-80 shrink-0">
+                    <div class="entity-details-card bg-white dark:bg-gray-900 rounded-xl shadow-xs border border-gray-200 dark:border-gray-700 p-5">
                         <div class="mb-4">
                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Business Details</h3>
                         </div>
@@ -137,47 +137,53 @@
 
                 <!-- Right Content: Tabs and Details -->
                 <div class="flex-1 min-w-0">
-                    <div class="entity-main-card bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
+                    <div class="entity-main-card bg-white dark:bg-gray-900 rounded-xl shadow-xs border border-gray-200 dark:border-gray-700 p-4 sm:p-5">
                         <!-- Combined Actions and Navigation -->
                         <div class="entity-toolbar mb-5">
                             <div class="entity-toolbar-top overflow-x-auto -mx-1 px-1 pb-0.5">
                                 <div class="entity-tab-nav entity-tab-nav--combined flex flex-nowrap sm:flex-wrap items-center gap-1 sm:gap-1.5 min-w-min sm:min-w-0" id="entity-tabs">
                                     <nav class="flex flex-nowrap sm:flex-wrap items-center gap-1 sm:gap-1.5 shrink-0" aria-label="Entity sections">
-                                        <a href="#tab_assets" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Assets</a>
-                                        <a href="#tab_persons" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Persons</a>
-                                        <a href="#tab_documents" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Documents</a>
-                                        <a href="#tab_notes" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Notes</a>
-                                        <a href="#tab_contact_lists" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Contact Lists</a>
-                                        <a href="#tab_compose_email" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Compose Email</a>
-                                        <a href="#tab_emails" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Emails</a>
+                                        <a href="#tab_assets" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Assets</a>
+                                        <a href="#tab_persons" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Persons</a>
+                                        <a href="#tab_documents" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Documents</a>
+                                        <a href="#tab_notes" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Notes</a>
+                                        <a href="#tab_contact_lists" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Contact Lists</a>
+                                        <a href="#tab_compose_email" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Compose Email</a>
+                                        <a href="#tab_emails" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Emails</a>
                                     </nav>
                                     <span class="hidden sm:block w-px h-6 bg-gray-200 dark:bg-gray-600 shrink-0 self-center" aria-hidden="true"></span>
                                     <nav class="flex flex-nowrap sm:flex-wrap items-center gap-1 sm:gap-1.5 shrink-0" aria-label="Accounting and finance">
-                                        <a href="{{ route('chart-of-accounts.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                        <a href="{{ route('chart-of-accounts.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                             <svg class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                                             </svg>
                                             Chart of Accounts
                                         </a>
-                                        <a href="{{ route('business-entities.tracking-categories.index', $businessEntity) }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                        <a href="{{ route('business-entities.tracking-categories.index', $businessEntity) }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                             <svg class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
                                             </svg>
                                             Tracking Categories
                                         </a>
-                                        <a href="{{ route('bank-accounts.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                        <a href="{{ route('bank-accounts.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                             <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                                             </svg>
                                             Bank Accounts
                                         </a>
-                                        <a href="{{ route('transactions.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                        <a href="{{ route('transactions.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                             <svg class="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
                                             </svg>
                                             Transactions
                                         </a>
-                                        <a href="{{ route('invoices.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                        <a href="{{ route('commitments.index', ['entity' => $businessEntity->id]) }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                            <svg class="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                            </svg>
+                                            Commitments
+                                        </a>
+                                        <a href="{{ route('invoices.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                             <svg class="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                             </svg>
@@ -185,7 +191,7 @@
                                         </a>
                                     </nav>
                                     <span class="hidden sm:block w-px h-6 bg-gray-200 dark:bg-gray-600 shrink-0 self-center" aria-hidden="true"></span>
-                                    <a href="{{ route('dashboard') }}" title="Open the full application dashboard" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                    <a href="{{ route('dashboard') }}" title="Open the full application dashboard" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 rounded-md hover:bg-indigo-50 dark:hover:bg-indigo-950/40 transition-colors shrink-0 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                         <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
                                         </svg>
@@ -293,7 +299,7 @@
                                                             @endif
                                                         </div>
                                                         <div class="flex items-center justify-between mt-1">
-                                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
+                                                            <span class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
                                                                 {{ $entityPerson->role }}
                                                             </span>
                                                             <span class="text-xs text-gray-500 dark:text-gray-400">{{ $entityPerson->role_status }}</span>
@@ -345,7 +351,7 @@
                                                                 @endif
                                                             </td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">{{ $transaction->description }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-[10rem] truncate">{{ $transaction->vendor_name ?? '—' }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-40 truncate">{{ $transaction->vendor_name ?? '—' }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->invoice_number ?? '—' }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                                                                 @if ($transaction->asset)
@@ -354,7 +360,7 @@
                                                                     <span class="text-gray-400">—</span>
                                                                 @endif
                                                             </td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ Transaction::$transactionTypes[$transaction->transaction_type] ?? 'Unknown' }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ Transaction::allTypes()[$transaction->transaction_type] ?? 'Unknown' }}</td>
                                                             <td class="px-6 py-4">
                                                                 @if (($transaction->payment_status ?? 'paid') === 'unpaid')
                                                                     <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Unpaid</span>
@@ -381,13 +387,13 @@
                                                             </td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                                                                 <div class="flex flex-wrap gap-2">
-                                                                    <a href="{{ route('business-entities.transactions.edit', [$businessEntity->id, $transaction->id]) }}" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded text-xs">
+                                                                    <a href="{{ route('business-entities.transactions.edit', [$businessEntity->id, $transaction->id]) }}" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                                                         </svg>
                                                                         Edit
                                                                     </a>
-                                                                    <a href="{{ route('business-entities.show', [$businessEntity->id, 'transaction_id' => $transaction->id]) }}#tab_transactions" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded text-xs">
+                                                                    <a href="{{ route('business-entities.show', [$businessEntity->id, 'transaction_id' => $transaction->id]) }}#tab_transactions" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs">
                                                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
@@ -397,7 +403,7 @@
                                                                     @if (!$transaction->bankStatementEntries()->exists())
                                                                         <form action="{{ route('business-entities.transactions.match', [$businessEntity->id, $transaction->id]) }}" method="POST" class="inline-flex items-center">
                                                                             @csrf
-                                                                            <select name="bank_statement_entry_id" class="border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-xs mr-1 focus:ring-indigo-500 focus:border-indigo-500">
+                                                                            <select name="bank_statement_entry_id" class="border-gray-300 dark:border-gray-600 rounded-md shadow-xs text-xs mr-1 focus:ring-indigo-500 focus:border-indigo-500">
                                                                                 <option value="">Match to Entry</option>
                                                                                 @foreach ($bankAccounts as $bankAccount)
                                                                                     @foreach ($bankAccount->bankStatementEntries()->whereNull('transaction_id')->get() as $entry)
@@ -405,13 +411,13 @@
                                                                                     @endforeach
                                                                                 @endforeach
                                                                             </select>
-                                                                            <button type="submit" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded text-xs">
+                                                                            <button type="submit" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs">
                                                                                 Match
                                                                             </button>
                                                                         </form>
                                                                     @endif
                                                                     @if ($transaction->receipt_path)
-                                                                        <a href="{{ $transaction->receiptUrl }}" target="_blank" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded text-xs">
+                                                                        <a href="{{ $transaction->receiptUrl }}" target="_blank" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs">
                                                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                                             </svg>
@@ -422,7 +428,7 @@
                                                                         @csrf
                                                                         @method('DELETE')
                                                                         <input type="hidden" name="delete_linked_document" value="0" />
-                                                                        <button type="submit" class="inline-flex items-center px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-200 rounded text-xs">
+                                                                        <button type="submit" class="inline-flex items-center px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-200 rounded-sm text-xs">
                                                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                                             </svg>
@@ -448,7 +454,7 @@
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Description:</span> {{ $selectedTransaction->description ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Vendor:</span> {{ $selectedTransaction->vendor_name ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Invoice #:</span> {{ $selectedTransaction->invoice_number ?? '—' }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> {{ Transaction::$transactionTypes[$selectedTransaction->transaction_type] ?? 'N/A' }}</p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> {{ Transaction::allTypes()[$selectedTransaction->transaction_type] ?? 'N/A' }}</p>
                                                             @if ($selectedTransaction->relatedEntity)
                                                                 <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Director / Related Entity:</span> {{ $selectedTransaction->relatedEntity->legal_name }}</p>
                                                             @endif
@@ -510,7 +516,7 @@
                                 <div class="space-y-3">
                                     <div class="flex justify-between items-center">
                                         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Chart of Accounts</h3>
-                                        <a href="{{ route('chart-of-accounts.create') }}" class="inline-flex items-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium transition-colors">
+                                        <a href="{{ route('chart-of-accounts.create') }}" class="inline-flex items-center px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded-sm text-sm font-medium transition-colors">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                             </svg>
@@ -525,7 +531,7 @@
                                                 </svg>
                                             </div>
                                             <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Chart of Accounts management is available. Click "Add Account" to get started.</p>
-                                            <a href="{{ route('chart-of-accounts.index') }}" class="inline-flex items-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium transition-colors">
+                                            <a href="{{ route('chart-of-accounts.index') }}" class="inline-flex items-center px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm text-sm font-medium transition-colors">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                                 </svg>
@@ -581,7 +587,7 @@
                                         {{-- Account Transactions --}}
                                         <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200">
                                             <div class="flex items-center">
-                                                <div class="flex-shrink-0">
+                                                <div class="shrink-0">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                                                     </svg>
@@ -603,7 +609,7 @@
 
                                         <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200">
                                             <div class="flex items-center">
-                                                <div class="flex-shrink-0">
+                                                <div class="shrink-0">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                                                     </svg>
@@ -625,7 +631,7 @@
 
                                         <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200">
                                             <div class="flex items-center">
-                                                <div class="flex-shrink-0">
+                                                <div class="shrink-0">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                                     </svg>
@@ -647,7 +653,7 @@
 
                                         <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200">
                                             <div class="flex items-center">
-                                                <div class="flex-shrink-0">
+                                                <div class="shrink-0">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                                                     </svg>
@@ -669,7 +675,7 @@
 
                                         <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200">
                                             <div class="flex items-center">
-                                                <div class="flex-shrink-0">
+                                                <div class="shrink-0">
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                                                     </svg>
@@ -681,6 +687,29 @@
                                             </div>
                                             <div class="mt-4">
                                                 <a href="{{ route('business-entities.financial-reports.tracking-categories', $businessEntity->id) }}" class="inline-flex items-center px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 dark:bg-orange-900 dark:hover:bg-orange-800 dark:text-orange-200 rounded-lg text-sm transition-all duration-200">
+                                                    View Report
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200">
+                                            <div class="flex items-center">
+                                                <div class="shrink-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2m8-2H5m8 0h2m2 0h2a1 1 0 001-1v-5l-3-4H9" />
+                                                    </svg>
+                                                </div>
+                                                <div class="ml-4">
+                                                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Car Register</h4>
+                                                    <p class="text-sm text-gray-500 dark:text-gray-400">Rego, insurance &amp; service due dates</p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-4">
+                                                <a href="{{ route('financial-reports.car-register', ['scope' => 'selected', 'entity_ids' => [$businessEntity->id]]) }}" class="inline-flex items-center px-3 py-2 bg-sky-100 hover:bg-sky-200 text-sky-700 dark:bg-sky-900 dark:hover:bg-sky-800 dark:text-sky-200 rounded-lg text-sm transition-all duration-200">
                                                     View Report
                                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -720,15 +749,15 @@
                                             Add Note
                                         </button>
                                     </div>
-                                    <form id="note-form" class="hidden mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow" method="POST" action="{{ route('business-entities.notes.store', $businessEntity->id) }}#tab_notes">
+                                    <form id="note-form" class="hidden mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xs" method="POST" action="{{ route('business-entities.notes.store', $businessEntity->id) }}#tab_notes">
                                         @csrf
                                         <div class="mb-4">
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Note</label>
-                                            <textarea name="content" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" rows="3" required>{{ old('content') }}</textarea>
+                                            <textarea name="content" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" rows="3" required>{{ old('content') }}</textarea>
                                             @error('content') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                         </div>
                                         <div class="flex justify-end">
-                                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow-sm transition duration-200">
+                                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow-xs transition duration-200">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                                 </svg>
@@ -741,9 +770,9 @@
                                     @else
                                         <div class="space-y-3">
                                             @foreach ($notes as $note)
-                                                <div class="bg-white dark:bg-gray-800 p-4 rounded-md shadow-sm">
+                                                <div class="bg-white dark:bg-gray-800 p-4 rounded-md shadow-xs">
                                                     <div class="flex justify-between items-start">
-                                                        <div class="flex-grow">
+                                                        <div class="grow">
                                                             <p class="text-gray-700 dark:text-gray-200">{{ $note->content }}</p>
                                                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
                                                                 Added by {{ $note->user->name ?? 'Unknown' }} on {{ $note->created_at ? $note->created_at->format('d/m/Y H:i') : 'N/A' }}
@@ -800,13 +829,13 @@
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $contactList->email }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $contactList->phone_no }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                                                <a href="{{ route('business-entities.contact-lists.edit', [$businessEntity->id, $contactList->id]) }}#tab_contact_lists" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded text-xs">
+                                                                <a href="{{ route('business-entities.contact-lists.edit', [$businessEntity->id, $contactList->id]) }}#tab_contact_lists" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs">
                                                                     Edit
                                                                 </a>
                                                                 <form action="{{ route('business-entities.contact-lists.destroy', [$businessEntity->id, $contactList->id]) }}" method="POST" class="inline-block" onsubmit="return confirm('Are you sure you want to delete this contact?');">
                                                                     @csrf
                                                                     @method('DELETE')
-                                                                    <button type="submit" class="inline-flex items-center px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-200 rounded text-xs ml-2">
+                                                                    <button type="submit" class="inline-flex items-center px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-200 rounded-sm text-xs ml-2">
                                                                         Delete
                                                                     </button>
                                                                 </form>
@@ -832,9 +861,9 @@
                                                 <label for="to_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">To *</label>
                                                 @if ($businessEntity->registeredEmailIsPlaceholder())
                                                     <p class="mt-1 text-sm text-amber-700 dark:text-amber-300">No company email on file. Enter a recipient below or <a href="{{ route('business-entities.edit', $businessEntity->id) }}#registered_email" class="font-medium underline hover:no-underline">add one in the company profile</a>.</p>
-                                                    <input type="email" id="to_email" name="to_email" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" value="{{ old('to_email') }}" autocomplete="email" placeholder="recipient@example.com" required>
+                                                    <input type="email" id="to_email" name="to_email" class="mt-2 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" value="{{ old('to_email') }}" autocomplete="email" placeholder="recipient@example.com" required>
                                                 @else
-                                                    <input type="email" id="to_email" name="to_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" value="{{ $businessEntity->registered_email }}" readonly required>
+                                                    <input type="email" id="to_email" name="to_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" value="{{ $businessEntity->registered_email }}" readonly required>
                                                 @endif
                                             </div>
                                         </div>
@@ -842,23 +871,23 @@
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                             <div>
                                                 <label for="cc_email" class="block text-sm font-medium text-gray-700 dark:text-gray-300">CC</label>
-                                                <input type="email" id="cc_email" name="cc_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
+                                                <input type="email" id="cc_email" name="cc_email" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm">
                                             </div>
                                         </div>
 
                                         <div class="mb-4">
                                             <label for="subject" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Subject *</label>
-                                            <input type="text" id="subject" name="subject" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
+                                            <input type="text" id="subject" name="subject" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
                                         </div>
 
                                         <div class="mb-4">
                                             <label for="message" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Message *</label>
-                                            <textarea id="message" name="message" rows="8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required></textarea>
+                                            <x-rich-text-editor id="message" name="message" :rows="8" :height="200" defer required />
                                         </div>
 
                                         <div class="mb-4">
                                             <label for="attachment" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Attachment</label>
-                                            <input type="file" id="attachment" name="attachments[]" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" multiple>
+                                            <input type="file" id="attachment" name="attachments[]" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500" multiple>
                                         </div>
 
                                         <div class="flex justify-end">
@@ -889,14 +918,14 @@
                                         @php($firstEmail = $allocatedEmails->first())
                                         <div class="flex gap-6">
                                             <div class="w-full lg:w-5/12">
-                                                <div class="bg-white dark:bg-gray-900 rounded-xl shadow border border-blue-200 dark:border-blue-700 divide-y divide-gray-200 dark:divide-gray-700">
+                                                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xs border border-blue-200 dark:border-blue-700 divide-y divide-gray-200 dark:divide-gray-700">
                                                     @foreach ($allocatedEmails as $email)
                                                         <a href="{{ route('emails.show', $email->id) }}" target="beEmailViewer" class="block p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
                                                             <div class="text-blue-900 dark:text-blue-200 font-semibold">{{ $email->subject ?: '(No subject)' }}</div>
                                                             <div class="text-sm text-gray-600 dark:text-gray-300">From: {{ $email->sender_name ?: $email->sender_email }} — {{ optional($email->sent_date)->format('Y-m-d H:i') }}</div>
                                                             <div class="mt-1 flex gap-2 flex-wrap">
                                                                 @foreach ($email->labels as $label)
-                                                                    <span class="text-xs px-2 py-1 rounded" style="background-color: {{ $label->color ?? '#e5e7eb' }}; color:#111827">{{ $label->name }}</span>
+                                                                    <span class="text-xs px-2 py-1 rounded-sm" style="background-color: {{ $label->color ?? '#e5e7eb' }}; color:#111827">{{ $label->name }}</span>
                                                                 @endforeach
                                                             </div>
                                                         </a>
@@ -932,7 +961,7 @@
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                                 <div>
                                                     <label for="bank_account_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Bank Account *</label>
-                                                    <select id="bank_account_id" name="bank_account_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
+                                                    <select id="bank_account_id" name="bank_account_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
                                                         <option value="">Choose a bank account...</option>
                                                         @foreach($businessEntity->bankAccounts as $bankAccount)
                                                             <option value="{{ $bankAccount->id }}">{{ $bankAccount->bank_name }} - {{ $bankAccount->account_number }}</option>
@@ -941,7 +970,7 @@
                                                 </div>
                                                 <div>
                                                     <label for="statement_file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Statement File *</label>
-                                                    <input type="file" id="statement_file" name="statement_file" accept=".xlsx,.xls,.csv" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                                                    <input type="file" id="statement_file" name="statement_file" accept=".xlsx,.xls,.csv" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500" required>
                                                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Supported formats: Excel (.xlsx, .xls) or CSV files</p>
                                                 </div>
                                             </div>
@@ -970,10 +999,10 @@
                                             <div class="flex justify-between items-center mb-4">
                                                 <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Match Bank Entries</h4>
                                                 <div class="flex space-x-2">
-                                                    <button id="auto-match-btn" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm transition-colors">
+                                                    <button id="auto-match-btn" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-sm text-sm transition-colors">
                                                         Auto Match
                                                     </button>
-                                                    <button id="save-matches-btn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm transition-colors">
+                                                    <button id="save-matches-btn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-sm text-sm transition-colors">
                                                         Save Matches
                                                     </button>
                                                 </div>
@@ -1011,9 +1040,6 @@
         </div> {{-- End of max-w-7xl container --}}
     </div> {{-- End of py-8 background div --}}
 
-    <!-- TinyMCE (self-hosted: npm `tinymce` → postinstall copies to public/vendor/tinymce) -->
-    <script src="{{ asset('vendor/tinymce/tinymce.min.js') }}"></script>
-
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const tabsRoot = document.getElementById('entity-tabs');
@@ -1022,7 +1048,6 @@
             const composeEmailForm = document.getElementById('compose-email-form');
             const fromEmailSelect = document.getElementById('from_email');
             const subjectInput = document.getElementById('subject');
-            const tinymceBaseUrl = @json(asset('vendor/tinymce'));
 
             function escapeHashId(id) {
                 return (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(id) : id.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
@@ -1047,6 +1072,10 @@
                 const selectedTab = document.getElementById(resolvedId);
                 if (selectedTab) {
                     selectedTab.classList.remove('hidden');
+                }
+
+                if (resolvedId === 'tab_compose_email') {
+                    window.initRichTextEditors?.(selectedTab, { includeDeferred: true });
                 }
 
                 tabs.forEach(tab => {
@@ -1096,42 +1125,16 @@
                             fromEmailSelect.appendChild(option);
                         });
 
-                        // Populate 'Templates' select
-                        // data.emailTemplates.forEach(template => { // Removed
-                        //     const option = document.createElement('option');
-                        //     option.value = template.id;
-                        //     option.textContent = template.name;
-                        //     templateSelect.appendChild(option);
-                        // });
-
-                        // Store templates data for easy lookup
-                        // templateSelect.dataset.templates = JSON.stringify(data.emailTemplates); // Removed
                     })
                     .catch(error => console.error('Error fetching email compose data:', error));
             }
-
-            // Template selection change listener
-            // templateSelect.addEventListener('change', function () { // Removed
-            //     const selectedTemplateId = this.value;
-            //     const templates = JSON.parse(this.dataset.templates);
-            //     const selectedTemplate = templates.find(template => template.id == selectedTemplateId);
-
-            //     if (selectedTemplate) {
-            //         subjectInput.value = selectedTemplate.subject;
-            //         tinymce.get('message')?.setContent(selectedTemplate.description);
-            //     } else {
-            //         subjectInput.value = '';
-            //         tinymce.get('message')?.setContent('');
-            //     }
-            // });
 
             if (composeEmailForm) {
                 composeEmailForm.addEventListener('submit', function (e) {
                     e.preventDefault();
 
                     const formData = new FormData(this);
-                    const messageEditor = tinymce.get('message');
-                    formData.set('message', messageEditor ? messageEditor.getContent() : (document.getElementById('message')?.value ?? ''));
+                    formData.set('message', window.getRichTextContent?.('message') ?? (document.getElementById('message')?.value ?? ''));
 
                     formData.append('_method', 'POST');
                     formData.append('business_entity_id', "{{ $businessEntity->id }}");
@@ -1148,30 +1151,12 @@
                         console.log(data);
                         alert(data.message);
                         composeEmailForm.reset();
-                        tinymce.get('message')?.setContent('');
+                        window.setRichTextContent?.('message', '');
                     })
                     .catch(error => {
                         console.error('Error sending email:', error);
                         alert('Error sending email.');
                     });
-                });
-            }
-
-            if (document.getElementById('message')) {
-                tinymce.init({
-                    selector: '#message',
-                    base_url: tinymceBaseUrl,
-                    suffix: '.min',
-                    license_key: 'gpl',
-                    promotion: false,
-                    branding: false,
-                    height: 200,
-                    menubar: false,
-                    placeholder: 'Write your message here...',
-                    plugins: 'lists advlist autolink link image media table code fullscreen help',
-                    toolbar: 'undo redo | blocks | bold italic underline removeformat | forecolor | alignleft aligncenter alignright | bullist numlist | table | link image media | code fullscreen help',
-                    relative_urls: false,
-                    remove_script_host: false,
                 });
             }
 
@@ -1183,6 +1168,7 @@
             const matchingInterface = document.getElementById('matching-interface');
             const autoMatchBtn = document.getElementById('auto-match-btn');
             const saveMatchesBtn = document.getElementById('save-matches-btn');
+            let cachedChartAccounts = [];
 
             if (uploadStatementBtn && uploadForm && cancelUploadBtn && bankImportForm && matchingInterface && autoMatchBtn && saveMatchesBtn) {
 
@@ -1265,13 +1251,18 @@
                                 </div>
                             </div>
                             <div class="mt-2">
-                                <select class="w-full text-xs border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 account-select">
+                                <select class="w-full text-xs border border-gray-300 dark:border-gray-600 rounded-sm px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 account-select" data-tomselect>
                                     <option value="">Select account...</option>
                                 </select>
                             </div>
                         `;
                         bankEntriesList.appendChild(entryDiv);
+                        window.initTomSelect?.(entryDiv);
                     });
+
+                    if (cachedChartAccounts.length) {
+                        populateAccountSelects(cachedChartAccounts);
+                    }
                 })
                 .catch(error => {
                     console.error('Error loading bank entries:', error);
@@ -1288,7 +1279,7 @@
                     
                     data.accounts.forEach(account => {
                         const accountDiv = document.createElement('div');
-                        accountDiv.className = 'p-2 border border-gray-200 dark:border-gray-600 rounded cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 chart-account';
+                        accountDiv.className = 'p-2 border border-gray-200 dark:border-gray-600 rounded-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 chart-account';
                         accountDiv.dataset.accountId = account.id;
                         accountDiv.innerHTML = `
                             <div class="text-sm font-medium text-gray-900 dark:text-gray-100">${account.account_name}</div>
@@ -1307,8 +1298,12 @@
 
             // Populate account select dropdowns
             function populateAccountSelects(accounts) {
+                cachedChartAccounts = accounts;
                 const accountSelects = document.querySelectorAll('.account-select');
                 accountSelects.forEach(select => {
+                    if (select.tomselect) {
+                        select.tomselect.destroy();
+                    }
                     const keepFirst = select.querySelector('option[value=""]');
                     select.innerHTML = '';
                     if (keepFirst) {
@@ -1325,6 +1320,7 @@
                         option.textContent = `${account.account_code} - ${account.account_name}`;
                         select.appendChild(option);
                     });
+                    window.reinitTomSelect?.(select);
                 });
             }
 
@@ -1357,7 +1353,7 @@
                     }
                     
                     if (matchedAccount) {
-                        select.value = matchedAccount.dataset.accountId;
+                        window.setSelectValue?.(select, matchedAccount.dataset.accountId);
                     }
                 });
             });

@@ -90,6 +90,12 @@
                                     Documents
                                 </a>
                             @elseif ($isLeasable)
+                                <a href="{{ route('assets.financials', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                    Financials
+                                </a>
                                 <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
@@ -615,7 +621,7 @@
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ $tx->date->format('d/m/Y') }}</td>
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">${{ number_format($tx->amount, 2) }}</td>
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ $tx->description }}</td>
-                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ Transaction::$transactionTypes[$tx->transaction_type] ?? $tx->transaction_type }}</td>
+                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ Transaction::allTypes()[$tx->transaction_type] ?? $tx->transaction_type }}</td>
                                                             <td class="px-4 py-2 text-sm">
                                                                 <div class="flex flex-wrap gap-2 items-center">
                                                                     <a href="{{ route('business-entities.transactions.edit', [$businessEntity->id, $tx->id]) }}" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium">Edit</a>
@@ -665,11 +671,11 @@
                                     </div>
 
                                     <!-- Add Note Form -->
-                                    <form id="note-form" class="hidden mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow" method="POST" action="{{ route('business-entities.assets.notes.store', [$businessEntity->id, $asset->id]) }}#tab_notes">
+                                    <form id="note-form" class="hidden mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xs" method="POST" action="{{ route('business-entities.assets.notes.store', [$businessEntity->id, $asset->id]) }}#tab_notes">
                                         @csrf
                                         <div class="mb-4">
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Note</label>
-                                            <textarea name="content" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white" rows="3" required>{{ old('content') }}</textarea>
+                                            <textarea name="content" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:text-white" rows="3" required>{{ old('content') }}</textarea>
                                             @error('content') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                         </div>
                                         <div class="flex justify-end">
@@ -687,7 +693,7 @@
                                             @foreach ($asset->notes->where('is_reminder', false) as $note)
                                                 <div class="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-md transition-all duration-200 hover:shadow-lg">
                                                     <div class="flex justify-between items-start">
-                                                        <div class="flex-grow">
+                                                        <div class="grow">
                                                             <p class="text-gray-700 dark:text-gray-200">{{ $note->content }}</p>
                                                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
                                                                 Added by {{ $note->user->name ?? 'Unknown' }} on {{ $note->created_at ? $note->created_at->format('d/m/Y H:i') : 'N/A' }}
@@ -722,22 +728,22 @@
                                             Add Reminder
                                         </button>
                                     </div>
-                                    <form id="reminder-form" class="hidden mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow" method="POST" action="{{ route('business-entities.assets.notes.store', [$businessEntity->id, $asset->id]) }}#tab_reminders">
+                                    <form id="reminder-form" class="hidden mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xs" method="POST" action="{{ route('business-entities.assets.notes.store', [$businessEntity->id, $asset->id]) }}#tab_reminders">
                                         @csrf
                                         <div class="mb-4">
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Reminder</label>
-                                            <textarea name="content" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white" rows="3" required>{{ old('content') }}</textarea>
+                                            <textarea name="content" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white" rows="3" required>{{ old('content') }}</textarea>
                                             @error('content') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                         </div>
                                         <div class="mb-4">
                                             <input type="hidden" name="is_reminder" value="1">
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Due Date</label>
-                                            <input type="date" name="reminder_date" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white" min="{{ now()->format('Y-m-d') }}" value="{{ old('reminder_date') }}" required>
+                                            <input type="date" name="reminder_date" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white" min="{{ now()->format('Y-m-d') }}" value="{{ old('reminder_date') }}" required>
                                             @error('reminder_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                         </div>
                                         <div class="mb-4">
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Repeat</label>
-                                            <select name="repeat_type" id="repeat_type" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white">
+                                            <select name="repeat_type" id="repeat_type" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white">
                                                 <option value="none">One-off (No repeat)</option>
                                                 <option value="monthly">Monthly</option>
                                                 <option value="quarterly">Quarterly</option>
@@ -747,11 +753,11 @@
                                         </div>
                                         <div class="mb-4" id="repeat_end_date_container" style="display: none;">
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">End Date (Optional)</label>
-                                            <input type="date" name="repeat_end_date" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white" min="{{ now()->format('Y-m-d') }}" value="{{ old('repeat_end_date') }}">
+                                            <input type="date" name="repeat_end_date" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white" min="{{ now()->format('Y-m-d') }}" value="{{ old('repeat_end_date') }}">
                                             @error('repeat_end_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                         </div>
                                         <div class="flex justify-end">
-                                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-sm transition duration-200">
+                                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-xs transition duration-200">
                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                                 </svg>
@@ -764,7 +770,7 @@
                                     @else
                                         <div class="space-y-3">
                                             @foreach ($asset->notes->where('is_reminder', true) as $reminder)
-                                                <div class="bg-white dark:bg-gray-800 p-4 rounded-md shadow-sm border-l-4 border-yellow-400">
+                                                <div class="bg-white dark:bg-gray-800 p-4 rounded-md shadow-xs border-l-4 border-yellow-400">
                                                     <p class="text-gray-700 dark:text-gray-200">{{ $reminder->content }}</p>
                                                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
                                                         Added by {{ $reminder->user->name ?? 'Unknown' }} on {{ $reminder->created_at ? $reminder->created_at->format('d/m/Y H:i') : 'N/A' }}
@@ -788,7 +794,7 @@
                                                     <div class="mt-3 flex space-x-2">
                                                         <form action="{{ route('notes.finalize', $reminder->id) }}#tab_reminders" method="POST" class="inline">
                                                             @csrf
-                                                            <button type="submit" class="inline-flex items-center px-2 py-1 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-200 rounded text-xs">
+                                                            <button type="submit" class="inline-flex items-center px-2 py-1 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-200 rounded-sm text-xs">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                                                 </svg>
@@ -797,7 +803,7 @@
                                                         </form>
                                                         <form action="{{ route('notes.extend', $reminder->id) }}#tab_reminders" method="POST" class="inline">
                                                             @csrf
-                                                            <button type="submit" class="inline-flex items-center px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-200 rounded text-xs">
+                                                            <button type="submit" class="inline-flex items-center px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-200 rounded-sm text-xs">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                                                                 </svg>
@@ -823,14 +829,14 @@
                                         @php($firstEmail = $allocatedEmails->first())
                                         <div class="flex gap-6">
                                             <div class="w-full lg:w-5/12">
-                                                <div class="bg-white dark:bg-gray-900 rounded-xl shadow border border-blue-200 dark:border-blue-700 divide-y divide-gray-200 dark:divide-gray-700">
+                                                <div class="bg-white dark:bg-gray-900 rounded-xl shadow-xs border border-blue-200 dark:border-blue-700 divide-y divide-gray-200 dark:divide-gray-700">
                                                     @foreach ($allocatedEmails as $email)
                                                         <a href="{{ route('emails.show', $email->id) }}" target="assetEmailViewer" class="block p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
                                                             <div class="text-blue-900 dark:text-blue-200 font-semibold">{{ $email->subject ?: '(No subject)' }}</div>
                                                             <div class="text-sm text-gray-600 dark:text-gray-300">From: {{ $email->sender_name ?: $email->sender_email }} — {{ optional($email->sent_date)->format('Y-m-d H:i') }}</div>
                                                             <div class="mt-1 flex gap-2 flex-wrap">
                                                                 @foreach ($email->labels as $label)
-                                                                    <span class="text-xs px-2 py-1 rounded" style="background-color: {{ $label->color ?? '#e5e7eb' }}; color:#111827">{{ $label->name }}</span>
+                                                                    <span class="text-xs px-2 py-1 rounded-sm" style="background-color: {{ $label->color ?? '#e5e7eb' }}; color:#111827">{{ $label->name }}</span>
                                                                 @endforeach
                                                             </div>
                                                         </a>

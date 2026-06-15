@@ -53,7 +53,7 @@
 
     {{-- ── Report body ─────────────────────────────────────────────── --}}
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 print:px-0 print:py-4">
-        <div class="bg-white shadow-sm rounded-lg border border-gray-200 print:shadow-none print:border-0">
+        <div class="bg-white shadow-xs rounded-lg border border-gray-200 print:shadow-none print:border-0">
 
             {{-- Report heading inside the white panel --}}
             <div class="px-6 pt-6 pb-4 border-b border-gray-100 print:px-4">

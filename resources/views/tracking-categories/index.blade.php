@@ -8,31 +8,31 @@
             <p class="text-gray-600 mt-2">{{ $businessEntity->legal_name }}</p>
         </div>
         <a href="{{ route('business-entities.tracking-categories.create', $businessEntity) }}" 
-           class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+           class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-sm">
             Add Tracking Category
         </a>
     </div>
 
     @if(session('success'))
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-sm mb-4">
             {{ session('success') }}
         </div>
     @endif
 
     @if(session('error'))
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-sm mb-4">
             {{ session('error') }}
         </div>
     @endif
 
     @if($trackingCategories->count() > 0)
-        <div class="bg-white shadow overflow-hidden sm:rounded-md">
+        <div class="bg-white shadow-xs overflow-hidden sm:rounded-md">
             <ul class="divide-y divide-gray-200">
                 @foreach($trackingCategories as $category)
                     <li>
                         <div class="px-4 py-4 flex items-center justify-between">
                             <div class="flex items-center">
-                                <div class="flex-shrink-0">
+                                <div class="shrink-0">
                                     <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
                                         <span class="text-blue-600 font-semibold">{{ substr($category->name, 0, 1) }}</span>
                                     </div>
@@ -107,7 +107,7 @@
             <p class="mt-1 text-sm text-gray-500">Get started by creating a new tracking category.</p>
             <div class="mt-6">
                 <a href="{{ route('business-entities.tracking-categories.create', $businessEntity) }}" 
-                   class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                   class="inline-flex items-center px-4 py-2 border border-transparent shadow-xs text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                     Add Tracking Category
                 </a>
             </div>

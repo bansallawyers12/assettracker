@@ -124,15 +124,15 @@
                             @csrf
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Paid date</label>
-                                <input type="date" name="paid_at" value="{{ now()->format('Y-m-d') }}" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                                <input type="date" name="paid_at" value="{{ now()->format('Y-m-d') }}" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Payment method</label>
-                                <input type="text" name="payment_method" placeholder="e.g. Bank transfer" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-sm text-sm" />
+                                <input type="text" name="payment_method" placeholder="e.g. Bank transfer" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm" />
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Reference</label>
-                                <input type="text" name="payment_reference" placeholder="Receipt / transaction ID" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-sm text-sm" />
+                                <input type="text" name="payment_reference" placeholder="Receipt / transaction ID" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm" />
                             </div>
                             <button type="submit" class="w-full sm:w-auto inline-flex justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">Mark as paid</button>
                         </form>

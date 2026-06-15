@@ -19,10 +19,10 @@
         return $q;
     };
     $today = \Carbon\Carbon::now();
-    $shortcuts = [
-        'This month' => [$today->copy()->startOfMonth()->toDateString(), $today->copy()->endOfMonth()->toDateString()],
-        'This year' => [$today->copy()->startOfYear()->toDateString(), $today->copy()->endOfYear()->toDateString()],
-    ];
+    $shortcuts = array_merge(
+        ['This month' => \App\Support\FinancialYear::monthShortcuts($today)['This month']],
+        \App\Support\FinancialYear::periodShortcuts($today)
+    );
 @endphp
 
 <x-report-shell
@@ -40,18 +40,18 @@
                 <div class="flex items-center gap-2">
                     <input type="date" name="start_date"
                            value="{{ $startDate->toDateString() }}"
-                           class="border border-gray-300 rounded text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
+                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
                     <span class="text-gray-400 text-sm">–</span>
                     <input type="date" name="end_date"
                            value="{{ $endDate->toDateString() }}"
-                           class="border border-gray-300 rounded text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
+                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
                 </div>
             </div>
 
             <div class="flex items-end gap-1.5 flex-wrap">
                 @foreach($shortcuts as $label => [$s, $e])
                     <a href="{{ route('financial-reports.cash-flow', $reportQuery(['start_date' => $s, 'end_date' => $e])) }}"
-                       class="text-xs border border-gray-300 rounded px-2 py-1.5 text-gray-600 hover:bg-white hover:border-blue-400 hover:text-blue-600 transition-colors bg-transparent whitespace-nowrap">
+                       class="text-xs border border-gray-300 rounded-sm px-2 py-1.5 text-gray-600 hover:bg-white hover:border-blue-400 hover:text-blue-600 transition-colors bg-transparent whitespace-nowrap">
                         {{ $label }}
                     </a>
                 @endforeach
@@ -59,7 +59,7 @@
 
             <div class="flex items-end gap-2 ml-auto">
                 <button type="submit"
-                        class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                        class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-sm px-4 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
                     Update
                 </button>
             </div>

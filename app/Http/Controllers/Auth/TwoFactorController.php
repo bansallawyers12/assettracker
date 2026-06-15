@@ -34,12 +34,12 @@ class TwoFactorController extends Controller
         }
 
         $secret = $this->twoFactorService->generateSecretKey();
-        $qrCodeUrl = $this->twoFactorService->getQRCodeUrl($user, $secret);
+        $qrCodeInline = $this->twoFactorService->getQRCodeInline($user, $secret);
 
         // Store secret in session — the form no longer sends it as a hidden field
         $request->session()->put('2fa_setup_secret', $secret);
 
-        return view('auth.two-factor.setup', compact('user', 'qrCodeUrl', 'secret'));
+        return view('auth.two-factor.setup', compact('user', 'qrCodeInline', 'secret'));
     }
 
     /**

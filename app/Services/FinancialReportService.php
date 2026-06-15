@@ -9,6 +9,7 @@ use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\TrackingCategory;
 use App\Models\Transaction;
+use App\Support\FinancialYear;
 use App\Support\TransactionPayerResolver;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -118,6 +119,7 @@ class FinancialReportService
             $categoryLabels
         );
         $equity = $this->getAccountBalancesByTypeGrouped($ids, 'equity', $asOfDate, $categoryLabels);
+        $equity = $this->appendAccumulatedEarningsToEquity($equity, $ids, $asOfDate);
 
         return $this->appendEntityScopeToReport([
             'as_of_date' => $asOfDate,
@@ -796,6 +798,77 @@ class FinancialReportService
     }
 
     /**
+     * Income and expense accounts are excluded from the balance sheet GL sections; their cumulative
+     * net effect is injected here as a computed accumulated earnings line (QuickBooks-style).
+     *
+     * @param  array<string, mixed>  $equity
+     * @param  array<int>  $entityIds
+     * @return array<string, mixed>
+     */
+    private function appendAccumulatedEarningsToEquity(array $equity, array $entityIds, string $asOfDate): array
+    {
+        $incomeTotal = $this->sumAccountTypeBalancesAsOf($entityIds, 'income', $asOfDate);
+        $expenseTotal = $this->sumAccountTypeBalancesAsOf($entityIds, 'expense', $asOfDate);
+
+        // GL debit − credit: profit is a credit equity balance (negative).
+        $balance = $incomeTotal + $expenseTotal;
+
+        if (abs($balance) < 0.00001) {
+            return $equity;
+        }
+
+        $equity['by_category']['accumulated_earnings'] = [
+            'label' => 'Accumulated Earnings',
+            'accounts' => [
+                [
+                    'is_computed' => true,
+                    'label' => 'Accumulated Earnings (computed)',
+                    'balance' => $balance,
+                ],
+            ],
+            'subtotal' => $balance,
+        ];
+        $equity['total'] += $balance;
+
+        return $equity;
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     */
+    private function sumAccountTypeBalancesAsOf(array $entityIds, string $accountType, string $asOfDate): float
+    {
+        $accountIds = ChartOfAccount::query()
+            ->where('account_type', $accountType)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        if ($accountIds->isEmpty()) {
+            return 0.0;
+        }
+
+        $debits = JournalLine::query()
+            ->whereIn('chart_of_account_id', $accountIds)
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
+                $query->whereIn('business_entity_id', $entityIds)
+                    ->where('entry_date', '<=', $asOfDate)
+                    ->where('is_posted', true);
+            })
+            ->sum('debit_amount');
+
+        $credits = JournalLine::query()
+            ->whereIn('chart_of_account_id', $accountIds)
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
+                $query->whereIn('business_entity_id', $entityIds)
+                    ->where('entry_date', '<=', $asOfDate)
+                    ->where('is_posted', true);
+            })
+            ->sum('credit_amount');
+
+        return (float) $debits - (float) $credits;
+    }
+
+    /**
      * Same visibility and balance as the account-transactions report for director / entity loan (synthetic lines).
      *
      * @param  array<string, array{label: string, accounts: array<int, array{account: ChartOfAccount, balance: float}>, subtotal: float}>  $liabilities
@@ -1107,5 +1180,235 @@ class FinancialReportService
             ->with(['activeSubCategories', 'businessEntity'])
             ->ordered()
             ->get();
+    }
+
+    /**
+     * Cross-entity summary matrix (spreadsheet-style): one column per reporting entity.
+     *
+     * @param  array<int>  $entityIds
+     */
+    public function generateEntitySummary(
+        array $entityIds,
+        string $periodStart,
+        string $periodEnd,
+        string $fyStart,
+        string $fyEnd
+    ): array {
+        $entities = BusinessEntity::whereIn('id', $entityIds)->orderBy('legal_name')->get();
+        $columns = [];
+
+        foreach ($entities as $entity) {
+            $columns[$entity->id] = array_merge(
+                ['entity' => $entity],
+                $this->entitySummaryMetrics((int) $entity->id, $periodStart, $periodEnd, $fyStart, $fyEnd)
+            );
+        }
+
+        return [
+            'period' => [
+                'start_date' => $periodStart,
+                'end_date' => $periodEnd,
+            ],
+            'financial_year' => [
+                'start_date' => $fyStart,
+                'end_date' => $fyEnd,
+                'label' => FinancialYear::label(Carbon::parse($fyEnd)),
+            ],
+            'columns' => $columns,
+            'business_entities' => $entities,
+        ];
+    }
+
+  /**
+     * @return array<string, float|null>
+     */
+    private function entitySummaryMetrics(
+        int $entityId,
+        string $periodStart,
+        string $periodEnd,
+        string $fyStart,
+        string $fyEnd
+    ): array {
+        $today = Carbon::now()->toDateString();
+
+        $totalSales = $this->cumulativeIncomeTotal([$entityId], $today);
+        $periodPl = $this->generateProfitLoss($entityId, $periodStart, $periodEnd);
+        $fyPl = $this->generateProfitLoss($entityId, $fyStart, $fyEnd);
+
+        $periodSales = abs((float) $periodPl['income']['total']);
+        $fyProfit = (float) $fyPl['net_profit'];
+        $fySales = abs((float) $fyPl['income']['total']);
+        $profitPct = $fySales > 0 ? round(($fyProfit / $fySales) * 100, 2) : null;
+
+        $gstPeriod = $this->netGstFromTransactions($entityId, $periodStart, $periodEnd);
+        $gstFy = $this->netGstFromTransactions($entityId, $fyStart, $fyEnd);
+        $paygPeriod = $this->sumPaidTransactionAmounts($entityId, Transaction::paygPaymentTypes(), $periodStart, $periodEnd);
+        $paygFy = $this->sumPaidTransactionAmounts($entityId, Transaction::paygPaymentTypes(), $fyStart, $fyEnd);
+
+        $directorLoans = $this->directorLoanSummaryForEntity($entityId, $periodEnd);
+
+        return [
+            'total_sales' => $totalSales,
+            'period_sales' => $periodSales,
+            'gst_period' => $gstPeriod,
+            'payg_period' => $paygPeriod,
+            'gst_fy' => $gstFy,
+            'payg_fy' => $paygFy,
+            'total_bas_period' => round($gstPeriod + $paygPeriod, 2),
+            'total_bas_fy' => round($gstFy + $paygFy, 2),
+            'profit_fy' => $fyProfit,
+            'profit_pct' => $profitPct,
+            'director_loan_asset' => $directorLoans['asset'],
+            'director_loan_liability' => $directorLoans['liability'],
+            'director_loan_net' => $directorLoans['net'],
+            'super_paid' => $this->sumPaidTransactionAmounts($entityId, Transaction::superPaymentTypes(), $fyStart, $fyEnd),
+            'super_payable' => $this->liabilityBalanceByConfigCode('super_payable', [$entityId], $periodEnd),
+            'balance' => $this->assetBalanceByConfigCode('bank_cash', [$entityId], $periodEnd),
+        ];
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     */
+    private function cumulativeIncomeTotal(array $entityIds, string $asOfDate): float
+    {
+        $accounts = ChartOfAccount::where('account_type', 'income')
+            ->where('is_active', true)
+            ->get();
+
+        $total = 0.0;
+        foreach ($accounts as $account) {
+            $total += -$this->getAccountBalanceAsOf($account->id, $asOfDate, $entityIds);
+        }
+
+        return round($total, 2);
+    }
+
+    private function netGstFromTransactions(int $entityId, string $start, string $end): float
+    {
+        $transactions = Transaction::query()
+            ->where('business_entity_id', $entityId)
+            ->where('payment_status', 'paid')
+            ->where(function ($q) use ($start, $end) {
+                $q->where(function ($q2) use ($start, $end) {
+                    $q2->whereNotNull('paid_at')->whereBetween('paid_at', [$start, $end]);
+                })->orWhere(function ($q2) use ($start, $end) {
+                    $q2->whereNull('paid_at')->whereBetween('date', [$start, $end]);
+                });
+            })
+            ->get();
+
+        $collected = 0.0;
+        $credits = 0.0;
+        $incomeKeys = array_keys(Transaction::$incomeTypes);
+
+        foreach ($transactions as $t) {
+            $gst = (float) ($t->gst_amount ?? 0);
+            if ($gst <= 0) {
+                continue;
+            }
+            if (in_array($t->transaction_type, $incomeKeys, true)) {
+                $collected += $gst;
+            } else {
+                $credits += $gst;
+            }
+        }
+
+        return round($collected - $credits, 2);
+    }
+
+    private function sumPaidTransactionAmounts(int $entityId, array $types, string $start, string $end): float
+    {
+        if ($types === []) {
+            return 0.0;
+        }
+
+        return round((float) Transaction::query()
+            ->where('business_entity_id', $entityId)
+            ->where('payment_status', 'paid')
+            ->whereIn('transaction_type', $types)
+            ->where(function ($q) use ($start, $end) {
+                $q->where(function ($q2) use ($start, $end) {
+                    $q2->whereNotNull('paid_at')->whereBetween('paid_at', [$start, $end]);
+                })->orWhere(function ($q2) use ($start, $end) {
+                    $q2->whereNull('paid_at')->whereBetween('date', [$start, $end]);
+                });
+            })
+            ->sum('amount'), 2);
+    }
+
+    /**
+     * @return array{asset: float, liability: float, net: float}
+     */
+    private function directorLoanSummaryForEntity(int $entityId, string $asOfDate): array
+    {
+        $account = ChartOfAccount::query()
+            ->where('is_active', true)
+            ->orderBy('account_code')
+            ->get()
+            ->first(fn (ChartOfAccount $a) => $this->isDirectorEntityLoanAccount($a));
+
+        if (! $account) {
+            return ['asset' => 0.0, 'liability' => 0.0, 'net' => 0.0];
+        }
+
+        $block = $this->buildDirectorEntityLoanAccountBlock(
+            $account,
+            [$entityId],
+            self::DIRECTOR_LOAN_BALANCE_SHEET_START_DATE,
+            $asOfDate
+        );
+
+        $closing = (float) ($block['closing_balance'] ?? 0);
+
+        // closing > 0 = entity owes (liability); closing < 0 = entity is owed (asset).
+        // Net sign convention: positive = net asset position (director owes entity).
+        return [
+            'asset' => round(max(0.0, -$closing), 2),
+            'liability' => round(max(0.0, $closing), 2),
+            'net' => round(-$closing, 2),
+        ];
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     */
+    private function liabilityBalanceByConfigCode(string $configKey, array $entityIds, string $asOfDate): ?float
+    {
+        $code = config("financial.report_accounts.{$configKey}");
+        if (! $code) {
+            return null;
+        }
+
+        $account = ChartOfAccount::where('account_code', $code)->where('is_active', true)->first()
+            ?? ChartOfAccount::where('account_code', $code)->first();
+
+        if (! $account) {
+            return null;
+        }
+
+        return round($this->liabilityOwedFromGl(
+            $this->getAccountBalanceAsOf($account->id, $asOfDate, $entityIds)
+        ), 2);
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     */
+    private function assetBalanceByConfigCode(string $configKey, array $entityIds, string $asOfDate): ?float
+    {
+        $code = config("financial.report_accounts.{$configKey}");
+        if (! $code) {
+            return null;
+        }
+
+        $account = ChartOfAccount::where('account_code', $code)->where('is_active', true)->first()
+            ?? ChartOfAccount::where('account_code', $code)->first();
+
+        if (! $account) {
+            return null;
+        }
+
+        return round($this->getAccountBalanceAsOf($account->id, $asOfDate, $entityIds), 2);
     }
 }

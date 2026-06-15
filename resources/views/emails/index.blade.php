@@ -5,7 +5,7 @@
                 {{ __('Emails') }}
             </h2>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
-                <a href="{{ route('email-templates.index') }}" class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold py-2 px-4 rounded-lg shadow-sm transition duration-300 ease-in-out flex items-center gap-2">
+                <a href="{{ route('email-templates.index') }}" class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold py-2 px-4 rounded-lg shadow-xs transition duration-300 ease-in-out flex items-center gap-2">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
                     </svg>
@@ -75,39 +75,39 @@
                                                 <div class="shrink-0">
                                                     <div class="flex space-x-2">
                                                         <a href="{{ route('emails.reply', $message->id) }}" 
-                                                           class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                                           class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                                                             <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
                                                             </svg>
                                                             Reply
                                                         </a>
                                                         <details class="relative">
-                                                            <summary class="cursor-pointer select-none inline-flex items-center px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-xs transition-colors">Allocate</summary>
+                                                            <summary class="cursor-pointer select-none inline-flex items-center px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-sm text-xs transition-colors">Allocate</summary>
                                                             <div class="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-3 z-10">
                                                                 <form method="POST" action="{{ route('emails.allocate.entity', $message->id) }}" class="space-y-2">
                                                                     @csrf
                                                                     <label class="block text-xs text-gray-600 dark:text-gray-300">Business Entity</label>
-                                                                    <select name="business_entity_id" class="w-full border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                                    <select name="business_entity_id" data-tomselect class="w-full border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                                         <option value="">Select entity...</option>
                                                                         @php($entities = \App\Models\BusinessEntity::operationalEntities()->orderBy('legal_name')->get())
                                                                         @foreach ($entities as $entity)
                                                                             <option value="{{ $entity->id }}">{{ $entity->legal_name }}</option>
                                                                         @endforeach
                                                                     </select>
-                                                                    <button class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-xs transition-colors">Allocate to Entity</button>
+                                                                    <button class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-sm text-xs transition-colors">Allocate to Entity</button>
                                                                 </form>
                                                                 <div class="my-2 border-t border-gray-200 dark:border-gray-700"></div>
                                                                 <form method="POST" action="{{ route('emails.allocate.asset', $message->id) }}" class="space-y-2">
                                                                     @csrf
                                                                     <label class="block text-xs text-gray-600 dark:text-gray-300">Asset</label>
-                                                                    <select name="asset_id" class="w-full border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                                    <select name="asset_id" data-tomselect class="w-full border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                                                         <option value="">Select asset...</option>
                                                                         @php($assets = \App\Models\Asset::orderBy('name')->get())
                                                                         @foreach ($assets as $asset)
                                                                             <option value="{{ $asset->id }}">{{ $asset->name }} ({{ $asset->asset_type }})</option>
                                                                         @endforeach
                                                                     </select>
-                                                                    <button class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs transition-colors">Allocate to Asset</button>
+                                                                    <button class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-sm text-xs transition-colors">Allocate to Asset</button>
                                                                 </form>
                                                             </div>
                                                         </details>

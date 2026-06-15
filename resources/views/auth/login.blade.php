@@ -29,7 +29,7 @@
         </div>
 
         <div class="flex items-center">
-            <input id="remember_me" type="checkbox" class="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 shadow-sm focus:ring-blue-500 dark:focus:ring-blue-500 dark:bg-gray-700 dark:focus:ring-offset-gray-800" name="remember">
+            <input id="remember_me" type="checkbox" class="w-4 h-4 rounded-sm border-gray-300 dark:border-gray-600 text-blue-600 shadow-xs focus:ring-blue-500 dark:focus:ring-blue-500 dark:bg-gray-700 dark:focus:ring-offset-gray-800" name="remember">
             <label for="remember_me" class="ms-2 text-sm text-gray-600 dark:text-gray-400">{{ __('Remember me') }}</label>
         </div>
 

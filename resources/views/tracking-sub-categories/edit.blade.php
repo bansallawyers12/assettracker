@@ -8,7 +8,7 @@
             <p class="text-gray-600 mt-2">{{ $businessEntity->legal_name }} - {{ $trackingCategory->name }}</p>
         </div>
 
-        <div class="bg-white shadow sm:rounded-lg">
+        <div class="bg-white shadow-xs sm:rounded-lg">
             <form action="{{ route('business-entities.tracking-categories.tracking-sub-categories.update', [$businessEntity, $trackingCategory, $trackingSubCategory]) }}" method="POST" class="px-4 py-5 sm:p-6">
                 @csrf
                 @method('PUT')
@@ -20,7 +20,7 @@
                                name="name" 
                                id="name" 
                                value="{{ old('name', $trackingSubCategory->name) }}"
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('name') border-red-300 @enderror"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('name') border-red-300 @enderror"
                                required>
                         @error('name')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
@@ -32,7 +32,7 @@
                         <textarea name="description" 
                                   id="description" 
                                   rows="3"
-                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('description') border-red-300 @enderror">{{ old('description', $trackingSubCategory->description) }}</textarea>
+                                  class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('description') border-red-300 @enderror">{{ old('description', $trackingSubCategory->description) }}</textarea>
                         @error('description')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -45,7 +45,7 @@
                                id="sort_order" 
                                value="{{ old('sort_order', $trackingSubCategory->sort_order) }}"
                                min="0"
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('sort_order') border-red-300 @enderror">
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm @error('sort_order') border-red-300 @enderror">
                         @error('sort_order')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                         @enderror
@@ -58,7 +58,7 @@
                                id="is_active" 
                                value="1"
                                {{ old('is_active', $trackingSubCategory->is_active) ? 'checked' : '' }}
-                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                               class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded-sm">
                         <label for="is_active" class="ml-2 block text-sm text-gray-900">
                             Active
                         </label>
@@ -67,11 +67,11 @@
 
                 <div class="mt-6 flex justify-end space-x-3">
                     <a href="{{ route('business-entities.tracking-categories.show', [$businessEntity, $trackingCategory]) }}" 
-                       class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                       class="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-xs text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         Cancel
                     </a>
                     <button type="submit" 
-                            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-xs text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         Update Sub-category
                     </button>
                 </div>
