@@ -17,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AssetController extends Controller
 {
@@ -105,6 +106,7 @@ class AssetController extends Controller
         $validatedData['status'] = $validatedData['status'] ?? 'Active';
         $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
         $bankAccountLinks = $this->extractBankAccountLinks($validatedData);
+        $this->validateBankAccountLinks($bankAccountLinks, $businessEntity);
 
         $assetData = array_merge($validatedData, [
             'business_entity_id' => $businessEntity->id,
@@ -217,6 +219,7 @@ class AssetController extends Controller
 
         $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
         $bankAccountLinks = $this->extractBankAccountLinks($validatedData);
+        $this->validateBankAccountLinks($bankAccountLinks, $businessEntity);
 
         $asset->update($validatedData);
         $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity);
@@ -717,6 +720,38 @@ class AssetController extends Controller
     /**
      * @param  array<string, int|null>  $links
      */
+    private function validateBankAccountLinks(array $links, BusinessEntity $businessEntity): void
+    {
+        $fieldMap = [
+            BankAccount::PURPOSE_LOAN => 'loan_bank_account_id',
+            BankAccount::PURPOSE_LOAN_REPAYMENT => 'loan_repayment_bank_account_id',
+            BankAccount::PURPOSE_OFFSET => 'offset_bank_account_id',
+        ];
+
+        $errors = [];
+
+        foreach (BankAccount::ASSET_ROLES as $role) {
+            $accountId = $links[$role] ?? null;
+
+            if (! $accountId) {
+                continue;
+            }
+
+            $bankAccount = BankAccount::find($accountId);
+
+            if (! $bankAccount || ! $bankAccount->isValidForAssetRole($businessEntity, $role)) {
+                $errors[$fieldMap[$role]] = 'The selected bank account is not valid for this slot.';
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * @param  array<string, int|null>  $links
+     */
     private function syncBankAccountLinks(Asset $asset, array $links, BusinessEntity $businessEntity): void
     {
         foreach (BankAccount::ASSET_ROLES as $role) {
@@ -729,11 +764,10 @@ class AssetController extends Controller
             }
 
             $bankAccount = BankAccount::find($accountId);
-            if (! $bankAccount || ! $bankAccount->isValidForAssetRole($businessEntity, $role)) {
-                continue;
-            }
 
-            $asset->bankAccounts()->attach($bankAccount->id, ['role' => $role]);
+            if ($bankAccount) {
+                $asset->bankAccounts()->attach($bankAccount->id, ['role' => $role]);
+            }
         }
     }
 

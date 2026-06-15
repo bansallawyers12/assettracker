@@ -351,7 +351,10 @@ class BusinessEntityController extends Controller
 
         $assets = $businessEntity->assets;
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
-        $bankAccounts = $businessEntity->bankAccounts()->with(['bankStatementEntries.transaction'])->get();
+        $bankAccounts = $businessEntity->bankAccounts()
+            ->where('account_purpose', BankAccount::PURPOSE_GENERAL)
+            ->with(['bankStatementEntries.transaction'])
+            ->get();
         $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument'])->orderBy('date', 'desc')->get();
         $documentCategories = $businessEntity->documentCategories()
             ->whereNull('asset_id')
@@ -1194,9 +1197,13 @@ class BusinessEntityController extends Controller
 
         $purpose = $request->query('purpose');
 
+        if ($purpose && ! in_array($purpose, BankAccount::PURPOSES, true)) {
+            return response()->json([], 422);
+        }
+
         $query = BankAccount::query()
             ->select('id', 'account_name', 'bank_name', 'bsb', 'account_purpose', 'business_entity_id')
-            ->where(function ($inner) use ($businessEntity) {
+            ->where(function ($inner) use ($businessEntity, $purpose) {
                 $inner->where('business_entity_id', $businessEntity->id);
 
                 if ($purpose === BankAccount::PURPOSE_LOAN_REPAYMENT) {
@@ -2213,9 +2220,13 @@ class BusinessEntityController extends Controller
         $purpose = $validated['account_purpose'];
         $entityId = $purpose === BankAccount::PURPOSE_LOAN_REPAYMENT
             ? null
-            : (int) $validated['business_entity_id'];
+            : (isset($validated['business_entity_id']) ? (int) $validated['business_entity_id'] : null);
 
-        $entity = $entityId ? BusinessEntity::findOrFail($entityId) : null;
+        $entity = null;
+        if ($entityId) {
+            $entity = BusinessEntity::findOrFail($entityId);
+            abort_unless((int) $entity->user_id === (int) auth()->id(), 403, 'Unauthorized action.');
+        }
 
         return [
             'business_entity_id' => $entityId,

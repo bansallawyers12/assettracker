@@ -405,7 +405,7 @@
                                                                             @csrf
                                                                             <select name="bank_statement_entry_id" class="border-gray-300 dark:border-gray-600 rounded-md shadow-xs text-xs mr-1 focus:ring-indigo-500 focus:border-indigo-500">
                                                                                 <option value="">Match to Entry</option>
-                                                                                @foreach ($bankAccounts as $bankAccount)
+                                                                                @foreach ($bankAccounts->where('account_purpose', 'general') as $bankAccount)
                                                                                     @foreach ($bankAccount->bankStatementEntries()->whereNull('transaction_id')->get() as $entry)
                                                                                         <option value="{{ $entry->id }}">{{ $entry->description }} ({{ $entry->amount }}) - {{ $bankAccount->bank_name }}</option>
                                                                                     @endforeach

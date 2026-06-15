@@ -108,7 +108,7 @@ class BankAccount extends Model
         $userId ??= auth()->id();
 
         if ((int) $this->business_entity_id === (int) $entity->id) {
-            return true;
+            return $this->account_purpose === self::PURPOSE_GENERAL;
         }
 
         return $this->isPortfolioWide()
