@@ -291,6 +291,24 @@ class AssetController extends Controller
             ->with('success', 'Asset deleted successfully');
     }
 
+    /**
+     * Remove a linked bank account from an asset (disassociate by role).
+     */
+    public function detachBankAccountLink(BusinessEntity $businessEntity, Asset $asset, string $role): RedirectResponse
+    {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
+        if (! in_array($role, BankAccount::ASSET_ROLES, true)) {
+            abort(404);
+        }
+
+        $asset->bankAccounts()->wherePivot('role', $role)->detach();
+
+        return redirect()
+            ->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
+            ->with('success', 'Bank account link removed.');
+    }
+
     public function createTenant(BusinessEntity $businessEntity, Asset $asset)
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
@@ -780,20 +798,23 @@ class AssetController extends Controller
      */
     private function bankAccountPickerData(BusinessEntity $businessEntity, ?Asset $asset = null): array
     {
+        $holderEager = ['holderEntity', 'holderPerson'];
+
         return [
             'loanAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_LOAN)
-                ->with('businessEntity')
+                ->with(['businessEntity', ...$holderEager])
                 ->orderBy('account_name')
                 ->get(),
             'loanRepaymentAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_LOAN_REPAYMENT)
+                ->with($holderEager)
                 ->orderBy('account_name')
                 ->get(),
             'offsetAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_OFFSET)
-                ->with('businessEntity')
+                ->with(['businessEntity', ...$holderEager])
                 ->orderBy('account_name')
                 ->get(),
             'rentCollectionAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_RENT_COLLECTION)
-                ->with('businessEntity')
+                ->with(['businessEntity', ...$holderEager])
                 ->orderBy('account_name')
                 ->get(),
 

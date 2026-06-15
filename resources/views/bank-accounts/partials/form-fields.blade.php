@@ -5,6 +5,13 @@
     $isPortfolio = $portfolio ?? false;
     $purposes = $isPortfolio ? BankAccount::PURPOSES : BankAccount::ENTITY_PURPOSES;
 
+    $requestedPurpose = request('purpose');
+    $defaultPurpose = old(
+        'account_purpose',
+        $bankAccountModel?->account_purpose
+            ?? (in_array($requestedPurpose, $purposes, true) ? $requestedPurpose : BankAccount::PURPOSE_GENERAL)
+    );
+
     $currentHolderType     = old('holder_type', $bankAccountModel?->holder_type);
     $currentHolderEntityId = old('holder_entity_id', $bankAccountModel?->holder_entity_id);
     $currentHolderPersonId = old('holder_person_id', $bankAccountModel?->holder_person_id);
@@ -36,7 +43,7 @@
     <label class="block text-sm font-medium text-gray-700">Purpose</label>
     <select name="account_purpose" id="account_purpose" class="mt-1 block w-full border-gray-300 rounded-md" required>
         @foreach($purposes as $purpose)
-            <option value="{{ $purpose }}" @selected(old('account_purpose', $bankAccountModel?->account_purpose ?? BankAccount::PURPOSE_GENERAL) === $purpose)>
+            <option value="{{ $purpose }}" @selected($defaultPurpose === $purpose)>
                 {{ BankAccount::purposeLabel($purpose) }}
             </option>
         @endforeach

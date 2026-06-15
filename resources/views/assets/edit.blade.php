@@ -155,7 +155,7 @@
                             ])
                         </div>
 
-                        @include('assets.partials.linked-bank-accounts-fields', ['asset' => $asset])
+                        @include('assets.partials.linked-bank-accounts-fields', ['asset' => $asset, 'businessEntity' => $businessEntity])
 
                     </form>
 

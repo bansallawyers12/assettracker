@@ -131,7 +131,7 @@ class AssetSummaryReportService
         // Real-estate managed?
         $reManaged   = $activeTenant?->is_real_estate_managed ?? false;
         $reCompany   = $reManaged ? ($activeTenant?->realEstateCompany?->name ?? null) : null;
-        $loanRepaymentAccount = $asset->bankAccountForRole(BankAccount::PURPOSE_LOAN_REPAYMENT);
+        $loanRepaymentAccount = $asset->bankAccountForRole(BankAccount::ROLE_LOAN_REPAYMENT);
 
         return [
             'asset'           => $asset,

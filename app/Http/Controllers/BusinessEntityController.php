@@ -355,6 +355,10 @@ class BusinessEntityController extends Controller
             ->where('account_purpose', BankAccount::PURPOSE_GENERAL)
             ->with(['bankStatementEntries.transaction'])
             ->get();
+        $entityBankAccounts = $businessEntity->bankAccounts()
+            ->with(['holderEntity', 'holderPerson'])
+            ->orderBy('account_name')
+            ->get();
         $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument'])->orderBy('date', 'desc')->get();
         $documentCategories = $businessEntity->documentCategories()
             ->whereNull('asset_id')
@@ -380,6 +384,7 @@ class BusinessEntityController extends Controller
             'assets',
             'persons',
             'bankAccounts',
+            'entityBankAccounts',
             'transactions',
             'documentCategories',
             'notes',
@@ -1356,7 +1361,10 @@ class BusinessEntityController extends Controller
 
         $this->ensureOperationalForAccounting($businessEntity);
 
-        return view('business-entities.bank-accounts.create', compact('businessEntity'));
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
+        $persons = $this->personOptionsForHolder();
+
+        return view('business-entities.bank-accounts.create', compact('businessEntity', 'businessEntities', 'persons'));
     }
 
     /**
@@ -1398,9 +1406,10 @@ class BusinessEntityController extends Controller
         }
 
         $bankAccount->load(['holderEntity', 'holderPerson']);
+        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $persons = $this->personOptionsForHolder();
 
-        return view('business-entities.bank-accounts.edit', compact('businessEntity', 'bankAccount', 'persons'));
+        return view('business-entities.bank-accounts.edit', compact('businessEntity', 'bankAccount', 'businessEntities', 'persons'));
     }
 
     /**

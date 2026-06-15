@@ -147,6 +147,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/assets/{asset}/leases/create', [AssetController::class, 'createLease'])->name('business-entities.assets.leases.create');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/leases', [AssetController::class, 'storeLease'])->name('business-entities.assets.leases.store');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/leases/sync-from-tenants', [AssetController::class, 'syncLeasesFromTenants'])->name('business-entities.assets.leases.sync-from-tenants');
+    Route::delete('/business-entities/{businessEntity}/assets/{asset}/bank-account-links/{role}', [AssetController::class, 'detachBankAccountLink'])->name('business-entities.assets.bank-account-links.destroy');
     Route::post('business-entities/{businessEntity}/assets/{asset}/invoices/create-for-lease', [AssetInvoiceController::class, 'storeForLease'])->name('assets.invoices.store-for-lease');
 
     // Entity Persons
@@ -164,7 +165,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     // Bank Accounts
     Route::get('/business-entities/{businessEntity}/bank-accounts/create', [BusinessEntityController::class, 'createBankAccount'])->name('business-entities.bank-accounts.create');
     Route::get('/business-entities/{businessEntity}/bank-accounts', function ($businessEntity) {
-        return redirect()->route('business-entities.show', $businessEntity);
+        return redirect()->route('business-entities.show', $businessEntity)->withFragment('tab_bank_accounts');
     });
     Route::post('/business-entities/{businessEntity}/bank-accounts', [BusinessEntityController::class, 'storeBankAccount'])->name('business-entities.bank-accounts.store');
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/edit', [BusinessEntityController::class, 'editBankAccount'])->name('business-entities.bank-accounts.edit');

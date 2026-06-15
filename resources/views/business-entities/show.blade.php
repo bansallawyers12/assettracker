@@ -1,4 +1,5 @@
 @php
+    use App\Models\BankAccount;
     use App\Models\BusinessEntity;
     use App\Models\Transaction;
 @endphp
@@ -165,7 +166,7 @@
                                             </svg>
                                             Tracking Categories
                                         </a>
-                                        <a href="{{ route('bank-accounts.index') }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                        <a href="#tab_bank_accounts" class="tab-link entity-tab-link inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                             <svg class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path>
                                             </svg>
@@ -941,6 +942,80 @@
                                 </div>
                             </div>
 
+                            <!-- Bank Accounts Tab -->
+                            <div id="tab_bank_accounts" class="tab-content hidden">
+                                <div class="space-y-3">
+                                    <div class="flex flex-wrap justify-between items-center gap-2">
+                                        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Bank Accounts</h3>
+                                        <div class="flex flex-wrap gap-2">
+                                            <a href="{{ route('bank-accounts.index') }}" class="inline-flex items-center px-2 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
+                                                Portfolio registry
+                                            </a>
+                                            <a href="{{ route('business-entities.bank-accounts.create', $businessEntity->id) }}#tab_bank_accounts" class="entity-btn-primary">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                </svg>
+                                                Add Account
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    @if(($entityBankAccounts ?? collect())->isEmpty())
+                                        <div class="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No bank accounts for this entity yet.</p>
+                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">Add general, loan, or offset accounts scoped to this entity.</p>
+                                            <a href="{{ route('business-entities.bank-accounts.create', $businessEntity->id) }}#tab_bank_accounts" class="entity-btn-primary mt-4 inline-flex">
+                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                </svg>
+                                                Add your first account
+                                            </a>
+                                        </div>
+                                    @else
+                                        <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+                                            <div class="overflow-x-auto">
+                                                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                                                    <thead class="bg-gray-50 dark:bg-gray-800">
+                                                        <tr>
+                                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Account</th>
+                                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">BSB</th>
+                                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Holder</th>
+                                                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Purpose</th>
+                                                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                                                        @foreach($entityBankAccounts as $account)
+                                                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
+                                                                <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                                                                    <div class="font-medium">{{ $account->account_name }}</div>
+                                                                    <div class="text-xs text-gray-500">{{ $account->bank_name }}</div>
+                                                                </td>
+                                                                <td class="px-4 py-3 text-sm font-mono text-gray-700 dark:text-gray-300">{{ BankAccount::formatBsb($account->bsb) }}</td>
+                                                                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                                                                    @if($account->holder_type)
+                                                                        {{ $account->holderLabel() }}
+                                                                    @else
+                                                                        <span class="text-gray-400">—</span>
+                                                                    @endif
+                                                                </td>
+                                                                <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ BankAccount::purposeLabel($account->account_purpose) }}</td>
+                                                                <td class="px-4 py-3 text-right">
+                                                                    @include('bank-accounts.partials.account-link-actions', [
+                                                                        'editUrl' => route('business-entities.bank-accounts.edit', [$businessEntity, $account]),
+                                                                        'editTitle' => 'Edit account',
+                                                                    ])
+                                                                </td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+
                             <!-- Bank Import Tab -->
                             <div id="tab_bank_import" class="tab-content hidden">
                                 <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
@@ -961,12 +1036,18 @@
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                                                 <div>
                                                     <label for="bank_account_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Bank Account *</label>
-                                                    <select id="bank_account_id" name="bank_account_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
-                                                        <option value="">Choose a bank account...</option>
-                                                        @foreach($businessEntity->bankAccounts->where('account_purpose', 'general') as $bankAccount)
-                                                            <option value="{{ $bankAccount->id }}">{{ $bankAccount->bank_name }} - {{ $bankAccount->account_number }}</option>
-                                                        @endforeach
-                                                    </select>
+                                                    <div class="flex gap-2 items-start">
+                                                        <select id="bank_account_id" name="bank_account_id" class="flex-1 mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
+                                                            <option value="">Choose a bank account...</option>
+                                                            @foreach($businessEntity->bankAccounts->where('account_purpose', 'general') as $bankAccount)
+                                                                <option value="{{ $bankAccount->id }}">{{ $bankAccount->account_name }} — {{ BankAccount::formatBsb($bankAccount->bsb) }}</option>
+                                                            @endforeach
+                                                        </select>
+                                                        @include('bank-accounts.partials.account-link-actions', [
+                                                            'associateUrl' => route('business-entities.bank-accounts.create', $businessEntity) . '?purpose=general',
+                                                            'associateTitle' => 'Add bank account',
+                                                        ])
+                                                    </div>
                                                 </div>
                                                 <div>
                                                     <label for="statement_file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Statement File *</label>
