@@ -495,15 +495,12 @@ class BusinessEntityController extends Controller
             })
             ->values();
 
-        $assetDueDates = Asset::where(function ($q) {
-            $q->whereDate('registration_due_date', '>=', now())
-                ->whereDate('registration_due_date', '<=', now()->addDays(15));
-        })->with('businessEntity')->get();
+        $assetDueDateItems = Asset::upcomingDueDateRows();
 
-        $entityDueDates = EntityPerson::where(function ($q) {
-            $q->whereDate('asic_due_date', '>=', now())
-                ->whereDate('asic_due_date', '<=', now()->addDays(15));
-        })->with('businessEntity')->get();
+        $entityDueDates = EntityPerson::whereNotNull('asic_due_date')
+            ->whereDate('asic_due_date', '<=', now()->addDays(15))
+            ->with('businessEntity')
+            ->get();
 
         $payerOptions = TransactionPayerResolver::payerOptions();
 
@@ -517,7 +514,7 @@ class BusinessEntityController extends Controller
             'allReminders', // Pass combined reminders
             'persons',
             'uniquePersons',
-            'assetDueDates',
+            'assetDueDateItems',
             'entityDueDates',
             'payerOptions',
             'commitmentSummary'

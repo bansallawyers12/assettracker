@@ -368,7 +368,7 @@
                             <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assetDueDates->count() + $entityDueDates->count() }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assetDueDateItems->count() + $entityDueDates->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Due Soon</div>
                 </div>
                 <a href="{{ route('commitments.index') }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow block">
@@ -540,30 +540,47 @@
                             <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline">Full list</a>
                         </div>
                         <div class="p-5">
-                            @if ($assetDueDates->isNotEmpty() || $entityDueDates->isNotEmpty())
+                            @if ($assetDueDateItems->isNotEmpty() || $entityDueDates->isNotEmpty())
                                 <div class="space-y-3">
-                                    @foreach ($assetDueDates as $asset)
-                                        @if ($asset->registration_due_date)
-                                            <div class="flex items-start gap-4 p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
-                                                <div class="shrink-0 w-2 h-2 mt-2 rounded-full bg-red-400"></div>
-                                                <div class="flex-1 min-w-0">
-                                                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">Registration Due &mdash; {{ $asset->name }} ({{ $asset->asset_type }})</p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $asset->businessEntity->legal_name ?? 'Unknown Entity' }} &middot; {{ $asset->registration_due_date->format('d/m/Y') }}</p>
-                                                    @if ($asset->business_entity_id && $asset->businessEntity)
-                                                        <div class="mt-2 flex gap-2">
-                                                            <form action="{{ route('assets.finalize-due-date', [$asset->business_entity_id, $asset->id, 'registration']) }}" method="POST">
-                                                                @csrf
-                                                                <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Finalize</button>
-                                                            </form>
-                                                            <form action="{{ route('assets.extend-due-date', [$asset->business_entity_id, $asset->id, 'registration']) }}" method="POST">
-                                                                @csrf
-                                                                <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Extend (3 days)</button>
-                                                            </form>
-                                                        </div>
-                                                    @endif
-                                                </div>
+                                    @foreach ($assetDueDateItems as $item)
+                                        @php
+                                            $asset = $item->asset;
+                                            $dashboardColorClasses = [
+                                                'red' => 'bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30',
+                                                'orange' => 'bg-orange-50/50 dark:bg-orange-900/10 border-orange-100 dark:border-orange-900/30',
+                                                'blue' => 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/30',
+                                                'purple' => 'bg-purple-50/50 dark:bg-purple-900/10 border-purple-100 dark:border-purple-900/30',
+                                                'green' => 'bg-green-50/50 dark:bg-green-900/10 border-green-100 dark:border-green-900/30',
+                                                'yellow' => 'bg-yellow-50/50 dark:bg-yellow-900/10 border-yellow-100 dark:border-yellow-900/30',
+                                            ];
+                                            $dotColorClasses = [
+                                                'red' => 'bg-red-400',
+                                                'orange' => 'bg-orange-400',
+                                                'blue' => 'bg-blue-400',
+                                                'purple' => 'bg-purple-400',
+                                                'green' => 'bg-green-400',
+                                                'yellow' => 'bg-yellow-400',
+                                            ];
+                                        @endphp
+                                        <div class="flex items-start gap-4 p-4 rounded-xl border {{ $dashboardColorClasses[$item->color] ?? 'bg-gray-50/50 dark:bg-gray-900/10 border-gray-100 dark:border-gray-700' }}">
+                                            <div class="shrink-0 w-2 h-2 mt-2 rounded-full {{ $dotColorClasses[$item->color] ?? 'bg-gray-400' }}"></div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $item->label }} Due &mdash; {{ $asset->name }} ({{ $asset->asset_type }})</p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $asset->businessEntity->legal_name ?? 'Unknown Entity' }} &middot; {{ $item->date->format('d/m/Y') }}</p>
+                                                @if ($asset->business_entity_id && $asset->businessEntity)
+                                                    <div class="mt-2 flex gap-2">
+                                                        <form action="{{ route('assets.finalize-due-date', [$asset->business_entity_id, $asset->id, $item->finalize_type]) }}" method="POST">
+                                                            @csrf
+                                                            <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Finalize</button>
+                                                        </form>
+                                                        <form action="{{ route('assets.extend-due-date', [$asset->business_entity_id, $asset->id, $item->finalize_type]) }}" method="POST">
+                                                            @csrf
+                                                            <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Extend (3 days)</button>
+                                                        </form>
+                                                    </div>
+                                                @endif
                                             </div>
-                                        @endif
+                                        </div>
                                     @endforeach
 
                                     @foreach ($entityDueDates as $entityDueDate)

@@ -156,7 +156,7 @@
                 @else
                     <div class="p-5 border-b border-gray-100 dark:border-gray-700">
                         <h2 class="text-base font-bold text-gray-900 dark:text-white">Everything with a due date</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Active reminders, note reminders, unpaid bills with a due date, asset registration dates, and ASIC director due dates — sorted by date.</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Active reminders, note reminders, unpaid bills with a due date, asset due dates (registration, rates, land tax, etc.), ASIC director due dates, and commitments — sorted by date.</p>
                     </div>
                     <div class="p-5">
                         @if ($duePaginator->isEmpty())
@@ -193,14 +193,14 @@
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $t->businessEntity?->legal_name }}</p>
                                                 <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium {{ $isOverdue($t->due_date) ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200' : 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200' }}">{{ $t->due_date?->format('d/m/Y') }}</span>
-                                            @elseif ($row->kind === 'registration')
+                                            @elseif ($row->kind === 'asset_due')
                                                 @php $a = $row->asset; @endphp
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
-                                                    Registration due — {{ $a->name }} ({{ $a->asset_type }})
-                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">ASSET</span>
+                                                    {{ $row->due_label }} due — {{ $a->name }} ({{ $a->asset_type }})
+                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-200">ASSET</span>
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $a->businessEntity?->legal_name }}</p>
-                                                <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200">{{ $a->registration_due_date?->format('d/m/Y') }}</span>
+                                                <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium bg-yellow-50 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">{{ $row->sort_date?->format('d/m/Y') }}</span>
                                             @elseif ($row->kind === 'asic')
                                                 @php $ep = $row->entityPerson; @endphp
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
@@ -255,17 +255,17 @@
                                             @elseif ($row->kind === 'bill')
                                                 @php $t = $row->transaction; @endphp
                                                 <a href="{{ route('business-entities.transactions.edit', [$t->business_entity_id, $t->id]) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Edit</a>
-                                            @elseif ($row->kind === 'registration')
+                                            @elseif ($row->kind === 'asset_due')
                                                 @php $a = $row->asset; @endphp
                                                 <div class="flex flex-col items-end gap-2">
                                                     <a href="{{ route('business-entities.assets.show', [$a->business_entity_id, $a->id]) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Asset</a>
                                                     @if ($a->business_entity_id)
                                                         <div class="flex flex-wrap gap-2 justify-end">
-                                                            <form action="{{ route('assets.finalize-due-date', [$a->business_entity_id, $a->id, 'registration']) }}" method="POST" class="inline">
+                                                            <form action="{{ route('assets.finalize-due-date', [$a->business_entity_id, $a->id, $row->finalize_type]) }}" method="POST" class="inline">
                                                                 @csrf
                                                                 <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Finalize</button>
                                                             </form>
-                                                            <form action="{{ route('assets.extend-due-date', [$a->business_entity_id, $a->id, 'registration']) }}" method="POST" class="inline">
+                                                            <form action="{{ route('assets.extend-due-date', [$a->business_entity_id, $a->id, $row->finalize_type]) }}" method="POST" class="inline">
                                                                 @csrf
                                                                 <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Extend</button>
                                                             </form>
