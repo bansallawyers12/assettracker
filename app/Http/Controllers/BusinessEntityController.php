@@ -15,6 +15,8 @@ use App\Models\Note;
 use App\Models\Person; // Added for date manipulation
 use App\Models\Reminder; // Added for logging
 use App\Models\Transaction; // Added for file storage
+use App\Rules\UniqueAbnHash;
+use App\Rules\UniqueAcnHash;
 use App\Services\CommitmentReportService;
 use App\Services\DocumentUploadService;
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
@@ -265,9 +267,9 @@ class BusinessEntityController extends Controller
             'legal_name' => 'required|string|max:255',
             'trading_name' => 'nullable|string|max:255',
             'entity_type' => 'required|in:Sole Trader,Company,Trust,Partnership',
-            'abn' => 'nullable|string|max:11|unique:business_entities,abn',
-            'acn' => 'nullable|string|max:9|unique:business_entities,acn',
-            'tfn' => 'nullable|string|max:9', // Consider security implications of storing TFN
+            'abn' => ['nullable', 'string', 'max:11', new UniqueAbnHash()],
+            'acn' => ['nullable', 'string', 'max:9', new UniqueAcnHash()],
+            'tfn' => 'nullable|string|max:9',
             'corporate_key' => 'nullable|string|max:255',
             'registered_address' => 'required|string',
             'registered_email' => 'required|email|max:255',
@@ -1316,9 +1318,9 @@ class BusinessEntityController extends Controller
             'legal_name' => 'required|string|max:255',
             'trading_name' => 'nullable|string|max:255',
             'entity_type' => 'required|in:Sole Trader,Company,Trust,Partnership',
-            'abn' => 'nullable|string|max:11|unique:business_entities,abn,'.$businessEntity->id,
-            'acn' => 'nullable|string|max:9|unique:business_entities,acn,'.$businessEntity->id,
-            'tfn' => 'nullable|string|max:9', // Consider security
+            'abn' => ['nullable', 'string', 'max:11', new UniqueAbnHash($businessEntity->id)],
+            'acn' => ['nullable', 'string', 'max:9', new UniqueAcnHash($businessEntity->id)],
+            'tfn' => 'nullable|string|max:9',
             'corporate_key' => 'nullable|string|max:255',
             'registered_address' => 'required|string',
             'registered_email' => 'required|email|max:255',

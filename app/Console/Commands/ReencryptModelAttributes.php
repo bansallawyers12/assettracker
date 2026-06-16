@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\BankAccount;
+use App\Models\BusinessEntity;
+use App\Models\Email;
 use App\Models\Person;
 use App\Models\User;
 use App\Support\EncryptionHelper;
@@ -26,9 +28,11 @@ class ReencryptModelAttributes extends Command
         $this->line('APP_PREVIOUS_KEYS configured: '.EncryptionHelper::previousKeyCount());
 
         $specs = [
-            [User::class, 'users'],
-            [Person::class, 'persons'],
-            [BankAccount::class, 'bank_accounts'],
+            [User::class,           'users'],
+            [Person::class,         'persons'],
+            [BankAccount::class,    'bank_accounts'],
+            [Email::class,          'emails'],
+            [BusinessEntity::class, 'business_entities'],
         ];
 
         foreach ($specs as [$class, $table]) {

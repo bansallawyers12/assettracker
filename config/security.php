@@ -72,12 +72,11 @@ return [
 
     'database' => [
         'encrypt_fields' => [
-            'users' => ['email', 'phone', 'address'],
-            'bank_accounts' => ['account_number'],
-            'business_entities' => ['tax_id', 'registration_number'],
-            'persons' => ['ssn', 'passport_number', 'drivers_license'],
-            'invoices' => ['notes'],
-            'transactions' => ['description', 'reference'],
+            'users'             => ['email', 'phone', 'address', 'two_factor_secret', 'two_factor_backup_codes'],
+            'bank_accounts'     => ['account_number'],
+            'business_entities' => ['tfn', 'abn', 'acn', 'corporate_key'],
+            'persons'           => ['first_name', 'last_name', 'email', 'tfn', 'abn', 'phone_number', 'address', 'identification_number', 'ssn', 'passport_number', 'drivers_license'],
+            'emails'            => ['password'],
         ],
         'encryption_key' => env('DB_ENCRYPTION_KEY', env('APP_KEY')),
     ],
