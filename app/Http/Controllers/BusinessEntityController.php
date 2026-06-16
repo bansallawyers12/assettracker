@@ -1944,7 +1944,7 @@ class BusinessEntityController extends Controller
         $validated = $request->validate($this->portfolioBankAccountValidationRules());
 
         BankAccount::create(
-            $this->portfolioBankAccountAttributesFromRequest($validated)
+            $this->portfolioBankAccountAttributesFromRequest($validated, null)
         );
 
         return redirect()->route('bank-accounts.index')
@@ -1973,7 +1973,7 @@ class BusinessEntityController extends Controller
         $validated = $request->validate($this->portfolioBankAccountValidationRules($bankAccount));
 
         $bankAccount->update(
-            $this->portfolioBankAccountAttributesFromRequest($validated)
+            $this->portfolioBankAccountAttributesFromRequest($validated, $bankAccount)
         );
 
         return redirect()->route('bank-accounts.index')
@@ -2289,22 +2289,24 @@ class BusinessEntityController extends Controller
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
-    private function portfolioBankAccountAttributesFromRequest(array $validated): array
+    private function portfolioBankAccountAttributesFromRequest(array $validated, ?BankAccount $existing = null): array
     {
         $purpose  = $validated['account_purpose'];
         $entityId = $purpose === BankAccount::PURPOSE_LOAN_REPAYMENT
             ? null
             : (isset($validated['business_entity_id']) ? (int) $validated['business_entity_id'] : null);
 
-        $entity = null;
         if ($entityId) {
-            $entity = BusinessEntity::findOrFail($entityId);
-            abort_unless((int) $entity->user_id === (int) auth()->id(), 403, 'Unauthorized action.');
+            BusinessEntity::query()
+                ->operationalEntities()
+                ->whereKey($entityId)
+                ->firstOrFail();
         }
 
         return array_merge([
             'business_entity_id' => $entityId,
-            'user_id'            => $entity?->user_id ?? auth()->id(),
+            // Portfolio accounts are created by the logged-in user; entity ownership may differ.
+            'user_id'            => $existing?->user_id ?? (int) auth()->id(),
             'account_name'       => $validated['account_name'],
             'bank_name'          => $validated['bank_name'],
             'bsb'                => BankAccount::normalizeBsb($validated['bsb']),
