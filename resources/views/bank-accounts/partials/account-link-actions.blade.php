@@ -33,7 +33,7 @@
     @endif
 
     @if(! empty($unlinkUrl))
-        <form method="POST" action="{{ $unlinkUrl }}" class="inline" onsubmit="return confirm('{{ $unlinkConfirm ?? 'Remove this account link?' }}');">
+        <form method="POST" action="{{ $unlinkUrl }}" class="inline" onsubmit="return confirm({{ json_encode($unlinkConfirm ?? 'Remove this account link?') }});">
             @csrf
             @method('DELETE')
             <button

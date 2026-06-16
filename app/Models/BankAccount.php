@@ -98,6 +98,32 @@ class BankAccount extends Model
         return substr($digits, 0, 3).'-'.substr($digits, 3);
     }
 
+    /**
+     * Mask an account number for display (e.g. ****6789).
+     */
+    public static function maskAccountNumber(?string $accountNumber, int $visibleDigits = 4): ?string
+    {
+        if ($accountNumber === null || trim($accountNumber) === '') {
+            return null;
+        }
+
+        $digits = preg_replace('/\D/', '', $accountNumber);
+        if ($digits === '') {
+            return '****';
+        }
+
+        if (strlen($digits) <= $visibleDigits) {
+            return str_repeat('*', strlen($digits));
+        }
+
+        return str_repeat('*', 4).substr($digits, -$visibleDigits);
+    }
+
+    public function maskedAccountNumber(): ?string
+    {
+        return self::maskAccountNumber($this->account_number);
+    }
+
     // ── Label helpers ─────────────────────────────────────────────────────────
 
     public static function purposeLabel(string $purpose): string
@@ -156,6 +182,18 @@ class BankAccount extends Model
             return "{$label} — {$holder} ({$bsb})";
         }
         return "{$label} ({$bsb})";
+    }
+
+    /**
+     * Route to edit this account (portfolio-wide or entity-scoped).
+     */
+    public function editRoute(): string
+    {
+        if ($this->isPortfolioWide()) {
+            return route('bank-accounts.edit', $this);
+        }
+
+        return route('business-entities.bank-accounts.edit', [$this->business_entity_id, $this]);
     }
 
     // ── Scope helpers ─────────────────────────────────────────────────────────

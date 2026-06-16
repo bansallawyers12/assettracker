@@ -103,7 +103,15 @@
     if (assetTypeEl && rentRow) {
         const leasableTypes = @json(Asset::LEASABLE_ASSET_TYPES);
         function toggleRent() {
-            rentRow.style.display = leasableTypes.includes(assetTypeEl.value) ? '' : 'none';
+            const show = leasableTypes.includes(assetTypeEl.value);
+            rentRow.style.display = show ? '' : 'none';
+            if (!show) {
+                const rentSelect = document.getElementById('rent_collection_bank_account_id');
+                if (rentSelect) {
+                    rentSelect.value = '';
+                    rentSelect.dispatchEvent(new Event('change'));
+                }
+            }
         }
         assetTypeEl.addEventListener('change', toggleRent);
         toggleRent();

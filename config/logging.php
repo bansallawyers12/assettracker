@@ -127,6 +127,14 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security-audit.log'),
+            'level' => 'info',
+            'days' => (int) config('security.audit.retention_days', 365),
+            'replace_placeholders' => true,
+        ],
+
     ],
 
 ];
