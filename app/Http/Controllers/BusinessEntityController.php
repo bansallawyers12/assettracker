@@ -18,6 +18,7 @@ use App\Models\Transaction; // Added for file storage
 use App\Services\CommitmentReportService;
 use App\Services\DocumentUploadService;
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
+use App\Support\SecurityAuditLogger;
 use App\Support\TransactionGstResolver;
 use App\Support\TransactionPayerResolver;
 use Carbon\Carbon; // Added for handling validation exceptions
@@ -1409,6 +1410,8 @@ class BusinessEntityController extends Controller
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $persons = $this->personOptionsForHolder();
 
+        SecurityAuditLogger::bankAccountNumberViewed(auth()->user(), $bankAccount, 'edit_form');
+
         return view('business-entities.bank-accounts.edit', compact('businessEntity', 'bankAccount', 'businessEntities', 'persons'));
     }
 
@@ -1955,6 +1958,8 @@ class BusinessEntityController extends Controller
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $persons = $this->personOptionsForHolder();
 
+        SecurityAuditLogger::bankAccountNumberViewed(auth()->user(), $bankAccount, 'edit_form');
+
         return view('bank-accounts.edit', compact('bankAccount', 'businessEntities', 'persons'));
     }
 
@@ -1971,6 +1976,22 @@ class BusinessEntityController extends Controller
 
         return redirect()->route('bank-accounts.index')
             ->with('success', 'Bank account updated successfully!');
+    }
+
+    public function revealBankAccountNumber(Request $request, BankAccount $bankAccount)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+        $this->ensureBankAccountOwnedByUser($bankAccount);
+
+        SecurityAuditLogger::bankAccountNumberViewed(
+            $request->user(),
+            $bankAccount,
+            $request->query('context', 'reveal')
+        );
+
+        return response()->json([
+            'account_number' => $bankAccount->account_number,
+        ]);
     }
 
     /**

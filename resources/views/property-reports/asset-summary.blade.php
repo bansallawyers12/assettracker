@@ -226,7 +226,17 @@
                             <td class="py-2 px-2 text-xs text-gray-600 font-mono">
                                 @if($row['loan_repayment_bsb'] || $row['loan_repayment_account_number'])
                                     @if($row['loan_repayment_bsb'])BSB {{ $row['loan_repayment_bsb'] }}@endif
-                                    @if($row['loan_repayment_account_number']) Acc: {{ $row['loan_repayment_account_number'] }}@endif
+                                    @if($row['loan_repayment_account_number'])
+                                        <span class="js-acc-masked"> Acc: {{ $row['loan_repayment_account_number'] }}</span>
+                                        @if($row['loan_repayment_bank_account_id'])
+                                            <button type="button"
+                                                    class="js-reveal-acc text-indigo-600 hover:underline ml-1 print:hidden"
+                                                    data-reveal-url="{{ route('bank-accounts.reveal-account-number', $row['loan_repayment_bank_account_id']) }}?context=asset_summary_report">
+                                                Reveal
+                                            </button>
+                                            <span class="js-acc-revealed hidden"></span>
+                                        @endif
+                                    @endif
                                 @else
                                     <span class="text-gray-300">—</span>
                                 @endif
@@ -455,5 +465,47 @@
             </span>
         </div>
     @endif
+
+    @push('scripts')
+    <script>
+    document.addEventListener('click', async function (event) {
+        const button = event.target.closest('.js-reveal-acc');
+        if (!button || button.disabled) {
+            return;
+        }
+
+        const cell = button.closest('td');
+        const masked = cell?.querySelector('.js-acc-masked');
+        const revealed = cell?.querySelector('.js-acc-revealed');
+        if (!masked || !revealed) {
+            return;
+        }
+
+        button.disabled = true;
+        button.textContent = '…';
+
+        try {
+            const response = await fetch(button.dataset.revealUrl, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                credentials: 'same-origin',
+            });
+
+            if (!response.ok) {
+                throw new Error('Request failed');
+            }
+
+            const data = await response.json();
+            masked.classList.add('hidden');
+            button.classList.add('hidden');
+            revealed.textContent = ' Acc: ' + data.account_number;
+            revealed.classList.remove('hidden');
+        } catch (error) {
+            button.disabled = false;
+            button.textContent = 'Reveal';
+            alert('Could not reveal account number.');
+        }
+    });
+    </script>
+    @endpush
 
 </x-report-shell>

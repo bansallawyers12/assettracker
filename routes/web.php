@@ -291,6 +291,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('/bank-accounts', [BusinessEntityController::class, 'storePortfolioBankAccount'])->name('bank-accounts.store');
     Route::get('/bank-accounts/{bankAccount}/edit', [BusinessEntityController::class, 'editPortfolioBankAccount'])->name('bank-accounts.edit');
     Route::put('/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'updatePortfolioBankAccount'])->name('bank-accounts.update');
+    Route::get('/bank-accounts/{bankAccount}/reveal-account-number', [BusinessEntityController::class, 'revealBankAccountNumber'])->name('bank-accounts.reveal-account-number');
     Route::get('/transactions', [BusinessEntityController::class, 'transactionsIndex'])->name('transactions.index');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
