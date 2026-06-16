@@ -18,16 +18,9 @@
         >
             <option value="">— None —</option>
             @foreach($accounts as $account)
-                @php
-                    $editUrl = $account->isPortfolioWide()
-                        ? route('bank-accounts.edit', $account)
-                        : ($businessEntity
-                            ? route('business-entities.bank-accounts.edit', [$businessEntity, $account])
-                            : route('bank-accounts.edit', $account));
-                @endphp
                 <option
                     value="{{ $account->id }}"
-                    data-edit-url="{{ $editUrl }}"
+                    data-edit-url="{{ $account->editRoute() }}"
                     @selected($selectedId === (string) $account->id)
                 >
                     {{ $account->displayLabel() }}

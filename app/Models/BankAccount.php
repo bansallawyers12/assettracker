@@ -158,6 +158,18 @@ class BankAccount extends Model
         return "{$label} ({$bsb})";
     }
 
+    /**
+     * Route to edit this account (portfolio-wide or entity-scoped).
+     */
+    public function editRoute(): string
+    {
+        if ($this->isPortfolioWide()) {
+            return route('bank-accounts.edit', $this);
+        }
+
+        return route('business-entities.bank-accounts.edit', [$this->business_entity_id, $this]);
+    }
+
     // ── Scope helpers ─────────────────────────────────────────────────────────
 
     public function isPortfolioWide(): bool

@@ -106,7 +106,7 @@ class AssetController extends Controller
         $validatedData['status'] = $validatedData['status'] ?? 'Active';
         $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
         $bankAccountLinks = $this->extractBankAccountLinks($validatedData);
-        $this->validateBankAccountLinks($bankAccountLinks, $businessEntity);
+        $this->validateBankAccountLinks($bankAccountLinks, $businessEntity, $validatedData['asset_type'] ?? 'Car');
 
         $assetData = array_merge($validatedData, [
             'business_entity_id' => $businessEntity->id,
@@ -114,7 +114,7 @@ class AssetController extends Controller
         ]);
 
         $asset = $businessEntity->assets()->create($assetData);
-        $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity);
+        $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity, $validatedData['asset_type'] ?? 'Car');
 
         return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
             ->with('success', 'Asset created successfully');
@@ -128,7 +128,9 @@ class AssetController extends Controller
             'notes',
             'leases.tenant',
             'tenants.realEstateCompany.contacts',
-            'bankAccounts',
+            'bankAccounts.holderEntity',
+            'bankAccounts.holderPerson',
+            'bankAccounts.businessEntity',
             'transactions' => fn ($q) => $q->orderBy('date', 'desc'),
         ]);
 
@@ -219,10 +221,8 @@ class AssetController extends Controller
 
         $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
         $bankAccountLinks = $this->extractBankAccountLinks($validatedData);
-        $this->validateBankAccountLinks($bankAccountLinks, $businessEntity);
-
-        $asset->update($validatedData);
-        $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity);
+        $this->validateBankAccountLinks($bankAccountLinks, $businessEntity, $validatedData['asset_type']);
+        $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity, $validatedData['asset_type']);
 
         return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
             ->with('success', 'Asset updated successfully');
@@ -306,6 +306,7 @@ class AssetController extends Controller
 
         return redirect()
             ->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
+            ->withFragment('linked-accounts')
             ->with('success', 'Bank account link removed.');
     }
 
@@ -741,7 +742,7 @@ class AssetController extends Controller
     /**
      * @param  array<string, int|null>  $links  keyed by pivot role
      */
-    private function validateBankAccountLinks(array $links, BusinessEntity $businessEntity): void
+    private function validateBankAccountLinks(array $links, BusinessEntity $businessEntity, ?string $assetType = null): void
     {
         $fieldMap = [
             BankAccount::ROLE_LOAN            => 'loan_bank_account_id',
@@ -751,6 +752,7 @@ class AssetController extends Controller
         ];
 
         $errors = [];
+        $isLeasable = in_array($assetType ?? '', Asset::LEASABLE_ASSET_TYPES, true);
 
         foreach (BankAccount::ASSET_ROLES as $role) {
             $accountId = $links[$role] ?? null;
@@ -759,7 +761,12 @@ class AssetController extends Controller
                 continue;
             }
 
-            $bankAccount = BankAccount::find($accountId);
+            if ($role === BankAccount::ROLE_RENT_COLLECTION && ! $isLeasable) {
+                $errors[$fieldMap[$role]] = 'Rent collection accounts can only be linked to leasable properties.';
+                continue;
+            }
+
+            $bankAccount = BankAccount::with('businessEntity')->find($accountId);
 
             if (! $bankAccount || ! $bankAccount->isValidForAssetRole($businessEntity, $role)) {
                 $errors[$fieldMap[$role]] = 'The selected bank account is not valid for this slot.';
@@ -774,12 +781,19 @@ class AssetController extends Controller
     /**
      * @param  array<string, int|null>  $links  keyed by pivot role
      */
-    private function syncBankAccountLinks(Asset $asset, array $links, BusinessEntity $businessEntity): void
+    private function syncBankAccountLinks(Asset $asset, array $links, BusinessEntity $businessEntity, ?string $assetType = null): void
     {
+        $assetType ??= $asset->asset_type;
+        $isLeasable = in_array($assetType ?? '', Asset::LEASABLE_ASSET_TYPES, true);
+
         foreach (BankAccount::ASSET_ROLES as $role) {
             $accountId = $links[$role] ?? null;
 
             $asset->bankAccounts()->wherePivot('role', $role)->detach();
+
+            if ($role === BankAccount::ROLE_RENT_COLLECTION && ! $isLeasable) {
+                continue;
+            }
 
             if (! $accountId) {
                 continue;

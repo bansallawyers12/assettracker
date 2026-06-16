@@ -2214,17 +2214,27 @@ class BusinessEntityController extends Controller
      */
     private function holderValidationRules(): array
     {
+        $userId = (int) auth()->id();
+
         return [
             'holder_type'      => ['nullable', Rule::in(BankAccount::HOLDER_TYPES)],
             'holder_entity_id' => [
                 'nullable',
                 Rule::requiredIf(fn () => request('holder_type') === BankAccount::HOLDER_ENTITY),
-                Rule::exists('business_entities', 'id'),
+                Rule::exists('business_entities', 'id')->where('user_id', $userId),
             ],
             'holder_person_id' => [
                 'nullable',
                 Rule::requiredIf(fn () => request('holder_type') === BankAccount::HOLDER_PERSON),
-                Rule::exists('persons', 'id'),
+                Rule::exists('persons', 'id')->where(function ($query) use ($userId) {
+                    $query->whereExists(function ($sub) use ($userId) {
+                        $sub->selectRaw('1')
+                            ->from('entity_person')
+                            ->join('business_entities', 'business_entities.id', '=', 'entity_person.business_entity_id')
+                            ->whereColumn('entity_person.person_id', 'persons.id')
+                            ->where('business_entities.user_id', $userId);
+                    });
+                }),
             ],
             'holder_other'     => [
                 'nullable',

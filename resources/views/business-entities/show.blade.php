@@ -1002,7 +1002,7 @@
                                                                 <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ BankAccount::purposeLabel($account->account_purpose) }}</td>
                                                                 <td class="px-4 py-3 text-right">
                                                                     @include('bank-accounts.partials.account-link-actions', [
-                                                                        'editUrl' => route('business-entities.bank-accounts.edit', [$businessEntity, $account]),
+                                                                        'editUrl' => $account->editRoute(),
                                                                         'editTitle' => 'Edit account',
                                                                     ])
                                                                 </td>
@@ -1192,6 +1192,21 @@
 
             const initialTab = window.location.hash ? window.location.hash.substring(1) : 'tab_assets';
             switchTab(initialTab, { fixInvalidHash: true });
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const preselectedBankAccountId = urlParams.get('bank_account_id');
+            if (preselectedBankAccountId) {
+                const bankSelect = document.getElementById('bank_account_id');
+                if (bankSelect) {
+                    bankSelect.value = preselectedBankAccountId;
+                }
+                urlParams.delete('bank_account_id');
+                const cleanedSearch = urlParams.toString();
+                const cleanedUrl = window.location.pathname
+                    + (cleanedSearch ? '?' + cleanedSearch : '')
+                    + window.location.hash;
+                history.replaceState(null, '', cleanedUrl);
+            }
 
             // Fetch data for Compose Email tab
             if (document.getElementById('tab_compose_email') && fromEmailSelect) {

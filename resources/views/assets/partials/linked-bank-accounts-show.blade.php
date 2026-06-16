@@ -11,14 +11,7 @@
 
     $editAssetUrl = route('business-entities.assets.edit', [$businessEntity, $asset]) . '#linked-accounts';
 
-    $accountEditUrl = function (?BankAccount $account) use ($businessEntity) {
-        if (! $account) {
-            return null;
-        }
-        return $account->isPortfolioWide()
-            ? route('bank-accounts.edit', $account)
-            : route('business-entities.bank-accounts.edit', [$businessEntity, $account]);
-    };
+    $accountEditUrl = fn (?BankAccount $account) => $account?->editRoute();
 
     $unlinkUrl = fn (string $role) => route('business-entities.assets.bank-account-links.destroy', [
         $businessEntity,
@@ -54,7 +47,7 @@
     ];
 @endphp
 
-<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700" id="linked-accounts">
     <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100">Linked Accounts</h4>
         <a href="{{ $editAssetUrl }}" class="inline-flex items-center px-2 py-1 text-xs font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-md border border-indigo-200">
