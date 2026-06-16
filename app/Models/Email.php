@@ -1,28 +1,16 @@
 <?php
+
 namespace App\Models;
 
-#use Illuminate\Notifications\Notifiable;
-#use Kyslik\ColumnSortable\Sortable;
-#use Illuminate\Foundation\Auth\User as Authenticatable;
-
+use App\Traits\EncryptsAttributes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-
 class Email extends Model
 {
-    //use Notifiable;
-	//use Sortable;
-	
-	use HasFactory;
+    use HasFactory, EncryptsAttributes;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array
-     */
-	 
-	protected $fillable = [
+    protected $fillable = [
         'email',
         'password',
         'email_signature',
@@ -30,9 +18,17 @@ class Email extends Model
         'status',
         'user_id',
         'type',
-        'error_message'
+        'error_message',
     ];
 
-	//public $sortable = ['id', 'created_at', 'updated_at'];
+    /**
+     * Fields encrypted at rest via EncryptsAttributes.
+     * The password column must be TEXT (see migration widen_emails_password_to_text).
+     */
+    protected $encrypted = ['password'];
 
+    /**
+     * Never expose the mailbox password in JSON / API responses.
+     */
+    protected $hidden = ['password'];
 }

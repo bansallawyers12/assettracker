@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\BankAccount;
+use App\Models\BusinessEntity;
+use App\Models\Email;
 use App\Models\Person;
 use App\Models\User;
 use App\Support\EncryptionHelper;
@@ -33,9 +35,11 @@ class BackfillPersonsEncryption extends Command
 
     /** @var array<string, array{class: class-string, table: string}> */
     private array $specs = [
-        'person'       => ['class' => Person::class,      'table' => 'persons'],
-        'user'         => ['class' => User::class,         'table' => 'users'],
-        'bank_account' => ['class' => BankAccount::class,  'table' => 'bank_accounts'],
+        'person'          => ['class' => Person::class,         'table' => 'persons'],
+        'user'            => ['class' => User::class,            'table' => 'users'],
+        'bank_account'    => ['class' => BankAccount::class,     'table' => 'bank_accounts'],
+        'email'           => ['class' => Email::class,           'table' => 'emails'],
+        'business_entity' => ['class' => BusinessEntity::class,  'table' => 'business_entities'],
     ];
 
     public function handle(): int

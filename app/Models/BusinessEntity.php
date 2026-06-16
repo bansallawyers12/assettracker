@@ -2,11 +2,21 @@
 
 namespace App\Models;
 
+use App\Traits\EncryptsAttributes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
 
 class BusinessEntity extends Model
 {
+    use EncryptsAttributes;
+
+    /**
+     * Fields encrypted at rest.
+     * Columns must be TEXT (see migration encrypt_business_entity_sensitive_fields).
+     * abn and acn are also mirrored to abn_hash / acn_hash for lookups and uniqueness.
+     */
+    protected $encrypted = ['tfn', 'abn', 'acn', 'corporate_key'];
+
     protected $fillable = [
         'legal_name',
         'trading_name',
@@ -30,7 +40,11 @@ class BusinessEntity extends Model
         'user_id',
         'status',
         'exclude_from_financial_reports',
+        'abn_hash',
+        'acn_hash',
     ];
+
+    protected $hidden = ['abn_hash', 'acn_hash'];
 
     protected $casts = [
         'trust_establishment_date' => 'date',
@@ -41,6 +55,38 @@ class BusinessEntity extends Model
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
+
+    /**
+     * Override setAttribute to maintain HMAC hash columns alongside encrypted abn/acn.
+     * The hash is computed from normalised digits (no formatting) so it is stable regardless
+     * of how the user enters the value (e.g. "12 345 678 901" vs "12345678901").
+     */
+    public function setAttribute($key, $value): mixed
+    {
+        if ($key === 'abn') {
+            $this->attributes['abn_hash'] = $this->computeAbnHash($value);
+        }
+
+        if ($key === 'acn') {
+            $this->attributes['acn_hash'] = $this->computeAcnHash($value);
+        }
+
+        return parent::setAttribute($key, $value);
+    }
+
+    private function computeAbnHash(mixed $abn): ?string
+    {
+        $digits = preg_replace('/\D/', '', (string) $abn);
+
+        return $digits !== '' ? hash_hmac('sha256', $digits, config('app.key')) : null;
+    }
+
+    private function computeAcnHash(mixed $acn): ?string
+    {
+        $digits = preg_replace('/\D/', '', (string) $acn);
+
+        return $digits !== '' ? hash_hmac('sha256', $digits, config('app.key')) : null;
+    }
 
     /**
      * Your operating companies/trusts (excludes tenancy/property-manager contacts).
