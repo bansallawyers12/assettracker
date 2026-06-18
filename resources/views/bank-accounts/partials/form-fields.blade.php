@@ -150,11 +150,14 @@
             <option value="">Select person</option>
             @foreach($persons ?? [] as $person)
                 <option value="{{ $person->id }}" @selected((string) $currentHolderPersonId === (string) $person->id)>
-                    {{ trim($person->first_name.' '.$person->last_name) }}
+                    {{ $person->displayName() }}
                 </option>
             @endforeach
         </select>
         @error('holder_person_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+        @if(($persons ?? collect())->isEmpty())
+            <p class="mt-1 text-xs text-amber-600">No persons found. Add a person under an entity first (Persons tab on any business entity).</p>
+        @endif
     </div>
 
     {{-- Free text --}}

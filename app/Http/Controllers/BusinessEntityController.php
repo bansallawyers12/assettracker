@@ -2280,25 +2280,23 @@ class BusinessEntityController extends Controller
      */
     private function holderValidationRules(): array
     {
-        $userId = (int) auth()->id();
-
         return [
             'holder_type'      => ['required', Rule::in(BankAccount::HOLDER_TYPES)],
             'holder_entity_id' => [
                 'nullable',
                 Rule::requiredIf(fn () => request('holder_type') === BankAccount::HOLDER_ENTITY),
-                BusinessEntity::ruleExistsOperational()->where('user_id', $userId),
+                BusinessEntity::ruleExistsOperational(),
             ],
             'holder_person_id' => [
                 'nullable',
                 Rule::requiredIf(fn () => request('holder_type') === BankAccount::HOLDER_PERSON),
-                Rule::exists('persons', 'id')->where(function ($query) use ($userId) {
-                    $query->whereExists(function ($sub) use ($userId) {
+                Rule::exists('persons', 'id')->where(function ($query) {
+                    $query->whereExists(function ($sub) {
                         $sub->selectRaw('1')
                             ->from('entity_person')
                             ->join('business_entities', 'business_entities.id', '=', 'entity_person.business_entity_id')
                             ->whereColumn('entity_person.person_id', 'persons.id')
-                            ->where('business_entities.user_id', $userId);
+                            ->where('business_entities.exclude_from_financial_reports', false);
                     });
                 }),
             ],
@@ -2390,10 +2388,11 @@ class BusinessEntityController extends Controller
      */
     private function personOptionsForHolder(): \Illuminate\Support\Collection
     {
-        return \App\Models\Person::query()
-            ->whereHas('businessEntities', fn ($q) => $q->where('business_entities.user_id', auth()->id()))
-            ->orderByRaw('first_name, last_name')
-            ->get();
+        return Person::query()
+            ->linkedToOperationalEntities()
+            ->get()
+            ->sortBy(fn (Person $person) => $person->displayName(), SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
     }
 
     private function ensureBankAccountOwnedByUser(BankAccount $bankAccount): void
