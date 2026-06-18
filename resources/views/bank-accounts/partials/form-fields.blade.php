@@ -105,7 +105,7 @@
             @endforeach
         </select>
         @error('business_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-        <p class="mt-1 text-xs text-gray-500">Not required for portfolio-wide loan repayment accounts.</p>
+        <p class="mt-1 text-xs text-gray-500">Optional for general and loan repayment accounts. Required for loan, offset, rent receiving, and rent paying accounts.</p>
     </div>
 @endif
 

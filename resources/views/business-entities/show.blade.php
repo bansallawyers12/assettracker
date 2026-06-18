@@ -414,7 +414,7 @@
                                                                             @csrf
                                                                             <select name="bank_statement_entry_id" class="border-gray-300 dark:border-gray-600 rounded-md shadow-xs text-xs mr-1 focus:ring-indigo-500 focus:border-indigo-500">
                                                                                 <option value="">Match to Entry</option>
-                                                                                @foreach ($bankAccounts->where('account_purpose', 'general') as $bankAccount)
+                                                                                @foreach ($bankAccounts->whereIn('account_purpose', BankAccount::ENTITY_OPERATING_PURPOSES) as $bankAccount)
                                                                                     @foreach ($bankAccount->bankStatementEntries()->whereNull('transaction_id')->get() as $entry)
                                                                                         <option value="{{ $entry->id }}">{{ $entry->description }} ({{ $entry->amount }}) - {{ $bankAccount->bank_name }}</option>
                                                                                     @endforeach
@@ -1000,7 +1000,7 @@
                                                     <div class="flex gap-2 items-start">
                                                         <select id="bank_account_id" name="bank_account_id" class="flex-1 mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
                                                             <option value="">Choose a bank account...</option>
-                                                            @foreach($businessEntity->bankAccounts->where('account_purpose', 'general') as $bankAccount)
+                                                            @foreach($businessEntity->bankAccounts->whereIn('account_purpose', BankAccount::ENTITY_OPERATING_PURPOSES) as $bankAccount)
                                                                 <option value="{{ $bankAccount->id }}">{{ $bankAccount->account_name }} — {{ BankAccount::formatBsb($bankAccount->bsb) }}</option>
                                                             @endforeach
                                                         </select>

@@ -53,6 +53,18 @@ class BankAccountFormTest extends TestCase
         $this->assertFalse(BankAccount::isKnownBank(null));
     }
 
+    public function test_purpose_labels_include_rent_purposes(): void
+    {
+        $this->assertSame('Rent receiving', BankAccount::purposeLabel(BankAccount::PURPOSE_RENT_RECEIVING));
+        $this->assertSame('Rent paying', BankAccount::purposeLabel(BankAccount::PURPOSE_RENT_PAYING));
+    }
+
+    public function test_rent_receiving_purposes_include_general_and_rent_receiving(): void
+    {
+        $this->assertContains(BankAccount::PURPOSE_GENERAL, BankAccount::RENT_RECEIVING_PURPOSES);
+        $this->assertContains(BankAccount::PURPOSE_RENT_RECEIVING, BankAccount::RENT_RECEIVING_PURPOSES);
+    }
+
     public function test_holder_group_key_for_entity_and_person(): void
     {
         $this->assertSame('entity:5', (new BankAccount([

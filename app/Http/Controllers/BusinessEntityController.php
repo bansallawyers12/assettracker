@@ -355,7 +355,7 @@ class BusinessEntityController extends Controller
         $assets = $businessEntity->assets;
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
         $bankAccounts = $businessEntity->bankAccounts()
-            ->where('account_purpose', BankAccount::PURPOSE_GENERAL)
+            ->whereIn('account_purpose', BankAccount::ENTITY_OPERATING_PURPOSES)
             ->with(['bankStatementEntries.transaction'])
             ->get();
         $entityBankAccounts = $businessEntity->bankAccounts()
@@ -2266,7 +2266,10 @@ class BusinessEntityController extends Controller
             'account_number' => 'required|string|max:255',
             'account_purpose' => ['required', Rule::in(BankAccount::PURPOSES)],
             'business_entity_id' => [
-                Rule::requiredIf(fn () => request('account_purpose') !== BankAccount::PURPOSE_LOAN_REPAYMENT),
+                Rule::requiredIf(fn () => ! in_array(request('account_purpose'), [
+                    BankAccount::PURPOSE_GENERAL,
+                    BankAccount::PURPOSE_LOAN_REPAYMENT,
+                ], true)),
                 'nullable',
                 BusinessEntity::ruleExistsOperational(),
             ],

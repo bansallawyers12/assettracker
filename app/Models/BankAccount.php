@@ -18,18 +18,37 @@ class BankAccount extends Model
     public const PURPOSE_LOAN = 'loan';
     public const PURPOSE_LOAN_REPAYMENT = 'loan_repayment';
     public const PURPOSE_OFFSET = 'offset';
+    public const PURPOSE_RENT_RECEIVING = 'rent_receiving';
+    public const PURPOSE_RENT_PAYING = 'rent_paying';
 
     public const PURPOSES = [
         self::PURPOSE_GENERAL,
         self::PURPOSE_LOAN,
         self::PURPOSE_LOAN_REPAYMENT,
         self::PURPOSE_OFFSET,
+        self::PURPOSE_RENT_RECEIVING,
+        self::PURPOSE_RENT_PAYING,
     ];
 
     public const ENTITY_PURPOSES = [
         self::PURPOSE_GENERAL,
         self::PURPOSE_LOAN,
         self::PURPOSE_OFFSET,
+        self::PURPOSE_RENT_RECEIVING,
+        self::PURPOSE_RENT_PAYING,
+    ];
+
+    /** Purposes eligible for the asset “Rent Paid Into Account” picker. */
+    public const RENT_RECEIVING_PURPOSES = [
+        self::PURPOSE_GENERAL,
+        self::PURPOSE_RENT_RECEIVING,
+    ];
+
+    /** Entity-scoped purposes usable for bank import and statement matching. */
+    public const ENTITY_OPERATING_PURPOSES = [
+        self::PURPOSE_GENERAL,
+        self::PURPOSE_RENT_RECEIVING,
+        self::PURPOSE_RENT_PAYING,
     ];
 
     // Roles on the asset_bank_account pivot
@@ -173,10 +192,12 @@ class BankAccount extends Model
     public static function purposeLabel(string $purpose): string
     {
         return match ($purpose) {
-            self::PURPOSE_GENERAL       => 'General',
-            self::PURPOSE_LOAN          => 'Loan',
+            self::PURPOSE_GENERAL        => 'General',
+            self::PURPOSE_LOAN           => 'Loan',
             self::PURPOSE_LOAN_REPAYMENT => 'Loan repayment',
-            self::PURPOSE_OFFSET        => 'Offset',
+            self::PURPOSE_OFFSET         => 'Offset',
+            self::PURPOSE_RENT_RECEIVING => 'Rent receiving',
+            self::PURPOSE_RENT_PAYING    => 'Rent paying',
             default => ucfirst(str_replace('_', ' ', $purpose)),
         };
     }
@@ -331,7 +352,7 @@ class BankAccount extends Model
 
     public function canUseForBankImport(BusinessEntity $entity): bool
     {
-        return $this->account_purpose === self::PURPOSE_GENERAL
+        return in_array($this->account_purpose, self::ENTITY_OPERATING_PURPOSES, true)
             && (int) $this->business_entity_id === (int) $entity->id;
     }
 
@@ -340,7 +361,7 @@ class BankAccount extends Model
         $userId ??= auth()->id();
 
         if ((int) $this->business_entity_id === (int) $entity->id) {
-            return $this->account_purpose === self::PURPOSE_GENERAL;
+            return in_array($this->account_purpose, self::ENTITY_OPERATING_PURPOSES, true);
         }
 
         return $this->isPortfolioWide()
@@ -352,9 +373,8 @@ class BankAccount extends Model
     {
         $userId ??= auth()->id();
 
-        // Rent collection: any general account belonging to any of the user's entities
         if ($role === self::ROLE_RENT_COLLECTION) {
-            return $this->account_purpose === self::PURPOSE_GENERAL
+            return in_array($this->account_purpose, self::RENT_RECEIVING_PURPOSES, true)
                 && $this->businessEntity !== null
                 && (int) $this->businessEntity->user_id === (int) $userId;
         }
@@ -392,7 +412,7 @@ class BankAccount extends Model
     {
         if ($role === self::ROLE_RENT_COLLECTION) {
             return $query
-                ->where('account_purpose', self::PURPOSE_GENERAL)
+                ->whereIn('account_purpose', self::RENT_RECEIVING_PURPOSES)
                 ->whereHas('businessEntity', fn (Builder $q) => $q->where('user_id', auth()->id()));
         }
 

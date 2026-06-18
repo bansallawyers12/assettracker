@@ -44,7 +44,7 @@ class BankImportController extends Controller
             abort_if($businessEntity->isTenancyContactOnly(), 403, 'Bank import is not available for tenancy or property-manager contacts.');
             $bankAccount = BankAccount::findOrFail($request->bank_account_id);
 
-            // Verify bank account belongs to business entity (general accounts only)
+            // Verify bank account belongs to this business entity
             if (! $bankAccount->canUseForBankImport($businessEntity)) {
                 return response()->json([
                     'success' => false,
@@ -104,7 +104,7 @@ class BankImportController extends Controller
 
         $bankAccount = BankAccount::findOrFail($request->bank_account_id);
         
-        // Verify bank account belongs to business entity (general accounts only)
+        // Verify bank account belongs to this business entity
         if (! $bankAccount->canUseForBankImport(BusinessEntity::findOrFail($businessEntityId))) {
             return response()->json([
                 'success' => false,

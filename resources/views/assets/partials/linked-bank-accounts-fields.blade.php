@@ -57,10 +57,10 @@
             'selectId' => 'rent_collection_bank_account_id',
             'accounts' => $rentCollectionAccounts ?? [],
             'selectedId' => $selectedRentCollectionBankAccountId ?? null,
-            'createUrl' => $entityCreate(BankAccount::PURPOSE_GENERAL),
+            'createUrl' => $entityCreate(BankAccount::PURPOSE_RENT_RECEIVING),
             'businessEntity' => $businessEntity,
             'showEntitySuffix' => true,
-            'hint' => 'Where rent is deposited — can be any general account across your portfolio.',
+            'hint' => 'Where rent is deposited — use a rent receiving or general account across your portfolio.',
         ])
     </div>
 </div>
