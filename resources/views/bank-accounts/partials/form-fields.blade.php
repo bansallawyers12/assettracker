@@ -16,6 +16,9 @@
     $currentHolderEntityId = old('holder_entity_id', $bankAccountModel?->holder_entity_id);
     $currentHolderPersonId = old('holder_person_id', $bankAccountModel?->holder_person_id);
     $currentHolderOther    = old('holder_other', $bankAccountModel?->holder_other);
+
+    $currentBankName = old('bank_name', $bankAccountModel?->bank_name);
+    $isCustomBankName = $currentBankName && ! in_array($currentBankName, BankAccount::AUSTRALIAN_BANKS, true);
 @endphp
 
 {{-- ── Core account details ─────────────────────────────────────── --}}
@@ -26,7 +29,19 @@
 </div>
 <div class="mb-4">
     <label class="block text-sm font-medium text-gray-700">Bank Name</label>
-    <input type="text" name="bank_name" value="{{ old('bank_name', $bankAccountModel?->bank_name) }}" class="mt-1 block w-full border-gray-300 rounded-md" required>
+    <select id="bank_name_select" class="mt-1 block w-full border-gray-300 rounded-md" required>
+        <option value="">Select bank</option>
+        @foreach(BankAccount::AUSTRALIAN_BANKS as $bank)
+            <option value="{{ $bank }}" @selected(! $isCustomBankName && $currentBankName === $bank)>{{ $bank }}</option>
+        @endforeach
+        <option value="{{ BankAccount::BANK_OTHER }}" @selected($isCustomBankName)>Other</option>
+    </select>
+    <input type="text"
+           name="bank_name"
+           id="bank_name_other"
+           value="{{ $isCustomBankName ? $currentBankName : '' }}"
+           class="mt-2 block w-full border-gray-300 rounded-md {{ $isCustomBankName ? '' : 'hidden' }}"
+           placeholder="Enter bank name">
     @error('bank_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
 </div>
 <div class="mb-4">
@@ -123,6 +138,33 @@
 </div>
 
 <script>
+(function () {
+    const bankSelect = document.getElementById('bank_name_select');
+    const bankOther  = document.getElementById('bank_name_other');
+
+    if (bankSelect && bankOther) {
+        const bankOtherValue = @json(BankAccount::BANK_OTHER);
+
+        function refreshBankNameField() {
+            const isOther = bankSelect.value === bankOtherValue;
+
+            bankOther.classList.toggle('hidden', ! isOther);
+            bankOther.required = isOther;
+
+            if (isOther) {
+                bankSelect.removeAttribute('name');
+                bankOther.setAttribute('name', 'bank_name');
+            } else {
+                bankOther.removeAttribute('name');
+                bankSelect.setAttribute('name', 'bank_name');
+            }
+        }
+
+        bankSelect.addEventListener('change', refreshBankNameField);
+        refreshBankNameField();
+    }
+})();
+
 (function () {
     const sel = document.getElementById('holder_type');
     if (!sel) return;
