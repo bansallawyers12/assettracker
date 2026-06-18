@@ -52,4 +52,19 @@ class BankAccountFormTest extends TestCase
         $this->assertFalse(BankAccount::isKnownBank(''));
         $this->assertFalse(BankAccount::isKnownBank(null));
     }
+
+    public function test_holder_group_key_for_entity_and_person(): void
+    {
+        $this->assertSame('entity:5', (new BankAccount([
+            'holder_type' => BankAccount::HOLDER_ENTITY,
+            'holder_entity_id' => 5,
+        ]))->holderGroupKey());
+
+        $this->assertSame('person:7', (new BankAccount([
+            'holder_type' => BankAccount::HOLDER_PERSON,
+            'holder_person_id' => 7,
+        ]))->holderGroupKey());
+
+        $this->assertSame('unassigned', (new BankAccount())->holderGroupKey());
+    }
 }

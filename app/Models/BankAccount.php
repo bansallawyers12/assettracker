@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 use App\Traits\EncryptsAttributes;
 
 class BankAccount extends Model
@@ -209,6 +210,88 @@ class BankAccount extends Model
             return '—';
         }
         return trim(($this->holderPerson->first_name ?? '').' '.($this->holderPerson->last_name ?? ''));
+    }
+
+    /**
+     * Stable key for grouping accounts by holder (one holder may have many accounts).
+     */
+    public function holderGroupKey(): string
+    {
+        return match ($this->holder_type) {
+            self::HOLDER_ENTITY => 'entity:'.$this->holder_entity_id,
+            self::HOLDER_PERSON => 'person:'.$this->holder_person_id,
+            self::HOLDER_OTHER  => 'other:'.md5((string) $this->holder_other),
+            default             => 'unassigned',
+        };
+    }
+
+    /**
+     * URL to create another account for the same holder.
+     */
+    public static function createUrlForHolder(
+        string $holderType,
+        int $holderId,
+        ?int $businessEntityId = null,
+        ?string $purpose = null
+    ): string {
+        $params = ['holder_type' => $holderType];
+
+        if ($holderType === self::HOLDER_ENTITY) {
+            $params['holder_entity_id'] = $holderId;
+        } elseif ($holderType === self::HOLDER_PERSON) {
+            $params['holder_person_id'] = $holderId;
+        }
+
+        if ($purpose !== null && $purpose !== '') {
+            $params['purpose'] = $purpose;
+        }
+
+        if ($businessEntityId !== null) {
+            return route('business-entities.bank-accounts.create', $businessEntityId).'?'.http_build_query($params);
+        }
+
+        return route('bank-accounts.create').'?'.http_build_query($params);
+    }
+
+    /**
+     * @param  Collection<int, self>  $accounts
+     * @return list<array{key: string, label: string, type: string, holder_id: int|null, accounts: Collection<int, self>, create_url: string}>
+     */
+    public static function groupedByHolder(Collection $accounts, ?int $defaultBusinessEntityId = null): array
+    {
+        $groups = [];
+
+        foreach ($accounts as $account) {
+            $key = $account->holderGroupKey();
+            if (! isset($groups[$key])) {
+                $holderId = match ($account->holder_type) {
+                    self::HOLDER_ENTITY => $account->holder_entity_id,
+                    self::HOLDER_PERSON => $account->holder_person_id,
+                    default => null,
+                };
+
+                $groups[$key] = [
+                    'key' => $key,
+                    'label' => $account->holder_type ? $account->holderLabel() : 'Unassigned holder',
+                    'type' => $account->holder_type ?? '',
+                    'holder_id' => $holderId !== null ? (int) $holderId : null,
+                    'accounts' => collect(),
+                    'create_url' => ($account->holder_type && $holderId > 0)
+                        ? self::createUrlForHolder(
+                            $account->holder_type,
+                            (int) $holderId,
+                            $defaultBusinessEntityId ?? $account->business_entity_id
+                        )
+                        : route('bank-accounts.create'),
+                ];
+            }
+
+            $groups[$key]['accounts']->push($account);
+        }
+
+        uasort($groups, fn (array $a, array $b) => strnatcasecmp($a['label'], $b['label']));
+
+        return array_values($groups);
     }
 
     /**

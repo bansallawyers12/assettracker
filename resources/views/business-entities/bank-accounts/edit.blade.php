@@ -13,7 +13,7 @@
                 <form method="POST" action="{{ route('business-entities.bank-accounts.update', [$businessEntity->id, $bankAccount->id]) }}">
                     @csrf
                     @method('PUT')
-                    @include('bank-accounts.partials.form-fields', ['portfolio' => false, 'bankAccount' => $bankAccount])
+                    @include('bank-accounts.partials.form-fields', ['portfolio' => false, 'businessEntity' => $businessEntity, 'bankAccount' => $bankAccount])
                     <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded-sm">Update</button>
                     <a href="{{ route('business-entities.show', $businessEntity->id) }}#bank-accounts" class="ml-4 text-gray-600">Cancel</a>
                 </form>

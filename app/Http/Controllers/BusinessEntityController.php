@@ -359,9 +359,10 @@ class BusinessEntityController extends Controller
             ->with(['bankStatementEntries.transaction'])
             ->get();
         $entityBankAccounts = $businessEntity->bankAccounts()
-            ->with(['holderEntity', 'holderPerson'])
+            ->with(['holderEntity', 'holderPerson', 'businessEntity'])
             ->orderBy('account_name')
             ->get();
+        $entityBankAccountGroups = BankAccount::groupedByHolder($entityBankAccounts, $businessEntity->id);
         $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument'])->orderBy('date', 'desc')->get();
         $documentCategories = $businessEntity->documentCategories()
             ->whereNull('asset_id')
@@ -388,6 +389,7 @@ class BusinessEntityController extends Controller
             'persons',
             'bankAccounts',
             'entityBankAccounts',
+            'entityBankAccountGroups',
             'transactions',
             'documentCategories',
             'notes',
@@ -1928,7 +1930,9 @@ class BusinessEntityController extends Controller
             ->orderBy('account_name')
             ->get();
 
-        return view('bank-accounts.index', compact('bankAccounts', 'businessEntities'));
+        $holderGroups = BankAccount::groupedByHolder($bankAccounts);
+
+        return view('bank-accounts.index', compact('bankAccounts', 'businessEntities', 'holderGroups'));
     }
 
     public function createPortfolioBankAccount()
@@ -2279,11 +2283,11 @@ class BusinessEntityController extends Controller
         $userId = (int) auth()->id();
 
         return [
-            'holder_type'      => ['nullable', Rule::in(BankAccount::HOLDER_TYPES)],
+            'holder_type'      => ['required', Rule::in(BankAccount::HOLDER_TYPES)],
             'holder_entity_id' => [
                 'nullable',
                 Rule::requiredIf(fn () => request('holder_type') === BankAccount::HOLDER_ENTITY),
-                Rule::exists('business_entities', 'id')->where('user_id', $userId),
+                BusinessEntity::ruleExistsOperational()->where('user_id', $userId),
             ],
             'holder_person_id' => [
                 'nullable',
