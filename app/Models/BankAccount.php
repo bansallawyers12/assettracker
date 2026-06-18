@@ -55,6 +55,29 @@ class BankAccount extends Model
         self::HOLDER_OTHER,
     ];
 
+    public const BANK_OTHER = '__other__';
+
+    /** @var list<string> */
+    public const AUSTRALIAN_BANKS = [
+        'ANZ',
+        'Bank of Melbourne',
+        'Bank of Queensland',
+        'BankSA',
+        'Bankwest',
+        'Bendigo Bank',
+        'Citibank Australia',
+        'Commonwealth Bank',
+        'HSBC Australia',
+        'ING',
+        'Macquarie Bank',
+        'NAB',
+        'St.George Bank',
+        'Suncorp Bank',
+        'UBank',
+        'Up Bank',
+        'Westpac',
+    ];
+
     protected $fillable = [
         'business_entity_id',
         'user_id',
