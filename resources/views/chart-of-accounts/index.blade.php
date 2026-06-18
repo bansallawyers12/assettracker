@@ -14,7 +14,7 @@
 
         <div class="flex flex-col sm:items-end gap-2 shrink-0">
             <a href="{{ route('chart-of-accounts.create') }}"
-               class="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">
+               class="inline-flex items-center gap-1.5 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
                 + Add Chart of Account
             </a>
         </div>
@@ -22,12 +22,12 @@
 
     {{-- Flash messages --}}
     @if(session('success'))
-        <div class="mb-4 rounded border border-green-400 dark:border-green-700 bg-green-100 dark:bg-green-900/30 px-4 py-3 text-green-800 dark:text-green-200">
+        <div class="mb-4 rounded-sm border border-green-400 dark:border-green-700 bg-green-100 dark:bg-green-900/30 px-4 py-3 text-green-800 dark:text-green-200">
             {{ session('success') }}
         </div>
     @endif
     @if(session('error'))
-        <div class="mb-4 rounded border border-red-400 dark:border-red-700 bg-red-100 dark:bg-red-900/30 px-4 py-3 text-red-800 dark:text-red-200">
+        <div class="mb-4 rounded-sm border border-red-400 dark:border-red-700 bg-red-100 dark:bg-red-900/30 px-4 py-3 text-red-800 dark:text-red-200">
             {{ session('error') }}
         </div>
     @endif
@@ -37,12 +37,12 @@
         <div class="rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 px-6 py-12 text-center">
             <p class="font-medium text-gray-700 dark:text-gray-300">No chart of accounts found.</p>
             <p class="mt-2 text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                Run <code class="rounded bg-gray-200 dark:bg-gray-700 px-1 text-xs">php artisan db:seed --class=ChartOfAccountSeeder</code>
+                Run <code class="rounded-sm bg-gray-200 dark:bg-gray-700 px-1 text-xs">php artisan db:seed --class=ChartOfAccountSeeder</code>
                 or use the button above to add accounts manually.
             </p>
         </div>
     @else
-        <div class="overflow-hidden rounded-lg shadow ring-1 ring-gray-200 dark:ring-gray-700 bg-white dark:bg-gray-900">
+        <div class="overflow-hidden rounded-lg shadow-xs ring-1 ring-gray-200 dark:ring-gray-700 bg-white dark:bg-gray-900">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-800">

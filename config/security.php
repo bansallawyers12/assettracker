@@ -72,12 +72,11 @@ return [
 
     'database' => [
         'encrypt_fields' => [
-            'users' => ['email', 'phone', 'address'],
-            'bank_accounts' => ['account_number', 'routing_number', 'swift_code'],
-            'business_entities' => ['tax_id', 'registration_number'],
-            'persons' => ['ssn', 'passport_number', 'drivers_license'],
-            'invoices' => ['notes'],
-            'transactions' => ['description', 'reference'],
+            'users'             => ['email', 'phone', 'address', 'two_factor_secret', 'two_factor_backup_codes'],
+            'bank_accounts'     => ['account_number'],
+            'business_entities' => ['tfn', 'abn', 'acn', 'corporate_key'],
+            'persons'           => ['first_name', 'last_name', 'email', 'tfn', 'abn', 'phone_number', 'address', 'identification_number', 'ssn', 'passport_number', 'drivers_license'],
+            'emails'            => ['password'],
         ],
         'encryption_key' => env('DB_ENCRYPTION_KEY', env('APP_KEY')),
     ],
@@ -194,12 +193,12 @@ return [
         // Google Maps / Places: script-src + connect-src for *.googleapis.com
         // @see https://developers.google.com/maps/documentation/javascript/content-security-policy
         //
-        // Also allow: jsDelivr (QR on 2FA setup), Office Online embed
-        // (resources/js/documents.js), and https: on connect-src / frame-src so presigned S3 URLs work
-        // across regions (standard host wildcards do not match bucket.s3.region.amazonaws.com).
+        // Also allow: Office Online embed (resources/js/documents.js), and https: on connect-src /
+        // frame-src so presigned S3 URLs work across regions (standard host wildcards do not match
+        // bucket.s3.region.amazonaws.com).
         'content_security_policy' => env(
             'CONTENT_SECURITY_POLICY',
-            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteDevHttp} https://cdn.jsdelivr.net https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:; style-src 'self' 'unsafe-inline' https://fonts.bunny.net https://fonts.googleapis.com https://cdn.jsdelivr.net{$viteDevHttp}; img-src 'self' data: https:; font-src 'self' data: https://fonts.bunny.net https://fonts.gstatic.com https://cdn.jsdelivr.net; connect-src 'self'{$viteDevHttp}{$viteDevWs}{$reverbConnect} https://*.googleapis.com *.google.com https://*.gstatic.com https: data: blob:; frame-src 'self' https://view.officeapps.live.com *.google.com https:; worker-src blob:; frame-ancestors 'none';"
+            "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'{$viteDevHttp} https://*.googleapis.com https://*.gstatic.com *.google.com https://*.ggpht.com *.googleusercontent.com blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com{$viteDevHttp}; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self'{$viteDevHttp}{$viteDevWs}{$reverbConnect} https://*.googleapis.com *.google.com https://*.gstatic.com https: data: blob:; frame-src 'self' https://view.officeapps.live.com *.google.com https:; worker-src blob:; frame-ancestors 'none';"
         ),
         'x_frame_options' => 'DENY',
         'x_content_type_options' => 'nosniff',

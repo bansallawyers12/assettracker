@@ -7,6 +7,7 @@ use App\Models\BusinessEntity;
 use App\Models\Asset;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class ReminderController extends Controller
@@ -93,26 +94,36 @@ class ReminderController extends Controller
      */
     public function store(Request $request)
     {
+        $this->mergeReminderDateFromRequest($request);
+
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
+            'title' => 'nullable|string|max:255',
             'content' => 'required|string',
-            'reminder_date' => 'required|date|after:now',
+            // Date-only: allow today; dashboard sends next_due_date, standalone create uses reminder_date
+            'reminder_date' => 'required|date|after_or_equal:today',
             'repeat_type' => 'required|in:none,monthly,quarterly,annual',
             'repeat_end_date' => 'nullable|date|after:reminder_date',
             'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => 'nullable|exists:assets,id',
             'category' => 'nullable|string|max:50',
-            'priority' => 'required|in:low,medium,high',
+            'priority' => 'nullable|in:low,medium,high',
             'notes' => 'nullable|string',
         ]);
+
+        if (empty(trim((string) ($validated['title'] ?? '')))) {
+            $firstLine = (string) Str::of($validated['content'])->before("\n")->trim();
+            $validated['title'] = $firstLine !== ''
+                ? Str::limit($firstLine, 200)
+                : 'Reminder';
+        }
+        $validated['priority'] = $validated['priority'] ?? 'medium';
 
         $reminder = new Reminder($validated);
         $reminder->user_id = Auth::id();
         $reminder->next_due_date = Carbon::parse($validated['reminder_date']);
         $reminder->save();
 
-        // If the reminder was created from a business entity page, redirect back to that page
-        if ($request->has('business_entity_id')) {
+        if ($request->filled('business_entity_id')) {
             return redirect()->route('business-entities.show', $request->business_entity_id)
                 ->with('success', 'Reminder created successfully.');
         }
@@ -154,8 +165,10 @@ class ReminderController extends Controller
     {
         $this->authorize('update', $reminder);
 
+        $this->mergeReminderDateFromRequest($request);
+
         $validated = $request->validate([
-            'title' => 'required|string|max:255',
+            'title' => 'nullable|string|max:255',
             'content' => 'required|string',
             'reminder_date' => 'required|date',
             'repeat_type' => 'required|in:none,monthly,quarterly,annual',
@@ -163,9 +176,17 @@ class ReminderController extends Controller
             'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => 'nullable|exists:assets,id',
             'category' => 'nullable|string|max:50',
-            'priority' => 'required|in:low,medium,high',
+            'priority' => 'nullable|in:low,medium,high',
             'notes' => 'nullable|string',
         ]);
+
+        if (empty(trim((string) ($validated['title'] ?? '')))) {
+            $firstLine = (string) Str::of($validated['content'])->before("\n")->trim();
+            $validated['title'] = $firstLine !== ''
+                ? Str::limit($firstLine, 200)
+                : 'Reminder';
+        }
+        $validated['priority'] = $validated['priority'] ?? 'medium';
 
         $reminder->update($validated);
         $reminder->next_due_date = Carbon::parse($validated['reminder_date']);
@@ -231,5 +252,15 @@ class ReminderController extends Controller
 
         return redirect()->back()
             ->with('success', count($reminders) . ' reminders marked as completed.');
+    }
+
+    /**
+     * Dashboard "Add Reminder" posts the due date as `next_due_date`; other forms use `reminder_date`.
+     */
+    private function mergeReminderDateFromRequest(Request $request): void
+    {
+        if (! $request->filled('reminder_date') && $request->filled('next_due_date')) {
+            $request->merge(['reminder_date' => $request->input('next_due_date')]);
+        }
     }
 } 

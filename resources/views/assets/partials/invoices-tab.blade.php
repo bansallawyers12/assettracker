@@ -6,17 +6,17 @@
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div class="bg-white dark:bg-gray-900 rounded-lg p-4 shadow border border-gray-100 dark:border-gray-700">
+            <div class="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-xs border border-gray-100 dark:border-gray-700">
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">YTD invoiced</p>
                 <p class="mt-1 text-2xl font-semibold text-gray-900 dark:text-white">${{ number_format($invoiceSummary['ytd_invoiced'] ?? 0, 2) }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ now()->year }} issue date</p>
             </div>
-            <div class="bg-white dark:bg-gray-900 rounded-lg p-4 shadow border border-gray-100 dark:border-gray-700">
+            <div class="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-xs border border-gray-100 dark:border-gray-700">
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Outstanding (posted)</p>
                 <p class="mt-1 text-2xl font-semibold text-amber-700 dark:text-amber-400">${{ number_format($invoiceSummary['outstanding'] ?? 0, 2) }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Status: approved</p>
             </div>
-            <div class="bg-white dark:bg-gray-900 rounded-lg p-4 shadow border border-gray-100 dark:border-gray-700">
+            <div class="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-xs border border-gray-100 dark:border-gray-700">
                 <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">YTD paid</p>
                 <p class="mt-1 text-2xl font-semibold text-green-700 dark:text-green-400">${{ number_format($invoiceSummary['ytd_paid'] ?? 0, 2) }}</p>
                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ now()->year }} payment date</p>
@@ -24,13 +24,13 @@
         </div>
 
         @if ($asset->leases->count() > 0)
-            <div class="bg-white dark:bg-gray-900 rounded-lg p-4 shadow border border-gray-100 dark:border-gray-700">
+            <div class="bg-white dark:bg-gray-900 rounded-lg p-4 shadow-xs border border-gray-100 dark:border-gray-700">
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Create rent invoice</h4>
                 <form method="POST" action="{{ route('assets.invoices.store-for-lease', [$businessEntity, $asset]) }}" class="flex flex-col lg:flex-row lg:flex-wrap lg:items-end gap-3">
                     @csrf
                     <div class="flex-1 min-w-[200px]">
                         <label for="invoice_lease_id" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Lease / tenant</label>
-                        <select name="lease_id" id="invoice_lease_id" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+                        <select name="lease_id" id="invoice_lease_id" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
                             @foreach ($asset->leases as $lease)
                                 <option value="{{ $lease->id }}">{{ $lease->tenant?->name ?? 'Lease #'.$lease->id }} — ${{ number_format($lease->rental_amount, 2) }} {{ $lease->payment_frequency }}</option>
                             @endforeach
@@ -38,9 +38,9 @@
                     </div>
                     <div class="w-full sm:w-auto">
                         <label for="invoice_date" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Billing date</label>
-                        <input type="date" name="invoice_date" id="invoice_date" value="{{ now()->format('Y-m-d') }}" class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+                        <input type="date" name="invoice_date" id="invoice_date" value="{{ now()->format('Y-m-d') }}" class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                     </div>
-                    <button type="submit" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow transition-colors">
+                    <button type="submit" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-xs transition-colors">
                         Generate invoice
                     </button>
                 </form>
@@ -52,7 +52,7 @@
             </div>
         @endif
 
-        <div class="bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
             <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Invoice history</h4>
             </div>
@@ -98,10 +98,10 @@
                                             @if ($inv->status === 'approved')
                                                 <form method="POST" action="{{ route('business-entities.invoices.record-payment', [$businessEntity, $inv]) }}" class="flex flex-wrap items-center gap-2">
                                                     @csrf
-                                                    <input type="date" name="paid_at" value="{{ now()->format('Y-m-d') }}" required class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-32" />
-                                                    <input type="text" name="payment_method" placeholder="Method" class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-24" />
-                                                    <input type="text" name="payment_reference" placeholder="Ref" class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-24" />
-                                                    <button type="submit" class="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded">Mark paid</button>
+                                                    <input type="date" name="paid_at" value="{{ now()->format('Y-m-d') }}" required class="rounded-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-32" />
+                                                    <input type="text" name="payment_method" placeholder="Method" class="rounded-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-24" />
+                                                    <input type="text" name="payment_reference" placeholder="Ref" class="rounded-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-24" />
+                                                    <button type="submit" class="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-sm">Mark paid</button>
                                                 </form>
                                                 @if ($inv->lease?->tenant?->email)
                                                     <form method="POST" action="{{ route('business-entities.invoices.remind', [$businessEntity, $inv]) }}" onsubmit="return confirm('Send payment reminder email to {{ $inv->lease->tenant->email }}?');">

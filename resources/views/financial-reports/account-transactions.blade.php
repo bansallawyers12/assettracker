@@ -59,7 +59,7 @@
                 {{-- Trigger button --}}
                 <button type="button"
                         @click="open = !open"
-                        class="inline-flex items-center justify-between gap-2 border border-gray-300 rounded bg-white text-sm px-3 py-1.5 min-w-[200px] text-left hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        class="inline-flex items-center justify-between gap-2 border border-gray-300 rounded-sm bg-white text-sm px-3 py-1.5 min-w-[200px] text-left hover:border-blue-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                     <span class="text-gray-700 truncate" x-text="label()">{{ $labelText }}</span>
                     <svg class="h-4 w-4 text-gray-400 shrink-0 transition-transform" :class="open ? 'rotate-180' : ''"
                          fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,7 +93,7 @@
                                    value="{{ $acc->id }}"
                                    @change="sync()"
                                    {{ in_array($acc->id, $selectedIds) ? 'checked' : '' }}
-                                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                   class="h-4 w-4 rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500">
                             <span class="text-sm text-gray-700 leading-tight">
                                 <span class="font-medium text-gray-500">{{ $acc->account_code }}</span>
                                 {{ $acc->account_name }}
@@ -109,11 +109,11 @@
                 <div class="flex items-center gap-2">
                     <input type="date" name="start_date"
                            value="{{ $startDate->toDateString() }}"
-                           class="border border-gray-300 rounded text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
+                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
                     <span class="text-gray-400 text-sm">–</span>
                     <input type="date" name="end_date"
                            value="{{ $endDate->toDateString() }}"
-                           class="border border-gray-300 rounded text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
+                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
                 </div>
             </div>
 
@@ -123,7 +123,7 @@
                 <div class="relative" x-data="{ open: false }">
                     <button type="button"
                             @click="open = !open"
-                            class="inline-flex items-center gap-1.5 border border-gray-300 bg-white text-gray-700 text-sm font-medium rounded px-3 py-1.5 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            class="inline-flex items-center gap-1.5 border border-gray-300 bg-white text-gray-700 text-sm font-medium rounded-sm px-3 py-1.5 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                         <svg class="h-4 w-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z"/>
                         </svg>
@@ -138,7 +138,7 @@
 
                 {{-- Update --}}
                 <button type="submit"
-                        class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded px-4 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                        class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-sm px-4 py-1.5 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
                     Update
                 </button>
             </div>
@@ -176,7 +176,7 @@
                         <tr class="border-b border-gray-100 text-xs font-medium text-gray-500 uppercase tracking-wide">
                             <th class="px-6 py-2 text-left w-28">Payment date</th>
                             @if($isConsolidated)
-                                <th class="px-4 py-2 text-left min-w-[7rem]">Entity</th>
+                                <th class="px-4 py-2 text-left min-w-28">Entity</th>
                             @endif
                             <th class="px-4 py-2 text-left w-32">Reference</th>
                             <th class="px-4 py-2 text-left">Description</th>
@@ -208,11 +208,8 @@
                                         {{ \Carbon\Carbon::parse($line['date'])->format('j M Y') }}
                                     </td>
                                     @if($isConsolidated)
-                                        @php
-                                            $paidBy = trim((string) ($line['paid_by_display'] ?? ''));
-                                        @endphp
-                                        <td class="px-4 py-2 text-gray-600 text-xs truncate max-w-[10rem]" title="{{ $paidBy }}">
-                                            {{ $paidBy !== '' ? $paidBy : '–' }}
+                                        <td class="px-4 py-2 text-gray-600 text-xs truncate max-w-40" title="{{ $line['entity_name'] ?? '' }}">
+                                            {{ $line['entity_name'] ?? '–' }}
                                         </td>
                                     @endif
                                     <td class="px-4 py-2 text-gray-600">

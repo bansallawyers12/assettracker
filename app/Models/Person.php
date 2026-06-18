@@ -57,4 +57,25 @@ class Person extends Model
     {
         return $this->hasMany(EntityPerson::class, 'person_id');
     }
+
+    /**
+     * Persons linked to at least one operational business entity (shared portfolio scope).
+     */
+    public function scopeLinkedToOperationalEntities($query)
+    {
+        return $query->whereHas('businessEntities', fn ($q) => $q->operationalEntities());
+    }
+
+    public function displayName(): string
+    {
+        $name = trim(($this->first_name ?? '').' '.($this->last_name ?? ''));
+
+        return $name !== '' ? $name : 'Person #'.$this->id;
+    }
+
+    public function heldBankAccounts()
+    {
+        return $this->hasMany(BankAccount::class, 'holder_person_id')
+            ->where('holder_type', BankAccount::HOLDER_PERSON);
+    }
 }

@@ -13,7 +13,7 @@
                     <div class="grid gap-6">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tenant (Optional)</label>
-                            <select name="tenant_id" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <select name="tenant_id" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                                 <option value="">No Tenant</option>
                                 @foreach ($tenants as $tenant)
                                     <option value="{{ $tenant->id }}" {{ old('tenant_id') == $tenant->id ? 'selected' : '' }}>{{ $tenant->name }}</option>
@@ -23,12 +23,12 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Rental Amount ($)</label>
-                            <input type="number" name="rental_amount" value="{{ old('rental_amount') }}" step="0.01" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                            <input type="number" name="rental_amount" value="{{ old('rental_amount') }}" step="0.01" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
                             @error('rental_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Frequency</label>
-                            <select name="payment_frequency" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                            <select name="payment_frequency" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
                                 <option value="Weekly" {{ old('payment_frequency') == 'Weekly' ? 'selected' : '' }}>Weekly</option>
                                 <option value="Fortnightly" {{ old('payment_frequency') == 'Fortnightly' ? 'selected' : '' }}>Fortnightly</option>
                                 <option value="Monthly" {{ old('payment_frequency') == 'Monthly' ? 'selected' : '' }}>Monthly</option>
@@ -39,17 +39,17 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Date</label>
-                            <input type="date" name="start_date" value="{{ old('start_date') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
+                            <input type="date" name="start_date" value="{{ old('start_date') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" required>
                             @error('start_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">End Date</label>
-                            <input type="date" name="end_date" value="{{ old('end_date') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <input type="date" name="end_date" value="{{ old('end_date') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
                             @error('end_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Terms</label>
-                            <textarea name="terms" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" rows="4">{{ old('terms') }}</textarea>
+                            <textarea name="terms" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" rows="4">{{ old('terms') }}</textarea>
                             @error('terms') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="flex justify-end space-x-2">

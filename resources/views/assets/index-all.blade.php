@@ -59,7 +59,7 @@
                                             </p>
                                         @endif
                                     </div>
-                                    <div class="flex space-x-2 flex-shrink-0">
+                                    <div class="flex space-x-2 shrink-0">
                                         <a href="{{ route('business-entities.assets.edit', [$entityId, $asset->id]) }}" class="text-gray-400 hover:text-indigo-600 transition-colors" aria-label="Edit {{ $asset->name }}">
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -98,51 +98,7 @@
                                     @endif
                                 </div>
 
-                                @php
-                                    $dueDates = collect([
-                                        ['label' => 'Registration', 'date' => $asset->registration_due_date, 'color' => 'red'],
-                                        ['label' => 'Insurance', 'date' => $asset->insurance_due_date, 'color' => 'orange'],
-                                        ['label' => 'Service', 'date' => $asset->service_due_date, 'color' => 'blue'],
-                                        ['label' => 'Council Rates', 'date' => $asset->council_rates_due_date, 'color' => 'purple'],
-                                        ['label' => 'Owners Corp', 'date' => $asset->owners_corp_due_date, 'color' => 'green'],
-                                        ['label' => 'Land Tax', 'date' => $asset->land_tax_due_date, 'color' => 'yellow'],
-                                    ])->filter(fn($item) => $item['date'] !== null);
-                                @endphp
-
-                                @if($dueDates->isNotEmpty())
-                                    <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                                        <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Due Dates</h4>
-                                        <div class="space-y-1">
-                                            @foreach($dueDates->take(3) as $dueDate)
-                                                @php
-                                                    $isOverdue = $dueDate['date'] && \Carbon\Carbon::parse($dueDate['date'])->isPast();
-                                                    $colorClasses = [
-                                                        'red' => $isOverdue ? 'text-red-600 bg-red-50' : 'text-red-500',
-                                                        'orange' => $isOverdue ? 'text-orange-600 bg-orange-50' : 'text-orange-500',
-                                                        'blue' => $isOverdue ? 'text-blue-600 bg-blue-50' : 'text-blue-500',
-                                                        'purple' => $isOverdue ? 'text-purple-600 bg-purple-50' : 'text-purple-500',
-                                                        'green' => $isOverdue ? 'text-green-600 bg-green-50' : 'text-green-500',
-                                                        'yellow' => $isOverdue ? 'text-yellow-600 bg-yellow-50' : 'text-yellow-500',
-                                                    ];
-                                                @endphp
-                                                <div class="flex justify-between items-center text-xs">
-                                                    <span class="text-gray-500 dark:text-gray-400">{{ $dueDate['label'] }}</span>
-                                                    <span class="font-medium {{ $colorClasses[$dueDate['color']] ?? 'text-gray-500' }}">
-                                                        {{ \Carbon\Carbon::parse($dueDate['date'])->format('d/m/Y') }}
-                                                        @if($isOverdue)
-                                                            <span class="ml-1">⚠️</span>
-                                                        @endif
-                                                    </span>
-                                                </div>
-                                            @endforeach
-                                            @if($dueDates->count() > 3)
-                                                <div class="text-xs text-gray-400 text-center pt-1">
-                                                    +{{ $dueDates->count() - 3 }} more
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @endif
+                                @include('assets.partials.due-dates-card', ['asset' => $asset])
 
                                 <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
                                     <div class="flex space-x-2">

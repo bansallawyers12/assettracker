@@ -7,11 +7,11 @@
 
     <div class="py-12">
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
-            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow sm:rounded-lg">
+            <div class="p-4 sm:p-8 bg-white dark:bg-gray-800 shadow-xs sm:rounded-lg">
                 <div class="max-w-xl">
                     <div class="mb-6">
                         <div class="flex items-center">
-                            <div class="flex-shrink-0">
+                            <div class="shrink-0">
                                 <svg class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
                                 </svg>
@@ -39,14 +39,14 @@
                             
                             <div class="flex space-x-2">
                                 <a href="{{ route('two-factor.backup-codes') }}" 
-                                   class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                   class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-xs text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     View Backup Codes
                                 </a>
                                 
                                 <form method="POST" action="{{ route('two-factor.regenerate-codes') }}" class="inline">
                                     @csrf
                                     <button type="submit" 
-                                            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-xs text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                                             onclick="return confirm('Are you sure? This will invalidate all existing backup codes.')">
                                         Regenerate Codes
                                     </button>
@@ -65,7 +65,7 @@
                             
                             <button type="button" 
                                     onclick="document.getElementById('disable-form').classList.toggle('hidden')"
-                                    class="inline-flex items-center px-3 py-2 border border-red-300 dark:border-red-600 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 dark:text-red-300 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                                    class="inline-flex items-center px-3 py-2 border border-red-300 dark:border-red-600 shadow-xs text-sm leading-4 font-medium rounded-md text-red-700 dark:text-red-300 bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                                 Disable Two-Factor Authentication
                             </button>
 
@@ -99,7 +99,7 @@
 
                     <div class="mt-6">
                         <a href="{{ route('profile.edit') }}" 
-                           class="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
+                           class="inline-flex items-center px-4 py-2 bg-gray-800 dark:bg-gray-200 border border-transparent rounded-md font-semibold text-xs text-white dark:text-gray-800 uppercase tracking-widest hover:bg-gray-700 dark:hover:bg-white focus:bg-gray-700 dark:focus:bg-white active:bg-gray-900 dark:active:bg-gray-300 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 transition ease-in-out duration-150">
                             Back to Profile
                         </a>
                     </div>

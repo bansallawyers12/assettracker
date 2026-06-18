@@ -9,7 +9,7 @@
                 @endisset
             </h2>
             @isset($businessEntity)
-                <a href="{{ route('business-entities.invoices.create', $businessEntity) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow transition-colors">
+                <a href="{{ route('business-entities.invoices.create', $businessEntity) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-xs transition-colors">
                     New invoice
                 </a>
             @endisset

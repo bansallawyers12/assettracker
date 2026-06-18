@@ -14,7 +14,7 @@
     <div class="py-8 bg-gray-100 dark:bg-gray-900 min-h-screen">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @if (session('success'))
-                <div class="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-4 py-2 rounded">{{ session('success') }}</div>
+                <div class="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-4 py-2 rounded-sm">{{ session('success') }}</div>
             @endif
 
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-blue-200 dark:border-blue-700">
@@ -52,11 +52,11 @@
                                     
                                     <div class="mt-4 flex space-x-2">
                                         <button onclick="previewTemplate({{ $template->id }})" 
-                                                class="text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-1 rounded transition-colors">
+                                                class="text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 px-3 py-1 rounded-sm transition-colors">
                                             Preview
                                         </button>
                                         <button onclick="useTemplate({{ $template->id }})" 
-                                                class="text-sm bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-800/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded transition-colors">
+                                                class="text-sm bg-blue-100 hover:bg-blue-200 dark:bg-blue-900/20 dark:hover:bg-blue-800/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded-sm transition-colors">
                                             Use Template
                                         </button>
                                     </div>
@@ -76,7 +76,7 @@
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Get started by creating your first email template.</p>
                             <div class="mt-6">
                                 <a href="{{ route('email-templates.create') }}" 
-                                   class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                                   class="inline-flex items-center px-4 py-2 border border-transparent shadow-xs text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                                     Create Template
                                 </a>
                             </div>
@@ -113,11 +113,11 @@
                     document.getElementById('template-preview-content').innerHTML = `
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject</label>
-                            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded border text-gray-900 dark:text-gray-100">${data.subject}</div>
+                            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100">${data.subject}</div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message</label>
-                            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded border text-gray-900 dark:text-gray-100 whitespace-pre-wrap">${data.body}</div>
+                            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100 whitespace-pre-wrap">${data.body}</div>
                         </div>
                     `;
                     document.getElementById('template-preview-modal').classList.remove('hidden');

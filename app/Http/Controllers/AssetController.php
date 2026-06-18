@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Asset;
+use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use App\Models\Invoice;
 use App\Models\Lease;
@@ -16,6 +17,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class AssetController extends Controller
 {
@@ -56,15 +58,20 @@ class AssetController extends Controller
     {
         $this->authorize('view', $businessEntity);
 
-        return view('assets.create', compact('businessEntity'));
+        $rentPaidBySuggestions = $this->rentPaidBySuggestions($businessEntity);
+
+        return view('assets.create', array_merge(
+            compact('businessEntity', 'rentPaidBySuggestions'),
+            $this->bankAccountPickerData($businessEntity)
+        ));
     }
 
     public function store(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
 
-        $validatedData = $request->validate([
-            'asset_type' => 'nullable|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate',
+        $validatedData = $request->validate(array_merge([
+            'asset_type' => 'nullable|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
             'name' => 'required|string|max:255',
             'acquisition_cost' => 'required|numeric|min:0',
             'current_value' => 'nullable|numeric|min:0',
@@ -92,11 +99,14 @@ class AssetController extends Controller
             'sro_updated' => 'nullable|boolean',
             'real_estate_percentage' => 'nullable|numeric|min:0|max:100',
             'rental_income' => 'nullable|numeric|min:0',
-        ]);
+        ], $this->phaseTwoFinanceRules(), $this->bankAccountLinkRules()));
 
         $validatedData['asset_type'] = $validatedData['asset_type'] ?? 'Car';
         $validatedData['current_value'] = $validatedData['current_value'] ?? 0;
         $validatedData['status'] = $validatedData['status'] ?? 'Active';
+        $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
+        $bankAccountLinks = $this->extractBankAccountLinks($validatedData);
+        $this->validateBankAccountLinks($bankAccountLinks, $businessEntity, $validatedData['asset_type'] ?? 'Car');
 
         $assetData = array_merge($validatedData, [
             'business_entity_id' => $businessEntity->id,
@@ -104,6 +114,7 @@ class AssetController extends Controller
         ]);
 
         $asset = $businessEntity->assets()->create($assetData);
+        $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity, $validatedData['asset_type'] ?? 'Car');
 
         return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
             ->with('success', 'Asset created successfully');
@@ -117,6 +128,9 @@ class AssetController extends Controller
             'notes',
             'leases.tenant',
             'tenants.realEstateCompany.contacts',
+            'bankAccounts.holderEntity',
+            'bankAccounts.holderPerson',
+            'bankAccounts.businessEntity',
             'transactions' => fn ($q) => $q->orderBy('date', 'desc'),
         ]);
 
@@ -162,15 +176,21 @@ class AssetController extends Controller
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
-        return view('assets.edit', compact('businessEntity', 'asset'));
+        $asset->load('bankAccounts');
+        $rentPaidBySuggestions = $this->rentPaidBySuggestions($businessEntity, $asset);
+
+        return view('assets.edit', array_merge(
+            compact('businessEntity', 'asset', 'rentPaidBySuggestions'),
+            $this->bankAccountPickerData($businessEntity, $asset)
+        ));
     }
 
     public function update(Request $request, BusinessEntity $businessEntity, Asset $asset)
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
-        $validatedData = $request->validate([
-            'asset_type' => 'required|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate',
+        $validatedData = $request->validate(array_merge([
+            'asset_type' => 'required|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
             'name' => 'required|string|max:255',
             'acquisition_cost' => 'nullable|numeric|min:0',
             'current_value' => 'nullable|numeric|min:0',
@@ -197,9 +217,12 @@ class AssetController extends Controller
             'sro_updated' => 'nullable|boolean',
             'real_estate_percentage' => 'nullable|numeric|min:0|max:100',
             'rental_income' => 'nullable|numeric|min:0',
-        ]);
+        ], $this->phaseTwoFinanceRules(), $this->bankAccountLinkRules()));
 
-        $asset->update($validatedData);
+        $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
+        $bankAccountLinks = $this->extractBankAccountLinks($validatedData);
+        $this->validateBankAccountLinks($bankAccountLinks, $businessEntity, $validatedData['asset_type']);
+        $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity, $validatedData['asset_type']);
 
         return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
             ->with('success', 'Asset updated successfully');
@@ -266,6 +289,25 @@ class AssetController extends Controller
 
         return redirect()->route('business-entities.show', $businessEntity->id)
             ->with('success', 'Asset deleted successfully');
+    }
+
+    /**
+     * Remove a linked bank account from an asset (disassociate by role).
+     */
+    public function detachBankAccountLink(BusinessEntity $businessEntity, Asset $asset, string $role): RedirectResponse
+    {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+
+        if (! in_array($role, BankAccount::ASSET_ROLES, true)) {
+            abort(404);
+        }
+
+        $asset->bankAccounts()->wherePivot('role', $role)->detach();
+
+        return redirect()
+            ->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
+            ->withFragment('linked-accounts')
+            ->with('success', 'Bank account link removed.');
     }
 
     public function createTenant(BusinessEntity $businessEntity, Asset $asset)
@@ -631,5 +673,220 @@ class AssetController extends Controller
         ]);
 
         return true;
+    }
+
+    /**
+     * @var list<string>
+     */
+    private const PROPERTY_ONLY_FINANCE_FIELDS = [
+        'loan_provider',
+        'loan_payment_amount',
+        'loan_balance',
+        'equity_required',
+        'direct_debit_amount',
+        'rent_paid_by',
+    ];
+
+    /**
+     * @return array<string, string>
+     */
+    private function phaseTwoFinanceRules(): array
+    {
+        $rules = [];
+        foreach (self::PROPERTY_ONLY_FINANCE_FIELDS as $field) {
+            $rules[$field] = match ($field) {
+                'loan_provider', 'rent_paid_by' => 'nullable|string|max:255',
+                default => 'nullable|numeric|min:0',
+            };
+        }
+
+        return $rules;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function bankAccountLinkRules(): array
+    {
+        return [
+            'loan_bank_account_id'             => 'nullable|exists:bank_accounts,id',
+            'loan_repayment_bank_account_id'   => 'nullable|exists:bank_accounts,id',
+            'offset_bank_account_id'           => 'nullable|exists:bank_accounts,id',
+            'rent_collection_bank_account_id'  => 'nullable|exists:bank_accounts,id',
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, int|null>  keyed by pivot role
+     */
+    private function extractBankAccountLinks(array &$data): array
+    {
+        $links = [
+            BankAccount::ROLE_LOAN             => $data['loan_bank_account_id'] ?? null,
+            BankAccount::ROLE_LOAN_REPAYMENT   => $data['loan_repayment_bank_account_id'] ?? null,
+            BankAccount::ROLE_OFFSET           => $data['offset_bank_account_id'] ?? null,
+            BankAccount::ROLE_RENT_COLLECTION  => $data['rent_collection_bank_account_id'] ?? null,
+        ];
+
+        unset(
+            $data['loan_bank_account_id'],
+            $data['loan_repayment_bank_account_id'],
+            $data['offset_bank_account_id'],
+            $data['rent_collection_bank_account_id'],
+        );
+
+        return $links;
+    }
+
+    /**
+     * @param  array<string, int|null>  $links  keyed by pivot role
+     */
+    private function validateBankAccountLinks(array $links, BusinessEntity $businessEntity, ?string $assetType = null): void
+    {
+        $fieldMap = [
+            BankAccount::ROLE_LOAN            => 'loan_bank_account_id',
+            BankAccount::ROLE_LOAN_REPAYMENT  => 'loan_repayment_bank_account_id',
+            BankAccount::ROLE_OFFSET          => 'offset_bank_account_id',
+            BankAccount::ROLE_RENT_COLLECTION => 'rent_collection_bank_account_id',
+        ];
+
+        $errors = [];
+        $isLeasable = in_array($assetType ?? '', Asset::LEASABLE_ASSET_TYPES, true);
+
+        foreach (BankAccount::ASSET_ROLES as $role) {
+            $accountId = $links[$role] ?? null;
+
+            if (! $accountId) {
+                continue;
+            }
+
+            if ($role === BankAccount::ROLE_RENT_COLLECTION && ! $isLeasable) {
+                $errors[$fieldMap[$role]] = 'Rent collection accounts can only be linked to leasable properties.';
+                continue;
+            }
+
+            $bankAccount = BankAccount::with('businessEntity')->find($accountId);
+
+            if (! $bankAccount || ! $bankAccount->isValidForAssetRole($businessEntity, $role)) {
+                $errors[$fieldMap[$role]] = 'The selected bank account is not valid for this slot.';
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
+     * @param  array<string, int|null>  $links  keyed by pivot role
+     */
+    private function syncBankAccountLinks(Asset $asset, array $links, BusinessEntity $businessEntity, ?string $assetType = null): void
+    {
+        $assetType ??= $asset->asset_type;
+        $isLeasable = in_array($assetType ?? '', Asset::LEASABLE_ASSET_TYPES, true);
+
+        foreach (BankAccount::ASSET_ROLES as $role) {
+            $accountId = $links[$role] ?? null;
+
+            $asset->bankAccounts()->wherePivot('role', $role)->detach();
+
+            if ($role === BankAccount::ROLE_RENT_COLLECTION && ! $isLeasable) {
+                continue;
+            }
+
+            if (! $accountId) {
+                continue;
+            }
+
+            $bankAccount = BankAccount::find($accountId);
+
+            if ($bankAccount) {
+                $asset->bankAccounts()->attach($bankAccount->id, ['role' => $role]);
+            }
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function bankAccountPickerData(BusinessEntity $businessEntity, ?Asset $asset = null): array
+    {
+        $holderEager = ['holderEntity', 'holderPerson'];
+
+        return [
+            'loanAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_LOAN)
+                ->with(['businessEntity', ...$holderEager])
+                ->orderBy('account_name')
+                ->get(),
+            'loanRepaymentAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_LOAN_REPAYMENT)
+                ->with($holderEager)
+                ->orderBy('account_name')
+                ->get(),
+            'offsetAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_OFFSET)
+                ->with(['businessEntity', ...$holderEager])
+                ->orderBy('account_name')
+                ->get(),
+            'rentCollectionAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_RENT_COLLECTION)
+                ->with(['businessEntity', ...$holderEager])
+                ->orderBy('account_name')
+                ->get(),
+
+            'selectedLoanBankAccountId' => old(
+                'loan_bank_account_id',
+                $asset?->bankAccountForRole(BankAccount::ROLE_LOAN)?->id
+            ),
+            'selectedLoanRepaymentBankAccountId' => old(
+                'loan_repayment_bank_account_id',
+                $asset?->bankAccountForRole(BankAccount::ROLE_LOAN_REPAYMENT)?->id
+            ),
+            'selectedOffsetBankAccountId' => old(
+                'offset_bank_account_id',
+                $asset?->bankAccountForRole(BankAccount::ROLE_OFFSET)?->id
+            ),
+            'selectedRentCollectionBankAccountId' => old(
+                'rent_collection_bank_account_id',
+                $asset?->bankAccountForRole(BankAccount::ROLE_RENT_COLLECTION)?->id
+            ),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function normalizeFinanceFieldsForAssetType(array $data): array
+    {
+        if (in_array($data['asset_type'] ?? '', Asset::PROPERTY_ASSET_TYPES, true)) {
+            return $data;
+        }
+
+        foreach (self::PROPERTY_ONLY_FINANCE_FIELDS as $field) {
+            $data[$field] = null;
+        }
+
+        return $data;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function rentPaidBySuggestions(BusinessEntity $businessEntity, ?Asset $asset = null): array
+    {
+        $suggestions = collect([$businessEntity->legal_name]);
+
+        if ($asset) {
+            $asset->loadMissing(['tenants', 'leases.tenant']);
+
+            $suggestions = $suggestions
+                ->merge($asset->tenants->pluck('name'))
+                ->merge($asset->leases->map(fn ($lease) => $lease->tenant?->name));
+        }
+
+        return $suggestions
+            ->filter(fn ($name) => is_string($name) && trim($name) !== '')
+            ->unique()
+            ->values()
+            ->all();
     }
 }

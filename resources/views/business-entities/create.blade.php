@@ -39,18 +39,18 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label for="legal_name" class="block text-sm font-medium text-gray-700 mb-1">Legal Name*</label>
-                                <input type="text" name="legal_name" id="legal_name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" required>
+                                <input type="text" name="legal_name" id="legal_name" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required>
                                 @error('legal_name') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                             
                             <div>
                                 <label for="trading_name" class="block text-sm font-medium text-gray-700 mb-1">Trading Name</label>
-                                <input type="text" name="trading_name" id="trading_name" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition">
+                                <input type="text" name="trading_name" id="trading_name" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition">
                             </div>
                             
                             <div>
                                 <label for="entity_type" class="block text-sm font-medium text-gray-700 mb-1">Entity Type*</label>
-                                <select name="entity_type" id="entity_type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" required onchange="toggleTrustFields()">
+                                <select name="entity_type" id="entity_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required onchange="toggleTrustFields()">
                                     <option value="" disabled selected>Select entity type</option>
                                     <option value="Sole Trader">Sole Trader</option>
                                     <option value="Company">Company</option>
@@ -62,7 +62,7 @@
                             
                             <div>
                                 <label for="registered_email" class="block text-sm font-medium text-gray-700 mb-1">Email Address*</label>
-                                <input type="email" name="registered_email" id="registered_email" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" required>
+                                <input type="email" name="registered_email" id="registered_email" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required>
                                 @error('registered_email') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                         </div>
@@ -75,7 +75,7 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
                                     <label for="trust_type" class="block text-sm font-medium text-gray-700 mb-1">Trust Type*</label>
-                                    <select name="trust_type" id="trust_type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition">
+                                    <select name="trust_type" id="trust_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
                                         <option value="" disabled selected>Select trust type</option>
                                         <option value="Discretionary">Discretionary Trust</option>
                                         <option value="Unit">Unit Trust</option>
@@ -88,31 +88,31 @@
                                 
                                 <div>
                                     <label for="trust_establishment_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Establishment Date*</label>
-                                    <input type="date" name="trust_establishment_date" id="trust_establishment_date" class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition">
+                                    <input type="date" name="trust_establishment_date" id="trust_establishment_date" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
                                     @error('trust_establishment_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                                 </div>
                                 
                                 <div>
                                     <label for="trust_deed_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Deed Date*</label>
-                                    <input type="date" name="trust_deed_date" id="trust_deed_date" class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition">
+                                    <input type="date" name="trust_deed_date" id="trust_deed_date" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
                                     @error('trust_deed_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                                 </div>
                                 
                                 <div>
                                     <label for="trust_deed_reference" class="block text-sm font-medium text-gray-700 mb-1">Trust Deed Reference</label>
-                                    <input type="text" name="trust_deed_reference" id="trust_deed_reference" class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition" placeholder="e.g., TD-2024-001">
+                                    <input type="text" name="trust_deed_reference" id="trust_deed_reference" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" placeholder="e.g., TD-2024-001">
                                     @error('trust_deed_reference') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                                 </div>
                                 
                                 <div>
                                     <label for="trust_vesting_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Vesting Date</label>
-                                    <input type="date" name="trust_vesting_date" id="trust_vesting_date" class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition">
+                                    <input type="date" name="trust_vesting_date" id="trust_vesting_date" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
                                     @error('trust_vesting_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                                 </div>
                                 
                                 <div>
                                     <label for="appointor_type" class="block text-sm font-medium text-gray-700 mb-1">Appointor Type*</label>
-                                    <select name="appointor_type" id="appointor_type" class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition" onchange="toggleAppointorFields()">
+                                    <select name="appointor_type" id="appointor_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" onchange="toggleAppointorFields()">
                                         <option value="" disabled selected>Select appointor type</option>
                                         <option value="person">Person</option>
                                         <option value="entity">Company/Entity</option>
@@ -126,7 +126,7 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label for="appointor_person_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Person*</label>
-                                        <select name="appointor_person_id" id="appointor_person_id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition">
+                                        <select name="appointor_person_id" id="appointor_person_id" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
                                             <option value="" disabled selected>Select a person</option>
                                             @foreach($persons as $person)
                                                 <option value="{{ $person->id }}">{{ $person->first_name }} {{ $person->last_name }}</option>
@@ -142,7 +142,7 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label for="appointor_entity_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Entity*</label>
-                                        <select name="appointor_entity_id" id="appointor_entity_id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition">
+                                        <select name="appointor_entity_id" id="appointor_entity_id" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
                                             <option value="" disabled selected>Select an entity</option>
                                             @foreach($businessEntities as $entity)
                                                 <option value="{{ $entity->id }}">{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
@@ -155,7 +155,7 @@
                             
                             <div class="mt-6">
                                 <label for="trust_vesting_conditions" class="block text-sm font-medium text-gray-700 mb-1">Trust Vesting Conditions</label>
-                                <textarea name="trust_vesting_conditions" id="trust_vesting_conditions" rows="3" class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 transition" placeholder="Describe any specific vesting conditions..."></textarea>
+                                <textarea name="trust_vesting_conditions" id="trust_vesting_conditions" rows="3" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" placeholder="Describe any specific vesting conditions..."></textarea>
                                 @error('trust_vesting_conditions') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                         </div>
@@ -168,39 +168,39 @@
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div>
                                 <label for="abn" class="block text-sm font-medium text-gray-700 mb-1">ABN</label>
-                                <input type="text" name="abn" id="abn" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" maxlength="11" placeholder="11 digits">
+                                <input type="text" name="abn" id="abn" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="11" placeholder="11 digits">
                             </div>
                             
                             <div>
                                 <label for="acn" class="block text-sm font-medium text-gray-700 mb-1">ACN</label>
-                                <input type="text" name="acn" id="acn" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" maxlength="9" placeholder="9 digits">
+                                <input type="text" name="acn" id="acn" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="9" placeholder="9 digits">
                             </div>
                             
                             <div>
                                 <label for="tfn" class="block text-sm font-medium text-gray-700 mb-1">TFN</label>
-                                <input type="text" name="tfn" id="tfn" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" maxlength="9" placeholder="9 digits">
+                                <input type="text" name="tfn" id="tfn" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="9" placeholder="9 digits">
                             </div>
                             
                             <div>
                                 <label for="corporate_key" class="block text-sm font-medium text-gray-700 mb-1">Corporate Key</label>
-                                <input type="text" name="corporate_key" id="corporate_key" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition">
+                                <input type="text" name="corporate_key" id="corporate_key" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition">
                             </div>
                             
                             <div>
                                 <label for="phone_number" class="block text-sm font-medium text-gray-700 mb-1">Phone Number*</label>
-                                <input type="text" name="phone_number" id="phone_number" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" required maxlength="15">
+                                <input type="text" name="phone_number" id="phone_number" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required maxlength="15">
                                 @error('phone_number') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                             
                             <div>
                                 <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">ASIC Renewal Date</label>
-                                <input type="date" name="asic_renewal_date" id="asic_renewal_date" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition">
+                                <input type="date" name="asic_renewal_date" id="asic_renewal_date" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition">
                             </div>
                         </div>
                         
                         <div class="mt-6">
                             <label for="registered_address" class="block text-sm font-medium text-gray-700 mb-1">Registered Address*</label>
-                            <x-google-address-input name="registered_address" id="registered_address" :value="old('registered_address')" required class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition" />
+                            <x-google-address-input name="registered_address" id="registered_address" :value="old('registered_address')" required class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" />
                             @error('registered_address') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                         </div>
 
@@ -212,7 +212,7 @@
                         <div class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
                             <label class="flex items-start gap-3 cursor-pointer">
                                 <input type="hidden" name="exclude_from_financial_reports" value="0">
-                                <input type="checkbox" name="exclude_from_financial_reports" value="1" class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('exclude_from_financial_reports') ? 'checked' : '' }}>
+                                <input type="checkbox" name="exclude_from_financial_reports" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('exclude_from_financial_reports') ? 'checked' : '' }}>
                                 <span>
                                     <span class="block text-sm font-medium text-gray-900">{{ __('This is a tenancy / property manager contact only') }}</span>
                                     <span class="block text-xs text-gray-600 mt-1">{{ __('Exclude from your operating entity list, reports, and accounting pickers.') }}</span>
@@ -223,7 +223,7 @@
                         
                         <div class="mt-8 flex items-center justify-end">
                             <span class="text-sm text-gray-500 mr-4">* Required fields</span>
-                            <button type="submit" class="inline-flex items-center px-6 py-3 bg-blue-600 border border-transparent rounded-md font-semibold text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg transform transition hover:-translate-y-0.5 duration-200">
+                            <button type="submit" class="inline-flex items-center px-6 py-3 bg-blue-600 border border-transparent rounded-md font-semibold text-white hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg transform transition hover:-translate-y-0.5 duration-200">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>

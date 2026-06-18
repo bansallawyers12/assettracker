@@ -113,11 +113,15 @@ class TransactionPostingService
         // so they are intentionally left unmapped — posting is skipped with a warning.
         $mapping = [
             // Income
+            'sales_revenue' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
             'rental_income' => $this->findByName('Rental Income') ?? $this->findAccount('4100'),
             'reimbursement_of_expenses' => $this->findByName('Reimbursement of Expenses') ?? $this->findByName('Other Income') ?? $this->findAccount('4900'),
             'interest_income' => $this->findByName('Interest Income') ?? $this->findAccount('4200'),
             'other_income' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
             'asset_sales' => $this->findByName('Asset Sales') ?? $this->findAccount('4900'),
+            'grants_subsidies' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
+            'sales_to_related_party' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
+            'directors_loans_to_company' => null,
             // Expense
             'water_service_expenses' => $this->findByName('Water Service Expenses') ?? $this->findByName('Utilities Expense') ?? $this->findAccount('5100'),
             'management_fees' => $this->findByName('Management Fees') ?? $this->findByName('Other Expenses') ?? $this->findByName('Other Expense') ?? $this->findAccount('5110'),
@@ -126,17 +130,40 @@ class TransactionPostingService
             'valuation_and_rates' => $this->findByName('Valuation & Rates') ?? $this->findByName('Rates Expense') ?? $this->findAccount('5140'),
             'oc_fees' => $this->findByName('OC Fees') ?? $this->findAccount('5150'),
             'repairs_maintenance' => $this->findByName('Repairs & Maintenance') ?? $this->findAccount('5160'),
+            'wages_salaries' => $this->findByName('Wages & Salaries') ?? $this->findAccount('5170'),
+            'wages_superannuation' => $this->findByName('Wages & Salaries') ?? $this->findAccount('5170'),
+            'superannuation' => $this->findByName('Superannuation') ?? $this->findAccount('5180'),
+            'payg_payment' => $this->findByName('PAYG Payable') ?? $this->findAccount('2120'),
+            'bas_payments' => $this->findByName('GST Clearing') ?? $this->findAccount('2100'),
             'other_expenses' => $this->findByName('Other Expenses') ?? $this->findByName('Other Expense') ?? $this->findAccount('5900'),
             'asset_purchase' => $this->findByName('Property & Assets (Capital)') ?? $this->findByName('Property & Equipment') ?? $this->findAccount('1500'),
+            'capital_expenditure' => $this->findByName('Property & Assets (Capital)') ?? $this->findAccount('1500'),
+            'cogs' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'rent_utilities' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'marketing_advertising' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'travel_expenses' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'loan_repayments' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'directors_fees' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'rent_to_related_party' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'purchases_from_related_party' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'other_personal_expenses' => $this->findByName('Other Expenses') ?? $this->findByName('Other Expense') ?? $this->findAccount('5900'),
             // Director loans — balance-sheet accounts; not auto-posted
             'director_loan_in' => null,
             'director_loan_out' => null,
             'director_loan_repayment' => null,
+            'repayment_directors_loans' => null,
+            'company_loans_to_directors' => null,
         ];
 
         // Director loan types are intentionally unmapped — no GL posting; silently skip.
-        $unmappedTypes = ['director_loan_in', 'director_loan_out', 'director_loan_repayment'];
+        $unmappedTypes = [
+            'director_loan_in',
+            'director_loan_out',
+            'director_loan_repayment',
+            'directors_loans_to_company',
+            'repayment_directors_loans',
+            'company_loans_to_directors',
+        ];
 
         $counterAccount = $mapping[$transaction->transaction_type] ?? null;
         if (! $cashAccount || ! $counterAccount) {

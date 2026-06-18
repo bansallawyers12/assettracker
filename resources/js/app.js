@@ -1,15 +1,77 @@
 import './bootstrap';
 import './documents.js';
-import { initFlatpickr } from './flatpickr-init';
+import { initFlatpickr, watchFlatpickr } from './flatpickr-init';
+import {
+    initTomSelect,
+    destroyTomSelect,
+    refreshTomSelect,
+    rebuildTomSelectFromNative,
+    reinitTomSelect,
+    setSelectValue,
+    setSelectDisabled,
+} from './tomselect-init';
 
 import Alpine from 'alpinejs';
 
 window.Alpine = Alpine;
+window.initTomSelect = initTomSelect;
+window.destroyTomSelect = destroyTomSelect;
+window.refreshTomSelect = refreshTomSelect;
+window.rebuildTomSelectFromNative = rebuildTomSelectFromNative;
+window.reinitTomSelect = reinitTomSelect;
+window.setSelectValue = setSelectValue;
+window.setSelectDisabled = setSelectDisabled;
+window.initFlatpickr = initFlatpickr;
+
+let richTextModulePromise = null;
+
+function loadRichTextModule() {
+    if (!richTextModulePromise) {
+        richTextModulePromise = import('./tinymce-init.js');
+    }
+
+    return richTextModulePromise;
+}
+
+function exposeRichTextHelpers(module) {
+    window.getRichTextContent = module.getRichTextContent;
+    window.setRichTextContent = module.setRichTextContent;
+    window.destroyRichTextEditor = module.destroyRichTextEditor;
+    window.initRichTextEditor = module.initRichTextEditor;
+}
+
+window.initRichTextEditors = async (root = document, options = {}) => {
+    const includeDeferred = options.includeDeferred ?? false;
+    let selector = '[data-rich-text]:not([data-rich-text-init="true"])';
+
+    if (!includeDeferred) {
+        selector += ':not([data-rich-text-defer="true"])';
+    }
+
+    const targets = root.querySelectorAll?.(selector) ?? [];
+
+    if (!targets.length) {
+        return [];
+    }
+
+    const module = await loadRichTextModule();
+    exposeRichTextHelpers(module);
+
+    return module.initRichTextEditors(root, options);
+};
 
 Alpine.start();
 
 document.addEventListener('DOMContentLoaded', function() {
     initFlatpickr();
+    watchFlatpickr();
+    initTomSelect();
+
+    if (document.querySelector('[data-rich-text]')) {
+        loadRichTextModule().then(exposeRichTextHelpers);
+    }
+
+    window.initRichTextEditors?.();
 
     if (!document.getElementById('entity-tabs')) {
         const tabLinks = document.querySelectorAll('.tab-link');

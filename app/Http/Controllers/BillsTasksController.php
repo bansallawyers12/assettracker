@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\BusinessEntity;
+use App\Models\Commitment;
 use App\Models\EntityPerson;
 use App\Models\Note;
 use App\Models\Reminder;
@@ -90,8 +91,9 @@ class BillsTasksController extends Controller
         return $this->reminderOperationalQuery($opIds)->active()->whereNotNull('next_due_date')->count()
             + $this->noteReminderOperationalQuery($opIds)->whereNotNull('reminder_date')->count()
             + $this->transactionOperationalQuery($opIds)->where('payment_status', 'unpaid')->whereNotNull('due_date')->count()
-            + $this->assetOperationalQuery($opIds)->whereNotNull('registration_due_date')->count()
-            + $this->entityPersonOperationalQuery($opIds)->whereNotNull('asic_due_date')->count();
+            + $this->assetDueItemsCount($opIds)
+            + $this->entityPersonOperationalQuery($opIds)->whereNotNull('asic_due_date')->count()
+            + $this->commitmentOperationalQuery($opIds)->active()->whereNotNull('settlement_date')->count();
     }
 
     /**
@@ -155,22 +157,7 @@ class BillsTasksController extends Controller
                 ]);
             });
 
-        $this->assetOperationalQuery($opIds)
-            ->whereNotNull('registration_due_date')
-            ->with('businessEntity')
-            ->orderBy('registration_due_date')
-            ->get()
-            ->each(function (Asset $a) use ($items) {
-                $items->push((object) [
-                    'kind' => 'registration',
-                    'sort_date' => $a->registration_due_date,
-                    'reminder' => null,
-                    'note' => null,
-                    'transaction' => null,
-                    'asset' => $a,
-                    'entityPerson' => null,
-                ]);
-            });
+        $this->appendAssetDueItems($items, $opIds);
 
         $this->entityPersonOperationalQuery($opIds)
             ->whereNotNull('asic_due_date')
@@ -186,6 +173,25 @@ class BillsTasksController extends Controller
                     'transaction' => null,
                     'asset' => null,
                     'entityPerson' => $ep,
+                ]);
+            });
+
+        $this->commitmentOperationalQuery($opIds)
+            ->active()
+            ->whereNotNull('settlement_date')
+            ->with(['businessEntity', 'payments'])
+            ->orderBy('settlement_date')
+            ->get()
+            ->each(function (Commitment $commitment) use ($items) {
+                $items->push((object) [
+                    'kind' => 'commitment',
+                    'sort_date' => $commitment->settlement_date,
+                    'reminder' => null,
+                    'note' => null,
+                    'transaction' => null,
+                    'asset' => null,
+                    'entityPerson' => null,
+                    'commitment' => $commitment,
                 ]);
             });
 
@@ -267,6 +273,57 @@ class BillsTasksController extends Controller
 
     /**
      * @param  list<int>  $opIds
+     */
+    private function assetDueItemsCount(array $opIds): int
+    {
+        $count = 0;
+
+        $this->assetOperationalQuery($opIds)
+            ->get()
+            ->each(function (Asset $asset) use (&$count) {
+                foreach (Asset::DUE_DATE_REMINDERS as $def) {
+                    if ($asset->{$def['field']} !== null) {
+                        $count++;
+                    }
+                }
+            });
+
+        return $count;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, object>  $items
+     * @param  list<int>  $opIds
+     */
+    private function appendAssetDueItems(\Illuminate\Support\Collection $items, array $opIds): void
+    {
+        $this->assetOperationalQuery($opIds)
+            ->with('businessEntity')
+            ->get()
+            ->each(function (Asset $asset) use ($items) {
+                foreach (Asset::DUE_DATE_REMINDERS as $def) {
+                    $date = $asset->{$def['field']};
+                    if ($date === null) {
+                        continue;
+                    }
+
+                    $items->push((object) [
+                        'kind' => 'asset_due',
+                        'sort_date' => Carbon::parse($date)->startOfDay(),
+                        'reminder' => null,
+                        'note' => null,
+                        'transaction' => null,
+                        'asset' => $asset,
+                        'entityPerson' => null,
+                        'due_label' => $def['label'],
+                        'finalize_type' => $def['finalize_type'],
+                    ]);
+                }
+            });
+    }
+
+    /**
+     * @param  list<int>  $opIds
      * @return Builder<Asset>
      */
     private function assetOperationalQuery(array $opIds): Builder
@@ -286,6 +343,20 @@ class BillsTasksController extends Controller
     private function entityPersonOperationalQuery(array $opIds): Builder
     {
         $q = EntityPerson::query();
+        if ($opIds === []) {
+            return $q->whereRaw('0 = 1');
+        }
+
+        return $q->whereIn('business_entity_id', $opIds);
+    }
+
+    /**
+     * @param  list<int>  $opIds
+     * @return Builder<Commitment>
+     */
+    private function commitmentOperationalQuery(array $opIds): Builder
+    {
+        $q = Commitment::query();
         if ($opIds === []) {
             return $q->whereRaw('0 = 1');
         }

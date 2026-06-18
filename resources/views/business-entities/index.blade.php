@@ -22,7 +22,7 @@
             @endif
 
             @if ($businessEntities->isEmpty() && $tenancyContactEntities->isEmpty())
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-10 text-center">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xs border border-gray-200 dark:border-gray-700 p-10 text-center">
                     <p class="text-gray-600 dark:text-gray-400 mb-6">{{ __('No business entities yet.') }}</p>
                     <a href="{{ route('business-entities.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium transition-colors">
                         {{ __('Add your first entity') }}
@@ -33,7 +33,7 @@
                     <div class="mb-2">
                         <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{{ __('Your companies & trusts') }}</h3>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden mb-10">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xs border border-gray-200 dark:border-gray-700 overflow-hidden mb-10">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead class="bg-gray-50 dark:bg-gray-900/80">
@@ -76,7 +76,7 @@
                         <h3 class="text-sm font-semibold text-amber-800 dark:text-amber-200 uppercase tracking-wide">{{ __('Tenancy / property manager contacts') }}</h3>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">{{ __('Not treated as your operating entities — excluded from reports and accounting pickers. For new agencies, prefer adding them when you add a tenant on a property asset.') }}</p>
                     </div>
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-amber-200 dark:border-amber-900/50 overflow-hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xs border border-amber-200 dark:border-amber-900/50 overflow-hidden">
                         <div class="overflow-x-auto">
                             <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                 <thead class="bg-amber-50 dark:bg-amber-950/40">

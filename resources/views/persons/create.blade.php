@@ -48,7 +48,7 @@
 
                             <div class="md:col-span-2">
                                 <x-input-label for="address" :value="__('Address')" />
-                                <x-google-address-input name="address" id="address" :value="old('address')" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" />
+                                <x-google-address-input name="address" id="address" :value="old('address')" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-xs" />
                                 <x-input-error :messages="$errors->get('address')" class="mt-2" />
                             </div>
 
@@ -66,7 +66,7 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <x-input-label for="business_entity_id" :value="__('Business Entity')" />
-                                <select id="business_entity_id" name="business_entity_id" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" required>
+                                <select id="business_entity_id" name="business_entity_id" data-tomselect class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-xs" required>
                                     <option value="">Select a business entity</option>
                                     @foreach($businessEntities as $entity)
                                         <option value="{{ $entity->id }}" {{ old('business_entity_id') == $entity->id ? 'selected' : '' }}>
@@ -85,7 +85,7 @@
 
                             <div>
                                 <x-input-label for="role_status" :value="__('Role Status')" />
-                                <select id="role_status" name="role_status" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm" required>
+                                <select id="role_status" name="role_status" class="block mt-1 w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-xs" required>
                                     <option value="Active" {{ old('role_status') == 'Active' ? 'selected' : '' }}>Active</option>
                                     <option value="Inactive" {{ old('role_status') == 'Inactive' ? 'selected' : '' }}>Inactive</option>
                                 </select>
