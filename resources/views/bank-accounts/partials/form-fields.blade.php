@@ -3,6 +3,7 @@
 
     $bankAccountModel = $bankAccount ?? null;
     $isPortfolio = $portfolio ?? false;
+    $scopedEntity = $businessEntity ?? null;
     $purposes = $isPortfolio ? BankAccount::PURPOSES : BankAccount::ENTITY_PURPOSES;
 
     $requestedPurpose = request('purpose');
@@ -12,10 +13,24 @@
             ?? (in_array($requestedPurpose, $purposes, true) ? $requestedPurpose : BankAccount::PURPOSE_GENERAL)
     );
 
-    $currentHolderType     = old('holder_type', $bankAccountModel?->holder_type);
-    $currentHolderEntityId = old('holder_entity_id', $bankAccountModel?->holder_entity_id);
-    $currentHolderPersonId = old('holder_person_id', $bankAccountModel?->holder_person_id);
+    $defaultHolderType = null;
+    $defaultHolderEntityId = null;
+    $defaultHolderPersonId = null;
+
+    if (request()->filled('holder_type')) {
+        $defaultHolderType = request('holder_type');
+        $defaultHolderEntityId = request('holder_entity_id');
+        $defaultHolderPersonId = request('holder_person_id');
+    } elseif (! $bankAccountModel && $scopedEntity) {
+        $defaultHolderType = BankAccount::HOLDER_ENTITY;
+        $defaultHolderEntityId = $scopedEntity->id;
+    }
+
+    $currentHolderType     = old('holder_type', $bankAccountModel?->holder_type ?? $defaultHolderType);
+    $currentHolderEntityId = old('holder_entity_id', $bankAccountModel?->holder_entity_id ?? $defaultHolderEntityId);
+    $currentHolderPersonId = old('holder_person_id', $bankAccountModel?->holder_person_id ?? $defaultHolderPersonId);
     $currentHolderOther    = old('holder_other', $bankAccountModel?->holder_other);
+    $showOtherHolderType   = $bankAccountModel?->holder_type === BankAccount::HOLDER_OTHER;
 
     $currentBankName = old('bank_name', $bankAccountModel?->bank_name);
     $selectedBankChoice = old('bank_name_select');
@@ -96,19 +111,20 @@
 
 {{-- ── Account Holder ────────────────────────────────────────────── --}}
 <div class="mt-6 pt-4 border-t border-gray-200">
-    <h4 class="text-sm font-semibold text-gray-800 mb-1">Account Holder</h4>
+    <h4 class="text-sm font-semibold text-gray-800 mb-1">Account Holder <span class="text-red-500">*</span></h4>
     <p class="text-xs text-gray-500 mb-4">
-        Whose name is on the bank statement for this account?
-        This can be a director, shareholder, entity, or anyone else.
+        Whose name is on the bank statement? Select one entity or one person. The same holder can have multiple accounts.
     </p>
 
     <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700">Holder Type</label>
-        <select name="holder_type" id="holder_type" class="mt-1 block w-full border-gray-300 rounded-md">
-            <option value="">— Not specified —</option>
+        <select name="holder_type" id="holder_type" class="mt-1 block w-full border-gray-300 rounded-md" required>
+            <option value="">Select holder type</option>
             <option value="{{ BankAccount::HOLDER_ENTITY }}" @selected($currentHolderType === BankAccount::HOLDER_ENTITY)>Entity</option>
             <option value="{{ BankAccount::HOLDER_PERSON }}" @selected($currentHolderType === BankAccount::HOLDER_PERSON)>Person</option>
-            <option value="{{ BankAccount::HOLDER_OTHER }}"  @selected($currentHolderType === BankAccount::HOLDER_OTHER)>Other (free text)</option>
+            @if($showOtherHolderType)
+                <option value="{{ BankAccount::HOLDER_OTHER }}" @selected($currentHolderType === BankAccount::HOLDER_OTHER)>Other (legacy)</option>
+            @endif
         </select>
         @error('holder_type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
     </div>
@@ -116,7 +132,7 @@
     {{-- Entity picker --}}
     <div class="mb-4 holder-section" id="holder-entity-section">
         <label class="block text-sm font-medium text-gray-700">Entity Name</label>
-        <select name="holder_entity_id" class="mt-1 block w-full border-gray-300 rounded-md">
+        <select name="holder_entity_id" id="holder_entity_id" class="mt-1 block w-full border-gray-300 rounded-md">
             <option value="">Select entity</option>
             @foreach($businessEntities ?? [] as $entity)
                 <option value="{{ $entity->id }}" @selected((string) $currentHolderEntityId === (string) $entity->id)>
@@ -130,7 +146,7 @@
     {{-- Person picker --}}
     <div class="mb-4 holder-section" id="holder-person-section">
         <label class="block text-sm font-medium text-gray-700">Person</label>
-        <select name="holder_person_id" class="mt-1 block w-full border-gray-300 rounded-md">
+        <select name="holder_person_id" id="holder_person_id" class="mt-1 block w-full border-gray-300 rounded-md">
             <option value="">Select person</option>
             @foreach($persons ?? [] as $person)
                 <option value="{{ $person->id }}" @selected((string) $currentHolderPersonId === (string) $person->id)>
@@ -186,6 +202,20 @@
             if (!el) return;
             el.classList.toggle('hidden', val !== type);
         });
+
+        const entitySelect = document.getElementById('holder_entity_id');
+        const personSelect = document.getElementById('holder_person_id');
+        const otherInput = document.querySelector('#holder-other-section input[name="holder_other"]');
+
+        if (entitySelect) {
+            entitySelect.required = val === 'entity';
+        }
+        if (personSelect) {
+            personSelect.required = val === 'person';
+        }
+        if (otherInput) {
+            otherInput.required = val === 'other';
+        }
     }
 
     sel.addEventListener('change', refresh);

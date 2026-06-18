@@ -57,4 +57,10 @@ class Person extends Model
     {
         return $this->hasMany(EntityPerson::class, 'person_id');
     }
+
+    public function heldBankAccounts()
+    {
+        return $this->hasMany(BankAccount::class, 'holder_person_id')
+            ->where('holder_type', BankAccount::HOLDER_PERSON);
+    }
 }

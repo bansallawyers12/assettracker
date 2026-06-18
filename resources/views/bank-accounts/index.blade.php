@@ -8,7 +8,7 @@
         <div>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100">Bank Accounts</h1>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                Central registry for operational, loan, loan repayment, and offset accounts.
+                Accounts grouped by holder. Each entity or person can have multiple accounts — use <strong>+</strong> to add another.
             </p>
         </div>
         <a href="{{ route('bank-accounts.create') }}"
@@ -21,60 +21,11 @@
         <div class="mb-4 rounded-sm border border-green-400 bg-green-100 px-4 py-3 text-green-800">{{ session('success') }}</div>
     @endif
 
-    @if($bankAccounts->isEmpty())
-        <div class="rounded-lg border border-dashed border-gray-300 px-6 py-12 text-center">
-            <p class="font-medium text-gray-700">No bank accounts yet.</p>
-        </div>
-    @else
-        <div class="overflow-hidden rounded-lg shadow-xs ring-1 ring-gray-200 bg-white">
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Account Name</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Bank</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">BSB</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Holder</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Purpose</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600">Scope</th>
-                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-600">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-200">
-                        @foreach($bankAccounts as $account)
-                            <tr class="hover:bg-gray-50">
-                                <td class="px-4 py-3 text-sm text-gray-900">{{ $account->account_name }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-700">{{ $account->bank_name }}</td>
-                                <td class="px-4 py-3 text-sm font-mono text-gray-700">{{ BankAccount::formatBsb($account->bsb) }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-700">
-                                    @if($account->holder_type)
-                                        <span class="font-medium">{{ $account->holderLabel() }}</span>
-                                        <span class="ml-1 text-xs text-gray-400">({{ BankAccount::holderTypeLabel($account->holder_type) }})</span>
-                                    @else
-                                        <span class="text-gray-400">—</span>
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3 text-sm text-gray-700">{{ BankAccount::purposeLabel($account->account_purpose) }}</td>
-                                <td class="px-4 py-3 text-sm text-gray-700">
-                                    @if($account->isPortfolioWide())
-                                        Shared across portfolio
-                                    @else
-                                        {{ $account->businessEntity?->legal_name ?? '—' }}
-                                    @endif
-                                </td>
-                                <td class="px-4 py-3 text-right text-sm">
-                                    <a href="{{ route('bank-accounts.edit', $account) }}" class="text-indigo-600 hover:underline">Edit</a>
-                                    @if($account->businessEntity)
-                                        <span class="text-gray-300 mx-1">|</span>
-                                        <a href="{{ route('business-entities.show', $account->businessEntity) }}#tab_bank_accounts" class="text-gray-600 hover:underline">Entity</a>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    @endif
+    @include('bank-accounts.partials.holder-grouped-list', [
+        'holderGroups' => $holderGroups ?? [],
+        'showScope' => true,
+        'emptyMessage' => 'No bank accounts yet.',
+        'emptyCreateUrl' => route('bank-accounts.create'),
+    ])
 </div>
 </x-app-layout>

@@ -167,6 +167,12 @@ class BusinessEntity extends Model
         return $this->hasMany(BankAccount::class);
     }
 
+    public function heldBankAccounts()
+    {
+        return $this->hasMany(BankAccount::class, 'holder_entity_id')
+            ->where('holder_type', BankAccount::HOLDER_ENTITY);
+    }
+
     public function transactions()
     {
         return $this->hasMany(Transaction::class);

@@ -1,4 +1,7 @@
 <x-app-layout>
+    @php
+        use App\Models\BankAccount;
+    @endphp
     <x-slot name="header">
         <h2 class="font-semibold text-2xl text-blue-900 dark:text-blue-200 leading-tight">
             {{ $person->first_name }} {{ $person->last_name }}
@@ -157,6 +160,30 @@
                             </div>
                         @endforeach
                     @endif
+                </div>
+
+                <!-- Bank Accounts -->
+                <div class="mb-6">
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100">Bank Accounts</h2>
+                        <a href="{{ BankAccount::createUrlForHolder(BankAccount::HOLDER_PERSON, $person->id) }}"
+                           class="inline-flex items-center px-3 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-md transition-colors duration-200"
+                           title="Add bank account for {{ $person->first_name }} {{ $person->last_name }}">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Add Account
+                        </a>
+                    </div>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        Accounts held in this person's name. One person can have multiple bank accounts.
+                    </p>
+                    @include('bank-accounts.partials.holder-grouped-list', [
+                        'holderGroups' => $heldBankAccountGroups ?? [],
+                        'showScope' => true,
+                        'emptyMessage' => 'No bank accounts registered for this person yet.',
+                        'emptyCreateUrl' => BankAccount::createUrlForHolder(BankAccount::HOLDER_PERSON, $person->id),
+                    ])
                 </div>
 
                 <!-- Quick Actions -->

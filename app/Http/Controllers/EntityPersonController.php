@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\EntityPerson;
 use App\Models\BusinessEntity;
+use App\Models\BankAccount;
 use App\Models\Person;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -401,6 +402,16 @@ class EntityPersonController extends Controller
         // Group by business entity for better organization
         $groupedRoles = $entityPersons->groupBy('business_entity_id');
 
-        return view('persons.show', compact('person', 'entityPersons', 'groupedRoles'));
+        $heldBankAccounts = BankAccount::query()
+            ->forUser((int) auth()->id())
+            ->where('holder_type', BankAccount::HOLDER_PERSON)
+            ->where('holder_person_id', $person->id)
+            ->with(['businessEntity', 'holderEntity', 'holderPerson'])
+            ->orderBy('account_name')
+            ->get();
+
+        $heldBankAccountGroups = BankAccount::groupedByHolder($heldBankAccounts);
+
+        return view('persons.show', compact('person', 'entityPersons', 'groupedRoles', 'heldBankAccounts', 'heldBankAccountGroups'));
     }
 }
