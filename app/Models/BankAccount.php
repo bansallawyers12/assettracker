@@ -149,6 +149,26 @@ class BankAccount extends Model
 
     // ── Label helpers ─────────────────────────────────────────────────────────
 
+    public static function resolveBankNameFromFormInput(?string $select, ?string $other): string
+    {
+        if ($select === self::BANK_OTHER) {
+            return trim((string) $other);
+        }
+
+        if ($select !== null && $select !== '') {
+            return $select;
+        }
+
+        return '';
+    }
+
+    public static function isKnownBank(?string $bankName): bool
+    {
+        return $bankName !== null
+            && $bankName !== ''
+            && in_array($bankName, self::AUSTRALIAN_BANKS, true);
+    }
+
     public static function purposeLabel(string $purpose): string
     {
         return match ($purpose) {

@@ -18,7 +18,18 @@
     $currentHolderOther    = old('holder_other', $bankAccountModel?->holder_other);
 
     $currentBankName = old('bank_name', $bankAccountModel?->bank_name);
-    $isCustomBankName = $currentBankName && ! in_array($currentBankName, BankAccount::AUSTRALIAN_BANKS, true);
+    $selectedBankChoice = old('bank_name_select');
+
+    if ($selectedBankChoice === null) {
+        if ($currentBankName && ! BankAccount::isKnownBank($currentBankName)) {
+            $selectedBankChoice = BankAccount::BANK_OTHER;
+        } else {
+            $selectedBankChoice = $currentBankName ?: '';
+        }
+    }
+
+    $isOtherSelected = $selectedBankChoice === BankAccount::BANK_OTHER;
+    $otherBankNameValue = old('bank_name_other', $isOtherSelected ? ($currentBankName ?? '') : '');
 @endphp
 
 {{-- ── Core account details ─────────────────────────────────────── --}}
@@ -28,21 +39,23 @@
     @error('account_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
 </div>
 <div class="mb-4">
-    <label class="block text-sm font-medium text-gray-700">Bank Name</label>
-    <select id="bank_name_select" class="mt-1 block w-full border-gray-300 rounded-md" required>
+    <label class="block text-sm font-medium text-gray-700" for="bank_name_select">Bank Name</label>
+    <select name="bank_name_select" id="bank_name_select" class="mt-1 block w-full border-gray-300 rounded-md" required>
         <option value="">Select bank</option>
         @foreach(BankAccount::AUSTRALIAN_BANKS as $bank)
-            <option value="{{ $bank }}" @selected(! $isCustomBankName && $currentBankName === $bank)>{{ $bank }}</option>
+            <option value="{{ $bank }}" @selected(! $isOtherSelected && (string) $selectedBankChoice === (string) $bank)>{{ $bank }}</option>
         @endforeach
-        <option value="{{ BankAccount::BANK_OTHER }}" @selected($isCustomBankName)>Other</option>
+        <option value="{{ BankAccount::BANK_OTHER }}" @selected($isOtherSelected)>Other</option>
     </select>
     <input type="text"
-           name="bank_name"
+           name="bank_name_other"
            id="bank_name_other"
-           value="{{ $isCustomBankName ? $currentBankName : '' }}"
-           class="mt-2 block w-full border-gray-300 rounded-md {{ $isCustomBankName ? '' : 'hidden' }}"
-           placeholder="Enter bank name">
+           value="{{ $otherBankNameValue }}"
+           class="mt-2 block w-full border-gray-300 rounded-md {{ $isOtherSelected ? '' : 'hidden' }}"
+           placeholder="Enter bank name"
+           @if($isOtherSelected) required @endif>
     @error('bank_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+    @error('bank_name_other') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
 </div>
 <div class="mb-4">
     <label class="block text-sm font-medium text-gray-700">BSB</label>
@@ -150,14 +163,6 @@
 
             bankOther.classList.toggle('hidden', ! isOther);
             bankOther.required = isOther;
-
-            if (isOther) {
-                bankSelect.removeAttribute('name');
-                bankOther.setAttribute('name', 'bank_name');
-            } else {
-                bankOther.removeAttribute('name');
-                bankSelect.setAttribute('name', 'bank_name');
-            }
         }
 
         bankSelect.addEventListener('change', refreshBankNameField);

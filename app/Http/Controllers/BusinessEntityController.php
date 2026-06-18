@@ -1381,6 +1381,8 @@ class BusinessEntityController extends Controller
 
         $this->ensureOperationalForAccounting($businessEntity);
 
+        $this->mergeBankNameFromRequest($request);
+
         // Validate bank account details
         $validated = $request->validate($this->entityBankAccountValidationRules());
 
@@ -1432,6 +1434,8 @@ class BusinessEntityController extends Controller
         if ($bankAccount->business_entity_id !== $businessEntity->id) {
             abort(403, 'Unauthorized action.');
         }
+
+        $this->mergeBankNameFromRequest($request);
 
         // Validate the updated bank account details
         $validated = $request->validate($this->entityBankAccountValidationRules());
@@ -1941,6 +1945,8 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
+        $this->mergeBankNameFromRequest($request);
+
         $validated = $request->validate($this->portfolioBankAccountValidationRules());
 
         BankAccount::create(
@@ -1969,6 +1975,8 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
         $this->ensureBankAccountOwnedByUser($bankAccount);
+
+        $this->mergeBankNameFromRequest($request);
 
         $validated = $request->validate($this->portfolioBankAccountValidationRules($bankAccount));
 
@@ -2187,6 +2195,37 @@ class BusinessEntityController extends Controller
         }
     }
 
+    private function mergeBankNameFromRequest(Request $request): void
+    {
+        $request->merge([
+            'bank_name' => BankAccount::resolveBankNameFromFormInput(
+                $request->input('bank_name_select'),
+                $request->input('bank_name_other'),
+            ),
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function bankNameFieldValidationRules(): array
+    {
+        return [
+            'bank_name_select' => ['nullable', 'string', 'max:255'],
+            'bank_name_other'  => ['nullable', 'string', 'max:255'],
+            'bank_name' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) {
+                    if ($value === BankAccount::BANK_OTHER) {
+                        $fail('Please enter a bank name.');
+                    }
+                },
+            ],
+        ];
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -2194,7 +2233,7 @@ class BusinessEntityController extends Controller
     {
         return array_merge([
             'account_name' => 'required|string|max:255',
-            'bank_name' => 'required|string|max:255',
+        ], $this->bankNameFieldValidationRules(), [
             'bsb' => ['required', 'string', 'max:10', function ($attribute, $value, $fail) {
                 $normalized = BankAccount::normalizeBsb($value);
                 if ($normalized === null || strlen($normalized) !== 6) {
@@ -2213,7 +2252,7 @@ class BusinessEntityController extends Controller
     {
         return array_merge([
             'account_name' => 'required|string|max:255',
-            'bank_name' => 'required|string|max:255',
+        ], $this->bankNameFieldValidationRules(), [
             'bsb' => ['required', 'string', 'max:10', function ($attribute, $value, $fail) {
                 $normalized = BankAccount::normalizeBsb($value);
                 if ($normalized === null || strlen($normalized) !== 6) {
