@@ -232,6 +232,26 @@
             }
         }
 
+        function applyFilePatch(file) {
+            const wasUploaded = workspace?.files?.find(f => String(f.id) === String(file.id))?.has_file;
+            patchRow(file);
+            if (workspace?.completeness) {
+                const has = file.has_file;
+                if (has && !wasUploaded) {
+                    workspace.completeness.uploaded++;
+                    if (file.is_required) {
+                        workspace.completeness.required_missing = Math.max(0, workspace.completeness.required_missing - 1);
+                    }
+                } else if (!has && wasUploaded) {
+                    workspace.completeness.uploaded = Math.max(0, workspace.completeness.uploaded - 1);
+                    if (file.is_required) {
+                        workspace.completeness.required_missing++;
+                    }
+                }
+                updateCompleteness(workspace.completeness);
+            }
+        }
+
         function patchRow(file) {
             const tr = root.querySelector(`tr[data-compliance-row="${file.id}"]`);
             if (!tr) return;
@@ -291,7 +311,7 @@
                 input.value = '';
                 if (!j) { alertHttpError(r.status); return; }
                 if (!r.ok) { alert(j.message || 'Upload failed.'); return; }
-                if (j.status && j.file) patchRow(j.file);
+                if (j.status && j.file) applyFilePatch(j.file);
                 else alert(j.message || 'Upload failed.');
             } catch (_) {
                 input.value = '';
@@ -315,7 +335,7 @@
                 if (!fileId || !confirm('Remove the file from this row?')) return;
                 const r = await api(clearUrl(fileId), { method: 'POST', body: '{}' });
                 const j = await r.json();
-                if (j.status && j.file) patchRow(j.file);
+                if (j.status && j.file) applyFilePatch(j.file);
                 else alert(j.message || 'Failed');
                 return;
             }
@@ -326,7 +346,7 @@
                 if (!fileId || !confirm('Remove the file from this row?')) return;
                 const r = await api(clearUrl(fileId), { method: 'POST', body: '{}' });
                 const j = await r.json();
-                if (j.status && j.file) patchRow(j.file);
+                if (j.status && j.file) applyFilePatch(j.file);
                 else alert(j.message || 'Failed');
             }
         });

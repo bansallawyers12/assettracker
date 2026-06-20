@@ -78,7 +78,7 @@ class ComplianceYearService
             $this->provisionFileSlots($record);
         }
 
-        return $record->fresh()->load(['files.type']);
+        return $record->fresh()->load(['files.type', 'files.yearRecord']);
     }
 
     public function provisionFileSlots(ComplianceYearRecord $record): void

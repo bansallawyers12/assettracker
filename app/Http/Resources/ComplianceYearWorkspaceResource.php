@@ -25,7 +25,7 @@ class ComplianceYearWorkspaceResource extends JsonResource
             'notes'           => $this->notes,
             'completeness'    => $yearService->completeness($this->resource),
             'available_years' => $yearService->listAvailableYears(),
-            'files'           => ComplianceDocumentFileResource::collection($files),
+            'files'           => ComplianceDocumentFileResource::collection($files)->resolve(),
         ];
     }
 }
