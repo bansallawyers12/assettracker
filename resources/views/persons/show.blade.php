@@ -1,7 +1,7 @@
+@php
+    use App\Models\BankAccount;
+@endphp
 <x-app-layout>
-    @php
-        use App\Models\BankAccount;
-    @endphp
     <x-slot name="header">
         <h2 class="font-semibold text-2xl text-blue-900 dark:text-blue-200 leading-tight">
             {{ $person->first_name }} {{ $person->last_name }}
