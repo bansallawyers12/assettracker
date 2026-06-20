@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesReportEntityScope;
 use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Services\AssetSummaryReportService;
@@ -14,6 +15,8 @@ use Illuminate\View\View;
 
 class PropertyReportController extends Controller
 {
+    use ResolvesReportEntityScope;
+
     public function __construct(
         protected PropertyReportService $propertyReportService,
         protected AssetSummaryReportService $assetSummaryReportService,
@@ -112,32 +115,6 @@ class PropertyReportController extends Controller
             'formsScope',
             'formsEntityIds',
         ));
-    }
-
-    /**
-     * @return array<int>|null null = invalid selected scope with no entities
-     */
-    protected function resolveReportEntityIds(Request $request): ?array
-    {
-        $allowed = BusinessEntity::forFinancialReports()
-            ->orderBy('legal_name')
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
-
-        if ($allowed === []) {
-            return [];
-        }
-
-        if ($request->input('scope') === 'selected') {
-            $requested = array_values(array_unique(array_map('intval', (array) $request->input('entity_ids', []))));
-            $requested = array_values(array_intersect($requested, $allowed));
-
-            return $requested === [] ? null : $requested;
-        }
-
-        return $allowed;
     }
 
     protected function ensureAssetBelongsToBusinessEntity(BusinessEntity $businessEntity, Asset $asset): void

@@ -16,8 +16,12 @@ use App\Policies\ContactListPolicy;
 use App\Models\EmailTemplate;
 use App\Policies\EmailTemplatePolicy;
 use App\Models\Commitment;
+use App\Models\ComplianceDocumentFile;
+use App\Models\ComplianceYearRecord;
 use App\Models\Reminder;
 use App\Policies\CommitmentPolicy;
+use App\Policies\ComplianceDocumentFilePolicy;
+use App\Policies\ComplianceYearRecordPolicy;
 use App\Policies\ReminderPolicy;
 
 class AuthServiceProvider extends ServiceProvider
@@ -35,6 +39,8 @@ class AuthServiceProvider extends ServiceProvider
         EmailTemplate::class => EmailTemplatePolicy::class,
         Reminder::class => ReminderPolicy::class,
         Commitment::class => CommitmentPolicy::class,
+        ComplianceDocumentFile::class => ComplianceDocumentFilePolicy::class,
+        ComplianceYearRecord::class => ComplianceYearRecordPolicy::class,
     ];
 
     /**

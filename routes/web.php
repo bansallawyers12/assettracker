@@ -9,6 +9,8 @@ use App\Http\Controllers\BillsTasksController;
 use App\Http\Controllers\BusinessEntityController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\CommitmentController;
+use App\Http\Controllers\ComplianceController;
+use App\Http\Controllers\ComplianceWorkspaceController;
 use App\Http\Controllers\ContactListController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentWorkspaceController;
@@ -141,6 +143,16 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('/business-entities/{businessEntity}/assets/{asset}/documents', [DocumentController::class, 'uploadAssetDocument'])->name('business-entities.assets.documents.store');
     Route::get('/business-entities/{businessEntity}/documents/{document}/content', [DocumentController::class, 'streamDocument'])
         ->name('business-entities.documents.content');
+
+    // Compliance / FY document workspace
+    Route::get('/business-entities/{businessEntity}/compliance/workspace', [ComplianceWorkspaceController::class, 'indexWorkspace'])->name('entities.compliance.workspace');
+    Route::get('/business-entities/{businessEntity}/assets/{asset}/compliance/workspace', [ComplianceWorkspaceController::class, 'indexAssetWorkspace'])->name('entities.asset-compliance.workspace');
+    Route::patch('/business-entities/{businessEntity}/compliance-years/{record}', [ComplianceWorkspaceController::class, 'updateYearNotes'])->name('entities.compliance-years.update');
+    Route::post('/business-entities/{businessEntity}/compliance-files/{complianceFile}/upload', [ComplianceController::class, 'upload'])->name('entities.compliance-files.upload');
+    Route::post('/business-entities/{businessEntity}/compliance-files/{complianceFile}/clear', [ComplianceController::class, 'clear'])->name('entities.compliance-files.clear');
+    Route::get('/business-entities/{businessEntity}/compliance-files/{complianceFile}/content', [ComplianceController::class, 'streamDocument'])->name('entities.compliance-files.content');
+    Route::post('/business-entities/{businessEntity}/assets/{asset}/compliance-files/{complianceFile}/upload', [ComplianceController::class, 'uploadAsset'])->name('entities.asset-compliance-files.upload');
+    Route::post('/business-entities/{businessEntity}/assets/{asset}/compliance-files/{complianceFile}/clear', [ComplianceController::class, 'clearAsset'])->name('entities.asset-compliance-files.clear');
 
     // Tenant and Lease Routes
     Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/create', [AssetController::class, 'createTenant'])->name('business-entities.assets.tenants.create');

@@ -1,8 +1,24 @@
 @php
+    use App\Support\ReportEntityScopeLabel;
+    use App\Support\ReportScopeQuery;
+
     $totals   = $report['totals'];
     $active   = $report['active'];
     $disposed = $report['disposed'];
     $formRoute = route('financial-reports.asset-summary');
+    $entityScopeLabel = ReportEntityScopeLabel::format(
+        $formsScope,
+        $formsEntityIds,
+        $businessEntities,
+        'All reporting properties'
+    );
+    $reportQuery = function (array $merge = []) use ($formsScope, $formsEntityIds, $showDisposed) {
+        $q = ReportScopeQuery::build($formsScope, $formsEntityIds, $merge);
+        if ($showDisposed) {
+            $q['show_disposed'] = 1;
+        }
+        return $q;
+    };
 
     /**
      * Row background class based on row state.
@@ -16,41 +32,17 @@
 <x-report-shell
     title="Asset summary"
     subtitle="Property register — ownership, tenants &amp; loan details"
-    entity-scope-label="All reporting properties"
+    :entity-scope-label="$entityScopeLabel"
     :full-width="true">
 
     <x-slot:filters>
         <form method="GET" action="{{ $formRoute }}" class="flex flex-wrap items-end gap-3">
 
-            {{-- Carry selected entity ids when scope=selected --}}
-            @if($formsScope === 'selected')
-                @foreach($formsEntityIds as $eid)
-                    <input type="hidden" name="entity_ids[]" value="{{ (int) $eid }}">
-                @endforeach
-            @endif
-
-            {{-- Entity scope picker --}}
-            @if($businessEntities->isNotEmpty())
-                <div class="flex flex-col gap-1 w-full sm:w-auto">
-                    <label class="text-xs font-medium text-gray-600">Entity scope</label>
-                    <select name="scope"
-                            class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white min-w-[12rem]">
-                        <option value="all"      {{ $formsScope === 'all'      ? 'selected' : '' }}>All reporting entities</option>
-                        <option value="selected" {{ $formsScope === 'selected' ? 'selected' : '' }}>Selected entities</option>
-                    </select>
-                </div>
-
-                <div class="flex flex-wrap gap-2 max-w-xl">
-                    @foreach($businessEntities as $entity)
-                        <label class="inline-flex items-center gap-1.5 text-xs border border-gray-200 rounded px-2 py-1">
-                            <input type="checkbox" name="entity_ids[]" value="{{ $entity->id }}"
-                                   {{ in_array($entity->id, $formsEntityIds, true) ? 'checked' : '' }}
-                                   class="rounded-sm border-gray-300 text-blue-600">
-                            <span class="truncate max-w-[10rem]">{{ $entity->legal_name }}</span>
-                        </label>
-                    @endforeach
-                </div>
-            @endif
+            <x-report-entity-scope-picker
+                :business-entities="$businessEntities"
+                :forms-scope="$formsScope"
+                :forms-entity-ids="$formsEntityIds"
+            />
 
             {{-- Include disposed --}}
             <div class="flex items-end">
@@ -460,7 +452,7 @@
             </svg>
             <span>
                 {{ $totals['disposed_count'] }} previous / disposed {{ $totals['disposed_count'] === 1 ? 'property' : 'properties' }} hidden.
-                <a href="{{ $formRoute }}?{{ http_build_query(array_merge(request()->except('show_disposed'), ['show_disposed' => 1, 'scope' => $formsScope])) }}"
+                <a href="{{ $formRoute }}?{{ http_build_query($reportQuery(['show_disposed' => 1])) }}"
                    class="text-blue-600 hover:underline font-medium">Show previous properties</a>
             </span>
         </div>
