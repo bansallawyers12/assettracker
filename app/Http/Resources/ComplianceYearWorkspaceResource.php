@@ -18,16 +18,17 @@ class ComplianceYearWorkspaceResource extends JsonResource
             ->values();
 
         return [
-            'entity_id'       => $this->business_entity_id,
-            'asset_id'        => $this->asset_id,
-            'fy_start'        => $this->fy_start_date?->toDateString(),
-            'fy_end'          => $this->fy_end_date?->toDateString(),
-            'fy_label'        => FinancialYear::label($this->fy_start_date),
-            'locked'          => $this->isLocked(),
-            'notes'           => $this->notes,
-            'completeness'    => $yearService->completeness($this->resource),
+            'year_record_id' => $this->id,
+            'entity_id' => $this->business_entity_id,
+            'asset_id' => $this->asset_id,
+            'fy_start' => $this->fy_start_date?->toDateString(),
+            'fy_end' => $this->fy_end_date?->toDateString(),
+            'fy_label' => FinancialYear::label($this->fy_start_date),
+            'locked' => $this->isLocked(),
+            'notes' => $this->notes,
+            'completeness' => $yearService->completeness($this->resource),
             'available_years' => $yearService->listAvailableYears(),
-            'categories'      => ComplianceCategoryResource::collection($categories)->resolve(),
+            'categories' => ComplianceCategoryResource::collection($categories)->resolve(),
         ];
     }
 }

@@ -9,12 +9,12 @@ return new class extends Migration
 {
     /** @var array<string, int> */
     private array $categorySortOrder = [
-        'Tax & ATO'       => 10,
-        'ASIC & Company'  => 20,
+        'Tax & ATO' => 10,
+        'ASIC & Company' => 20,
         'Property levies' => 10,
-        'Insurance'       => 20,
-        'Depreciation'    => 30,
-        'Other'           => 99,
+        'Insurance' => 20,
+        'Depreciation' => 30,
+        'Other' => 99,
     ];
 
     public function up(): void
@@ -97,21 +97,21 @@ return new class extends Migration
     private function seedCategoryGroups(): void
     {
         $groups = [
-            'itr'                   => 'Tax & ATO',
-            'annual_accounts'       => 'Tax & ATO',
-            'bas_annual'            => 'Tax & ATO',
-            'bas_q1'                => 'Tax & ATO',
-            'bas_q2'                => 'Tax & ATO',
-            'bas_q3'                => 'Tax & ATO',
-            'bas_q4'                => 'Tax & ATO',
-            'asic_statement'        => 'ASIC & Company',
-            'other_entity'          => 'Other',
-            'land_tax'              => 'Property levies',
-            'council_rates'         => 'Property levies',
-            'water_rates'           => 'Property levies',
+            'itr' => 'Tax & ATO',
+            'annual_accounts' => 'Tax & ATO',
+            'bas_annual' => 'Tax & ATO',
+            'bas_q1' => 'Tax & ATO',
+            'bas_q2' => 'Tax & ATO',
+            'bas_q3' => 'Tax & ATO',
+            'bas_q4' => 'Tax & ATO',
+            'asic_statement' => 'ASIC & Company',
+            'other_entity' => 'Other',
+            'land_tax' => 'Property levies',
+            'council_rates' => 'Property levies',
+            'water_rates' => 'Property levies',
             'insurance_certificate' => 'Insurance',
             'depreciation_schedule' => 'Depreciation',
-            'other_asset'           => 'Other',
+            'other_asset' => 'Other',
         ];
 
         foreach ($groups as $code => $group) {
@@ -135,18 +135,18 @@ return new class extends Migration
             $grouped = [];
             foreach ($files as $file) {
                 $type = $types->get($file->compliance_document_type_id);
-                $title = $type->category_group ?? 'Other';
+                $title = $type?->category_group ?? 'Other';
                 $grouped[$title][] = $file;
             }
 
             foreach ($grouped as $title => $groupFiles) {
                 $categoryId = DB::table('compliance_categories')->insertGetId([
                     'compliance_year_record_id' => $record->id,
-                    'title'                   => $title,
-                    'sort_order'              => $this->categorySortOrder[$title] ?? 50,
-                    'is_system'               => true,
-                    'created_at'              => now(),
-                    'updated_at'              => now(),
+                    'title' => $title,
+                    'sort_order' => $this->categorySortOrder[$title] ?? 50,
+                    'is_system' => true,
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ]);
 
                 foreach ($groupFiles as $file) {
@@ -155,8 +155,8 @@ return new class extends Migration
                         ->where('id', $file->id)
                         ->update([
                             'compliance_category_id' => $categoryId,
-                            'checklist_label'      => $type->label ?? 'Untitled',
-                            'custom_label'         => false,
+                            'checklist_label' => $type?->label ?? 'Untitled',
+                            'custom_label' => false,
                         ]);
                 }
             }

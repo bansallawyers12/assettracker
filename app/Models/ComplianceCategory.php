@@ -19,7 +19,7 @@ class ComplianceCategory extends Model
     {
         return [
             'sort_order' => 'integer',
-            'is_system'  => 'boolean',
+            'is_system' => 'boolean',
         ];
     }
 
@@ -30,6 +30,7 @@ class ComplianceCategory extends Model
 
     public function files(): HasMany
     {
-        return $this->hasMany(ComplianceDocumentFile::class, 'compliance_category_id');
+        return $this->hasMany(ComplianceDocumentFile::class, 'compliance_category_id')
+            ->orderBy('id');
     }
 }

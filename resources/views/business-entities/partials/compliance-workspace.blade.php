@@ -43,7 +43,10 @@
         Up to {{ number_format($wsDocMaxKb / 1024, 1) }} MB per file.
     </p>
 
-    <div id="{{ $prefix }}-category-tabs" class="flex flex-wrap gap-2 mb-4 items-center border-b border-gray-200 dark:border-gray-700 pb-3 hidden"></div>
+    <div id="{{ $prefix }}-category-bar" class="flex flex-wrap gap-2 mb-4 items-center border-b border-gray-200 dark:border-gray-700 pb-3 hidden">
+        <div id="{{ $prefix }}-category-tabs" class="flex flex-wrap gap-2 items-center"></div>
+        <button type="button" id="{{ $prefix }}-add-category" class="compliance-add-category px-3 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white hidden">+ Category</button>
+    </div>
 
     <div id="{{ $prefix }}-loading" class="text-sm text-gray-500 dark:text-gray-400 py-8 text-center hidden">Loading…</div>
 

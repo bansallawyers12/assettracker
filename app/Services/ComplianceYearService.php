@@ -16,12 +16,12 @@ class ComplianceYearService
 {
     /** @var array<string, int> */
     private const CATEGORY_SORT_ORDER = [
-        'Tax & ATO'       => 10,
-        'ASIC & Company'  => 20,
+        'Tax & ATO' => 10,
+        'ASIC & Company' => 20,
         'Property levies' => 10,
-        'Insurance'       => 20,
-        'Depreciation'    => 30,
-        'Other'           => 99,
+        'Insurance' => 20,
+        'Depreciation' => 30,
+        'Other' => 99,
     ];
 
     /**
@@ -37,7 +37,7 @@ class ComplianceYearService
             $period = FinancialYear::forDate($cursor);
             $years[] = [
                 'start' => $period['start']->toDateString(),
-                'end'   => $period['end']->toDateString(),
+                'end' => $period['end']->toDateString(),
                 'label' => FinancialYear::label($period['start']),
             ];
             $cursor = $cursor->copy()->subYear();
@@ -78,9 +78,9 @@ class ComplianceYearService
         if (! $record) {
             $record = ComplianceYearRecord::query()->create([
                 'business_entity_id' => $entity->id,
-                'asset_id'           => $asset?->id,
-                'fy_start_date'      => $period['start']->toDateString(),
-                'fy_end_date'        => $period['end']->toDateString(),
+                'asset_id' => $asset?->id,
+                'fy_start_date' => $period['start']->toDateString(),
+                'fy_end_date' => $period['end']->toDateString(),
             ]);
         }
 
@@ -115,28 +115,78 @@ class ComplianceYearService
             $category = ComplianceCategory::query()->firstOrCreate(
                 [
                     'compliance_year_record_id' => $record->id,
-                    'title'                     => $title,
+                    'title' => $title,
                 ],
                 [
                     'sort_order' => self::CATEGORY_SORT_ORDER[$title] ?? 50,
-                    'is_system'  => true,
+                    'is_system' => true,
                 ]
             );
 
             foreach ($groupTypes as $type) {
+                $existing = ComplianceDocumentFile::query()
+                    ->where('compliance_year_record_id', $record->id)
+                    ->where('compliance_document_type_id', $type->id)
+                    ->first();
+
+                if ($existing) {
+                    $updates = [];
+                    if ((int) $existing->compliance_category_id !== (int) $category->id) {
+                        $updates['compliance_category_id'] = $category->id;
+                    }
+                    if (! filled($existing->checklist_label)) {
+                        $updates['checklist_label'] = $type->label;
+                    }
+                    if ($updates !== []) {
+                        $existing->update($updates);
+                    }
+
+                    continue;
+                }
+
                 ComplianceDocumentFile::query()->firstOrCreate(
                     [
-                        'compliance_category_id'        => $category->id,
-                        'compliance_document_type_id'   => $type->id,
+                        'compliance_category_id' => $category->id,
+                        'compliance_document_type_id' => $type->id,
                     ],
                     [
                         'compliance_year_record_id' => $record->id,
-                        'checklist_label'           => $type->label,
-                        'custom_label'              => false,
-                        'status'                    => 'not_started',
+                        'checklist_label' => $type->label,
+                        'custom_label' => false,
+                        'status' => 'not_started',
                     ]
                 );
             }
+        }
+
+        $this->reconcileUncategorizedFiles($record);
+    }
+
+    private function reconcileUncategorizedFiles(ComplianceYearRecord $record): void
+    {
+        $orphans = ComplianceDocumentFile::query()
+            ->where('compliance_year_record_id', $record->id)
+            ->whereNull('compliance_category_id')
+            ->with('type')
+            ->get();
+
+        foreach ($orphans as $file) {
+            $title = $file->type?->category_group ?: 'Other';
+            $category = ComplianceCategory::query()->firstOrCreate(
+                [
+                    'compliance_year_record_id' => $record->id,
+                    'title' => $title,
+                ],
+                [
+                    'sort_order' => self::CATEGORY_SORT_ORDER[$title] ?? 50,
+                    'is_system' => true,
+                ]
+            );
+
+            $file->update([
+                'compliance_category_id' => $category->id,
+                'checklist_label' => $file->checklist_label ?? $file->type?->label ?? 'Untitled',
+            ]);
         }
     }
 
@@ -149,13 +199,19 @@ class ComplianceYearService
 
         $files = $record->categories->flatMap(fn (ComplianceCategory $cat) => $cat->files);
 
+        // Include any legacy rows not yet linked to a category.
+        $orphans = $record->files()->whereNull('compliance_category_id')->with('type')->get();
+        if ($orphans->isNotEmpty()) {
+            $files = $files->merge($orphans)->unique('id');
+        }
+
         $required = $files->filter(fn (ComplianceDocumentFile $f) => $f->type?->is_required);
         $requiredUploaded = $required->filter(fn (ComplianceDocumentFile $f) => $f->hasFile());
 
         return [
-            'total'            => $files->count(),
-            'uploaded'         => $files->filter(fn (ComplianceDocumentFile $f) => $f->hasFile())->count(),
-            'required_total'   => $required->count(),
+            'total' => $files->count(),
+            'uploaded' => $files->filter(fn (ComplianceDocumentFile $f) => $f->hasFile())->count(),
+            'required_total' => $required->count(),
             'required_missing' => $required->count() - $requiredUploaded->count(),
         ];
     }

@@ -36,6 +36,14 @@
         alert('Request failed. Please try again.');
     }
 
+    function alertValidationErrors(j) {
+        if (j?.errors) {
+            alert(Object.values(j.errors).flat().join('\n') || j.message || 'Validation failed.');
+            return true;
+        }
+        return false;
+    }
+
     function buildFileRow(file, fileAccept, locked) {
         const fileId = file.id;
         const label = file.checklist_label || file.type_label || file.type_code || '—';
@@ -69,6 +77,11 @@
             }
             const clearCls = hasFile ? '' : 'opacity-40 pointer-events-none';
             actions += `<button type="button" class="compliance-clear text-xs text-amber-600 ${clearCls}" data-file-id="${fileId}">Clear</button>`;
+            actions += `<button type="button" class="compliance-rename-file text-xs text-gray-500 dark:text-gray-400 ml-1" data-file-id="${fileId}" data-label="${escAttr(label)}">Rename</button>`;
+            actions += `<button type="button" class="compliance-move-file text-xs text-gray-500 dark:text-gray-400" data-file-id="${fileId}">Move</button>`;
+            if (file.custom_label) {
+                actions += `<button type="button" class="compliance-del-file text-xs text-red-600 ml-1" data-file-id="${fileId}">×</button>`;
+            }
         } else {
             actions = `<span class="text-xs text-gray-400">Locked</span>`;
         }
@@ -89,8 +102,18 @@
             ? files.map(f => buildFileRow(f, fileAccept, locked)).join('')
             : '<tr><td colspan="3" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No checklist items in this category.</td></tr>';
 
+        const headerActions = locked ? '' : `
+            <div class="flex gap-2">
+                <button type="button" class="compliance-add-slot text-sm px-2 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-sm" data-category-id="${cat.id}">+ Checklist</button>
+                <button type="button" class="compliance-rename-cat text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-sm dark:text-gray-300" data-category-id="${cat.id}" data-title="${escAttr(cat.title)}">Rename</button>
+                <button type="button" class="compliance-delete-cat text-xs px-2 py-1 border border-red-300 text-red-600 rounded-sm" data-category-id="${cat.id}">Delete</button>
+            </div>`;
+
         return `<div class="compliance-cat-panel hidden" data-category-panel="${cat.id}">
-            <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3">${escHtml(cat.title)} — checklist</h4>
+            <div class="flex justify-between items-center mb-3">
+                <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100">${escHtml(cat.title)} — checklist</h4>
+                ${headerActions}
+            </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <table class="min-w-full text-sm">
@@ -128,10 +151,13 @@
         const maxFileBytes = parseInt(root.dataset.maxFileBytes || '0', 10) || 0;
         const prefix = root.id.replace('-workspace', '');
         const SESSION_KEY = `compliance-ws-${entityId}-${assetId || 'entity'}`;
+        const base = `/business-entities/${entityId}`;
 
         const fySelect = document.getElementById(prefix + '-fy-select');
         const completenessEl = document.getElementById(prefix + '-completeness');
+        const categoryBarEl = document.getElementById(prefix + '-category-bar');
         const categoryTabsEl = document.getElementById(prefix + '-category-tabs');
+        const addCategoryBtn = document.getElementById(prefix + '-add-category');
         const categoryPanelsEl = document.getElementById(prefix + '-category-panels');
         const loadingEl = document.getElementById(prefix + '-loading');
         const errorEl = document.getElementById(prefix + '-error');
@@ -168,13 +194,13 @@
             errorEl?.classList.add('hidden');
             loadingEl?.classList.remove('hidden');
             contentEl?.classList.add('hidden');
-            categoryTabsEl?.classList.add('hidden');
+            categoryBarEl?.classList.add('hidden');
         }
 
         function showError(message) {
             loadingEl?.classList.add('hidden');
             contentEl?.classList.add('hidden');
-            categoryTabsEl?.classList.add('hidden');
+            categoryBarEl?.classList.add('hidden');
             if (errorMsgEl) {
                 errorMsgEl.textContent = message || 'Failed to load compliance documents.';
             }
@@ -183,6 +209,47 @@
 
         function hideError() {
             errorEl?.classList.add('hidden');
+        }
+
+        function findCategory(categoryId) {
+            return workspace?.categories?.find(c => String(c.id) === String(categoryId)) ?? null;
+        }
+
+        function refreshWorkspace() {
+            root.dataset.loaded = '0';
+            return fetchWorkspace(fySelect?.value || workspace?.fy_start || root.dataset.defaultFyStart);
+        }
+
+        function removeFileFromWorkspace(fileId) {
+            for (const cat of workspace?.categories || []) {
+                const idx = cat.files?.findIndex(f => String(f.id) === String(fileId));
+                if (idx > -1) {
+                    cat.files.splice(idx, 1);
+                    return cat;
+                }
+            }
+            return null;
+        }
+
+        function adjustCompletenessAfterDelete(file) {
+            if (!workspace?.completeness || !file) return;
+            if (file.has_file) {
+                workspace.completeness.uploaded = Math.max(0, workspace.completeness.uploaded - 1);
+            }
+            workspace.completeness.total = Math.max(0, workspace.completeness.total - 1);
+            if (file.is_required && !file.has_file) {
+                workspace.completeness.required_missing = Math.max(0, workspace.completeness.required_missing - 1);
+            }
+            updateCompleteness(workspace.completeness);
+        }
+
+        function adjustCompletenessAfterAdd(file) {
+            if (!workspace?.completeness || !file) return;
+            workspace.completeness.total++;
+            if (file.is_required) {
+                workspace.completeness.required_missing++;
+            }
+            updateCompleteness(workspace.completeness);
         }
 
         function findFile(fileId) {
@@ -217,27 +284,35 @@
             saveSession();
         }
 
-        function setPreview(fileId) {
-            const panel = getActivePanel();
-            if (!fileId || !panel) return;
-
-            const file = findFile(fileId);
-            const viewUrl = file?.content_url;
-            if (!viewUrl) return;
+        function applyPreviewToPanel(panel, file) {
+            if (!panel || !file?.content_url) return;
 
             const previewFrame = panel.querySelector('.compliance-preview-frame');
             const previewDl = panel.querySelector('.compliance-preview-dl');
             const previewClear = panel.querySelector('.compliance-preview-clear');
             if (!previewFrame || !previewDl) return;
 
-            previewFileId = String(fileId);
+            previewFileId = String(file.id);
             previewFrame.removeAttribute('src');
-            window.requestAnimationFrame(() => { previewFrame.src = viewUrl; });
-            previewDl.href = file.download_url || (viewUrl + (viewUrl.includes('?') ? '&download=1' : '?download=1'));
+            window.requestAnimationFrame(() => { previewFrame.src = file.content_url; });
+            previewDl.href = file.download_url || (file.content_url + (file.content_url.includes('?') ? '&download=1' : '?download=1'));
             previewDl.classList.remove('opacity-50', 'pointer-events-none');
             previewClear?.classList.remove('opacity-50', 'pointer-events-none');
-            if (previewClear) previewClear.dataset.fileId = String(fileId);
+            if (previewClear) previewClear.dataset.fileId = String(file.id);
             saveSession();
+        }
+
+        function setPreview(fileId) {
+            if (!fileId) return;
+
+            const file = findFile(fileId);
+            if (!file?.content_url) return;
+
+            if (file.category_id && String(file.category_id) !== String(activeCategoryId)) {
+                setActiveCategory(file.category_id);
+            }
+
+            applyPreviewToPanel(getActivePanel(), file);
         }
 
         function clearPreview() {
@@ -284,6 +359,8 @@
 
             if (!categories.length) {
                 categoryTabsEl.innerHTML = '';
+                categoryBarEl?.classList.add('hidden');
+                addCategoryBtn?.classList.add('hidden');
                 categoryPanelsEl.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 py-4">No categories configured for this scope.</p>';
             } else {
                 categoryTabsEl.innerHTML = categories.map((cat, i) =>
@@ -295,12 +372,17 @@
                 categoryPanelsEl.innerHTML = categories
                     .map(cat => buildCategoryPanel(cat, fileAccept, locked))
                     .join('');
+                categoryBarEl?.classList.remove('hidden');
+                if (locked) {
+                    addCategoryBtn?.classList.add('hidden');
+                } else {
+                    addCategoryBtn?.classList.remove('hidden');
+                }
             }
 
             updateCompleteness(ws.completeness);
             loadingEl?.classList.add('hidden');
             hideError();
-            categoryTabsEl.classList.remove('hidden');
             contentEl.classList.remove('hidden');
 
             const s = session || loadSession();
@@ -316,9 +398,6 @@
                 if (s.fyStart === ws.fy_start && s.previewFileId) {
                     const f = findFile(s.previewFileId);
                     if (f?.has_file) {
-                        if (f.category_id && String(f.category_id) !== String(activeCategoryId)) {
-                            setActiveCategory(f.category_id);
-                        }
                         setPreview(f.id);
                     } else {
                         clearPreview();
@@ -515,6 +594,180 @@
                 const j = await r.json();
                 if (j.status && j.file) applyFilePatch(j.file);
                 else alert(j.message || 'Failed');
+                return;
+            }
+
+            const addCatBtn = ev.target.closest(`#${prefix}-add-category`);
+            if (addCatBtn && root.contains(addCatBtn)) {
+                if (!workspace?.year_record_id) { alert('Workspace not loaded.'); return; }
+                const title = prompt('Category name');
+                if (!title?.trim()) return;
+                const r = await api(`${base}/compliance-years/${workspace.year_record_id}/categories`, {
+                    method: 'POST',
+                    body: JSON.stringify({ title: title.trim() }),
+                });
+                const j = await r.json();
+                if (j.status) {
+                    saveSession({ activeCategoryId: j.category?.id ?? activeCategoryId });
+                    refreshWorkspace();
+                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                return;
+            }
+
+            const renameCatBtn = ev.target.closest('.compliance-rename-cat');
+            if (renameCatBtn && root.contains(renameCatBtn)) {
+                const catId = renameCatBtn.dataset.categoryId;
+                const title = prompt('New title', renameCatBtn.dataset.title);
+                if (!title?.trim()) return;
+                const r = await api(`${base}/compliance-categories/${catId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ title: title.trim() }),
+                });
+                const j = await r.json();
+                if (j.status) {
+                    const newTitle = j.category?.title ?? title.trim();
+                    const tab = root.querySelector(`.compliance-cat-tab[data-category-id="${catId}"]`);
+                    const panel = root.querySelector(`.compliance-cat-panel[data-category-panel="${catId}"]`);
+                    if (tab) tab.textContent = newTitle;
+                    if (panel) {
+                        const h4 = panel.querySelector('h4');
+                        if (h4) h4.textContent = newTitle + ' — checklist';
+                        panel.querySelector('.compliance-rename-cat')?.setAttribute('data-title', newTitle);
+                    }
+                    const cat = findCategory(catId);
+                    if (cat) cat.title = newTitle;
+                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                return;
+            }
+
+            const deleteCatBtn = ev.target.closest('.compliance-delete-cat');
+            if (deleteCatBtn && root.contains(deleteCatBtn)) {
+                if (!confirm('Delete this category? All checklist rows must be removed first.')) return;
+                const catId = deleteCatBtn.dataset.categoryId;
+                const r = await api(`${base}/compliance-categories/${catId}`, { method: 'DELETE' });
+                const j = await r.json();
+                if (j.status) {
+                    if (String(activeCategoryId) === String(catId)) {
+                        saveSession({ activeCategoryId: null, previewFileId: null });
+                    }
+                    refreshWorkspace();
+                } else alert(j.message || 'Failed');
+                return;
+            }
+
+            const addSlotBtn = ev.target.closest('.compliance-add-slot');
+            if (addSlotBtn && root.contains(addSlotBtn)) {
+                const label = prompt('Checklist item name (e.g. Accountant workpapers)');
+                if (!label?.trim()) return;
+                const catId = addSlotBtn.dataset.categoryId;
+                const r = await api(`${base}/compliance-categories/${catId}/slots`, {
+                    method: 'POST',
+                    body: JSON.stringify({ checklist_label: label.trim() }),
+                });
+                const j = await r.json();
+                if (j.status && j.file) {
+                    const panel = root.querySelector(`.compliance-cat-panel[data-category-panel="${catId}"]`);
+                    let tbody = panel?.querySelector('tbody');
+                    if (tbody) {
+                        const placeholder = tbody.querySelector('td[colspan="3"]');
+                        if (placeholder) tbody.innerHTML = '';
+                        tbody.insertAdjacentHTML('beforeend', buildFileRow(j.file, fileAccept, locked));
+                    }
+                    const cat = findCategory(catId);
+                    if (cat) {
+                        cat.files = [...(cat.files || []), j.file];
+                    }
+                    adjustCompletenessAfterAdd(j.file);
+                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                return;
+            }
+
+            const renameFileBtn = ev.target.closest('.compliance-rename-file');
+            if (renameFileBtn && root.contains(renameFileBtn)) {
+                const fileId = renameFileBtn.dataset.fileId;
+                const current = renameFileBtn.dataset.label || '';
+                const label = prompt('New checklist item name', current);
+                if (!label?.trim() || label.trim() === current) return;
+                const r = await api(`${base}/compliance-files/${fileId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ checklist_label: label.trim() }),
+                });
+                const j = await r.json();
+                if (j.status && j.file) {
+                    patchRow(j.file);
+                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                return;
+            }
+
+            const moveFileBtn = ev.target.closest('.compliance-move-file');
+            if (moveFileBtn && root.contains(moveFileBtn)) {
+                const fileId = moveFileBtn.dataset.fileId;
+                const tr = root.querySelector(`tr[data-compliance-row="${fileId}"]`);
+                const srcPanel = tr?.closest('.compliance-cat-panel');
+                const srcCatId = srcPanel?.dataset.categoryPanel;
+                const otherCats = (workspace?.categories || [])
+                    .filter(c => String(c.id) !== String(srcCatId))
+                    .map(c => ({ id: c.id, title: c.title }));
+
+                if (!otherCats.length) { alert('No other categories to move to.'); return; }
+
+                const options = otherCats.map((c, i) => `${i + 1}. ${c.title}`).join('\n');
+                const choice = prompt(`Move to which category?\n${options}\n\nEnter number:`);
+                if (!choice) return;
+                const target = otherCats[parseInt(choice, 10) - 1];
+                if (!target) { alert('Invalid selection.'); return; }
+
+                const r = await api(`${base}/compliance-files/${fileId}/move`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ compliance_category_id: parseInt(target.id, 10) }),
+                });
+                const j = await r.json();
+                if (j.status && j.file) {
+                    const destPanel = root.querySelector(`.compliance-cat-panel[data-category-panel="${target.id}"]`);
+                    if (tr && destPanel) {
+                        if (previewFileId === String(fileId)) clearPreview();
+                        let destTbody = destPanel.querySelector('tbody');
+                        if (destTbody) {
+                            const placeholder = destTbody.querySelector('td[colspan="3"]');
+                            if (placeholder) destTbody.innerHTML = '';
+                            destTbody.appendChild(tr);
+                        }
+                        const srcCat = findCategory(srcCatId);
+                        const destCat = findCategory(target.id);
+                        if (srcCat && destCat) {
+                            const idx = srcCat.files?.findIndex(f => String(f.id) === String(fileId));
+                            if (idx > -1) {
+                                const [moved] = srcCat.files.splice(idx, 1);
+                                destCat.files = [...(destCat.files || []), { ...moved, ...j.file }];
+                            }
+                        }
+                        updateFileInWorkspace(j.file);
+                    } else {
+                        refreshWorkspace();
+                    }
+                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                return;
+            }
+
+            const delFileBtn = ev.target.closest('.compliance-del-file');
+            if (delFileBtn && root.contains(delFileBtn)) {
+                if (!confirm('Delete this checklist row entirely?')) return;
+                const fileId = delFileBtn.dataset.fileId;
+                const tr = root.querySelector(`tr[data-compliance-row="${fileId}"]`);
+                const panel = tr?.closest('.compliance-cat-panel');
+                const file = findFile(fileId);
+                const r = await api(`${base}/compliance-files/${fileId}`, { method: 'DELETE' });
+                const j = await r.json();
+                if (j.status) {
+                    if (previewFileId === String(fileId)) clearPreview();
+                    tr?.remove();
+                    adjustCompletenessAfterDelete(file);
+                    removeFileFromWorkspace(fileId);
+                    if (panel && !panel.querySelector('tbody tr')) {
+                        panel.querySelector('tbody').innerHTML =
+                            '<tr><td colspan="3" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No checklist items in this category.</td></tr>';
+                    }
+                } else alert(j.message || 'Failed');
             }
         });
 

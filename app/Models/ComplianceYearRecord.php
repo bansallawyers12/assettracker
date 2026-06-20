@@ -22,8 +22,8 @@ class ComplianceYearRecord extends Model
     {
         return [
             'fy_start_date' => 'date',
-            'fy_end_date'   => 'date',
-            'locked_at'     => 'datetime',
+            'fy_end_date' => 'date',
+            'locked_at' => 'datetime',
         ];
     }
 
@@ -49,7 +49,9 @@ class ComplianceYearRecord extends Model
 
     public function categories(): HasMany
     {
-        return $this->hasMany(ComplianceCategory::class, 'compliance_year_record_id');
+        return $this->hasMany(ComplianceCategory::class, 'compliance_year_record_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
     }
 
     public function isLocked(): bool
