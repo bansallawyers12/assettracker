@@ -9,11 +9,15 @@ class ComplianceDocumentFilePolicy
 {
     public function view(User $user, ComplianceDocumentFile $file): bool
     {
-        return $file->yearRecord?->businessEntity !== null;
+        $file->loadMissing('yearRecord');
+
+        return $file->yearRecord !== null;
     }
 
     public function update(User $user, ComplianceDocumentFile $file): bool
     {
-        return $file->yearRecord?->businessEntity !== null;
+        $file->loadMissing('yearRecord');
+
+        return $file->yearRecord !== null;
     }
 }

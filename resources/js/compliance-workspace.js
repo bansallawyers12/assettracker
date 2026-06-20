@@ -199,16 +199,20 @@
             contentEl.classList.remove('hidden');
 
             const session = loadSession();
-            if (session.previewFileId) {
+            if (session.fyStart === ws.fy_start && session.previewFileId) {
                 const f = ws.files?.find(x => String(x.id) === String(session.previewFileId) && x.has_file);
                 if (f) setPreview(f.id, f.file_name);
                 else clearPreview();
+            } else {
+                clearPreview();
             }
         }
 
         async function fetchWorkspace(fyStart) {
             loadingEl?.classList.remove('hidden');
             contentEl?.classList.add('hidden');
+            previewFileId = null;
+            clearPreview();
 
             const url = new URL(workspaceUrl, window.location.origin);
             url.searchParams.set('fy_start', fyStart);
@@ -362,24 +366,29 @@
         document.querySelectorAll('.compliance-workspace').forEach(initWorkspace);
     }
 
+    function maybeLoadComplianceWorkspace() {
+        const panel = document.getElementById('tab_compliance');
+        const root = panel?.querySelector('.compliance-workspace');
+        if (root && root.dataset.loaded !== '1' && typeof root.loadWorkspace === 'function') {
+            root.loadWorkspace();
+        }
+    }
+
     function bindTabLazyLoad() {
         document.querySelectorAll('a[href="#tab_compliance"]').forEach(tab => {
             tab.addEventListener('click', () => {
-                const panel = document.getElementById('tab_compliance');
-                const root = panel?.querySelector('.compliance-workspace');
-                if (root && root.dataset.loaded !== '1' && typeof root.loadWorkspace === 'function') {
-                    root.loadWorkspace();
-                }
+                setTimeout(maybeLoadComplianceWorkspace, 0);
             });
         });
 
-        // Load immediately if compliance tab is active via hash
-        const hash = window.location.hash?.substring(1);
-        if (hash === 'tab_compliance') {
-            const root = document.getElementById('tab_compliance')?.querySelector('.compliance-workspace');
-            if (root && typeof root.loadWorkspace === 'function') {
-                root.loadWorkspace();
+        window.addEventListener('hashchange', () => {
+            if (window.location.hash === '#tab_compliance') {
+                maybeLoadComplianceWorkspace();
             }
+        });
+
+        if (window.location.hash === '#tab_compliance') {
+            maybeLoadComplianceWorkspace();
         }
     }
 

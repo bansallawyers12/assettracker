@@ -35,9 +35,19 @@ class ComplianceWorkspaceController extends Controller
     private function workspaceResponse(Request $request, BusinessEntity $businessEntity, ?Asset $asset)
     {
         $fyStartInput = $request->query('fy_start', FinancialYear::currentStart()->toDateString());
-        $normalized = $this->yearService->normalizeFyStart($fyStartInput);
 
-        if ($normalized->toDateString() !== Carbon::parse($fyStartInput)->toDateString()) {
+        try {
+            $parsed = Carbon::parse($fyStartInput);
+        } catch (\Exception) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'Invalid financial year start date.',
+            ], 422);
+        }
+
+        $normalized = $this->yearService->normalizeFyStart($parsed);
+
+        if ($normalized->toDateString() !== $parsed->toDateString()) {
             return response()->json([
                 'status'  => false,
                 'message' => 'Invalid financial year start date.',

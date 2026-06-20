@@ -46,6 +46,8 @@ class ComplianceController extends Controller
                 'status' => true,
                 'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])))->resolve(),
             ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
         } catch (\RuntimeException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
@@ -83,6 +85,8 @@ class ComplianceController extends Controller
                 'status' => true,
                 'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])))->resolve(),
             ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
         } catch (\RuntimeException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
@@ -107,6 +111,8 @@ class ComplianceController extends Controller
                 'status' => true,
                 'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])))->resolve(),
             ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
         } catch (\RuntimeException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
         }
@@ -126,6 +132,8 @@ class ComplianceController extends Controller
                 'status' => true,
                 'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])))->resolve(),
             ]);
+        } catch (\InvalidArgumentException $e) {
+            return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
         } catch (\RuntimeException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
         }
@@ -136,6 +144,7 @@ class ComplianceController extends Controller
         $this->authorize('view', $businessEntity);
         $this->authorize('view', $complianceFile);
 
+        $complianceFile->loadMissing('yearRecord');
         $record = $complianceFile->yearRecord;
         if (! $record || (int) $record->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
