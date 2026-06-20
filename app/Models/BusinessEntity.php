@@ -115,6 +115,14 @@ class BusinessEntity extends Model
     }
 
     /**
+     * Short label for report entity pickers (trading name when set).
+     */
+    public function reportPickerLabel(): string
+    {
+        return $this->trading_name ?: $this->legal_name;
+    }
+
+    /**
      * Exists rule limited to operating entities (excludes tenancy/property-manager contacts).
      *
      * Use query callbacks instead of ->where(..., false): when the rule is stringified for validation,

@@ -147,6 +147,7 @@
                                         <a href="#tab_assets" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Assets</a>
                                         <a href="#tab_persons" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Persons</a>
                                         <a href="#tab_documents" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Documents</a>
+                                        <a href="#tab_compliance" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Compliance</a>
                                         <a href="#tab_notes" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Notes</a>
                                         <a href="#tab_contact_lists" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Contact Lists</a>
                                         <a href="#tab_compose_email" class="tab-link entity-tab-link px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">Compose Email</a>
@@ -742,6 +743,20 @@
                                         'businessEntity' => $businessEntity,
                                         'asset' => null,
                                         'documentCategories' => $documentCategories ?? collect(),
+                                    ])
+                                </div>
+                            </div>
+
+                            <!-- Compliance Tab -->
+                            <div id="tab_compliance" class="tab-content hidden">
+                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div class="mb-4">
+                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Compliance</h3>
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Financial-year records such as ITR, BAS, land tax, and council rates.</p>
+                                    </div>
+                                    @include('business-entities.partials.compliance-workspace', [
+                                        'businessEntity' => $businessEntity,
+                                        'asset' => null,
                                     ])
                                 </div>
                             </div>

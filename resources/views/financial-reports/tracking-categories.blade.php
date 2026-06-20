@@ -23,7 +23,12 @@
             <div class="px-4 py-5 sm:p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Filters</h3>
                 <form method="GET" action="{{ route('financial-reports.tracking-categories') }}" class="grid grid-cols-1 gap-4 sm:grid-cols-4">
-                    @include('financial-reports.partials.report-scope-fields', ['report' => $report])
+                    <div class="sm:col-span-2">
+                        <x-report-entity-scope-picker
+                            :business-entities="$businessEntities"
+                            :report="$report"
+                        />
+                    </div>
                     <div>
                         <label for="start_date" class="block text-sm font-medium text-gray-700">Start Date</label>
                         <input type="date" 

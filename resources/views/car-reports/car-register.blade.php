@@ -1,8 +1,16 @@
 @php
+    use App\Support\ReportEntityScopeLabel;
+
     $totals = $report['totals'];
     $cars   = $report['cars'];
     $now    = \Carbon\Carbon::now()->startOfDay();
     $in30   = \Carbon\Carbon::now()->addDays(30)->endOfDay();
+    $entityScopeLabel = ReportEntityScopeLabel::format(
+        $formsScope,
+        $formsEntityIds,
+        $businessEntities,
+        'Cars across all reporting entities'
+    );
 
     /**
      * Returns a Tailwind color class for a due date cell.
@@ -21,43 +29,19 @@
 
 <x-report-shell
     title="Car Register"
-    :entity-scope-label="$formsScope === 'selected' && count($formsEntityIds) === 1
-        ? 'Cars for ' . ($businessEntities->firstWhere('id', $formsEntityIds[0])?->legal_name ?? 'selected entity')
-        : ($formsScope === 'selected' ? 'Cars for selected entities' : 'Cars across all reporting entities')">
+    :entity-scope-label="$entityScopeLabel">
 
     <x-slot:filters>
         <form method="GET" action="{{ route('financial-reports.car-register') }}"
               class="flex flex-wrap items-end gap-3">
 
-            {{-- Carry selected entity ids when scope=selected --}}
-            @if($formsScope === 'selected')
-                @foreach($formsEntityIds as $eid)
-                    <input type="hidden" name="entity_ids[]" value="{{ (int) $eid }}">
-                @endforeach
-            @endif
+            <x-report-entity-scope-picker
+                :business-entities="$businessEntities"
+                :forms-scope="$formsScope"
+                :forms-entity-ids="$formsEntityIds"
+            />
 
-            {{-- Entity scope picker --}}
-            @if($businessEntities->isNotEmpty())
-                <div class="flex flex-col gap-1 w-full sm:w-auto">
-                    <label class="text-xs font-medium text-gray-600">Entity scope</label>
-                    <select name="scope"
-                            class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white min-w-[12rem]">
-                        <option value="all"      {{ $formsScope === 'all'      ? 'selected' : '' }}>All reporting entities</option>
-                        <option value="selected" {{ $formsScope === 'selected' ? 'selected' : '' }}>Selected entities</option>
-                    </select>
-                </div>
-
-                <div class="flex flex-wrap gap-2 max-w-xl">
-                    @foreach($businessEntities as $entity)
-                        <label class="inline-flex items-center gap-1.5 text-xs border border-gray-200 rounded px-2 py-1">
-                            <input type="checkbox" name="entity_ids[]" value="{{ $entity->id }}"
-                                   {{ in_array($entity->id, $formsEntityIds, true) ? 'checked' : '' }}
-                                   class="rounded-sm border-gray-300 text-blue-600">
-                            <span class="truncate max-w-[10rem]">{{ $entity->legal_name }}</span>
-                        </label>
-                    @endforeach
-                </div>
-            @else
+            @if($businessEntities->isEmpty())
                 <p class="text-xs text-gray-500">No reporting entities are configured. Showing cars from all operational entities.</p>
             @endif
 

@@ -52,5 +52,22 @@ class AppServiceProvider extends ServiceProvider
 
             $view->with('headerSearchIndex', HeaderSearchIndex::build());
         });
+
+        $glReportViews = [
+            'financial-reports.profit-loss',
+            'financial-reports.balance-sheet',
+            'financial-reports.cash-flow',
+            'financial-reports.account-transactions',
+            'financial-reports.tracking-categories',
+        ];
+
+        View::composer($glReportViews, function ($view) {
+            if (! array_key_exists('businessEntities', $view->getData())) {
+                $view->with(
+                    'businessEntities',
+                    BusinessEntity::forFinancialReports()->orderBy('legal_name')->get()
+                );
+            }
+        });
     }
 }

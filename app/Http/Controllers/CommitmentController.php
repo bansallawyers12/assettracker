@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
+use App\Http\Controllers\Concerns\ResolvesReportEntityScope;
 use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\Commitment;
@@ -15,6 +16,7 @@ use Illuminate\View\View;
 class CommitmentController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
+    use ResolvesReportEntityScope;
 
     public function __construct(
         protected CommitmentReportService $commitmentReportService
@@ -266,32 +268,6 @@ class CommitmentController extends Controller
             'formsEntityIds',
             'status'
         ));
-    }
-
-    /**
-     * @return array<int>|null null = invalid selected scope with no entities
-     */
-    protected function resolveReportEntityIds(Request $request): ?array
-    {
-        $allowed = BusinessEntity::forFinancialReports()
-            ->orderBy('legal_name')
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
-
-        if ($allowed === []) {
-            return [];
-        }
-
-        if ($request->input('scope') === 'selected') {
-            $requested = array_values(array_unique(array_map('intval', (array) $request->input('entity_ids', []))));
-            $requested = array_values(array_intersect($requested, $allowed));
-
-            return $requested === [] ? null : $requested;
-        }
-
-        return $allowed;
     }
 
     /**

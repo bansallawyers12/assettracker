@@ -1,4 +1,5 @@
 import TomSelect from 'tom-select';
+import remove_button from 'tom-select/dist/esm/plugins/remove_button/plugin.js';
 import 'tom-select/dist/css/tom-select.default.css';
 
 function resolveSelect(select) {
@@ -8,16 +9,27 @@ function resolveSelect(select) {
     return typeof select === 'string' ? document.getElementById(select) : select;
 }
 
+function isMultiSelect(select) {
+    return select.multiple === true;
+}
+
 function placeholderFromSelect(select) {
     const empty = Array.from(select.options).find((opt) => opt.value === '');
-    return empty?.textContent?.trim() || 'Select…';
+    if (empty?.textContent?.trim()) {
+        return empty.textContent.trim();
+    }
+
+    return isMultiSelect(select) ? 'Search entities…' : 'Select…';
 }
 
 function buildOptions(select) {
     const create = select.dataset.tomselectCreate === 'true';
+    const multi = isMultiSelect(select);
 
-    return {
-        plugins: ['dropdown_input'],
+    const plugins = multi ? ['remove_button', 'dropdown_input'] : ['dropdown_input'];
+
+    const options = {
+        plugins,
         allowEmptyOption: select.dataset.tomselectAllowEmpty !== 'false',
         create,
         maxOptions: null,
@@ -27,6 +39,12 @@ function buildOptions(select) {
             select.dispatchEvent(new Event('change', { bubbles: true }));
         },
     };
+
+    if (multi) {
+        options.hideSelected = false;
+    }
+
+    return options;
 }
 
 function addNativeOptionToTomSelect(ts, opt) {
@@ -48,6 +66,32 @@ function addNativeOptionToTomSelect(ts, opt) {
     }
 
     ts.addOption(option);
+}
+
+function selectedValuesFromNative(select) {
+    if (isMultiSelect(select)) {
+        return Array.from(select.selectedOptions)
+            .map((opt) => opt.value)
+            .filter((value) => value !== '');
+    }
+
+    return select.value ? [select.value] : [];
+}
+
+function setNativeSelectedValues(select, values) {
+    if (isMultiSelect(select)) {
+        const normalized = new Set(
+            (Array.isArray(values) ? values : [values]).map((v) => String(v)).filter((v) => v !== '')
+        );
+        Array.from(select.options).forEach((opt) => {
+            opt.selected = normalized.has(opt.value);
+        });
+
+        return;
+    }
+
+    const value = Array.isArray(values) ? (values[0] ?? '') : (values ?? '');
+    select.value = value;
 }
 
 /**
@@ -81,7 +125,7 @@ export function rebuildTomSelectFromNative(select) {
     }
 
     const ts = el.tomselect;
-    const selected = el.value;
+    const selected = selectedValuesFromNative(el);
 
     ts.clear(true);
     ts.clearOptions();
@@ -90,8 +134,20 @@ export function rebuildTomSelectFromNative(select) {
 
     ts.refreshOptions(false);
 
-    const stillValid = selected && ts.options[selected] && !ts.options[selected].disabled;
-    ts.setValue(stillValid ? selected : '', true);
+    if (selected.length === 0) {
+        ts.clear(true);
+
+        return;
+    }
+
+    const valid = selected.filter((value) => ts.options[value] && !ts.options[value].disabled);
+    if (valid.length === 0) {
+        ts.clear(true);
+
+        return;
+    }
+
+    ts.setValue(isMultiSelect(el) ? valid : valid[0], true);
 }
 
 export function reinitTomSelect(select) {
@@ -111,11 +167,19 @@ export function setSelectValue(select, value) {
     }
 
     if (el.tomselect) {
-        el.tomselect.setValue(value ?? '', true);
+        if (value === null || value === undefined || value === '') {
+            el.tomselect.clear(true);
+
+            return;
+        }
+
+        const values = Array.isArray(value) ? value : [value];
+        el.tomselect.setValue(isMultiSelect(el) ? values.map(String) : String(values[0]), true);
+
         return;
     }
 
-    el.value = value ?? '';
+    setNativeSelectedValues(el, value);
 }
 
 export function setSelectDisabled(select, disabled) {
@@ -134,3 +198,6 @@ export function setSelectDisabled(select, disabled) {
         }
     }
 }
+
+// Register remove_button for multi-select instances.
+TomSelect.define('remove_button', remove_button);

@@ -25,36 +25,27 @@
 
         {{-- Scope: shared by entity-scoped report actions --}}
         <form id="financial-reports-hub-form" method="get" action="#" class="space-y-8"
-              x-data="{
-                  scope: 'all',
-                  validate(ev) {
-                      const boxes = this.$el.querySelectorAll('input[name=\'entity_ids[]\']');
-                      if (this.scope === 'all') {
-                          boxes.forEach(cb => { cb.disabled = true; });
-                          return true;
-                      }
-                      boxes.forEach(cb => { cb.disabled = false; });
-                      const n = this.$el.querySelectorAll('input[name=\'entity_ids[]\']:checked').length;
-                      if (n === 0) {
-                          ev.preventDefault();
-                          alert('Select at least one entity, or choose “All reporting entities”.');
-                          return false;
-                      }
-                      return true;
-                  }
-              }"
-              x-init="window.addEventListener('pageshow', () => {
-                  document.querySelectorAll('#financial-reports-hub-form input[name=\'entity_ids[]\']').forEach(cb => { cb.disabled = false; });
-              })"
-              @submit="validate($event)">
+              x-init="
+                  const syncHubEntitySelects = () => {
+                      document.querySelectorAll('#financial-reports-hub-form [data-report-entity-scope-picker]').forEach((picker) => {
+                          const scope = picker.querySelector('input[name=scope]:checked')?.value
+                              ?? picker.querySelector('select[name=scope]')?.value
+                              ?? 'all';
+                          const sel = picker.querySelector('select[name=\'entity_ids[]\']');
+                          window.setSelectDisabled?.(sel, scope === 'all');
+                      });
+                  };
+                  window.addEventListener('pageshow', syncHubEntitySelects);
+              ">
 
             {{-- Report types (fixed on top) --}}
             <div class="sticky top-0 z-20 -mx-4 px-4 sm:mx-0 sm:px-0 pt-2 pb-3 bg-gray-50/95 backdrop-blur-xs border-b border-gray-200/80 sm:border-0 sm:bg-transparent sm:backdrop-blur-none">
                 <h2 class="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Reports</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
 
-                        <a href="{{ route('financial-reports.entity-summary') }}"
-                           class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-amber-400 hover:shadow-xs transition-all">
+                        <button type="submit" formaction="{{ route('financial-reports.entity-summary') }}"
+                                form="financial-reports-hub-form"
+                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-amber-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-amber-50 flex items-center justify-center group-hover:bg-amber-100">
                                     <svg class="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +58,7 @@
                                     <p class="text-xs text-gray-500 mt-0.5">Cross-entity sales, tax, profit &amp; loans</p>
                                 </div>
                             </div>
-                        </a>
+                        </button>
 
                         <button type="submit" formaction="{{ route('financial-reports.account-transactions') }}"
                                 form="financial-reports-hub-form"
@@ -154,8 +145,9 @@
                             </div>
                         </button>
 
-                        <a href="{{ route('portfolio.index') }}"
-                           class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-teal-400 hover:shadow-xs transition-all">
+                        <button type="submit" formaction="{{ route('portfolio.index') }}"
+                                form="financial-reports-hub-form"
+                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-teal-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-teal-50 flex items-center justify-center group-hover:bg-teal-100">
                                     <svg class="h-5 w-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -168,10 +160,11 @@
                                     <p class="text-xs text-gray-500 mt-0.5">Per-property P&amp;L and yield vs acquisition cost</p>
                                 </div>
                             </div>
-                        </a>
+                        </button>
 
-                        <a href="{{ route('financial-reports.asset-summary') }}"
-                           class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-emerald-400 hover:shadow-xs transition-all">
+                        <button type="submit" formaction="{{ route('financial-reports.asset-summary') }}"
+                                form="financial-reports-hub-form"
+                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-emerald-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100">
                                     <svg class="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -184,10 +177,11 @@
                                     <p class="text-xs text-gray-500 mt-0.5">Property register — ownership, tenants &amp; loan details</p>
                                 </div>
                             </div>
-                        </a>
+                        </button>
 
-                        <a href="{{ route('financial-reports.car-register') }}"
-                           class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-sky-400 hover:shadow-xs transition-all">
+                        <button type="submit" formaction="{{ route('financial-reports.car-register') }}"
+                                form="financial-reports-hub-form"
+                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-sky-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-sky-50 flex items-center justify-center group-hover:bg-sky-100">
                                     <svg class="h-5 w-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -202,10 +196,11 @@
                                     <p class="text-xs text-gray-500 mt-0.5">Rego, insurance &amp; service due dates for all cars</p>
                                 </div>
                             </div>
-                        </a>
+                        </button>
 
-                        <a href="{{ route('financial-reports.commitments') }}"
-                           class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-rose-400 hover:shadow-xs transition-all">
+                        <button type="submit" formaction="{{ route('financial-reports.commitments') }}"
+                                form="financial-reports-hub-form"
+                                class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-rose-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-rose-50 flex items-center justify-center group-hover:bg-rose-100">
                                     <svg class="h-5 w-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,48 +213,17 @@
                                     <p class="text-xs text-gray-500 mt-0.5">Pending contracts, deposits &amp; settlement dates</p>
                                 </div>
                             </div>
-                        </a>
+                        </button>
                     </div>
                 </div>
 
-                {{-- Entity scope --}}
                 @if($businessEntities->isNotEmpty())
                 <div class="bg-white border border-gray-200 rounded-xl p-5 sm:p-6 shadow-xs">
-                    <h2 class="text-sm font-semibold text-gray-900 mb-4">Entity scope</h2>
-
-                    <div class="space-y-4">
-                        <label class="flex items-start gap-3 cursor-pointer group">
-                            <input type="radio" name="scope" value="all" x-model="scope" checked
-                                   class="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span>
-                                <span class="text-sm font-medium text-gray-800 group-hover:text-gray-900">All reporting entities</span>
-                                <span class="block text-xs text-gray-500 mt-0.5">Consolidated figures across every entity that is included in reports ({{ $businessEntities->count() }}).</span>
-                            </span>
-                        </label>
-
-                        <label class="flex items-start gap-3 cursor-pointer group">
-                            <input type="radio" name="scope" value="selected" x-model="scope"
-                                   class="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span>
-                                <span class="text-sm font-medium text-gray-800 group-hover:text-gray-900">Selected entities only</span>
-                                <span class="block text-xs text-gray-500 mt-0.5">Tick one or more entities, then open a report above.</span>
-                            </span>
-                        </label>
-
-                        <div class="pl-7 sm:pl-8 border-l-2 border-gray-100 ml-1.5 space-y-2"
-                             :class="scope === 'selected' ? '' : 'opacity-50 pointer-events-none'">
-                            <p class="text-xs font-medium text-gray-500 mb-2">Entities</p>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-52 overflow-y-auto pr-1">
-                                @foreach($businessEntities as $entity)
-                                    <label class="flex items-center gap-2 rounded-md border border-gray-100 px-3 py-2 hover:bg-gray-50 cursor-pointer">
-                                        <input type="checkbox" name="entity_ids[]" value="{{ $entity->id }}"
-                                               class="h-4 w-4 rounded-sm border-gray-300 text-blue-600 focus:ring-blue-500">
-                                        <span class="text-sm text-gray-700 truncate">{{ $entity->legal_name }}</span>
-                                    </label>
-                                @endforeach
-                            </div>
-                        </div>
-                    </div>
+                    <x-report-entity-scope-picker
+                        :business-entities="$businessEntities"
+                        layout="card"
+                        scope-style="radio"
+                    />
                 </div>
                 @endif
             </form>

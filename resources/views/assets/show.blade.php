@@ -142,6 +142,7 @@
                                 @endif
                                 <a href="#tab_transactions" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Transactions</a>
                                 <a href="#tab_documents" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Documents</a>
+                                <a href="#tab_compliance" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Compliance</a>
                                 <a href="#tab_notes" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Notes</a>
                                 <a href="#tab_reminders" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Reminders</a>
                                 <a href="#tab_emails" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Emails</a>
@@ -658,6 +659,17 @@
                                         'businessEntity' => $businessEntity,
                                         'asset' => $asset,
                                         'documentCategories' => $documentCategories ?? collect(),
+                                    ])
+                                </div>
+                            </div>
+
+                            <!-- Compliance Tab -->
+                            <div id="tab_compliance" class="tab-content hidden">
+                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Property compliance documents by financial year (land tax, council rates, insurance, etc.).</p>
+                                    @include('business-entities.partials.compliance-workspace', [
+                                        'businessEntity' => $businessEntity,
+                                        'asset' => $asset,
                                     ])
                                 </div>
                             </div>

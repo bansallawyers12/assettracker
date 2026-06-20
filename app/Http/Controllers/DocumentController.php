@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\DocumentSlotResource;
 use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\Document;
@@ -22,7 +23,7 @@ class DocumentController extends Controller
 
     private function fileValidationRules(string $key = 'document'): array
     {
-        $max = (int) config('documents.max_kilobytes', 10240);
+        $max   = (int) config('documents.max_kilobytes', 10240);
         $mimes = (string) config('documents.mimes', 'pdf');
 
         return [
@@ -30,23 +31,7 @@ class DocumentController extends Controller
         ];
     }
 
-    public function fetchFiles(Request $request)
-    {
-        $businessEntityId = $request->input('business_entity_id');
-        if (! $businessEntityId) {
-            return response()->json(['error' => 'Business entity ID is required'], 400);
-        }
-
-        $businessEntity = BusinessEntity::findOrFail($businessEntityId);
-        $this->authorize('view', $businessEntity);
-
-        $documents = Document::where('business_entity_id', $businessEntityId)
-            ->whereNull('asset_id')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return response()->json(['files' => $this->formatFileDetails($documents)]);
-    }
+    // ─── Single-file upload (entity-scoped) ───────────────────────────────────
 
     public function uploadDocument(Request $request, BusinessEntity $businessEntity)
     {
@@ -56,8 +41,8 @@ class DocumentController extends Controller
 
         $rules = array_merge(
             [
-                'document_id' => 'required|exists:documents,id',
-                'file_name' => 'nullable|string|max:255',
+                'document_id'   => 'required|exists:documents,id',
+                'file_name'     => 'nullable|string|max:255',
                 'document_type' => ['nullable', Rule::in(['legal', 'financial', 'other'])],
             ],
             $this->fileValidationRules('document')
@@ -79,10 +64,9 @@ class DocumentController extends Controller
         }
 
         try {
-            $file = $request->file('document');
             $this->uploadService->attachFileToDocument(
                 $document,
-                $file,
+                $request->file('document'),
                 $businessEntity,
                 null,
                 $request->input('file_name')
@@ -94,8 +78,9 @@ class DocumentController extends Controller
 
             if ($wantsJson) {
                 return response()->json([
-                    'status' => true,
-                    'message' => 'Document uploaded successfully!',
+                    'status'   => true,
+                    'message'  => 'Document uploaded successfully!',
+                    'document' => new DocumentSlotResource($document->fresh()),
                 ]);
             }
 
@@ -104,20 +89,19 @@ class DocumentController extends Controller
                 ->withFragment('tab_documents');
         } catch (\Exception $e) {
             Log::error('Entity document upload failed', ['error' => $e->getMessage()]);
-
-            $userMessage = config('app.debug')
-                ? 'Failed to upload document: '.$e->getMessage()
-                : 'Failed to upload document. Please try again.';
+            $msg = config('app.debug') ? 'Failed to upload document: '.$e->getMessage() : 'Failed to upload document. Please try again.';
 
             if ($wantsJson) {
-                return response()->json(['message' => $userMessage], 500);
+                return response()->json(['message' => $msg], 500);
             }
 
             return redirect()->route('business-entities.show', $businessEntity->id)
-                ->with('error', $userMessage)
+                ->with('error', $msg)
                 ->withFragment('tab_documents');
         }
     }
+
+    // ─── Single-file upload (asset-scoped) ────────────────────────────────────
 
     public function uploadAssetDocument(Request $request, BusinessEntity $businessEntity, Asset $asset)
     {
@@ -128,8 +112,8 @@ class DocumentController extends Controller
 
         $rules = array_merge(
             [
-                'document_id' => 'required|exists:documents,id',
-                'file_name' => 'nullable|string|max:255',
+                'document_id'   => 'required|exists:documents,id',
+                'file_name'     => 'nullable|string|max:255',
                 'document_type' => ['nullable', Rule::in(['legal', 'financial', 'other'])],
             ],
             $this->fileValidationRules('document')
@@ -152,10 +136,9 @@ class DocumentController extends Controller
         }
 
         try {
-            $file = $request->file('document');
             $this->uploadService->attachFileToDocument(
                 $document,
-                $file,
+                $request->file('document'),
                 $businessEntity,
                 $asset,
                 $request->input('file_name')
@@ -167,8 +150,9 @@ class DocumentController extends Controller
 
             if ($wantsJson) {
                 return response()->json([
-                    'status' => true,
-                    'message' => 'Document uploaded successfully!',
+                    'status'   => true,
+                    'message'  => 'Document uploaded successfully!',
+                    'document' => new DocumentSlotResource($document->fresh()),
                 ]);
             }
 
@@ -177,20 +161,19 @@ class DocumentController extends Controller
                 ->withFragment('tab_documents');
         } catch (\Exception $e) {
             Log::error('Asset document upload failed', ['error' => $e->getMessage()]);
-
-            $userMessage = config('app.debug')
-                ? 'Failed to upload document: '.$e->getMessage()
-                : 'Failed to upload document. Please try again.';
+            $msg = config('app.debug') ? 'Failed to upload document: '.$e->getMessage() : 'Failed to upload document. Please try again.';
 
             if ($wantsJson) {
-                return response()->json(['message' => $userMessage], 500);
+                return response()->json(['message' => $msg], 500);
             }
 
             return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
-                ->with('error', $userMessage)
+                ->with('error', $msg)
                 ->withFragment('tab_documents');
         }
     }
+
+    // ─── Bulk upload ──────────────────────────────────────────────────────────
 
     public function bulkUpload(Request $request, BusinessEntity $businessEntity)
     {
@@ -198,8 +181,8 @@ class DocumentController extends Controller
 
         $request->validate([
             'category_id' => 'required|exists:document_categories,id',
-            'asset_id' => 'nullable|exists:assets,id',
-            'mappings' => 'present|array',
+            'asset_id'    => 'nullable|exists:assets,id',
+            'mappings'    => 'present|array',
         ]);
 
         $category = DocumentCategory::findOrFail($request->category_id);
@@ -229,116 +212,133 @@ class DocumentController extends Controller
             $files = [$files];
         }
 
+        // Decode mappings
         $mappingsInput = $request->input('mappings', []);
-        $mappings = [];
-        foreach ($mappingsInput as $mappingStr) {
-            if (is_string($mappingStr)) {
-                $decoded = json_decode($mappingStr, true);
+        $mappings      = [];
+        foreach ($mappingsInput as $raw) {
+            if (is_string($raw)) {
+                $decoded = json_decode($raw, true);
                 if (is_array($decoded)) {
                     $mappings[] = $decoded;
                 }
-            } elseif (is_array($mappingStr)) {
-                $mappings[] = $mappingStr;
+            } elseif (is_array($raw)) {
+                $mappings[] = $raw;
             }
         }
 
         $uploaded = 0;
-        $errors = [];
+        $errors   = [];
 
         foreach ($files as $index => $file) {
             try {
-                $rules = $this->fileValidationRules('file');
-                $validator = validator(['file' => $file], $rules);
-                if ($validator->fails()) {
-                    $errors[] = ($file?->getClientOriginalName() ?? 'file').': '.$validator->errors()->first('file');
-
+                // Validate file
+                $fileValidator = validator(['file' => $file], $this->fileValidationRules('file'));
+                if ($fileValidator->fails()) {
+                    $errors[] = ($file?->getClientOriginalName() ?? 'file').': '.$fileValidator->errors()->first('file');
                     continue;
                 }
 
                 $mapping = $mappings[$index] ?? null;
                 if (! is_array($mapping) || empty($mapping['name'])) {
                     $errors[] = 'No checklist mapping for file '.($file->getClientOriginalName() ?? $index);
-
                     continue;
                 }
 
-                $checklistName = $mapping['name'];
-                $type = $mapping['type'] ?? 'existing';
+                $checklistName = trim($mapping['name']);
+                $type          = $mapping['type'] ?? 'existing';
+                $replace       = (bool) ($mapping['replace'] ?? false);
 
-                $query = Document::query()
+                // Find existing slot — first look for an empty one (path IS NULL)
+                $emptySlot = Document::query()
                     ->where('business_entity_id', $businessEntity->id)
                     ->where('document_category_id', $category->id)
-                    ->where('checklist_label', $checklistName)
-                    ->whereNull('path');
+                    ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
+                    ->whereNull('path')
+                    ->when($asset, fn ($q) => $q->where('asset_id', $asset->id))
+                    ->when(! $asset, fn ($q) => $q->whereNull('asset_id'))
+                    ->first();
 
-                if ($asset) {
-                    $query->where('asset_id', $asset->id);
-                } else {
-                    $query->whereNull('asset_id');
-                }
-
-                $slot = $query->first();
-
-                if (! $slot && $type === 'new') {
-                    $slot = Document::query()->create([
-                        'business_entity_id' => $businessEntity->id,
-                        'asset_id' => $asset?->id,
-                        'document_category_id' => $category->id,
-                        'checklist_label' => $checklistName,
-                        'type' => 'other',
-                        'user_id' => auth()->id(),
-                    ]);
-                } elseif (! $slot && $type === 'existing') {
-                    $exists = Document::query()
+                $filledSlot = null;
+                if (! $emptySlot) {
+                    $filledSlot = Document::query()
                         ->where('business_entity_id', $businessEntity->id)
                         ->where('document_category_id', $category->id)
-                        ->where('checklist_label', $checklistName)
+                        ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
+                        ->whereNotNull('path')
+                        ->when($asset, fn ($q) => $q->where('asset_id', $asset->id))
+                        ->when(! $asset, fn ($q) => $q->whereNull('asset_id'))
+                        ->latest('id')
+                        ->first();
+                }
+
+                $slot = $emptySlot;
+
+                if (! $slot && $filledSlot) {
+                    // Slot exists and has a file
+                    if (! $replace) {
+                        $errors[] = "Checklist \"{$checklistName}\" already has a file. Enable the 'Replace existing file' toggle to overwrite it. ({$file->getClientOriginalName()})";
+                        continue;
+                    }
+                    // Replace mode: use the filled slot
+                    $slot = $filledSlot;
+                }
+
+                if (! $slot && $type === 'new') {
+                    // Validate unique label before creating
+                    $labelConflict = Document::query()
+                        ->where('business_entity_id', $businessEntity->id)
+                        ->where('document_category_id', $category->id)
+                        ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
                         ->when($asset, fn ($q) => $q->where('asset_id', $asset->id))
                         ->when(! $asset, fn ($q) => $q->whereNull('asset_id'))
                         ->exists();
 
-                    if ($exists) {
-                        $slot = Document::query()->create([
-                            'business_entity_id' => $businessEntity->id,
-                            'asset_id' => $asset?->id,
-                            'document_category_id' => $category->id,
-                            'checklist_label' => $checklistName,
-                            'type' => 'other',
-                            'user_id' => auth()->id(),
-                        ]);
+                    if ($labelConflict) {
+                        $errors[] = "Checklist \"{$checklistName}\" already exists. ({$file->getClientOriginalName()})";
+                        continue;
                     }
+
+                    $slot = Document::query()->create([
+                        'business_entity_id'   => $businessEntity->id,
+                        'asset_id'             => $asset?->id,
+                        'document_category_id' => $category->id,
+                        'checklist_label'      => $checklistName,
+                        'type'                 => 'other',
+                        'user_id'              => auth()->id(),
+                    ]);
                 }
 
                 if (! $slot) {
-                    $errors[] = "No empty slot for checklist \"{$checklistName}\" ({$file->getClientOriginalName()})";
-
+                    $errors[] = "No checklist row named \"{$checklistName}\" found. ({$file->getClientOriginalName()})";
                     continue;
                 }
 
                 $this->uploadService->attachFileToDocument($slot, $file, $businessEntity, $asset);
                 $uploaded++;
             } catch (\Exception $e) {
-                $errors[] = $e->getMessage();
+                $errors[] = ($file?->getClientOriginalName() ?? "file[$index]").': '.$e->getMessage();
                 Log::error('Bulk document upload row failed', ['error' => $e->getMessage()]);
             }
         }
 
         return response()->json([
-            'status' => $uploaded > 0,
-            'message' => $uploaded > 0 ? "Uploaded {$uploaded} file(s)" : 'No files uploaded',
+            'status'   => $uploaded > 0,
+            'message'  => $uploaded > 0 ? "Uploaded {$uploaded} file(s)" : 'No files uploaded',
             'uploaded' => $uploaded,
-            'errors' => $errors,
+            'errors'   => $errors,
         ]);
     }
+
+    // ─── Auto-match filenames to checklist labels ─────────────────────────────
 
     public function autoMatch(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
 
         $request->validate([
-            'category_id' => 'required|exists:document_categories,id',
-            'files' => 'required|array',
-            'files.*.name' => 'required|string',
+            'category_id'      => 'required|exists:document_categories,id',
+            'files'            => 'required|array',
+            'files.*.name'     => 'required|string',
         ]);
 
         $category = DocumentCategory::findOrFail($request->category_id);
@@ -348,7 +348,6 @@ class DocumentController extends Controller
 
         $checklists = Document::query()
             ->where('document_category_id', $category->id)
-            ->whereNull('path')
             ->pluck('checklist_label')
             ->filter()
             ->unique()
@@ -360,41 +359,12 @@ class DocumentController extends Controller
         return response()->json(['status' => true, 'matches' => $matches]);
     }
 
-    public function fetchAssetFiles(Request $request, BusinessEntity $businessEntity, Asset $asset)
-    {
-        $this->authorize('view', $businessEntity);
-        $this->authorize('view', $asset);
-
-        $documents = Document::where('business_entity_id', $businessEntity->id)
-            ->where('asset_id', $asset->id)
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return response()->json(['files' => $this->formatFileDetails($documents)]);
-    }
-
-    public function getFileLink(Request $request)
-    {
-        $request->validate(['path' => 'required|string']);
-
-        $document = Document::where('path', $request->path)->firstOrFail();
-        $this->authorize('view', $document);
-
-        if (! Storage::disk('s3')->exists($document->path)) {
-            return response()->json(['error' => 'File not found'], 404);
-        }
-
-        $url = Storage::disk('s3')->temporaryUrl($document->path, now()->addMinutes(5));
-
-        return response()->json(['success' => true, 'url' => $url]);
-    }
+    // ─── Stream document (proxied, same-origin) ───────────────────────────────
 
     /**
-     * Stream document bytes from storage through the app so the browser gets a same-origin URL
-     * with inline disposition and a correct Content-Type (fixes empty PDF previews in iframes).
-     *
-     * Asset-scoped documents require ?asset_id={id} matching the row (workspace passes this).
-     * Entity-scoped documents (asset_id null) must not include asset_id (entity workspace omits it).
+     * Stream document bytes from S3 through the app.
+     * Asset-scoped documents require ?asset_id={id} matching the row.
+     * Entity-scoped documents must not include asset_id.
      */
     public function streamDocument(Request $request, BusinessEntity $businessEntity, Document $document)
     {
@@ -417,10 +387,10 @@ class DocumentController extends Controller
             abort(404);
         }
 
-        $name = $this->safeContentDispositionFilename($document->file_name, $document->path);
-        $mime = $this->resolveDocumentMimeType($document);
+        $name    = $this->safeContentDispositionFilename($document->file_name, $document->path);
+        $mime    = $this->resolveDocumentMimeType($document);
         $headers = [
-            'Content-Type' => $mime,
+            'Content-Type'  => $mime,
             'Cache-Control' => 'private, max-age=120',
         ];
 
@@ -431,13 +401,12 @@ class DocumentController extends Controller
         return Storage::disk('s3')->response($document->path, $name, $headers, 'inline');
     }
 
-    /**
-     * @param  string|null  $fileName  Stored display name; may contain path separators or control chars from uploads.
-     */
+    // ─── Private helpers ──────────────────────────────────────────────────────
+
     private function safeContentDispositionFilename(?string $fileName, string $storagePath): string
     {
-        $raw = ($fileName !== null && $fileName !== '') ? $fileName : basename($storagePath);
-        $raw = str_replace(["\r", "\n", "\0"], '', $raw);
+        $raw  = ($fileName !== null && $fileName !== '') ? $fileName : basename($storagePath);
+        $raw  = str_replace(["\r", "\n", "\0"], '', $raw);
         $base = basename($raw);
 
         return $base !== '' ? $base : 'document';
@@ -445,25 +414,24 @@ class DocumentController extends Controller
 
     private function resolveDocumentMimeType(Document $document): string
     {
-        $path = $document->path;
         $fromDb = $document->filetype;
 
         if (is_string($fromDb) && $fromDb !== '' && $fromDb !== 'application/octet-stream') {
             return $fromDb;
         }
 
-        $ext = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+        $ext = strtolower((string) pathinfo($document->path, PATHINFO_EXTENSION));
         $map = [
-            'pdf' => 'application/pdf',
-            'jpg' => 'image/jpeg',
+            'pdf'  => 'application/pdf',
+            'jpg'  => 'image/jpeg',
             'jpeg' => 'image/jpeg',
-            'png' => 'image/png',
-            'gif' => 'image/gif',
+            'png'  => 'image/png',
+            'gif'  => 'image/gif',
             'webp' => 'image/webp',
-            'svg' => 'image/svg+xml',
-            'bmp' => 'image/bmp',
-            'txt' => 'text/plain',
-            'csv' => 'text/csv',
+            'svg'  => 'image/svg+xml',
+            'bmp'  => 'image/bmp',
+            'txt'  => 'text/plain',
+            'csv'  => 'text/csv',
         ];
 
         if (isset($map[$ext])) {
@@ -471,142 +439,11 @@ class DocumentController extends Controller
         }
 
         try {
-            $detected = Storage::disk('s3')->mimeType($path);
+            $detected = Storage::disk('s3')->mimeType($document->path);
 
             return $detected ?: 'application/octet-stream';
         } catch (\Throwable) {
             return 'application/octet-stream';
         }
-    }
-
-    public function deleteFile(Request $request)
-    {
-        $request->validate([
-            'url' => 'nullable|string',
-            'document_id' => 'nullable|integer|exists:documents,id',
-        ]);
-
-        if ($request->filled('document_id')) {
-            $document = Document::findOrFail($request->document_id);
-            $this->authorize('delete', $document);
-            $this->uploadService->clearTransactionLinksForDocument($document);
-            if ($document->path && Storage::disk('s3')->exists($document->path)) {
-                Storage::disk('s3')->delete($document->path);
-            }
-            $document->delete();
-
-            return response()->json(['success' => true, 'message' => 'Document removed']);
-        }
-
-        $request->validate(['url' => 'required|string']);
-        $url = $request->url;
-        $path = ltrim((string) parse_url($url, PHP_URL_PATH), '/');
-
-        $document = Document::where('path', $path)->firstOrFail();
-        $this->authorize('delete', $document);
-        $this->uploadService->clearTransactionLinksForDocument($document);
-
-        if (! Storage::disk('s3')->exists($path)) {
-            return response()->json(['error' => 'File not found'], 404);
-        }
-
-        Storage::disk('s3')->delete($path);
-        $document->delete();
-
-        return response()->json(['success' => true, 'message' => 'File deleted successfully']);
-    }
-
-    private function getFileType($extension)
-    {
-        $extension = strtolower((string) $extension);
-        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'];
-        $documentExtensions = ['pdf', 'doc', 'docx', 'txt', 'rtf'];
-        $spreadsheetExtensions = ['xls', 'xlsx', 'csv'];
-        $presentationExtensions = ['ppt', 'pptx'];
-
-        if (in_array($extension, $imageExtensions, true)) {
-            return 'image';
-        }
-        if (in_array($extension, $documentExtensions, true)) {
-            return 'document';
-        }
-        if (in_array($extension, $spreadsheetExtensions, true)) {
-            return 'spreadsheet';
-        }
-        if (in_array($extension, $presentationExtensions, true)) {
-            return 'presentation';
-        }
-
-        return 'other';
-    }
-
-    private function formatFileSize($bytes)
-    {
-        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-        $bytes = max($bytes, 0);
-        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
-        $pow = min($pow, count($units) - 1);
-        $bytes /= pow(1024, $pow);
-
-        return round($bytes, 2).' '.$units[$pow];
-    }
-
-    private function formatFileDetails($documents)
-    {
-        $fileDetails = [];
-        foreach ($documents as $document) {
-            try {
-                if (! $document->path) {
-                    continue;
-                }
-                if (! Storage::disk('s3')->exists($document->path)) {
-                    Log::warning('S3 file not found', ['document_id' => $document->id, 'path' => $document->path]);
-
-                    continue;
-                }
-                $url = Storage::disk('s3')->temporaryUrl($document->path, now()->addMinutes(5));
-                $fileDetails[] = [
-                    'name' => $document->file_name,
-                    'uploaded' => $document->created_at->format('Y-m-d H:i:s'),
-                    'id' => $document->id,
-                    'file_name' => $document->file_name,
-                    'created_at' => $document->created_at->format('Y-m-d H:i:s'),
-                    'path' => $document->path,
-                    'type' => $this->getFileType(pathinfo($document->path, PATHINFO_EXTENSION)),
-                    'size' => $this->formatFileSize(Storage::disk('s3')->size($document->path)),
-                    'url' => $url,
-                    'description' => $document->description,
-                    'document_type' => $document->type,
-                    'checklist_label' => $document->checklist_label,
-                ];
-            } catch (\Exception $e) {
-                Log::error('Error processing document', [
-                    'document_id' => $document->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-        usort($fileDetails, fn ($a, $b) => strtotime($b['uploaded']) - strtotime($a['uploaded']));
-
-        return $fileDetails;
-    }
-
-    public function previewDocument(Request $request, BusinessEntity $businessEntity, Asset $asset, Document $document)
-    {
-        $this->authorize('view', $businessEntity);
-        $this->authorize('view', $asset);
-        $this->authorize('view', $document);
-
-        if ($document->business_entity_id !== $businessEntity->id || $document->asset_id !== $asset->id) {
-            return response()->json(['error' => 'Document not found'], 404);
-        }
-
-        if (! $document->path || ! Storage::disk('s3')->exists($document->path)) {
-            return response()->json(['error' => 'Document not found'], 404);
-        }
-
-        $previewUrl = Storage::disk('s3')->temporaryUrl($document->path, now()->addMinutes(5));
-
-        return response()->json(['preview_url' => $previewUrl]);
     }
 }

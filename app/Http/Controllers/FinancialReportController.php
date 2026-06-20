@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResolvesReportEntityScope;
 use App\Models\BusinessEntity;
 use App\Services\FinancialReportService;
 use App\Support\FinancialYear;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class FinancialReportController extends Controller
 {
+    use ResolvesReportEntityScope;
+
     protected FinancialReportService $financialReportService;
 
     public function __construct(FinancialReportService $financialReportService)
@@ -29,50 +32,6 @@ class FinancialReportController extends Controller
         }
 
         return null;
-    }
-
-    /**
-     * @return array<int>|null null = invalid “selected” with no entities
-     */
-    protected function resolveReportEntityIds(Request $request): ?array
-    {
-        $allowed = BusinessEntity::forFinancialReports()
-            ->orderBy('legal_name')
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
-
-        if ($allowed === []) {
-            return [];
-        }
-
-        if ($request->input('scope') === 'selected') {
-            $requested = array_values(array_unique(array_map('intval', (array) $request->input('entity_ids', []))));
-            $requested = array_values(array_intersect($requested, $allowed));
-
-            return $requested === [] ? null : $requested;
-        }
-
-        return $allowed;
-    }
-
-    /**
-     * @param  array<int>  $resolvedEntityIds
-     */
-    protected function mergeReportFormScope(array $report, Request $request, array $resolvedEntityIds): array
-    {
-        // Match resolveReportEntityIds: only treat as "selected" when scope says so.
-        // Stray entity_ids[] on the query string must not flip the form when scope=all.
-        if ($request->input('scope') === 'selected') {
-            $report['forms_scope'] = 'selected';
-            $report['forms_entity_ids'] = $resolvedEntityIds;
-        } else {
-            $report['forms_scope'] = 'all';
-            $report['forms_entity_ids'] = [];
-        }
-
-        return $report;
     }
 
     protected function redirectInvalidReportScope(): RedirectResponse
@@ -292,14 +251,13 @@ class FinancialReportController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $ids = BusinessEntity::forFinancialReports()
-            ->orderBy('legal_name')
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id)
-            ->values()
-            ->all();
-
-        if ($ids === []) {
+        $entityIds = $this->resolveReportEntityIds($request);
+        if ($entityIds === null) {
+            return redirect()
+                ->route('financial-reports.entity-summary', $request->except('entity_ids'))
+                ->with('error', 'Choose at least one entity, or select “All reporting entities”.');
+        }
+        if ($entityIds === []) {
             return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
         }
 
@@ -309,13 +267,22 @@ class FinancialReportController extends Controller
         $periodEnd = Carbon::parse($request->get('period_end_date', now()->toDateString()))->toDateString();
 
         $report = $this->financialReportService->generateEntitySummary(
-            $ids,
+            $entityIds,
             $periodStart,
             $periodEnd,
             $fyStart,
             $fyEnd
         );
 
-        return view('financial-reports.entity-summary', compact('report'));
+        $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+        $formsScope = $request->input('scope') === 'selected' ? 'selected' : 'all';
+        $formsEntityIds = $formsScope === 'selected' ? $entityIds : [];
+
+        return view('financial-reports.entity-summary', compact(
+            'report',
+            'businessEntities',
+            'formsScope',
+            'formsEntityIds',
+        ));
     }
 }

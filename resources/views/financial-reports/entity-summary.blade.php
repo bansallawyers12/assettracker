@@ -1,4 +1,6 @@
 @php
+    use App\Support\ReportEntityScopeLabel;
+
     $entities = $report['business_entities'];
     $periodStart = \Carbon\Carbon::parse($report['period']['start_date']);
     $periodEnd = \Carbon\Carbon::parse($report['period']['end_date']);
@@ -6,6 +8,11 @@
     $fyEnd = \Carbon\Carbon::parse($report['financial_year']['end_date']);
     $fyLabel = $report['financial_year']['label'];
     $periodLabel = $periodStart->format('M') . ' to ' . $periodEnd->format('d-m-Y');
+    $entityScopeLabel = ReportEntityScopeLabel::format(
+        $formsScope,
+        $formsEntityIds,
+        $businessEntities
+    );
     $rows = [
         ['key' => 'total_sales', 'label' => 'Total Sales', 'bold' => true, 'format' => 'money'],
         ['key' => 'period_sales', 'label' => 'Sales — ' . $periodLabel, 'format' => 'money'],
@@ -27,11 +34,18 @@
 
 <x-report-shell
     title="Entity summary"
-    :subtitle="'All reporting entities — FY ' . $fyLabel">
+    :subtitle="'FY ' . $fyLabel"
+    :entity-scope-label="$entityScopeLabel">
 
     <x-slot:filters>
         <form method="GET" action="{{ route('financial-reports.entity-summary') }}"
               class="flex flex-wrap items-end gap-3">
+            <x-report-entity-scope-picker
+                :business-entities="$businessEntities"
+                :forms-scope="$formsScope"
+                :forms-entity-ids="$formsEntityIds"
+            />
+
             <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-gray-600">Short period</label>
                 <div class="flex items-center gap-2">
@@ -58,6 +72,12 @@
             </button>
         </form>
     </x-slot:filters>
+
+    @if (session('error'))
+        <div class="mx-6 mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {{ session('error') }}
+        </div>
+    @endif
 
     <div class="px-4 sm:px-6 pb-6 overflow-x-auto">
         <p class="text-xs text-gray-500 mb-4">

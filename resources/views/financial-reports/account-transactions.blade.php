@@ -1,4 +1,6 @@
 @php
+    use App\Support\ReportScopeQuery;
+
     $entity = $report['business_entity'];
     $entities = $report['business_entities'];
     $isConsolidated = $report['is_consolidated'] ?? false;
@@ -10,13 +12,11 @@
     $subtitle = $startDate->format('j M Y') . ' – ' . $endDate->format('j M Y');
     $formRoute = route('financial-reports.account-transactions');
     $reportQuery = function (array $merge = []) use ($report) {
-        $q = array_merge($merge, ['scope' => $report['forms_scope'] ?? 'all']);
-        if (($report['forms_scope'] ?? 'all') === 'selected') {
-            foreach ($report['forms_entity_ids'] ?? [] as $id) {
-                $q['entity_ids'][] = (int) $id;
-            }
-        }
-        return $q;
+        return ReportScopeQuery::build(
+            $report['forms_scope'] ?? 'all',
+            $report['forms_entity_ids'] ?? [],
+            $merge
+        );
     };
 @endphp
 
@@ -31,7 +31,10 @@
         <form method="GET" action="{{ $formRoute }}"
               class="flex flex-wrap items-end gap-3 relative">
 
-            @include('financial-reports.partials.report-scope-fields', ['report' => $report])
+            <x-report-entity-scope-picker
+                :business-entities="$businessEntities"
+                :report="$report"
+            />
 
             {{-- Account dropdown with checkboxes (Xero-style) --}}
             @php

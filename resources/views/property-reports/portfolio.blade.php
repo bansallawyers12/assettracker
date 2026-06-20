@@ -1,17 +1,21 @@
 @php
+    use App\Support\ReportEntityScopeLabel;
+    use App\Support\ReportScopeQuery;
+
     $start = \Carbon\Carbon::parse($startDate);
     $end = \Carbon\Carbon::parse($endDate);
     $subtitle = $start->format('j M Y') . ' – ' . $end->format('j M Y')
         . ' · ' . ($basis === 'accrual' ? 'Accrual' : 'Cash') . ' basis';
     $formRoute = route('portfolio.index');
     $totals = $report['totals'];
+    $entityScopeLabel = ReportEntityScopeLabel::format(
+        $formsScope,
+        $formsEntityIds,
+        $businessEntities,
+        'All reporting properties'
+    );
     $reportQuery = function (array $merge = []) use ($formsScope, $formsEntityIds, $showDisposed) {
-        $q = array_merge($merge, ['scope' => $formsScope]);
-        if ($formsScope === 'selected') {
-            foreach ($formsEntityIds as $id) {
-                $q['entity_ids'][] = (int) $id;
-            }
-        }
+        $q = ReportScopeQuery::build($formsScope, $formsEntityIds, $merge);
         if ($showDisposed) {
             $q['show_disposed'] = 1;
         }
@@ -22,16 +26,10 @@
 <x-report-shell
     title="Property portfolio"
     :subtitle="$subtitle"
-    entity-scope-label="All reporting properties">
+    :entity-scope-label="$entityScopeLabel">
 
     <x-slot:filters>
         <form method="GET" action="{{ $formRoute }}" class="flex flex-wrap items-end gap-3">
-            @if($formsScope === 'selected')
-                @foreach($formsEntityIds as $eid)
-                    <input type="hidden" name="entity_ids[]" value="{{ (int) $eid }}">
-                @endforeach
-            @endif
-
             @include('property-reports.partials.report-filters', [
                 'formRoute' => $formRoute,
                 'startDate' => $startDate,
@@ -42,26 +40,11 @@
                 'showDisposedCheckbox' => true,
             ])
 
-            @if($businessEntities->isNotEmpty())
-                <div class="flex flex-col gap-1 w-full sm:w-auto">
-                    <label class="text-xs font-medium text-gray-600">Entity scope</label>
-                    <select name="scope"
-                            class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white min-w-[12rem]">
-                        <option value="all" {{ $formsScope === 'all' ? 'selected' : '' }}>All reporting entities</option>
-                        <option value="selected" {{ $formsScope === 'selected' ? 'selected' : '' }}>Selected entities (use checkboxes below)</option>
-                    </select>
-                </div>
-                <div class="flex flex-wrap gap-2 max-w-xl">
-                    @foreach($businessEntities as $entity)
-                        <label class="inline-flex items-center gap-1.5 text-xs border border-gray-200 rounded px-2 py-1">
-                            <input type="checkbox" name="entity_ids[]" value="{{ $entity->id }}"
-                                   {{ in_array($entity->id, $formsEntityIds, true) ? 'checked' : '' }}
-                                   class="rounded-sm border-gray-300 text-blue-600">
-                            <span class="truncate max-w-[10rem]">{{ $entity->legal_name }}</span>
-                        </label>
-                    @endforeach
-                </div>
-            @endif
+            <x-report-entity-scope-picker
+                :business-entities="$businessEntities"
+                :forms-scope="$formsScope"
+                :forms-entity-ids="$formsEntityIds"
+            />
 
             <div class="flex items-end gap-2 ml-auto">
                 <button type="submit"
