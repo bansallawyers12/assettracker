@@ -72,6 +72,8 @@ class ComplianceUploadService
         $this->deleteStoredFile($file);
 
         $file->status = 'not_started';
+        $file->lodged_date = null;
+        $file->paid_date = null;
         $file->save();
     }
 

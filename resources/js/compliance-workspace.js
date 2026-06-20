@@ -297,6 +297,7 @@
                 workspace.completeness.required_missing = Math.max(0, workspace.completeness.required_missing - 1);
             }
             updateCompleteness(workspace.completeness);
+            if (file.category_id) syncCategoryCompleteness(file.category_id);
         }
 
         function adjustCompletenessAfterAdd(file) {
@@ -306,6 +307,7 @@
                 workspace.completeness.required_missing++;
             }
             updateCompleteness(workspace.completeness);
+            if (file.category_id) syncCategoryCompleteness(file.category_id);
         }
 
         function findFile(fileId) {
@@ -525,9 +527,66 @@
             }
         }
 
+        function updateCategoryTabBadge(categoryId) {
+            const cat = findCategory(categoryId);
+            const tab = root.querySelector(`.compliance-cat-tab[data-category-id="${categoryId}"]`);
+            if (tab && cat) {
+                tab.innerHTML = categoryTabLabel(cat);
+            }
+        }
+
+        function syncCategoryCompleteness(categoryId) {
+            const cat = findCategory(categoryId);
+            if (!cat?.files) return;
+            cat.completeness = {
+                total: cat.files.length,
+                uploaded: cat.files.filter(f => f.has_file).length,
+                required_missing: cat.files.filter(f => f.is_required && !f.has_file).length,
+            };
+            updateCategoryTabBadge(categoryId);
+        }
+
+        function insertFileRow(file) {
+            const catId = file.category_id;
+            const panel = root.querySelector(`.compliance-cat-panel[data-category-panel="${catId}"]`);
+            const tbody = panel?.querySelector('tbody');
+            if (!tbody) return false;
+
+            const placeholder = tbody.querySelector('td[colspan="4"]');
+            if (placeholder) tbody.innerHTML = '';
+            tbody.insertAdjacentHTML('beforeend', buildFileRow(file, fileAccept, locked));
+
+            const cat = findCategory(catId);
+            if (cat) {
+                const idx = cat.files?.findIndex(f => String(f.id) === String(file.id));
+                if (idx > -1) {
+                    cat.files[idx] = file;
+                } else {
+                    cat.files = [...(cat.files || []), file];
+                }
+                syncCategoryCompleteness(catId);
+            }
+            return true;
+        }
+
         function applyFilePatch(file) {
             const wasUploaded = findFile(file.id)?.has_file;
-            patchRow(file);
+            const tr = root.querySelector(`tr[data-compliance-row="${file.id}"]`);
+
+            if (tr) {
+                tr.outerHTML = buildFileRow(file, fileAccept, locked);
+                updateFileInWorkspace(file);
+            } else if (!insertFileRow(file)) {
+                refreshWorkspace();
+                return;
+            }
+
+            if (file.has_file) {
+                setPreview(file.id);
+            } else if (previewFileId === String(file.id)) {
+                clearPreview();
+            }
+
             if (workspace?.completeness) {
                 const has = file.has_file;
                 if (has && !wasUploaded) {
@@ -543,19 +602,14 @@
                 }
                 updateCompleteness(workspace.completeness);
             }
+
+            if (file.category_id) {
+                syncCategoryCompleteness(file.category_id);
+            }
         }
 
         function patchRow(file) {
-            const tr = root.querySelector(`tr[data-compliance-row="${file.id}"]`);
-            if (!tr) return;
-            tr.outerHTML = buildFileRow(file, fileAccept, locked);
-            updateFileInWorkspace(file);
-
-            if (file.has_file) {
-                setPreview(file.id);
-            } else if (previewFileId === String(file.id)) {
-                clearPreview();
-            }
+            applyFilePatch(file);
         }
 
         fySelect?.addEventListener('change', () => {
@@ -811,7 +865,7 @@
                     const panel = root.querySelector(`.compliance-cat-panel[data-category-panel="${catId}"]`);
                     let tbody = panel?.querySelector('tbody');
                     if (tbody) {
-                        const placeholder = tbody.querySelector('td[colspan="3"]');
+                        const placeholder = tbody.querySelector('td[colspan="4"]');
                         if (placeholder) tbody.innerHTML = '';
                         tbody.insertAdjacentHTML('beforeend', buildFileRow(j.file, fileAccept, locked));
                     }
@@ -870,7 +924,7 @@
                         if (previewFileId === String(fileId)) clearPreview();
                         let destTbody = destPanel.querySelector('tbody');
                         if (destTbody) {
-                            const placeholder = destTbody.querySelector('td[colspan="3"]');
+                            const placeholder = destTbody.querySelector('td[colspan="4"]');
                             if (placeholder) destTbody.innerHTML = '';
                             destTbody.appendChild(tr);
                         }
@@ -942,8 +996,9 @@
             let filledLabels = [];
 
             if (catData) {
-                emptyLabels = (catData.files || []).filter(f => !f.has_file).map(f => f.checklist_label).filter(Boolean);
-                filledLabels = (catData.files || []).filter(f => f.has_file).map(f => f.checklist_label).filter(Boolean);
+                const mapLabel = (f) => f.mapping_label || f.checklist_label;
+                emptyLabels = (catData.files || []).filter(f => !f.has_file).map(mapLabel).filter(Boolean);
+                filledLabels = (catData.files || []).filter(f => f.has_file).map(mapLabel).filter(Boolean);
             } else {
                 root.querySelector(`.compliance-cat-panel[data-category-panel="${bulkCategoryId}"]`)?.querySelectorAll('tbody tr').forEach(tr => {
                     const label = tr.querySelector('td span.font-medium')?.textContent?.trim();

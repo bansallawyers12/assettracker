@@ -279,6 +279,7 @@ class ComplianceWorkspaceController extends Controller
     public function updateFileStatus(Request $request, BusinessEntity $businessEntity, ComplianceDocumentFile $complianceFile)
     {
         $this->authorize('update', $businessEntity);
+        $this->authorize('update', $complianceFile);
         $this->ensureFileBelongs($businessEntity, $complianceFile);
 
         if ($locked = $this->lockedResponse($complianceFile->yearRecord)) {
@@ -290,6 +291,19 @@ class ComplianceWorkspaceController extends Controller
             'lodged_date' => 'nullable|date',
             'paid_date'   => 'nullable|date',
         ]);
+
+        if ($complianceFile->hasFile() && $data['status'] === 'not_started') {
+            $data['status'] = 'uploaded';
+        }
+
+        if (! $complianceFile->hasFile() && $data['status'] === 'uploaded') {
+            $data['status'] = 'not_started';
+        }
+
+        if (! $complianceFile->hasFile() && in_array($data['status'], ['not_started', 'uploaded'], true)) {
+            $data['lodged_date'] = null;
+            $data['paid_date'] = null;
+        }
 
         $complianceFile->update($data);
 

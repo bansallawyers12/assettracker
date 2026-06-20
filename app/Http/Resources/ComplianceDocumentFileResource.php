@@ -18,6 +18,7 @@ class ComplianceDocumentFileResource extends JsonResource
             'id'               => $this->id,
             'category_id'      => $this->compliance_category_id,
             'checklist_label'  => $this->displayLabel(),
+            'mapping_label'    => $this->effectiveChecklistLabel(),
             'type_code'        => $this->type?->code,
             'type_label'       => $this->type?->label,
             'frequency'        => $this->type?->frequency,

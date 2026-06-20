@@ -61,10 +61,15 @@ class ComplianceDocumentFile extends Model
         return filled($this->path);
     }
 
+    public function effectiveChecklistLabel(): string
+    {
+        return trim($this->checklist_label ?? $this->type?->label ?? '');
+    }
+
     public function displayLabel(): string
     {
-        return $this->checklist_label
-            ?? $this->type?->label
-            ?? 'Untitled';
+        $label = $this->effectiveChecklistLabel();
+
+        return $label !== '' ? $label : 'Untitled';
     }
 }

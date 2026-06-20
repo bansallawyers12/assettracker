@@ -188,8 +188,8 @@ class ComplianceController extends Controller
         $this->ensureCategoryBelongs($businessEntity, $category);
 
         $checklistItems = $category->files->map(fn (ComplianceDocumentFile $file) => [
-            'name'      => $file->checklist_label ?? $file->type?->label ?? '',
-            'label'     => $file->displayLabel(),
+            'name'      => $file->effectiveChecklistLabel(),
+            'label'     => $file->effectiveChecklistLabel(),
             'type_code' => $file->type?->code,
         ])->filter(fn ($item) => $item['label'] !== '')->values()->all();
 
@@ -260,21 +260,8 @@ class ComplianceController extends Controller
                 $type = $mapping['type'] ?? 'existing';
                 $replace = (bool) ($mapping['replace'] ?? false);
 
-                $emptySlot = ComplianceDocumentFile::query()
-                    ->where('compliance_category_id', $category->id)
-                    ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
-                    ->whereNull('path')
-                    ->first();
-
-                $filledSlot = null;
-                if (! $emptySlot) {
-                    $filledSlot = ComplianceDocumentFile::query()
-                        ->where('compliance_category_id', $category->id)
-                        ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
-                        ->whereNotNull('path')
-                        ->latest('id')
-                        ->first();
-                }
+                $emptySlot = $this->findChecklistSlot($category, $checklistName, hasFile: false);
+                $filledSlot = $emptySlot ? null : $this->findChecklistSlot($category, $checklistName, hasFile: true);
 
                 $slot = $emptySlot;
 
@@ -287,10 +274,7 @@ class ComplianceController extends Controller
                 }
 
                 if (! $slot && $type === 'new') {
-                    $exists = ComplianceDocumentFile::query()
-                        ->where('compliance_category_id', $category->id)
-                        ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
-                        ->exists();
+                    $exists = $this->findChecklistSlot($category, $checklistName) !== null;
 
                     if ($exists) {
                         $errors[] = "Checklist \"{$checklistName}\" already exists. ({$file->getClientOriginalName()})";
@@ -348,6 +332,35 @@ class ComplianceController extends Controller
         }
 
         return $mappings;
+    }
+
+    private function findChecklistSlot(
+        ComplianceCategory $category,
+        string $checklistName,
+        ?bool $hasFile = null
+    ): ?ComplianceDocumentFile {
+        $needle = strtolower(trim($checklistName));
+        if ($needle === '') {
+            return null;
+        }
+
+        $matches = ComplianceDocumentFile::query()
+            ->where('compliance_category_id', $category->id)
+            ->with('type')
+            ->get()
+            ->filter(fn (ComplianceDocumentFile $file) => strtolower(trim($file->effectiveChecklistLabel())) === $needle);
+
+        if ($hasFile === false) {
+            return $matches->first(fn (ComplianceDocumentFile $file) => ! $file->path);
+        }
+
+        if ($hasFile === true) {
+            return $matches->filter(fn (ComplianceDocumentFile $file) => $file->path)
+                ->sortByDesc('id')
+                ->first();
+        }
+
+        return $matches->first();
     }
 
     private function ensureCategoryBelongs(BusinessEntity $entity, ComplianceCategory $category): void
