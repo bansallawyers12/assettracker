@@ -27,6 +27,8 @@ class ComplianceDocumentFileResource extends JsonResource
             'has_file'         => (bool) $this->path,
             'file_name'        => $this->file_name,
             'due_date'         => $this->due_date?->toDateString(),
+            'lodged_date'      => $this->lodged_date?->toDateString(),
+            'paid_date'        => $this->paid_date?->toDateString(),
             'content_url'      => $contentUrl,
             'download_url'     => $contentUrl ? $contentUrl.'?download=1' : null,
         ];

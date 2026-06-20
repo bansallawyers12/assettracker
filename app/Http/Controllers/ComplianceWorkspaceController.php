@@ -276,6 +276,116 @@ class ComplianceWorkspaceController extends Controller
         ]);
     }
 
+    public function updateFileStatus(Request $request, BusinessEntity $businessEntity, ComplianceDocumentFile $complianceFile)
+    {
+        $this->authorize('update', $businessEntity);
+        $this->ensureFileBelongs($businessEntity, $complianceFile);
+
+        if ($locked = $this->lockedResponse($complianceFile->yearRecord)) {
+            return $locked;
+        }
+
+        $data = $request->validate([
+            'status'      => 'required|in:not_started,uploaded,lodged,paid',
+            'lodged_date' => 'nullable|date',
+            'paid_date'   => 'nullable|date',
+        ]);
+
+        $complianceFile->update($data);
+
+        return response()->json([
+            'status' => true,
+            'file'   => new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])),
+        ]);
+    }
+
+    public function copyCustomRowsFromPrior(BusinessEntity $businessEntity, ComplianceYearRecord $record)
+    {
+        $this->authorize('update', $businessEntity);
+        $this->ensureYearRecordBelongs($businessEntity, $record);
+
+        if ($locked = $this->lockedResponse($record)) {
+            return $locked;
+        }
+
+        $priorStart = Carbon::parse($record->fy_start_date)->subYear();
+        $priorPeriod = FinancialYear::forDate($priorStart)['start'];
+
+        $prior = ComplianceYearRecord::query()
+            ->where('business_entity_id', $record->business_entity_id)
+            ->where('asset_id', $record->asset_id)
+            ->whereDate('fy_start_date', $priorPeriod->toDateString())
+            ->with(['categories.files' => fn ($q) => $q->where('custom_label', true)])
+            ->first();
+
+        if (! $prior) {
+            return response()->json([
+                'status'  => false,
+                'message' => 'No prior financial year record found.',
+            ], 422);
+        }
+
+        $copied = 0;
+
+        foreach ($prior->categories as $priorCat) {
+            $customFiles = $priorCat->files->where('custom_label', true);
+            if ($customFiles->isEmpty()) {
+                continue;
+            }
+
+            $currentCat = ComplianceCategory::query()
+                ->where('compliance_year_record_id', $record->id)
+                ->whereRaw('LOWER(TRIM(title)) = LOWER(TRIM(?))', [$priorCat->title])
+                ->first();
+
+            if (! $currentCat) {
+                $maxSort = (int) ComplianceCategory::query()
+                    ->where('compliance_year_record_id', $record->id)
+                    ->max('sort_order');
+
+                $currentCat = ComplianceCategory::query()->create([
+                    'compliance_year_record_id' => $record->id,
+                    'title'                     => $priorCat->title,
+                    'sort_order'                => $maxSort + 1,
+                    'is_system'                 => false,
+                ]);
+            }
+
+            foreach ($customFiles as $priorFile) {
+                $label = trim((string) $priorFile->checklist_label);
+                if ($label === '') {
+                    continue;
+                }
+
+                $exists = ComplianceDocumentFile::query()
+                    ->where('compliance_category_id', $currentCat->id)
+                    ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(TRIM(?))', [$label])
+                    ->exists();
+
+                if ($exists) {
+                    continue;
+                }
+
+                ComplianceDocumentFile::query()->create([
+                    'compliance_year_record_id' => $record->id,
+                    'compliance_category_id'    => $currentCat->id,
+                    'checklist_label'           => $label,
+                    'custom_label'              => true,
+                    'status'                    => 'not_started',
+                ]);
+                $copied++;
+            }
+        }
+
+        return response()->json([
+            'status'  => true,
+            'copied'  => $copied,
+            'message' => $copied > 0
+                ? "Copied {$copied} custom row(s) from prior year."
+                : 'No new custom rows to copy (prior year had none, or labels already exist).',
+        ]);
+    }
+
     private function workspaceResponse(Request $request, BusinessEntity $businessEntity, ?Asset $asset)
     {
         $fyStartInput = $request->query('fy_start', FinancialYear::currentStart()->toDateString());

@@ -11,6 +11,7 @@ use App\Http\Controllers\CarReportController;
 use App\Http\Controllers\ChartOfAccountController;
 use App\Http\Controllers\CommitmentController;
 use App\Http\Controllers\ComplianceController;
+use App\Http\Controllers\ComplianceReportController;
 use App\Http\Controllers\ComplianceWorkspaceController;
 use App\Http\Controllers\ContactListController;
 use App\Http\Controllers\DocumentController;
@@ -155,6 +156,10 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::patch('/business-entities/{businessEntity}/compliance-files/{complianceFile}', [ComplianceWorkspaceController::class, 'updateFile'])->name('entities.compliance-files.update');
     Route::patch('/business-entities/{businessEntity}/compliance-files/{complianceFile}/move', [ComplianceWorkspaceController::class, 'moveFile'])->name('entities.compliance-files.move');
     Route::delete('/business-entities/{businessEntity}/compliance-files/{complianceFile}', [ComplianceWorkspaceController::class, 'destroyFile'])->name('entities.compliance-files.destroy');
+    Route::patch('/business-entities/{businessEntity}/compliance-files/{complianceFile}/status', [ComplianceWorkspaceController::class, 'updateFileStatus'])->name('entities.compliance-files.status');
+    Route::post('/business-entities/{businessEntity}/compliance-years/{record}/copy-custom-rows', [ComplianceWorkspaceController::class, 'copyCustomRowsFromPrior'])->name('entities.compliance-years.copy-custom-rows');
+    Route::post('/business-entities/{businessEntity}/compliance/auto-match', [ComplianceController::class, 'autoMatch'])->name('entities.compliance.auto-match');
+    Route::post('/business-entities/{businessEntity}/compliance/bulk-upload', [ComplianceController::class, 'bulkUpload'])->name('entities.compliance.bulk-upload');
     Route::post('/business-entities/{businessEntity}/compliance-files/{complianceFile}/upload', [ComplianceController::class, 'upload'])->name('entities.compliance-files.upload');
     Route::post('/business-entities/{businessEntity}/compliance-files/{complianceFile}/clear', [ComplianceController::class, 'clear'])->name('entities.compliance-files.clear');
     Route::get('/business-entities/{businessEntity}/compliance-files/{complianceFile}/content', [ComplianceController::class, 'streamDocument'])->name('entities.compliance-files.content');
@@ -312,6 +317,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/bank-import', [BankImportController::class, 'index'])->name('bank-import.index');
 
     Route::get('/financial-reports/car-register', [CarReportController::class, 'carRegister'])->name('financial-reports.car-register');
+    Route::get('/financial-reports/compliance-gaps', [ComplianceReportController::class, 'missingItr'])->name('financial-reports.compliance-gaps');
     Route::redirect('/financial-reports/fleet-register', '/financial-reports/car-register');
     Route::get('/financial-reports/asset-summary', [PropertyReportController::class, 'assetSummary'])->name('financial-reports.asset-summary');
     Route::get('/portfolio', [PropertyReportController::class, 'portfolio'])->name('portfolio.index');

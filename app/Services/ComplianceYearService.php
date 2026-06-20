@@ -137,12 +137,20 @@ class ComplianceYearService
                     if (! filled($existing->checklist_label)) {
                         $updates['checklist_label'] = $type->label;
                     }
+                    if ($existing->due_date === null) {
+                        $dueDate = $this->dueDateForType($type, $record);
+                        if ($dueDate !== null) {
+                            $updates['due_date'] = $dueDate->toDateString();
+                        }
+                    }
                     if ($updates !== []) {
                         $existing->update($updates);
                     }
 
                     continue;
                 }
+
+                $dueDate = $this->dueDateForType($type, $record);
 
                 ComplianceDocumentFile::query()->firstOrCreate(
                     [
@@ -154,6 +162,7 @@ class ComplianceYearService
                         'checklist_label' => $type->label,
                         'custom_label' => false,
                         'status' => 'not_started',
+                        'due_date' => $dueDate?->toDateString(),
                     ]
                 );
             }
@@ -188,6 +197,23 @@ class ComplianceYearService
                 'checklist_label' => $file->checklist_label ?? $file->type?->label ?? 'Untitled',
             ]);
         }
+    }
+
+    /**
+     * @return array{total: int, uploaded: int, required_missing: int}
+     */
+    public function categoryCompleteness(ComplianceCategory $category): array
+    {
+        $category->loadMissing(['files.type']);
+        $files = $category->files;
+        $required = $files->filter(fn (ComplianceDocumentFile $f) => $f->type?->is_required);
+        $requiredUploaded = $required->filter(fn (ComplianceDocumentFile $f) => $f->hasFile());
+
+        return [
+            'total' => $files->count(),
+            'uploaded' => $files->filter(fn (ComplianceDocumentFile $f) => $f->hasFile())->count(),
+            'required_missing' => $required->count() - $requiredUploaded->count(),
+        ];
     }
 
     /**
@@ -227,6 +253,32 @@ class ComplianceYearService
         }
 
         return $type->appliesToAssetType($record->asset?->asset_type);
+    }
+
+    private function dueDateForType(ComplianceDocumentType $type, ComplianceYearRecord $record): ?Carbon
+    {
+        if ($record->asset_id === null) {
+            return null;
+        }
+
+        $record->loadMissing('asset');
+        $asset = $record->asset;
+        if ($asset === null) {
+            return null;
+        }
+
+        $fieldByCode = [
+            'land_tax' => 'land_tax_due_date',
+            'council_rates' => 'council_rates_due_date',
+            'insurance_certificate' => 'insurance_due_date',
+        ];
+
+        $field = $fieldByCode[$type->code] ?? null;
+        if ($field === null || $asset->{$field} === null) {
+            return null;
+        }
+
+        return Carbon::parse($asset->{$field});
     }
 
     private function basTypeEnabled(string $code): bool

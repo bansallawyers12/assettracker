@@ -727,6 +727,29 @@
                                                 </a>
                                             </div>
                                         </div>
+
+                                        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-200">
+                                            <div class="flex items-center">
+                                                <div class="shrink-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                                    </svg>
+                                                </div>
+                                                <div class="ml-4">
+                                                    <h4 class="text-lg font-medium text-gray-900 dark:text-gray-100">Compliance</h4>
+                                                    <p class="text-sm text-gray-500 dark:text-gray-400">ITR, BAS and FY compliance documents</p>
+                                                </div>
+                                            </div>
+                                            <div class="mt-4">
+                                                @php $fyStart = \App\Support\FinancialYear::currentStart()->toDateString(); @endphp
+                                                <a href="{{ route('business-entities.show', $businessEntity->id) }}?fy_start={{ $fyStart }}#tab_compliance" class="inline-flex items-center px-3 py-2 bg-violet-100 hover:bg-violet-200 text-violet-700 dark:bg-violet-900 dark:hover:bg-violet-800 dark:text-violet-200 rounded-lg text-sm transition-all duration-200">
+                                                    Open compliance tab
+                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </a>
+                                            </div>
+                                        </div>
                                     </div>
                                     @endif
                                 </div>

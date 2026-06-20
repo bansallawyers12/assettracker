@@ -44,6 +44,41 @@
         return false;
     }
 
+    const STATUS_LABELS = {
+        not_started: 'Not started',
+        uploaded: 'Uploaded',
+        lodged: 'Lodged',
+        paid: 'Paid',
+    };
+
+    function buildStatusCell(file, locked) {
+        const fileId = file.id;
+        const dueHint = file.due_date
+            ? `<div class="text-xs text-gray-400 mt-0.5">Due ${escHtml(file.due_date)}</div>`
+            : '';
+
+        if (locked) {
+            return `<span class="text-xs">${escHtml(STATUS_LABELS[file.status] || file.status)}</span>${dueHint}`;
+        }
+
+        const opts = Object.entries(STATUS_LABELS).map(([value, label]) =>
+            `<option value="${value}" ${file.status === value ? 'selected' : ''}>${escHtml(label)}</option>`
+        ).join('');
+
+        return `<div>
+            <select class="compliance-status-select text-xs border border-gray-300 dark:border-gray-600 rounded-sm dark:bg-gray-800 w-full max-w-[140px]" data-file-id="${fileId}">${opts}</select>
+            <div class="compliance-status-dates mt-1 flex flex-col gap-1">
+                <label class="text-xs text-gray-500 flex items-center gap-1">Lodged
+                    <input type="date" class="compliance-lodged-date border rounded-sm dark:bg-gray-800 text-xs" data-file-id="${fileId}" value="${escAttr(file.lodged_date || '')}">
+                </label>
+                <label class="text-xs text-gray-500 flex items-center gap-1">Paid
+                    <input type="date" class="compliance-paid-date border rounded-sm dark:bg-gray-800 text-xs" data-file-id="${fileId}" value="${escAttr(file.paid_date || '')}">
+                </label>
+            </div>
+            ${dueHint}
+        </div>`;
+    }
+
     function buildFileRow(file, fileAccept, locked) {
         const fileId = file.id;
         const label = file.checklist_label || file.type_label || file.type_code || '—';
@@ -92,15 +127,23 @@
                 <div class="text-xs text-gray-500">${escHtml(freq)}</div>
             </td>
             <td class="px-3 py-2 align-top">${fileCell}</td>
+            <td class="px-3 py-2 align-top">${buildStatusCell(file, locked)}</td>
             <td class="px-3 py-2 align-top text-right whitespace-nowrap">${actions}</td>
         </tr>`;
+    }
+
+    function categoryTabLabel(cat) {
+        const badge = cat.completeness
+            ? ` (${cat.completeness.uploaded}/${cat.completeness.total})`
+            : '';
+        return escHtml(cat.title) + badge;
     }
 
     function buildCategoryPanel(cat, fileAccept, locked) {
         const files = cat.files || [];
         const rows = files.length
             ? files.map(f => buildFileRow(f, fileAccept, locked)).join('')
-            : '<tr><td colspan="3" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No checklist items in this category.</td></tr>';
+            : '<tr><td colspan="4" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No checklist items in this category.</td></tr>';
 
         const headerActions = locked ? '' : `
             <div class="flex gap-2">
@@ -109,9 +152,13 @@
                 <button type="button" class="compliance-delete-cat text-xs px-2 py-1 border border-red-300 text-red-600 rounded-sm" data-category-id="${cat.id}">Delete</button>
             </div>`;
 
+        const catBadge = cat.completeness && cat.completeness.required_missing > 0
+            ? `<span class="text-xs text-amber-600 ml-2">${cat.completeness.required_missing} required missing</span>`
+            : '';
+
         return `<div class="compliance-cat-panel hidden" data-category-panel="${cat.id}">
             <div class="flex justify-between items-center mb-3">
-                <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100">${escHtml(cat.title)} — checklist</h4>
+                <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100">${escHtml(cat.title)} — checklist${catBadge}</h4>
                 ${headerActions}
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -121,6 +168,7 @@
                             <tr>
                                 <th class="text-left px-3 py-2">Document type</th>
                                 <th class="text-left px-3 py-2">File</th>
+                                <th class="text-left px-3 py-2">Status</th>
                                 <th class="px-3 py-2"></th>
                             </tr>
                         </thead>
@@ -147,6 +195,8 @@
         const assetId = root.dataset.assetId || '';
         const workspaceUrl = root.dataset.workspaceUrl;
         const filesPrefix = root.dataset.filesPrefix;
+        const bulkUrl = root.dataset.bulkUrl;
+        const autoMatchUrl = root.dataset.autoMatchUrl;
         const fileAccept = root.dataset.fileAccept || '';
         const maxFileBytes = parseInt(root.dataset.maxFileBytes || '0', 10) || 0;
         const prefix = root.id.replace('-workspace', '');
@@ -158,6 +208,11 @@
         const categoryBarEl = document.getElementById(prefix + '-category-bar');
         const categoryTabsEl = document.getElementById(prefix + '-category-tabs');
         const addCategoryBtn = document.getElementById(prefix + '-add-category');
+        const bulkBtn = document.getElementById(prefix + '-bulk-btn');
+        const copyPriorBtn = document.getElementById(prefix + '-copy-prior');
+        const notesWrap = document.getElementById(prefix + '-year-notes-wrap');
+        const notesArea = document.getElementById(prefix + '-year-notes');
+        const notesStatusEl = document.getElementById(prefix + '-notes-status');
         const categoryPanelsEl = document.getElementById(prefix + '-category-panels');
         const loadingEl = document.getElementById(prefix + '-loading');
         const errorEl = document.getElementById(prefix + '-error');
@@ -169,6 +224,7 @@
         let previewFileId = null;
         let locked = false;
         let fetchInFlight = false;
+        let notesTimer = null;
 
         const csrfToken = () =>
             document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
@@ -366,7 +422,7 @@
                 categoryTabsEl.innerHTML = categories.map((cat, i) =>
                     `<button type="button"
                         class="compliance-cat-tab px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${i === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}"
-                        data-category-id="${cat.id}">${escHtml(cat.title)}</button>`
+                        data-category-id="${cat.id}">${categoryTabLabel(cat)}</button>`
                 ).join('');
 
                 categoryPanelsEl.innerHTML = categories
@@ -375,9 +431,19 @@
                 categoryBarEl?.classList.remove('hidden');
                 if (locked) {
                     addCategoryBtn?.classList.add('hidden');
+                    bulkBtn?.classList.add('hidden');
+                    copyPriorBtn?.classList.add('hidden');
                 } else {
                     addCategoryBtn?.classList.remove('hidden');
+                    bulkBtn?.classList.remove('hidden');
+                    copyPriorBtn?.classList.remove('hidden');
                 }
+            }
+
+            notesWrap?.classList.remove('hidden');
+            if (notesArea) {
+                notesArea.value = ws.notes ?? '';
+                notesArea.readOnly = locked;
             }
 
             updateCompleteness(ws.completeness);
@@ -509,7 +575,45 @@
 
         root.addEventListener('change', async function (ev) {
             const input = ev.target.closest('input.compliance-slot-file');
-            if (!input || !root.contains(input)) return;
+            if (input && root.contains(input)) {
+                await handleSlotUpload(input);
+                return;
+            }
+
+            const statusSel = ev.target.closest('.compliance-status-select');
+            if (statusSel && root.contains(statusSel)) {
+                await saveFileStatus(statusSel.dataset.fileId);
+                return;
+            }
+
+            const dateInput = ev.target.closest('.compliance-lodged-date, .compliance-paid-date');
+            if (dateInput && root.contains(dateInput)) {
+                await saveFileStatus(dateInput.dataset.fileId);
+            }
+        });
+
+        async function saveFileStatus(fileId) {
+            if (!fileId || locked) return;
+            const tr = root.querySelector(`tr[data-compliance-row="${fileId}"]`);
+            if (!tr) return;
+
+            const status = tr.querySelector('.compliance-status-select')?.value || 'not_started';
+            const lodged = tr.querySelector('.compliance-lodged-date')?.value || null;
+            const paid = tr.querySelector('.compliance-paid-date')?.value || null;
+
+            const r = await api(`${base}/compliance-files/${fileId}/status`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status, lodged_date: lodged, paid_date: paid }),
+            });
+            const j = await r.json();
+            if (j.status && j.file) {
+                patchRow(j.file);
+            } else {
+                alertValidationErrors(j) || alert(j.message || 'Failed to update status.');
+            }
+        }
+
+        async function handleSlotUpload(input) {
             if (input.dataset.uploading === '1') return;
 
             if (input.dataset.replace === '1' && !confirm('Replace existing file?')) {
@@ -557,6 +661,40 @@
             } finally {
                 delete input.dataset.uploading;
                 if (labelNode?.firstChild && origText !== undefined) labelNode.firstChild.textContent = origText;
+            }
+        }
+
+        notesArea?.addEventListener('input', () => {
+            if (locked || !workspace?.year_record_id) return;
+            clearTimeout(notesTimer);
+            notesTimer = setTimeout(async () => {
+                const r = await api(`${base}/compliance-years/${workspace.year_record_id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ notes: notesArea.value }),
+                });
+                const j = await r.json();
+                if (j.status && notesStatusEl) {
+                    notesStatusEl.textContent = 'Saved';
+                    notesStatusEl.classList.remove('hidden');
+                    setTimeout(() => notesStatusEl.classList.add('hidden'), 2000);
+                    if (workspace) workspace.notes = j.notes;
+                }
+            }, 800);
+        });
+
+        copyPriorBtn?.addEventListener('click', async () => {
+            if (!workspace?.year_record_id) { alert('Workspace not loaded.'); return; }
+            if (!confirm('Copy custom checklist rows from the prior financial year?')) return;
+            const r = await api(`${base}/compliance-years/${workspace.year_record_id}/copy-custom-rows`, {
+                method: 'POST',
+                body: '{}',
+            });
+            const j = await r.json();
+            if (j.status) {
+                alert(j.message || 'Copied.');
+                refreshWorkspace();
+            } else {
+                alert(j.message || 'Failed');
             }
         });
 
@@ -626,15 +764,19 @@
                 const j = await r.json();
                 if (j.status) {
                     const newTitle = j.category?.title ?? title.trim();
+                    const cat = findCategory(catId);
                     const tab = root.querySelector(`.compliance-cat-tab[data-category-id="${catId}"]`);
                     const panel = root.querySelector(`.compliance-cat-panel[data-category-panel="${catId}"]`);
-                    if (tab) tab.textContent = newTitle;
+                    if (tab && cat) {
+                        tab.innerHTML = categoryTabLabel({ ...cat, title: newTitle });
+                    } else if (tab) {
+                        tab.textContent = newTitle;
+                    }
                     if (panel) {
                         const h4 = panel.querySelector('h4');
                         if (h4) h4.textContent = newTitle + ' — checklist';
                         panel.querySelector('.compliance-rename-cat')?.setAttribute('data-title', newTitle);
                     }
-                    const cat = findCategory(catId);
                     if (cat) cat.title = newTitle;
                 } else alertValidationErrors(j) || alert(j.message || 'Failed');
                 return;
@@ -765,17 +907,185 @@
                     removeFileFromWorkspace(fileId);
                     if (panel && !panel.querySelector('tbody tr')) {
                         panel.querySelector('tbody').innerHTML =
-                            '<tr><td colspan="3" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No checklist items in this category.</td></tr>';
+                            '<tr><td colspan="4" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No checklist items in this category.</td></tr>';
                     }
                 } else alert(j.message || 'Failed');
             }
+        });
+
+        // ─── Bulk upload ─────────────────────────────────────────────────────
+
+        const modal = document.getElementById(prefix + '-bulk-modal');
+        const bulkFiles = document.getElementById(prefix + '-bulk-files');
+        const bulkMap = document.getElementById(prefix + '-bulk-map');
+        let bulkCategoryId = null;
+
+        bulkBtn?.addEventListener('click', () => {
+            if (locked) return;
+            bulkCategoryId = activeCategoryId;
+            if (!bulkCategoryId) { alert('Select a category tab first.'); return; }
+            if (bulkFiles) bulkFiles.value = '';
+            if (bulkMap) bulkMap.innerHTML = '';
+            modal?.classList.remove('hidden');
+        });
+
+        document.getElementById(prefix + '-bulk-cancel')?.addEventListener('click', () => {
+            modal?.classList.add('hidden');
+        });
+
+        async function refreshBulkMap(files) {
+            if (!bulkMap || !files.length || !autoMatchUrl) return;
+            bulkMap.innerHTML = '';
+
+            const catData = findCategory(bulkCategoryId);
+            let emptyLabels = [];
+            let filledLabels = [];
+
+            if (catData) {
+                emptyLabels = (catData.files || []).filter(f => !f.has_file).map(f => f.checklist_label).filter(Boolean);
+                filledLabels = (catData.files || []).filter(f => f.has_file).map(f => f.checklist_label).filter(Boolean);
+            } else {
+                root.querySelector(`.compliance-cat-panel[data-category-panel="${bulkCategoryId}"]`)?.querySelectorAll('tbody tr').forEach(tr => {
+                    const label = tr.querySelector('td span.font-medium')?.textContent?.trim();
+                    const hasNoFile = tr.querySelector('td:nth-child(2) span.text-gray-400');
+                    if (label) (hasNoFile ? emptyLabels : filledLabels).push(label);
+                });
+            }
+
+            const payload = { category_id: bulkCategoryId, files: Array.from(files).map(f => ({ name: f.name })) };
+            const r = await api(autoMatchUrl, { method: 'POST', body: JSON.stringify(payload) });
+            const j = await r.json();
+            const matches = j.matches || {};
+
+            Array.from(files).forEach((file, i) => {
+                const m = matches[file.name];
+                const matchLabel = m?.checklist ?? null;
+                const isFilled = matchLabel && filledLabels.includes(matchLabel);
+
+                const row = document.createElement('div');
+                row.className = 'flex flex-col gap-1 border-b border-gray-100 dark:border-gray-700 pb-2';
+                row.innerHTML = `<span class="text-xs text-gray-600 dark:text-gray-400 truncate">${escHtml(file.name)}</span>`;
+
+                const sel = document.createElement('select');
+                sel.className = 'w-full border rounded-sm dark:bg-gray-800 dark:text-white text-xs';
+                sel.dataset.fileIndex = String(i);
+
+                const blank = document.createElement('option');
+                blank.value = '';
+                blank.textContent = '— Select —';
+                sel.appendChild(blank);
+
+                emptyLabels.forEach(c => {
+                    const o = document.createElement('option');
+                    o.value = c;
+                    o.textContent = c;
+                    if (matchLabel === c) o.selected = true;
+                    sel.appendChild(o);
+                });
+                filledLabels.forEach(c => {
+                    const o = document.createElement('option');
+                    o.value = c;
+                    o.textContent = `${c} (has file)`;
+                    if (matchLabel === c) o.selected = true;
+                    sel.appendChild(o);
+                });
+
+                const neo = document.createElement('option');
+                neo.value = '__NEW__';
+                neo.textContent = '+ New from filename';
+                sel.appendChild(neo);
+
+                row.appendChild(sel);
+
+                const replaceWrap = document.createElement('label');
+                replaceWrap.className = `flex items-center gap-2 text-xs mt-1 ${isFilled ? '' : 'hidden'}`;
+                replaceWrap.innerHTML = `<input type="checkbox" class="bulk-replace-toggle" data-file-index="${i}"> Replace existing file`;
+                row.appendChild(replaceWrap);
+
+                sel.addEventListener('change', () => {
+                    replaceWrap.classList.toggle('hidden', !filledLabels.includes(sel.value));
+                });
+
+                bulkMap.appendChild(row);
+            });
+        }
+
+        bulkFiles?.addEventListener('change', () => refreshBulkMap(bulkFiles.files));
+
+        document.getElementById(prefix + '-bulk-go')?.addEventListener('click', async () => {
+            const files = bulkFiles?.files;
+            if (!files?.length) { alert('Choose files first.'); return; }
+            if (!bulkUrl) return;
+
+            for (const f of Array.from(files)) {
+                if (maxFileBytes > 0 && f.size > maxFileBytes) {
+                    alert(`This file is too large. Maximum is ${(maxFileBytes / 1048576).toFixed(1)} MB per file.`);
+                    return;
+                }
+            }
+
+            const autoCreate = document.getElementById(prefix + '-bulk-autocreate')?.checked ?? false;
+            const formData = new FormData();
+            formData.append('_token', csrfToken());
+            formData.append('category_id', bulkCategoryId);
+            if (assetId) formData.append('asset_id', assetId);
+
+            let mapOk = true;
+            Array.from(files).forEach((file, i) => {
+                formData.append('files[]', file);
+                const sel = bulkMap?.querySelector(`select[data-file-index="${i}"]`);
+                const toggle = bulkMap?.querySelector(`input.bulk-replace-toggle[data-file-index="${i}"]`);
+                let type = 'existing';
+                let name = sel?.value || '';
+                const replace = toggle?.checked ?? false;
+
+                if (name === '__NEW__' || (!name && autoCreate)) {
+                    type = 'new';
+                    name = file.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' ').trim();
+                }
+                if (!name) { mapOk = false; return; }
+                formData.append('mappings[]', JSON.stringify({ type, name, replace }));
+            });
+
+            if (!mapOk) { alert('Map all files to a checklist row, or enable auto-create.'); return; }
+
+            const pw = document.getElementById(prefix + '-bulk-progress-wrap');
+            const pb = document.getElementById(prefix + '-bulk-progress');
+            pw?.classList.remove('hidden');
+            if (pb) pb.style.width = '0%';
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', bulkUrl);
+            xhr.setRequestHeader('X-CSRF-TOKEN', csrfToken());
+            xhr.upload.addEventListener('progress', e => {
+                if (e.lengthComputable && pb) pb.style.width = (e.loaded / e.total * 100) + '%';
+            });
+            xhr.onload = () => {
+                pw?.classList.add('hidden');
+                if (xhr.status === 419) { alert('Session expired. Refresh and try again.'); return; }
+                if (xhr.status === 413) { alert('File is too large for the server upload limit.'); return; }
+                const res = parseJson(xhr.responseText);
+                if (!res) { alert('Upload failed.'); return; }
+                modal?.classList.add('hidden');
+                const parts = [res.message, ...(res.errors?.length ? ['Errors:\n' + res.errors.join('\n')] : [])];
+                alert(parts.filter(Boolean).join('\n\n'));
+                if (res.files?.length) {
+                    res.files.forEach(f => applyFilePatch(f));
+                } else if (res.uploaded > 0) {
+                    refreshWorkspace();
+                }
+            };
+            xhr.onerror = () => alert('Upload failed. Check your connection.');
+            xhr.send(formData);
         });
 
         root.prepareForLoad = showLoading;
 
         root.loadWorkspace = function () {
             const session = loadSession();
-            const fyStart = session.fyStart || root.dataset.defaultFyStart;
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlFy = urlParams.get('fy_start');
+            const fyStart = urlFy || session.fyStart || root.dataset.defaultFyStart;
             return fetchWorkspace(fyStart);
         };
     }
