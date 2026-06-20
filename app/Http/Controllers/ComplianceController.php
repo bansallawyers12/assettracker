@@ -44,7 +44,7 @@ class ComplianceController extends Controller
 
             return response()->json([
                 'status' => true,
-                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])))->resolve(),
+                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
             ]);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
@@ -83,7 +83,7 @@ class ComplianceController extends Controller
 
             return response()->json([
                 'status' => true,
-                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])))->resolve(),
+                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
             ]);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
@@ -109,7 +109,7 @@ class ComplianceController extends Controller
 
             return response()->json([
                 'status' => true,
-                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])))->resolve(),
+                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
             ]);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
@@ -130,7 +130,7 @@ class ComplianceController extends Controller
 
             return response()->json([
                 'status' => true,
-                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])))->resolve(),
+                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
             ]);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);

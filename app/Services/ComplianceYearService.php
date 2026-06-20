@@ -4,14 +4,26 @@ namespace App\Services;
 
 use App\Models\Asset;
 use App\Models\BusinessEntity;
+use App\Models\ComplianceCategory;
 use App\Models\ComplianceDocumentFile;
 use App\Models\ComplianceDocumentType;
 use App\Models\ComplianceYearRecord;
 use App\Support\FinancialYear;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class ComplianceYearService
 {
+    /** @var array<string, int> */
+    private const CATEGORY_SORT_ORDER = [
+        'Tax & ATO'       => 10,
+        'ASIC & Company'  => 20,
+        'Property levies' => 10,
+        'Insurance'       => 20,
+        'Depreciation'    => 30,
+        'Other'           => 99,
+    ];
+
     /**
      * @return array<int, array{start: string, end: string, label: string}>
      */
@@ -73,13 +85,17 @@ class ComplianceYearService
         }
 
         if (config('compliance.auto_provision_on_view', true)) {
-            $this->provisionFileSlots($record);
+            $this->provisionCategoriesAndSlots($record);
         }
 
-        return $record->fresh()->load(['files.type', 'files.yearRecord']);
+        return $record->fresh()->load([
+            'categories.files.type',
+            'categories.files.category',
+            'categories.files.yearRecord',
+        ]);
     }
 
-    public function provisionFileSlots(ComplianceYearRecord $record): void
+    public function provisionCategoriesAndSlots(ComplianceYearRecord $record): void
     {
         $record->loadMissing('asset');
         $scope = $record->asset_id === null ? 'entity' : 'asset';
@@ -92,14 +108,35 @@ class ComplianceYearService
             ->get()
             ->filter(fn (ComplianceDocumentType $type) => $this->typeApplies($type, $record));
 
-        foreach ($types as $type) {
-            ComplianceDocumentFile::query()->firstOrCreate(
+        /** @var Collection<string, Collection<int, ComplianceDocumentType>> $grouped */
+        $grouped = $types->groupBy(fn (ComplianceDocumentType $type) => $type->category_group ?: 'Other');
+
+        foreach ($grouped as $title => $groupTypes) {
+            $category = ComplianceCategory::query()->firstOrCreate(
                 [
-                    'compliance_year_record_id'   => $record->id,
-                    'compliance_document_type_id' => $type->id,
+                    'compliance_year_record_id' => $record->id,
+                    'title'                     => $title,
                 ],
-                ['status' => 'not_started']
+                [
+                    'sort_order' => self::CATEGORY_SORT_ORDER[$title] ?? 50,
+                    'is_system'  => true,
+                ]
             );
+
+            foreach ($groupTypes as $type) {
+                ComplianceDocumentFile::query()->firstOrCreate(
+                    [
+                        'compliance_category_id'        => $category->id,
+                        'compliance_document_type_id'   => $type->id,
+                    ],
+                    [
+                        'compliance_year_record_id' => $record->id,
+                        'checklist_label'           => $type->label,
+                        'custom_label'              => false,
+                        'status'                    => 'not_started',
+                    ]
+                );
+            }
         }
     }
 
@@ -108,14 +145,16 @@ class ComplianceYearService
      */
     public function completeness(ComplianceYearRecord $record): array
     {
-        $record->loadMissing(['files.type']);
+        $record->loadMissing(['categories.files.type']);
 
-        $required = $record->files->filter(fn (ComplianceDocumentFile $f) => $f->type?->is_required);
+        $files = $record->categories->flatMap(fn (ComplianceCategory $cat) => $cat->files);
+
+        $required = $files->filter(fn (ComplianceDocumentFile $f) => $f->type?->is_required);
         $requiredUploaded = $required->filter(fn (ComplianceDocumentFile $f) => $f->hasFile());
 
         return [
-            'total'            => $record->files->count(),
-            'uploaded'         => $record->files->filter(fn (ComplianceDocumentFile $f) => $f->hasFile())->count(),
+            'total'            => $files->count(),
+            'uploaded'         => $files->filter(fn (ComplianceDocumentFile $f) => $f->hasFile())->count(),
             'required_total'   => $required->count(),
             'required_missing' => $required->count() - $requiredUploaded->count(),
         ];

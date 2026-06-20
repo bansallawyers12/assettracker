@@ -1145,6 +1145,10 @@
                         activeTab.classList.add('active');
                     }
                 }
+
+                if (resolvedId === 'tab_compliance') {
+                    window.dispatchEvent(new CustomEvent('compliance-tab-activated'));
+                }
             }
 
             tabs.forEach(tab => {

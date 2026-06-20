@@ -34,10 +34,11 @@ class ComplianceUploadService
         }
 
         $fyLabel = FinancialYear::label($record->fy_start_date);
-        $prefix = $this->baseCompliancePath($entity, $asset, $fyLabel);
+        $file->loadMissing(['type', 'category']);
+        $categorySlug = $this->categorySlug($file);
+        $prefix = $this->baseCompliancePath($entity, $asset, $fyLabel, $categorySlug);
         $this->documentUploadService->ensureDirectory($prefix);
 
-        $file->loadMissing('type');
         $typeCode = $file->type?->code ?? 'document';
         $entityToken = $this->documentUploadService->sanitizeLabelForStorage($entity->legal_name);
         $typeToken = $this->documentUploadService->sanitizeLabelForStorage($typeCode);
@@ -74,11 +75,23 @@ class ComplianceUploadService
         $file->save();
     }
 
-    public function baseCompliancePath(BusinessEntity $entity, ?Asset $asset, string $fyLabel): string
+    public function baseCompliancePath(BusinessEntity $entity, ?Asset $asset, string $fyLabel, ?string $categorySlug = null): string
     {
         $safeLabel = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $fyLabel);
+        $base = $this->documentUploadService->baseDocsPath($entity, $asset).'/compliance/'.$safeLabel;
 
-        return $this->documentUploadService->baseDocsPath($entity, $asset).'/compliance/'.$safeLabel;
+        if ($categorySlug !== null && $categorySlug !== '') {
+            return $base.'/'.$categorySlug;
+        }
+
+        return $base;
+    }
+
+    private function categorySlug(ComplianceDocumentFile $file): string
+    {
+        $title = $file->category?->title ?? 'general';
+
+        return strtolower($this->documentUploadService->sanitizeFilename($title)) ?: 'general';
     }
 
     private function deleteStoredFile(ComplianceDocumentFile $file): void

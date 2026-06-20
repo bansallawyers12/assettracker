@@ -9,7 +9,10 @@ class ComplianceDocumentFile extends Model
 {
     protected $fillable = [
         'compliance_year_record_id',
+        'compliance_category_id',
         'compliance_document_type_id',
+        'checklist_label',
+        'custom_label',
         'status',
         'due_date',
         'lodged_date',
@@ -25,6 +28,7 @@ class ComplianceDocumentFile extends Model
     protected function casts(): array
     {
         return [
+            'custom_label' => 'boolean',
             'due_date'    => 'date',
             'lodged_date' => 'date',
             'paid_date'   => 'date',
@@ -35,6 +39,11 @@ class ComplianceDocumentFile extends Model
     public function yearRecord(): BelongsTo
     {
         return $this->belongsTo(ComplianceYearRecord::class, 'compliance_year_record_id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ComplianceCategory::class, 'compliance_category_id');
     }
 
     public function type(): BelongsTo
@@ -50,5 +59,12 @@ class ComplianceDocumentFile extends Model
     public function hasFile(): bool
     {
         return filled($this->path);
+    }
+
+    public function displayLabel(): string
+    {
+        return $this->checklist_label
+            ?? $this->type?->label
+            ?? 'Untitled';
     }
 }

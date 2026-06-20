@@ -887,6 +887,14 @@
                     content.classList.add('hidden');
                 });
                 document.getElementById(tabId).classList.remove('hidden');
+
+                if (tabId.startsWith('tab_') && window.location.hash !== '#' + tabId) {
+                    history.replaceState(null, '', '#' + tabId);
+                }
+
+                if (tabId === 'tab_compliance') {
+                    window.dispatchEvent(new CustomEvent('compliance-tab-activated'));
+                }
             }
 
             tabs.forEach(tab => {

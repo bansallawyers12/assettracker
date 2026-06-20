@@ -47,6 +47,11 @@ class ComplianceYearRecord extends Model
         return $this->hasMany(ComplianceDocumentFile::class, 'compliance_year_record_id');
     }
 
+    public function categories(): HasMany
+    {
+        return $this->hasMany(ComplianceCategory::class, 'compliance_year_record_id');
+    }
+
     public function isLocked(): bool
     {
         return $this->locked_at !== null;

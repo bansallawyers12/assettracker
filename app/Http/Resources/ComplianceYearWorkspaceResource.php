@@ -13,7 +13,9 @@ class ComplianceYearWorkspaceResource extends JsonResource
         /** @var ComplianceYearService $yearService */
         $yearService = app(ComplianceYearService::class);
 
-        $files = $this->files->sortBy(fn ($f) => [$f->type?->sort_order ?? 0, $f->type?->id ?? 0])->values();
+        $categories = $this->categories
+            ->sortBy(fn ($cat) => [$cat->sort_order, $cat->id])
+            ->values();
 
         return [
             'entity_id'       => $this->business_entity_id,
@@ -25,7 +27,7 @@ class ComplianceYearWorkspaceResource extends JsonResource
             'notes'           => $this->notes,
             'completeness'    => $yearService->completeness($this->resource),
             'available_years' => $yearService->listAvailableYears(),
-            'files'           => ComplianceDocumentFileResource::collection($files)->resolve(),
+            'categories'      => ComplianceCategoryResource::collection($categories)->resolve(),
         ];
     }
 }

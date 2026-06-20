@@ -12,6 +12,7 @@ class ComplianceDocumentType extends Model
         'label',
         'description',
         'scope',
+        'category_group',
         'frequency',
         'asset_types',
         'sort_order',

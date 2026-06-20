@@ -1,5 +1,5 @@
 /**
- * FY compliance workspace — lazy-loaded on #tab_compliance activation.
+ * FY compliance workspace — category tabs, loaded when #tab_compliance is activated.
  */
 (function () {
     'use strict';
@@ -38,7 +38,7 @@
 
     function buildFileRow(file, fileAccept, locked) {
         const fileId = file.id;
-        const label = file.type_label || file.type_code || '—';
+        const label = file.checklist_label || file.type_label || file.type_code || '—';
         const freq = file.frequency && file.frequency !== 'annual' ? ` (${file.frequency})` : '';
         const hasFile = file.has_file;
         const fileName = file.file_name ?? '';
@@ -83,6 +83,39 @@
         </tr>`;
     }
 
+    function buildCategoryPanel(cat, fileAccept, locked) {
+        const files = cat.files || [];
+        const rows = files.length
+            ? files.map(f => buildFileRow(f, fileAccept, locked)).join('')
+            : '<tr><td colspan="3" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No checklist items in this category.</td></tr>';
+
+        return `<div class="compliance-cat-panel hidden" data-category-panel="${cat.id}">
+            <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100 mb-3">${escHtml(cat.title)} — checklist</h4>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-100 dark:bg-gray-800">
+                            <tr>
+                                <th class="text-left px-3 py-2">Document type</th>
+                                <th class="text-left px-3 py-2">File</th>
+                                <th class="px-3 py-2"></th>
+                            </tr>
+                        </thead>
+                        <tbody data-category-tbody="${cat.id}">${rows}</tbody>
+                    </table>
+                </div>
+                <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4 min-h-[280px]">
+                    <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview</h5>
+                    <iframe class="compliance-preview-frame w-full h-[240px] bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-600" title="Preview"></iframe>
+                    <div class="mt-3 flex gap-2 flex-wrap">
+                        <a href="#" target="_blank" class="compliance-preview-dl text-sm px-3 py-1 bg-blue-600 text-white rounded-sm opacity-50 pointer-events-none">Download</a>
+                        <button type="button" class="compliance-preview-clear text-sm px-3 py-1 bg-amber-600 text-white rounded-sm opacity-50 pointer-events-none">Clear file</button>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
     function initWorkspace(root) {
         if (!root || root.dataset.initialized) return;
         root.dataset.initialized = '1';
@@ -98,16 +131,18 @@
 
         const fySelect = document.getElementById(prefix + '-fy-select');
         const completenessEl = document.getElementById(prefix + '-completeness');
+        const categoryTabsEl = document.getElementById(prefix + '-category-tabs');
+        const categoryPanelsEl = document.getElementById(prefix + '-category-panels');
         const loadingEl = document.getElementById(prefix + '-loading');
+        const errorEl = document.getElementById(prefix + '-error');
+        const errorMsgEl = errorEl?.querySelector('.compliance-error-msg');
         const contentEl = document.getElementById(prefix + '-content');
-        const tbody = document.getElementById(prefix + '-file-rows');
-        const previewFrame = root.querySelector('.compliance-preview-frame');
-        const previewDl = root.querySelector('.compliance-preview-dl');
-        const previewClear = root.querySelector('.compliance-preview-clear');
 
         let workspace = null;
+        let activeCategoryId = null;
         let previewFileId = null;
         let locked = false;
+        let fetchInFlight = false;
 
         const csrfToken = () =>
             document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
@@ -117,6 +152,7 @@
             try {
                 sessionStorage.setItem(SESSION_KEY, JSON.stringify({
                     fyStart: fySelect?.value ?? null,
+                    activeCategoryId,
                     previewFileId,
                     ...extra,
                 }));
@@ -128,27 +164,71 @@
             catch (_) { return {}; }
         }
 
-        function fileExceedsLimit(file) {
-            return maxFileBytes > 0 && !!file && file.size > maxFileBytes;
+        function showLoading() {
+            errorEl?.classList.add('hidden');
+            loadingEl?.classList.remove('hidden');
+            contentEl?.classList.add('hidden');
+            categoryTabsEl?.classList.add('hidden');
         }
 
-        function alertFileTooLarge() {
-            alert(`This file is too large. Maximum is ${(maxFileBytes / 1048576).toFixed(1)} MB per file.`);
+        function showError(message) {
+            loadingEl?.classList.add('hidden');
+            contentEl?.classList.add('hidden');
+            categoryTabsEl?.classList.add('hidden');
+            if (errorMsgEl) {
+                errorMsgEl.textContent = message || 'Failed to load compliance documents.';
+            }
+            errorEl?.classList.remove('hidden');
         }
 
-        function uploadUrl(fileId) {
-            return `${filesPrefix}/${fileId}/upload`;
+        function hideError() {
+            errorEl?.classList.add('hidden');
         }
 
-        function clearUrl(fileId) {
-            return `${filesPrefix}/${fileId}/clear`;
+        function findFile(fileId) {
+            for (const cat of workspace?.categories || []) {
+                const f = cat.files?.find(x => String(x.id) === String(fileId));
+                if (f) return f;
+            }
+            return null;
         }
 
-        function setPreview(fileId, fileName) {
-            if (!fileId || !previewFrame || !previewDl) return;
-            const file = workspace?.files?.find(f => String(f.id) === String(fileId));
+        function getActivePanel() {
+            return activeCategoryId
+                ? root.querySelector(`.compliance-cat-panel[data-category-panel="${activeCategoryId}"]`)
+                : null;
+        }
+
+        function setActiveCategory(categoryId) {
+            activeCategoryId = String(categoryId);
+            root.querySelectorAll('.compliance-cat-tab').forEach(t => {
+                const active = String(t.dataset.categoryId) === activeCategoryId;
+                if (active) {
+                    t.classList.add('bg-indigo-600', 'text-white');
+                    t.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-gray-200');
+                } else {
+                    t.classList.remove('bg-indigo-600', 'text-white');
+                    t.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-gray-200');
+                }
+            });
+            root.querySelectorAll('.compliance-cat-panel').forEach(p => {
+                p.classList.toggle('hidden', p.dataset.categoryPanel !== activeCategoryId);
+            });
+            saveSession();
+        }
+
+        function setPreview(fileId) {
+            const panel = getActivePanel();
+            if (!fileId || !panel) return;
+
+            const file = findFile(fileId);
             const viewUrl = file?.content_url;
             if (!viewUrl) return;
+
+            const previewFrame = panel.querySelector('.compliance-preview-frame');
+            const previewDl = panel.querySelector('.compliance-preview-dl');
+            const previewClear = panel.querySelector('.compliance-preview-clear');
+            if (!previewFrame || !previewDl) return;
 
             previewFileId = String(fileId);
             previewFrame.removeAttribute('src');
@@ -162,6 +242,12 @@
 
         function clearPreview() {
             previewFileId = null;
+            const panel = getActivePanel();
+            if (!panel) return;
+
+            const previewFrame = panel.querySelector('.compliance-preview-frame');
+            const previewDl = panel.querySelector('.compliance-preview-dl');
+            const previewClear = panel.querySelector('.compliance-preview-clear');
             if (previewFrame) previewFrame.removeAttribute('src');
             if (previewDl) { previewDl.href = '#'; previewDl.classList.add('opacity-50', 'pointer-events-none'); }
             previewClear?.classList.add('opacity-50', 'pointer-events-none');
@@ -188,56 +274,114 @@
             });
         }
 
-        function renderWorkspace(ws) {
+        function renderWorkspace(ws, session) {
             workspace = ws;
             locked = !!ws.locked;
 
-            if (!tbody || !contentEl) return;
+            if (!categoryTabsEl || !categoryPanelsEl || !contentEl) return;
 
-            tbody.innerHTML = (ws.files || []).map(f => buildFileRow(f, fileAccept, locked)).join('');
+            const categories = ws.categories || [];
+
+            if (!categories.length) {
+                categoryTabsEl.innerHTML = '';
+                categoryPanelsEl.innerHTML = '<p class="text-sm text-gray-500 dark:text-gray-400 py-4">No categories configured for this scope.</p>';
+            } else {
+                categoryTabsEl.innerHTML = categories.map((cat, i) =>
+                    `<button type="button"
+                        class="compliance-cat-tab px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${i === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}"
+                        data-category-id="${cat.id}">${escHtml(cat.title)}</button>`
+                ).join('');
+
+                categoryPanelsEl.innerHTML = categories
+                    .map(cat => buildCategoryPanel(cat, fileAccept, locked))
+                    .join('');
+            }
+
             updateCompleteness(ws.completeness);
+            loadingEl?.classList.add('hidden');
+            hideError();
+            categoryTabsEl.classList.remove('hidden');
             contentEl.classList.remove('hidden');
 
-            const session = loadSession();
-            if (session.fyStart === ws.fy_start && session.previewFileId) {
-                const f = ws.files?.find(x => String(x.id) === String(session.previewFileId) && x.has_file);
-                if (f) setPreview(f.id, f.file_name);
-                else clearPreview();
-            } else {
-                clearPreview();
+            const s = session || loadSession();
+            const firstCat = categories[0];
+            const restoreCat = s.activeCategoryId
+                && categories.some(c => String(c.id) === String(s.activeCategoryId))
+                ? s.activeCategoryId
+                : firstCat?.id;
+
+            if (restoreCat) {
+                setActiveCategory(restoreCat);
+
+                if (s.fyStart === ws.fy_start && s.previewFileId) {
+                    const f = findFile(s.previewFileId);
+                    if (f?.has_file) {
+                        if (f.category_id && String(f.category_id) !== String(activeCategoryId)) {
+                            setActiveCategory(f.category_id);
+                        }
+                        setPreview(f.id);
+                    } else {
+                        clearPreview();
+                    }
+                } else {
+                    clearPreview();
+                }
             }
         }
 
+        function workspaceErrorMessage(status, body) {
+            if (status === 419) return 'Your session has expired. Refresh the page and try again.';
+            if (status === 403) return 'You do not have permission to view compliance documents.';
+            if (status === 404) return 'Compliance workspace not found. The page may be out of date — refresh and try again.';
+            if (status >= 500) return 'The server encountered an error loading compliance documents.';
+            return body?.message || 'Failed to load compliance documents.';
+        }
+
         async function fetchWorkspace(fyStart) {
-            loadingEl?.classList.remove('hidden');
-            contentEl?.classList.add('hidden');
+            if (fetchInFlight) return;
+            fetchInFlight = true;
+
+            const savedSession = loadSession();
+
+            showLoading();
             previewFileId = null;
-            clearPreview();
+            activeCategoryId = null;
 
             const url = new URL(workspaceUrl, window.location.origin);
             url.searchParams.set('fy_start', fyStart);
 
             try {
                 const r = await api(url.pathname + url.search, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
-                const j = await r.json();
-                if (!r.ok || !j.status) {
-                    alert(j.message || 'Failed to load compliance workspace.');
+                const j = parseJson(await r.text());
+                if (!r.ok || !j?.status) {
+                    showError(workspaceErrorMessage(r.status, j));
                     return;
                 }
                 populateYearSelect(j.workspace.available_years, j.workspace.fy_start);
                 if (fySelect) fySelect.value = j.workspace.fy_start;
-                renderWorkspace(j.workspace);
+                renderWorkspace(j.workspace, savedSession);
                 root.dataset.loaded = '1';
                 saveSession({ fyStart: j.workspace.fy_start });
             } catch (_) {
-                alert('Failed to load compliance workspace.');
+                showError('Could not reach the server. Check your connection and try again.');
             } finally {
+                fetchInFlight = false;
                 loadingEl?.classList.add('hidden');
             }
         }
 
+        function updateFileInWorkspace(file) {
+            for (const cat of workspace?.categories || []) {
+                const idx = cat.files?.findIndex(f => String(f.id) === String(file.id));
+                if (idx > -1) {
+                    cat.files[idx] = file;
+                    return;
+                }
+            }
+        }
+
         function applyFilePatch(file) {
-            const wasUploaded = workspace?.files?.find(f => String(f.id) === String(file.id))?.has_file;
+            const wasUploaded = findFile(file.id)?.has_file;
             patchRow(file);
             if (workspace?.completeness) {
                 const has = file.has_file;
@@ -260,21 +404,28 @@
             const tr = root.querySelector(`tr[data-compliance-row="${file.id}"]`);
             if (!tr) return;
             tr.outerHTML = buildFileRow(file, fileAccept, locked);
-
-            if (workspace?.files) {
-                const idx = workspace.files.findIndex(f => String(f.id) === String(file.id));
-                if (idx > -1) workspace.files[idx] = file;
-            }
+            updateFileInWorkspace(file);
 
             if (file.has_file) {
-                setPreview(file.id, file.file_name);
+                setPreview(file.id);
             } else if (previewFileId === String(file.id)) {
                 clearPreview();
             }
         }
 
         fySelect?.addEventListener('change', () => {
-            if (fySelect.value) fetchWorkspace(fySelect.value);
+            if (fySelect.value) {
+                root.dataset.loaded = '0';
+                fetchWorkspace(fySelect.value);
+            }
+        });
+
+        root.addEventListener('click', function (ev) {
+            const tab = ev.target.closest('.compliance-cat-tab');
+            if (tab && root.contains(tab)) {
+                setActiveCategory(tab.dataset.categoryId);
+                return;
+            }
         });
 
         root.addEventListener('change', async function (ev) {
@@ -290,7 +441,11 @@
             const fileId = input.dataset.fileId;
             const file = input.files?.[0];
             if (!fileId || !file) { input.value = ''; return; }
-            if (fileExceedsLimit(file)) { alertFileTooLarge(); input.value = ''; return; }
+            if (maxFileBytes > 0 && file.size > maxFileBytes) {
+                alert(`This file is too large. Maximum is ${(maxFileBytes / 1048576).toFixed(1)} MB per file.`);
+                input.value = '';
+                return;
+            }
 
             const labelNode = input.closest('label');
             const origText = labelNode?.firstChild?.textContent;
@@ -302,7 +457,7 @@
             fd.append('document', file);
 
             try {
-                const r = await fetch(uploadUrl(fileId), {
+                const r = await fetch(`${filesPrefix}/${fileId}/upload`, {
                     method: 'POST',
                     body: fd,
                     headers: {
@@ -327,9 +482,17 @@
         });
 
         root.addEventListener('click', async function (ev) {
+            const retryBtn = ev.target.closest('.compliance-retry-btn');
+            if (retryBtn && root.contains(retryBtn)) {
+                root.dataset.loaded = '0';
+                const session = loadSession();
+                fetchWorkspace(session.fyStart || fySelect?.value || root.dataset.defaultFyStart);
+                return;
+            }
+
             const previewBtn = ev.target.closest('.compliance-preview-btn');
             if (previewBtn && root.contains(previewBtn)) {
-                setPreview(previewBtn.dataset.fileId, previewBtn.dataset.name);
+                setPreview(previewBtn.dataset.fileId);
                 return;
             }
 
@@ -337,7 +500,7 @@
             if (clearBtn && root.contains(clearBtn)) {
                 const fileId = clearBtn.dataset.fileId;
                 if (!fileId || !confirm('Remove the file from this row?')) return;
-                const r = await api(clearUrl(fileId), { method: 'POST', body: '{}' });
+                const r = await api(`${filesPrefix}/${fileId}/clear`, { method: 'POST', body: '{}' });
                 const j = await r.json();
                 if (j.status && j.file) applyFilePatch(j.file);
                 else alert(j.message || 'Failed');
@@ -348,12 +511,14 @@
             if (panelClear && root.contains(panelClear)) {
                 const fileId = panelClear.dataset.fileId;
                 if (!fileId || !confirm('Remove the file from this row?')) return;
-                const r = await api(clearUrl(fileId), { method: 'POST', body: '{}' });
+                const r = await api(`${filesPrefix}/${fileId}/clear`, { method: 'POST', body: '{}' });
                 const j = await r.json();
                 if (j.status && j.file) applyFilePatch(j.file);
                 else alert(j.message || 'Failed');
             }
         });
+
+        root.prepareForLoad = showLoading;
 
         root.loadWorkspace = function () {
             const session = loadSession();
@@ -366,39 +531,41 @@
         document.querySelectorAll('.compliance-workspace').forEach(initWorkspace);
     }
 
-    function maybeLoadComplianceWorkspace() {
+    function onComplianceTabActivated() {
         const panel = document.getElementById('tab_compliance');
-        const root = panel?.querySelector('.compliance-workspace');
-        if (root && root.dataset.loaded !== '1' && typeof root.loadWorkspace === 'function') {
+        if (!panel || panel.classList.contains('hidden')) return;
+
+        const root = panel.querySelector('.compliance-workspace');
+        if (!root || root.dataset.loaded === '1') return;
+
+        if (!root.dataset.initialized) {
+            initWorkspace(root);
+        }
+
+        if (typeof root.prepareForLoad === 'function') {
+            root.prepareForLoad();
+        }
+        if (typeof root.loadWorkspace === 'function') {
             root.loadWorkspace();
         }
     }
 
-    function bindTabLazyLoad() {
-        document.querySelectorAll('a[href="#tab_compliance"]').forEach(tab => {
-            tab.addEventListener('click', () => {
-                setTimeout(maybeLoadComplianceWorkspace, 0);
-            });
-        });
+    function bindTabActivation() {
+        window.addEventListener('compliance-tab-activated', onComplianceTabActivated);
 
-        window.addEventListener('hashchange', () => {
-            if (window.location.hash === '#tab_compliance') {
-                maybeLoadComplianceWorkspace();
-            }
-        });
-
-        if (window.location.hash === '#tab_compliance') {
-            maybeLoadComplianceWorkspace();
+        const panel = document.getElementById('tab_compliance');
+        if (panel && !panel.classList.contains('hidden')) {
+            onComplianceTabActivated();
         }
     }
 
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             bootWorkspaces();
-            bindTabLazyLoad();
+            bindTabActivation();
         });
     } else {
         bootWorkspaces();
-        bindTabLazyLoad();
+        bindTabActivation();
     }
 })();
