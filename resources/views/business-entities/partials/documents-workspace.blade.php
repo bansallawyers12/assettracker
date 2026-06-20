@@ -1,4 +1,5 @@
 @php
+    use App\Http\Resources\DocumentCategoryResource;
     $wsAsset = $asset ?? null;
     $wsAssetId = $wsAsset?->id;
     $entityId = $businessEntity->id;
@@ -12,6 +13,11 @@
     $wsDocAccept = config('documents.transaction_file_accept');
 @endphp
 
+{{-- Workspace JSON for bulk-map and JS state (no inline script needed) --}}
+<script type="application/json" id="{{ $prefix }}-workspace-data">
+    @json(DocumentCategoryResource::collection($documentCategories)->resolve())
+</script>
+
 <div id="{{ $prefix }}-workspace" class="documents-workspace"
      data-entity-id="{{ $entityId }}"
      data-asset-id="{{ $wsAssetId }}"
@@ -19,7 +25,8 @@
      data-bulk-url="{{ $bulkUploadUrl }}"
      data-auto-match-url="{{ $autoMatchUrl }}"
      data-csrf="{{ csrf_token() }}"
-     data-max-file-bytes="{{ $wsDocMaxKb * 1024 }}">
+     data-max-file-bytes="{{ $wsDocMaxKb * 1024 }}"
+     data-file-accept="{{ $wsDocAccept }}">
 
     <div class="flex flex-wrap gap-2 mb-4 items-center border-b border-gray-200 dark:border-gray-700 pb-3" id="{{ $prefix }}-category-tabs">
         @forelse($documentCategories as $index => $cat)
@@ -60,12 +67,12 @@
                             <tr>
                                 <th class="text-left px-3 py-2">Checklist</th>
                                 <th class="text-left px-3 py-2">File</th>
-                                <th class="px-3 py-2 w-28"></th>
+                                <th class="px-3 py-2"></th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($category->documents as $doc)
-                                <tr class="border-t border-gray-200 dark:border-gray-700">
+                                <tr class="border-t border-gray-200 dark:border-gray-700" data-slot-row="{{ $doc->id }}">
                                     <td class="px-3 py-2 align-top">
                                         <span class="font-medium text-gray-900 dark:text-gray-100">{{ $doc->checklist_label ?: '—' }}</span>
                                         <div class="text-xs text-gray-500">{{ ucfirst($doc->type ?? 'other') }}</div>
@@ -94,6 +101,8 @@
                                             </label>
                                         @endif
                                         <button type="button" class="doc-clear text-xs text-amber-600 {{ $doc->path ? '' : 'opacity-40 pointer-events-none' }}" data-doc-id="{{ $doc->id }}">Clear</button>
+                                        <button type="button" class="doc-rename-slot text-xs text-gray-500 dark:text-gray-400" data-doc-id="{{ $doc->id }}" data-label="{{ addslashes($doc->checklist_label ?? '') }}">Rename</button>
+                                        <button type="button" class="doc-move-slot text-xs text-gray-500 dark:text-gray-400" data-doc-id="{{ $doc->id }}">Move</button>
                                         <button type="button" class="doc-del text-xs text-red-600" data-doc-id="{{ $doc->id }}">×</button>
                                     </td>
                                 </tr>
@@ -132,425 +141,3 @@
         </div>
     </div>
 </div>
-
-@once
-    @push('scripts')
-    <script>
-    (function() {
-        function api(path, options = {}) {
-            const headers = Object.assign({
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Accept': 'application/json',
-            }, options.headers || {});
-            return fetch(path, Object.assign({}, options, { headers }));
-        }
-
-        function initWorkspace(root) {
-            if (!root || root.dataset.initialized) return;
-            root.dataset.initialized = '1';
-            const entityId = root.dataset.entityId;
-            const assetId = root.dataset.assetId || '';
-            const bulkUrl = root.dataset.bulkUrl;
-            const autoMatchUrl = root.dataset.autoMatchUrl;
-            const prefix = root.id.replace('-workspace', '');
-            const maxFileBytes = parseInt(root.dataset.maxFileBytes || '0', 10) || 0;
-            function fileExceedsLimit(file) {
-                if (!maxFileBytes || !file) return false;
-                return file.size > maxFileBytes;
-            }
-            function alertFileTooLarge() {
-                const mb = (maxFileBytes / (1024 * 1024)).toFixed(1);
-                alert(`This file is too large. Maximum is ${mb} MB per file (DOCUMENTS_MAX_KB / server PHP limits may also apply).`);
-            }
-
-            const tabs = root.querySelectorAll('.doc-cat-tab');
-            const panels = root.querySelectorAll('.doc-cat-panel');
-            tabs.forEach(tab => {
-                tab.addEventListener('click', () => {
-                    const id = tab.dataset.categoryId;
-                    tabs.forEach(t => {
-                        t.classList.remove('bg-indigo-600', 'text-white');
-                        t.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-gray-200');
-                    });
-                    tab.classList.add('bg-indigo-600', 'text-white');
-                    tab.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-gray-200');
-                    panels.forEach(p => p.classList.toggle('hidden', p.dataset.categoryPanel !== id));
-                });
-            });
-
-            const uploadAction = root.dataset.uploadAction;
-            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-            const csrfHeader = csrfMeta ? csrfMeta.getAttribute('content') : root.dataset.csrf;
-
-            function parseJsonResponse(text) {
-                try {
-                    return JSON.parse(text);
-                } catch (_) {
-                    return null;
-                }
-            }
-
-            function alertUploadHttpError(status) {
-                if (status === 419) {
-                    alert('Your session has expired. Refresh the page and try again.');
-
-                    return;
-                }
-                if (status === 413) {
-                    alert('This file is too large for the server upload limit.');
-
-                    return;
-                }
-                if (status === 403) {
-                    alert('You are not allowed to upload to this document slot.');
-
-                    return;
-                }
-                alert('Upload failed. Please try again.');
-            }
-
-            root.querySelectorAll('input.doc-slot-file').forEach(input => {
-                input.addEventListener('change', async () => {
-                    if (input.dataset.uploading === '1') {
-                        return;
-                    }
-                    const replace = input.dataset.replace === '1';
-                    if (replace && !confirm('Replace existing file?')) {
-                        input.value = '';
-
-                        return;
-                    }
-                    const docId = input.dataset.documentId;
-                    const file = input.files && input.files[0];
-                    if (!docId || !file) {
-                        input.value = '';
-
-                        return;
-                    }
-                    if (fileExceedsLimit(file)) {
-                        alertFileTooLarge();
-                        input.value = '';
-
-                        return;
-                    }
-                    const fd = new FormData();
-                    fd.append('_token', root.dataset.csrf);
-                    fd.append('document_id', docId);
-                    fd.append('document', file);
-                    input.dataset.uploading = '1';
-                    try {
-                        const r = await fetch(uploadAction, {
-                            method: 'POST',
-                            body: fd,
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest',
-                                'X-CSRF-TOKEN': csrfHeader || '',
-                            },
-                        });
-                        const text = await r.text();
-                        const j = parseJsonResponse(text);
-                        input.value = '';
-                        if (j && r.ok && j.status === true) {
-                            window.location.hash = '#tab_documents';
-                            location.reload();
-
-                            return;
-                        }
-                        if (!j) {
-                            alertUploadHttpError(r.status);
-
-                            return;
-                        }
-                        if (j.errors) {
-                            const msgs = Object.values(j.errors).flat();
-
-                            alert(msgs.join('\n') || j.message || 'Upload failed');
-
-                            return;
-                        }
-                        alert(j.message || 'Upload failed');
-                    } catch (e) {
-                        input.value = '';
-                        alert('Upload failed. Check your connection and try again.');
-                    } finally {
-                        delete input.dataset.uploading;
-                    }
-                });
-            });
-
-            const base = `/business-entities/${entityId}`;
-
-            document.getElementById(prefix + '-add-category')?.addEventListener('click', async () => {
-                const title = prompt('Category name');
-                if (!title) return;
-                const body = { title, asset_id: assetId ? parseInt(assetId, 10) : null };
-                const r = await api(base + '/document-categories', { method: 'POST', body: JSON.stringify(body) });
-                const j = await r.json();
-                if (j.status) location.reload();
-                else alert(j.message || 'Failed');
-            });
-
-            root.querySelectorAll('.doc-rename-cat').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    const title = prompt('New title', btn.dataset.title);
-                    if (!title) return;
-                    const r = await api(`${base}/document-categories/${btn.dataset.categoryId}`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ title }),
-                    });
-                    const j = await r.json();
-                    if (j.status) location.reload();
-                    else alert(j.message || 'Failed');
-                });
-            });
-
-            root.querySelectorAll('.doc-delete-cat').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    if (!confirm('Delete this category? It must be empty.')) return;
-                    const r = await api(`${base}/document-categories/${btn.dataset.categoryId}`, { method: 'DELETE' });
-                    const j = await r.json();
-                    if (j.status) location.reload();
-                    else alert(j.message || 'Failed');
-                });
-            });
-
-            root.querySelectorAll('.doc-add-slot').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    const label = prompt('Checklist item name (e.g. Passport)');
-                    if (!label) return;
-                    const r = await api(`${base}/document-categories/${btn.dataset.categoryId}/slots`, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            checklist_label: label,
-                            document_type: 'other',
-                        }),
-                    });
-                    const j = await r.json();
-                    if (j.status) location.reload();
-                    else alert(j.message || 'Failed');
-                });
-            });
-
-            function documentContentUrl(docId, download, previewBtn) {
-                const params = new URLSearchParams();
-                let scope = '';
-                if (previewBtn && previewBtn.dataset && previewBtn.dataset.assetScope !== undefined) {
-                    scope = String(previewBtn.dataset.assetScope).trim();
-                }
-                if (scope !== '') {
-                    params.set('asset_id', scope);
-                } else if (assetId !== '' && assetId != null) {
-                    params.set('asset_id', String(assetId));
-                }
-                if (download) {
-                    params.set('download', '1');
-                }
-                const q = params.toString();
-
-                return `${base}/documents/${docId}/content${q ? `?${q}` : ''}`;
-            }
-
-            function setCategoryPanelPreview(panel, docId, previewBtn) {
-                const frame = panel.querySelector('.doc-cat-preview-frame');
-                const dl = panel.querySelector('.doc-cat-preview-dl');
-                const delBtn = panel.querySelector('.doc-cat-preview-del');
-                if (!docId || !frame || !dl) {
-                    return;
-                }
-                const viewUrl = documentContentUrl(docId, false, previewBtn);
-                frame.removeAttribute('src');
-                window.requestAnimationFrame(() => {
-                    frame.src = viewUrl;
-                });
-                dl.href = documentContentUrl(docId, true, previewBtn);
-                dl.classList.remove('opacity-50', 'pointer-events-none');
-                delBtn?.classList.remove('opacity-50', 'pointer-events-none');
-                panel.dataset.previewDocId = String(docId);
-            }
-
-            root.addEventListener('click', function(ev) {
-                const btn = ev.target.closest('.doc-preview');
-                if (!btn || !root.contains(btn)) {
-                    return;
-                }
-                const docId = btn.getAttribute('data-doc-id') || btn.dataset.docId;
-                const panel = btn.closest('.doc-cat-panel');
-                if (!docId || !panel) {
-                    return;
-                }
-                setCategoryPanelPreview(panel, docId, btn);
-            });
-
-            root.querySelectorAll('.doc-cat-preview-del').forEach(delBtn => {
-                delBtn.addEventListener('click', async () => {
-                    const panel = delBtn.closest('.doc-cat-panel');
-                    const lastDocId = panel?.dataset.previewDocId;
-                    if (!lastDocId) return;
-                    if (!confirm('Remove the file from this checklist row? The row will be kept.')) return;
-                    const r = await api(`/business-entities/${entityId}/document-slots/${lastDocId}/clear-file`, { method: 'POST', body: '{}' });
-                    const j = await r.json();
-                    if (j.status) location.reload();
-                    else alert(j.message || 'Failed');
-                });
-            });
-
-            root.querySelectorAll('.doc-clear').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    if (!btn.dataset.docId) return;
-                    if (!confirm('Remove file from this checklist row?')) return;
-                    const r = await api(`${base}/document-slots/${btn.dataset.docId}/clear-file`, { method: 'POST', body: '{}' });
-                    const j = await r.json();
-                    if (j.status) location.reload();
-                    else alert('Failed');
-                });
-            });
-
-            root.querySelectorAll('.doc-del').forEach(btn => {
-                btn.addEventListener('click', async () => {
-                    if (!confirm('Delete this checklist row entirely?')) return;
-                    const r = await api(`${base}/document-slots/${btn.dataset.docId}`, { method: 'DELETE' });
-                    const j = await r.json();
-                    if (j.status) location.reload();
-                    else alert('Failed');
-                });
-            });
-
-            const modal = document.getElementById(prefix + '-bulk-modal');
-            const bulkBtn = document.getElementById(prefix + '-bulk-btn');
-            let bulkCategoryId = null;
-            bulkBtn?.addEventListener('click', () => {
-                const active = root.querySelector('.doc-cat-tab.bg-indigo-600');
-                bulkCategoryId = active ? active.dataset.categoryId : null;
-                if (!bulkCategoryId) return alert('Select a category tab first.');
-                modal.classList.remove('hidden');
-            });
-            document.getElementById(prefix + '-bulk-cancel')?.addEventListener('click', () => modal.classList.add('hidden'));
-
-            const bulkFiles = document.getElementById(prefix + '-bulk-files');
-            const bulkMap = document.getElementById(prefix + '-bulk-map');
-
-            async function refreshBulkMap(files) {
-                bulkMap.innerHTML = '';
-                if (!files.length) return;
-                const checklists = [];
-                root.querySelector(`[data-category-panel="${bulkCategoryId}"]`)?.querySelectorAll('tbody tr').forEach(tr => {
-                    const label = tr.querySelector('td span.font-medium')?.textContent?.trim();
-                    const pathCell = tr.querySelector('td:nth-child(2)');
-                    if (label && pathCell?.textContent?.includes('No file')) checklists.push(label);
-                });
-                const payload = { category_id: bulkCategoryId, files: Array.from(files).map(f => ({ name: f.name })) };
-                const r = await api(autoMatchUrl, { method: 'POST', body: JSON.stringify(payload) });
-                const j = await r.json();
-                const matches = j.matches || {};
-                Array.from(files).forEach((file, i) => {
-                    const m = matches[file.name];
-                    const sel = document.createElement('select');
-                    sel.className = 'w-full border rounded-sm dark:bg-gray-800 dark:text-white text-xs';
-                    sel.dataset.fileIndex = String(i);
-                    const empty = document.createElement('option');
-                    empty.value = '';
-                    empty.textContent = '— Select —';
-                    sel.appendChild(empty);
-                    checklists.forEach(c => {
-                        const o = document.createElement('option');
-                        o.value = c;
-                        o.textContent = c;
-                        if (m && m.checklist === c) o.selected = true;
-                        sel.appendChild(o);
-                    });
-                    const neo = document.createElement('option');
-                    neo.value = '__NEW__';
-                    neo.textContent = '+ New from filename';
-                    sel.appendChild(neo);
-                    const row = document.createElement('div');
-                    row.className = 'flex flex-col gap-1';
-                    row.innerHTML = `<span class="text-xs text-gray-600 dark:text-gray-400 truncate">${file.name}</span>`;
-                    row.appendChild(sel);
-                    bulkMap.appendChild(row);
-                });
-            }
-
-            bulkFiles?.addEventListener('change', () => refreshBulkMap(bulkFiles.files));
-
-            document.getElementById(prefix + '-bulk-go')?.addEventListener('click', async () => {
-                const files = bulkFiles?.files;
-                if (!files?.length) return alert('Choose files');
-                for (let i = 0; i < files.length; i++) {
-                    if (fileExceedsLimit(files[i])) {
-                        alertFileTooLarge();
-                        return;
-                    }
-                }
-                const autoCreate = document.getElementById(prefix + '-bulk-autocreate')?.checked;
-                const formData = new FormData();
-                formData.append('_token', root.dataset.csrf);
-                formData.append('category_id', bulkCategoryId);
-                if (assetId) formData.append('asset_id', assetId);
-                const mappings = [];
-                let mapOk = true;
-                Array.from(files).forEach((file, i) => {
-                    formData.append('files[]', file);
-                    const sel = bulkMap.querySelector(`select[data-file-index="${i}"]`);
-                    let type = 'existing';
-                    let name = sel?.value || '';
-                    if (name === '__NEW__' || (!name && autoCreate)) {
-                        type = 'new';
-                        name = file.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' ');
-                    }
-                    if (!name) {
-                        mapOk = false;
-                        return;
-                    }
-                    formData.append('mappings[]', JSON.stringify({ type, name }));
-                });
-                if (!mapOk) {
-                    alert('Map all files or enable auto-create.');
-                    return;
-                }
-
-                const pw = document.getElementById(prefix + '-bulk-progress-wrap');
-                const pb = document.getElementById(prefix + '-bulk-progress');
-                pw?.classList.remove('hidden');
-                pb.style.width = '0%';
-
-                const xhr = new XMLHttpRequest();
-                xhr.open('POST', bulkUrl);
-                xhr.setRequestHeader('X-CSRF-TOKEN', root.dataset.csrf);
-                xhr.upload.addEventListener('progress', e => {
-                    if (e.lengthComputable) pb.style.width = (e.loaded / e.total * 100) + '%';
-                });
-                xhr.onload = () => {
-                    if (xhr.status === 419) {
-                        alert('Your session has expired. Refresh the page and try again.');
-
-                        return;
-                    }
-                    if (xhr.status === 413) {
-                        alert('This file is too large for the server upload limit.');
-
-                        return;
-                    }
-                    try {
-                        const res = JSON.parse(xhr.responseText);
-                        if (res.status) {
-                            alert(res.message + (res.errors?.length ? '\n' + res.errors.join('\n') : ''));
-                            window.location.hash = '#tab_documents';
-                            location.reload();
-                        } else {
-                            alert(res.message || 'Upload failed');
-                        }
-                    } catch (e) {
-                        alert('Upload failed');
-                    }
-                };
-                xhr.send(formData);
-            });
-        }
-
-        document.querySelectorAll('.documents-workspace').forEach(initWorkspace);
-    })();
-    </script>
-    @endpush
-@endonce

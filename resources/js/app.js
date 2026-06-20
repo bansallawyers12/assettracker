@@ -1,5 +1,5 @@
 import './bootstrap';
-import './documents.js';
+import './documents-workspace.js';
 import { initFlatpickr, watchFlatpickr } from './flatpickr-init';
 import {
     initTomSelect,

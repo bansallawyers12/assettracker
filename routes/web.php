@@ -133,6 +133,10 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('business-entities/{businessEntity}/assets/{asset}/notes', [AssetController::class, 'storeNote'])->name('business-entities.assets.notes.store');
     Route::delete('business-entities/{businessEntity}/assets/{asset}/notes/{note}', [AssetController::class, 'destroyNote'])->name('business-entities.assets.notes.destroy');
 
+    // Document workspace JSON (used by JS for refresh after bulk upload / structural ops)
+    Route::get('/business-entities/{businessEntity}/documents/workspace', [DocumentWorkspaceController::class, 'indexWorkspace'])->name('entities.documents.workspace');
+    Route::get('/business-entities/{businessEntity}/assets/{asset}/documents/workspace', [DocumentWorkspaceController::class, 'indexAssetWorkspace'])->name('entities.asset-documents.workspace');
+
     // Asset Document Routes
     Route::post('/business-entities/{businessEntity}/assets/{asset}/documents', [DocumentController::class, 'uploadAssetDocument'])->name('business-entities.assets.documents.store');
     Route::get('/business-entities/{businessEntity}/documents/{document}/content', [DocumentController::class, 'streamDocument'])
@@ -195,22 +199,6 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     // Chart of Accounts JSON (global list; entity in legacy URL is ignored)
     Route::get('/api/chart-of-accounts', [ChartOfAccountController::class, 'apiIndex'])->name('chart-of-accounts.api');
     Route::get('/api/business-entities/{businessEntity}/chart-of-accounts', [ChartOfAccountController::class, 'getAccountsJson'])->name('business-entities.chart-of-accounts.api');
-
-    // API for Asset Documents
-    Route::get('/api/business-entities/{businessEntity}/assets/{asset}/documents', [DocumentController::class, 'fetchAssetFiles'])->name('api.asset-documents.fetch');
-    Route::get('/api/business-entities/{businessEntity}/assets/{asset}/documents/{document}/preview', [DocumentController::class, 'previewDocument'])->name('api.asset-documents.preview');
-
-    // Document Management Routes
-    Route::controller(DocumentController::class)->group(function () {
-        Route::post('/documents/fetch-files', 'fetchFiles')->name('documents.fetchFiles');
-        Route::post('/documents/get-link', 'getFileLink')->name('documents.getLink');
-        Route::post('/documents/delete', [DocumentController::class, 'deleteFile'])->name('documents.delete');
-
-        Route::post('/business-entities/{businessEntity}/documents/fetch', 'fetchFiles')->name('business-entities.documents.fetch');
-
-        Route::post('/business-entities/{businessEntity}/assets/{asset}/documents/fetch', 'fetchAssetFiles')->name('asset-documents.fetchAssetFiles');
-        Route::post('/business-entities/{businessEntity}/assets/{asset}/documents/delete', [DocumentController::class, 'deleteFile'])->name('asset-documents.delete');
-    });
 
     // Reminder routes
     Route::resource('reminders', ReminderController::class);
