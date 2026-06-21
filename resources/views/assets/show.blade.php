@@ -36,49 +36,10 @@
                 </div>
             @endif
             <div class="flex flex-col lg:flex-row gap-6">
-                <!-- Left Sidebar: Asset Details -->
-                <div class="w-full lg:w-1/3">
-                    <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6 border-l-4 border-indigo-500 transition-all duration-200 hover:shadow-xl">
-                        <h3 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-6">Asset Details</h3>
-                        <dl class="space-y-4">
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Name</dt>
-                                <dd class="text-gray-900 dark:text-gray-200">{{ $asset->name }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Type</dt>
-                                <dd class="text-gray-900 dark:text-gray-200">{{ $asset->asset_type }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Business Entity</dt>
-                                <dd class="text-gray-900 dark:text-gray-200">{{ $asset->businessEntity->legal_name ?? 'Unknown Entity' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Acquisition Date</dt>
-                                <dd class="text-gray-900 dark:text-gray-200">{{ $asset->acquisition_date ? $asset->acquisition_date->format('d/m/Y') : 'N/A' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Acquisition Cost</dt>
-                                <dd class="text-gray-900 dark:text-gray-200">${{ number_format($asset->acquisition_cost, 2) }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Current Value</dt>
-                                <dd class="text-gray-900 dark:text-gray-200">${{ number_format($asset->current_value, 2) }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Status</dt>
-                                <dd class="text-gray-900 dark:text-gray-200">{{ $asset->status }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Description</dt>
-                                <dd class="text-gray-900 dark:text-gray-200">{{ $asset->description ?? 'N/A' }}</dd>
-                            </div>
-                        </dl>
-                    </div>
-                </div>
+                @include('assets.partials.asset-details-sidebar', compact('asset'))
 
                 <!-- Right Content: Tabs and Details -->
-                <div class="w-full lg:w-2/3">
+                <div class="flex-1 min-w-0">
                     <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6">
                         <!-- Action Buttons -->
                         <div class="flex flex-wrap gap-3 mb-6">
