@@ -5,13 +5,16 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\BusinessEntity;
 use App\Models\TrackingCategory;
-use App\Models\TrackingSubCategory;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class TrackingCategoryController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
+
+    protected function authorizeTrackingCategory(BusinessEntity $businessEntity, TrackingCategory $trackingCategory): void
+    {
+        abort_unless((int) $trackingCategory->business_entity_id === (int) $businessEntity->id, 404);
+    }
 
     public function index(BusinessEntity $businessEntity)
     {
@@ -62,6 +65,7 @@ class TrackingCategoryController extends Controller
     {
         $this->authorize('view', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
 
         $trackingCategory->load('subCategories');
         
@@ -72,6 +76,7 @@ class TrackingCategoryController extends Controller
     {
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
 
         return view('tracking-categories.edit', compact('businessEntity', 'trackingCategory'));
     }
@@ -80,6 +85,7 @@ class TrackingCategoryController extends Controller
     {
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -103,6 +109,7 @@ class TrackingCategoryController extends Controller
     {
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
 
         // Check if category is being used
         if ($trackingCategory->transactions()->exists() || $trackingCategory->journalLines()->exists()) {

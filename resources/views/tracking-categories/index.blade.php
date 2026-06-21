@@ -1,16 +1,20 @@
-@extends('layouts.app')
-
-@section('content')
+<x-app-layout>
 <div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
+    <div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
         <div>
-            <h1 class="text-3xl font-bold text-gray-900">Tracking Categories</h1>
-            <p class="text-gray-600 mt-2">{{ $businessEntity->legal_name }}</p>
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Tracking Categories</h1>
+            <p class="text-gray-600 dark:text-gray-400 mt-2">{{ $businessEntity->legal_name }}</p>
         </div>
-        <a href="{{ route('business-entities.tracking-categories.create', $businessEntity) }}" 
-           class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-sm">
-            Add Tracking Category
-        </a>
+        <div class="flex flex-wrap gap-3">
+            <a href="{{ route('business-entities.show', $businessEntity) }}"
+               class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-sm">
+                Back to Entity
+            </a>
+            <a href="{{ route('business-entities.tracking-categories.create', $businessEntity) }}"
+               class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-sm">
+                Add Tracking Category
+            </a>
+        </div>
     </div>
 
     @if(session('success'))
@@ -114,4 +118,4 @@
         </div>
     @endif
 </div>
-@endsection
+</x-app-layout>

@@ -12,10 +12,21 @@ class TrackingSubCategoryController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
 
+    protected function authorizeTrackingCategory(BusinessEntity $businessEntity, TrackingCategory $trackingCategory): void
+    {
+        abort_unless((int) $trackingCategory->business_entity_id === (int) $businessEntity->id, 404);
+    }
+
+    protected function authorizeTrackingSubCategory(TrackingCategory $trackingCategory, TrackingSubCategory $trackingSubCategory): void
+    {
+        abort_unless((int) $trackingSubCategory->tracking_category_id === (int) $trackingCategory->id, 404);
+    }
+
     public function create(BusinessEntity $businessEntity, TrackingCategory $trackingCategory)
     {
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
 
         return view('tracking-sub-categories.create', compact('businessEntity', 'trackingCategory'));
     }
@@ -24,6 +35,7 @@ class TrackingSubCategoryController extends Controller
     {
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -48,6 +60,8 @@ class TrackingSubCategoryController extends Controller
     {
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
+        $this->authorizeTrackingSubCategory($trackingCategory, $trackingSubCategory);
 
         return view('tracking-sub-categories.edit', compact('businessEntity', 'trackingCategory', 'trackingSubCategory'));
     }
@@ -56,6 +70,8 @@ class TrackingSubCategoryController extends Controller
     {
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
+        $this->authorizeTrackingSubCategory($trackingCategory, $trackingSubCategory);
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -79,6 +95,8 @@ class TrackingSubCategoryController extends Controller
     {
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
+        $this->authorizeTrackingSubCategory($trackingCategory, $trackingSubCategory);
 
         // Check if sub-category is being used
         if ($trackingSubCategory->transactions()->exists() || $trackingSubCategory->journalLines()->exists()) {
