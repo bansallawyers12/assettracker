@@ -14,11 +14,12 @@
     - x-show is used exclusively to show/hide each child div.
       No Tailwind display utilities (hidden, flex, block) on those children,
       because Tailwind's !important would override Alpine's inline display style.
-    - The aside width is controlled purely via Alpine :style so it is always accurate.
+    - Aside width uses inline :style when collapsed to avoid lg:w-80 overriding narrow width.
 --}}
 <aside
-    class="shrink-0 self-start w-full lg:w-80 transition-[width] duration-300 ease-in-out"
-    :class="{ '!w-14': collapsed }"
+    class="shrink-0 self-start transition-[width] duration-300 ease-in-out max-w-full"
+    :style="collapsed ? 'width: 3.5rem; min-width: 3.5rem; max-width: 3.5rem' : ''"
+    :class="{ 'w-full lg:w-80': !collapsed }"
     x-data="{
         collapsed: (function () {
             try { return localStorage.getItem('asset-sidebar-collapsed') === '1'; } catch (e) { return false; }

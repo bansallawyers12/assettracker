@@ -13,8 +13,9 @@
 @endphp
 
 <aside
-    class="shrink-0 self-start w-full lg:w-80 transition-[width] duration-300 ease-in-out"
-    :class="{ '!w-14': collapsed }"
+    class="shrink-0 self-start transition-[width] duration-300 ease-in-out max-w-full"
+    :style="collapsed ? 'width: 3.5rem; min-width: 3.5rem; max-width: 3.5rem' : ''"
+    :class="{ 'w-full lg:w-80': !collapsed }"
     x-data="{
         collapsed: (function () {
             try { return localStorage.getItem('entity-sidebar-collapsed') === '1'; } catch (e) { return false; }
