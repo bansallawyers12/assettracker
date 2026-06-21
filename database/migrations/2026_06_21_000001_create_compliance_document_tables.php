@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('label');
             $table->text('description')->nullable();
             $table->enum('scope', ['entity', 'asset']);
+            $table->string('category_group', 128)->nullable();
             $table->enum('frequency', ['annual', 'quarterly', 'ad_hoc'])->default('annual');
             $table->json('asset_types')->nullable();
             $table->unsignedInteger('sort_order')->default(0);

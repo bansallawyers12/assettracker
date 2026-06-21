@@ -19,11 +19,13 @@ return new class extends Migration
 
     public function up(): void
     {
-        Schema::table('compliance_document_types', function (Blueprint $table) {
-            $table->string('category_group', 128)->nullable()->after('scope');
-        });
+        if (! Schema::hasColumn('compliance_document_types', 'category_group')) {
+            Schema::table('compliance_document_types', function (Blueprint $table) {
+                $table->string('category_group', 128)->nullable()->after('scope');
+            });
 
-        $this->seedCategoryGroups();
+            $this->seedCategoryGroups();
+        }
 
         Schema::create('compliance_categories', function (Blueprint $table) {
             $table->id();
