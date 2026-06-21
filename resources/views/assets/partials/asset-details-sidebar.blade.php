@@ -17,9 +17,8 @@
     - The aside width is controlled purely via Alpine :style so it is always accurate.
 --}}
 <aside
-    class="shrink-0 self-start"
-    :style="collapsed ? 'width: 3.5rem' : 'width: 20rem'"
-    style="width: 20rem; transition: width 0.25s ease;"
+    class="shrink-0 self-start w-full lg:w-80 transition-[width] duration-300 ease-in-out"
+    :class="{ '!w-14': collapsed }"
     x-data="{
         collapsed: (function () {
             try { return localStorage.getItem('asset-sidebar-collapsed') === '1'; } catch (e) { return false; }
@@ -78,7 +77,7 @@
         class="sticky top-24 bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
     >
         {{-- Header gradient --}}
-        <div class="bg-gradient-to-br from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-900 px-5 py-4">
+        <div class="bg-linear-to-br from-indigo-600 to-indigo-700 dark:from-indigo-700 dark:to-indigo-900 px-5 py-4">
             <div class="flex items-start justify-between gap-3">
                 <div class="flex items-start gap-3 min-w-0">
                     <span class="inline-flex shrink-0 items-center justify-center w-10 h-10 rounded-lg bg-white/15 text-white">
