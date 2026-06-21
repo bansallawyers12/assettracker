@@ -11,6 +11,7 @@ use App\Models\BusinessEntity;
 use App\Models\Document;
 use App\Models\EmailTemplate;
 use App\Models\EntityPerson;
+use App\Models\Invoice;
 use App\Models\Note;
 use App\Models\Person; // Added for date manipulation
 use App\Models\Reminder; // Added for logging
@@ -364,6 +365,10 @@ class BusinessEntityController extends Controller
             ->get();
         $entityBankAccountGroups = BankAccount::groupedByHolder($entityBankAccounts, $businessEntity->id);
         $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument'])->orderBy('date', 'desc')->get();
+        $invoices = Invoice::where('business_entity_id', $businessEntity->id)
+            ->with(['asset'])
+            ->orderByDesc('issue_date')
+            ->get();
         $documentCategories = $businessEntity->documentCategories()
             ->whereNull('asset_id')
             ->with(['documents' => fn ($q) => $q->orderBy('id')])
@@ -391,6 +396,7 @@ class BusinessEntityController extends Controller
             'entityBankAccounts',
             'entityBankAccountGroups',
             'transactions',
+            'invoices',
             'documentCategories',
             'notes',
             'unmatchedTransactions',
