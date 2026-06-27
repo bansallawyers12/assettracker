@@ -112,7 +112,8 @@ class FinancialReportService
 
         $assets = $this->getAccountBalancesByTypeGrouped($ids, 'asset', $asOfDate, $categoryLabels);
         $liabilities = $this->getAccountBalancesByTypeGrouped($ids, 'liability', $asOfDate, $categoryLabels);
-        $liabilities = $this->appendDirectorEntityLoanLiabilitiesForBalanceSheet(
+        [$assets, $liabilities] = $this->appendDirectorEntityLoanToBalanceSheet(
+            $assets,
             $liabilities,
             $ids,
             $asOfDate,
@@ -173,17 +174,32 @@ class FinancialReportService
             $openingBalance = $this->getAccountBalanceAsOf(
                 $account->id,
                 $start->copy()->subDay()->toDateString(),
-                $ids
+                $ids,
+                $this->isBankOrCashChartAccount($account) ? $account : null
             );
+
+            if ($this->isBankOrCashChartAccount($account)) {
+                $openingBalance += $this->crossEntityPayerBankSyntheticNet(
+                    $ids,
+                    $start->copy()->subDay()->toDateString()
+                );
+            }
 
             $lines = JournalLine::where('chart_of_account_id', $account->id)
                 ->whereHas('journalEntry', function ($q) use ($ids, $start, $end) {
                     $q->whereIn('business_entity_id', $ids)
                         ->whereDate('entry_date', '>=', $start)
-                        ->whereDate('entry_date', '<=', $end)
-                        ->where('is_posted', true);
+                        ->whereDate('entry_date', '<=', $end);
+                    $this->applyBalancedPostedJournalConstraints($q);
                 })
-                ->with(['journalEntry.businessEntity', 'journalEntry.source'])
+                ->with([
+                    'journalEntry.businessEntity',
+                    'journalEntry.source' => function ($morphTo) {
+                        $morphTo->morphWith([
+                            Transaction::class => ['businessEntity', 'bankAccount.businessEntity', 'asset'],
+                        ]);
+                    },
+                ])
                 ->get()
                 ->sortBy(function ($line) {
                     $entry = $line->journalEntry;
@@ -201,20 +217,64 @@ class FinancialReportService
             $lineData = [];
 
             foreach ($lines as $line) {
+                $entry = $line->journalEntry;
+
+                if ($this->shouldOmitCrossEntityBankCashLine($account, $entry)) {
+                    continue;
+                }
+
                 $debit = (float) ($line->debit_amount ?? 0);
                 $credit = (float) ($line->credit_amount ?? 0);
                 $runningBalance += $debit - $credit;
-                $entry = $line->journalEntry;
 
-                $lineData[] = [
+                $details = $this->accountTransactionLineDetails($entry);
+
+                $lineData[] = array_merge($details, [
                     'date' => $this->accountTransactionLineDate($account, $entry),
                     'reference' => $this->accountTransactionReference($entry),
                     'description' => $this->accountTransactionDescription($line),
-                    'entity_name' => $this->accountTransactionEntityName($account, $entry),
+                    'entity_name' => $details['booking_entity_name'],
                     'debit' => $debit > 0 ? $debit : null,
                     'credit' => $credit > 0 ? $credit : null,
                     'running_balance' => $runningBalance,
-                ];
+                ]);
+            }
+
+            if ($this->isBankOrCashChartAccount($account)) {
+                foreach ($this->crossEntityPayerBankSyntheticLinesForPeriod($ids, $startDate, $endDate) as $syntheticLine) {
+                    $debit = (float) ($syntheticLine['debit'] ?? 0);
+                    $credit = (float) ($syntheticLine['credit'] ?? 0);
+                    $runningBalance += $debit - $credit;
+                    $syntheticLine['running_balance'] = $runningBalance;
+                    $lineData[] = $syntheticLine;
+                }
+
+                usort($lineData, function (array $a, array $b) {
+                    $da = $a['date'] instanceof \DateTimeInterface
+                        ? $a['date']->format('Y-m-d')
+                        : Carbon::parse($a['date'])->toDateString();
+                    $db = $b['date'] instanceof \DateTimeInterface
+                        ? $b['date']->format('Y-m-d')
+                        : Carbon::parse($b['date'])->toDateString();
+                    if ($da === $db) {
+                        return strcmp((string) ($a['reference'] ?? ''), (string) ($b['reference'] ?? ''));
+                    }
+
+                    return $da <=> $db;
+                });
+
+                $runningBalance = $openingBalance;
+                foreach ($lineData as &$sortedLine) {
+                    $debit = (float) ($sortedLine['debit'] ?? 0);
+                    $credit = (float) ($sortedLine['credit'] ?? 0);
+                    $runningBalance += $debit - $credit;
+                    $sortedLine['running_balance'] = $runningBalance;
+                }
+                unset($sortedLine);
+            }
+
+            if (count($lineData) === 0 && abs($openingBalance) < 0.00001 && empty($accountIds)) {
+                continue;
             }
 
             $accountData[] = [
@@ -347,6 +407,158 @@ class FinancialReportService
     }
 
     /**
+     * @return array{
+     *   booking_entity_name: string,
+     *   paid_by: string,
+     *   received_by: string,
+     *   bank_account: string,
+     *   transaction_type: string,
+     *   vendor_name: string,
+     *   asset_name: string
+     * }
+     */
+    private function accountTransactionLineDetails(JournalEntry $entry): array
+    {
+        $defaults = [
+            'booking_entity_name' => (string) ($entry->businessEntity->legal_name ?? '—'),
+            'paid_by' => '—',
+            'received_by' => '—',
+            'bank_account' => '—',
+            'transaction_type' => '—',
+            'vendor_name' => '—',
+            'asset_name' => '—',
+        ];
+
+        $source = $entry->relationLoaded('source') ? $entry->source : null;
+        if ($source instanceof Transaction) {
+            return $this->accountTransactionDetailsFromTransaction(
+                $source,
+                (int) $entry->business_entity_id
+            );
+        }
+
+        return $defaults;
+    }
+
+    /**
+     * @return array{
+     *   booking_entity_name: string,
+     *   paid_by: string,
+     *   received_by: string,
+     *   bank_account: string,
+     *   transaction_type: string,
+     *   vendor_name: string,
+     *   asset_name: string
+     * }
+     */
+    private function accountTransactionDetailsFromTransaction(
+        Transaction $transaction,
+        ?int $journalBusinessEntityId = null
+    ): array {
+        $direction = Transaction::directionFromType((string) $transaction->transaction_type);
+        $counterparty = TransactionPayerResolver::paidByLabel($transaction->paid_by);
+        $counterparty = $counterparty !== '' ? $counterparty : '—';
+        $vendor = trim((string) ($transaction->vendor_name ?? ''));
+        $vendor = $vendor !== '' ? $vendor : '—';
+
+        return [
+            'booking_entity_name' => (string) ($transaction->businessEntity?->legal_name ?? '—'),
+            'paid_by' => $direction === 'income' ? $vendor : $counterparty,
+            'received_by' => $direction === 'income' ? $counterparty : $vendor,
+            'bank_account' => $this->transactionBankAccountLabel($transaction, $journalBusinessEntityId),
+            'transaction_type' => Transaction::allTypes()[(string) $transaction->transaction_type]
+                ?? (string) $transaction->transaction_type,
+            'vendor_name' => $vendor,
+            'asset_name' => (string) ($transaction->asset?->name ?? '—'),
+        ];
+    }
+
+    private function transactionBankAccountLabel(Transaction $transaction, ?int $journalBusinessEntityId = null): string
+    {
+        $bookerId = (int) $transaction->business_entity_id;
+        $counterpartyEntityId = $this->lenderEntityIdFromPaidBy($transaction);
+
+        if ($counterpartyEntityId !== null && $counterpartyEntityId !== $bookerId) {
+            $isBookingEntityJournal = $journalBusinessEntityId === null
+                || $journalBusinessEntityId === $bookerId;
+
+            if ($isBookingEntityJournal) {
+                return '—';
+            }
+        }
+
+        $bankAccount = $transaction->bankAccount;
+        if ($bankAccount) {
+            $bankEntityId = (int) ($bankAccount->business_entity_id ?? $bookerId);
+            if ($journalBusinessEntityId !== null && $bankEntityId !== $journalBusinessEntityId) {
+                return '—';
+            }
+
+            $label = (string) $bankAccount->bank_name;
+            if ($bankAccount->account_name) {
+                $label .= ' ('.$bankAccount->account_name.')';
+            }
+            $entityName = $bankAccount->businessEntity?->legal_name
+                ?? $transaction->businessEntity?->legal_name;
+            if ($entityName) {
+                $label .= ' — '.$entityName;
+            }
+
+            return $label;
+        }
+
+        if ($counterpartyEntityId !== null
+            && $journalBusinessEntityId !== null
+            && $journalBusinessEntityId === $counterpartyEntityId) {
+            $paidByLabel = TransactionPayerResolver::paidByLabel($transaction->paid_by);
+            if ($paidByLabel !== '') {
+                return $paidByLabel.' account';
+            }
+        }
+
+        return '—';
+    }
+
+    /**
+     * Cross-entity paid/received flows post cash to the booking entity's bank GL, but cash actually
+     * moved through another entity's account — omit those bank/cash lines on the booker's report.
+     */
+    private function shouldOmitCrossEntityBankCashLine(ChartOfAccount $account, JournalEntry $entry): bool
+    {
+        if (! $this->isBankOrCashChartAccount($account)) {
+            return false;
+        }
+
+        $source = $entry->relationLoaded('source') ? $entry->source : null;
+        if (! $source instanceof Transaction || $source->payment_status !== 'paid') {
+            return false;
+        }
+
+        $bookerId = (int) $source->business_entity_id;
+        $counterpartyEntityId = $this->lenderEntityIdFromPaidBy($source);
+
+        if ($counterpartyEntityId === null || $counterpartyEntityId === $bookerId) {
+            return false;
+        }
+
+        return (int) $entry->business_entity_id === $bookerId;
+    }
+
+    /**
+     * @param  array<string, mixed>  $line
+     * @return array<string, mixed>
+     */
+    private function mergeDirectorLoanLineWithTransactionDetails(Transaction $transaction, array $line): array
+    {
+        $reportingEntityId = (int) ($line['reporting_business_entity_id'] ?? $transaction->business_entity_id);
+
+        return array_merge(
+            $this->accountTransactionDetailsFromTransaction($transaction, $reportingEntityId),
+            $line
+        );
+    }
+
+    /**
      * True for the standard cash at bank CoA and typical Bank/Cash current-asset names (matches Transaction posting targets).
      */
     private function isBankOrCashChartAccount(ChartOfAccount $account): bool
@@ -392,17 +604,7 @@ class FinancialReportService
         string $endDate
     ): array {
         $startC = Carbon::parse($startDate);
-        $endC = Carbon::parse($endDate);
         $asOfBefore = $startC->copy()->subDay()->toDateString();
-        $asOfEnd = $endC->toDateString();
-
-        // GL is stored as debits - credits; for liabilities, positive "owed" = credit balance = -(D − C)
-        $openingBalance = $this->liabilityOwedFromGl(
-            $this->getAccountBalanceAsOf($account->id, $asOfBefore, $ids)
-        );
-        $glClosingTarget = $this->liabilityOwedFromGl(
-            $this->getAccountBalanceAsOf($account->id, $asOfEnd, $ids)
-        );
 
         $incomeTypeKeys = array_keys(Transaction::$incomeTypes);
         // Explicit director-loan transaction types are excluded; synthetic 2500 lines cover operating cross-entity flows.
@@ -421,7 +623,7 @@ class FinancialReportService
                 }
                 $q->orWhereIn('related_entity_id', $ids);
             })
-            ->with(['businessEntity', 'bankAccount.businessEntity'])
+            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset'])
             ->get();
 
         $crossEntity = $candidates
@@ -449,7 +651,7 @@ class FinancialReportService
                     })
                     ->orWhereIn('related_entity_id', $ids);
             })
-            ->with(['businessEntity', 'bankAccount.businessEntity'])
+            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset'])
             ->get()
             ->filter(function (Transaction $t) {
                 $ba = $t->bankAccount;
@@ -478,6 +680,31 @@ class FinancialReportService
             return $ds >= $startDate && $ds <= $endDate;
         })->values();
 
+        $throughEndPaidBy = $crossEntity->filter(function (Transaction $t) use ($endDate) {
+            return $this->transactionEffectivePaymentAt($t)->toDateString() <= $endDate;
+        })->values();
+
+        $throughEndPaidByIds = $throughEndPaidBy->pluck('id')->all();
+
+        $throughEndCrossBank = $crossBankIncome->filter(function (Transaction $t) use ($endDate, $throughEndPaidByIds) {
+            if (in_array($t->id, $throughEndPaidByIds, true)) {
+                return false;
+            }
+
+            return $this->transactionEffectivePaymentAt($t)->toDateString() <= $endDate;
+        })->values();
+
+        $throughEnd = $throughEndPaidBy
+            ->merge($throughEndCrossBank)
+            ->unique('id')
+            ->sortBy(function (Transaction $t) {
+                $d = $this->transactionEffectivePaymentAt($t);
+                $ds = $d->format('Y-m-d');
+
+                return $ds.'-'.str_pad((string) $t->id, 10, '0', STR_PAD_LEFT);
+            })
+            ->values();
+
         $inPeriod = $inPeriodPaidBy
             ->merge($inPeriodCrossBank)
             ->unique('id')
@@ -490,7 +717,7 @@ class FinancialReportService
             ->values();
 
         $lenderIds = [];
-        foreach ($inPeriod as $t) {
+        foreach ($throughEnd as $t) {
             $cid = $this->counterpartyBusinessEntityIdForDirectorLoanReport($t);
             if ($cid !== null) {
                 $lenderIds[$cid] = true;
@@ -502,7 +729,7 @@ class FinancialReportService
 
         $lineData = [];
 
-        foreach ($inPeriod as $t) {
+        foreach ($throughEnd as $t) {
             $gross = $this->transactionGrossAmount($t);
             $lenderPayerId = $this->counterpartyBusinessEntityIdForDirectorLoanReport($t);
             if ($lenderPayerId === null) {
@@ -528,7 +755,7 @@ class FinancialReportService
                 && ! in_array($t->transaction_type, $excludeSyntheticDirectorLoan, true);
 
             if ($isRepayment) {
-                $lineData[] = [
+                $lineData[] = $this->mergeDirectorLoanLineWithTransactionDetails($t, [
                     'date' => $at,
                     'reference' => $refStr,
                     'description' => $baseDesc,
@@ -538,8 +765,8 @@ class FinancialReportService
                     'other_party' => $lenderName,
                     'debit' => $gross,
                     'credit' => null,
-                ];
-                $lineData[] = [
+                ]);
+                $lineData[] = $this->mergeDirectorLoanLineWithTransactionDetails($t, [
                     'date' => $at,
                     'reference' => $refStr,
                     'description' => $baseDesc,
@@ -550,10 +777,10 @@ class FinancialReportService
                     'debit' => null,
                     'credit' => $gross,
                     'lender_leg' => true,
-                ];
+                ]);
             } elseif ($isOperatingIncome) {
                 // Clearing entry: Dr earning entity, Cr entity whose bank received the cash (see cross-entity income journals).
-                $lineData[] = [
+                $lineData[] = $this->mergeDirectorLoanLineWithTransactionDetails($t, [
                     'date' => $at,
                     'reference' => $refStr,
                     'description' => $baseDesc,
@@ -563,8 +790,8 @@ class FinancialReportService
                     'other_party' => $lenderName,
                     'debit' => $gross,
                     'credit' => null,
-                ];
-                $lineData[] = [
+                ]);
+                $lineData[] = $this->mergeDirectorLoanLineWithTransactionDetails($t, [
                     'date' => $at,
                     'reference' => $refStr,
                     'description' => $baseDesc,
@@ -574,9 +801,9 @@ class FinancialReportService
                     'other_party' => $borrowerName,
                     'debit' => null,
                     'credit' => $gross,
-                ];
+                ]);
             } else {
-                $lineData[] = [
+                $lineData[] = $this->mergeDirectorLoanLineWithTransactionDetails($t, [
                     'date' => $at,
                     'reference' => $refStr,
                     'description' => $baseDesc,
@@ -586,8 +813,8 @@ class FinancialReportService
                     'other_party' => $lenderName,
                     'debit' => null,
                     'credit' => $gross,
-                ];
-                $lineData[] = [
+                ]);
+                $lineData[] = $this->mergeDirectorLoanLineWithTransactionDetails($t, [
                     'date' => $at,
                     'reference' => $refStr,
                     'description' => $baseDesc,
@@ -597,12 +824,37 @@ class FinancialReportService
                     'other_party' => $borrowerName,
                     'debit' => $gross,
                     'credit' => null,
-                ];
+                ]);
             }
         }
 
+        $entitiesForScope = BusinessEntity::query()->whereIn('id', $ids)->get();
+
+        $scopedLines = array_values(array_filter(
+            $lineData,
+            fn (array $ld) => $this->directorLoanSyntheticLineMatchesEntityScope($ld, $ids, $entitiesForScope)
+        ));
+
+        $syntheticBeforeStart = 0.0;
+        $inPeriodLineData = [];
+        foreach ($scopedLines as $ld) {
+            $lineDate = $this->directorLoanLineDateString($ld);
+            if ($lineDate < $startDate) {
+                $syntheticBeforeStart += (float) ($ld['credit'] ?? 0) - (float) ($ld['debit'] ?? 0);
+
+                continue;
+            }
+            if ($lineDate <= $endDate) {
+                $inPeriodLineData[] = $ld;
+            }
+        }
+
+        $openingBalance = $this->liabilityOwedFromGl(
+            $this->getAccountBalanceAsOf($account->id, $asOfBefore, $ids)
+        ) + $syntheticBeforeStart;
+
         $running = $openingBalance;
-        foreach ($lineData as &$ld) {
+        foreach ($inPeriodLineData as &$ld) {
             if (! empty($ld['lender_leg']) && $ld['lender_leg'] === true) {
                 $ld['running_balance'] = 0.0 - $running;
                 $ld['lender_leg'] = false;
@@ -617,17 +869,27 @@ class FinancialReportService
         unset($ld);
 
         $closingBalance = $running;
-        if (count($lineData) === 0) {
-            $closingBalance = $glClosingTarget;
+        if (count($inPeriodLineData) === 0) {
+            $closingBalance = $openingBalance;
         }
 
         return [
             'account' => $account,
             'is_director_entity_loan' => true,
             'opening_balance' => $openingBalance,
-            'lines' => $lineData,
+            'lines' => $inPeriodLineData,
             'closing_balance' => $closingBalance,
         ];
+    }
+
+    private function directorLoanLineDateString(array $line): string
+    {
+        $date = $line['date'];
+        if ($date instanceof \DateTimeInterface) {
+            return $date->format('Y-m-d');
+        }
+
+        return Carbon::parse($date)->toDateString();
     }
 
     /**
@@ -645,6 +907,146 @@ class FinancialReportService
         }
 
         return (int) $m[1];
+    }
+
+    private function hasPayerEntityBankJournal(Transaction $transaction): bool
+    {
+        $payerId = $this->lenderEntityIdFromPaidBy($transaction);
+        if ($payerId === null || $payerId === (int) $transaction->business_entity_id) {
+            return false;
+        }
+
+        $ref = 'TXN-'.str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT).'-PAY';
+
+        return JournalEntry::query()->where('reference_number', $ref)->exists();
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     */
+    private function crossEntityPayerBankSyntheticNet(array $entityIds, string $asOfDate): float
+    {
+        $net = 0.0;
+
+        foreach ($this->crossEntityPaidByTransactionsForScope($entityIds) as $transaction) {
+            if ($this->hasPayerEntityBankJournal($transaction)) {
+                continue;
+            }
+
+            if ($this->transactionEffectivePaymentAt($transaction)->toDateString() > $asOfDate) {
+                continue;
+            }
+
+            $amounts = $this->crossEntityPayerBankLineAmounts($transaction);
+            $net += $amounts['debit'] - $amounts['credit'];
+        }
+
+        return $net;
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     * @return list<array<string, mixed>>
+     */
+    private function crossEntityPayerBankSyntheticLinesForPeriod(
+        array $entityIds,
+        string $startDate,
+        string $endDate
+    ): array {
+        $lines = [];
+
+        foreach ($this->crossEntityPaidByTransactionsForScope($entityIds) as $transaction) {
+            if ($this->hasPayerEntityBankJournal($transaction)) {
+                continue;
+            }
+
+            $paymentDate = $this->transactionEffectivePaymentAt($transaction)->toDateString();
+            if ($paymentDate < $startDate || $paymentDate > $endDate) {
+                continue;
+            }
+
+            $payerId = $this->lenderEntityIdFromPaidBy($transaction);
+            if ($payerId === null) {
+                continue;
+            }
+
+            $amounts = $this->crossEntityPayerBankLineAmounts($transaction);
+            $details = $this->accountTransactionDetailsFromTransaction($transaction, $payerId);
+            $ref = $transaction->invoice_number;
+            if ($ref === null || $ref === '') {
+                $ref = 'TXN-'.str_pad((string) $transaction->id, 8, '0', STR_PAD_LEFT);
+            }
+
+            $lines[] = array_merge($details, [
+                'date' => $this->transactionEffectivePaymentAt($transaction),
+                'reference' => (string) $ref,
+                'description' => (string) ($transaction->description ?? 'Cross-entity cash movement'),
+                'entity_name' => $details['booking_entity_name'],
+                'debit' => $amounts['debit'] > 0 ? $amounts['debit'] : null,
+                'credit' => $amounts['credit'] > 0 ? $amounts['credit'] : null,
+                'is_cross_entity_payer_bank_line' => true,
+            ]);
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @return array{debit: float, credit: float}
+     */
+    private function crossEntityPayerBankLineAmounts(Transaction $transaction): array
+    {
+        $gross = $this->transactionGrossAmount($transaction);
+        $isIncome = in_array(
+            (string) $transaction->transaction_type,
+            array_keys(Transaction::$incomeTypes),
+            true
+        );
+
+        if ($isIncome) {
+            return ['debit' => $gross, 'credit' => 0.0];
+        }
+
+        return ['debit' => 0.0, 'credit' => $gross];
+    }
+
+    /**
+     * Paid / received-by entity flows where cash moved through another entity's bank.
+     *
+     * @param  array<int>  $entityIds
+     * @return \Illuminate\Support\Collection<int, Transaction>
+     */
+    private function crossEntityPaidByTransactionsForScope(array $entityIds)
+    {
+        $excludeTypes = [
+            'director_loan_in',
+            'director_loan_out',
+            'director_loan_repayment',
+            'directors_loans_to_company',
+            'repayment_directors_loans',
+            'company_loans_to_directors',
+        ];
+
+        return Transaction::query()
+            ->where('payment_status', 'paid')
+            ->whereNotNull('paid_by')
+            ->where('paid_by', 'like', 'be:%')
+            ->where(function ($q) use ($entityIds) {
+                foreach ($entityIds as $id) {
+                    $q->orWhere('paid_by', 'be:'.(int) $id);
+                }
+            })
+            ->whereNotIn('transaction_type', $excludeTypes)
+            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset'])
+            ->get()
+            ->filter(function (Transaction $t) use ($entityIds) {
+                $payerId = $this->lenderEntityIdFromPaidBy($t);
+
+                return $payerId !== null
+                    && $payerId !== (int) $t->business_entity_id
+                    && in_array($payerId, $entityIds, true);
+            })
+            ->values();
     }
 
     /**
@@ -781,7 +1183,20 @@ class FinancialReportService
             if ($accountType === 'liability' && $this->isDirectorEntityLoanAccount($account)) {
                 continue;
             }
-            $balance = $this->getAccountBalanceAsOf($account->id, $asOfDate, $entityIds);
+
+            $excludeCrossEntityBankCash = $accountType === 'asset'
+                && $this->isBankOrCashChartAccount($account);
+            $balance = $this->getAccountBalanceAsOf(
+                $account->id,
+                $asOfDate,
+                $entityIds,
+                $excludeCrossEntityBankCash ? $account : null
+            );
+
+            if ($excludeCrossEntityBankCash && abs($balance) < 0.00001) {
+                continue;
+            }
+
             $catKey = $account->account_category ?? $accountType;
             $catLabel = $categoryLabels[$catKey] ?? ucwords(str_replace('_', ' ', $catKey));
 
@@ -851,8 +1266,8 @@ class FinancialReportService
             ->whereIn('chart_of_account_id', $accountIds)
             ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
                 $query->whereIn('business_entity_id', $entityIds)
-                    ->where('entry_date', '<=', $asOfDate)
-                    ->where('is_posted', true);
+                    ->where('entry_date', '<=', $asOfDate);
+                $this->applyBalancedPostedJournalConstraints($query);
             })
             ->sum('debit_amount');
 
@@ -860,8 +1275,8 @@ class FinancialReportService
             ->whereIn('chart_of_account_id', $accountIds)
             ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
                 $query->whereIn('business_entity_id', $entityIds)
-                    ->where('entry_date', '<=', $asOfDate)
-                    ->where('is_posted', true);
+                    ->where('entry_date', '<=', $asOfDate);
+                $this->applyBalancedPostedJournalConstraints($query);
             })
             ->sum('credit_amount');
 
@@ -869,12 +1284,15 @@ class FinancialReportService
     }
 
     /**
-     * Same visibility and balance as the account-transactions report for director / entity loan (synthetic lines).
+     * Director / entity loan (2500): same scoped closing balance as account transactions.
+     * Lender positions settled through bank GL are not duplicated as a separate receivable.
      *
-     * @param  array<string, array{label: string, accounts: array<int, array{account: ChartOfAccount, balance: float}>, subtotal: float}>  $liabilities
-     * @return array<string, mixed>
+     * @param  array<string, mixed>  $assets
+     * @param  array<string, mixed>  $liabilities
+     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
      */
-    private function appendDirectorEntityLoanLiabilitiesForBalanceSheet(
+    private function appendDirectorEntityLoanToBalanceSheet(
+        array $assets,
         array $liabilities,
         array $entityIds,
         string $asOfDate,
@@ -895,74 +1313,110 @@ class FinancialReportService
                 self::DIRECTOR_LOAN_BALANCE_SHEET_START_DATE,
                 $asOfDate
             );
-            if (count($block['lines']) === 0
-                && abs($block['opening_balance']) < 0.00001
-                && abs($block['closing_balance'] ?? 0) < 0.00001) {
+
+            $closingOwed = (float) ($block['closing_balance'] ?? 0);
+            if (abs($closingOwed) < 0.00001) {
                 continue;
             }
 
-            $balance = $this->directorLoanBalanceSheetDebitLessCredit($block, $entityIds, $account, $asOfDate);
-            $catKey = $account->account_category ?? 'liability';
-            $catLabel = $categoryLabels[$catKey] ?? ucwords(str_replace('_', ' ', $catKey));
-            if (! isset($liabilities['by_category'][$catKey])) {
-                $liabilities['by_category'][$catKey] = ['label' => $catLabel, 'accounts' => [], 'subtotal' => 0];
+            $balanceDc = -$closingOwed;
+
+            if ($balanceDc < 0) {
+                $catKey = $account->account_category ?? 'liability';
+                $catLabel = $categoryLabels[$catKey] ?? ucwords(str_replace('_', ' ', $catKey));
+                if (! isset($liabilities['by_category'][$catKey])) {
+                    $liabilities['by_category'][$catKey] = ['label' => $catLabel, 'accounts' => [], 'subtotal' => 0];
+                }
+                $liabilities['by_category'][$catKey]['accounts'][] = [
+                    'account' => $account,
+                    'balance' => $balanceDc,
+                ];
+            } elseif ($balanceDc > 0 && ! $this->directorLoanLenderPositionSettledInBankGl($entityIds, -$balanceDc, $asOfDate)) {
+                $catKey = 'current_asset';
+                $catLabel = $categoryLabels[$catKey] ?? 'Current Assets';
+                if (! isset($assets['by_category'][$catKey])) {
+                    $assets['by_category'][$catKey] = ['label' => $catLabel, 'accounts' => [], 'subtotal' => 0];
+                }
+                $assets['by_category'][$catKey]['accounts'][] = [
+                    'account' => $account,
+                    'balance' => $balanceDc,
+                ];
             }
-            $liabilities['by_category'][$catKey]['accounts'][] = [
-                'account' => $account,
-                'balance' => $balance,
-            ];
         }
 
-        $liabilities['by_category'] = array_filter(
-            $liabilities['by_category'],
-            fn (array $c) => count($c['accounts']) > 0
-        );
+        $assets = $this->recalculateBalanceSheetSectionTotals($assets);
+        $liabilities = $this->recalculateBalanceSheetSectionTotals($liabilities);
 
+        return [$assets, $liabilities];
+    }
+
+    /**
+     * When another entity paid this entity's flows, bank & income/expense journals may already
+     * reflect settlement; skip a separate 2500 receivable that would double-count cash.
+     *
+     * @param  array<int>  $entityIds
+     */
+    private function directorLoanLenderPositionSettledInBankGl(array $entityIds, float $closingOwed, string $asOfDate): bool
+    {
+        if ($closingOwed >= 0) {
+            return false;
+        }
+
+        $receivable = abs($closingOwed);
+        $bankNet = $this->sumBankCashBalanceDc($entityIds, $asOfDate);
+
+        return $bankNet > 0 && abs($bankNet - $receivable) < 0.01;
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     */
+    private function sumBankCashBalanceDc(array $entityIds, string $asOfDate): float
+    {
+        $bankNet = 0.0;
+        foreach (ChartOfAccount::query()->where('account_type', 'asset')->where('is_active', true)->get() as $account) {
+            if (! $this->isBankOrCashChartAccount($account)) {
+                continue;
+            }
+            $bankNet += $this->getAccountBalanceAsOf(
+                $account->id,
+                $asOfDate,
+                $entityIds,
+                $account
+            );
+        }
+
+        return $bankNet;
+    }
+
+    /**
+     * @param  array{by_category: array<string, array{label: string, accounts: array, subtotal: float}>, total: float}  $section
+     * @return array{by_category: array<string, array{label: string, accounts: array, subtotal: float}>, total: float}
+     */
+    private function recalculateBalanceSheetSectionTotals(array $section): array
+    {
         $total = 0.0;
-        foreach ($liabilities['by_category'] as &$cat) {
+        foreach ($section['by_category'] as &$cat) {
             $sub = 0.0;
             foreach ($cat['accounts'] as $row) {
-                $sub += (float) $row['balance'];
+                $sub += (float) ($row['balance'] ?? 0);
             }
             $cat['subtotal'] = $sub;
             $total += $sub;
         }
         unset($cat);
-        $liabilities['total'] = $total;
+        $section['total'] = $total;
 
-        return $liabilities;
+        return $section;
     }
 
     /**
-     * Balance sheet liability row uses GL convention (debits − credits).
-     * Posted journals on 2500 are merged with synthetic intercompany legs (not posted to this account)
-     * so manual or legacy GL balances (e.g. 400) still add to cross-entity loan movements (e.g. 1000 cash).
-     *
-     * @param  array{lines: list<array<string, mixed>>}  $block
-     * @param  array<int>  $entityIds
+     * Exclude journal entries whose line totals do not balance (corrupt imports / partial posts).
      */
-    private function directorLoanBalanceSheetDebitLessCredit(
-        array $block,
-        array $entityIds,
-        ChartOfAccount $account,
-        string $asOfDate
-    ): float {
-        $glDc = $this->getAccountBalanceAsOf($account->id, $asOfDate, $entityIds);
-        $idSet = array_values(array_unique(array_map('intval', $entityIds)));
-        $entitiesForNameFallback = BusinessEntity::query()->whereIn('id', $idSet)->get();
-
-        $synthDc = 0.0;
-        foreach ($block['lines'] as $ld) {
-            if (empty($ld['is_director_loan_line'])) {
-                continue;
-            }
-            if (! $this->directorLoanSyntheticLineMatchesEntityScope($ld, $idSet, $entitiesForNameFallback)) {
-                continue;
-            }
-            $synthDc += (float) ($ld['debit'] ?? 0) - (float) ($ld['credit'] ?? 0);
-        }
-
-        return $glDc + $synthDc;
+    private function applyBalancedPostedJournalConstraints($query): void
+    {
+        $query->where('is_posted', true)
+            ->whereColumn('total_debit', 'total_credit');
     }
 
     /**
@@ -1035,8 +1489,8 @@ class FinancialReportService
             ->whereHas('journalEntry', function ($query) use ($startDate, $endDate, $entityIds) {
                 $query->whereIn('business_entity_id', $entityIds)
                     ->where('entry_date', '>=', $startDate)
-                    ->where('entry_date', '<=', $endDate)
-                    ->where('is_posted', true);
+                    ->where('entry_date', '<=', $endDate);
+                $this->applyBalancedPostedJournalConstraints($query);
             })
             ->sum('debit_amount');
 
@@ -1044,33 +1498,79 @@ class FinancialReportService
             ->whereHas('journalEntry', function ($query) use ($startDate, $endDate, $entityIds) {
                 $query->whereIn('business_entity_id', $entityIds)
                     ->where('entry_date', '>=', $startDate)
-                    ->where('entry_date', '<=', $endDate)
-                    ->where('is_posted', true);
+                    ->where('entry_date', '<=', $endDate);
+                $this->applyBalancedPostedJournalConstraints($query);
             })
             ->sum('credit_amount');
 
         return (float) $debits - (float) $credits;
     }
 
-    private function getAccountBalanceAsOf($accountId, $asOfDate, array $entityIds): float
-    {
+    private function getAccountBalanceAsOf(
+        $accountId,
+        $asOfDate,
+        array $entityIds,
+        ?ChartOfAccount $bankCashAccount = null
+    ): float {
+        if ($bankCashAccount !== null && $this->isBankOrCashChartAccount($bankCashAccount)) {
+            return $this->sumBankCashJournalBalanceAsOf($bankCashAccount, $asOfDate, $entityIds);
+        }
+
         $debits = JournalLine::where('chart_of_account_id', $accountId)
             ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
                 $query->whereIn('business_entity_id', $entityIds)
-                    ->where('entry_date', '<=', $asOfDate)
-                    ->where('is_posted', true);
+                    ->where('entry_date', '<=', $asOfDate);
+                $this->applyBalancedPostedJournalConstraints($query);
             })
             ->sum('debit_amount');
 
         $credits = JournalLine::where('chart_of_account_id', $accountId)
             ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
                 $query->whereIn('business_entity_id', $entityIds)
-                    ->where('entry_date', '<=', $asOfDate)
-                    ->where('is_posted', true);
+                    ->where('entry_date', '<=', $asOfDate);
+                $this->applyBalancedPostedJournalConstraints($query);
             })
             ->sum('credit_amount');
 
         return (float) $debits - (float) $credits;
+    }
+
+    /**
+     * Bank/cash balance excluding cross-entity flows posted on the booking entity's journal
+     * when cash actually moved through another entity's account.
+     *
+     * @param  array<int>  $entityIds
+     */
+    private function sumBankCashJournalBalanceAsOf(ChartOfAccount $account, string $asOfDate, array $entityIds): float
+    {
+        $lines = JournalLine::query()
+            ->where('chart_of_account_id', $account->id)
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
+                $query->whereIn('business_entity_id', $entityIds)
+                    ->where('entry_date', '<=', $asOfDate);
+                $this->applyBalancedPostedJournalConstraints($query);
+            })
+            ->with([
+                'journalEntry.source' => function ($morphTo) {
+                    $morphTo->morphWith([
+                        Transaction::class => ['businessEntity'],
+                    ]);
+                },
+            ])
+            ->get(['id', 'journal_entry_id', 'debit_amount', 'credit_amount']);
+
+        $net = 0.0;
+        foreach ($lines as $line) {
+            $entry = $line->journalEntry;
+            if ($this->shouldOmitCrossEntityBankCashLine($account, $entry)) {
+                continue;
+            }
+            $net += (float) ($line->debit_amount ?? 0) - (float) ($line->credit_amount ?? 0);
+        }
+
+        $net += $this->crossEntityPayerBankSyntheticNet($entityIds, $asOfDate);
+
+        return $net;
     }
 
     /**
@@ -1083,8 +1583,8 @@ class FinancialReportService
         $query = JournalLine::whereHas('journalEntry', function ($q) use ($ids, $startDate, $endDate) {
             $q->whereIn('business_entity_id', $ids)
                 ->where('entry_date', '>=', $startDate)
-                ->where('entry_date', '<=', $endDate)
-                ->where('is_posted', true);
+                ->where('entry_date', '<=', $endDate);
+            $this->applyBalancedPostedJournalConstraints($q);
         });
 
         if ($trackingCategoryId) {

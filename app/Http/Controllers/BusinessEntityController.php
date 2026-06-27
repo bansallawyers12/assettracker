@@ -2115,6 +2115,19 @@ class BusinessEntityController extends Controller
         }
 
         $paidBy = TransactionPayerResolver::resolveFromRequest($request);
+
+        $transactionType = trim((string) $request->input('transaction_type', ''));
+        if ($request->input('payment_status') === 'paid' && $transactionType !== '') {
+            $direction = Transaction::directionFromType($transactionType);
+            if ($paidBy === null || trim($paidBy) === '') {
+                throw ValidationException::withMessages([
+                    'paid_by_select' => $direction === 'income'
+                        ? 'Received by / account is required.'
+                        : 'Paid by is required.',
+                ]);
+            }
+        }
+
         TransactionPayerResolver::assertSelectionAllowed($paidBy);
 
         return $paidBy;

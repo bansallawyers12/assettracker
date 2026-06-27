@@ -18,6 +18,8 @@
             $merge
         );
     };
+    $detailColumnCount = 5;
+    $tableColumnCount = 7 + $detailColumnCount + ($isConsolidated ? 1 : 0);
 @endphp
 
 <x-report-shell
@@ -182,7 +184,12 @@
                                 <th class="px-4 py-2 text-left min-w-28">Entity</th>
                             @endif
                             <th class="px-4 py-2 text-left w-32">Reference</th>
-                            <th class="px-4 py-2 text-left">Description</th>
+                            <th class="px-4 py-2 text-left min-w-40">Description</th>
+                            <th class="px-4 py-2 text-left min-w-28">Paid by</th>
+                            <th class="px-4 py-2 text-left min-w-28">Received by</th>
+                            <th class="px-4 py-2 text-left min-w-32">Bank account</th>
+                            <th class="px-4 py-2 text-left min-w-28">Type</th>
+                            <th class="px-4 py-2 text-left min-w-24">Asset</th>
                             <th class="px-4 py-2 text-right w-28">Debit</th>
                             <th class="px-4 py-2 text-right w-28">Credit</th>
                             <th class="px-4 py-2 text-right w-32">Balance</th>
@@ -197,6 +204,9 @@
                             @endif
                             <td class="px-4 py-2 text-gray-400">—</td>
                             <td class="px-4 py-2 text-gray-400">—</td>
+                            @for ($i = 0; $i < $detailColumnCount; $i++)
+                                <td class="px-4 py-2 text-gray-400">—</td>
+                            @endfor
                             <td class="px-4 py-2 text-right text-gray-300">—</td>
                             <td class="px-4 py-2 text-right text-gray-300">—</td>
                             <td class="px-4 py-2 text-right font-medium text-gray-700 not-italic">
@@ -211,8 +221,8 @@
                                         {{ \Carbon\Carbon::parse($line['date'])->format('j M Y') }}
                                     </td>
                                     @if($isConsolidated)
-                                        <td class="px-4 py-2 text-gray-600 text-xs truncate max-w-40" title="{{ $line['entity_name'] ?? '' }}">
-                                            {{ $line['entity_name'] ?? '–' }}
+                                        <td class="px-4 py-2 text-gray-600 text-xs truncate max-w-40" title="{{ $line['booking_entity_name'] ?? $line['entity_name'] ?? '' }}">
+                                            {{ $line['booking_entity_name'] ?? $line['entity_name'] ?? '–' }}
                                         </td>
                                     @endif
                                     <td class="px-4 py-2 text-gray-600">
@@ -221,6 +231,7 @@
                                     <td class="px-4 py-2 text-gray-700">
                                         {{ $line['description'] ?? '–' }}
                                     </td>
+                                    @include('financial-reports.partials.account-transaction-line-details', ['line' => $line])
                                     <td class="px-4 py-2 text-right text-gray-700">
                                         @if($line['debit'] !== null)
                                             {{ number_format($line['debit'], 2) }}
@@ -243,13 +254,14 @@
                             @endforeach
                         @else
                             <tr class="border-b border-gray-50">
-                                <td colspan="{{ $isConsolidated ? 7 : 6 }}" class="px-6 py-2 text-xs text-gray-400 italic">No transactions in this period</td>
+                                <td colspan="{{ $tableColumnCount - 1 }}" class="px-6 py-2 text-xs text-gray-400 italic">No transactions in this period</td>
+                                <td class="px-4 py-2 text-right text-gray-400">—</td>
                             </tr>
                         @endif
 
                         {{-- Closing balance row --}}
                         <tr class="border-t border-gray-200 bg-gray-50 font-semibold">
-                            <td class="px-6 py-2.5 text-gray-600 text-xs uppercase tracking-wide" colspan="{{ $isConsolidated ? 6 : 5 }}">
+                            <td class="px-6 py-2.5 text-gray-600 text-xs uppercase tracking-wide" colspan="{{ $tableColumnCount - 1 }}">
                                 Closing Balance
                             </td>
                             <td class="px-4 py-2.5 text-right text-sm

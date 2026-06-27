@@ -34,6 +34,7 @@
         <option value="other" @selected(old('paid_by_select', $sel) === 'other')>Other…</option>
     </select>
     @error('paid_by_select') <span class="text-red-500 {{ $errorClass ?? 'text-sm' }}">{{ $message }}</span> @enderror
+    <span class="js-paid-by-select-client-error text-red-500 {{ $errorClass ?? 'text-sm' }} hidden" role="alert"></span>
 </div>
 <div id="paid_by_other_wrap" class="mt-2 {{ $showOther ? '' : 'hidden' }}">
     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 {{ $labelClass ?? 'mb-1' }}">Other payer</label>
@@ -42,4 +43,5 @@
            placeholder="e.g., external account name"
            autocomplete="off">
     @error('paid_by_other') <span class="text-red-500 {{ $errorClass ?? 'text-sm' }}">{{ $message }}</span> @enderror
+    <span class="js-paid-by-other-client-error text-red-500 {{ $errorClass ?? 'text-sm' }} hidden" role="alert"></span>
 </div>

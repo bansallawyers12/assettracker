@@ -11,6 +11,7 @@ import {
     setSelectValue,
     setSelectDisabled,
 } from './tomselect-init';
+import { initTransactionPaidByValidation } from './transaction-paid-by-validation';
 
 import Alpine from 'alpinejs';
 
@@ -67,6 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initFlatpickr();
     watchFlatpickr();
     initTomSelect();
+    initTransactionPaidByValidation();
 
     if (document.querySelector('[data-rich-text]')) {
         loadRichTextModule().then(exposeRichTextHelpers);

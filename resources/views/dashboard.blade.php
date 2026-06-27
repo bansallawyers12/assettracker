@@ -68,7 +68,7 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('business-entities.transactions.store', ['businessEntity' => $businessEntities->first() ? $businessEntities->first()->id : 0]) }}" id="store-transaction-form" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('business-entities.transactions.store', ['businessEntity' => $businessEntities->first() ? $businessEntities->first()->id : 0]) }}" id="store-transaction-form" data-transaction-paid-by-form enctype="multipart/form-data">
                     @csrf
 
                     {{-- Step 1: Direction toggle --}}

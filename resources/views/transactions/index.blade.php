@@ -83,6 +83,8 @@
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Type</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Invoice #</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Payment</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Paid by</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Received by</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Due</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Description</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Vendor</th>
@@ -93,6 +95,13 @@
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @forelse ($transactions as $tx)
+                            @php
+                                $txDirection = \App\Models\Transaction::directionFromType((string) $tx->transaction_type);
+                                $txCounterparty = $tx->paid_by ? $tx->paid_by_display : '—';
+                                $txVendor = $tx->vendor_name ?: '—';
+                                $txPaidBy = $txDirection === 'income' ? $txVendor : $txCounterparty;
+                                $txReceivedBy = $txDirection === 'income' ? $txCounterparty : $txVendor;
+                            @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40">
                                 <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
                                     {{ $tx->date?->format('d/m/Y') ?? '—' }}
@@ -126,6 +135,12 @@
                                     @else
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Paid</span>
                                     @endif
+                                </td>
+                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-32 truncate" title="{{ $txPaidBy !== '—' ? $txPaidBy : '' }}">
+                                    {{ $txPaidBy }}
+                                </td>
+                                <td class="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-32 truncate" title="{{ $txReceivedBy !== '—' ? $txReceivedBy : '' }}">
+                                    {{ $txReceivedBy }}
                                 </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
                                     {{ $tx->due_date?->format('d/m/Y') ?? '—' }}
@@ -176,7 +191,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="13" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="15" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                     No transactions found.
                                 </td>
                             </tr>

@@ -46,7 +46,7 @@
                     <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md shadow-xs transition duration-200 text-sm font-medium">Extract Data</button>
                 </form>
 
-                <form method="POST" action="{{ route('business-entities.bank-accounts.transactions.store', [$businessEntity->id, $bankAccount->id]) }}" enctype="multipart/form-data" id="bank-store-transaction-form">
+                <form method="POST" action="{{ route('business-entities.bank-accounts.transactions.store', [$businessEntity->id, $bankAccount->id]) }}" enctype="multipart/form-data" id="bank-store-transaction-form" data-transaction-paid-by-form>
                     @csrf
 
                     <div class="flex gap-3 mb-5">
