@@ -1466,10 +1466,13 @@ class BusinessEntityController extends Controller
         ]);
 
         $bankAccount = BankAccount::query()
+            ->forUser((int) auth()->id())
             ->with('businessEntity')
-            ->findOrFail($validated['bank_account_id']);
+            ->find($validated['bank_account_id']);
 
-        $this->ensureBankAccountOwnedByUser($bankAccount);
+        if ($bankAccount === null) {
+            abort(403, 'Unauthorized action.');
+        }
 
         if (! $bankAccount->canBeLinkedToEntity($businessEntity)) {
             if ((int) $bankAccount->business_entity_id === (int) $businessEntity->id) {

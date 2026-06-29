@@ -40,32 +40,22 @@
                     @foreach($portfolioBankAccounts as $account)
                         @php
                             $canLink = $account->canBeLinkedToEntity($businessEntity);
-                            $alreadyOnEntity = (int) $account->business_entity_id === (int) $businessEntity->id;
-
-                            if ($alreadyOnEntity) {
-                                $scopeLabel = 'already on this entity';
-                            } elseif ($account->business_entity_id) {
-                                $scopeLabel = 'on '.$account->businessEntity?->legal_name;
-                            } elseif ($account->account_purpose === BankAccount::PURPOSE_LOAN_REPAYMENT) {
-                                $scopeLabel = 'portfolio lender';
-                            } else {
-                                $scopeLabel = 'portfolio (unassigned)';
-                            }
                         @endphp
                         <option
                             value="{{ $account->id }}"
+                            data-can-link="{{ $canLink ? '1' : '0' }}"
                             data-from-entity-id="{{ $canLink && $account->business_entity_id ? $account->business_entity_id : '' }}"
                             data-from-entity-name="{{ $canLink ? ($account->businessEntity?->legal_name ?? '') : '' }}"
-                            @disabled(! $canLink)
                             @selected((string) old('bank_account_id', $pendingAssignId) === (string) $account->id)
                         >
-                            {{ $account->displayLabel() }} — {{ $scopeLabel }}
+                            {{ $account->displayLabel() }} — {{ $account->assignPickerScopeLabel($businessEntity) }}
                         </option>
                     @endforeach
                 </x-tom-select>
                 @error('bank_account_id')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
+                <p id="link-account-selection-error" class="mt-2 hidden text-sm text-red-600"></p>
                 @if($selectableCount === 0)
                     <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
                         All portfolio accounts are already on this entity or cannot be linked here.
@@ -88,7 +78,7 @@
                     <button
                         type="submit"
                         id="link-account-submit"
-                        @disabled($selectableCount === 0)
+                        disabled
                         class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Link account
@@ -132,6 +122,7 @@
 <script>
 (function () {
     const defaultCreateUrl = @json($defaultCreateUrl);
+    const selectableCount = @json($selectableCount);
     const selectEl = document.getElementById('link_bank_account_id');
     const createLink = document.getElementById('create-new-bank-account-link');
     const movePanel = document.getElementById('move-confirm-panel');
@@ -140,6 +131,7 @@
     const confirmField = document.getElementById('confirm_move_field');
     const submitBtn = document.getElementById('link-account-submit');
     const form = document.getElementById('assign-bank-account-form');
+    const selectionError = document.getElementById('link-account-selection-error');
 
     function selectedOption() {
         if (!selectEl) {
@@ -149,34 +141,48 @@
         return selectEl.options[selectEl.selectedIndex] ?? null;
     }
 
+    function isLinkableSelection(opt) {
+        return Boolean(opt && opt.value !== '' && opt.dataset.canLink === '1');
+    }
+
     function refreshMoveConfirm() {
-        if (!movePanel || !confirmField || !confirmCheckbox || !submitBtn) {
+        if (!submitBtn) {
             return;
         }
 
         const opt = selectedOption();
-        const fromEntityId = opt?.dataset.fromEntityId ?? '';
-        const needsConfirm = fromEntityId !== '' && !opt?.disabled;
+        const linkable = isLinkableSelection(opt);
+        const fromEntityId = linkable ? (opt?.dataset.fromEntityId ?? '') : '';
+        const needsConfirm = fromEntityId !== '';
 
-        movePanel.classList.toggle('hidden', !needsConfirm);
+        if (movePanel) {
+            movePanel.classList.toggle('hidden', !needsConfirm);
+        }
 
         if (needsConfirm && moveNameEl) {
             moveNameEl.textContent = opt.dataset.fromEntityName || 'another entity';
         }
 
-        if (!needsConfirm) {
-            confirmCheckbox.checked = false;
-            confirmField.value = '0';
+        if (confirmCheckbox && confirmField) {
+            if (!needsConfirm) {
+                confirmCheckbox.checked = false;
+                confirmField.value = '0';
+            }
         }
 
-        submitBtn.disabled = submitBtn.hasAttribute('data-no-selectable') || (needsConfirm && !confirmCheckbox.checked);
+        if (selectionError) {
+            selectionError.classList.add('hidden');
+            selectionError.textContent = '';
+        }
+
+        submitBtn.disabled = selectableCount === 0
+            || !linkable
+            || (needsConfirm && !confirmCheckbox?.checked);
     }
 
     window.addEventListener('open-add-bank-account', (event) => {
-        if (createLink && event.detail?.createUrl) {
-            createLink.href = event.detail.createUrl;
-        } else if (createLink) {
-            createLink.href = defaultCreateUrl;
+        if (createLink) {
+            createLink.href = event.detail?.createUrl || defaultCreateUrl;
         }
 
         refreshMoveConfirm();
@@ -201,17 +207,26 @@
 
     form?.addEventListener('submit', (event) => {
         const opt = selectedOption();
-        const fromEntityId = opt?.dataset.fromEntityId ?? '';
+
+        if (!isLinkableSelection(opt)) {
+            event.preventDefault();
+            if (selectionError) {
+                selectionError.textContent = opt?.value
+                    ? 'This account cannot be linked to this entity.'
+                    : 'Select an account to link.';
+                selectionError.classList.remove('hidden');
+            }
+
+            return;
+        }
+
+        const fromEntityId = opt.dataset.fromEntityId ?? '';
 
         if (fromEntityId !== '' && !confirmCheckbox?.checked) {
             event.preventDefault();
             movePanel?.classList.remove('hidden');
         }
     });
-
-    @if($selectableCount === 0 && $portfolioBankAccounts->isNotEmpty())
-        submitBtn?.setAttribute('data-no-selectable', 'true');
-    @endif
 
     @if($pendingAssignId || old('bank_account_id'))
         document.addEventListener('DOMContentLoaded', () => {

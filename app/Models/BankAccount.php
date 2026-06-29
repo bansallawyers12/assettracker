@@ -476,25 +476,6 @@ class BankAccount extends Model
     }
 
     /**
-     * Portfolio accounts that can be linked (or moved) onto an entity's bank accounts tab.
-     */
-    public function scopeLinkableToEntity(Builder $query, BusinessEntity $entity, ?int $userId = null): Builder
-    {
-        $userId ??= (int) auth()->id();
-
-        return $query
-            ->forUser($userId)
-            ->where(function (Builder $q) use ($entity) {
-                $q->whereNull('business_entity_id')
-                    ->orWhere('business_entity_id', '!=', $entity->id);
-            })
-            ->where(function (Builder $q) {
-                $q->where('account_purpose', '!=', self::PURPOSE_LOAN_REPAYMENT)
-                    ->orWhereNotNull('business_entity_id');
-            });
-    }
-
-    /**
      * Whether this account may be assigned to the given entity (not already there; not a portfolio-only lender account).
      */
     public function canBeLinkedToEntity(BusinessEntity $entity): bool
@@ -508,6 +489,26 @@ class BankAccount extends Model
         }
 
         return true;
+    }
+
+    /**
+     * Scope suffix for the entity assign-account picker (e.g. "on Entity X", "already on this entity").
+     */
+    public function assignPickerScopeLabel(BusinessEntity $entity): string
+    {
+        if ((int) $this->business_entity_id === (int) $entity->id) {
+            return 'already on this entity';
+        }
+
+        if ($this->business_entity_id) {
+            return 'on '.($this->businessEntity?->legal_name ?? 'another entity');
+        }
+
+        if ($this->account_purpose === self::PURPOSE_LOAN_REPAYMENT) {
+            return 'portfolio lender';
+        }
+
+        return 'portfolio (unassigned)';
     }
 
     // ── Relationships ─────────────────────────────────────────────────────────
@@ -563,10 +564,6 @@ class BankAccount extends Model
             return true;
         }
 
-        if ($this->businessEntity && (int) $this->businessEntity->user_id === $userId) {
-            return true;
-        }
-
         $canViewEntity ??= static fn (BusinessEntity $entity): bool => auth()->user()?->can('view', $entity) ?? false;
 
         if ($this->business_entity_id !== null) {
@@ -574,8 +571,14 @@ class BankAccount extends Model
                 ? $this->businessEntity
                 : $this->businessEntity()->first();
 
-            if ($entity !== null && $canViewEntity($entity)) {
-                return true;
+            if ($entity !== null) {
+                if ((int) $entity->user_id === $userId) {
+                    return true;
+                }
+
+                if ($canViewEntity($entity)) {
+                    return true;
+                }
             }
         }
 

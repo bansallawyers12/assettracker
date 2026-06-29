@@ -142,4 +142,16 @@ class BankAccountFormTest extends TestCase
 
         $this->assertTrue($account->canBeLinkedToEntity($entity));
     }
+
+    public function test_assign_picker_scope_label_for_unassigned_account(): void
+    {
+        $entity = new \App\Models\BusinessEntity;
+        $entity->id = 3;
+        $account = new BankAccount([
+            'business_entity_id' => null,
+            'account_purpose' => BankAccount::PURPOSE_GENERAL,
+        ]);
+
+        $this->assertSame('portfolio (unassigned)', $account->assignPickerScopeLabel($entity));
+    }
 }
