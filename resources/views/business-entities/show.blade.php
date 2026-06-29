@@ -1180,7 +1180,6 @@
                             </div>
                         `;
                         bankEntriesList.appendChild(entryDiv);
-                        window.initTomSelect?.(entryDiv);
                     });
 
                     if (cachedChartAccounts.length) {

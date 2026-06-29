@@ -3,6 +3,7 @@ import './compliance-workspace.js';
 import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput } from './flatpickr-init';
 import {
     initTomSelect,
+    watchTomSelect,
     destroyTomSelect,
     refreshTomSelect,
     rebuildTomSelectFromNative,
@@ -70,6 +71,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initFlatpickr();
     watchFlatpickr();
     initTomSelect();
+    watchTomSelect();
     initTransactionPaidByValidation();
 
     if (document.querySelector('[data-rich-text]')) {

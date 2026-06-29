@@ -97,6 +97,7 @@ function setNativeSelectedValues(select, values) {
 /**
  * Enhance opt-in selects with Tom Select (searchable dropdowns).
  * Mark targets with data-tomselect on the native <select>.
+ * watchTomSelect() auto-initializes selects injected after page load.
  */
 export function initTomSelect(root = document) {
     root.querySelectorAll('select[data-tomselect]').forEach((select) => {
@@ -198,6 +199,37 @@ export function setSelectDisabled(select, disabled) {
             el.tomselect.enable();
         }
     }
+}
+
+let tomSelectObserverStarted = false;
+
+/**
+ * Re-initialize Tom Select when Alpine/JS injects new searchable selects after page load.
+ */
+export function watchTomSelect() {
+    if (tomSelectObserverStarted) {
+        return;
+    }
+
+    tomSelectObserverStarted = true;
+
+    const observer = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                if (node.nodeType !== Node.ELEMENT_NODE) {
+                    continue;
+                }
+
+                if (node.matches?.('select[data-tomselect]')) {
+                    initTomSelect(node.parentElement ?? document);
+                } else if (node.querySelectorAll?.('select[data-tomselect]').length) {
+                    initTomSelect(node);
+                }
+            }
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
 }
 
 // Register remove_button for multi-select instances.

@@ -55,7 +55,9 @@
                                         <div class="font-medium">{{ $account->account_name }}</div>
                                         <div class="text-xs text-gray-500">{{ $account->bank_name }}</div>
                                     </td>
-                                    <td class="px-4 py-3 text-sm font-mono text-gray-700 dark:text-gray-300">{{ BankAccount::formatBsb($account->bsb) }}</td>
+                                    <td class="px-4 py-3 text-sm">
+                                        @include('bank-accounts.partials.bsb-toggle-cell', ['account' => $account])
+                                    </td>
                                     <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ BankAccount::purposeLabel($account->account_purpose) }}</td>
                                     @if($showScope)
                                         <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
@@ -80,4 +82,5 @@
             </div>
         @endforeach
     </div>
+    @include('bank-accounts.partials.bsb-toggle-scripts')
 @endif
