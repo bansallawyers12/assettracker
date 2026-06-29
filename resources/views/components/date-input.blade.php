@@ -1,4 +1,4 @@
-{{-- Native date field; enhanced globally by Flatpickr (see flatpickr-init.js). --}}
+{{-- Date field — Flatpickr only (see flatpickr-init.js). Use x-date-input, not jQuery date/time pickers. --}}
 @props(['disabled' => false])
 
 <input

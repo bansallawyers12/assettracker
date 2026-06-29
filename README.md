@@ -68,7 +68,8 @@ A comprehensive Laravel-based asset management and accounting system designed fo
 
 ### Technology Stack
 - **Backend**: Laravel 13 (PHP 8.3+)
-- **Frontend**: Blade templates with Tailwind CSS
+- **Frontend**: Blade templates with Tailwind CSS, Alpine.js, Vite
+- **Date inputs**: [Flatpickr](https://flatpickr.js.org/) only — use `<x-date-input>` in Blade (no jQuery date/time pickers)
 - **Database**: PostgreSQL with comprehensive migrations
 
 - **Cloud Storage**: AWS S3 support
