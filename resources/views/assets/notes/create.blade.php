@@ -51,6 +51,9 @@
 
             function toggleReminderDate() {
                 reminderDateContainer.style.display = isReminderCheckbox.checked ? 'block' : 'none';
+                if (isReminderCheckbox.checked) {
+                    window.redrawFlatpickr?.(reminderDateContainer);
+                }
             }
 
             isReminderCheckbox.addEventListener('change', toggleReminderDate);

@@ -86,13 +86,13 @@
                                 
                                 <div>
                                     <label for="trust_establishment_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Establishment Date*</label>
-                                    <x-date-input  name="trust_establishment_date" id="trust_establishment_date" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
+                                    <x-date-input name="trust_establishment_date" id="trust_establishment_date" value="{{ old('trust_establishment_date') }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
                                     @error('trust_establishment_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                                 </div>
                                 
                                 <div>
                                     <label for="trust_deed_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Deed Date*</label>
-                                    <x-date-input  name="trust_deed_date" id="trust_deed_date" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
+                                    <x-date-input name="trust_deed_date" id="trust_deed_date" value="{{ old('trust_deed_date') }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
                                     @error('trust_deed_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                                 </div>
                                 
@@ -104,7 +104,7 @@
                                 
                                 <div>
                                     <label for="trust_vesting_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Vesting Date</label>
-                                    <x-date-input  name="trust_vesting_date" id="trust_vesting_date" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
+                                    <x-date-input name="trust_vesting_date" id="trust_vesting_date" value="{{ old('trust_vesting_date') }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
                                     @error('trust_vesting_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                                 </div>
                                 
@@ -192,7 +192,7 @@
                             
                             <div>
                                 <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">ASIC Renewal Date</label>
-                                <x-date-input  name="asic_renewal_date" id="asic_renewal_date" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" />
+                                <x-date-input name="asic_renewal_date" id="asic_renewal_date" value="{{ old('asic_renewal_date') }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" />
                             </div>
                         </div>
                         
@@ -233,6 +233,17 @@
     </div>
 
     <script>
+        function clearDateField(input) {
+            if (window.clearDateInput) {
+                window.clearDateInput(input);
+                return;
+            }
+
+            if (input) {
+                input.value = '';
+            }
+        }
+
         function toggleTrustFields() {
             const entityType = document.getElementById('entity_type').value;
             const trustFields = document.getElementById('trust_fields');
@@ -259,10 +270,10 @@
                 appointorTypeField.required = false;
                 // Clear trust fields
                 trustTypeField.value = '';
-                trustEstablishmentDateField.value = '';
-                trustDeedDateField.value = '';
+                clearDateField(trustEstablishmentDateField);
+                clearDateField(trustDeedDateField);
                 trustDeedReferenceField.value = '';
-                trustVestingDateField.value = '';
+                clearDateField(trustVestingDateField);
                 appointorTypeField.value = '';
                 // Hide appointor fields
                 document.getElementById('appointor_person_fields').classList.add('hidden');

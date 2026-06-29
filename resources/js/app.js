@@ -1,6 +1,6 @@
 import './documents-workspace.js';
 import './compliance-workspace.js';
-import { initFlatpickr, watchFlatpickr } from './flatpickr-init';
+import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput } from './flatpickr-init';
 import {
     initTomSelect,
     destroyTomSelect,
@@ -23,6 +23,8 @@ window.reinitTomSelect = reinitTomSelect;
 window.setSelectValue = setSelectValue;
 window.setSelectDisabled = setSelectDisabled;
 window.initFlatpickr = initFlatpickr;
+window.redrawFlatpickr = redrawFlatpickr;
+window.clearDateInput = clearDateInput;
 
 let richTextModulePromise = null;
 

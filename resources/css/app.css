@@ -304,3 +304,48 @@
         page-break-after: auto;
     }
 }
+
+/* Flatpickr — align calendar popup with app dark mode */
+.dark .flatpickr-calendar {
+    background: rgb(31 41 55);
+    border-color: rgb(75 85 99);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+}
+
+.dark .flatpickr-months .flatpickr-month,
+.dark .flatpickr-current-month .flatpickr-monthDropdown-months,
+.dark .flatpickr-current-month input.cur-year,
+.dark span.flatpickr-weekday,
+.dark .flatpickr-day {
+    color: rgb(229 231 235);
+}
+
+.dark .flatpickr-day.disabled,
+.dark .flatpickr-day.prevMonthDay,
+.dark .flatpickr-day.nextMonthDay {
+    color: rgb(107 114 128);
+}
+
+.dark .flatpickr-day:hover,
+.dark .flatpickr-day:focus {
+    background: rgb(55 65 81);
+    border-color: rgb(55 65 81);
+}
+
+.dark .flatpickr-day.selected,
+.dark .flatpickr-day.startRange,
+.dark .flatpickr-day.endRange {
+    background: rgb(37 99 235);
+    border-color: rgb(37 99 235);
+    color: rgb(255 255 255);
+}
+
+.dark .flatpickr-months .flatpickr-prev-month,
+.dark .flatpickr-months .flatpickr-next-month {
+    fill: rgb(209 213 219);
+}
+
+.dark .flatpickr-time input,
+.dark .flatpickr-time .flatpickr-am-pm {
+    color: rgb(229 231 235);
+}

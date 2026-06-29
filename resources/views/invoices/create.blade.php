@@ -19,11 +19,11 @@
 				</div>
 				<div>
 					<label>Issue Date</label>
-					<x-date-input  name="issue_date" class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" required />
+					<x-date-input name="issue_date" value="{{ old('issue_date', now()->format('Y-m-d')) }}" class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" required />
 				</div>
 				<div>
 					<label>Due Date</label>
-					<x-date-input  name="due_date" class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" />
+					<x-date-input name="due_date" value="{{ old('due_date') }}" class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" />
 				</div>
 			</div>
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
