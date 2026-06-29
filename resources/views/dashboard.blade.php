@@ -14,22 +14,22 @@
                     <div class="flex flex-wrap gap-3">
                         <a href="{{ route('business-entities.create') }}"
                            class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                            <x-lucide-plus class="w-4 h-4" />
                             New Entity
                         </a>
                         <button id="add-transaction-btn"
                                 class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                            <x-lucide-clipboard class="w-4 h-4" />
                             Add Transaction
                         </button>
                         <a href="{{ route('bills-tasks.index') }}"
                            class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                            <x-lucide-clipboard-list class="w-4 h-4" />
                             Bills &amp; tasks
                         </a>
                         <a href="{{ route('emails.index') }}"
                            class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            <x-lucide-mail class="w-4 h-4" />
                             Emails
                         </a>
                     </div>
@@ -40,11 +40,11 @@
             <div id="add-transaction-section" class="{{ session('keep_open') ? '' : 'hidden' }} bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 transition-all duration-300">
                 <div class="flex items-center justify-between mb-5">
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                        <x-lucide-clipboard class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         Add Transaction
                     </h3>
                     <button id="cancel-transaction-btn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                        <x-lucide-x class="w-5 h-5" />
                     </button>
                 </div>
                 @if (session('success'))
@@ -77,14 +77,14 @@
                         <label class="flex-1 cursor-pointer">
                             <input type="radio" name="direction" value="expense" class="sr-only peer" {{ $oldDirection === 'expense' ? 'checked' : '' }}>
                             <div class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 peer-checked:border-red-500 peer-checked:bg-red-50 dark:peer-checked:bg-red-900/20 peer-checked:text-red-700 dark:peer-checked:text-red-300 text-gray-600 dark:text-gray-400 font-semibold text-sm transition-all">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 13l-5 5m0 0l-5-5m5 5V6"/></svg>
+                                <x-lucide-arrow-down class="w-4 h-4" />
                                 Expense
                             </div>
                         </label>
                         <label class="flex-1 cursor-pointer">
                             <input type="radio" name="direction" value="income" class="sr-only peer" {{ $oldDirection === 'income' ? 'checked' : '' }}>
                             <div class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 peer-checked:border-green-500 peer-checked:bg-green-50 dark:peer-checked:bg-green-900/20 peer-checked:text-green-700 dark:peer-checked:text-green-300 text-gray-600 dark:text-gray-400 font-semibold text-sm transition-all">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 11l5-5m0 0l5 5m-5-5v12"/></svg>
+                                <x-lucide-arrow-up class="w-4 h-4" />
                                 Income
                             </div>
                         </label>
@@ -243,14 +243,14 @@
                             <label class="flex-1 cursor-pointer">
                                 <input type="radio" name="payment_status" value="paid" id="payment_status_paid" class="sr-only peer" {{ $oldStatus === 'paid' ? 'checked' : '' }}>
                                 <div class="flex items-center justify-center gap-2 py-2 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 peer-checked:text-blue-700 dark:peer-checked:text-blue-300 text-gray-600 dark:text-gray-400 font-semibold text-sm transition-all">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <x-lucide-check class="w-4 h-4" />
                                     Paid
                                 </div>
                             </label>
                             <label class="flex-1 cursor-pointer">
                                 <input type="radio" name="payment_status" value="unpaid" id="payment_status_unpaid" class="sr-only peer" {{ $oldStatus === 'unpaid' ? 'checked' : '' }}>
                                 <div class="flex items-center justify-center gap-2 py-2 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-50 dark:peer-checked:bg-amber-900/20 peer-checked:text-amber-700 dark:peer-checked:text-amber-300 text-gray-600 dark:text-gray-400 font-semibold text-sm transition-all">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                    <x-lucide-clock class="w-4 h-4" />
                                     Unpaid
                                 </div>
                             </label>
@@ -317,7 +317,7 @@
                     <input type="hidden" name="receipt_path" value="{{ old('receipt_path', session('transactionData.receipt_path')) }}">
                     <div class="flex gap-3 pt-2">
                         <button type="submit" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-xl text-sm shadow-xs transition-colors">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                            <x-lucide-check class="w-4 h-4" />
                             Add Transaction
                         </button>
                     </div>
@@ -329,7 +329,7 @@
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                            <x-lucide-building-2 class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                     </div>
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $businessEntities->count() }}</div>
@@ -338,7 +338,7 @@
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                            <svg class="w-5 h-5 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                            <x-lucide-package class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
                     </div>
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assets->count() }}</div>
@@ -347,7 +347,7 @@
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                            <svg class="w-5 h-5 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                            <x-lucide-users class="w-5 h-5 text-violet-600 dark:text-violet-400" />
                         </div>
                     </div>
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $persons->count() }}</div>
@@ -356,7 +356,7 @@
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                            <svg class="w-5 h-5 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                            <x-lucide-bell class="w-5 h-5 text-amber-600 dark:text-amber-400" />
                         </div>
                     </div>
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $allReminders->count() }}</div>
@@ -365,7 +365,7 @@
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                            <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                            <x-lucide-clock class="w-5 h-5 text-red-600 dark:text-red-400" />
                         </div>
                     </div>
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assetDueDateItems->count() + $entityDueDates->count() }}</div>
@@ -374,7 +374,7 @@
                 <a href="{{ route('commitments.index') }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow block">
                     <div class="flex items-center justify-between mb-3">
                         <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                            <svg class="w-5 h-5 text-rose-600 dark:text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                            <x-lucide-file-text class="w-5 h-5 text-rose-600 dark:text-rose-400" />
                         </div>
                     </div>
                     <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $commitmentSummary['active_count'] }}</div>
@@ -393,14 +393,14 @@
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                         <div class="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
                             <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <svg class="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                                <x-lucide-bell class="w-5 h-5 text-amber-500" />
                                 Reminders
                                 <span class="text-xs font-normal text-gray-500 dark:text-gray-400">Overdue/Next 15 days</span>
                             </h3>
                             <div class="flex items-center gap-2">
                             <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="inline-flex text-xs font-semibold text-amber-700 dark:text-amber-300 hover:underline shrink-0">Full list</a>
                             <button type="button" class="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors" onclick="document.getElementById('reminder-form').classList.toggle('hidden')">
-                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                <x-lucide-plus class="w-3.5 h-3.5" />
                                 Add Reminder
                             </button>
                             </div>
@@ -458,7 +458,7 @@
                             </div>
                             <div class="flex justify-end mt-4">
                                 <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-semibold shadow-xs transition-colors">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    <x-lucide-check class="w-4 h-4" />
                                     Save Reminder
                                 </button>
                             </div>
@@ -467,7 +467,7 @@
                         <div class="p-5">
                             @if ($allReminders->isEmpty())
                                 <div class="text-center py-6">
-                                    <svg class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/></svg>
+                                    <x-lucide-bell class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
                                     <p class="text-sm text-gray-500 dark:text-gray-400">No overdue reminders and nothing due in the next 15 days.</p>
                                 </div>
                             @else
@@ -490,12 +490,12 @@
                                                 </p>
                                                 <div class="mt-2 flex flex-wrap items-center gap-2">
                                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
-                                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                                        <x-lucide-clock class="w-3 h-3" />
                                                         {{ $reminder->next_due_date ? $reminder->next_due_date->format('d/m/Y') : 'N/A' }}
                                                     </span>
                                                     @if($reminder->repeat_type && $reminder->repeat_type !== 'none')
                                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
-                                                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                                                            <x-lucide-refresh-cw class="w-3 h-3" />
                                                             {{ ucfirst($reminder->repeat_type) }}
                                                         </span>
                                                     @endif
@@ -508,7 +508,7 @@
                                                     <form action="{{ !empty($reminder->is_note) ? route('notes.finalize', $reminder->id) : route('reminders.complete', $reminder->id) }}" method="POST">
                                                         @csrf
                                                         <button type="submit" class="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/30 dark:text-emerald-400 transition-colors" title="Finalize">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                                            <x-lucide-check class="w-4 h-4" />
                                                         </button>
                                                     </form>
                                                     <form action="{{ !empty($reminder->is_note) ? route('notes.extend', $reminder->id) : route('reminders.extend', $reminder->id) }}" method="POST">
@@ -517,7 +517,7 @@
                                                             <input type="hidden" name="days" value="3">
                                                         @endif
                                                         <button type="submit" class="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-400 transition-colors" title="Extend">
-                                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                                            <x-lucide-plus class="w-4 h-4" />
                                                         </button>
                                                     </form>
                                                 @endif
@@ -533,7 +533,7 @@
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                         <div class="p-5 border-b border-gray-100 dark:border-gray-700 flex flex-wrap items-center justify-between gap-2">
                             <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                                <svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                <x-lucide-calendar class="w-5 h-5 text-red-500" />
                                 Upcoming Due Dates
                                 <span class="text-xs font-normal text-gray-500 dark:text-gray-400">Next 15 days</span>
                             </h3>
@@ -607,7 +607,7 @@
                                 </div>
                             @else
                                 <div class="text-center py-6">
-                                    <svg class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                    <x-lucide-calendar class="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
                                     <p class="text-sm text-gray-500 dark:text-gray-400">No upcoming due dates.</p>
                                 </div>
                             @endif
@@ -633,7 +633,7 @@
                                                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{{ $entity->legal_name }}</p>
                                                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ $entity->entity_type ?? 'N/A' }}</p>
                                                 </div>
-                                                <svg class="w-4 h-4 text-gray-400 group-hover:text-blue-500 shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                                <x-lucide-chevron-right class="w-4 h-4 text-gray-400 group-hover:text-blue-500 shrink-0 transition-colors" />
                                             </a>
                                         @endforeach
                                     </div>
@@ -658,7 +658,7 @@
                                                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{{ $asset->name }}</p>
                                                     <p class="text-xs text-gray-500 dark:text-gray-400">{{ $asset->asset_type }}</p>
                                                 </div>
-                                                <svg class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                                <x-lucide-chevron-right class="w-4 h-4 text-gray-400 group-hover:text-emerald-500 shrink-0 transition-colors" />
                                             </a>
                                         @endforeach
                                     </div>
@@ -688,7 +688,7 @@
                                                         @endif
                                                     </div>
                                                 </div>
-                                                <svg class="w-4 h-4 text-gray-400 group-hover:text-violet-500 shrink-0 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                                                <x-lucide-chevron-right class="w-4 h-4 text-gray-400 group-hover:text-violet-500 shrink-0 transition-colors" />
                                             </a>
                                         @endforeach
                                     </div>
@@ -709,25 +709,25 @@
                         <div class="p-4 space-y-1.5">
                             <a href="{{ route('business-entities.create') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+                                    <x-lucide-plus class="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">Add Entity</span>
                             </a>
                             <a href="{{ route('business-entities.assets.create', $businessEntities->first()?->id ?? 0) }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                                    <x-lucide-package class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">Add Asset</span>
                             </a>
                             <a href="{{ route('persons.create') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4 text-violet-600 dark:text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    <x-lucide-user class="w-4 h-4 text-violet-600 dark:text-violet-400" />
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">Add Person</span>
                             </a>
                             <a href="{{ route('emails.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                    <x-lucide-mail class="w-4 h-4 text-purple-600 dark:text-purple-400" />
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">Emails</span>
                             </a>
@@ -742,25 +742,25 @@
                         <div class="p-4 space-y-1.5">
                             <a href="{{ route('chart-of-accounts.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                                    <x-lucide-calculator class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">Chart of Accounts</span>
                             </a>
                             <a href="{{ route('bank-accounts.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                                    <x-lucide-credit-card class="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">Bank Accounts</span>
                             </a>
                             <a href="{{ route('transactions.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                    <x-lucide-clipboard class="w-4 h-4 text-purple-600 dark:text-purple-400" />
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">Transactions</span>
                             </a>
                             <a href="{{ route('invoices.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
-                                    <svg class="w-4 h-4 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                    <x-lucide-file-text class="w-4 h-4 text-orange-600 dark:text-orange-400" />
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-orange-700 dark:group-hover:text-orange-300 transition-colors">Invoices</span>
                             </a>

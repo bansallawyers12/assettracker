@@ -22,9 +22,7 @@
                         <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-4 mb-6">
                             <div class="flex">
                                 <div class="shrink-0">
-                                    <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                    </svg>
+                                    <x-lucide-triangle-alert class="h-5 w-5 text-yellow-400" />
                                 </div>
                                 <div class="ml-3">
                                     <h3 class="text-sm font-medium text-yellow-800 dark:text-yellow-200">
@@ -51,9 +49,7 @@
                     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4 mb-6">
                         <div class="flex">
                             <div class="shrink-0">
-                                <svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M10 1.944A11.954 11.954 0 012.166 5C2.056 5.649 2 6.319 2 7c0 5.225 3.34 9.67 8 11.317C14.66 16.67 18 12.225 18 7c0-.682-.057-1.35-.166-2.001A11.954 11.954 0 0110 1.944zM11 14a1 1 0 11-2 0 1 1 0 012 0zm0-7a1 1 0 00-1 1v3a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                                </svg>
+                                <x-lucide-shield-alert class="h-5 w-5 text-red-400" />
                             </div>
                             <div class="ml-3">
                                 <h3 class="text-sm font-medium text-red-800 dark:text-red-200">

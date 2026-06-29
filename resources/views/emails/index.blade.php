@@ -6,21 +6,15 @@
             </h2>
             <div class="flex flex-wrap items-center gap-2 sm:gap-3">
                 <a href="{{ route('email-templates.index') }}" class="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 font-semibold py-2 px-4 rounded-lg shadow-xs transition duration-300 ease-in-out flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
-                    </svg>
+                    <x-lucide-layout-grid class="w-4 h-4" />
                     {{ __('Email templates') }}
                 </a>
                 <a href="{{ route('emails.upload') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M8 12l4-4m0 0l4 4m-4-4v12"></path>
-                    </svg>
+                    <x-lucide-upload class="w-4 h-4" />
                     Email Upload
                 </a>
                 <a href="{{ route('emails.sync') }}" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:-translate-y-1 hover:shadow-lg flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                    </svg>
+                    <x-lucide-refresh-cw class="w-4 h-4" />
                     Sync Gmail
                 </a>
             </div>
@@ -76,9 +70,7 @@
                                                     <div class="flex space-x-2">
                                                         <a href="{{ route('emails.reply', $message->id) }}" 
                                                            class="inline-flex items-center px-2 py-1 border border-transparent text-xs leading-4 font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path>
-                                                            </svg>
+                                                            <x-lucide-reply class="w-3 h-3 mr-1" />
                                                             Reply
                                                         </a>
                                                         <details class="relative">
@@ -117,9 +109,7 @@
                                         </div>
                                     @empty
                                         <div class="p-6 text-gray-500 dark:text-gray-400 text-center">
-                                            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                                            </svg>
+                                            <x-lucide-mail class="mx-auto h-12 w-12 text-gray-400 mb-4" />
                                             <p class="text-lg font-medium">No emails found</p>
                                             <p class="text-sm">Try adjusting your search criteria or sync with Gmail to get started.</p>
                                         </div>
@@ -138,9 +128,7 @@
                                     <iframe name="emailViewer" src="{{ route('emails.show', $firstMessage->id) }}" class="w-full" style="height: calc(100vh - 260px);"></iframe>
                                 @else
                                     <div class="p-6 text-gray-500 dark:text-gray-400 text-center">
-                                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
-                                        </svg>
+                                        <x-lucide-mail class="mx-auto h-12 w-12 text-gray-400 mb-4" />
                                         <p class="text-lg font-medium">Select an email to preview</p>
                                         <p class="text-sm">Choose an email from the list to view its contents here.</p>
                                     </div>

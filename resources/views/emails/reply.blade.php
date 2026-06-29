@@ -112,9 +112,7 @@
                         <div class="flex gap-3">
                             <input type="text" id="subject" name="subject" value="Fwd: {{ $message->subject ?: '(No subject)' }}" class="flex-1 rounded-lg border-gray-300 shadow-xs focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-colors" placeholder="Enter email subject" required>
                             <button type="button" id="enhance-subject-btn" class="px-4 py-2 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                </svg>
+                                <x-lucide-zap class="w-4 h-4" />
                                 Enhance
                             </button>
                         </div>
@@ -128,9 +126,7 @@
                                 <x-rich-text-editor id="message" name="message" :rows="12" :height="300" placeholder="Add your forward message here..." required />
                             </div>
                             <button type="button" id="enhance-message-btn" class="px-4 py-2 bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg text-sm font-medium transition-all duration-200 flex flex-col items-center gap-2 shadow-md hover:shadow-lg transform hover:-translate-y-0.5 shrink-0">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                </svg>
+                                <x-lucide-zap class="w-4 h-4" />
                                 <span class="writing-mode-vertical">Enhance</span>
                             </button>
                         </div>
@@ -161,9 +157,7 @@
                         <div class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-gray-400 dark:hover:border-gray-500 transition-colors">
                             <input type="file" id="attachments" name="attachments[]" multiple class="hidden" accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif">
                             <div class="space-y-2">
-                                <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
-                                    <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                                </svg>
+                                <x-lucide-image-plus class="mx-auto h-12 w-12 text-gray-400" />
                                 <div class="text-sm text-gray-600 dark:text-gray-400">
                                     <label for="attachments" class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-hidden focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500">
                                         <span>Upload files</span>
@@ -173,6 +167,12 @@
                             </div>
                         </div>
                         <div id="attachment-preview" class="mt-3 space-y-2"></div>
+                        <template id="attachment-file-icon">
+                            <x-lucide-file-text class="w-5 h-5 text-gray-400" />
+                        </template>
+                        <template id="attachment-remove-icon">
+                            <x-lucide-x class="w-4 h-4" />
+                        </template>
                     </div>
 
                     <!-- Business Entity Association -->
@@ -219,9 +219,7 @@
              <div class="flex justify-between items-center mb-4">
                  <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Preview Forward Email</h4>
                  <button type="button" onclick="closePreviewModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                     </svg>
+                     <x-lucide-x class="w-6 h-6" />
                  </button>
              </div>
              
@@ -262,9 +260,7 @@
             <div class="flex justify-between items-center mb-4">
                 <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100">AI Text Enhancement</h4>
                 <button type="button" onclick="closeAIModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
+                    <x-lucide-x class="w-6 h-6" />
                 </button>
             </div>
             
@@ -278,9 +274,7 @@
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enhanced Text</label>
                     <div id="enhanced-text" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100 min-h-[100px]">
                         <div class="text-center text-gray-500 dark:text-gray-400">
-                            <svg class="mx-auto h-8 w-8 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                            </svg>
+                            <x-lucide-zap class="mx-auto h-8 w-8 mb-2" />
                             Click "Enhance" to improve your text using AI
                         </div>
                     </div>
@@ -447,6 +441,10 @@
                 handleFileSelection(files);
             });
 
+            function cloneAttachmentIcon(templateId) {
+                return document.getElementById(templateId).content.cloneNode(true);
+            }
+
             function handleFileSelection(files) {
                 attachmentPreview.innerHTML = '';
                 
@@ -456,22 +454,22 @@
                     
                     const fileInfo = document.createElement('div');
                     fileInfo.className = 'flex items-center space-x-2';
-                    fileInfo.innerHTML = `
-                        <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                        </svg>
-                        <span class="text-sm text-gray-700 dark:text-gray-300">${file.name}</span>
-                        <span class="text-xs text-gray-500 dark:text-gray-400">(${formatFileSize(file.size)})</span>
-                    `;
+                    fileInfo.appendChild(cloneAttachmentIcon('attachment-file-icon'));
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'text-sm text-gray-700 dark:text-gray-300';
+                    nameSpan.textContent = file.name;
+                    fileInfo.appendChild(nameSpan);
+
+                    const sizeSpan = document.createElement('span');
+                    sizeSpan.className = 'text-xs text-gray-500 dark:text-gray-400';
+                    sizeSpan.textContent = '(' + formatFileSize(file.size) + ')';
+                    fileInfo.appendChild(sizeSpan);
                     
                     const removeBtn = document.createElement('button');
                     removeBtn.type = 'button';
                     removeBtn.className = 'text-red-500 hover:text-red-700';
-                    removeBtn.innerHTML = `
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    `;
+                    removeBtn.appendChild(cloneAttachmentIcon('attachment-remove-icon'));
                     removeBtn.onclick = function() {
                         fileDiv.remove();
                     };

@@ -73,9 +73,7 @@
                     <button type="button"
                             @click="open = !open"
                             class="inline-flex items-center gap-1.5 border border-gray-300 bg-white text-gray-700 text-sm font-medium rounded-sm px-3 py-1.5 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
-                        <svg class="h-4 w-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z"/>
-                        </svg>
+                        <x-lucide-ellipsis-vertical class="h-4 w-4 text-gray-500" />
                         More
                     </button>
                     <div x-show="open" @click.outside="open = false"

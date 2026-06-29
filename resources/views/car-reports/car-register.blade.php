@@ -181,7 +181,7 @@
                             <td class="py-2.5 px-3">
                                 @if($car->vic_roads_updated)
                                     <span class="inline-flex items-center gap-1 text-green-700 text-xs font-medium">
-                                        <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414L8.414 15 3.293 9.879a1 1 0 111.414-1.414L8.414 12.172l6.879-6.879a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                        <x-lucide-check class="w-3.5 h-3.5" />
                                         Yes
                                     </span>
                                 @else

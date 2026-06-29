@@ -192,9 +192,7 @@
                                 @else
                                     <a href="{{ route('business-entities.assets.edit', [$a->business_entity_id, $a->id]) }}"
                                        class="text-gray-300 hover:text-blue-500 transition-colors" title="Add loan details on asset edit">
-                                        <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                        </svg>
+                                        <x-lucide-plus class="w-3.5 h-3.5 inline" />
                                     </a>
                                 @endif
                             </td>
@@ -264,7 +262,7 @@
                             <td class="py-2 px-2 text-center">
                                 @if($row['sro_updated'])
                                     <span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-100 text-green-700" title="SRO Updated">
-                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                                        <x-lucide-check class="w-3 h-3" />
                                     </span>
                                 @else
                                     <span class="text-gray-300 text-xs">—</span>
@@ -276,19 +274,11 @@
                                 <div class="flex items-center gap-2">
                                     <a href="{{ route('business-entities.assets.show', [$a->business_entity_id, $a->id]) }}"
                                        class="text-gray-400 hover:text-blue-600 transition-colors" title="View asset">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
+                                        <x-lucide-eye class="w-4 h-4" />
                                     </a>
                                     <a href="{{ route('assets.financials', [$a->business_entity_id, $a->id]) }}"
                                        class="text-gray-400 hover:text-teal-600 transition-colors" title="View financials">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                                        </svg>
+                                        <x-lucide-bar-chart-3 class="w-4 h-4" />
                                     </a>
                                 </div>
                             </td>
@@ -341,10 +331,7 @@
         @php $hasAnyLoanData = collect($active)->contains(fn ($r) => filled($r['loan_provider'])); @endphp
         @if(! $hasAnyLoanData)
             <div class="mx-6 mb-4 rounded-md border border-blue-100 bg-blue-50 px-4 py-2.5 text-xs text-blue-700 flex items-start gap-2">
-                <svg class="w-4 h-4 mt-0.5 shrink-0 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
+                <x-lucide-info class="w-4 h-4 mt-0.5 shrink-0 text-blue-400" />
                 <span>
                     Loan provider, balance, rent account, and related columns will be filled once Phase 2 finance fields
                     are added to each asset. Click the <span class="font-medium">+</span> icon in the Loan Provider column
@@ -430,12 +417,7 @@
                                 <td class="py-2 pl-2">
                                     <a href="{{ route('business-entities.assets.show', [$a->business_entity_id, $a->id]) }}"
                                        class="text-red-300 hover:text-red-600 transition-colors" title="View asset">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                        </svg>
+                                        <x-lucide-eye class="w-4 h-4" />
                                     </a>
                                 </td>
                             </tr>
@@ -446,10 +428,7 @@
         </div>
     @elseif(! $showDisposed && $totals['disposed_count'] > 0)
         <div class="mx-6 mb-5 mt-2 rounded-md border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs text-gray-500 flex items-center gap-2">
-            <svg class="w-4 h-4 shrink-0 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-            </svg>
+            <x-lucide-info class="w-4 h-4 shrink-0 text-gray-400" />
             <span>
                 {{ $totals['disposed_count'] }} previous / disposed {{ $totals['disposed_count'] === 1 ? 'property' : 'properties' }} hidden.
                 <a href="{{ $formRoute }}?{{ http_build_query($reportQuery(['show_disposed' => 1])) }}"

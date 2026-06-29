@@ -4,11 +4,11 @@
             <h2 class="font-semibold text-2xl text-blue-900 dark:text-blue-200 leading-tight">{{ __('Email Upload') }}</h2>
             <div class="flex space-x-3">
                 <a href="{{ route('emails.index') }}" class="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    <x-lucide-chevron-left class="w-4 h-4" />
                     Back to Emails
                 </a>
                 <a href="{{ route('emails.sync') }}" class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-300 ease-in-out flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    <x-lucide-refresh-cw class="w-4 h-4" />
                     Sync Gmail
                 </a>
             </div>
@@ -39,7 +39,7 @@
                             <div class="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                                 <div class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3 uppercase">Upload Emails</div>
                                 <div id="uploadArea" class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition-colors">
-                                    <svg class="w-10 h-10 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"></path></svg>
+                                    <x-lucide-cloud-upload class="w-10 h-10 mx-auto text-gray-400 mb-2" />
                                     <div class="text-gray-700 dark:text-gray-200 font-medium">Drag & drop .msg files here</div>
                                     <div class="text-sm text-gray-500 dark:text-gray-400">or click to browse</div>
                                     <div id="fileStatus" class="text-sm text-gray-500 dark:text-gray-400 mt-3">Ready to upload</div>
@@ -92,7 +92,7 @@
                             @else
                                 <div class="p-6 text-gray-500 dark:text-gray-400 text-center h-full flex items-center justify-center">
                                     <div>
-                                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                        <x-lucide-mail class="mx-auto h-12 w-12 text-gray-400 mb-4" />
                                         <p class="text-lg font-medium">Select an email to view its contents</p>
                                     </div>
                                 </div>

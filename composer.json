@@ -14,7 +14,8 @@
         "league/flysystem": "^3.29",
         "league/flysystem-aws-s3-v3": "^3.29",
         "pragmarx/google2fa": "^9.0",
-        "pragmarx/google2fa-qrcode": "^4.0"
+        "pragmarx/google2fa-qrcode": "^4.0",
+        "technikermathe/blade-lucide-icons": "^3.156"
     },
     "require-dev": {
         "laravel/breeze": "^2.3",

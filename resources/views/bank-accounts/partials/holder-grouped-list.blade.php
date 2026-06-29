@@ -11,9 +11,7 @@
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $emptyMessage }}</p>
         @if(! empty($emptyCreateUrl))
             <a href="{{ $emptyCreateUrl }}" class="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
+                <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
                 Add account
             </a>
         @endif

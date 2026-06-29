@@ -6,9 +6,7 @@
             </h2>
             <div class="flex space-x-3">
                 <a href="{{ route('persons.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
+                    <x-lucide-plus class="h-5 w-5 mr-2" />
                     Add New Person
                 </a>
                 <a href="{{ route('dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
@@ -23,16 +21,12 @@
             @if ($persons->isEmpty())
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center">
                     <div class="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                        </svg>
+                        <x-lucide-users class="h-12 w-12 text-gray-400" />
                     </div>
                     <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No persons found</h3>
                     <p class="text-gray-500 dark:text-gray-400 mb-6">Get started by adding your first person to the system.</p>
                     <a href="{{ route('persons.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
+                        <x-lucide-plus class="h-5 w-5 mr-2" />
                         Add First Person
                     </a>
                 </div>
@@ -54,10 +48,7 @@
                                     </div>
                                     <div class="flex space-x-2">
                                         <a href="{{ route('persons.show', $person->id) }}" class="text-gray-400 hover:text-indigo-600 transition-colors">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                            </svg>
+                                            <x-lucide-eye class="h-5 w-5" />
                                         </a>
                                     </div>
                                 </div>

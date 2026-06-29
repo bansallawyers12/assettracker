@@ -6,16 +6,11 @@
             </h2>
             <div class="flex space-x-2">
                 <a href="{{ route('business-entities.show', $businessEntity->id) }}" class="px-4 py-2 bg-blue-100 rounded-md text-blue-700 hover:bg-blue-200 transition-colors duration-200 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
+                    <x-lucide-eye class="h-5 w-5 mr-1" />
                     View
                 </a>
                 <a href="{{ route('business-entities.index') }}" class="px-4 py-2 bg-gray-200 rounded-md text-gray-700 hover:bg-gray-300 transition-colors duration-200 flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
+                    <x-lucide-arrow-left class="h-5 w-5 mr-1" />
                     Back to List
                 </a>
             </div>
@@ -155,9 +150,7 @@
                             <div class="flex items-center">
                                 <span class="text-sm text-gray-500 mr-4">* Required fields</span>
                                 <button type="submit" class="inline-flex items-center px-6 py-3 bg-green-600 border border-transparent rounded-md font-semibold text-white hover:bg-green-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-green-500 shadow-lg transform transition hover:-translate-y-0.5 duration-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                    </svg>
+                                    <x-lucide-check class="h-5 w-5 mr-2" />
                                     Update Business Entity
                                 </button>
                             </div>

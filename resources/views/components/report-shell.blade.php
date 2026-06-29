@@ -23,20 +23,14 @@
                        class="text-blue-600 hover:underline font-medium truncate max-w-xs">
                         {{ $entity->legal_name }}
                     </a>
-                    <svg class="h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                    </svg>
+                    <x-lucide-chevron-right class="h-3.5 w-3.5 text-gray-400 shrink-0" />
                 @elseif($entityScopeLabel)
                     <span class="text-gray-600 font-medium truncate max-w-md">{{ $entityScopeLabel }}</span>
-                    <svg class="h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                    </svg>
+                    <x-lucide-chevron-right class="h-3.5 w-3.5 text-gray-400 shrink-0" />
                 @endif
                 <a href="{{ route('financial-reports.index') }}"
                    class="text-blue-600 hover:underline font-medium shrink-0">Reports</a>
-                <svg class="h-3.5 w-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
+                <x-lucide-chevron-right class="h-3.5 w-3.5 text-gray-400 shrink-0" />
                 <span class="text-gray-600 truncate">{{ $title }}</span>
             </nav>
         </div>

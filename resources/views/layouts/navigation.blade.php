@@ -47,9 +47,7 @@
                                         {{ strtoupper(substr(Auth::user()->name, 0, 1)) }}
                                     </div>
                                     <span class="hidden lg:inline max-w-[8rem] truncate">{{ Auth::user()->name }}</span>
-                                    <svg class="w-4 h-4 opacity-50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                    </svg>
+                                    <x-lucide-chevron-down class="w-4 h-4 opacity-50 shrink-0" aria-hidden="true" />
                                 </button>
                             </x-slot>
                             <x-slot name="content">
@@ -85,10 +83,8 @@
                         :aria-expanded="open"
                         aria-controls="mobile-primary-nav">
                     <span class="sr-only">{{ __('Open menu') }}</span>
-                    <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-                        <path x-show="!open" x-cloak stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                        <path x-show="open" x-cloak stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <x-lucide-menu class="h-6 w-6" aria-hidden="true" x-show="!open" x-cloak />
+                    <x-lucide-x class="h-6 w-6" aria-hidden="true" x-show="open" x-cloak />
                 </button>
             </div>
         </div>

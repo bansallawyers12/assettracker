@@ -48,10 +48,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-amber-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-amber-50 flex items-center justify-center group-hover:bg-amber-100">
-                                    <svg class="h-5 w-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
-                                    </svg>
+                                    <x-lucide-align-justify class="h-5 w-5 text-amber-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-amber-700">Entity summary</p>
@@ -65,10 +62,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-blue-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-blue-50 flex items-center justify-center group-hover:bg-blue-100">
-                                    <svg class="h-5 w-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                    </svg>
+                                    <x-lucide-clipboard class="h-5 w-5 text-blue-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-blue-700">Account transactions</p>
@@ -82,10 +76,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-indigo-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-indigo-50 flex items-center justify-center group-hover:bg-indigo-100">
-                                    <svg class="h-5 w-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                                    </svg>
+                                    <x-lucide-calculator class="h-5 w-5 text-indigo-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-indigo-700">Balance sheet</p>
@@ -99,10 +90,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-green-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-green-50 flex items-center justify-center group-hover:bg-green-100">
-                                    <svg class="h-5 w-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                                    </svg>
+                                    <x-lucide-bar-chart-3 class="h-5 w-5 text-green-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-green-700">Profit &amp; loss</p>
@@ -116,10 +104,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-purple-50 flex items-center justify-center group-hover:bg-purple-100">
-                                    <svg class="h-5 w-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
-                                    </svg>
+                                    <x-lucide-trending-up class="h-5 w-5 text-purple-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-purple-700">Cash flow</p>
@@ -133,10 +118,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-orange-400 hover:shadow-xs transition-all">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-orange-50 flex items-center justify-center group-hover:bg-orange-100">
-                                    <svg class="h-5 w-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-                                    </svg>
+                                    <x-lucide-archive class="h-5 w-5 text-orange-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-orange-700">Tracking categories</p>
@@ -150,10 +132,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-teal-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-teal-50 flex items-center justify-center group-hover:bg-teal-100">
-                                    <svg class="h-5 w-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
-                                    </svg>
+                                    <x-lucide-house class="h-5 w-5 text-teal-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-teal-700">Property portfolio</p>
@@ -167,10 +146,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-emerald-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-emerald-50 flex items-center justify-center group-hover:bg-emerald-100">
-                                    <svg class="h-5 w-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M3 10h18M3 14h18M10 4v16M6 4v16"/>
-                                    </svg>
+                                    <x-lucide-table class="h-5 w-5 text-emerald-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-emerald-700">Asset summary</p>
@@ -184,12 +160,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-sky-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-sky-50 flex items-center justify-center group-hover:bg-sky-100">
-                                    <svg class="h-5 w-5 text-sky-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"/>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2 2m8-2H5m8 0h2m2 0h2a1 1 0 001-1v-5l-3-4H9"/>
-                                    </svg>
+                                    <x-lucide-truck class="h-5 w-5 text-sky-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-sky-700">Car Register</p>
@@ -203,10 +174,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-rose-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-rose-50 flex items-center justify-center group-hover:bg-rose-100">
-                                    <svg class="h-5 w-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                    </svg>
+                                    <x-lucide-file-text class="h-5 w-5 text-rose-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-rose-700">Future commitments</p>
@@ -220,10 +188,7 @@
                                 class="group text-left bg-white border border-gray-200 rounded-lg p-4 hover:border-violet-400 hover:shadow-xs transition-all w-full">
                             <div class="flex items-start gap-3">
                                 <div class="shrink-0 w-9 h-9 rounded-md bg-violet-50 flex items-center justify-center group-hover:bg-violet-100">
-                                    <svg class="h-5 w-5 text-violet-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
-                                    </svg>
+                                    <x-lucide-shield-check class="h-5 w-5 text-violet-600" />
                                 </div>
                                 <div>
                                     <p class="text-sm font-semibold text-gray-800 group-hover:text-violet-700">Compliance gaps</p>

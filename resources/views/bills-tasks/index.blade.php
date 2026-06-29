@@ -26,7 +26,7 @@
                     <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Full lists of unpaid bills, everything with a due date, paid bills, and completed reminders. The dashboard Reminders section shows overdue items plus the next 15 days.</p>
                 </div>
                 <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                    <x-lucide-arrow-left class="w-4 h-4" />
                     Back to dashboard
                 </a>
             </div>

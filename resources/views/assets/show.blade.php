@@ -11,9 +11,7 @@
             </h2>
             <div class="flex space-x-3">
                 <a href="{{ route('business-entities.assets.edit', [$asset->business_entity_id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <x-lucide-pencil class="h-5 w-5 mr-2" />
                     Edit Asset
                 </a>
                 <a href="{{ route('business-entities.show', $asset->business_entity_id) }}" class="inline-flex items-center px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
@@ -45,41 +43,29 @@
                         <div class="flex flex-wrap gap-3 mb-6">
                             @if ($asset->asset_type === 'Car')
                                 <a href="#tab_documents" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                    </svg>
+                                    <x-lucide-upload class="h-5 w-5 mr-2" />
                                     Documents
                                 </a>
                             @elseif ($isLeasable)
                                 <a href="{{ route('assets.financials', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                    </svg>
+                                    <x-lucide-bar-chart-3 class="h-5 w-5 mr-2" />
                                     Financials
                                 </a>
                                 <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                    </svg>
+                                    <x-lucide-user-plus class="h-5 w-5 mr-2" />
                                     Add Tenant
                                 </a>
                                 <a href="{{ route('business-entities.assets.leases.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
+                                    <x-lucide-file-text class="h-5 w-5 mr-2" />
                                     Add Lease
                                 </a>
                                 <a href="#tab_documents" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                    </svg>
+                                    <x-lucide-upload class="h-5 w-5 mr-2" />
                                     Documents
                                 </a>
                             @else
                                 <a href="#tab_documents" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                    </svg>
+                                    <x-lucide-upload class="h-5 w-5 mr-2" />
                                     Documents
                                 </a>
                             @endif
@@ -259,16 +245,12 @@
                                                 <form method="POST" action="{{ route('business-entities.assets.leases.sync-from-tenants', [$businessEntity->id, $asset->id]) }}" class="inline" onsubmit="return confirm('Create lease rows from tenant lease/rent data for any tenant that does not have one yet?');">
                                                     @csrf
                                                     <button type="submit" class="inline-flex items-center px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm shadow-md transition-all duration-200" title="Copies lease start, end, duration, rent, and notes into the Leases tab">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                                        </svg>
+                                                        <x-lucide-arrow-left-right class="h-4 w-4 mr-1" />
                                                         Sync to Leases tab
                                                     </button>
                                                 </form>
                                                 <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
-                                                    </svg>
+                                                    <x-lucide-user-plus class="h-4 w-4 mr-1" />
                                                     Add Tenant
                                                 </a>
                                             </div>
@@ -373,9 +355,7 @@
                                         <div class="flex justify-between items-center mb-4">
                                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Leases</h3>
                                             <a href="{{ route('business-entities.assets.leases.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                                </svg>
+                                                <x-lucide-file-text class="h-4 w-4 mr-1" />
                                                 Add Lease
                                             </a>
                                         </div>
@@ -641,9 +621,7 @@
                                     <div class="flex justify-between items-center mb-4">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Notes</h3>
                                         <button type="button" class="inline-flex items-center px-3 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105" onclick="document.getElementById('note-form').classList.toggle('hidden')">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                                            </svg>
+                                            <x-lucide-plus class="h-4 w-4 mr-1" />
                                             Add Note
                                         </button>
                                     </div>
@@ -681,9 +659,7 @@
                                                             @csrf
                                                             @method('DELETE')
                                                             <button type="submit" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" onclick="return confirm('Are you sure you want to delete this note?')">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                                </svg>
+                                                                <x-lucide-trash-2 class="h-5 w-5" />
                                                             </button>
                                                         </form>
                                                     </div>
@@ -700,9 +676,7 @@
                                     <div class="flex justify-between items-center mb-4">
                                         <h3 class="text-lg font-semibold text-yellow-700 dark:text-yellow-300">Reminders</h3>
                                         <button type="button" class="inline-flex items-center bg-yellow-100 hover:bg-yellow-200 text-yellow-700 dark:bg-yellow-900 dark:hover:bg-yellow-800 dark:text-yellow-200 px-3 py-1 rounded-md text-sm" onclick="document.getElementById('reminder-form').classList.toggle('hidden')">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                            </svg>
+                                            <x-lucide-plus class="h-4 w-4 mr-1" />
                                             Add Reminder
                                         </button>
                                     </div>
@@ -736,9 +710,7 @@
                                         </div>
                                         <div class="flex justify-end">
                                             <button type="submit" class="inline-flex items-center px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-md shadow-xs transition duration-200">
-                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                                </svg>
+                                                <x-lucide-check class="h-4 w-4 mr-1" />
                                                 Save Reminder
                                             </button>
                                         </div>
@@ -755,16 +727,12 @@
                                                     </p>
                                                     <div class="mt-2 flex items-center">
                                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                            </svg>
+                                                            <x-lucide-clock class="h-3 w-3 mr-1" />
                                                             Due: {{ $reminder->reminder_date ? $reminder->reminder_date->format('d/m/Y') : 'N/A' }}
                                                         </span>
                                                         @if($reminder->repeat_type)
                                                             <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                                                </svg>
+                                                                <x-lucide-refresh-cw class="h-3 w-3 mr-1" />
                                                                 {{ ucfirst($reminder->repeat_type) }}
                                                             </span>
                                                         @endif
@@ -773,18 +741,14 @@
                                                         <form action="{{ route('notes.finalize', $reminder->id) }}#tab_reminders" method="POST" class="inline">
                                                             @csrf
                                                             <button type="submit" class="inline-flex items-center px-2 py-1 bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900 dark:hover:bg-green-800 dark:text-green-200 rounded-sm text-xs">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                                                                </svg>
+                                                                <x-lucide-check class="h-3 w-3 mr-1" />
                                                                 Finalize
                                                             </button>
                                                         </form>
                                                         <form action="{{ route('notes.extend', $reminder->id) }}#tab_reminders" method="POST" class="inline">
                                                             @csrf
                                                             <button type="submit" class="inline-flex items-center px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-200 rounded-sm text-xs">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                                </svg>
+                                                                <x-lucide-plus class="h-3 w-3 mr-1" />
                                                                 Extend
                                                             </button>
                                                         </form>

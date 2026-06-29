@@ -5,9 +5,7 @@
                 {{ __('Create Business Entity') }}
             </h2>
             <a href="{{ route('business-entities.index') }}" class="px-4 py-2 bg-gray-200 rounded-md text-gray-700 hover:bg-gray-300 transition-colors duration-200 flex items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
+                <x-lucide-arrow-left class="h-5 w-5 mr-1" />
                 Back to List
             </a>
         </div>
@@ -224,9 +222,7 @@
                         <div class="mt-8 flex items-center justify-end">
                             <span class="text-sm text-gray-500 mr-4">* Required fields</span>
                             <button type="submit" class="inline-flex items-center px-6 py-3 bg-blue-600 border border-transparent rounded-md font-semibold text-white hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg transform transition hover:-translate-y-0.5 duration-200">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
+                                <x-lucide-check-circle class="h-5 w-5 mr-2" />
                                 Save Business Entity
                             </button>
                         </div>

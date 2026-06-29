@@ -1,4 +1,10 @@
 @once
+    <template id="header-search-no-results-icon">
+        <x-lucide-search-x class="w-4 h-4 shrink-0" aria-hidden="true" />
+    </template>
+    <template id="header-search-result-arrow-icon">
+        <x-lucide-chevron-right class="w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-400 shrink-0 transition-colors" aria-hidden="true" />
+    </template>
     @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function () {
@@ -14,6 +20,14 @@
 
                 const wrapNodes = document.querySelectorAll('[data-header-search-instance]');
                 if (!wrapNodes.length) return;
+
+                const noResultsIconTemplate = document.getElementById('header-search-no-results-icon');
+                const resultArrowIconTemplate = document.getElementById('header-search-result-arrow-icon');
+                if (!noResultsIconTemplate || !resultArrowIconTemplate) return;
+
+                function cloneSearchIcon(template) {
+                    return template.content.cloneNode(true);
+                }
 
                 const BADGE = {
                     entity: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
@@ -40,13 +54,7 @@
                     panel.innerHTML = '';
                     const wrap = document.createElement('div');
                     wrap.className = 'flex items-center gap-2 px-4 py-4 text-sm text-gray-400 dark:text-gray-500';
-                    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                    svg.setAttribute('class', 'w-4 h-4 shrink-0');
-                    svg.setAttribute('fill', 'none');
-                    svg.setAttribute('stroke', 'currentColor');
-                    svg.setAttribute('viewBox', '0 0 24 24');
-                    svg.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>';
-                    wrap.appendChild(svg);
+                    wrap.appendChild(cloneSearchIcon(noResultsIconTemplate));
                     wrap.appendChild(document.createTextNode('No results for '));
                     const strong = document.createElement('strong');
                     strong.className = 'text-gray-600 dark:text-gray-300 font-semibold';
@@ -173,12 +181,7 @@
                                 text.appendChild(sub);
                             }
 
-                            const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-                            arrow.setAttribute('class', 'w-3.5 h-3.5 text-gray-300 group-hover:text-gray-500 dark:group-hover:text-gray-400 shrink-0 transition-colors');
-                            arrow.setAttribute('fill', 'none');
-                            arrow.setAttribute('stroke', 'currentColor');
-                            arrow.setAttribute('viewBox', '0 0 24 24');
-                            arrow.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>';
+                            const arrow = cloneSearchIcon(resultArrowIconTemplate);
 
                             a.appendChild(badge);
                             a.appendChild(text);

@@ -66,10 +66,7 @@
                         @click="open = !open"
                         class="inline-flex items-center justify-between gap-2 border border-gray-300 rounded-sm bg-white text-sm px-3 py-1.5 min-w-[200px] text-left hover:border-blue-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
                     <span class="text-gray-700 truncate" x-text="label()">{{ $labelText }}</span>
-                    <svg class="h-4 w-4 text-gray-400 shrink-0 transition-transform" :class="open ? 'rotate-180' : ''"
-                         fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                    </svg>
+                    <x-lucide-chevron-down class="h-4 w-4 text-gray-400 shrink-0 transition-transform" x-bind:class="open ? 'rotate-180' : ''" />
                 </button>
 
                 {{-- Dropdown panel --}}
@@ -129,9 +126,7 @@
                     <button type="button"
                             @click="open = !open"
                             class="inline-flex items-center gap-1.5 border border-gray-300 bg-white text-gray-700 text-sm font-medium rounded-sm px-3 py-1.5 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
-                        <svg class="h-4 w-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z"/>
-                        </svg>
+                        <x-lucide-ellipsis-vertical class="h-4 w-4 text-gray-500" />
                         More
                     </button>
                     <div x-show="open" @click.outside="open = false"
@@ -153,10 +148,7 @@
     {{-- ── Report body ─────────────────────────────────────────────── --}}
     @if(count($report['accounts']) === 0)
         <div class="px-6 py-16 text-center">
-            <svg class="mx-auto h-10 w-10 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-            </svg>
+            <x-lucide-file-text class="mx-auto h-10 w-10 text-gray-300" />
             <p class="mt-3 text-sm font-medium text-gray-500">No transactions found for this period.</p>
             <p class="mt-1 text-xs text-gray-400">Adjust the date range or account filter and click Update.</p>
         </div>
