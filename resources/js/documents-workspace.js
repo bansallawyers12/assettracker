@@ -672,7 +672,7 @@
                 row.innerHTML = `<span class="text-xs text-gray-600 dark:text-gray-400 truncate">${escHtml(file.name)}</span>`;
 
                 const sel = document.createElement('select');
-                sel.className       = 'w-full border rounded-sm dark:bg-gray-800 dark:text-white text-xs';
+                sel.className       = 'w-full border border-gray-300 dark:border-gray-600 rounded-sm dark:bg-gray-800 dark:text-white text-xs';
                 sel.dataset.fileIndex = String(i);
 
                 const blank = document.createElement('option');

@@ -198,7 +198,7 @@
 
 <!-- Generate All Invoices Modal -->
 <div id="generate-all-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+    <div class="relative top-20 mx-auto p-5 border border-gray-200 w-96 shadow-lg rounded-md bg-white">
         <div class="mt-3">
             <h3 class="text-lg font-medium text-gray-900 mb-4">Generate All Rent Invoices</h3>
             <form action="{{ route('business-entities.rent-invoices.generate-all', $businessEntity) }}" method="POST">

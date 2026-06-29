@@ -69,10 +69,10 @@
             <select class="compliance-status-select text-xs border border-gray-300 dark:border-gray-600 rounded-sm dark:bg-gray-800 w-full max-w-[140px]" data-file-id="${fileId}">${opts}</select>
             <div class="compliance-status-dates mt-1 flex flex-col gap-1">
                 <label class="text-xs text-gray-500 flex items-center gap-1">Lodged
-                    <input type="date" class="compliance-lodged-date border rounded-sm dark:bg-gray-800 text-xs" data-file-id="${fileId}" value="${escAttr(file.lodged_date || '')}">
+                    <input type="date" class="compliance-lodged-date border border-gray-300 dark:border-gray-600 rounded-sm dark:bg-gray-800 text-xs" data-file-id="${fileId}" value="${escAttr(file.lodged_date || '')}">
                 </label>
                 <label class="text-xs text-gray-500 flex items-center gap-1">Paid
-                    <input type="date" class="compliance-paid-date border rounded-sm dark:bg-gray-800 text-xs" data-file-id="${fileId}" value="${escAttr(file.paid_date || '')}">
+                    <input type="date" class="compliance-paid-date border border-gray-300 dark:border-gray-600 rounded-sm dark:bg-gray-800 text-xs" data-file-id="${fileId}" value="${escAttr(file.paid_date || '')}">
                 </label>
             </div>
             ${dueHint}
@@ -1022,7 +1022,7 @@
                 row.innerHTML = `<span class="text-xs text-gray-600 dark:text-gray-400 truncate">${escHtml(file.name)}</span>`;
 
                 const sel = document.createElement('select');
-                sel.className = 'w-full border rounded-sm dark:bg-gray-800 dark:text-white text-xs';
+                sel.className = 'w-full border border-gray-300 dark:border-gray-600 rounded-sm dark:bg-gray-800 dark:text-white text-xs';
                 sel.dataset.fileIndex = String(i);
 
                 const blank = document.createElement('option');

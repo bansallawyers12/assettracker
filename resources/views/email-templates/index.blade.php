@@ -105,11 +105,11 @@
                     document.getElementById('template-preview-content').innerHTML = `
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject</label>
-                            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100">${data.subject}</div>
+                            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">${data.subject}</div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message</label>
-                            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100 whitespace-pre-wrap">${data.body}</div>
+                            <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 whitespace-pre-wrap">${data.body}</div>
                         </div>
                     `;
                     document.getElementById('template-preview-modal').classList.remove('hidden');

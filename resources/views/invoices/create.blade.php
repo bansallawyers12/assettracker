@@ -15,40 +15,40 @@
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
 				<div>
 					<label>Invoice Number</label>
-					<input name="invoice_number" class="w-full border p-2 rounded-sm" required />
+					<input name="invoice_number" class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" required />
 				</div>
 				<div>
 					<label>Issue Date</label>
-					<input type="date" name="issue_date" class="w-full border p-2 rounded-sm" required />
+					<input type="date" name="issue_date" class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" required />
 				</div>
 				<div>
 					<label>Due Date</label>
-					<input type="date" name="due_date" class="w-full border p-2 rounded-sm" />
+					<input type="date" name="due_date" class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" />
 				</div>
 			</div>
 			<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
 				<div>
 					<label>Customer</label>
-					<input name="customer_name" class="w-full border p-2 rounded-sm" required />
+					<input name="customer_name" class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" required />
 				</div>
 				<div>
 					<label>Reference</label>
-					<input name="reference" class="w-full border p-2 rounded-sm" />
+					<input name="reference" class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" />
 				</div>
 				<div>
 					<label>Currency</label>
-					<input name="currency" value="AUD" class="w-full border p-2 rounded-sm" />
+					<input name="currency" value="AUD" class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" />
 				</div>
 			</div>
 
 			<h2 class="font-semibold mb-2">Lines</h2>
 			<div id="lines">
 				<div class="grid grid-cols-1 md:grid-cols-5 gap-2 mb-2">
-					<input name="lines[0][description]" placeholder="Description" class="border p-2 rounded-sm" required />
-					<input name="lines[0][quantity]" type="number" step="0.0001" value="1" class="border p-2 rounded-sm" required />
-					<input name="lines[0][unit_price]" type="number" step="0.01" value="0" class="border p-2 rounded-sm" required />
-					<input name="lines[0][gst_rate]" type="number" step="0.0001" value="0.1" class="border p-2 rounded-sm" />
-					<input name="lines[0][account_code]" placeholder="Account Code (e.g. 4000)" class="border p-2 rounded-sm" />
+					<input name="lines[0][description]" placeholder="Description" class="border border-gray-300 dark:border-gray-600 p-2 rounded-sm" required />
+					<input name="lines[0][quantity]" type="number" step="0.0001" value="1" class="border border-gray-300 dark:border-gray-600 p-2 rounded-sm" required />
+					<input name="lines[0][unit_price]" type="number" step="0.01" value="0" class="border border-gray-300 dark:border-gray-600 p-2 rounded-sm" required />
+					<input name="lines[0][gst_rate]" type="number" step="0.0001" value="0.1" class="border border-gray-300 dark:border-gray-600 p-2 rounded-sm" />
+					<input name="lines[0][account_code]" placeholder="Account Code (e.g. 4000)" class="border border-gray-300 dark:border-gray-600 p-2 rounded-sm" />
 				</div>
 			</div>
 			<button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-sm mt-3">Save</button>

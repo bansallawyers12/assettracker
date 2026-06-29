@@ -226,21 +226,21 @@
              <div class="space-y-4">
                  <div>
                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">To:</label>
-                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100">
+                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                          <span id="preview-to"></span>
                      </div>
                  </div>
                  
                  <div>
                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subject:</label>
-                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100">
+                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100">
                          <span id="preview-subject"></span>
                      </div>
                  </div>
                  
                  <div>
                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message:</label>
-                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
                          <span id="preview-message"></span>
                      </div>
                  </div>
@@ -267,12 +267,12 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Original Text</label>
-                    <div id="original-text" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100 min-h-[100px]"></div>
+                    <div id="original-text" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 min-h-[100px]"></div>
                 </div>
                 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Enhanced Text</label>
-                    <div id="enhanced-text" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border text-gray-900 dark:text-gray-100 min-h-[100px]">
+                    <div id="enhanced-text" class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 min-h-[100px]">
                         <div class="text-center text-gray-500 dark:text-gray-400">
                             <x-lucide-zap class="mx-auto h-8 w-8 mb-2" />
                             Click "Enhance" to improve your text using AI
@@ -450,7 +450,7 @@
                 
                 Array.from(files).forEach(file => {
                     const fileDiv = document.createElement('div');
-                    fileDiv.className = 'flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-sm border';
+                    fileDiv.className = 'flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 rounded-sm border border-gray-200 dark:border-gray-700';
                     
                     const fileInfo = document.createElement('div');
                     fileInfo.className = 'flex items-center space-x-2';

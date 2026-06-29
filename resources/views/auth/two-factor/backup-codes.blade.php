@@ -39,7 +39,7 @@
                     <div class="bg-gray-50 dark:bg-gray-700 rounded-md p-4 mb-6">
                         <div class="grid grid-cols-2 gap-2 font-mono text-sm">
                             @foreach($backupCodes as $code)
-                                <div class="bg-white dark:bg-gray-800 p-2 rounded-sm border text-center">
+                                <div class="bg-white dark:bg-gray-800 p-2 rounded-sm border border-gray-200 dark:border-gray-700 text-center">
                                     {{ $code }}
                                 </div>
                             @endforeach

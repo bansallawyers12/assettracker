@@ -135,7 +135,7 @@
                 <div id="{{ $prefix }}-bulk-progress" class="bg-indigo-600 h-2 rounded-sm" style="width:0%"></div>
             </div>
             <div class="flex justify-end gap-2">
-                <button type="button" id="{{ $prefix }}-bulk-cancel" class="px-3 py-1 border rounded-sm dark:border-gray-600 dark:text-gray-300">Cancel</button>
+                <button type="button" id="{{ $prefix }}-bulk-cancel" class="px-3 py-1 border border-gray-300 rounded-sm dark:border-gray-600 dark:text-gray-300">Cancel</button>
                 <button type="button" id="{{ $prefix }}-bulk-go" class="px-3 py-1 bg-indigo-600 text-white rounded-sm">Upload</button>
             </div>
         </div>
