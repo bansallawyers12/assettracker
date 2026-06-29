@@ -157,6 +157,64 @@
                 </div>
             </div>
 
+            @if ($businessEntity->isTrust())
+                <div class="border-t border-gray-100 dark:border-gray-800 pt-4 space-y-3">
+                    <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Trust Details</p>
+
+                    @if ($businessEntity->trust_type)
+                        <div>
+                            <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Trust Type</p>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $businessEntity->trust_type }}</p>
+                        </div>
+                    @endif
+
+                    @if ($businessEntity->trust_establishment_date)
+                        <div>
+                            <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Established</p>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $businessEntity->trust_establishment_date->format('d/m/Y') }}</p>
+                        </div>
+                    @endif
+
+                    @if ($businessEntity->trust_deed_date)
+                        <div>
+                            <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Deed Date</p>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $businessEntity->trust_deed_date->format('d/m/Y') }}</p>
+                        </div>
+                    @endif
+
+                    @if ($businessEntity->trust_deed_reference)
+                        <div>
+                            <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Deed Reference</p>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $businessEntity->trust_deed_reference }}</p>
+                        </div>
+                    @endif
+
+                    @if ($businessEntity->trust_vesting_date)
+                        <div>
+                            <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Vesting Date</p>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $businessEntity->trust_vesting_date->format('d/m/Y') }}</p>
+                        </div>
+                    @endif
+
+                    @if ($businessEntity->appointorPerson || $businessEntity->appointorEntity)
+                        <div>
+                            <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Appointor</p>
+                            <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                                @if ($businessEntity->appointorPerson)
+                                    {{ $businessEntity->appointorPerson->first_name }} {{ $businessEntity->appointorPerson->last_name }}
+                                @elseif ($businessEntity->appointorEntity)
+                                    {{ $businessEntity->appointorEntity->legal_name }}
+                                @endif
+                            </p>
+                        </div>
+                    @endif
+
+                    <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="inline-flex text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
+                        Edit trust details
+                    </a>
+                </div>
+            @endif
+
             @if ($businessEntity->asic_renewal_date)
                 <div class="border-t border-gray-100 dark:border-gray-800 pt-4">
                     <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">ASIC Renewal Due</p>

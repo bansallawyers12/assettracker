@@ -353,6 +353,8 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('view', $businessEntity);
 
+        $businessEntity->load(['appointorPerson', 'appointorEntity']);
+
         $assets = $businessEntity->assets;
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
         $bankAccounts = $businessEntity->bankAccounts()
@@ -1305,7 +1307,15 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
-        return view('business-entities.edit', compact('businessEntity'));
+        $persons = Person::query()->orderBy('id')->get();
+
+        $businessEntities = BusinessEntity::query()
+            ->operationalEntities()
+            ->where('entity_type', '!=', 'Trust')
+            ->orderBy('legal_name')
+            ->get();
+
+        return view('business-entities.edit', compact('businessEntity', 'persons', 'businessEntities'));
     }
 
     /**
@@ -1332,13 +1342,47 @@ class BusinessEntityController extends Controller
             'asic_renewal_date' => 'nullable|date',
             'status' => 'required|in:Active,Inactive,Deregistered',
             'exclude_from_financial_reports' => 'nullable|boolean',
+            'trust_type' => 'nullable|required_if:entity_type,Trust|in:Discretionary,Unit,Fixed,Testamentary,Charitable',
+            'trust_establishment_date' => 'nullable|required_if:entity_type,Trust|date|before_or_equal:today',
+            'trust_deed_date' => 'nullable|required_if:entity_type,Trust|date|before_or_equal:today',
+            'trust_deed_reference' => 'nullable|string|max:255',
+            'trust_vesting_date' => 'nullable|date|after:trust_establishment_date',
+            'trust_vesting_conditions' => 'nullable|string|max:1000',
+            'appointor_type' => 'nullable|required_if:entity_type,Trust|in:person,entity',
+            'appointor_person_id' => [
+                'nullable',
+                'required_if:appointor_type,person',
+                Rule::exists('persons', 'id'),
+            ],
+            'appointor_entity_id' => [
+                'nullable',
+                'required_if:appointor_type,entity',
+                BusinessEntity::ruleExistsOperationalAppointorCompany(),
+            ],
+        ], [
+            'trust_type.required_if' => 'Trust type is required when entity type is Trust.',
+            'trust_establishment_date.required_if' => 'Trust establishment date is required when entity type is Trust.',
+            'trust_deed_date.required_if' => 'Trust deed date is required when entity type is Trust.',
+            'appointor_type.required_if' => 'Appointor type is required when entity type is Trust.',
+            'appointor_person_id.required_if' => 'Please select an appointor person.',
+            'appointor_entity_id.required_if' => 'Please select an appointor entity.',
         ]);
+
+        $isTrust = $request->entity_type === 'Trust';
 
         // Update the business entity with validated data
         $businessEntity->update([
             'legal_name' => $request->legal_name,
             'trading_name' => $request->trading_name,
             'entity_type' => $request->entity_type,
+            'trust_type' => $isTrust ? $request->trust_type : null,
+            'trust_establishment_date' => $isTrust ? $request->trust_establishment_date : null,
+            'trust_deed_date' => $isTrust ? $request->trust_deed_date : null,
+            'trust_deed_reference' => $isTrust ? $request->trust_deed_reference : null,
+            'trust_vesting_date' => $isTrust ? $request->trust_vesting_date : null,
+            'trust_vesting_conditions' => $isTrust ? $request->trust_vesting_conditions : null,
+            'appointor_person_id' => $isTrust && $request->appointor_type === 'person' ? $request->appointor_person_id : null,
+            'appointor_entity_id' => $isTrust && $request->appointor_type === 'entity' ? $request->appointor_entity_id : null,
             'abn' => $request->abn,
             'acn' => $request->acn,
             'tfn' => $request->tfn, // Ensure proper encryption/security

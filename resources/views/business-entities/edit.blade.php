@@ -55,7 +55,7 @@
                             
                             <div>
                                 <label for="entity_type" class="block text-sm font-medium text-gray-700 mb-1">Entity Type*</label>
-                                <select name="entity_type" id="entity_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required>
+                                <select name="entity_type" id="entity_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required onchange="toggleTrustFields()">
                                     <option value="Sole Trader" {{ old('entity_type', $businessEntity->entity_type) == 'Sole Trader' ? 'selected' : '' }}>Sole Trader</option>
                                     <option value="Company" {{ old('entity_type', $businessEntity->entity_type) == 'Company' ? 'selected' : '' }}>Company</option>
                                     <option value="Trust" {{ old('entity_type', $businessEntity->entity_type) == 'Trust' ? 'selected' : '' }}>Trust</option>
@@ -85,6 +85,106 @@
                                 <label for="registered_email" class="block text-sm font-medium text-gray-700 mb-1">Email Address*</label>
                                 <input type="email" name="registered_email" id="registered_email" value="{{ old('registered_email', $businessEntity->registered_email) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required>
                                 @error('registered_email') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+                        </div>
+
+                        @php
+                            $currentAppointorType = old('appointor_type');
+                            if ($currentAppointorType === null) {
+                                if ($businessEntity->appointor_person_id) {
+                                    $currentAppointorType = 'person';
+                                } elseif ($businessEntity->appointor_entity_id) {
+                                    $currentAppointorType = 'entity';
+                                }
+                            }
+                        @endphp
+
+                        <!-- Trust-Specific Fields -->
+                        <div id="trust_fields" class="mt-8 bg-green-50 rounded-lg p-4 mb-6 border-l-4 border-green-500 hidden">
+                            <h3 class="text-lg font-medium text-green-800 mb-2">Trust Information</h3>
+                            <p class="text-sm text-green-600 mb-4">Trust deed and appointor details.</p>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label for="trust_type" class="block text-sm font-medium text-gray-700 mb-1">Trust Type*</label>
+                                    <select name="trust_type" id="trust_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
+                                        <option value="">Select trust type</option>
+                                        @foreach (['Discretionary', 'Unit', 'Fixed', 'Testamentary', 'Charitable'] as $type)
+                                            <option value="{{ $type }}" @selected(old('trust_type', $businessEntity->trust_type) === $type)>{{ $type }} Trust</option>
+                                        @endforeach
+                                    </select>
+                                    @error('trust_type') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label for="trust_establishment_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Establishment Date*</label>
+                                    <x-date-input name="trust_establishment_date" id="trust_establishment_date" value="{{ old('trust_establishment_date', $businessEntity->trust_establishment_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
+                                    @error('trust_establishment_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label for="trust_deed_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Deed Date*</label>
+                                    <x-date-input name="trust_deed_date" id="trust_deed_date" value="{{ old('trust_deed_date', $businessEntity->trust_deed_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
+                                    @error('trust_deed_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label for="trust_deed_reference" class="block text-sm font-medium text-gray-700 mb-1">Trust Deed Reference</label>
+                                    <input type="text" name="trust_deed_reference" id="trust_deed_reference" value="{{ old('trust_deed_reference', $businessEntity->trust_deed_reference) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" placeholder="e.g., TD-2024-001">
+                                    @error('trust_deed_reference') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label for="trust_vesting_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Vesting Date</label>
+                                    <x-date-input name="trust_vesting_date" id="trust_vesting_date" value="{{ old('trust_vesting_date', $businessEntity->trust_vesting_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
+                                    @error('trust_vesting_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+
+                                <div>
+                                    <label for="appointor_type" class="block text-sm font-medium text-gray-700 mb-1">Appointor Type*</label>
+                                    <select name="appointor_type" id="appointor_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" onchange="toggleAppointorFields()">
+                                        <option value="">Select appointor type</option>
+                                        <option value="person" @selected($currentAppointorType === 'person')>Person</option>
+                                        <option value="entity" @selected($currentAppointorType === 'entity')>Company/Entity</option>
+                                    </select>
+                                    @error('appointor_type') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+
+                            <div id="appointor_person_fields" class="mt-6 hidden">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label for="appointor_person_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Person*</label>
+                                        <x-tom-select name="appointor_person_id" id="appointor_person_id" class="rounded-md focus:border-green-500 focus:ring-green-200/50 transition">
+                                            <option value="">Select a person</option>
+                                            @foreach ($persons as $person)
+                                                <option value="{{ $person->id }}" @selected((string) old('appointor_person_id', $businessEntity->appointor_person_id) === (string) $person->id)>{{ $person->first_name }} {{ $person->last_name }}</option>
+                                            @endforeach
+                                        </x-tom-select>
+                                        @error('appointor_person_id') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="appointor_entity_fields" class="mt-6 hidden">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label for="appointor_entity_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Entity*</label>
+                                        <x-tom-select name="appointor_entity_id" id="appointor_entity_id" class="rounded-md focus:border-green-500 focus:ring-green-200/50 transition">
+                                            <option value="">Select an entity</option>
+                                            @foreach ($businessEntities as $entity)
+                                                <option value="{{ $entity->id }}" @selected((string) old('appointor_entity_id', $businessEntity->appointor_entity_id) === (string) $entity->id)>{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
+                                            @endforeach
+                                        </x-tom-select>
+                                        @error('appointor_entity_id') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mt-6">
+                                <label for="trust_vesting_conditions" class="block text-sm font-medium text-gray-700 mb-1">Trust Vesting Conditions</label>
+                                <textarea name="trust_vesting_conditions" id="trust_vesting_conditions" rows="3" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" placeholder="Describe any specific vesting conditions...">{{ old('trust_vesting_conditions', $businessEntity->trust_vesting_conditions) }}</textarea>
+                                @error('trust_vesting_conditions') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                         </div>
                         
@@ -160,4 +260,73 @@
             </div>
         </div>
     </div>
+
+    <script>
+        function clearDateField(input) {
+            if (window.clearDateInput) {
+                window.clearDateInput(input);
+                return;
+            }
+            if (input) {
+                input.value = '';
+            }
+        }
+
+        function toggleTrustFields() {
+            const entityType = document.getElementById('entity_type').value;
+            const trustFields = document.getElementById('trust_fields');
+            const trustTypeField = document.getElementById('trust_type');
+            const trustEstablishmentDateField = document.getElementById('trust_establishment_date');
+            const trustDeedDateField = document.getElementById('trust_deed_date');
+            const appointorTypeField = document.getElementById('appointor_type');
+
+            if (entityType === 'Trust') {
+                trustFields.classList.remove('hidden');
+                trustTypeField.required = true;
+                trustEstablishmentDateField.required = true;
+                trustDeedDateField.required = true;
+                appointorTypeField.required = true;
+            } else {
+                trustFields.classList.add('hidden');
+                trustTypeField.required = false;
+                trustEstablishmentDateField.required = false;
+                trustDeedDateField.required = false;
+                appointorTypeField.required = false;
+            }
+        }
+
+        function toggleAppointorFields() {
+            const appointorType = document.getElementById('appointor_type').value;
+            const personFields = document.getElementById('appointor_person_fields');
+            const entityFields = document.getElementById('appointor_entity_fields');
+            const personSelect = document.getElementById('appointor_person_id');
+            const entitySelect = document.getElementById('appointor_entity_id');
+
+            if (appointorType === 'person') {
+                personFields.classList.remove('hidden');
+                entityFields.classList.add('hidden');
+                personSelect.required = true;
+                entitySelect.required = false;
+                window.setSelectValue?.(entitySelect, '');
+                window.reinitTomSelect?.(personSelect);
+            } else if (appointorType === 'entity') {
+                personFields.classList.add('hidden');
+                entityFields.classList.remove('hidden');
+                personSelect.required = false;
+                entitySelect.required = true;
+                window.setSelectValue?.(personSelect, '');
+                window.reinitTomSelect?.(entitySelect);
+            } else {
+                personFields.classList.add('hidden');
+                entityFields.classList.add('hidden');
+                personSelect.required = false;
+                entitySelect.required = false;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            toggleTrustFields();
+            toggleAppointorFields();
+        });
+    </script>
 </x-app-layout>

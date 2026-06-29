@@ -2,13 +2,10 @@
     <x-slot name="header">
         @php
             $isTrust = isset($businessEntity->entity_type) && $businessEntity->entity_type === 'Trust';
-            $label = $isTrust ? 'Add Person/Company' : 'Add Person';
             $heading = $isTrust ? 'Add Person/Company to Business Entity' : 'Add Person to Business Entity';
-
-            $createNewPersonLabel = $isTrust ? 'Create New Person/Company' : 'Create New Person';
-            $existingPersonLabel = $isTrust ? 'Select Existing Person/Company' : 'Select Existing Person';
-
-            $existingPersonDropDownLabel = $isTrust ? 'Select a Person/Company' : 'Select a person';
+            $createNewPersonLabel = $isTrust ? 'Create New Person' : 'Create New Person';
+            $existingPersonLabel = $isTrust ? 'Select Existing Person' : 'Select Existing Person';
+            $existingPersonDropDownLabel = $isTrust ? 'Select a person' : 'Select a person';
         @endphp
 
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -34,6 +31,12 @@
                         <p><strong>Note:</strong> You can assign multiple roles to the same person. For example, a person can be both a Director and a Shareholder.</p>
                     </div>
 
+                    @if ($isTrust)
+                        <div class="mb-4 p-4 bg-green-50 text-green-800 border border-green-200 rounded-sm text-sm">
+                            <p><strong>Appointor:</strong> Set on the trust record via <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="underline">Edit company profile</a>.</p>
+                        </div>
+                    @endif
+
                     <form method="POST" action="{{ route('entity-persons.store') }}">
                         @csrf
                         <div class="mb-4">
@@ -44,131 +47,111 @@
                         </div>
 
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700">
-                                <input type="checkbox" name="create_new_person" id="create_new_person" value="1" onchange="togglePersonFields(this)"> {{$createNewPersonLabel}}
-                            </label>
-                        </div>
-
-                        <!-- Existing Person Selection -->
-                        <div id="existing_person" class="mb-4">
-                            <label for="person_id" class="block text-sm font-medium text-gray-700">{{$existingPersonLabel}}</label>
-                            <x-tom-select name="person_id" id="person_id" class="mt-1 rounded-md">
-                                <option value="">{{$existingPersonDropDownLabel}}</option>
-                                @foreach ($persons as $person)
-                                    <option value="{{ $person->id }}">{{ $person->first_name }} {{ $person->last_name }}</option>
-                                @endforeach
-                            </x-tom-select>
-                            @error('person_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
-
-                        <!-- New Person Fields -->
-                        <div id="new_person_fields" class="hidden">
-                            <div class="mb-4">
-                                <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
-                                <input type="text" name="first_name" id="first_name" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('first_name') }}">
-                                @error('first_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="mb-4">
-                                <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
-                                <input type="text" name="last_name" id="last_name" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('last_name') }}">
-                                @error('last_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="mb-4">
-                                <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
-                                <input type="email" name="email" id="email" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('email') }}">
-                                @error('email') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="mb-4">
-                                <label for="phone_number" class="block text-sm font-medium text-gray-700">Phone Number</label>
-                                <input type="text" name="phone_number" id="phone_number" class="mt-1 block w-full border-gray-300 rounded-md" maxlength="15" value="{{ old('phone_number') }}">
-                                @error('phone_number') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="mb-4">
-                                <label for="tfn" class="block text-sm font-medium text-gray-700">TFN</label>
-                                <input type="text" name="tfn" id="tfn" class="mt-1 block w-full border-gray-300 rounded-md" maxlength="9" value="{{ old('tfn') }}">
-                                @error('tfn') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="mb-4">
-                                <label for="abn" class="block text-sm font-medium text-gray-700">ABN</label>
-                                <input type="text" name="abn" id="abn" class="mt-1 block w-full border-gray-300 rounded-md" maxlength="11" value="{{ old('abn') }}">
-                                @error('abn') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
                             <label for="role" class="block text-sm font-medium text-gray-700">Role</label>
-                            <select name="role" id="role" class="mt-1 block w-full border-gray-300 rounded-md" onchange="toggleAppointorFields()">
+                            <select name="role" id="role" class="mt-1 block w-full border-gray-300 rounded-md" onchange="toggleRoleFields()">
                                 <option value="">Select Role</option>
-                                <option value="Director">Director</option>
-                                <option value="Secretary">Secretary</option>
-                                <option value="Shareholder">Shareholder</option>
-                                <option value="Trustee">Trustee</option>
-                                <option value="Beneficiary">Beneficiary</option>
-                                <option value="Settlor">Settlor</option>
-                                <option value="Appointor">Appointor</option>
-                                <option value="Owner">Owner</option>
+                                <option value="Director" @selected(old('role') === 'Director')>Director</option>
+                                <option value="Secretary" @selected(old('role') === 'Secretary')>Secretary</option>
+                                <option value="Shareholder" @selected(old('role') === 'Shareholder')>Shareholder</option>
+                                <option value="Trustee" @selected(old('role') === 'Trustee')>Trustee</option>
+                                <option value="Beneficiary" @selected(old('role') === 'Beneficiary')>Beneficiary</option>
+                                <option value="Settlor" @selected(old('role') === 'Settlor')>Settlor</option>
+                                <option value="Owner" @selected(old('role') === 'Owner')>Owner</option>
                             </select>
                             @error('role') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
-                        <!-- Appointor Entity Selection (Hidden by default) -->
-                        <div id="appointor_entity_fields" class="mb-4 hidden">
-                            <div class="bg-yellow-50 rounded-lg p-4 border-l-4 border-yellow-500">
-                                <h4 class="text-sm font-medium text-yellow-800 mb-2">Appointor Entity Selection</h4>
-                                <p class="text-xs text-yellow-600 mb-3">When role is "Appointor", you can select either a person or a company/entity.</p>
-                                
-                                <div class="mb-3">
-                                    <label class="block text-sm font-medium text-gray-700 mb-2">Appointor Type</label>
-                                    <div class="flex space-x-4">
-                                        <label class="flex items-center">
-                                            <input type="radio" name="appointor_type" value="person" class="mr-2" onchange="toggleAppointorTypeFields()">
-                                            Person
-                                        </label>
-                                        <label class="flex items-center">
-                                            <input type="radio" name="appointor_type" value="entity" class="mr-2" onchange="toggleAppointorTypeFields()">
-                                            Company/Entity
-                                        </label>
-                                    </div>
-                                </div>
+                        <div id="trustee_link_type_fields" class="mb-4 hidden">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Trustee Type</label>
+                            <div class="flex space-x-4">
+                                <label class="flex items-center">
+                                    <input type="radio" name="link_type" value="person" class="mr-2" onchange="toggleLinkTypeFields()" @checked(old('link_type', 'person') === 'person')>
+                                    Person
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="radio" name="link_type" value="company" class="mr-2" onchange="toggleLinkTypeFields()" @checked(old('link_type') === 'company')>
+                                    Company (corporate trustee)
+                                </label>
+                            </div>
+                        </div>
 
-                                <div id="appointor_person_selection" class="hidden">
-                                    <label for="appointor_person_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Person</label>
-                                    <x-tom-select name="appointor_person_id" id="appointor_person_id" class="mt-1 rounded-md" disabled>
-                                        <option value="">Select a person</option>
-                                        @foreach ($persons as $person)
-                                            <option value="{{ $person->id }}">{{ $person->first_name }} {{ $person->last_name }}</option>
-                                        @endforeach
-                                    </x-tom-select>
-                                    @error('appointor_person_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                </div>
+                        <div id="trustee_company_selection" class="mb-4 hidden">
+                            <label for="entity_trustee_id" class="block text-sm font-medium text-gray-700">Select Trustee Company*</label>
+                            <x-tom-select name="entity_trustee_id" id="entity_trustee_id" class="mt-1 rounded-md">
+                                <option value="">Select a company</option>
+                                @foreach ($businessEntities as $entity)
+                                    <option value="{{ $entity->id }}" @selected((string) old('entity_trustee_id') === (string) $entity->id)>{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
+                                @endforeach
+                            </x-tom-select>
+                            @error('entity_trustee_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
 
-                                <div id="appointor_entity_selection" class="hidden">
-                                    <label for="appointor_entity_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Entity</label>
-                                    <x-tom-select name="appointor_entity_id" id="appointor_entity_id" class="mt-1 rounded-md" disabled>
-                                        <option value="">Select an entity</option>
-                                        @foreach ($businessEntities as $entity)
-                                            <option value="{{ $entity->id }}">{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
-                                        @endforeach
-                                    </x-tom-select>
-                                    @error('appointor_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        <div id="person_link_fields">
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700">
+                                    <input type="checkbox" name="create_new_person" id="create_new_person" value="1" onchange="togglePersonFields(this)" @checked(old('create_new_person') == 1)> {{ $createNewPersonLabel }}
+                                </label>
+                            </div>
+
+                            <div id="existing_person" class="mb-4">
+                                <label for="person_id" class="block text-sm font-medium text-gray-700">{{ $existingPersonLabel }}</label>
+                                <x-tom-select name="person_id" id="person_id" class="mt-1 rounded-md">
+                                    <option value="">{{ $existingPersonDropDownLabel }}</option>
+                                    @foreach ($persons as $person)
+                                        <option value="{{ $person->id }}" @selected((string) old('person_id') === (string) $person->id)>{{ $person->first_name }} {{ $person->last_name }}</option>
+                                    @endforeach
+                                </x-tom-select>
+                                @error('person_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            </div>
+
+                            <div id="new_person_fields" class="hidden">
+                                <div class="mb-4">
+                                    <label for="first_name" class="block text-sm font-medium text-gray-700">First Name</label>
+                                    <input type="text" name="first_name" id="first_name" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('first_name') }}">
+                                    @error('first_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="mb-4">
+                                    <label for="last_name" class="block text-sm font-medium text-gray-700">Last Name</label>
+                                    <input type="text" name="last_name" id="last_name" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('last_name') }}">
+                                    @error('last_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="mb-4">
+                                    <label for="email" class="block text-sm font-medium text-gray-700">Email</label>
+                                    <input type="email" name="email" id="email" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('email') }}">
+                                    @error('email') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="mb-4">
+                                    <label for="phone_number" class="block text-sm font-medium text-gray-700">Phone Number</label>
+                                    <input type="text" name="phone_number" id="phone_number" class="mt-1 block w-full border-gray-300 rounded-md" maxlength="15" value="{{ old('phone_number') }}">
+                                    @error('phone_number') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="mb-4">
+                                    <label for="tfn" class="block text-sm font-medium text-gray-700">TFN</label>
+                                    <input type="text" name="tfn" id="tfn" class="mt-1 block w-full border-gray-300 rounded-md" maxlength="9" value="{{ old('tfn') }}">
+                                    @error('tfn') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="mb-4">
+                                    <label for="abn" class="block text-sm font-medium text-gray-700">ABN</label>
+                                    <input type="text" name="abn" id="abn" class="mt-1 block w-full border-gray-300 rounded-md" maxlength="11" value="{{ old('abn') }}">
+                                    @error('abn') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                         </div>
 
                         <div class="mb-4">
                             <label for="appointment_date" class="block text-sm font-medium text-gray-700">Appointment Date</label>
-                            <x-date-input  name="appointment_date" id="appointment_date" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('appointment_date') ?? now()->format('Y-m-d') }}" />
+                            <x-date-input name="appointment_date" id="appointment_date" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('appointment_date') ?? now()->format('Y-m-d') }}" />
                             @error('appointment_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="mb-4">
                             <label for="resignation_date" class="block text-sm font-medium text-gray-700">Resignation Date</label>
-                            <x-date-input  name="resignation_date" id="resignation_date" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('resignation_date') }}" />
+                            <x-date-input name="resignation_date" id="resignation_date" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('resignation_date') }}" />
                             @error('resignation_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="mb-4">
                             <label for="role_status" class="block text-sm font-medium text-gray-700">Role Status</label>
                             <select name="role_status" id="role_status" class="mt-1 block w-full border-gray-300 rounded-md">
-                                <option value="Active" {{ old('role_status') == 'Active' ? 'selected' : '' }}>Active</option>
+                                <option value="Active" {{ old('role_status', 'Active') == 'Active' ? 'selected' : '' }}>Active</option>
                                 <option value="Resigned" {{ old('role_status') == 'Resigned' ? 'selected' : '' }}>Resigned</option>
                             </select>
                             @error('role_status') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -189,7 +172,7 @@
                         </div>
                         <div class="mb-4">
                             <label for="asic_due_date" class="block text-sm font-medium text-gray-700">ASIC Due Date</label>
-                            <x-date-input  name="asic_due_date" id="asic_due_date" class="mt-1 block w-full border-gray-300 rounded-md" min="{{ now()->format('Y-m-d') }}" value="{{ old('asic_due_date') }}" />
+                            <x-date-input name="asic_due_date" id="asic_due_date" class="mt-1 block w-full border-gray-300 rounded-md" min="{{ now()->format('Y-m-d') }}" value="{{ old('asic_due_date') }}" />
                             @error('asic_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
@@ -201,111 +184,89 @@
     </div>
 
     <script>
+        function isTrusteeCompanyMode() {
+            const role = document.getElementById('role').value;
+            const linkType = document.querySelector('input[name="link_type"]:checked')?.value;
+            return role === 'Trustee' && linkType === 'company';
+        }
+
+        function toggleRoleFields() {
+            const role = document.getElementById('role').value;
+            const trusteeLinkType = document.getElementById('trustee_link_type_fields');
+
+            if (role === 'Trustee') {
+                trusteeLinkType.classList.remove('hidden');
+            } else {
+                trusteeLinkType.classList.add('hidden');
+                const personRadio = document.querySelector('input[name="link_type"][value="person"]');
+                if (personRadio) {
+                    personRadio.checked = true;
+                }
+            }
+
+            toggleLinkTypeFields();
+        }
+
+        function toggleLinkTypeFields() {
+            const companyMode = isTrusteeCompanyMode();
+            const personFields = document.getElementById('person_link_fields');
+            const companySelection = document.getElementById('trustee_company_selection');
+            const entityTrusteeSelect = document.getElementById('entity_trustee_id');
+            const personSelect = document.getElementById('person_id');
+            const createNewPerson = document.getElementById('create_new_person');
+            const personInputs = personFields?.querySelectorAll('input, select, textarea') ?? [];
+
+            if (companyMode) {
+                personFields.classList.add('hidden');
+                companySelection.classList.remove('hidden');
+                window.setSelectDisabled?.(entityTrusteeSelect, false);
+                window.setSelectDisabled?.(personSelect, true);
+                window.setSelectValue?.(personSelect, '');
+                if (createNewPerson) {
+                    createNewPerson.checked = false;
+                    createNewPerson.disabled = true;
+                }
+                personInputs.forEach(el => { el.disabled = true; });
+                window.reinitTomSelect?.(entityTrusteeSelect);
+            } else {
+                personFields.classList.remove('hidden');
+                companySelection.classList.add('hidden');
+                window.setSelectDisabled?.(personSelect, false);
+                window.setSelectValue?.(entityTrusteeSelect, '');
+                window.setSelectDisabled?.(entityTrusteeSelect, true);
+                if (createNewPerson) {
+                    createNewPerson.disabled = false;
+                }
+                personInputs.forEach(el => { el.disabled = false; });
+            }
+        }
+
         function togglePersonFields(checkbox) {
             const existingPerson = document.getElementById('existing_person');
             const newPersonFields = document.getElementById('new_person_fields');
             const personId = document.getElementById('person_id');
-            const firstName = document.getElementById('first_name');
-            const lastName = document.getElementById('last_name');
-            const email = document.getElementById('email');
 
             if (checkbox.checked) {
                 existingPerson.classList.add('hidden');
                 newPersonFields.classList.remove('hidden');
                 window.setSelectValue?.(personId, '');
-                
-                // Clear any error messages that might be visible
-                const errorMessages = document.querySelectorAll('.text-red-500');
-                errorMessages.forEach(message => {
-                    if (message.textContent.includes('person')) {
-                        message.textContent = '';
-                    }
-                });
             } else {
                 existingPerson.classList.remove('hidden');
                 newPersonFields.classList.add('hidden');
-                
-                // Clear new person fields when switching back to existing person
-                if (firstName) firstName.value = '';
-                if (lastName) lastName.value = '';
-                if (email) email.value = '';
-                
-                // Clear any error messages related to new person fields
-                const errorMessages = document.querySelectorAll('.text-red-500');
-                errorMessages.forEach(message => {
-                    if (message.textContent.includes('name') || message.textContent.includes('email')) {
-                        message.textContent = '';
-                    }
-                });
             }
         }
 
-        function toggleAppointorFields() {
-            const role = document.getElementById('role').value;
-            const appointorFields = document.getElementById('appointor_entity_fields');
-            
-            if (role === 'Appointor') {
-                appointorFields.classList.remove('hidden');
-                // Re-enable the radios so they are submitted
-                document.querySelectorAll('input[name="appointor_type"]').forEach(radio => radio.disabled = false);
-            } else {
-                appointorFields.classList.add('hidden');
-                // Clear and disable all appointor inputs so they are never submitted
-                document.querySelectorAll('input[name="appointor_type"]').forEach(radio => {
-                    radio.checked = false;
-                    radio.disabled = true;
-                });
-                document.getElementById('appointor_person_selection').classList.add('hidden');
-                document.getElementById('appointor_entity_selection').classList.add('hidden');
-                const personSelect = document.getElementById('appointor_person_id');
-                const entitySelect = document.getElementById('appointor_entity_id');
-                window.setSelectValue?.(personSelect, '');
-                window.setSelectDisabled?.(personSelect, true);
-                window.setSelectValue?.(entitySelect, '');
-                window.setSelectDisabled?.(entitySelect, true);
-            }
-        }
-
-        function toggleAppointorTypeFields() {
-            const appointorType = document.querySelector('input[name="appointor_type"]:checked')?.value;
-            const personSelection = document.getElementById('appointor_person_selection');
-            const entitySelection = document.getElementById('appointor_entity_selection');
-            const personSelect = document.getElementById('appointor_person_id');
-            const entitySelect = document.getElementById('appointor_entity_id');
-            
-            if (appointorType === 'person') {
-                personSelection.classList.remove('hidden');
-                entitySelection.classList.add('hidden');
-                window.setSelectDisabled?.(personSelect, false);
-                window.setSelectDisabled?.(entitySelect, true);
-                window.setSelectValue?.(entitySelect, '');
-                window.reinitTomSelect?.(personSelect);
-            } else if (appointorType === 'entity') {
-                personSelection.classList.add('hidden');
-                entitySelection.classList.remove('hidden');
-                window.setSelectDisabled?.(personSelect, true);
-                window.setSelectDisabled?.(entitySelect, false);
-                window.setSelectValue?.(personSelect, '');
-                window.reinitTomSelect?.(entitySelect);
-            } else {
-                personSelection.classList.add('hidden');
-                entitySelection.classList.add('hidden');
-                window.setSelectDisabled?.(personSelect, true);
-                window.setSelectDisabled?.(entitySelect, true);
-                window.setSelectValue?.(personSelect, '');
-                window.setSelectValue?.(entitySelect, '');
-            }
-        }
-
-        // Set default date to today if not set
         document.addEventListener('DOMContentLoaded', function() {
             const appointmentDate = document.getElementById('appointment_date');
             if (!appointmentDate.value) {
                 appointmentDate.value = new Date().toISOString().split('T')[0];
             }
-            
-            // Initialize appointor fields
-            toggleAppointorFields();
+
+            toggleRoleFields();
+
+            if (document.getElementById('create_new_person')?.checked) {
+                togglePersonFields(document.getElementById('create_new_person'));
+            }
         });
     </script>
 </x-app-layout>
