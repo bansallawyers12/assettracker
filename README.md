@@ -67,7 +67,7 @@ A comprehensive Laravel-based asset management and accounting system designed fo
 ## 🏗️ Architecture
 
 ### Technology Stack
-- **Backend**: Laravel 12 (PHP 8.2+)
+- **Backend**: Laravel 13 (PHP 8.3+)
 - **Frontend**: Blade templates with Tailwind CSS
 - **Database**: PostgreSQL with comprehensive migrations
 
@@ -105,7 +105,7 @@ A comprehensive Laravel-based asset management and accounting system designed fo
 
 ## 📋 Requirements
 
-- PHP 8.2 or higher
+- PHP 8.3 or higher
 - Composer 2.0 or higher
 - Node.js 18+ and npm
 - PostgreSQL 13+

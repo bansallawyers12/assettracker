@@ -240,7 +240,7 @@
                  
                  <div>
                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Message:</label>
-                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                     <div class="p-3 bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-gray-100 whitespace-pre-wrap">
                          <span id="preview-message"></span>
                      </div>
                  </div>
@@ -341,6 +341,11 @@
                 
                 if (bccEmail && !validateMultipleEmails(bccEmail)) {
                     alert('Please enter valid email addresses in the BCC field. Separate multiple emails with commas.');
+                    return false;
+                }
+
+                if (window.isRichTextEmpty?.('message')) {
+                    alert('Please enter a message.');
                     return false;
                 }
                 

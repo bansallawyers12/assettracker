@@ -1051,6 +1051,11 @@
                 composeEmailForm.addEventListener('submit', function (e) {
                     e.preventDefault();
 
+                    if (window.isRichTextEmpty?.('message')) {
+                        alert('Please enter a message.');
+                        return;
+                    }
+
                     const formData = new FormData(this);
                     formData.set('message', window.getRichTextContent?.('message') ?? (document.getElementById('message')?.value ?? ''));
 

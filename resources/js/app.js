@@ -28,7 +28,7 @@ let richTextModulePromise = null;
 
 function loadRichTextModule() {
     if (!richTextModulePromise) {
-        richTextModulePromise = import('./tinymce-init.js');
+        richTextModulePromise = import('./tiptap-init.js');
     }
 
     return richTextModulePromise;
@@ -36,6 +36,7 @@ function loadRichTextModule() {
 
 function exposeRichTextHelpers(module) {
     window.getRichTextContent = module.getRichTextContent;
+    window.isRichTextEmpty = module.isRichTextEmpty;
     window.setRichTextContent = module.setRichTextContent;
     window.destroyRichTextEditor = module.destroyRichTextEditor;
     window.initRichTextEditor = module.initRichTextEditor;

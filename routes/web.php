@@ -36,8 +36,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Gated phpinfo — use when the host sends all requests through Laravel (public/phpinfo.php may 404).
-// URL: /phpinfo?token=... matching PHPINFO_ACCESS_TOKEN in .env. Remove or leave token empty when done.
+// Gated phpinfo (dev only) — /phpinfo?token=... matching PHPINFO_ACCESS_TOKEN in .env. Leave token unset in production.
 Route::get('/phpinfo', function (Request $request) {
     $expected = (string) config('app.phpinfo_access_token', '');
     $token = $request->query('token', '');

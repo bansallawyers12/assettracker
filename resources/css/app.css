@@ -193,6 +193,73 @@
     background: rgb(55 65 81);
 }
 
+/* Tiptap rich text editor */
+.rich-text-editor .ProseMirror {
+    min-height: inherit;
+    padding: 0.75rem;
+    outline: none;
+    color: rgb(17 24 39);
+    font-size: 0.875rem;
+    line-height: 1.5;
+}
+
+.rich-text-editor .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    height: 0;
+    pointer-events: none;
+    color: rgb(156 163 175);
+}
+
+.rich-text-editor .ProseMirror ul,
+.rich-text-editor .ProseMirror ol {
+    margin: 0.5rem 0;
+    padding-left: 1.5rem;
+}
+
+.rich-text-editor .ProseMirror ul {
+    list-style: disc;
+}
+
+.rich-text-editor .ProseMirror ol {
+    list-style: decimal;
+}
+
+.rich-text-editor .ProseMirror h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0.75rem 0 0.5rem;
+}
+
+.rich-text-editor .ProseMirror h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0.75rem 0 0.5rem;
+}
+
+.rich-text-editor .ProseMirror h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin: 0.5rem 0 0.25rem;
+}
+
+.rich-text-editor .ProseMirror a {
+    color: rgb(79 70 229);
+    text-decoration: underline;
+}
+
+.dark .rich-text-editor .ProseMirror {
+    color: white;
+}
+
+.dark .rich-text-editor .ProseMirror p.is-editor-empty:first-child::before {
+    color: rgb(156 163 175);
+}
+
+.dark .rich-text-editor .ProseMirror a {
+    color: rgb(165 180 252);
+}
+
 /* ── Financial report print styles ─────────────────────────────── */
 @media print {
     /* Hide nav, toolbar, filter bar */
