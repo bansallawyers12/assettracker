@@ -8,6 +8,7 @@ use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
+use App\Models\BusinessEntityBankAccount;
 use App\Models\Document;
 use App\Models\EmailTemplate;
 use App\Models\EntityPerson;
@@ -357,18 +358,30 @@ class BusinessEntityController extends Controller
 
         $assets = $businessEntity->assets;
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
-        $bankAccounts = $businessEntity->bankAccounts()
-            ->whereIn('account_purpose', BankAccount::ENTITY_OPERATING_PURPOSES)
+        $bankAccounts = BankAccount::query()
+            ->whereIn('id', $businessEntity->bankAccountLinks()
+                ->whereIn('purpose', BankAccount::ENTITY_OPERATING_PURPOSES)
+                ->pluck('bank_account_id'))
             ->with(['bankStatementEntries.transaction'])
             ->get();
-        $entityBankAccounts = $businessEntity->bankAccounts()
-            ->with(['holderEntity', 'holderPerson', 'businessEntity'])
-            ->orderBy('account_name')
+        $entityBankAccountLinks = $businessEntity->bankAccountLinks()
+            ->with(['bankAccount.holderEntity', 'bankAccount.holderPerson', 'bankAccount.businessEntity'])
+            ->orderBy(
+                BankAccount::query()
+                    ->select('account_name')
+                    ->whereColumn('bank_accounts.id', 'business_entity_bank_account.bank_account_id')
+                    ->limit(1)
+            )
             ->get();
-        $entityBankAccountGroups = BankAccount::groupedByHolder($entityBankAccounts, $businessEntity->id);
+        $entityBankAccountGroups = BankAccount::groupedLinksByHolder($entityBankAccountLinks, $businessEntity->id);
         $portfolioBankAccounts = BankAccount::query()
             ->visibleInPortfolio()
-            ->with(['businessEntity', 'holderEntity', 'holderPerson'])
+            ->with([
+                'businessEntity',
+                'holderEntity',
+                'holderPerson',
+                'entityPurposeLinks' => fn ($q) => $q->where('business_entity_id', $businessEntity->id),
+            ])
             ->orderBy('account_name')
             ->get();
         $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument'])->orderBy('date', 'desc')->get();
@@ -400,7 +413,7 @@ class BusinessEntityController extends Controller
             'assets',
             'persons',
             'bankAccounts',
-            'entityBankAccounts',
+            'entityBankAccountLinks',
             'entityBankAccountGroups',
             'portfolioBankAccounts',
             'transactions',
@@ -1229,14 +1242,14 @@ class BusinessEntityController extends Controller
             ->select('id', 'account_name', 'bank_name', 'bsb', 'account_purpose', 'business_entity_id');
 
         if ($purpose === BankAccount::PURPOSE_LOAN || $purpose === BankAccount::PURPOSE_LOAN_REPAYMENT) {
-            // Loan asset picker — entity loan accounts plus legacy portfolio lender accounts
             $query->forLoanAssetLinkPicker($businessEntity);
         } else {
-            $query->where('business_entity_id', $businessEntity->id);
+            $accountIds = BusinessEntityBankAccount::query()
+                ->where('business_entity_id', $businessEntity->id)
+                ->when($purpose, fn ($q) => $q->where('purpose', $purpose))
+                ->pluck('bank_account_id');
 
-            if ($purpose) {
-                $query->where('account_purpose', $purpose);
-            }
+            $query->whereIn('id', $accountIds);
         }
 
         return response()->json(
@@ -1440,17 +1453,22 @@ class BusinessEntityController extends Controller
         // Validate bank account details
         $validated = $request->validate($this->entityBankAccountValidationRules());
 
-        $businessEntity->bankAccounts()->create(
+        $bankAccount = $businessEntity->bankAccounts()->create(
             $this->bankAccountAttributesFromRequest($validated, $businessEntity)
         );
 
-        // Redirect back to the entity show page (likely bank accounts tab) with success message
+        BusinessEntityBankAccount::create([
+            'business_entity_id' => $businessEntity->id,
+            'bank_account_id' => $bankAccount->id,
+            'purpose' => $validated['account_purpose'],
+        ]);
+
         return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
             ->with('success', 'Bank account added successfully!');
     }
 
     /**
-     * Link an existing portfolio account to this business entity (or move from another entity).
+     * Attach an existing portfolio account to this entity with a purpose (same account may have multiple purposes).
      *
      * @return RedirectResponse
      */
@@ -1463,49 +1481,64 @@ class BusinessEntityController extends Controller
         $validated = $request->validate([
             'bank_account_id' => 'required|integer|exists:bank_accounts,id',
             'account_purpose' => ['required', Rule::in(BankAccount::ENTITY_PURPOSES)],
-            'confirm_move' => 'sometimes|boolean',
         ]);
 
         $bankAccount = BankAccount::query()
             ->visibleInPortfolio()
-            ->with('businessEntity')
             ->find($validated['bank_account_id']);
 
         if ($bankAccount === null || ! $bankAccount->isAccessibleByCurrentUser()) {
             abort(403, 'Unauthorized action.');
         }
 
-        if (! $bankAccount->canBeAttachedToEntity($businessEntity)) {
+        $purpose = $validated['account_purpose'];
+
+        if (! $bankAccount->canAttachPurposeToEntity($businessEntity, $purpose)) {
+            if (! $bankAccount->canReceiveEntityPurposeLinks()) {
+                return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
+                    ->with('error', 'Portfolio lender accounts cannot be attached to an entity.');
+            }
+
             return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
-                ->with('error', 'This account cannot be attached to an entity.');
+                ->with('error', 'This account already has purpose '.BankAccount::purposeLabel($purpose).' on this entity.');
         }
 
-        $alreadyOnEntity = (int) $bankAccount->business_entity_id === (int) $businessEntity->id;
-        $previousEntity = $alreadyOnEntity ? null : $bankAccount->businessEntity;
-
-        if ($bankAccount->requiresMoveToAttachToEntity($businessEntity) && ! $request->boolean('confirm_move')) {
-            return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
-                ->withInput()
-                ->with('assign_bank_account_id', $bankAccount->id)
-                ->with('error', 'This account is on '.$previousEntity->legal_name.'. Open Add Account and confirm the move.');
-        }
-
-        $bankAccount->update([
+        BusinessEntityBankAccount::create([
             'business_entity_id' => $businessEntity->id,
-            'account_purpose' => $validated['account_purpose'],
-            'user_id' => $businessEntity->user_id ?? auth()->id(),
+            'bank_account_id' => $bankAccount->id,
+            'purpose' => $purpose,
         ]);
 
-        if ($alreadyOnEntity) {
-            $message = 'Bank account purpose updated.';
-        } elseif ($previousEntity) {
-            $message = 'Bank account moved from '.$previousEntity->legal_name.' and attached with purpose '.BankAccount::purposeLabel($validated['account_purpose']).'.';
-        } else {
-            $message = 'Bank account attached with purpose '.BankAccount::purposeLabel($validated['account_purpose']).'.';
+        if ($bankAccount->business_entity_id === null) {
+            $bankAccount->update([
+                'business_entity_id' => $businessEntity->id,
+                'user_id' => $businessEntity->user_id ?? auth()->id(),
+            ]);
         }
 
         return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
-            ->with('success', $message);
+            ->with('success', 'Bank account attached as '.BankAccount::purposeLabel($purpose).'.');
+    }
+
+    /**
+     * Remove one entity purpose link (does not delete the underlying bank account).
+     *
+     * @return RedirectResponse
+     */
+    public function detachBankAccountLink(BusinessEntity $businessEntity, BusinessEntityBankAccount $bankAccountLink)
+    {
+        $this->authorize('update', $businessEntity);
+
+        $this->ensureOperationalForAccounting($businessEntity);
+
+        if ((int) $bankAccountLink->business_entity_id !== (int) $businessEntity->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $bankAccountLink->delete();
+
+        return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
+            ->with('success', 'Bank account purpose removed from this entity.');
     }
 
     /**
@@ -1519,9 +1552,7 @@ class BusinessEntityController extends Controller
 
         $this->ensureOperationalForAccounting($businessEntity);
 
-        if ($bankAccount->business_entity_id !== $businessEntity->id) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->ensureBankAccountAccessibleOnEntity($businessEntity, $bankAccount);
 
         $bankAccount->load(['holderEntity', 'holderPerson']);
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
@@ -1543,19 +1574,20 @@ class BusinessEntityController extends Controller
 
         $this->ensureOperationalForAccounting($businessEntity);
 
-        // Authorization check
-        if ($bankAccount->business_entity_id !== $businessEntity->id) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->ensureBankAccountAccessibleOnEntity($businessEntity, $bankAccount);
 
         $this->mergeBankNameFromRequest($request);
 
         // Validate the updated bank account details
         $validated = $request->validate($this->entityBankAccountValidationRules());
 
-        $bankAccount->update(
-            $this->bankAccountAttributesFromRequest($validated, $businessEntity)
-        );
+        $attributes = $this->bankAccountAttributesFromRequest($validated, $businessEntity);
+        if ($bankAccount->business_entity_id !== null
+            && (int) $bankAccount->business_entity_id !== (int) $businessEntity->id) {
+            unset($attributes['business_entity_id']);
+        }
+
+        $bankAccount->update($attributes);
 
         // Redirect back to the entity show page (bank accounts tab) with success message
         return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
@@ -2525,6 +2557,19 @@ class BusinessEntityController extends Controller
     private function ensureBankAccountOwnedByUser(BankAccount $bankAccount): void
     {
         if ($bankAccount->isAccessibleByCurrentUser()) {
+            return;
+        }
+
+        abort(403, 'Unauthorized action.');
+    }
+
+    private function ensureBankAccountAccessibleOnEntity(BusinessEntity $businessEntity, BankAccount $bankAccount): void
+    {
+        if ((int) $bankAccount->business_entity_id === (int) $businessEntity->id) {
+            return;
+        }
+
+        if ($businessEntity->bankAccountLinks()->where('bank_account_id', $bankAccount->id)->exists()) {
             return;
         }
 

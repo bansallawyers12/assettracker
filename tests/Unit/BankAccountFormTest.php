@@ -104,20 +104,17 @@ class BankAccountFormTest extends TestCase
             'account_purpose' => BankAccount::PURPOSE_GENERAL,
         ]);
 
-        $this->assertTrue($account->canBeAttachedToEntity($entity));
+        $this->assertTrue($account->canReceiveEntityPurposeLinks());
     }
 
-    public function test_can_attach_account_already_on_entity_to_update_purpose(): void
+    public function test_can_attach_different_purpose_on_same_entity_when_not_yet_linked(): void
     {
         $entity = new \App\Models\BusinessEntity;
         $entity->id = 3;
-        $account = new BankAccount([
-            'business_entity_id' => 3,
-            'account_purpose' => BankAccount::PURPOSE_GENERAL,
-        ]);
+        $account = new BankAccount(['id' => 1]);
+        $account->setRelation('entityPurposeLinks', collect());
 
-        $this->assertTrue($account->canBeAttachedToEntity($entity));
-        $this->assertFalse($account->requiresMoveToAttachToEntity($entity));
+        $this->assertTrue($account->canAttachPurposeToEntity($entity, BankAccount::PURPOSE_LOAN));
     }
 
     public function test_cannot_attach_portfolio_loan_repayment_lender_account(): void
@@ -129,7 +126,7 @@ class BankAccountFormTest extends TestCase
             'account_purpose' => BankAccount::PURPOSE_LOAN_REPAYMENT,
         ]);
 
-        $this->assertFalse($account->canBeAttachedToEntity($entity));
+        $this->assertFalse($account->canReceiveEntityPurposeLinks());
     }
 
     public function test_can_attach_account_from_another_entity_with_move(): void
@@ -141,8 +138,7 @@ class BankAccountFormTest extends TestCase
             'account_purpose' => BankAccount::PURPOSE_LOAN,
         ]);
 
-        $this->assertTrue($account->canBeAttachedToEntity($entity));
-        $this->assertTrue($account->requiresMoveToAttachToEntity($entity));
+        $this->assertTrue($account->canReceiveEntityPurposeLinks());
     }
 
     public function test_assign_picker_scope_label_for_unassigned_account(): void

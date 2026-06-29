@@ -835,6 +835,8 @@
                                         'holderGroups' => $entityBankAccountGroups ?? [],
                                         'showScope' => false,
                                         'useAddAccountModal' => true,
+                                        'useEntityLinks' => true,
+                                        'linkBusinessEntity' => $businessEntity,
                                         'emptyMessage' => 'No bank accounts for this entity yet.',
                                     ])
 
@@ -866,12 +868,14 @@
                                                     <div class="flex gap-2 items-start">
                                                         <x-tom-select id="bank_account_id" name="bank_account_id" class="flex-1 mt-1 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                                                             <option value="">Choose a bank account...</option>
-                                                            @foreach($businessEntity->bankAccounts->whereIn('account_purpose', BankAccount::ENTITY_OPERATING_PURPOSES) as $bankAccount)
-                                                                <option value="{{ $bankAccount->id }}">{{ $bankAccount->account_name }} — {{ BankAccount::formatBsb($bankAccount->bsb) }}</option>
+                                                            @foreach(($entityBankAccountLinks ?? collect())->filter(fn ($link) => in_array($link->purpose, BankAccount::ENTITY_OPERATING_PURPOSES, true)) as $link)
+                                                                <option value="{{ $link->bank_account_id }}">
+                                                                    {{ $link->bankAccount->account_name }} — {{ BankAccount::purposeLabel($link->purpose) }} ({{ BankAccount::formatBsb($link->bankAccount->bsb) }})
+                                                                </option>
                                                             @endforeach
                                                         </x-tom-select>
                                                         @include('bank-accounts.partials.account-link-actions', [
-                                                            'associateUrl' => route('business-entities.bank-accounts.create', $businessEntity) . '?purpose=general',
+                                                            'associateModal' => true,
                                                             'associateTitle' => 'Add bank account',
                                                         ])
                                                     </div>

@@ -5,9 +5,9 @@
     $defaultCreateUrl = route('business-entities.bank-accounts.create', $businessEntity);
     $pendingAssignId = session('assign_bank_account_id');
     $defaultPurpose = old('account_purpose', BankAccount::PURPOSE_GENERAL);
-    $selectableCount = $portfolioBankAccounts->filter(
-        fn (BankAccount $account) => $account->canBeAttachedToEntity($businessEntity)
-    )->count();
+    $attachableAccounts = $portfolioBankAccounts->filter(
+        fn (BankAccount $account) => $account->canReceiveEntityPurposeLinks()
+    );
 @endphp
 
 <x-modal name="add-bank-account" maxWidth="lg" focusable>
@@ -16,7 +16,8 @@
             Add bank account
         </h3>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Choose an existing account from your portfolio and set its purpose for {{ $businessEntity->legal_name }}, or create a new one.
+            Link an existing account to {{ $businessEntity->legal_name }} with a purpose.
+            The same account can have multiple purposes here and on other entities.
         </p>
 
         @if($portfolioBankAccounts->isNotEmpty())
@@ -41,15 +42,13 @@
                         <option value="">Select account…</option>
                         @foreach($portfolioBankAccounts as $account)
                             @php
-                                $canAttach = $account->canBeAttachedToEntity($businessEntity);
-                                $needsMove = $canAttach && $account->requiresMoveToAttachToEntity($businessEntity);
+                                $canReceive = $account->canReceiveEntityPurposeLinks();
+                                $purposesOnEntity = $account->purposesOnEntity($businessEntity);
                             @endphp
                             <option
                                 value="{{ $account->id }}"
-                                data-can-attach="{{ $canAttach ? '1' : '0' }}"
-                                data-from-entity-id="{{ $needsMove ? $account->business_entity_id : '' }}"
-                                data-from-entity-name="{{ $needsMove ? ($account->businessEntity?->legal_name ?? '') : '' }}"
-                                data-current-purpose="{{ $account->account_purpose }}"
+                                data-can-receive="{{ $canReceive ? '1' : '0' }}"
+                                data-purposes-on-entity="{{ json_encode($purposesOnEntity) }}"
                                 @selected((string) old('bank_account_id', $pendingAssignId) === (string) $account->id)
                             >
                                 {{ $account->displayLabel() }} — {{ $account->assignPickerScopeLabel($businessEntity) }}
@@ -64,7 +63,7 @@
 
                 <div>
                     <label for="attach_account_purpose" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Purpose for this entity
+                        Purpose on this entity
                     </label>
                     <select
                         name="account_purpose"
@@ -81,25 +80,16 @@
                     @error('account_purpose')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Example: the same account can be loan repayment for one entity and rent receiving for another.
+                    </p>
                 </div>
 
-                @if($selectableCount === 0)
+                @if($attachableAccounts->isEmpty())
                     <p class="text-sm text-gray-500 dark:text-gray-400">
-                        No attachable accounts in the portfolio (portfolio lender accounts cannot be attached to an entity).
+                        No attachable accounts (portfolio lender accounts cannot be linked to entities).
                     </p>
                 @endif
-
-                <div id="move-confirm-panel" class="hidden rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-                    <p>
-                        This account is currently on <strong id="move-from-entity-name"></strong>.
-                        It will be moved to this entity with the purpose you selected.
-                    </p>
-                    <label class="mt-2 flex items-start gap-2">
-                        <input type="checkbox" id="confirm_move_checkbox" class="mt-0.5 rounded border-gray-300">
-                        <span>I confirm moving this account to {{ $businessEntity->legal_name }}</span>
-                    </label>
-                </div>
-                <input type="hidden" name="confirm_move" id="confirm_move_field" value="0">
 
                 <div class="flex flex-wrap gap-2">
                     <button
@@ -149,40 +139,41 @@
 <script>
 (function () {
     const defaultCreateUrl = @json($defaultCreateUrl);
-    const selectableCount = @json($selectableCount);
     const selectEl = document.getElementById('link_bank_account_id');
     const purposeEl = document.getElementById('attach_account_purpose');
     const createLink = document.getElementById('create-new-bank-account-link');
-    const movePanel = document.getElementById('move-confirm-panel');
-    const moveNameEl = document.getElementById('move-from-entity-name');
-    const confirmCheckbox = document.getElementById('confirm_move_checkbox');
-    const confirmField = document.getElementById('confirm_move_field');
     const submitBtn = document.getElementById('link-account-submit');
     const form = document.getElementById('assign-bank-account-form');
     const selectionError = document.getElementById('link-account-selection-error');
 
     function selectedOption() {
-        if (!selectEl) {
-            return null;
+        return selectEl?.options[selectEl.selectedIndex] ?? null;
+    }
+
+    function purposesOnEntity(opt) {
+        if (!opt?.dataset.purposesOnEntity) {
+            return [];
         }
 
-        return selectEl.options[selectEl.selectedIndex] ?? null;
+        try {
+            return JSON.parse(opt.dataset.purposesOnEntity);
+        } catch {
+            return [];
+        }
     }
 
-    function isAttachableSelection(opt) {
-        return Boolean(opt && opt.value !== '' && opt.dataset.canAttach === '1');
-    }
-
-    function syncPurposeFromSelection() {
+    function isValidAttachSelection() {
         const opt = selectedOption();
-        if (!purposeEl || !opt?.dataset.currentPurpose) {
-            return;
+        if (!opt?.value || opt.dataset.canReceive !== '1') {
+            return false;
         }
 
-        const purpose = opt.dataset.currentPurpose;
-        if (Array.from(purposeEl.options).some((o) => o.value === purpose)) {
-            purposeEl.value = purpose;
+        const purpose = purposeEl?.value;
+        if (!purpose) {
+            return false;
         }
+
+        return !purposesOnEntity(opt).includes(purpose);
     }
 
     function refreshAttachForm() {
@@ -190,34 +181,23 @@
             return;
         }
 
-        const opt = selectedOption();
-        const attachable = isAttachableSelection(opt);
-        const fromEntityId = attachable ? (opt?.dataset.fromEntityId ?? '') : '';
-        const needsConfirm = fromEntityId !== '';
-
-        if (movePanel) {
-            movePanel.classList.toggle('hidden', !needsConfirm);
-        }
-
-        if (needsConfirm && moveNameEl) {
-            moveNameEl.textContent = opt.dataset.fromEntityName || 'another entity';
-        }
-
-        if (confirmCheckbox && confirmField) {
-            if (!needsConfirm) {
-                confirmCheckbox.checked = false;
-                confirmField.value = '0';
-            }
-        }
+        const valid = isValidAttachSelection();
 
         if (selectionError) {
             selectionError.classList.add('hidden');
             selectionError.textContent = '';
         }
 
-        submitBtn.disabled = selectableCount === 0
-            || !attachable
-            || (needsConfirm && !confirmCheckbox?.checked);
+        submitBtn.disabled = !valid;
+    }
+
+    function showSelectionError(message) {
+        if (!selectionError) {
+            return;
+        }
+
+        selectionError.textContent = message;
+        selectionError.classList.remove('hidden');
     }
 
     window.addEventListener('open-add-bank-account', (event) => {
@@ -232,52 +212,41 @@
     document.querySelectorAll('[data-open-add-bank-account]').forEach((trigger) => {
         trigger.addEventListener('click', () => {
             window.dispatchEvent(new CustomEvent('open-add-bank-account', {
-                detail: {
-                    createUrl: trigger.dataset.createUrl || null,
-                },
+                detail: { createUrl: trigger.dataset.createUrl || null },
             }));
         });
     });
 
-    selectEl?.addEventListener('change', () => {
-        syncPurposeFromSelection();
-        refreshAttachForm();
-    });
-    confirmCheckbox?.addEventListener('change', () => {
-        confirmField.value = confirmCheckbox.checked ? '1' : '0';
-        refreshAttachForm();
-    });
+    selectEl?.addEventListener('change', refreshAttachForm);
+    purposeEl?.addEventListener('change', refreshAttachForm);
 
     form?.addEventListener('submit', (event) => {
         const opt = selectedOption();
 
-        if (!isAttachableSelection(opt)) {
+        if (!opt?.value) {
             event.preventDefault();
-            if (selectionError) {
-                selectionError.textContent = opt?.value
-                    ? 'This account cannot be attached to this entity.'
-                    : 'Select an account to attach.';
-                selectionError.classList.remove('hidden');
-            }
+            showSelectionError('Select an account to attach.');
 
             return;
         }
 
-        const fromEntityId = opt.dataset.fromEntityId ?? '';
-
-        if (fromEntityId !== '' && !confirmCheckbox?.checked) {
+        if (opt.dataset.canReceive !== '1') {
             event.preventDefault();
-            movePanel?.classList.remove('hidden');
+            showSelectionError('Portfolio lender accounts cannot be attached to an entity.');
+
+            return;
+        }
+
+        if (purposesOnEntity(opt).includes(purposeEl?.value)) {
+            event.preventDefault();
+            showSelectionError('This account already has that purpose on this entity. Choose a different purpose.');
+
+            return;
         }
     });
 
-    @if($selectableCount === 0 && $portfolioBankAccounts->isNotEmpty())
-        submitBtn?.setAttribute('data-no-selectable', 'true');
-    @endif
-
     @if($pendingAssignId || old('bank_account_id'))
         document.addEventListener('DOMContentLoaded', () => {
-            syncPurposeFromSelection();
             window.dispatchEvent(new CustomEvent('open-modal', { detail: 'add-bank-account' }));
             refreshAttachForm();
         });

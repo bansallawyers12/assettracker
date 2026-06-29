@@ -5,6 +5,8 @@
     $showScope = $showScope ?? true;
     $emptyMessage = $emptyMessage ?? 'No bank accounts yet.';
     $useAddAccountModal = $useAddAccountModal ?? false;
+    $useEntityLinks = $useEntityLinks ?? false;
+    $linkBusinessEntity = $linkBusinessEntity ?? null;
 @endphp
 
 @if(empty($holderGroups))
@@ -29,12 +31,17 @@
 @else
     <div class="space-y-4">
         @foreach($holderGroups as $group)
+            @php
+                $rowCount = $useEntityLinks
+                    ? ($group['entries'] ?? collect())->count()
+                    : ($group['accounts'] ?? collect())->count();
+            @endphp
             <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
                 <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800">
                     <div>
                         <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">{{ $group['label'] }}</h4>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
-                            {{ $group['accounts']->count() }} account{{ $group['accounts']->count() === 1 ? '' : 's' }}
+                            {{ $rowCount }} {{ $useEntityLinks ? 'link' : 'account' }}{{ $rowCount === 1 ? '' : 's' }}
                             @if($group['type'])
                                 · {{ BankAccount::holderTypeLabel($group['type']) }}
                             @endif
@@ -67,33 +74,75 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                            @foreach($group['accounts'] as $account)
-                                <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
-                                    <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
-                                        <div class="font-medium">{{ $account->account_name }}</div>
-                                        <div class="text-xs text-gray-500">{{ $account->bank_name }}</div>
-                                    </td>
-                                    <td class="px-4 py-3 text-sm">
-                                        @include('bank-accounts.partials.bsb-toggle-cell', ['account' => $account])
-                                    </td>
-                                    <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ BankAccount::purposeLabel($account->account_purpose) }}</td>
-                                    @if($showScope)
-                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                                            @if($account->isPortfolioWide())
-                                                Shared across portfolio
-                                            @else
-                                                {{ $account->businessEntity?->legal_name ?? '—' }}
-                                            @endif
+                            @if($useEntityLinks)
+                                @foreach($group['entries'] ?? [] as $entry)
+                                    @php
+                                        $account = $entry['account'];
+                                        $purpose = $entry['purpose'];
+                                        $link = $entry['link'];
+                                    @endphp
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
+                                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                                            <div class="font-medium">{{ $account->account_name }}</div>
+                                            <div class="text-xs text-gray-500">{{ $account->bank_name }}</div>
                                         </td>
-                                    @endif
-                                    <td class="px-4 py-3 text-right">
-                                        @include('bank-accounts.partials.account-link-actions', [
-                                            'editUrl' => $account->editRoute(),
-                                            'editTitle' => 'Edit account',
-                                        ])
-                                    </td>
-                                </tr>
-                            @endforeach
+                                        <td class="px-4 py-3 text-sm">
+                                            @include('bank-accounts.partials.bsb-toggle-cell', ['account' => $account])
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ BankAccount::purposeLabel($purpose) }}</td>
+                                        @if($showScope)
+                                            <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                                                @if($account->isPortfolioWide())
+                                                    Shared across portfolio
+                                                @else
+                                                    {{ $account->businessEntity?->legal_name ?? '—' }}
+                                                @endif
+                                            </td>
+                                        @endif
+                                        <td class="px-4 py-3 text-right">
+                                            @include('bank-accounts.partials.account-link-actions', [
+                                                'editUrl' => $linkBusinessEntity
+                                                    ? route('business-entities.bank-accounts.edit', [$linkBusinessEntity, $account])
+                                                    : $account->editRoute(),
+                                                'editTitle' => 'Edit account',
+                                                'unlinkUrl' => $linkBusinessEntity
+                                                    ? route('business-entities.bank-account-links.destroy', [$linkBusinessEntity, $link])
+                                                    : null,
+                                                'unlinkTitle' => 'Remove '.BankAccount::purposeLabel($purpose).' link',
+                                                'unlinkConfirm' => 'Remove '.BankAccount::purposeLabel($purpose).' for this account on this entity?',
+                                            ])
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            @else
+                                @foreach($group['accounts'] ?? [] as $account)
+                                    <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
+                                        <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
+                                            <div class="font-medium">{{ $account->account_name }}</div>
+                                            <div class="text-xs text-gray-500">{{ $account->bank_name }}</div>
+                                        </td>
+                                        <td class="px-4 py-3 text-sm">
+                                            @include('bank-accounts.partials.bsb-toggle-cell', ['account' => $account])
+                                        </td>
+                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ BankAccount::purposeLabel($account->account_purpose) }}</td>
+                                        @if($showScope)
+                                            <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                                                @if($account->isPortfolioWide())
+                                                    Shared across portfolio
+                                                @else
+                                                    {{ $account->businessEntity?->legal_name ?? '—' }}
+                                                @endif
+                                            </td>
+                                        @endif
+                                        <td class="px-4 py-3 text-right">
+                                            @include('bank-accounts.partials.account-link-actions', [
+                                                'editUrl' => $account->editRoute(),
+                                                'editTitle' => 'Edit account',
+                                            ])
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            @endif
                         </tbody>
                     </table>
                 </div>

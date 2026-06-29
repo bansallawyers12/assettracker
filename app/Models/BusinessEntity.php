@@ -175,6 +175,21 @@ class BusinessEntity extends Model
         return $this->hasMany(BankAccount::class);
     }
 
+    public function bankAccountLinks()
+    {
+        return $this->hasMany(BusinessEntityBankAccount::class);
+    }
+
+    /**
+     * Bank accounts linked to this entity with one or more purposes (via pivot).
+     */
+    public function linkedBankAccounts()
+    {
+        return $this->belongsToMany(BankAccount::class, 'business_entity_bank_account')
+            ->withPivot('purpose')
+            ->withTimestamps();
+    }
+
     public function heldBankAccounts()
     {
         return $this->hasMany(BankAccount::class, 'holder_entity_id')

@@ -196,6 +196,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     });
     Route::post('/business-entities/{businessEntity}/bank-accounts', [BusinessEntityController::class, 'storeBankAccount'])->name('business-entities.bank-accounts.store');
     Route::post('/business-entities/{businessEntity}/bank-accounts/assign', [BusinessEntityController::class, 'assignBankAccountToEntity'])->name('business-entities.bank-accounts.assign');
+    Route::delete('/business-entities/{businessEntity}/bank-account-links/{bankAccountLink}', [BusinessEntityController::class, 'detachBankAccountLink'])->name('business-entities.bank-account-links.destroy');
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/edit', [BusinessEntityController::class, 'editBankAccount'])->name('business-entities.bank-accounts.edit');
     Route::put('/business-entities/{businessEntity}/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'updateBankAccount'])->name('business-entities.bank-accounts.update');
 

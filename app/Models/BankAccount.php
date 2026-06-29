@@ -325,6 +325,58 @@ class BankAccount extends Model
     }
 
     /**
+     * Group entity–account purpose links by bank account holder.
+     *
+     * @param  Collection<int, BusinessEntityBankAccount>  $links
+     * @return list<array{key: string, label: string, type: string, holder_id: int|null, entries: Collection<int, array{link: BusinessEntityBankAccount, account: self, purpose: string}>, create_url: string}>
+     */
+    public static function groupedLinksByHolder(Collection $links, ?int $defaultBusinessEntityId = null): array
+    {
+        $groups = [];
+
+        foreach ($links as $link) {
+            $account = $link->bankAccount;
+            if ($account === null) {
+                continue;
+            }
+
+            $key = $account->holderGroupKey();
+            if (! isset($groups[$key])) {
+                $holderId = match ($account->holder_type) {
+                    self::HOLDER_ENTITY => $account->holder_entity_id,
+                    self::HOLDER_PERSON => $account->holder_person_id,
+                    default => null,
+                };
+
+                $groups[$key] = [
+                    'key' => $key,
+                    'label' => $account->holder_type ? $account->holderLabel() : 'Unassigned holder',
+                    'type' => $account->holder_type ?? '',
+                    'holder_id' => $holderId !== null ? (int) $holderId : null,
+                    'entries' => collect(),
+                    'create_url' => ($account->holder_type && $holderId > 0)
+                        ? self::createUrlForHolder(
+                            $account->holder_type,
+                            (int) $holderId,
+                            $defaultBusinessEntityId ?? $account->business_entity_id
+                        )
+                        : route('bank-accounts.create'),
+                ];
+            }
+
+            $groups[$key]['entries']->push([
+                'link' => $link,
+                'account' => $account,
+                'purpose' => $link->purpose,
+            ]);
+        }
+
+        uasort($groups, fn (array $a, array $b) => strnatcasecmp($a['label'], $b['label']));
+
+        return array_values($groups);
+    }
+
+    /**
      * Label shown in pickers and the portfolio index.
      * "Account Name — Holder (BSB)"
      */
@@ -361,16 +413,23 @@ class BankAccount extends Model
 
     public function canUseForBankImport(BusinessEntity $entity): bool
     {
-        return in_array($this->account_purpose, self::ENTITY_OPERATING_PURPOSES, true)
-            && (int) $this->business_entity_id === (int) $entity->id;
+        return BusinessEntityBankAccount::query()
+            ->where('business_entity_id', $entity->id)
+            ->where('bank_account_id', $this->id)
+            ->whereIn('purpose', self::ENTITY_OPERATING_PURPOSES)
+            ->exists();
     }
 
     public function canUseForTransaction(BusinessEntity $entity, ?int $userId = null): bool
     {
         $userId ??= auth()->id();
 
-        if ((int) $this->business_entity_id === (int) $entity->id) {
-            return in_array($this->account_purpose, self::ENTITY_OPERATING_PURPOSES, true);
+        if (BusinessEntityBankAccount::query()
+            ->where('business_entity_id', $entity->id)
+            ->where('bank_account_id', $this->id)
+            ->whereIn('purpose', self::ENTITY_OPERATING_PURPOSES)
+            ->exists()) {
+            return true;
         }
 
         return $this->isPortfolioWide()
@@ -467,7 +526,11 @@ class BankAccount extends Model
             $q->where(function (Builder $inner) use ($entity) {
                 $inner->where('account_purpose', self::PURPOSE_LOAN)
                     ->where('business_entity_id', $entity->id);
-            })->orWhere(function (Builder $inner) use ($userId) {
+            })->orWhereIn('id', BusinessEntityBankAccount::query()
+                ->where('business_entity_id', $entity->id)
+                ->where('purpose', self::PURPOSE_LOAN)
+                ->pluck('bank_account_id'))
+                ->orWhere(function (Builder $inner) use ($userId) {
                 $inner->where('account_purpose', self::PURPOSE_LOAN_REPAYMENT)
                     ->whereNull('business_entity_id')
                     ->where('user_id', $userId);
@@ -488,47 +551,110 @@ class BankAccount extends Model
     }
 
     /**
-     * Whether this account may be attached to the given entity (set purpose / scope).
-     * Portfolio-only lender accounts are excluded.
+     * Whether this portfolio lender account may receive entity purpose links at all.
      */
-    public function canBeAttachedToEntity(BusinessEntity $entity): bool
+    public function canReceiveEntityPurposeLinks(): bool
     {
-        if ($this->account_purpose === self::PURPOSE_LOAN_REPAYMENT && $this->isPortfolioWide()) {
+        return ! ($this->account_purpose === self::PURPOSE_LOAN_REPAYMENT && $this->isPortfolioWide());
+    }
+
+    /**
+     * Whether this account can be given an additional purpose on the entity.
+     */
+    public function canAttachPurposeToEntity(BusinessEntity $entity, string $purpose): bool
+    {
+        if (! in_array($purpose, self::ENTITY_PURPOSES, true)) {
             return false;
         }
 
-        return true;
+        if (! $this->canReceiveEntityPurposeLinks()) {
+            return false;
+        }
+
+        if ($this->relationLoaded('entityPurposeLinks')) {
+            return ! $this->entityPurposeLinks
+                ->where('business_entity_id', $entity->id)
+                ->contains(fn (BusinessEntityBankAccount $link) => $link->purpose === $purpose);
+        }
+
+        if ($this->id === null) {
+            return true;
+        }
+
+        return ! BusinessEntityBankAccount::query()
+            ->where('business_entity_id', $entity->id)
+            ->where('bank_account_id', $this->id)
+            ->where('purpose', $purpose)
+            ->exists();
     }
 
-    /** @deprecated Use canBeAttachedToEntity */
+    /**
+     * @return list<string>
+     */
+    public function purposesOnEntity(BusinessEntity $entity): array
+    {
+        if ($this->relationLoaded('entityPurposeLinks')) {
+            return $this->entityPurposeLinks
+                ->where('business_entity_id', $entity->id)
+                ->pluck('purpose')
+                ->values()
+                ->all();
+        }
+
+        if ($this->id === null) {
+            return [];
+        }
+
+        return BusinessEntityBankAccount::query()
+            ->where('business_entity_id', $entity->id)
+            ->where('bank_account_id', $this->id)
+            ->pluck('purpose')
+            ->all();
+    }
+
+    /** @deprecated Use canAttachPurposeToEntity */
+    public function canBeAttachedToEntity(BusinessEntity $entity): bool
+    {
+        return $this->canReceiveEntityPurposeLinks();
+    }
+
+    /** @deprecated Use canAttachPurposeToEntity */
     public function canBeLinkedToEntity(BusinessEntity $entity): bool
     {
         return $this->canBeAttachedToEntity($entity);
     }
 
-    /**
-     * Whether attaching to this entity requires moving the account from another entity.
-     */
-    public function requiresMoveToAttachToEntity(BusinessEntity $entity): bool
-    {
-        return $this->business_entity_id !== null
-            && (int) $this->business_entity_id !== (int) $entity->id;
-    }
-
-    /**
-     * Scope suffix for the entity assign-account picker (e.g. "on Entity X", "already on this entity").
-     */
     public function assignPickerScopeLabel(BusinessEntity $entity): string
     {
-        if ((int) $this->business_entity_id === (int) $entity->id) {
-            return 'on this entity · '.self::purposeLabel($this->account_purpose);
+        $purposes = $this->purposesOnEntity($entity);
+
+        if ($purposes !== []) {
+            $labels = array_map(fn (string $p) => self::purposeLabel($p), $purposes);
+
+            return 'on this entity · '.implode(', ', $labels);
         }
 
-        if ($this->business_entity_id) {
-            return 'on '.($this->businessEntity?->legal_name ?? 'another entity');
+        if ($this->id !== null) {
+            $otherLinks = BusinessEntityBankAccount::query()
+                ->with('businessEntity')
+                ->where('bank_account_id', $this->id)
+                ->where('business_entity_id', '!=', $entity->id)
+                ->get();
+
+            if ($otherLinks->isNotEmpty()) {
+                $parts = $otherLinks
+                    ->map(fn (BusinessEntityBankAccount $link) => ($link->businessEntity?->legal_name ?? 'Entity')
+                        .' ('.self::purposeLabel($link->purpose).')')
+                    ->unique()
+                    ->take(2)
+                    ->values()
+                    ->all();
+
+                return 'used on '.implode('; ', $parts);
+            }
         }
 
-        if ($this->account_purpose === self::PURPOSE_LOAN_REPAYMENT) {
+        if ($this->account_purpose === self::PURPOSE_LOAN_REPAYMENT && $this->isPortfolioWide()) {
             return 'portfolio lender';
         }
 
@@ -565,6 +691,18 @@ class BankAccount extends Model
     public function bankStatementEntries(): HasMany
     {
         return $this->hasMany(BankStatementEntry::class);
+    }
+
+    public function entityPurposeLinks(): HasMany
+    {
+        return $this->hasMany(BusinessEntityBankAccount::class);
+    }
+
+    public function businessEntities(): BelongsToMany
+    {
+        return $this->belongsToMany(BusinessEntity::class, 'business_entity_bank_account')
+            ->withPivot('purpose')
+            ->withTimestamps();
     }
 
     public function assets(): BelongsToMany
