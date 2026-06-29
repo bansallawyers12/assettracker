@@ -1,9 +1,12 @@
 @php
     use App\Models\BankAccount;
 
-    $linkableBankAccounts = $linkableBankAccounts ?? collect();
+    $portfolioBankAccounts = $portfolioBankAccounts ?? collect();
     $defaultCreateUrl = route('business-entities.bank-accounts.create', $businessEntity);
     $pendingAssignId = session('assign_bank_account_id');
+    $selectableCount = $portfolioBankAccounts->filter(
+        fn (BankAccount $account) => $account->canBeLinkedToEntity($businessEntity)
+    )->count();
 @endphp
 
 <x-modal name="add-bank-account" maxWidth="lg" focusable>
@@ -15,7 +18,7 @@
             Choose an existing account from your portfolio, or create a new one for {{ $businessEntity->legal_name }}.
         </p>
 
-        @if($linkableBankAccounts->isNotEmpty())
+        @if($portfolioBankAccounts->isNotEmpty())
             <form
                 method="POST"
                 action="{{ route('business-entities.bank-accounts.assign', $businessEntity) }}"
@@ -34,17 +37,26 @@
                     :allowEmpty="false"
                 >
                     <option value="">Select account…</option>
-                    @foreach($linkableBankAccounts as $account)
+                    @foreach($portfolioBankAccounts as $account)
                         @php
-                            $scopeLabel = $account->business_entity_id
-                                ? 'on '.$account->businessEntity?->legal_name
-                                : 'portfolio (unassigned)';
+                            $canLink = $account->canBeLinkedToEntity($businessEntity);
+                            $alreadyOnEntity = (int) $account->business_entity_id === (int) $businessEntity->id;
+
+                            if ($alreadyOnEntity) {
+                                $scopeLabel = 'already on this entity';
+                            } elseif ($account->business_entity_id) {
+                                $scopeLabel = 'on '.$account->businessEntity?->legal_name;
+                            } elseif ($account->account_purpose === BankAccount::PURPOSE_LOAN_REPAYMENT) {
+                                $scopeLabel = 'portfolio lender';
+                            } else {
+                                $scopeLabel = 'portfolio (unassigned)';
+                            }
                         @endphp
                         <option
                             value="{{ $account->id }}"
-                            data-holder-group-key="{{ $account->holderGroupKey() }}"
-                            data-from-entity-id="{{ $account->business_entity_id ?? '' }}"
-                            data-from-entity-name="{{ $account->businessEntity?->legal_name ?? '' }}"
+                            data-from-entity-id="{{ $canLink && $account->business_entity_id ? $account->business_entity_id : '' }}"
+                            data-from-entity-name="{{ $canLink ? ($account->businessEntity?->legal_name ?? '') : '' }}"
+                            @disabled(! $canLink)
                             @selected((string) old('bank_account_id', $pendingAssignId) === (string) $account->id)
                         >
                             {{ $account->displayLabel() }} — {{ $scopeLabel }}
@@ -54,6 +66,11 @@
                 @error('bank_account_id')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
+                @if($selectableCount === 0)
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        All portfolio accounts are already on this entity or cannot be linked here.
+                    </p>
+                @endif
 
                 <div id="move-confirm-panel" class="mt-3 hidden rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
                     <p>
@@ -71,6 +88,7 @@
                     <button
                         type="submit"
                         id="link-account-submit"
+                        @disabled($selectableCount === 0)
                         class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         Link account
@@ -95,7 +113,7 @@
             </div>
         @else
             <p class="mt-4 text-sm text-gray-500 dark:text-gray-400">
-                No other accounts in your portfolio to link yet.
+                No accounts in your portfolio yet.
             </p>
         @endif
 
@@ -123,41 +141,12 @@
     const submitBtn = document.getElementById('link-account-submit');
     const form = document.getElementById('assign-bank-account-form');
 
-    let holderGroupFilter = null;
-    let createUrlOverride = null;
-
     function selectedOption() {
         if (!selectEl) {
             return null;
         }
 
         return selectEl.options[selectEl.selectedIndex] ?? null;
-    }
-
-    function applyHolderFilter() {
-        if (!selectEl) {
-            return;
-        }
-
-        Array.from(selectEl.options).forEach((opt) => {
-            if (opt.value === '') {
-                opt.hidden = false;
-                opt.disabled = false;
-
-                return;
-            }
-
-            const matches = !holderGroupFilter || opt.dataset.holderGroupKey === holderGroupFilter;
-            opt.hidden = !matches;
-            opt.disabled = !matches;
-        });
-
-        window.rebuildTomSelectFromNative?.(selectEl);
-
-        const current = selectedOption();
-        if (current?.disabled) {
-            window.setSelectValue?.(selectEl, '');
-        }
     }
 
     function refreshMoveConfirm() {
@@ -167,7 +156,7 @@
 
         const opt = selectedOption();
         const fromEntityId = opt?.dataset.fromEntityId ?? '';
-        const needsConfirm = fromEntityId !== '';
+        const needsConfirm = fromEntityId !== '' && !opt?.disabled;
 
         movePanel.classList.toggle('hidden', !needsConfirm);
 
@@ -180,25 +169,17 @@
             confirmField.value = '0';
         }
 
-        submitBtn.disabled = needsConfirm && !confirmCheckbox.checked;
-    }
-
-    function updateCreateLink() {
-        if (!createLink) {
-            return;
-        }
-
-        createLink.href = createUrlOverride || defaultCreateUrl;
+        submitBtn.disabled = submitBtn.hasAttribute('data-no-selectable') || (needsConfirm && !confirmCheckbox.checked);
     }
 
     window.addEventListener('open-add-bank-account', (event) => {
-        holderGroupFilter = event.detail?.holderGroupKey || null;
-        createUrlOverride = event.detail?.createUrl || null;
+        if (createLink && event.detail?.createUrl) {
+            createLink.href = event.detail.createUrl;
+        } else if (createLink) {
+            createLink.href = defaultCreateUrl;
+        }
 
-        applyHolderFilter();
-        updateCreateLink();
         refreshMoveConfirm();
-
         window.dispatchEvent(new CustomEvent('open-modal', { detail: 'add-bank-account' }));
     });
 
@@ -206,7 +187,6 @@
         trigger.addEventListener('click', () => {
             window.dispatchEvent(new CustomEvent('open-add-bank-account', {
                 detail: {
-                    holderGroupKey: trigger.dataset.holderGroupKey || null,
                     createUrl: trigger.dataset.createUrl || null,
                 },
             }));
@@ -228,6 +208,10 @@
             movePanel?.classList.remove('hidden');
         }
     });
+
+    @if($selectableCount === 0 && $portfolioBankAccounts->isNotEmpty())
+        submitBtn?.setAttribute('data-no-selectable', 'true');
+    @endif
 
     @if($pendingAssignId || old('bank_account_id'))
         document.addEventListener('DOMContentLoaded', () => {

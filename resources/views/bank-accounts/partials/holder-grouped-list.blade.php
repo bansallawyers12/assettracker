@@ -43,7 +43,6 @@
                     @if($useAddAccountModal)
                         @include('bank-accounts.partials.account-link-actions', [
                             'associateModal' => true,
-                            'associateGroupKey' => $group['key'],
                             'associateCreateUrl' => $group['create_url'],
                             'associateTitle' => 'Add account for '.$group['label'],
                         ])

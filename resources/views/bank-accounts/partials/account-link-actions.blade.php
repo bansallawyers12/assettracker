@@ -10,7 +10,6 @@
         <button
             type="button"
             data-open-add-bank-account
-            data-holder-group-key="{{ $associateGroupKey ?? '' }}"
             data-create-url="{{ $associateCreateUrl ?? '' }}"
             title="{{ $associateTitle ?? 'Link account' }}"
             class="{{ $btnClass }} border-green-300 bg-green-50 text-green-700 hover:bg-green-100"

@@ -366,8 +366,8 @@ class BusinessEntityController extends Controller
             ->orderBy('account_name')
             ->get();
         $entityBankAccountGroups = BankAccount::groupedByHolder($entityBankAccounts, $businessEntity->id);
-        $linkableBankAccounts = BankAccount::query()
-            ->linkableToEntity($businessEntity)
+        $portfolioBankAccounts = BankAccount::query()
+            ->forUser((int) auth()->id())
             ->with(['businessEntity', 'holderEntity', 'holderPerson'])
             ->orderBy('account_name')
             ->get();
@@ -402,7 +402,7 @@ class BusinessEntityController extends Controller
             'bankAccounts',
             'entityBankAccounts',
             'entityBankAccountGroups',
-            'linkableBankAccounts',
+            'portfolioBankAccounts',
             'transactions',
             'invoices',
             'documentCategories',

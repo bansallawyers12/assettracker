@@ -840,7 +840,7 @@
 
                                     @include('bank-accounts.partials.add-account-modal', [
                                         'businessEntity' => $businessEntity,
-                                        'linkableBankAccounts' => $linkableBankAccounts ?? collect(),
+                                        'portfolioBankAccounts' => $portfolioBankAccounts ?? collect(),
                                     ])
                                 </div>
                             </div>
