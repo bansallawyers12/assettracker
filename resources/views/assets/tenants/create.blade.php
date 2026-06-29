@@ -61,14 +61,14 @@
 
                                 <div id="existing-company-section" class="{{ old('create_real_estate_company') ? 'hidden' : '' }}">
                                     <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Agencies are stored separately from your business entities.</p>
-                                    <select name="real_estate_company_id" id="real_estate_company_id" data-tomselect class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                                    <x-tom-select name="real_estate_company_id" id="real_estate_company_id" class="mt-1 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
                                         <option value="">Select an agency</option>
                                         @foreach ($realEstateCompanies as $realEstateCompany)
                                             <option value="{{ $realEstateCompany->id }}" {{ old('real_estate_company_id') == $realEstateCompany->id ? 'selected' : '' }}>
                                                 {{ $realEstateCompany->name }}
                                             </option>
                                         @endforeach
-                                    </select>
+                                    </x-tom-select>
                                     @error('real_estate_company_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </div>
 

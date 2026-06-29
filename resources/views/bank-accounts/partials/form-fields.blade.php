@@ -96,14 +96,14 @@
 @if($isPortfolio)
     <div class="mb-4" id="entity-picker">
         <label class="block text-sm font-medium text-gray-700">Business Entity</label>
-        <select name="business_entity_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md">
+        <x-tom-select name="business_entity_id" class="mt-1 rounded-md">
             <option value="">Select entity</option>
             @foreach($businessEntities ?? [] as $entity)
                 <option value="{{ $entity->id }}" @selected((string) old('business_entity_id', $bankAccountModel?->business_entity_id) === (string) $entity->id)>
                     {{ $entity->legal_name }}
                 </option>
             @endforeach
-        </select>
+        </x-tom-select>
         @error('business_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
         <p class="mt-1 text-xs text-gray-500">Optional for general and loan repayment accounts. Required for loan, loan repayment paying, offset, rent receiving, and rent paying accounts.</p>
     </div>
@@ -132,28 +132,28 @@
     {{-- Entity picker --}}
     <div class="mb-4 holder-section @if($currentHolderType !== BankAccount::HOLDER_ENTITY) hidden @endif" id="holder-entity-section">
         <label class="block text-sm font-medium text-gray-700">Entity Name</label>
-        <select name="holder_entity_id" id="holder_entity_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md">
+        <x-tom-select name="holder_entity_id" id="holder_entity_id" class="mt-1 rounded-md">
             <option value="">Select entity</option>
             @foreach($businessEntities ?? [] as $entity)
                 <option value="{{ $entity->id }}" @selected((string) $currentHolderEntityId === (string) $entity->id)>
                     {{ $entity->legal_name }}
                 </option>
             @endforeach
-        </select>
+        </x-tom-select>
         @error('holder_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
     </div>
 
     {{-- Person picker --}}
     <div class="mb-4 holder-section @if($currentHolderType !== BankAccount::HOLDER_PERSON) hidden @endif" id="holder-person-section">
         <label class="block text-sm font-medium text-gray-700">Person</label>
-        <select name="holder_person_id" id="holder_person_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md">
+        <x-tom-select name="holder_person_id" id="holder_person_id" class="mt-1 rounded-md">
             <option value="">Select person</option>
             @foreach($persons ?? [] as $person)
                 <option value="{{ $person->id }}" @selected((string) $currentHolderPersonId === (string) $person->id)>
                     {{ $person->displayName() }}
                 </option>
             @endforeach
-        </select>
+        </x-tom-select>
         @error('holder_person_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
         @if(($persons ?? collect())->isEmpty())
             <p class="mt-1 text-xs text-amber-600">No persons found. Add a person under an entity first (Persons tab on any business entity).</p>

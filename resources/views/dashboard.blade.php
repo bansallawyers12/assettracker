@@ -95,27 +95,25 @@
                         {{-- Business Entity --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Business Entity</label>
-                            <select name="business_entity_id" id="business_entity_id" data-tomselect
-                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
+                            <x-tom-select name="business_entity_id" id="business_entity_id" class="rounded-xl focus:ring-blue-500 focus:border-blue-500" required>
                                 <option value="">Select Entity</option>
                                 @foreach ($businessEntities as $entity)
                                     <option value="{{ $entity->id }}" {{ old('business_entity_id', session('transactionData.business_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
                                 @endforeach
-                            </select>
+                            </x-tom-select>
                             @error('business_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
                         {{-- Asset --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <select name="asset_id" id="transaction_asset_id" data-tomselect
-                                    class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                            <x-tom-select name="asset_id" id="transaction_asset_id" class="rounded-xl focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">None — entity only</option>
                                 @foreach ($assets as $asset)
                                     <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}"
                                         {{ (string) old('asset_id', session('transactionData.asset_id')) === (string) $asset->id ? 'selected' : '' }}>{{ $asset->name }}</option>
                                 @endforeach
-                            </select>
+                            </x-tom-select>
                             @error('asset_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
@@ -174,12 +172,12 @@
                         {{-- Related Entity (shown for related-party types) --}}
                         <div id="related_entity_field" style="display: none;">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Related Entity</label>
-                            <select name="related_entity_id" data-tomselect class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                            <x-tom-select name="related_entity_id" class="rounded-xl focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Select Related Entity</option>
                                 @foreach($businessEntities->sortBy('legal_name') as $entity)
                                     <option value="{{ $entity->id }}" {{ old('related_entity_id', session('transactionData.related_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
                                 @endforeach
-                            </select>
+                            </x-tom-select>
                             @error('related_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
@@ -399,7 +397,7 @@
                             </h3>
                             <div class="flex items-center gap-2">
                             <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="inline-flex text-xs font-semibold text-amber-700 dark:text-amber-300 hover:underline shrink-0">Full list</a>
-                            <button type="button" class="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors" onclick="document.getElementById('reminder-form').classList.toggle('hidden')">
+                            <button type="button" id="toggle-reminder-form" class="inline-flex items-center gap-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-900/30 dark:text-amber-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors">
                                 <x-lucide-plus class="w-3.5 h-3.5" />
                                 Add Reminder
                             </button>
@@ -412,22 +410,22 @@
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Business Entity</label>
-                                    <select name="business_entity_id" id="reminder_business_entity_id" data-tomselect class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm">
+                                    <x-tom-select name="business_entity_id" id="reminder_business_entity_id" class="rounded-xl focus:ring-amber-500 focus:border-amber-500">
                                         <option value="">Select Entity (Optional)</option>
                                         @foreach ($businessEntities as $entity)
                                             <option value="{{ $entity->id }}">{{ $entity->legal_name }}</option>
                                         @endforeach
-                                    </select>
+                                    </x-tom-select>
                                     @error('business_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset</label>
-                                    <select name="asset_id" id="reminder_asset_id" data-tomselect class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" disabled>
+                                    <x-tom-select name="asset_id" id="reminder_asset_id" class="rounded-xl focus:ring-amber-500 focus:border-amber-500" disabled>
                                         <option value="">Select Asset (Optional)</option>
                                         @foreach ($assets as $asset)
                                             <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}">{{ $asset->name }} ({{ $asset->asset_type }})</option>
                                         @endforeach
-                                    </select>
+                                    </x-tom-select>
                                     @error('asset_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div class="md:col-span-2">
@@ -780,9 +778,21 @@
             const relatedEntityField = document.getElementById('related_entity_field');
             const transactionAssetSelect = document.getElementById('transaction_asset_id');
 
+            function reinitTransactionTomSelects() {
+                window.reinitTomSelect?.(entitySelect);
+                window.reinitTomSelect?.(transactionAssetSelect);
+                const relatedSel = relatedEntityField?.querySelector('select');
+                window.reinitTomSelect?.(relatedSel);
+                window.reinitTomSelect?.(document.getElementById('paid_by_select'));
+            }
+
             if (transactionBtn && transactionSection) {
                 transactionBtn.addEventListener('click', () => {
+                    const wasHidden = transactionSection.classList.contains('hidden');
                     transactionSection.classList.toggle('hidden');
+                    if (wasHidden) {
+                        reinitTransactionTomSelects();
+                    }
                 });
             }
 
@@ -866,10 +876,30 @@
             })();
 
             @if (session('error') || session('transactionData'))
-                if (transactionSection) transactionSection.classList.remove('hidden');
+                if (transactionSection) {
+                    transactionSection.classList.remove('hidden');
+                    reinitTransactionTomSelects();
+                }
             @endif
 
             function initializeReminderLogic() {
+                const reminderForm = document.getElementById('reminder-form');
+                const reminderFormToggle = document.getElementById('toggle-reminder-form');
+
+                reminderFormToggle?.addEventListener('click', function() {
+                    if (!reminderForm) {
+                        return;
+                    }
+
+                    const wasHidden = reminderForm.classList.contains('hidden');
+                    reminderForm.classList.toggle('hidden');
+
+                    if (wasHidden) {
+                        window.reinitTomSelect?.(document.getElementById('reminder_business_entity_id'));
+                        window.reinitTomSelect?.(document.getElementById('reminder_asset_id'));
+                    }
+                });
+
                 const repeatTypeSelect = document.getElementById('repeat_type');
                 const repeatEndDateContainer = document.getElementById('repeat_end_date_container');
                 const entitySelect = document.getElementById('reminder_business_entity_id');

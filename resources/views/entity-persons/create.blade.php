@@ -52,12 +52,12 @@
                         <!-- Existing Person Selection -->
                         <div id="existing_person" class="mb-4">
                             <label for="person_id" class="block text-sm font-medium text-gray-700">{{$existingPersonLabel}}</label>
-                            <select name="person_id" id="person_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md">
+                            <x-tom-select name="person_id" id="person_id" class="mt-1 rounded-md">
                                 <option value="">{{$existingPersonDropDownLabel}}</option>
                                 @foreach ($persons as $person)
                                     <option value="{{ $person->id }}">{{ $person->first_name }} {{ $person->last_name }}</option>
                                 @endforeach
-                            </select>
+                            </x-tom-select>
                             @error('person_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
@@ -133,23 +133,23 @@
 
                                 <div id="appointor_person_selection" class="hidden">
                                     <label for="appointor_person_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Person</label>
-                                    <select name="appointor_person_id" id="appointor_person_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md" disabled>
+                                    <x-tom-select name="appointor_person_id" id="appointor_person_id" class="mt-1 rounded-md" disabled>
                                         <option value="">Select a person</option>
                                         @foreach ($persons as $person)
                                             <option value="{{ $person->id }}">{{ $person->first_name }} {{ $person->last_name }}</option>
                                         @endforeach
-                                    </select>
+                                    </x-tom-select>
                                     @error('appointor_person_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </div>
 
                                 <div id="appointor_entity_selection" class="hidden">
                                     <label for="appointor_entity_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Entity</label>
-                                    <select name="appointor_entity_id" id="appointor_entity_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md" disabled>
+                                    <x-tom-select name="appointor_entity_id" id="appointor_entity_id" class="mt-1 rounded-md" disabled>
                                         <option value="">Select an entity</option>
                                         @foreach ($businessEntities as $entity)
                                             <option value="{{ $entity->id }}">{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
                                         @endforeach
-                                    </select>
+                                    </x-tom-select>
                                     @error('appointor_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </div>
                             </div>
@@ -279,12 +279,14 @@
                 window.setSelectDisabled?.(personSelect, false);
                 window.setSelectDisabled?.(entitySelect, true);
                 window.setSelectValue?.(entitySelect, '');
+                window.reinitTomSelect?.(personSelect);
             } else if (appointorType === 'entity') {
                 personSelection.classList.add('hidden');
                 entitySelection.classList.remove('hidden');
                 window.setSelectDisabled?.(personSelect, true);
                 window.setSelectDisabled?.(entitySelect, false);
                 window.setSelectValue?.(personSelect, '');
+                window.reinitTomSelect?.(entitySelect);
             } else {
                 personSelection.classList.add('hidden');
                 entitySelection.classList.add('hidden');

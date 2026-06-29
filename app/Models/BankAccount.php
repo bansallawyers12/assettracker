@@ -513,4 +513,61 @@ class BankAccount extends Model
             ->withPivot('role')
             ->withTimestamps();
     }
+
+    /**
+     * Whether the given user may view sensitive fields (e.g. full account number).
+     *
+     * Matches portfolio index scoping (forUser) and entity/person pages where accounts
+     * are shown via business_entity_id or holder without a strict user_id match.
+     *
+     * @param  callable(BusinessEntity): bool|null  $canViewEntity
+     */
+    public function isAccessibleBy(int $userId, ?callable $canViewEntity = null): bool
+    {
+        if ((int) $this->user_id === $userId) {
+            return true;
+        }
+
+        if ($this->businessEntity && (int) $this->businessEntity->user_id === $userId) {
+            return true;
+        }
+
+        $canViewEntity ??= static fn (BusinessEntity $entity): bool => auth()->user()?->can('view', $entity) ?? false;
+
+        if ($this->business_entity_id !== null) {
+            $entity = $this->relationLoaded('businessEntity')
+                ? $this->businessEntity
+                : $this->businessEntity()->first();
+
+            if ($entity !== null && $canViewEntity($entity)) {
+                return true;
+            }
+        }
+
+        if ($this->holder_type === self::HOLDER_ENTITY && $this->holder_entity_id) {
+            $holder = $this->relationLoaded('holderEntity')
+                ? $this->holderEntity
+                : $this->holderEntity()->first();
+
+            if ($holder !== null && $canViewEntity($holder)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function isAccessibleByCurrentUser(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $this->isAccessibleBy(
+            (int) $user->id,
+            fn (BusinessEntity $entity): bool => $user->can('view', $entity)
+        );
+    }
 }

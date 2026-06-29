@@ -855,12 +855,12 @@
                                                 <div>
                                                     <label for="bank_account_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Bank Account *</label>
                                                     <div class="flex gap-2 items-start">
-                                                        <select id="bank_account_id" name="bank_account_id" data-tomselect class="flex-1 mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm" required>
+                                                        <x-tom-select id="bank_account_id" name="bank_account_id" class="flex-1 mt-1 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
                                                             <option value="">Choose a bank account...</option>
                                                             @foreach($businessEntity->bankAccounts->whereIn('account_purpose', BankAccount::ENTITY_OPERATING_PURPOSES) as $bankAccount)
                                                                 <option value="{{ $bankAccount->id }}">{{ $bankAccount->account_name }} — {{ BankAccount::formatBsb($bankAccount->bsb) }}</option>
                                                             @endforeach
-                                                        </select>
+                                                        </x-tom-select>
                                                         @include('bank-accounts.partials.account-link-actions', [
                                                             'associateUrl' => route('business-entities.bank-accounts.create', $businessEntity) . '?purpose=general',
                                                             'associateTitle' => 'Add bank account',
@@ -1020,7 +1020,7 @@
             if (preselectedBankAccountId) {
                 const bankSelect = document.getElementById('bank_account_id');
                 if (bankSelect) {
-                    bankSelect.value = preselectedBankAccountId;
+                    window.setSelectValue?.(bankSelect, preselectedBankAccountId);
                 }
                 urlParams.delete('bank_account_id');
                 const cleanedSearch = urlParams.toString();
@@ -1098,6 +1098,7 @@
             uploadStatementBtn.addEventListener('click', function() {
                 uploadForm.classList.remove('hidden');
                 uploadStatementBtn.classList.add('hidden');
+                window.reinitTomSelect?.(document.getElementById('bank_account_id'));
             });
 
             cancelUploadBtn.addEventListener('click', function() {

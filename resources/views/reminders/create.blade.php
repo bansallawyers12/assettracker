@@ -32,12 +32,12 @@
 
                 <div>
                     <label for="business_entity_id" class="block text-sm font-medium text-gray-700">Business Entity</label>
-                    <select name="business_entity_id" id="business_entity_id" data-tomselect class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500">
+                    <x-tom-select name="business_entity_id" id="business_entity_id" class="mt-1 rounded-md focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="">Select Business Entity</option>
                         @foreach($businessEntities as $entity)
                             <option value="{{ $entity->id }}" {{ isset($selectedEntity) && $selectedEntity->id == $entity->id ? 'selected' : '' }}>{{ $entity->name }}</option>
                         @endforeach
-                    </select>
+                    </x-tom-select>
                     @error('business_entity_id')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -45,12 +45,12 @@
 
                 <div>
                     <label for="asset_id" class="block text-sm font-medium text-gray-700">Asset (Optional)</label>
-                    <select name="asset_id" id="asset_id" data-tomselect class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500">
+                    <x-tom-select name="asset_id" id="asset_id" class="mt-1 rounded-md focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="">Select Asset</option>
                         @if(isset($selectedAsset))
                             <option value="{{ $selectedAsset->id }}" selected>{{ $selectedAsset->name }}</option>
                         @endif
-                    </select>
+                    </x-tom-select>
                     @error('asset_id')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror

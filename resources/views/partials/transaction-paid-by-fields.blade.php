@@ -14,8 +14,8 @@
     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 {{ $labelClass ?? 'mb-1' }}" id="paid_by_label">
         {{ $paidByLabelText ?? 'Paid By' }}
     </label>
-    <select name="paid_by_select" id="paid_by_select" data-tomselect
-            class="{{ $selectClass ?? 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white' }}">
+    <x-tom-select name="paid_by_select" id="paid_by_select"
+            class="{{ $selectClass ?? 'mt-1 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500' }}">
         <option value="">— Not specified —</option>
         @if (count($payerCompanies))
             <optgroup label="Entities">
@@ -32,7 +32,7 @@
             </optgroup>
         @endif
         <option value="other" @selected(old('paid_by_select', $sel) === 'other')>Other…</option>
-    </select>
+    </x-tom-select>
     @error('paid_by_select') <span class="text-red-500 {{ $errorClass ?? 'text-sm' }}">{{ $message }}</span> @enderror
     <span class="js-paid-by-select-client-error text-red-500 {{ $errorClass ?? 'text-sm' }} hidden" role="alert"></span>
 </div>

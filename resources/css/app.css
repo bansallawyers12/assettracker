@@ -22,6 +22,11 @@
   .entity-show-page .entity-btn-primary {
     @apply inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors shadow-xs focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-gray-900;
   }
+
+  /* Shared date field — use via <x-date-input> or class="form-date-input" on input[type="date"] in JS */
+  .form-date-input {
+    @apply border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-indigo-500 dark:focus:ring-indigo-500 rounded-xl shadow-xs text-sm w-full;
+  }
 }
 
 @layer utilities {
@@ -148,8 +153,8 @@
 
 .ts-wrapper.single .ts-control:focus,
 .ts-wrapper.multi .ts-control:focus-within {
-    border-color: rgb(59 130 246);
-    outline: 2px solid rgb(59 130 246 / 0.2);
+    border-color: rgb(99 102 241);
+    outline: 2px solid rgb(99 102 241 / 0.2);
     outline-offset: 0;
 }
 
@@ -167,8 +172,8 @@
 }
 
 .ts-dropdown .active {
-    background: rgb(239 246 255);
-    color: rgb(29 78 216);
+    background: rgb(238 242 255);
+    color: rgb(67 56 202);
 }
 
 .dark .ts-wrapper.single .ts-control,
@@ -186,7 +191,7 @@
 
 .dark .ts-dropdown .active {
     background: rgb(55 65 81);
-    color: rgb(147 197 253);
+    color: rgb(165 180 252);
 }
 
 .dark .ts-dropdown .option:hover {
@@ -305,7 +310,43 @@
     }
 }
 
-/* Flatpickr — align calendar popup with app dark mode */
+/* Flatpickr — align popup and input focus with Tom Select (indigo) */
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange,
+.flatpickr-day.selected.inRange,
+.flatpickr-day.startRange.inRange,
+.flatpickr-day.endRange.inRange,
+.flatpickr-day.selected:focus,
+.flatpickr-day.startRange:focus,
+.flatpickr-day.endRange:focus,
+.flatpickr-day.selected:hover,
+.flatpickr-day.startRange:hover,
+.flatpickr-day.endRange:hover {
+    background: rgb(99 102 241);
+    border-color: rgb(99 102 241);
+    color: rgb(255 255 255);
+}
+
+.flatpickr-day.today {
+    border-color: rgb(99 102 241);
+}
+
+.flatpickr-day.today:hover,
+.flatpickr-day.today:focus {
+    background: rgb(99 102 241);
+    border-color: rgb(99 102 241);
+    color: rgb(255 255 255);
+}
+
+input.flatpickr-input.form-date-input:focus,
+input.flatpickr-input:focus {
+    border-color: rgb(99 102 241);
+    outline: 2px solid rgb(99 102 241 / 0.2);
+    outline-offset: 0;
+    --tw-ring-color: rgb(99 102 241);
+}
+
 .dark .flatpickr-calendar {
     background: rgb(31 41 55);
     border-color: rgb(75 85 99);
@@ -335,8 +376,8 @@
 .dark .flatpickr-day.selected,
 .dark .flatpickr-day.startRange,
 .dark .flatpickr-day.endRange {
-    background: rgb(37 99 235);
-    border-color: rgb(37 99 235);
+    background: rgb(99 102 241);
+    border-color: rgb(99 102 241);
     color: rgb(255 255 255);
 }
 

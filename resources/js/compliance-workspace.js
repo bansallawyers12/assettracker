@@ -51,6 +51,8 @@
         paid: 'Paid',
     };
 
+    const DATE_INPUT_CLASS = 'form-date-input text-xs rounded-sm';
+
     function buildStatusCell(file, locked) {
         const fileId = file.id;
         const dueHint = file.due_date
@@ -69,10 +71,10 @@
             <select class="compliance-status-select text-xs border border-gray-300 dark:border-gray-600 rounded-sm dark:bg-gray-800 w-full max-w-[140px]" data-file-id="${fileId}">${opts}</select>
             <div class="compliance-status-dates mt-1 flex flex-col gap-1">
                 <label class="text-xs text-gray-500 flex items-center gap-1">Lodged
-                    <input type="date" class="compliance-lodged-date border border-gray-300 dark:border-gray-600 rounded-sm dark:bg-gray-800 text-xs" data-file-id="${fileId}" value="${escAttr(file.lodged_date || '')}">
+                    <input type="date" class="${DATE_INPUT_CLASS} compliance-lodged-date" data-file-id="${fileId}" value="${escAttr(file.lodged_date || '')}">
                 </label>
                 <label class="text-xs text-gray-500 flex items-center gap-1">Paid
-                    <input type="date" class="compliance-paid-date border border-gray-300 dark:border-gray-600 rounded-sm dark:bg-gray-800 text-xs" data-file-id="${fileId}" value="${escAttr(file.paid_date || '')}">
+                    <input type="date" class="${DATE_INPUT_CLASS} compliance-paid-date" data-file-id="${fileId}" value="${escAttr(file.paid_date || '')}">
                 </label>
             </div>
             ${dueHint}

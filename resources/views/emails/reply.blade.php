@@ -178,7 +178,7 @@
                     <!-- Business Entity Association -->
                     <div>
                         <label for="business_entity_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Associate with Business Entity (Optional)</label>
-                        <select id="business_entity_id" name="business_entity_id" data-tomselect class="w-full rounded-md border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <x-tom-select id="business_entity_id" name="business_entity_id" class="rounded-md focus:ring-indigo-500 focus:border-indigo-500">
                             <option value="">No association</option>
                             @try
                                 @foreach(\App\Models\BusinessEntity::operationalEntities()->orderBy('legal_name')->get() as $entity)
@@ -187,7 +187,7 @@
                             @catch(\Exception $e)
                                 <!-- Business entities could not be loaded -->
                             @endtry
-                        </select>
+                        </x-tom-select>
                         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Link this reply to a business entity for better organization</p>
                     </div>
 

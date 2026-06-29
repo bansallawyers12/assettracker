@@ -3,7 +3,7 @@ import 'flatpickr/dist/flatpickr.min.css';
 
 /**
  * Flatpickr is the only date picker in this app (no jQuery UI / bootstrap-datepicker).
- * All date fields use `<x-date-input>` in Blade or `input[type="date"]` in JS templates;
+ * All date fields use `<x-date-input>` in Blade or `input[type="date"].form-date-input` in JS templates;
  * initFlatpickr() enhances them globally with Y-m-d values for Laravel.
  */
 export function initFlatpickr(root = document) {

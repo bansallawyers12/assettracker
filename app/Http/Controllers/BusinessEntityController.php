@@ -2415,13 +2415,7 @@ class BusinessEntityController extends Controller
 
     private function ensureBankAccountOwnedByUser(BankAccount $bankAccount): void
     {
-        $userId = (int) auth()->id();
-
-        if ((int) $bankAccount->user_id === $userId) {
-            return;
-        }
-
-        if ($bankAccount->businessEntity && (int) $bankAccount->businessEntity->user_id === $userId) {
+        if ($bankAccount->isAccessibleByCurrentUser()) {
             return;
         }
 

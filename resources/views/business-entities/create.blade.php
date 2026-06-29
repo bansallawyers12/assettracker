@@ -124,12 +124,12 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label for="appointor_person_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Person*</label>
-                                        <select name="appointor_person_id" id="appointor_person_id" data-tomselect class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
+                                        <x-tom-select name="appointor_person_id" id="appointor_person_id" class="rounded-md focus:border-green-500 focus:ring-green-200/50 transition">
                                             <option value="">Select a person</option>
                                             @foreach($persons as $person)
                                                 <option value="{{ $person->id }}" @selected((string) old('appointor_person_id') === (string) $person->id)>{{ $person->first_name }} {{ $person->last_name }}</option>
                                             @endforeach
-                                        </select>
+                                        </x-tom-select>
                                         @error('appointor_person_id') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                                     </div>
                                 </div>
@@ -140,12 +140,12 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label for="appointor_entity_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Entity*</label>
-                                        <select name="appointor_entity_id" id="appointor_entity_id" data-tomselect class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
+                                        <x-tom-select name="appointor_entity_id" id="appointor_entity_id" class="rounded-md focus:border-green-500 focus:ring-green-200/50 transition">
                                             <option value="">Select an entity</option>
                                             @foreach($businessEntities as $entity)
                                                 <option value="{{ $entity->id }}" @selected((string) old('appointor_entity_id') === (string) $entity->id)>{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
                                             @endforeach
-                                        </select>
+                                        </x-tom-select>
                                         @error('appointor_entity_id') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                                     </div>
                                 </div>

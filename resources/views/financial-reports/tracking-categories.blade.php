@@ -45,10 +45,7 @@
                     </div>
                     <div>
                         <label for="tracking_category_id" class="block text-sm font-medium text-gray-700">Category</label>
-                        <select name="tracking_category_id" 
-                                id="tracking_category_id" 
-                                data-tomselect
-                                class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <x-tom-select name="tracking_category_id" id="tracking_category_id" class="mt-1 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                             <option value="">All Categories</option>
                             @foreach($trackingCategories as $category)
                                 <option value="{{ $category->id }}"
@@ -60,7 +57,7 @@
                                     @endif
                                 </option>
                             @endforeach
-                        </select>
+                        </x-tom-select>
                     </div>
                     <div class="flex items-end">
                         <button type="submit" 

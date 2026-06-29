@@ -21,15 +21,14 @@
         <form method="GET" action="{{ route('transactions.index') }}" class="mb-6 flex flex-wrap gap-3 items-end">
             <div>
                 <label for="entity_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Filter by Entity</label>
-                <select id="entity_filter" name="entity_id" data-tomselect onchange="this.form.submit()"
-                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-purple-500 focus:border-purple-500">
+                <x-tom-select id="entity_filter" name="entity_id" onchange="this.form.submit()" class="rounded-lg focus:ring-purple-500 focus:border-purple-500">
                     <option value="">All Entities</option>
                     @foreach ($businessEntities as $entity)
                         <option value="{{ $entity->id }}" {{ request('entity_id') == $entity->id ? 'selected' : '' }}>
                             {{ $entity->legal_name }}
                         </option>
                     @endforeach
-                </select>
+                </x-tom-select>
             </div>
             <div>
                 <label for="type_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Filter by Type</label>

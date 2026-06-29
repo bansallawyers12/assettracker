@@ -89,13 +89,12 @@
             <div class="{{ $isCard ? 'pl-7 sm:pl-8 border-l-2 border-gray-100 ml-1.5' : '' }}"
                  :class="scope === 'selected' ? '' : 'opacity-50 pointer-events-none'">
                 <label class="text-xs font-medium text-gray-600 block mb-1">Entities</label>
-                <select
+                <x-tom-select
                     multiple
                     name="entity_ids[]"
-                    data-tomselect
                     x-ref="entitySelect"
-                    @if($formsScope === 'all') disabled @endif
-                    class="w-full border border-gray-300 rounded-sm text-sm bg-white"
+                    :disabled="$formsScope === 'all'"
+                    class="rounded-sm bg-white"
                 >
                     @foreach($businessEntities as $entity)
                         <option value="{{ $entity->id }}"
@@ -104,7 +103,7 @@
                             {{ $entity->reportPickerLabel() }}
                         </option>
                     @endforeach
-                </select>
+                </x-tom-select>
             </div>
         @else
             <div class="flex flex-col gap-1">
@@ -119,13 +118,12 @@
             <div class="flex flex-col gap-1 min-w-[14rem] sm:min-w-[18rem]"
                  :class="scope === 'selected' ? '' : 'opacity-50 pointer-events-none'">
                 <label class="text-xs font-medium text-gray-600">Entities</label>
-                <select
+                <x-tom-select
                     multiple
                     name="entity_ids[]"
-                    data-tomselect
                     x-ref="entitySelect"
-                    @if($formsScope === 'all') disabled @endif
-                    class="w-full border border-gray-300 rounded-sm text-sm bg-white"
+                    :disabled="$formsScope === 'all'"
+                    class="rounded-sm bg-white"
                 >
                     @foreach($businessEntities as $entity)
                         <option value="{{ $entity->id }}"
@@ -134,7 +132,7 @@
                             {{ $entity->reportPickerLabel() }}
                         </option>
                     @endforeach
-                </select>
+                </x-tom-select>
             </div>
         @endif
     </div>

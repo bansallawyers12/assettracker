@@ -79,26 +79,26 @@
                                                                 <form method="POST" action="{{ route('emails.allocate.entity', $message->id) }}" class="space-y-2">
                                                                     @csrf
                                                                     <label class="block text-xs text-gray-600 dark:text-gray-300">Business Entity</label>
-                                                                    <select name="business_entity_id" data-tomselect class="w-full border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                                    <x-tom-select name="business_entity_id" class="rounded-md focus:ring-blue-500 focus:border-blue-500">
                                                                         <option value="">Select entity...</option>
                                                                         @php($entities = \App\Models\BusinessEntity::operationalEntities()->orderBy('legal_name')->get())
                                                                         @foreach ($entities as $entity)
                                                                             <option value="{{ $entity->id }}">{{ $entity->legal_name }}</option>
                                                                         @endforeach
-                                                                    </select>
+                                                                    </x-tom-select>
                                                                     <button class="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-sm text-xs transition-colors">Allocate to Entity</button>
                                                                 </form>
                                                                 <div class="my-2 border-t border-gray-200 dark:border-gray-700"></div>
                                                                 <form method="POST" action="{{ route('emails.allocate.asset', $message->id) }}" class="space-y-2">
                                                                     @csrf
                                                                     <label class="block text-xs text-gray-600 dark:text-gray-300">Asset</label>
-                                                                    <select name="asset_id" data-tomselect class="w-full border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                                                                    <x-tom-select name="asset_id" class="rounded-md focus:ring-blue-500 focus:border-blue-500">
                                                                         <option value="">Select asset...</option>
                                                                         @php($assets = \App\Models\Asset::orderBy('name')->get())
                                                                         @foreach ($assets as $asset)
                                                                             <option value="{{ $asset->id }}">{{ $asset->name }} ({{ $asset->asset_type }})</option>
                                                                         @endforeach
-                                                                    </select>
+                                                                    </x-tom-select>
                                                                     <button class="w-full bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-sm text-xs transition-colors">Allocate to Asset</button>
                                                                 </form>
                                                             </div>

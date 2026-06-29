@@ -94,13 +94,25 @@ function setNativeSelectedValues(select, values) {
     select.value = value;
 }
 
+function tomSelectTargets(root = document) {
+    if (!root || root === document) {
+        return Array.from(document.querySelectorAll('select[data-tomselect]'));
+    }
+
+    if (root.nodeType === Node.ELEMENT_NODE && root.matches?.('select[data-tomselect]')) {
+        return [root];
+    }
+
+    return Array.from(root.querySelectorAll('select[data-tomselect]'));
+}
+
 /**
  * Enhance opt-in selects with Tom Select (searchable dropdowns).
- * Mark targets with data-tomselect on the native <select>.
+ * Mark targets with data-tomselect on the native <select>, or use <x-tom-select> in Blade.
  * watchTomSelect() auto-initializes selects injected after page load.
  */
 export function initTomSelect(root = document) {
-    root.querySelectorAll('select[data-tomselect]').forEach((select) => {
+    tomSelectTargets(root).forEach((select) => {
         if (select.tomselect || select.dataset.tomselectSkip === 'true') {
             return;
         }
@@ -121,7 +133,13 @@ export function refreshTomSelect(select) {
 /** Re-read visible/enabled native <option>s into an existing Tom Select instance. */
 export function rebuildTomSelectFromNative(select) {
     const el = resolveSelect(select);
-    if (!el?.tomselect) {
+    if (!el) {
+        return;
+    }
+
+    if (!el.tomselect) {
+        initTomSelect(el);
+
         return;
     }
 
@@ -221,7 +239,7 @@ export function watchTomSelect() {
                 }
 
                 if (node.matches?.('select[data-tomselect]')) {
-                    initTomSelect(node.parentElement ?? document);
+                    initTomSelect(node);
                 } else if (node.querySelectorAll?.('select[data-tomselect]').length) {
                     initTomSelect(node);
                 }
