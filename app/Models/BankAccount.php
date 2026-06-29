@@ -413,22 +413,22 @@ class BankAccount extends Model
 
     public function canUseForBankImport(BusinessEntity $entity): bool
     {
-        return BusinessEntityBankAccount::query()
-            ->where('business_entity_id', $entity->id)
-            ->where('bank_account_id', $this->id)
-            ->whereIn('purpose', self::ENTITY_OPERATING_PURPOSES)
-            ->exists();
+        if ($this->hasOperatingPurposeLinkOnEntity($entity)) {
+            return true;
+        }
+
+        return $this->legacyOperatingOnEntity($entity);
     }
 
     public function canUseForTransaction(BusinessEntity $entity, ?int $userId = null): bool
     {
         $userId ??= auth()->id();
 
-        if (BusinessEntityBankAccount::query()
-            ->where('business_entity_id', $entity->id)
-            ->where('bank_account_id', $this->id)
-            ->whereIn('purpose', self::ENTITY_OPERATING_PURPOSES)
-            ->exists()) {
+        if ($this->hasOperatingPurposeLinkOnEntity($entity)) {
+            return true;
+        }
+
+        if ($this->legacyOperatingOnEntity($entity)) {
             return true;
         }
 
@@ -437,22 +437,81 @@ class BankAccount extends Model
             && $this->account_purpose === self::PURPOSE_LOAN_REPAYMENT;
     }
 
+    /**
+     * Whether this account has an entity operating-purpose link on the given entity.
+     */
+    public function hasOperatingPurposeLinkOnEntity(BusinessEntity $entity): bool
+    {
+        if ($this->id === null) {
+            return false;
+        }
+
+        return BusinessEntityBankAccount::query()
+            ->where('business_entity_id', $entity->id)
+            ->where('bank_account_id', $this->id)
+            ->whereIn('purpose', self::ENTITY_OPERATING_PURPOSES)
+            ->exists();
+    }
+
+    /**
+     * Whether this account has any purpose link on the given entity.
+     */
+    public function hasLinkOnEntity(BusinessEntity $entity, ?string $purpose = null): bool
+    {
+        if ($this->id === null) {
+            return false;
+        }
+
+        $query = BusinessEntityBankAccount::query()
+            ->where('business_entity_id', $entity->id)
+            ->where('bank_account_id', $this->id);
+
+        if ($purpose !== null) {
+            $query->where('purpose', $purpose);
+        }
+
+        if ($query->exists()) {
+            return true;
+        }
+
+        if ($purpose !== null) {
+            return (int) $this->business_entity_id === (int) $entity->id
+                && $this->account_purpose === $purpose;
+        }
+
+        return (int) $this->business_entity_id === (int) $entity->id
+            && in_array($this->account_purpose, self::ENTITY_PURPOSES, true);
+    }
+
+    private function legacyOperatingOnEntity(BusinessEntity $entity): bool
+    {
+        return in_array($this->account_purpose, self::ENTITY_OPERATING_PURPOSES, true)
+            && (int) $this->business_entity_id === (int) $entity->id;
+    }
+
     public function isValidForAssetRole(BusinessEntity $entity, string $role, ?int $userId = null): bool
     {
         $userId ??= auth()->id();
 
         if ($role === self::ROLE_RENT_COLLECTION) {
+            if ($this->hasLinkOnEntity($entity, self::PURPOSE_RENT_RECEIVING)
+                || $this->hasLinkOnEntity($entity, self::PURPOSE_GENERAL)) {
+                return true;
+            }
+
             return in_array($this->account_purpose, self::RENT_RECEIVING_PURPOSES, true)
-                && $this->businessEntity !== null
-                && (int) $this->businessEntity->user_id === (int) $userId;
+                && $this->hasLinkOnEntity($entity);
         }
 
         if ($role === self::ROLE_LOAN) {
+            if ($this->hasLinkOnEntity($entity, self::PURPOSE_LOAN)) {
+                return true;
+            }
+
             if ($this->account_purpose === self::PURPOSE_LOAN) {
                 return (int) $this->business_entity_id === (int) $entity->id;
             }
 
-            // Legacy portfolio lender accounts previously linked as loan_repayment
             if ($this->account_purpose === self::PURPOSE_LOAN_REPAYMENT) {
                 return $this->isPortfolioWide()
                     && (int) $this->user_id === (int) $userId;
@@ -462,6 +521,10 @@ class BankAccount extends Model
         }
 
         if ($role === self::ROLE_OFFSET) {
+            if ($this->hasLinkOnEntity($entity, self::PURPOSE_OFFSET)) {
+                return true;
+            }
+
             return $this->account_purpose === self::PURPOSE_OFFSET
                 && (int) $this->business_entity_id === (int) $entity->id;
         }
@@ -501,18 +564,42 @@ class BankAccount extends Model
     public function scopeSelectableForAssetRole(Builder $query, BusinessEntity $entity, string $role): Builder
     {
         if ($role === self::ROLE_RENT_COLLECTION) {
-            return $query
-                ->whereIn('account_purpose', self::RENT_RECEIVING_PURPOSES)
-                ->whereHas('businessEntity', fn (Builder $q) => $q->where('user_id', auth()->id()));
+            $rentLinkIds = BusinessEntityBankAccount::query()
+                ->whereIn('purpose', self::RENT_RECEIVING_PURPOSES)
+                ->whereHas('businessEntity', fn (Builder $q) => $q->operationalEntities())
+                ->pluck('bank_account_id');
+
+            return $query->where(function (Builder $q) use ($rentLinkIds) {
+                $q->where(function (Builder $inner) {
+                    $inner->whereIn('account_purpose', self::RENT_RECEIVING_PURPOSES)
+                        ->whereHas('businessEntity', fn (Builder $eq) => $eq->operationalEntities());
+                });
+
+                if ($rentLinkIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $rentLinkIds);
+                }
+            });
         }
 
         if ($role === self::ROLE_LOAN) {
             return $query->forLoanAssetLinkPicker($entity);
         }
 
-        return $query
-            ->where('account_purpose', self::PURPOSE_OFFSET)
-            ->where('business_entity_id', $entity->id);
+        $offsetLinkIds = BusinessEntityBankAccount::query()
+            ->where('business_entity_id', $entity->id)
+            ->where('purpose', self::PURPOSE_OFFSET)
+            ->pluck('bank_account_id');
+
+        return $query->where(function (Builder $q) use ($entity, $offsetLinkIds) {
+            $q->where(function (Builder $inner) use ($entity) {
+                $inner->where('account_purpose', self::PURPOSE_OFFSET)
+                    ->where('business_entity_id', $entity->id);
+            });
+
+            if ($offsetLinkIds->isNotEmpty()) {
+                $q->orWhereIn('id', $offsetLinkIds);
+            }
+        });
     }
 
     /**
@@ -531,10 +618,10 @@ class BankAccount extends Model
                 ->where('purpose', self::PURPOSE_LOAN)
                 ->pluck('bank_account_id'))
                 ->orWhere(function (Builder $inner) use ($userId) {
-                $inner->where('account_purpose', self::PURPOSE_LOAN_REPAYMENT)
-                    ->whereNull('business_entity_id')
-                    ->where('user_id', $userId);
-            });
+                    $inner->where('account_purpose', self::PURPOSE_LOAN_REPAYMENT)
+                        ->whereNull('business_entity_id')
+                        ->where('user_id', $userId);
+                });
         });
     }
 
@@ -571,21 +658,7 @@ class BankAccount extends Model
             return false;
         }
 
-        if ($this->relationLoaded('entityPurposeLinks')) {
-            return ! $this->entityPurposeLinks
-                ->where('business_entity_id', $entity->id)
-                ->contains(fn (BusinessEntityBankAccount $link) => $link->purpose === $purpose);
-        }
-
-        if ($this->id === null) {
-            return true;
-        }
-
-        return ! BusinessEntityBankAccount::query()
-            ->where('business_entity_id', $entity->id)
-            ->where('bank_account_id', $this->id)
-            ->where('purpose', $purpose)
-            ->exists();
+        return ! in_array($purpose, $this->purposesOnEntity($entity), true);
     }
 
     /**
@@ -594,22 +667,31 @@ class BankAccount extends Model
     public function purposesOnEntity(BusinessEntity $entity): array
     {
         if ($this->relationLoaded('entityPurposeLinks')) {
-            return $this->entityPurposeLinks
+            $fromPivot = $this->entityPurposeLinks
                 ->where('business_entity_id', $entity->id)
                 ->pluck('purpose')
                 ->values()
                 ->all();
+        } elseif ($this->id !== null) {
+            $fromPivot = BusinessEntityBankAccount::query()
+                ->where('business_entity_id', $entity->id)
+                ->where('bank_account_id', $this->id)
+                ->pluck('purpose')
+                ->all();
+        } else {
+            $fromPivot = [];
         }
 
-        if ($this->id === null) {
-            return [];
+        if ($fromPivot !== []) {
+            return $fromPivot;
         }
 
-        return BusinessEntityBankAccount::query()
-            ->where('business_entity_id', $entity->id)
-            ->where('bank_account_id', $this->id)
-            ->pluck('purpose')
-            ->all();
+        if ((int) $this->business_entity_id === (int) $entity->id
+            && in_array($this->account_purpose, self::ENTITY_PURPOSES, true)) {
+            return [$this->account_purpose];
+        }
+
+        return [];
     }
 
     /** @deprecated Use canAttachPurposeToEntity */

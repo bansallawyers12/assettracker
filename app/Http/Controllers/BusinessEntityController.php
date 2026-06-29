@@ -358,22 +358,17 @@ class BusinessEntityController extends Controller
 
         $assets = $businessEntity->assets;
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
+        $entityBankAccountLinks = $businessEntity->bankAccountLinksForDisplay();
+        $entityBankAccountGroups = BankAccount::groupedLinksByHolder($entityBankAccountLinks, $businessEntity->id);
+        $operatingAccountIds = $entityBankAccountLinks
+            ->filter(fn (BusinessEntityBankAccount $link) => in_array($link->purpose, BankAccount::ENTITY_OPERATING_PURPOSES, true))
+            ->pluck('bank_account_id')
+            ->unique()
+            ->values();
         $bankAccounts = BankAccount::query()
-            ->whereIn('id', $businessEntity->bankAccountLinks()
-                ->whereIn('purpose', BankAccount::ENTITY_OPERATING_PURPOSES)
-                ->pluck('bank_account_id'))
+            ->whereIn('id', $operatingAccountIds)
             ->with(['bankStatementEntries.transaction'])
             ->get();
-        $entityBankAccountLinks = $businessEntity->bankAccountLinks()
-            ->with(['bankAccount.holderEntity', 'bankAccount.holderPerson', 'bankAccount.businessEntity'])
-            ->orderBy(
-                BankAccount::query()
-                    ->select('account_name')
-                    ->whereColumn('bank_accounts.id', 'business_entity_bank_account.bank_account_id')
-                    ->limit(1)
-            )
-            ->get();
-        $entityBankAccountGroups = BankAccount::groupedLinksByHolder($entityBankAccountLinks, $businessEntity->id);
         $portfolioBankAccounts = BankAccount::query()
             ->visibleInPortfolio()
             ->with([
@@ -1249,7 +1244,21 @@ class BusinessEntityController extends Controller
                 ->when($purpose, fn ($q) => $q->where('purpose', $purpose))
                 ->pluck('bank_account_id');
 
-            $query->whereIn('id', $accountIds);
+            $query->where(function ($q) use ($businessEntity, $purpose, $accountIds) {
+                if ($accountIds->isNotEmpty()) {
+                    $q->whereIn('id', $accountIds);
+                }
+
+                $q->orWhere(function ($inner) use ($businessEntity, $purpose) {
+                    $inner->where('business_entity_id', $businessEntity->id);
+
+                    if ($purpose) {
+                        $inner->where('account_purpose', $purpose);
+                    } else {
+                        $inner->whereIn('account_purpose', BankAccount::ENTITY_PURPOSES);
+                    }
+                });
+            });
         }
 
         return response()->json(
@@ -1457,7 +1466,7 @@ class BusinessEntityController extends Controller
             $this->bankAccountAttributesFromRequest($validated, $businessEntity)
         );
 
-        BusinessEntityBankAccount::create([
+        BusinessEntityBankAccount::firstOrCreate([
             'business_entity_id' => $businessEntity->id,
             'bank_account_id' => $bankAccount->id,
             'purpose' => $validated['account_purpose'],
@@ -1503,7 +1512,7 @@ class BusinessEntityController extends Controller
                 ->with('error', 'This account already has purpose '.BankAccount::purposeLabel($purpose).' on this entity.');
         }
 
-        BusinessEntityBankAccount::create([
+        BusinessEntityBankAccount::firstOrCreate([
             'business_entity_id' => $businessEntity->id,
             'bank_account_id' => $bankAccount->id,
             'purpose' => $purpose,
@@ -2565,11 +2574,7 @@ class BusinessEntityController extends Controller
 
     private function ensureBankAccountAccessibleOnEntity(BusinessEntity $businessEntity, BankAccount $bankAccount): void
     {
-        if ((int) $bankAccount->business_entity_id === (int) $businessEntity->id) {
-            return;
-        }
-
-        if ($businessEntity->bankAccountLinks()->where('bank_account_id', $bankAccount->id)->exists()) {
+        if ($bankAccount->hasLinkOnEntity($businessEntity)) {
             return;
         }
 

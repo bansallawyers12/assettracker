@@ -190,6 +190,40 @@ class BusinessEntity extends Model
             ->withTimestamps();
     }
 
+    /**
+     * Purpose links for the entity bank accounts tab (pivot rows, with legacy fallback).
+     *
+     * @return \Illuminate\Support\Collection<int, BusinessEntityBankAccount>
+     */
+    public function bankAccountLinksForDisplay()
+    {
+        $links = $this->bankAccountLinks()
+            ->with(['bankAccount.holderEntity', 'bankAccount.holderPerson', 'bankAccount.businessEntity'])
+            ->get();
+
+        if ($links->isNotEmpty()) {
+            return $links
+                ->sortBy(fn (BusinessEntityBankAccount $link) => $link->bankAccount?->account_name ?? '', SORT_NATURAL | SORT_FLAG_CASE)
+                ->values();
+        }
+
+        return $this->bankAccounts()
+            ->with(['holderEntity', 'holderPerson', 'businessEntity'])
+            ->whereIn('account_purpose', BankAccount::ENTITY_PURPOSES)
+            ->orderBy('account_name')
+            ->get()
+            ->map(function (BankAccount $account) {
+                $link = new BusinessEntityBankAccount([
+                    'business_entity_id' => $this->id,
+                    'bank_account_id' => $account->id,
+                    'purpose' => $account->account_purpose,
+                ]);
+                $link->setRelation('bankAccount', $account);
+
+                return $link;
+            });
+    }
+
     public function heldBankAccounts()
     {
         return $this->hasMany(BankAccount::class, 'holder_entity_id')

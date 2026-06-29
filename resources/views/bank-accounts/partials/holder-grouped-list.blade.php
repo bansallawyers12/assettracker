@@ -105,7 +105,7 @@
                                                     ? route('business-entities.bank-accounts.edit', [$linkBusinessEntity, $account])
                                                     : $account->editRoute(),
                                                 'editTitle' => 'Edit account',
-                                                'unlinkUrl' => $linkBusinessEntity
+                                                'unlinkUrl' => ($linkBusinessEntity && $link->id)
                                                     ? route('business-entities.bank-account-links.destroy', [$linkBusinessEntity, $link])
                                                     : null,
                                                 'unlinkTitle' => 'Remove '.BankAccount::purposeLabel($purpose).' link',
