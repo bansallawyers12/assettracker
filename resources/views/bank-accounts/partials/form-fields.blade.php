@@ -96,7 +96,7 @@
 @if($isPortfolio)
     <div class="mb-4" id="entity-picker">
         <label class="block text-sm font-medium text-gray-700">Business Entity</label>
-        <select name="business_entity_id" class="mt-1 block w-full border-gray-300 rounded-md">
+        <select name="business_entity_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md">
             <option value="">Select entity</option>
             @foreach($businessEntities ?? [] as $entity)
                 <option value="{{ $entity->id }}" @selected((string) old('business_entity_id', $bankAccountModel?->business_entity_id) === (string) $entity->id)>
@@ -130,9 +130,9 @@
     </div>
 
     {{-- Entity picker --}}
-    <div class="mb-4 holder-section" id="holder-entity-section">
+    <div class="mb-4 holder-section @if($currentHolderType !== BankAccount::HOLDER_ENTITY) hidden @endif" id="holder-entity-section">
         <label class="block text-sm font-medium text-gray-700">Entity Name</label>
-        <select name="holder_entity_id" id="holder_entity_id" class="mt-1 block w-full border-gray-300 rounded-md">
+        <select name="holder_entity_id" id="holder_entity_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md">
             <option value="">Select entity</option>
             @foreach($businessEntities ?? [] as $entity)
                 <option value="{{ $entity->id }}" @selected((string) $currentHolderEntityId === (string) $entity->id)>
@@ -144,9 +144,9 @@
     </div>
 
     {{-- Person picker --}}
-    <div class="mb-4 holder-section" id="holder-person-section">
+    <div class="mb-4 holder-section @if($currentHolderType !== BankAccount::HOLDER_PERSON) hidden @endif" id="holder-person-section">
         <label class="block text-sm font-medium text-gray-700">Person</label>
-        <select name="holder_person_id" id="holder_person_id" class="mt-1 block w-full border-gray-300 rounded-md">
+        <select name="holder_person_id" id="holder_person_id" data-tomselect class="mt-1 block w-full border-gray-300 rounded-md">
             <option value="">Select person</option>
             @foreach($persons ?? [] as $person)
                 <option value="{{ $person->id }}" @selected((string) $currentHolderPersonId === (string) $person->id)>
@@ -161,7 +161,7 @@
     </div>
 
     {{-- Free text --}}
-    <div class="mb-4 holder-section" id="holder-other-section">
+    <div class="mb-4 holder-section @if($currentHolderType !== BankAccount::HOLDER_OTHER) hidden @endif" id="holder-other-section">
         <label class="block text-sm font-medium text-gray-700">Holder Name</label>
         <input type="text" name="holder_other" value="{{ $currentHolderOther }}"
                class="mt-1 block w-full border-gray-300 rounded-md" placeholder="e.g. John Smith">
@@ -194,12 +194,12 @@
     if (!sel) return;
 
     const sections = {
-        'entity': document.getElementById('holder-entity-section'),
-        'person': document.getElementById('holder-person-section'),
-        'other':  document.getElementById('holder-other-section'),
+        entity: document.getElementById('holder-entity-section'),
+        person: document.getElementById('holder-person-section'),
+        other: document.getElementById('holder-other-section'),
     };
 
-    function refresh() {
+    function refresh(fromUserChange = false) {
         const val = sel.value;
         Object.entries(sections).forEach(([type, el]) => {
             if (!el) return;
@@ -219,9 +219,32 @@
         if (otherInput) {
             otherInput.required = val === 'other';
         }
+
+        if (fromUserChange) {
+            if (val === 'entity') {
+                window.setSelectValue?.(personSelect, '');
+                window.reinitTomSelect?.(entitySelect);
+            } else if (val === 'person') {
+                window.setSelectValue?.(entitySelect, '');
+                window.reinitTomSelect?.(personSelect);
+            } else {
+                window.setSelectValue?.(entitySelect, '');
+                window.setSelectValue?.(personSelect, '');
+            }
+
+            return;
+        }
+
+        if (val === 'entity') {
+            window.reinitTomSelect?.(entitySelect);
+        } else if (val === 'person') {
+            window.reinitTomSelect?.(personSelect);
+        }
     }
 
-    sel.addEventListener('change', refresh);
-    refresh();
+    document.addEventListener('DOMContentLoaded', function () {
+        sel.addEventListener('change', () => refresh(true));
+        refresh(false);
+    });
 })();
 </script>

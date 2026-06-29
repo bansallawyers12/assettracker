@@ -169,6 +169,7 @@ export function setSelectValue(select, value) {
     if (el.tomselect) {
         if (value === null || value === undefined || value === '') {
             el.tomselect.clear(true);
+            setNativeSelectedValues(el, '');
 
             return;
         }

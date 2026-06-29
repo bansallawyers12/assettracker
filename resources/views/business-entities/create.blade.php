@@ -49,11 +49,11 @@
                             <div>
                                 <label for="entity_type" class="block text-sm font-medium text-gray-700 mb-1">Entity Type*</label>
                                 <select name="entity_type" id="entity_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required onchange="toggleTrustFields()">
-                                    <option value="" disabled selected>Select entity type</option>
-                                    <option value="Sole Trader">Sole Trader</option>
-                                    <option value="Company">Company</option>
-                                    <option value="Trust">Trust</option>
-                                    <option value="Partnership">Partnership</option>
+                                    <option value="">Select entity type</option>
+                                    <option value="Sole Trader" @selected(old('entity_type') === 'Sole Trader')>Sole Trader</option>
+                                    <option value="Company" @selected(old('entity_type') === 'Company')>Company</option>
+                                    <option value="Trust" @selected(old('entity_type') === 'Trust')>Trust</option>
+                                    <option value="Partnership" @selected(old('entity_type') === 'Partnership')>Partnership</option>
                                 </select>
                                 @error('entity_type') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
@@ -111,9 +111,9 @@
                                 <div>
                                     <label for="appointor_type" class="block text-sm font-medium text-gray-700 mb-1">Appointor Type*</label>
                                     <select name="appointor_type" id="appointor_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" onchange="toggleAppointorFields()">
-                                        <option value="" disabled selected>Select appointor type</option>
-                                        <option value="person">Person</option>
-                                        <option value="entity">Company/Entity</option>
+                                        <option value="">Select appointor type</option>
+                                        <option value="person" @selected(old('appointor_type') === 'person')>Person</option>
+                                        <option value="entity" @selected(old('appointor_type') === 'entity')>Company/Entity</option>
                                     </select>
                                     @error('appointor_type') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                                 </div>
@@ -124,10 +124,10 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label for="appointor_person_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Person*</label>
-                                        <select name="appointor_person_id" id="appointor_person_id" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
-                                            <option value="" disabled selected>Select a person</option>
+                                        <select name="appointor_person_id" id="appointor_person_id" data-tomselect class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
+                                            <option value="">Select a person</option>
                                             @foreach($persons as $person)
-                                                <option value="{{ $person->id }}">{{ $person->first_name }} {{ $person->last_name }}</option>
+                                                <option value="{{ $person->id }}" @selected((string) old('appointor_person_id') === (string) $person->id)>{{ $person->first_name }} {{ $person->last_name }}</option>
                                             @endforeach
                                         </select>
                                         @error('appointor_person_id') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
@@ -140,10 +140,10 @@
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
                                         <label for="appointor_entity_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Entity*</label>
-                                        <select name="appointor_entity_id" id="appointor_entity_id" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
-                                            <option value="" disabled selected>Select an entity</option>
+                                        <select name="appointor_entity_id" id="appointor_entity_id" data-tomselect class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
+                                            <option value="">Select an entity</option>
                                             @foreach($businessEntities as $entity)
-                                                <option value="{{ $entity->id }}">{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
+                                                <option value="{{ $entity->id }}" @selected((string) old('appointor_entity_id') === (string) $entity->id)>{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
                                             @endforeach
                                         </select>
                                         @error('appointor_entity_id') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
@@ -275,6 +275,8 @@
                 trustDeedReferenceField.value = '';
                 clearDateField(trustVestingDateField);
                 appointorTypeField.value = '';
+                window.setSelectValue?.(document.getElementById('appointor_person_id'), '');
+                window.setSelectValue?.(document.getElementById('appointor_entity_id'), '');
                 // Hide appointor fields
                 document.getElementById('appointor_person_fields').classList.add('hidden');
                 document.getElementById('appointor_entity_fields').classList.add('hidden');
@@ -293,26 +295,29 @@
                 entityFields.classList.add('hidden');
                 personSelect.required = true;
                 entitySelect.required = false;
-                entitySelect.value = '';
+                window.setSelectValue?.(entitySelect, '');
+                window.reinitTomSelect?.(personSelect);
             } else if (appointorType === 'entity') {
                 personFields.classList.add('hidden');
                 entityFields.classList.remove('hidden');
                 personSelect.required = false;
                 entitySelect.required = true;
-                personSelect.value = '';
+                window.setSelectValue?.(personSelect, '');
+                window.reinitTomSelect?.(entitySelect);
             } else {
                 personFields.classList.add('hidden');
                 entityFields.classList.add('hidden');
                 personSelect.required = false;
                 entitySelect.required = false;
-                personSelect.value = '';
-                entitySelect.value = '';
+                window.setSelectValue?.(personSelect, '');
+                window.setSelectValue?.(entitySelect, '');
             }
         }
 
-        // Initialize on page load
+        // Initialize on page load (after app.js initTomSelect)
         document.addEventListener('DOMContentLoaded', function() {
             toggleTrustFields();
+            toggleAppointorFields();
         });
     </script>
 </x-app-layout>

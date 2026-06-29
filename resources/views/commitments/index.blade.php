@@ -40,7 +40,7 @@
             </div>
             <div>
                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Entity</label>
-                <select name="entity" class="rounded-md border-gray-300 text-sm dark:bg-gray-800 dark:border-gray-600 min-w-[12rem]">
+                <select name="entity" data-tomselect class="rounded-md border-gray-300 text-sm dark:bg-gray-800 dark:border-gray-600 min-w-[12rem]">
                     <option value="">All entities</option>
                     @foreach($businessEntities as $entity)
                         <option value="{{ $entity->id }}" {{ request('entity') == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
