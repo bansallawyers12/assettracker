@@ -363,7 +363,7 @@ class EntityPersonController extends Controller
         $groupedRoles = $entityPersons->groupBy('business_entity_id');
 
         $heldBankAccounts = BankAccount::query()
-            ->forUser((int) auth()->id())
+            ->visibleInPortfolio()
             ->where('holder_type', BankAccount::HOLDER_PERSON)
             ->where('holder_person_id', $person->id)
             ->with(['businessEntity', 'holderEntity', 'holderPerson'])

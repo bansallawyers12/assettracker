@@ -367,7 +367,7 @@ class BusinessEntityController extends Controller
             ->get();
         $entityBankAccountGroups = BankAccount::groupedByHolder($entityBankAccounts, $businessEntity->id);
         $portfolioBankAccounts = BankAccount::query()
-            ->forUser((int) auth()->id())
+            ->visibleInPortfolio()
             ->with(['businessEntity', 'holderEntity', 'holderPerson'])
             ->orderBy('account_name')
             ->get();
@@ -1462,31 +1462,28 @@ class BusinessEntityController extends Controller
 
         $validated = $request->validate([
             'bank_account_id' => 'required|integer|exists:bank_accounts,id',
+            'account_purpose' => ['required', Rule::in(BankAccount::ENTITY_PURPOSES)],
             'confirm_move' => 'sometimes|boolean',
         ]);
 
         $bankAccount = BankAccount::query()
-            ->forUser((int) auth()->id())
+            ->visibleInPortfolio()
             ->with('businessEntity')
             ->find($validated['bank_account_id']);
 
-        if ($bankAccount === null) {
+        if ($bankAccount === null || ! $bankAccount->isAccessibleByCurrentUser()) {
             abort(403, 'Unauthorized action.');
         }
 
-        if (! $bankAccount->canBeLinkedToEntity($businessEntity)) {
-            if ((int) $bankAccount->business_entity_id === (int) $businessEntity->id) {
-                return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
-                    ->with('error', 'This account is already on this entity.');
-            }
-
+        if (! $bankAccount->canBeAttachedToEntity($businessEntity)) {
             return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
-                ->with('error', 'This account cannot be linked to an entity.');
+                ->with('error', 'This account cannot be attached to an entity.');
         }
 
-        $previousEntity = $bankAccount->businessEntity;
+        $alreadyOnEntity = (int) $bankAccount->business_entity_id === (int) $businessEntity->id;
+        $previousEntity = $alreadyOnEntity ? null : $bankAccount->businessEntity;
 
-        if ($previousEntity !== null && ! $request->boolean('confirm_move')) {
+        if ($bankAccount->requiresMoveToAttachToEntity($businessEntity) && ! $request->boolean('confirm_move')) {
             return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
                 ->withInput()
                 ->with('assign_bank_account_id', $bankAccount->id)
@@ -1495,12 +1492,17 @@ class BusinessEntityController extends Controller
 
         $bankAccount->update([
             'business_entity_id' => $businessEntity->id,
+            'account_purpose' => $validated['account_purpose'],
             'user_id' => $businessEntity->user_id ?? auth()->id(),
         ]);
 
-        $message = $previousEntity
-            ? 'Bank account moved from '.$previousEntity->legal_name.'.'
-            : 'Bank account linked successfully!';
+        if ($alreadyOnEntity) {
+            $message = 'Bank account purpose updated.';
+        } elseif ($previousEntity) {
+            $message = 'Bank account moved from '.$previousEntity->legal_name.' and attached with purpose '.BankAccount::purposeLabel($validated['account_purpose']).'.';
+        } else {
+            $message = 'Bank account attached with purpose '.BankAccount::purposeLabel($validated['account_purpose']).'.';
+        }
 
         return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
             ->with('success', $message);
@@ -2034,7 +2036,7 @@ class BusinessEntityController extends Controller
 
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $bankAccounts = BankAccount::query()
-            ->forUser((int) auth()->id())
+            ->visibleInPortfolio()
             ->with(['businessEntity', 'holderEntity', 'holderPerson', 'bankStatementEntries.transaction'])
             ->orderBy('account_name')
             ->get();

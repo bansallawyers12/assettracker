@@ -4,8 +4,9 @@
     $portfolioBankAccounts = $portfolioBankAccounts ?? collect();
     $defaultCreateUrl = route('business-entities.bank-accounts.create', $businessEntity);
     $pendingAssignId = session('assign_bank_account_id');
+    $defaultPurpose = old('account_purpose', BankAccount::PURPOSE_GENERAL);
     $selectableCount = $portfolioBankAccounts->filter(
-        fn (BankAccount $account) => $account->canBeLinkedToEntity($businessEntity)
+        fn (BankAccount $account) => $account->canBeAttachedToEntity($businessEntity)
     )->count();
 @endphp
 
@@ -15,7 +16,7 @@
             Add bank account
         </h3>
         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-            Choose an existing account from your portfolio, or create a new one for {{ $businessEntity->legal_name }}.
+            Choose an existing account from your portfolio and set its purpose for {{ $businessEntity->legal_name }}, or create a new one.
         </p>
 
         @if($portfolioBankAccounts->isNotEmpty())
@@ -23,49 +24,75 @@
                 method="POST"
                 action="{{ route('business-entities.bank-accounts.assign', $businessEntity) }}"
                 id="assign-bank-account-form"
-                class="mt-5"
+                class="mt-5 space-y-4"
             >
                 @csrf
 
-                <label for="link_bank_account_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                    Link existing account
-                </label>
-                <x-tom-select
-                    name="bank_account_id"
-                    id="link_bank_account_id"
-                    class="mt-1 rounded-md"
-                    :allowEmpty="false"
-                >
-                    <option value="">Select account…</option>
-                    @foreach($portfolioBankAccounts as $account)
-                        @php
-                            $canLink = $account->canBeLinkedToEntity($businessEntity);
-                        @endphp
-                        <option
-                            value="{{ $account->id }}"
-                            data-can-link="{{ $canLink ? '1' : '0' }}"
-                            data-from-entity-id="{{ $canLink && $account->business_entity_id ? $account->business_entity_id : '' }}"
-                            data-from-entity-name="{{ $canLink ? ($account->businessEntity?->legal_name ?? '') : '' }}"
-                            @selected((string) old('bank_account_id', $pendingAssignId) === (string) $account->id)
-                        >
-                            {{ $account->displayLabel() }} — {{ $account->assignPickerScopeLabel($businessEntity) }}
-                        </option>
-                    @endforeach
-                </x-tom-select>
-                @error('bank_account_id')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-                <p id="link-account-selection-error" class="mt-2 hidden text-sm text-red-600"></p>
+                <div>
+                    <label for="link_bank_account_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Select account
+                    </label>
+                    <x-tom-select
+                        name="bank_account_id"
+                        id="link_bank_account_id"
+                        class="mt-1 rounded-md"
+                        :allowEmpty="false"
+                    >
+                        <option value="">Select account…</option>
+                        @foreach($portfolioBankAccounts as $account)
+                            @php
+                                $canAttach = $account->canBeAttachedToEntity($businessEntity);
+                                $needsMove = $canAttach && $account->requiresMoveToAttachToEntity($businessEntity);
+                            @endphp
+                            <option
+                                value="{{ $account->id }}"
+                                data-can-attach="{{ $canAttach ? '1' : '0' }}"
+                                data-from-entity-id="{{ $needsMove ? $account->business_entity_id : '' }}"
+                                data-from-entity-name="{{ $needsMove ? ($account->businessEntity?->legal_name ?? '') : '' }}"
+                                data-current-purpose="{{ $account->account_purpose }}"
+                                @selected((string) old('bank_account_id', $pendingAssignId) === (string) $account->id)
+                            >
+                                {{ $account->displayLabel() }} — {{ $account->assignPickerScopeLabel($businessEntity) }}
+                            </option>
+                        @endforeach
+                    </x-tom-select>
+                    @error('bank_account_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                    <p id="link-account-selection-error" class="mt-2 hidden text-sm text-red-600"></p>
+                </div>
+
+                <div>
+                    <label for="attach_account_purpose" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Purpose for this entity
+                    </label>
+                    <select
+                        name="account_purpose"
+                        id="attach_account_purpose"
+                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 shadow-xs focus:border-indigo-500 focus:ring-indigo-500"
+                        required
+                    >
+                        @foreach(BankAccount::ENTITY_PURPOSES as $purpose)
+                            <option value="{{ $purpose }}" @selected($defaultPurpose === $purpose)>
+                                {{ BankAccount::purposeLabel($purpose) }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('account_purpose')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 @if($selectableCount === 0)
-                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                        All portfolio accounts are already on this entity or cannot be linked here.
+                    <p class="text-sm text-gray-500 dark:text-gray-400">
+                        No attachable accounts in the portfolio (portfolio lender accounts cannot be attached to an entity).
                     </p>
                 @endif
 
-                <div id="move-confirm-panel" class="mt-3 hidden rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+                <div id="move-confirm-panel" class="hidden rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
                     <p>
                         This account is currently on <strong id="move-from-entity-name"></strong>.
-                        It will be moved to this entity.
+                        It will be moved to this entity with the purpose you selected.
                     </p>
                     <label class="mt-2 flex items-start gap-2">
                         <input type="checkbox" id="confirm_move_checkbox" class="mt-0.5 rounded border-gray-300">
@@ -74,14 +101,14 @@
                 </div>
                 <input type="hidden" name="confirm_move" id="confirm_move_field" value="0">
 
-                <div class="mt-4 flex flex-wrap gap-2">
+                <div class="flex flex-wrap gap-2">
                     <button
                         type="submit"
                         id="link-account-submit"
                         disabled
                         class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        Link account
+                        Attach account
                     </button>
                     <button
                         type="button"
@@ -124,6 +151,7 @@
     const defaultCreateUrl = @json($defaultCreateUrl);
     const selectableCount = @json($selectableCount);
     const selectEl = document.getElementById('link_bank_account_id');
+    const purposeEl = document.getElementById('attach_account_purpose');
     const createLink = document.getElementById('create-new-bank-account-link');
     const movePanel = document.getElementById('move-confirm-panel');
     const moveNameEl = document.getElementById('move-from-entity-name');
@@ -141,18 +169,30 @@
         return selectEl.options[selectEl.selectedIndex] ?? null;
     }
 
-    function isLinkableSelection(opt) {
-        return Boolean(opt && opt.value !== '' && opt.dataset.canLink === '1');
+    function isAttachableSelection(opt) {
+        return Boolean(opt && opt.value !== '' && opt.dataset.canAttach === '1');
     }
 
-    function refreshMoveConfirm() {
+    function syncPurposeFromSelection() {
+        const opt = selectedOption();
+        if (!purposeEl || !opt?.dataset.currentPurpose) {
+            return;
+        }
+
+        const purpose = opt.dataset.currentPurpose;
+        if (Array.from(purposeEl.options).some((o) => o.value === purpose)) {
+            purposeEl.value = purpose;
+        }
+    }
+
+    function refreshAttachForm() {
         if (!submitBtn) {
             return;
         }
 
         const opt = selectedOption();
-        const linkable = isLinkableSelection(opt);
-        const fromEntityId = linkable ? (opt?.dataset.fromEntityId ?? '') : '';
+        const attachable = isAttachableSelection(opt);
+        const fromEntityId = attachable ? (opt?.dataset.fromEntityId ?? '') : '';
         const needsConfirm = fromEntityId !== '';
 
         if (movePanel) {
@@ -176,7 +216,7 @@
         }
 
         submitBtn.disabled = selectableCount === 0
-            || !linkable
+            || !attachable
             || (needsConfirm && !confirmCheckbox?.checked);
     }
 
@@ -185,7 +225,7 @@
             createLink.href = event.detail?.createUrl || defaultCreateUrl;
         }
 
-        refreshMoveConfirm();
+        refreshAttachForm();
         window.dispatchEvent(new CustomEvent('open-modal', { detail: 'add-bank-account' }));
     });
 
@@ -199,21 +239,24 @@
         });
     });
 
-    selectEl?.addEventListener('change', refreshMoveConfirm);
+    selectEl?.addEventListener('change', () => {
+        syncPurposeFromSelection();
+        refreshAttachForm();
+    });
     confirmCheckbox?.addEventListener('change', () => {
         confirmField.value = confirmCheckbox.checked ? '1' : '0';
-        refreshMoveConfirm();
+        refreshAttachForm();
     });
 
     form?.addEventListener('submit', (event) => {
         const opt = selectedOption();
 
-        if (!isLinkableSelection(opt)) {
+        if (!isAttachableSelection(opt)) {
             event.preventDefault();
             if (selectionError) {
                 selectionError.textContent = opt?.value
-                    ? 'This account cannot be linked to this entity.'
-                    : 'Select an account to link.';
+                    ? 'This account cannot be attached to this entity.'
+                    : 'Select an account to attach.';
                 selectionError.classList.remove('hidden');
             }
 
@@ -228,10 +271,15 @@
         }
     });
 
+    @if($selectableCount === 0 && $portfolioBankAccounts->isNotEmpty())
+        submitBtn?.setAttribute('data-no-selectable', 'true');
+    @endif
+
     @if($pendingAssignId || old('bank_account_id'))
         document.addEventListener('DOMContentLoaded', () => {
+            syncPurposeFromSelection();
             window.dispatchEvent(new CustomEvent('open-modal', { detail: 'add-bank-account' }));
-            refreshMoveConfirm();
+            refreshAttachForm();
         });
     @endif
 })();

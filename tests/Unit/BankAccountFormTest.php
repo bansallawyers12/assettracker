@@ -104,10 +104,10 @@ class BankAccountFormTest extends TestCase
             'account_purpose' => BankAccount::PURPOSE_GENERAL,
         ]);
 
-        $this->assertTrue($account->canBeLinkedToEntity($entity));
+        $this->assertTrue($account->canBeAttachedToEntity($entity));
     }
 
-    public function test_cannot_link_account_already_on_entity(): void
+    public function test_can_attach_account_already_on_entity_to_update_purpose(): void
     {
         $entity = new \App\Models\BusinessEntity;
         $entity->id = 3;
@@ -116,10 +116,11 @@ class BankAccountFormTest extends TestCase
             'account_purpose' => BankAccount::PURPOSE_GENERAL,
         ]);
 
-        $this->assertFalse($account->canBeLinkedToEntity($entity));
+        $this->assertTrue($account->canBeAttachedToEntity($entity));
+        $this->assertFalse($account->requiresMoveToAttachToEntity($entity));
     }
 
-    public function test_cannot_link_portfolio_loan_repayment_lender_account(): void
+    public function test_cannot_attach_portfolio_loan_repayment_lender_account(): void
     {
         $entity = new \App\Models\BusinessEntity;
         $entity->id = 3;
@@ -128,10 +129,10 @@ class BankAccountFormTest extends TestCase
             'account_purpose' => BankAccount::PURPOSE_LOAN_REPAYMENT,
         ]);
 
-        $this->assertFalse($account->canBeLinkedToEntity($entity));
+        $this->assertFalse($account->canBeAttachedToEntity($entity));
     }
 
-    public function test_can_link_account_from_another_entity(): void
+    public function test_can_attach_account_from_another_entity_with_move(): void
     {
         $entity = new \App\Models\BusinessEntity;
         $entity->id = 3;
@@ -140,7 +141,8 @@ class BankAccountFormTest extends TestCase
             'account_purpose' => BankAccount::PURPOSE_LOAN,
         ]);
 
-        $this->assertTrue($account->canBeLinkedToEntity($entity));
+        $this->assertTrue($account->canBeAttachedToEntity($entity));
+        $this->assertTrue($account->requiresMoveToAttachToEntity($entity));
     }
 
     public function test_assign_picker_scope_label_for_unassigned_account(): void

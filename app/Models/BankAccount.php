@@ -421,6 +421,18 @@ class BankAccount extends Model
     }
 
     /**
+     * All bank accounts visible in the portfolio registry and entity attach picker.
+     * Includes entity-scoped accounts on operational entities plus portfolio-wide accounts.
+     */
+    public function scopeVisibleInPortfolio(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereNull('business_entity_id')
+                ->orWhereHas('businessEntity', fn (Builder $eq) => $eq->operationalEntities());
+        });
+    }
+
+    /**
      * Accounts available for a given role picker on an asset form.
      *
      * loan            → entity loan accounts plus legacy portfolio loan_repayment accounts
@@ -476,19 +488,31 @@ class BankAccount extends Model
     }
 
     /**
-     * Whether this account may be assigned to the given entity (not already there; not a portfolio-only lender account).
+     * Whether this account may be attached to the given entity (set purpose / scope).
+     * Portfolio-only lender accounts are excluded.
      */
-    public function canBeLinkedToEntity(BusinessEntity $entity): bool
+    public function canBeAttachedToEntity(BusinessEntity $entity): bool
     {
-        if ((int) $this->business_entity_id === (int) $entity->id) {
-            return false;
-        }
-
         if ($this->account_purpose === self::PURPOSE_LOAN_REPAYMENT && $this->isPortfolioWide()) {
             return false;
         }
 
         return true;
+    }
+
+    /** @deprecated Use canBeAttachedToEntity */
+    public function canBeLinkedToEntity(BusinessEntity $entity): bool
+    {
+        return $this->canBeAttachedToEntity($entity);
+    }
+
+    /**
+     * Whether attaching to this entity requires moving the account from another entity.
+     */
+    public function requiresMoveToAttachToEntity(BusinessEntity $entity): bool
+    {
+        return $this->business_entity_id !== null
+            && (int) $this->business_entity_id !== (int) $entity->id;
     }
 
     /**
@@ -497,7 +521,7 @@ class BankAccount extends Model
     public function assignPickerScopeLabel(BusinessEntity $entity): string
     {
         if ((int) $this->business_entity_id === (int) $entity->id) {
-            return 'already on this entity';
+            return 'on this entity · '.self::purposeLabel($this->account_purpose);
         }
 
         if ($this->business_entity_id) {
