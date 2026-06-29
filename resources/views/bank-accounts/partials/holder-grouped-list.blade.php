@@ -4,12 +4,22 @@
     $holderGroups = $holderGroups ?? [];
     $showScope = $showScope ?? true;
     $emptyMessage = $emptyMessage ?? 'No bank accounts yet.';
+    $useAddAccountModal = $useAddAccountModal ?? false;
 @endphp
 
 @if(empty($holderGroups))
     <div class="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $emptyMessage }}</p>
-        @if(! empty($emptyCreateUrl))
+        @if($useAddAccountModal)
+            <button
+                type="button"
+                data-open-add-bank-account
+                class="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+            >
+                <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
+                Add account
+            </button>
+        @elseif(! empty($emptyCreateUrl))
             <a href="{{ $emptyCreateUrl }}" class="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
                 <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
                 Add account
@@ -30,10 +40,19 @@
                             @endif
                         </p>
                     </div>
-                    @include('bank-accounts.partials.account-link-actions', [
-                        'associateUrl' => $group['create_url'],
-                        'associateTitle' => 'Add account for '.$group['label'],
-                    ])
+                    @if($useAddAccountModal)
+                        @include('bank-accounts.partials.account-link-actions', [
+                            'associateModal' => true,
+                            'associateGroupKey' => $group['key'],
+                            'associateCreateUrl' => $group['create_url'],
+                            'associateTitle' => 'Add account for '.$group['label'],
+                        ])
+                    @else
+                        @include('bank-accounts.partials.account-link-actions', [
+                            'associateUrl' => $group['create_url'],
+                            'associateTitle' => 'Add account for '.$group['label'],
+                        ])
+                    @endif
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

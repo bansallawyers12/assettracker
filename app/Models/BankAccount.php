@@ -475,6 +475,41 @@ class BankAccount extends Model
             ->where('business_entity_id', $entity->id);
     }
 
+    /**
+     * Portfolio accounts that can be linked (or moved) onto an entity's bank accounts tab.
+     */
+    public function scopeLinkableToEntity(Builder $query, BusinessEntity $entity, ?int $userId = null): Builder
+    {
+        $userId ??= (int) auth()->id();
+
+        return $query
+            ->forUser($userId)
+            ->where(function (Builder $q) use ($entity) {
+                $q->whereNull('business_entity_id')
+                    ->orWhere('business_entity_id', '!=', $entity->id);
+            })
+            ->where(function (Builder $q) {
+                $q->where('account_purpose', '!=', self::PURPOSE_LOAN_REPAYMENT)
+                    ->orWhereNotNull('business_entity_id');
+            });
+    }
+
+    /**
+     * Whether this account may be assigned to the given entity (not already there; not a portfolio-only lender account).
+     */
+    public function canBeLinkedToEntity(BusinessEntity $entity): bool
+    {
+        if ((int) $this->business_entity_id === (int) $entity->id) {
+            return false;
+        }
+
+        if ($this->account_purpose === self::PURPOSE_LOAN_REPAYMENT && $this->isPortfolioWide()) {
+            return false;
+        }
+
+        return true;
+    }
+
     // ── Relationships ─────────────────────────────────────────────────────────
 
     public function businessEntity(): BelongsTo

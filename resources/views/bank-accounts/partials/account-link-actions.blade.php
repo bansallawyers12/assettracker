@@ -6,7 +6,19 @@
 @endphp
 
 <div class="flex shrink-0 gap-1 {{ $class ?? '' }}">
-    @if(! empty($associateUrl))
+    @if(! empty($associateModal))
+        <button
+            type="button"
+            data-open-add-bank-account
+            data-holder-group-key="{{ $associateGroupKey ?? '' }}"
+            data-create-url="{{ $associateCreateUrl ?? '' }}"
+            title="{{ $associateTitle ?? 'Link account' }}"
+            class="{{ $btnClass }} border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+        >
+            <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
+            <span class="sr-only">{{ $associateTitle ?? 'Link account' }}</span>
+        </button>
+    @elseif(! empty($associateUrl))
         <a
             href="{{ $associateUrl }}"
             title="{{ $associateTitle ?? 'Link account' }}"

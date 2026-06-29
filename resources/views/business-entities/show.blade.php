@@ -820,18 +820,27 @@
                                             <a href="{{ route('bank-accounts.index') }}" class="inline-flex items-center px-2 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
                                                 Portfolio registry
                                             </a>
-                                            <a href="{{ route('business-entities.bank-accounts.create', $businessEntity->id) }}#tab_bank_accounts" class="entity-btn-primary">
+                                            <button
+                                                type="button"
+                                                data-open-add-bank-account
+                                                class="entity-btn-primary"
+                                            >
                                                 <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
                                                 Add Account
-                                            </a>
+                                            </button>
                                         </div>
                                     </div>
 
                                     @include('bank-accounts.partials.holder-grouped-list', [
                                         'holderGroups' => $entityBankAccountGroups ?? [],
                                         'showScope' => false,
+                                        'useAddAccountModal' => true,
                                         'emptyMessage' => 'No bank accounts for this entity yet.',
-                                        'emptyCreateUrl' => route('business-entities.bank-accounts.create', $businessEntity->id),
+                                    ])
+
+                                    @include('bank-accounts.partials.add-account-modal', [
+                                        'businessEntity' => $businessEntity,
+                                        'linkableBankAccounts' => $linkableBankAccounts ?? collect(),
                                     ])
                                 </div>
                             </div>

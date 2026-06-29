@@ -366,6 +366,11 @@ class BusinessEntityController extends Controller
             ->orderBy('account_name')
             ->get();
         $entityBankAccountGroups = BankAccount::groupedByHolder($entityBankAccounts, $businessEntity->id);
+        $linkableBankAccounts = BankAccount::query()
+            ->linkableToEntity($businessEntity)
+            ->with(['businessEntity', 'holderEntity', 'holderPerson'])
+            ->orderBy('account_name')
+            ->get();
         $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument'])->orderBy('date', 'desc')->get();
         $invoices = Invoice::where('business_entity_id', $businessEntity->id)
             ->with(['asset'])
@@ -397,6 +402,7 @@ class BusinessEntityController extends Controller
             'bankAccounts',
             'entityBankAccounts',
             'entityBankAccountGroups',
+            'linkableBankAccounts',
             'transactions',
             'invoices',
             'documentCategories',
@@ -1441,6 +1447,60 @@ class BusinessEntityController extends Controller
         // Redirect back to the entity show page (likely bank accounts tab) with success message
         return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
             ->with('success', 'Bank account added successfully!');
+    }
+
+    /**
+     * Link an existing portfolio account to this business entity (or move from another entity).
+     *
+     * @return RedirectResponse
+     */
+    public function assignBankAccountToEntity(Request $request, BusinessEntity $businessEntity)
+    {
+        $this->authorize('update', $businessEntity);
+
+        $this->ensureOperationalForAccounting($businessEntity);
+
+        $validated = $request->validate([
+            'bank_account_id' => 'required|integer|exists:bank_accounts,id',
+            'confirm_move' => 'sometimes|boolean',
+        ]);
+
+        $bankAccount = BankAccount::query()
+            ->with('businessEntity')
+            ->findOrFail($validated['bank_account_id']);
+
+        $this->ensureBankAccountOwnedByUser($bankAccount);
+
+        if (! $bankAccount->canBeLinkedToEntity($businessEntity)) {
+            if ((int) $bankAccount->business_entity_id === (int) $businessEntity->id) {
+                return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
+                    ->with('error', 'This account is already on this entity.');
+            }
+
+            return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
+                ->with('error', 'This account cannot be linked to an entity.');
+        }
+
+        $previousEntity = $bankAccount->businessEntity;
+
+        if ($previousEntity !== null && ! $request->boolean('confirm_move')) {
+            return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
+                ->withInput()
+                ->with('assign_bank_account_id', $bankAccount->id)
+                ->with('error', 'This account is on '.$previousEntity->legal_name.'. Open Add Account and confirm the move.');
+        }
+
+        $bankAccount->update([
+            'business_entity_id' => $businessEntity->id,
+            'user_id' => $businessEntity->user_id ?? auth()->id(),
+        ]);
+
+        $message = $previousEntity
+            ? 'Bank account moved from '.$previousEntity->legal_name.'.'
+            : 'Bank account linked successfully!';
+
+        return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
+            ->with('success', $message);
     }
 
     /**

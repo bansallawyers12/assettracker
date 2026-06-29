@@ -94,4 +94,52 @@ class BankAccountFormTest extends TestCase
 
         $this->assertSame('unassigned', (new BankAccount())->holderGroupKey());
     }
+
+    public function test_can_be_linked_to_entity_when_unassigned(): void
+    {
+        $entity = new \App\Models\BusinessEntity;
+        $entity->id = 3;
+        $account = new BankAccount([
+            'business_entity_id' => null,
+            'account_purpose' => BankAccount::PURPOSE_GENERAL,
+        ]);
+
+        $this->assertTrue($account->canBeLinkedToEntity($entity));
+    }
+
+    public function test_cannot_link_account_already_on_entity(): void
+    {
+        $entity = new \App\Models\BusinessEntity;
+        $entity->id = 3;
+        $account = new BankAccount([
+            'business_entity_id' => 3,
+            'account_purpose' => BankAccount::PURPOSE_GENERAL,
+        ]);
+
+        $this->assertFalse($account->canBeLinkedToEntity($entity));
+    }
+
+    public function test_cannot_link_portfolio_loan_repayment_lender_account(): void
+    {
+        $entity = new \App\Models\BusinessEntity;
+        $entity->id = 3;
+        $account = new BankAccount([
+            'business_entity_id' => null,
+            'account_purpose' => BankAccount::PURPOSE_LOAN_REPAYMENT,
+        ]);
+
+        $this->assertFalse($account->canBeLinkedToEntity($entity));
+    }
+
+    public function test_can_link_account_from_another_entity(): void
+    {
+        $entity = new \App\Models\BusinessEntity;
+        $entity->id = 3;
+        $account = new BankAccount([
+            'business_entity_id' => 9,
+            'account_purpose' => BankAccount::PURPOSE_LOAN,
+        ]);
+
+        $this->assertTrue($account->canBeLinkedToEntity($entity));
+    }
 }
