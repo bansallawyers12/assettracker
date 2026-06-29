@@ -54,7 +54,7 @@
 
                             <div>
                                 <x-input-label for="date_of_birth" :value="__('Date of Birth')" />
-                                <x-text-input id="date_of_birth" class="block mt-1 w-full" type="date" name="date_of_birth" :value="old('date_of_birth')" />
+                                <x-date-input id="date_of_birth" class="block mt-1 w-full" name="date_of_birth" :value="old('date_of_birth')" />
                                 <x-input-error :messages="$errors->get('date_of_birth')" class="mt-2" />
                             </div>
                         </div>
@@ -94,7 +94,7 @@
 
                             <div>
                                 <x-input-label for="asic_due_date" :value="__('ASIC Due Date')" />
-                                <x-text-input id="asic_due_date" class="block mt-1 w-full" type="date" name="asic_due_date" :value="old('asic_due_date')" />
+                                <x-date-input id="asic_due_date" class="block mt-1 w-full" name="asic_due_date" :value="old('asic_due_date')" />
                                 <x-input-error :messages="$errors->get('asic_due_date')" class="mt-2" />
                             </div>
                         </div>

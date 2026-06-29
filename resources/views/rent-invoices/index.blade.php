@@ -205,11 +205,11 @@
                 @csrf
                 <div class="mb-4">
                     <label for="invoice_date" class="block text-sm font-medium text-gray-700">Invoice Date</label>
-                    <input type="date" 
+                    <x-date-input  
                            name="invoice_date" 
                            id="invoice_date" 
                            value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}"
-                           class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                           class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
                 </div>
                 <div class="flex justify-end space-x-3">
                     <button type="button" 

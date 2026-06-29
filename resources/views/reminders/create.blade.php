@@ -24,7 +24,7 @@
 
                 <div>
                     <label for="reminder_date" class="block text-sm font-medium text-gray-700">Due Date</label>
-                    <input type="date" name="reminder_date" id="reminder_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500" min="{{ date('Y-m-d') }}" required>
+                    <x-date-input  name="reminder_date" id="reminder_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500" min="{{ date('Y-m-d') }}" required />
                     @error('reminder_date')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -71,7 +71,7 @@
 
                 <div id="repeat_end_date_container" style="display: none;">
                     <label for="repeat_end_date" class="block text-sm font-medium text-gray-700">Repeat End Date (Optional)</label>
-                    <input type="date" name="repeat_end_date" id="repeat_end_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500" min="{{ date('Y-m-d') }}">
+                    <x-date-input  name="repeat_end_date" id="repeat_end_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-xs focus:border-indigo-500 focus:ring-indigo-500" min="{{ date('Y-m-d') }}" />
                     @error('repeat_end_date')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror

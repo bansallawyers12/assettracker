@@ -134,7 +134,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Lease Start Date</label>
-                            <input type="date" name="move_in_date" value="{{ old('move_in_date') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                            <x-date-input  name="move_in_date" value="{{ old('move_in_date') }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white" />
                             @error('move_in_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>

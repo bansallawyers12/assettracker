@@ -34,10 +34,10 @@
                         <form method="GET" class="flex gap-2 flex-wrap">
                             <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Search emails..."
                                    class="border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"
-                                   class="border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                            <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"
-                                   class="border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <x-date-input  name="date_from" value="{{ $filters['date_from'] ?? '' }}"
+                                   class="border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
+                            <x-date-input  name="date_to" value="{{ $filters['date_to'] ?? '' }}"
+                                   class="border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
                             <select name="label_id" class="border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-white px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">All Labels</option>
                                 @foreach ($labels as $label)

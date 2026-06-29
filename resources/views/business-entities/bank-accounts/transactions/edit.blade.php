@@ -50,8 +50,8 @@
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
-                            <input type="date" name="date" value="{{ old('date', $transaction->date->toDateString()) }}"
-                                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required>
+                            <x-date-input  name="date" value="{{ old('date', $transaction->date->toDateString()) }}"
+                                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" required />
                             @error('date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
@@ -168,8 +168,8 @@
                         <div id="unpaid_block" class="{{ $oldStatus === 'unpaid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Due Date</label>
-                                <input type="date" name="due_date" value="{{ old('due_date', $transaction->due_date?->toDateString()) }}"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                                <x-date-input  name="due_date" value="{{ old('due_date', $transaction->due_date?->toDateString()) }}"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" />
                                 @error('due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                         </div>
@@ -178,8 +178,8 @@
                         <div id="paid_block" class="{{ $oldStatus === 'paid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Date</label>
-                                <input type="date" name="paid_at" value="{{ old('paid_at', $transaction->paid_at?->toDateString()) }}"
-                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                                <x-date-input  name="paid_at" value="{{ old('paid_at', $transaction->paid_at?->toDateString()) }}"
+                                       class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" />
                                 @error('paid_at') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>

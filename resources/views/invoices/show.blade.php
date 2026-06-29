@@ -124,7 +124,7 @@
                             @csrf
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Paid date</label>
-                                <input type="date" name="paid_at" value="{{ now()->format('Y-m-d') }}" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                                <x-date-input  name="paid_at" value="{{ now()->format('Y-m-d') }}" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Payment method</label>

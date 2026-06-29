@@ -29,19 +29,19 @@
                     </div>
                     <div>
                         <label for="start_date" class="block text-sm font-medium text-gray-700">Start Date</label>
-                        <input type="date" 
+                        <x-date-input  
                                name="start_date" 
                                id="start_date" 
                                value="{{ request('start_date', $report['period']['start_date']) }}"
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
                     </div>
                     <div>
                         <label for="end_date" class="block text-sm font-medium text-gray-700">End Date</label>
-                        <input type="date" 
+                        <x-date-input  
                                name="end_date" 
                                id="end_date" 
                                value="{{ request('end_date', $report['period']['end_date']) }}"
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
                     </div>
                     <div>
                         <label for="tracking_category_id" class="block text-sm font-medium text-gray-700">Category</label>

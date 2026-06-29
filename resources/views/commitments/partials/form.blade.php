@@ -29,17 +29,17 @@
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
     <div>
         <label for="contract_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Contract date</label>
-        <input type="date" name="contract_date" id="contract_date"
+        <x-date-input  name="contract_date" id="contract_date"
                value="{{ old('contract_date', optional($commitment)->contract_date?->format('Y-m-d') ?? '') }}"
-               class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-900 dark:border-gray-600">
+               class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-900 dark:border-gray-600" />
         @error('contract_date')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
     </div>
 
     <div>
         <label for="settlement_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Settlement date</label>
-        <input type="date" name="settlement_date" id="settlement_date"
+        <x-date-input  name="settlement_date" id="settlement_date"
                value="{{ old('settlement_date', optional($commitment)->settlement_date?->format('Y-m-d') ?? '') }}"
-               class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-900 dark:border-gray-600">
+               class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-900 dark:border-gray-600" />
         @error('settlement_date')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
     </div>
 </div>

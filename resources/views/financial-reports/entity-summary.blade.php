@@ -49,21 +49,21 @@
             <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-gray-600">Short period</label>
                 <div class="flex items-center gap-2">
-                    <input type="date" name="period_start_date" value="{{ $periodStart->toDateString() }}"
-                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white">
+                    <x-date-input  name="period_start_date" value="{{ $periodStart->toDateString() }}"
+                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white" />
                     <span class="text-gray-400 text-sm">–</span>
-                    <input type="date" name="period_end_date" value="{{ $periodEnd->toDateString() }}"
-                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white">
+                    <x-date-input  name="period_end_date" value="{{ $periodEnd->toDateString() }}"
+                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white" />
                 </div>
             </div>
             <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-gray-600">Financial year</label>
                 <div class="flex items-center gap-2">
-                    <input type="date" name="fy_start_date" value="{{ $fyStart->toDateString() }}"
-                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white">
+                    <x-date-input  name="fy_start_date" value="{{ $fyStart->toDateString() }}"
+                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white" />
                     <span class="text-gray-400 text-sm">–</span>
-                    <input type="date" name="fy_end_date" value="{{ $fyEnd->toDateString() }}"
-                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white">
+                    <x-date-input  name="fy_end_date" value="{{ $fyEnd->toDateString() }}"
+                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white" />
                 </div>
             </div>
             <button type="submit"

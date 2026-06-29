@@ -109,13 +109,13 @@
             <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-gray-600">Date range</label>
                 <div class="flex items-center gap-2">
-                    <input type="date" name="start_date"
+                    <x-date-input  name="start_date"
                            value="{{ $startDate->toDateString() }}"
-                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
+                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500" />
                     <span class="text-gray-400 text-sm">–</span>
-                    <input type="date" name="end_date"
+                    <x-date-input  name="end_date"
                            value="{{ $endDate->toDateString() }}"
-                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
+                           class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500" />
                 </div>
             </div>
 

@@ -116,7 +116,7 @@
                         @csrf
                         <div>
                             <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Date</label>
-                            <input type="date" name="paid_at" required value="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300 text-sm dark:bg-gray-900 dark:border-gray-600">
+                            <x-date-input  name="paid_at" required value="{{ date('Y-m-d') }}" class="w-full rounded-md border-gray-300 text-sm dark:bg-gray-900 dark:border-gray-600" />
                         </div>
                         <div>
                             <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Type</label>
@@ -165,9 +165,9 @@
                         </div>
                         <div>
                             <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Acquisition date</label>
-                            <input type="date" name="acquisition_date"
+                            <x-date-input  name="acquisition_date"
                                    value="{{ $commitment->settlement_date?->format('Y-m-d') ?? date('Y-m-d') }}"
-                                   class="w-full rounded-md border-gray-300 text-sm dark:bg-gray-900 dark:border-gray-600">
+                                   class="w-full rounded-md border-gray-300 text-sm dark:bg-gray-900 dark:border-gray-600" />
                         </div>
                     </div>
                     <button type="submit" class="px-4 py-2 text-sm font-medium rounded-md bg-green-600 text-white hover:bg-green-700"

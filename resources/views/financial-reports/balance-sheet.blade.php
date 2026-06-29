@@ -48,9 +48,9 @@
 
             <div class="flex flex-col gap-1">
                 <label class="text-xs font-medium text-gray-600">Date</label>
-                <input type="date" name="as_of_date"
+                <x-date-input  name="as_of_date"
                        value="{{ $asOfDate->toDateString() }}"
-                       class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500">
+                       class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500" />
             </div>
 
             {{-- Balance sheet quick-date shortcuts --}}

@@ -690,7 +690,7 @@
                                         <div class="mb-4">
                                             <input type="hidden" name="is_reminder" value="1">
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Due Date</label>
-                                            <input type="date" name="reminder_date" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white" min="{{ now()->format('Y-m-d') }}" value="{{ old('reminder_date') }}" required>
+                                            <x-date-input  name="reminder_date" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white" min="{{ now()->format('Y-m-d') }}" value="{{ old('reminder_date') }}" required />
                                             @error('reminder_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                         </div>
                                         <div class="mb-4">
@@ -705,7 +705,7 @@
                                         </div>
                                         <div class="mb-4" id="repeat_end_date_container" style="display: none;">
                                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">End Date (Optional)</label>
-                                            <input type="date" name="repeat_end_date" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white" min="{{ now()->format('Y-m-d') }}" value="{{ old('repeat_end_date') }}">
+                                            <x-date-input  name="repeat_end_date" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-yellow-500 focus:border-yellow-500 dark:bg-gray-700 dark:text-white" min="{{ now()->format('Y-m-d') }}" value="{{ old('repeat_end_date') }}" />
                                             @error('repeat_end_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                         </div>
                                         <div class="flex justify-end">

@@ -38,7 +38,7 @@
                     </div>
                     <div class="w-full sm:w-auto">
                         <label for="invoice_date" class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Billing date</label>
-                        <input type="date" name="invoice_date" id="invoice_date" value="{{ now()->format('Y-m-d') }}" class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
+                        <x-date-input  name="invoice_date" id="invoice_date" value="{{ now()->format('Y-m-d') }}" class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                     </div>
                     <button type="submit" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg shadow-xs transition-colors">
                         Generate invoice
@@ -98,7 +98,7 @@
                                             @if ($inv->status === 'approved')
                                                 <form method="POST" action="{{ route('business-entities.invoices.record-payment', [$businessEntity, $inv]) }}" class="flex flex-wrap items-center gap-2">
                                                     @csrf
-                                                    <input type="date" name="paid_at" value="{{ now()->format('Y-m-d') }}" required class="rounded-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-32" />
+                                                    <x-date-input  name="paid_at" value="{{ now()->format('Y-m-d') }}" required class="rounded-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-32" />
                                                     <input type="text" name="payment_method" placeholder="Method" class="rounded-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-24" />
                                                     <input type="text" name="payment_reference" placeholder="Ref" class="rounded-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-24" />
                                                     <button type="submit" class="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-sm">Mark paid</button>

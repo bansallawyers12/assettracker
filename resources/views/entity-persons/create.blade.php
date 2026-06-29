@@ -157,12 +157,12 @@
 
                         <div class="mb-4">
                             <label for="appointment_date" class="block text-sm font-medium text-gray-700">Appointment Date</label>
-                            <input type="date" name="appointment_date" id="appointment_date" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('appointment_date') ?? now()->format('Y-m-d') }}">
+                            <x-date-input  name="appointment_date" id="appointment_date" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('appointment_date') ?? now()->format('Y-m-d') }}" />
                             @error('appointment_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="mb-4">
                             <label for="resignation_date" class="block text-sm font-medium text-gray-700">Resignation Date</label>
-                            <input type="date" name="resignation_date" id="resignation_date" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('resignation_date') }}">
+                            <x-date-input  name="resignation_date" id="resignation_date" class="mt-1 block w-full border-gray-300 rounded-md" value="{{ old('resignation_date') }}" />
                             @error('resignation_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="mb-4">
@@ -189,7 +189,7 @@
                         </div>
                         <div class="mb-4">
                             <label for="asic_due_date" class="block text-sm font-medium text-gray-700">ASIC Due Date</label>
-                            <input type="date" name="asic_due_date" id="asic_due_date" class="mt-1 block w-full border-gray-300 rounded-md" min="{{ now()->format('Y-m-d') }}" value="{{ old('asic_due_date') }}">
+                            <x-date-input  name="asic_due_date" id="asic_due_date" class="mt-1 block w-full border-gray-300 rounded-md" min="{{ now()->format('Y-m-d') }}" value="{{ old('asic_due_date') }}" />
                             @error('asic_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 

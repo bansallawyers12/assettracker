@@ -122,8 +122,8 @@
                         {{-- Date --}}
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
-                            <input type="date" name="date" value="{{ old('date', session('transactionData.date', now()->toDateString())) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
+                            <x-date-input  name="date" value="{{ old('date', session('transactionData.date', now()->toDateString())) }}"
+                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required />
                             @error('date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
@@ -260,8 +260,8 @@
                         <div id="unpaid_block" class="{{ $oldStatus === 'unpaid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
-                                <input type="date" name="due_date" value="{{ old('due_date', session('transactionData.due_date')) }}"
-                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                <x-date-input  name="due_date" value="{{ old('due_date', session('transactionData.due_date')) }}"
+                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" />
                                 @error('due_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                         </div>
@@ -270,8 +270,8 @@
                         <div id="paid_block" class="{{ $oldStatus === 'paid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Date</label>
-                                <input type="date" name="paid_at" value="{{ old('paid_at', session('transactionData.paid_at')) }}"
-                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                <x-date-input  name="paid_at" value="{{ old('paid_at', session('transactionData.paid_at')) }}"
+                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" />
                                 @error('paid_at') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                             <div>
@@ -437,7 +437,7 @@
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
-                                    <input type="date" name="reminder_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('reminder_date', old('next_due_date')) }}" required>
+                                    <x-date-input  name="reminder_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('reminder_date', old('next_due_date')) }}" required />
                                     @error('reminder_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
@@ -452,7 +452,7 @@
                                 </div>
                                 <div id="repeat_end_date_container" style="display: none;">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date (Optional)</label>
-                                    <input type="date" name="repeat_end_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('repeat_end_date') }}">
+                                    <x-date-input  name="repeat_end_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('repeat_end_date') }}" />
                                     @error('repeat_end_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                             </div>

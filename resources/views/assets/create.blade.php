@@ -39,7 +39,7 @@
                                     </div>
                                     <div class="mb-4">
                                         <label for="acquisition_date" class="block text-sm font-medium text-gray-700">Buying Date</label>
-                                        <input type="date" name="acquisition_date" id="acquisition_date" value="{{ old('acquisition_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" required>
+                                        <x-date-input  name="acquisition_date" id="acquisition_date" value="{{ old('acquisition_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" required />
                                         @error('acquisition_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="mb-4">
@@ -97,7 +97,7 @@
                                     </div>
                                     <div class="mb-4">
                                         <label for="insurance_due_date" class="block text-sm font-medium text-gray-700">Insurance Due Date</label>
-                                        <input type="date" name="insurance_due_date" id="insurance_due_date" value="{{ old('insurance_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                                        <x-date-input  name="insurance_due_date" id="insurance_due_date" value="{{ old('insurance_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                                         @error('insurance_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="mb-4">
@@ -121,7 +121,7 @@
                                     </div>
                                     <div class="mb-4">
                                         <label for="registration_due_date" class="block text-sm font-medium text-gray-700">Registration Due Date</label>
-                                        <input type="date" name="registration_due_date" id="registration_due_date" value="{{ old('registration_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                                        <x-date-input  name="registration_due_date" id="registration_due_date" value="{{ old('registration_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                                         @error('registration_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="mb-4">
@@ -147,7 +147,7 @@
                                     </div>
                                     <div class="mb-4">
                                         <label for="service_due_date" class="block text-sm font-medium text-gray-700">Service Due Date</label>
-                                        <input type="date" name="service_due_date" id="service_due_date" value="{{ old('service_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                                        <x-date-input  name="service_due_date" id="service_due_date" value="{{ old('service_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                                         @error('service_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="mb-4">
@@ -177,7 +177,7 @@
                                     </div>
                                     <div class="mb-4">
                                         <label for="council_rates_due_date" class="block text-sm font-medium text-gray-700">Council Rates Due Date</label>
-                                        <input type="date" name="council_rates_due_date" id="council_rates_due_date" value="{{ old('council_rates_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                                        <x-date-input  name="council_rates_due_date" id="council_rates_due_date" value="{{ old('council_rates_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                                         @error('council_rates_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="mb-4">
@@ -187,7 +187,7 @@
                                     </div>
                                     <div class="mb-4">
                                         <label for="owners_corp_due_date" class="block text-sm font-medium text-gray-700">Owners Corp Due Date</label>
-                                        <input type="date" name="owners_corp_due_date" id="owners_corp_due_date" value="{{ old('owners_corp_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                                        <x-date-input  name="owners_corp_due_date" id="owners_corp_due_date" value="{{ old('owners_corp_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                                         @error('owners_corp_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="mb-4">
@@ -197,7 +197,7 @@
                                     </div>
                                     <div class="mb-4">
                                         <label for="land_tax_due_date" class="block text-sm font-medium text-gray-700">Land Tax Due Date</label>
-                                        <input type="date" name="land_tax_due_date" id="land_tax_due_date" value="{{ old('land_tax_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                                        <x-date-input  name="land_tax_due_date" id="land_tax_due_date" value="{{ old('land_tax_due_date') }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                                         @error('land_tax_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                     </div>
                                     <div class="mb-4">

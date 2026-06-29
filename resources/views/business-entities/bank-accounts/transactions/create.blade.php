@@ -67,7 +67,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Date</label>
-                            <input type="date" name="date" value="{{ old('date', $td['date'] ?? now()->toDateString()) }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" required>
+                            <x-date-input  name="date" value="{{ old('date', $td['date'] ?? now()->toDateString()) }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" required />
                             @error('date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
@@ -177,7 +177,7 @@
                         <div id="unpaid_block" class="{{ $oldPay === 'unpaid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Due Date</label>
-                                <input type="date" name="due_date" value="{{ old('due_date', $td['due_date'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
+                                <x-date-input  name="due_date" value="{{ old('due_date', $td['due_date'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" />
                                 @error('due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                         </div>
@@ -185,7 +185,7 @@
                         <div id="paid_block" class="{{ $oldPay === 'paid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Date</label>
-                                <input type="date" name="paid_at" value="{{ old('paid_at', $td['paid_at'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
+                                <x-date-input  name="paid_at" value="{{ old('paid_at', $td['paid_at'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" />
                                 @error('paid_at') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             <div>

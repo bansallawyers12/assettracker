@@ -34,7 +34,7 @@
                         </div>
                         <div class="mb-4">
                             <label for="acquisition_date" class="block text-sm font-medium text-gray-700">Acquisition Date</label>
-                            <input type="date" name="acquisition_date" id="acquisition_date" value="{{ old('acquisition_date', $asset->acquisition_date instanceof \Carbon\Carbon ? $asset->acquisition_date->format('Y-m-d') : ($asset->acquisition_date ? \Carbon\Carbon::parse($asset->acquisition_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" required>
+                            <x-date-input  name="acquisition_date" id="acquisition_date" value="{{ old('acquisition_date', $asset->acquisition_date instanceof \Carbon\Carbon ? $asset->acquisition_date->format('Y-m-d') : ($asset->acquisition_date ? \Carbon\Carbon::parse($asset->acquisition_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" required />
                             @error('acquisition_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="mb-4">
@@ -71,7 +71,7 @@
                         </div>
                         <div class="mb-4">
                             <label for="insurance_due_date" class="block text-sm font-medium text-gray-700">Insurance Due Date</label>
-                            <input type="date" name="insurance_due_date" id="insurance_due_date" value="{{ old('insurance_due_date', $asset->insurance_due_date instanceof \Carbon\Carbon ? $asset->insurance_due_date->format('Y-m-d') : ($asset->insurance_due_date ? \Carbon\Carbon::parse($asset->insurance_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                            <x-date-input  name="insurance_due_date" id="insurance_due_date" value="{{ old('insurance_due_date', $asset->insurance_due_date instanceof \Carbon\Carbon ? $asset->insurance_due_date->format('Y-m-d') : ($asset->insurance_due_date ? \Carbon\Carbon::parse($asset->insurance_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                             @error('insurance_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="mb-4">
@@ -86,7 +86,7 @@
                             <input type="text" name="registration_number" id="registration_number" value="{{ old('registration_number', $asset->registration_number) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
                             @error('registration_number') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="registration_due_date" class="block text-sm font-medium text-gray-700">Registration Due Date</label>
-                            <input type="date" name="registration_due_date" id="registration_due_date" value="{{ old('registration_due_date', $asset->registration_due_date instanceof \Carbon\Carbon ? $asset->registration_due_date->format('Y-m-d') : ($asset->registration_due_date ? \Carbon\Carbon::parse($asset->registration_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                            <x-date-input  name="registration_due_date" id="registration_due_date" value="{{ old('registration_due_date', $asset->registration_due_date instanceof \Carbon\Carbon ? $asset->registration_due_date->format('Y-m-d') : ($asset->registration_due_date ? \Carbon\Carbon::parse($asset->registration_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                             @error('registration_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="vin_number" class="block text-sm font-medium text-gray-700">VIN Number</label>
                             <input type="text" name="vin_number" id="vin_number" value="{{ old('vin_number', $asset->vin_number) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
@@ -104,7 +104,7 @@
                             </select>
                             @error('fuel_type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="service_due_date" class="block text-sm font-medium text-gray-700">Service Due Date</label>
-                            <input type="date" name="service_due_date" id="service_due_date" value="{{ old('service_due_date', $asset->service_due_date instanceof \Carbon\Carbon ? $asset->service_due_date->format('Y-m-d') : ($asset->service_due_date ? \Carbon\Carbon::parse($asset->service_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                            <x-date-input  name="service_due_date" id="service_due_date" value="{{ old('service_due_date', $asset->service_due_date instanceof \Carbon\Carbon ? $asset->service_due_date->format('Y-m-d') : ($asset->service_due_date ? \Carbon\Carbon::parse($asset->service_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                             @error('service_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="vic_roads_updated" class="block text-sm font-medium text-gray-700">
                                 <input type="checkbox" name="vic_roads_updated" id="vic_roads_updated" value="1" {{ $asset->vic_roads_updated ? 'checked' : '' }}> VicRoads Updated
@@ -124,19 +124,19 @@
                             <input type="number" step="0.01" name="council_rates_amount" id="council_rates_amount" value="{{ old('council_rates_amount', $asset->council_rates_amount) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
                             @error('council_rates_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="council_rates_due_date" class="block text-sm font-medium text-gray-700">Council Rates Due Date</label>
-                            <input type="date" name="council_rates_due_date" id="council_rates_due_date" value="{{ old('council_rates_due_date', $asset->council_rates_due_date instanceof \Carbon\Carbon ? $asset->council_rates_due_date->format('Y-m-d') : ($asset->council_rates_due_date ? \Carbon\Carbon::parse($asset->council_rates_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                            <x-date-input  name="council_rates_due_date" id="council_rates_due_date" value="{{ old('council_rates_due_date', $asset->council_rates_due_date instanceof \Carbon\Carbon ? $asset->council_rates_due_date->format('Y-m-d') : ($asset->council_rates_due_date ? \Carbon\Carbon::parse($asset->council_rates_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                             @error('council_rates_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="owners_corp_amount" class="block text-sm font-medium text-gray-700">Owners Corp Amount</label>
                             <input type="number" step="0.01" name="owners_corp_amount" id="owners_corp_amount" value="{{ old('owners_corp_amount', $asset->owners_corp_amount) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
                             @error('owners_corp_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="owners_corp_due_date" class="block text-sm font-medium text-gray-700">Owners Corp Due Date</label>
-                            <input type="date" name="owners_corp_due_date" id="owners_corp_due_date" value="{{ old('owners_corp_due_date', $asset->owners_corp_due_date instanceof \Carbon\Carbon ? $asset->owners_corp_due_date->format('Y-m-d') : ($asset->owners_corp_due_date ? \Carbon\Carbon::parse($asset->owners_corp_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                            <x-date-input  name="owners_corp_due_date" id="owners_corp_due_date" value="{{ old('owners_corp_due_date', $asset->owners_corp_due_date instanceof \Carbon\Carbon ? $asset->owners_corp_due_date->format('Y-m-d') : ($asset->owners_corp_due_date ? \Carbon\Carbon::parse($asset->owners_corp_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                             @error('owners_corp_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="land_tax_amount" class="block text-sm font-medium text-gray-700">Land Tax Amount</label>
                             <input type="number" step="0.01" name="land_tax_amount" id="land_tax_amount" value="{{ old('land_tax_amount', $asset->land_tax_amount) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
                             @error('land_tax_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="land_tax_due_date" class="block text-sm font-medium text-gray-700">Land Tax Due Date</label>
-                            <input type="date" name="land_tax_due_date" id="land_tax_due_date" value="{{ old('land_tax_due_date', $asset->land_tax_due_date instanceof \Carbon\Carbon ? $asset->land_tax_due_date->format('Y-m-d') : ($asset->land_tax_due_date ? \Carbon\Carbon::parse($asset->land_tax_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+                            <x-date-input  name="land_tax_due_date" id="land_tax_due_date" value="{{ old('land_tax_due_date', $asset->land_tax_due_date instanceof \Carbon\Carbon ? $asset->land_tax_due_date->format('Y-m-d') : ($asset->land_tax_due_date ? \Carbon\Carbon::parse($asset->land_tax_due_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" />
                             @error('land_tax_due_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             <label for="sro_updated" class="block text-sm font-medium text-gray-700">
                                 <input type="checkbox" name="sro_updated" id="sro_updated" value="1" {{ $asset->sro_updated ? 'checked' : '' }}> SRO Updated
