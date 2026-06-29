@@ -9,8 +9,6 @@
 
     $entityCreate = fn (string $purpose = '') => route('business-entities.bank-accounts.create', $businessEntity)
         . ($purpose ? '?purpose=' . urlencode($purpose) : '');
-    $portfolioCreate = fn (string $purpose = '') => route('bank-accounts.create')
-        . ($purpose ? '?purpose=' . urlencode($purpose) : '');
 @endphp
 
 <div class="mt-6 pt-4 border-t border-gray-200" id="linked-accounts">
@@ -28,16 +26,7 @@
         'selectedId' => $selectedLoanBankAccountId ?? null,
         'createUrl' => $entityCreate(BankAccount::PURPOSE_LOAN),
         'businessEntity' => $businessEntity,
-    ])
-
-    @include('bank-accounts.partials.account-picker-row', [
-        'label' => 'Loan Repayment Account',
-        'selectName' => 'loan_repayment_bank_account_id',
-        'selectId' => 'loan_repayment_bank_account_id',
-        'accounts' => $loanRepaymentAccounts ?? [],
-        'selectedId' => $selectedLoanRepaymentBankAccountId ?? null,
-        'createUrl' => $portfolioCreate(BankAccount::PURPOSE_LOAN_REPAYMENT),
-        'businessEntity' => $businessEntity,
+        'hint' => 'Loan / lender account for this property — BSB and account number used on reports.',
     ])
 
     @include('bank-accounts.partials.account-picker-row', [

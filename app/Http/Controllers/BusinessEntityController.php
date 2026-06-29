@@ -1218,21 +1218,17 @@ class BusinessEntityController extends Controller
         }
 
         $query = BankAccount::query()
-            ->select('id', 'account_name', 'bank_name', 'bsb', 'account_purpose', 'business_entity_id')
-            ->where(function ($inner) use ($businessEntity, $purpose) {
-                $inner->where('business_entity_id', $businessEntity->id);
+            ->select('id', 'account_name', 'bank_name', 'bsb', 'account_purpose', 'business_entity_id');
 
-                if ($purpose === BankAccount::PURPOSE_LOAN_REPAYMENT) {
-                    $inner->orWhere(function ($portfolio) {
-                        $portfolio->whereNull('business_entity_id')
-                            ->where('user_id', auth()->id())
-                            ->where('account_purpose', BankAccount::PURPOSE_LOAN_REPAYMENT);
-                    });
-                }
-            });
+        if ($purpose === BankAccount::PURPOSE_LOAN || $purpose === BankAccount::PURPOSE_LOAN_REPAYMENT) {
+            // Loan asset picker — entity loan accounts plus legacy portfolio lender accounts
+            $query->forLoanAssetLinkPicker($businessEntity);
+        } else {
+            $query->where('business_entity_id', $businessEntity->id);
 
-        if ($purpose) {
-            $query->where('account_purpose', $purpose);
+            if ($purpose) {
+                $query->where('account_purpose', $purpose);
+            }
         }
 
         return response()->json(

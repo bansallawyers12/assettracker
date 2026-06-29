@@ -121,7 +121,7 @@
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[100px]">Loan Payment</th>
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[110px]">Loan Balance</th>
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[110px]">Need to Put</th>
-                        <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[160px]">Loan Repayment</th>
+                        <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[160px]">Loan Account</th>
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[100px]">Direct Debit</th>
                         <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[130px]">Rent Paid By</th>
                         <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[90px]">Purchased</th>
@@ -212,16 +212,16 @@
                                 {{ $row['equity_required'] !== null ? '$'.number_format($row['equity_required'], 0) : '—' }}
                             </td>
 
-                            {{-- Loan repayment account (BSB + Acc) --}}
+                            {{-- Loan account (BSB + Acc) --}}
                             <td class="py-2 px-2 text-xs text-gray-600 font-mono">
-                                @if($row['loan_repayment_bsb'] || $row['loan_repayment_account_number'])
-                                    @if($row['loan_repayment_bsb'])BSB {{ $row['loan_repayment_bsb'] }}@endif
-                                    @if($row['loan_repayment_account_number'])
-                                        <span class="js-acc-masked"> Acc: {{ $row['loan_repayment_account_number'] }}</span>
-                                        @if($row['loan_repayment_bank_account_id'])
+                                @if($row['loan_bsb'] || $row['loan_account_number'])
+                                    @if($row['loan_bsb'])BSB {{ $row['loan_bsb'] }}@endif
+                                    @if($row['loan_account_number'])
+                                        <span class="js-acc-masked"> Acc: {{ $row['loan_account_number'] }}</span>
+                                        @if($row['loan_bank_account_id'])
                                             <button type="button"
                                                     class="js-reveal-acc text-indigo-600 hover:underline ml-1 print:hidden"
-                                                    data-reveal-url="{{ route('bank-accounts.reveal-account-number', $row['loan_repayment_bank_account_id']) }}?context=asset_summary_report">
+                                                    data-reveal-url="{{ route('bank-accounts.reveal-account-number', $row['loan_bank_account_id']) }}?context=asset_summary_report">
                                                 Reveal
                                             </button>
                                             <span class="js-acc-revealed hidden"></span>

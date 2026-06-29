@@ -298,11 +298,16 @@ class AssetController extends Controller
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
 
-        if (! in_array($role, BankAccount::ASSET_ROLES, true)) {
+        if (! in_array($role, array_merge(BankAccount::ASSET_ROLES, BankAccount::LEGACY_ASSET_ROLES), true)) {
             abort(404);
         }
 
         $asset->bankAccounts()->wherePivot('role', $role)->detach();
+
+        // Loan account slot absorbed legacy loan_repayment links
+        if ($role === BankAccount::ROLE_LOAN) {
+            $asset->bankAccounts()->wherePivot('role', BankAccount::ROLE_LOAN_REPAYMENT)->detach();
+        }
 
         return redirect()
             ->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
@@ -710,7 +715,6 @@ class AssetController extends Controller
     {
         return [
             'loan_bank_account_id'             => 'nullable|exists:bank_accounts,id',
-            'loan_repayment_bank_account_id'   => 'nullable|exists:bank_accounts,id',
             'offset_bank_account_id'           => 'nullable|exists:bank_accounts,id',
             'rent_collection_bank_account_id'  => 'nullable|exists:bank_accounts,id',
         ];
@@ -724,14 +728,12 @@ class AssetController extends Controller
     {
         $links = [
             BankAccount::ROLE_LOAN             => $data['loan_bank_account_id'] ?? null,
-            BankAccount::ROLE_LOAN_REPAYMENT   => $data['loan_repayment_bank_account_id'] ?? null,
             BankAccount::ROLE_OFFSET           => $data['offset_bank_account_id'] ?? null,
             BankAccount::ROLE_RENT_COLLECTION  => $data['rent_collection_bank_account_id'] ?? null,
         ];
 
         unset(
             $data['loan_bank_account_id'],
-            $data['loan_repayment_bank_account_id'],
             $data['offset_bank_account_id'],
             $data['rent_collection_bank_account_id'],
         );
@@ -746,7 +748,6 @@ class AssetController extends Controller
     {
         $fieldMap = [
             BankAccount::ROLE_LOAN            => 'loan_bank_account_id',
-            BankAccount::ROLE_LOAN_REPAYMENT  => 'loan_repayment_bank_account_id',
             BankAccount::ROLE_OFFSET          => 'offset_bank_account_id',
             BankAccount::ROLE_RENT_COLLECTION => 'rent_collection_bank_account_id',
         ];
@@ -789,6 +790,17 @@ class AssetController extends Controller
         foreach (BankAccount::ASSET_ROLES as $role) {
             $accountId = $links[$role] ?? null;
 
+            if ($role === BankAccount::ROLE_LOAN) {
+                $asset->bankAccounts()->wherePivot('role', BankAccount::ROLE_LOAN)->detach();
+                $asset->bankAccounts()->wherePivot('role', BankAccount::ROLE_LOAN_REPAYMENT)->detach();
+
+                if ($accountId && ($bankAccount = BankAccount::find($accountId))) {
+                    $asset->bankAccounts()->attach($bankAccount->id, ['role' => BankAccount::ROLE_LOAN]);
+                }
+
+                continue;
+            }
+
             $asset->bankAccounts()->wherePivot('role', $role)->detach();
 
             if ($role === BankAccount::ROLE_RENT_COLLECTION && ! $isLeasable) {
@@ -819,10 +831,6 @@ class AssetController extends Controller
                 ->with(['businessEntity', ...$holderEager])
                 ->orderBy('account_name')
                 ->get(),
-            'loanRepaymentAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_LOAN_REPAYMENT)
-                ->with($holderEager)
-                ->orderBy('account_name')
-                ->get(),
             'offsetAccounts' => BankAccount::selectableForAssetRole($businessEntity, BankAccount::ROLE_OFFSET)
                 ->with(['businessEntity', ...$holderEager])
                 ->orderBy('account_name')
@@ -834,11 +842,7 @@ class AssetController extends Controller
 
             'selectedLoanBankAccountId' => old(
                 'loan_bank_account_id',
-                $asset?->bankAccountForRole(BankAccount::ROLE_LOAN)?->id
-            ),
-            'selectedLoanRepaymentBankAccountId' => old(
-                'loan_repayment_bank_account_id',
-                $asset?->bankAccountForRole(BankAccount::ROLE_LOAN_REPAYMENT)?->id
+                $asset?->linkedLoanAccount()?->id
             ),
             'selectedOffsetBankAccountId' => old(
                 'offset_bank_account_id',

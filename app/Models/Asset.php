@@ -210,6 +210,16 @@ class Asset extends Model
         return $this->bankAccounts()->wherePivot('role', $role)->first();
     }
 
+    /**
+     * Linked loan account for this asset (loan + lender BSB/account).
+     * Falls back to legacy loan_repayment pivot links until migrated.
+     */
+    public function linkedLoanAccount(): ?BankAccount
+    {
+        return $this->bankAccountForRole(BankAccount::ROLE_LOAN)
+            ?? $this->bankAccountForRole(BankAccount::ROLE_LOAN_REPAYMENT);
+    }
+
     public static $depreciationMethods = [
         'straight_line' => 'Straight Line',
         'reducing_balance' => 'Reducing Balance',

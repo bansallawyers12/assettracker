@@ -2,8 +2,7 @@
     use App\Models\Asset;
     use App\Models\BankAccount;
 
-    $loanAccount           = $asset->bankAccountForRole(BankAccount::ROLE_LOAN);
-    $loanRepaymentAccount  = $asset->bankAccountForRole(BankAccount::ROLE_LOAN_REPAYMENT);
+    $loanAccount           = $asset->linkedLoanAccount();
     $offsetAccount         = $asset->bankAccountForRole(BankAccount::ROLE_OFFSET);
     $rentCollectionAccount = $asset->bankAccountForRole(BankAccount::ROLE_RENT_COLLECTION);
 
@@ -24,12 +23,6 @@
             'label' => 'Loan Account',
             'account' => $loanAccount,
             'role' => BankAccount::ROLE_LOAN,
-            'always' => true,
-        ],
-        [
-            'label' => 'Loan Repayment Account',
-            'account' => $loanRepaymentAccount,
-            'role' => BankAccount::ROLE_LOAN_REPAYMENT,
             'always' => true,
         ],
         [

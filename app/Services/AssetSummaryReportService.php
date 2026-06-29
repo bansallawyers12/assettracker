@@ -131,7 +131,7 @@ class AssetSummaryReportService
         // Real-estate managed?
         $reManaged   = $activeTenant?->is_real_estate_managed ?? false;
         $reCompany   = $reManaged ? ($activeTenant?->realEstateCompany?->name ?? null) : null;
-        $loanRepaymentAccount = $asset->bankAccountForRole(BankAccount::ROLE_LOAN_REPAYMENT);
+        $loanAccount = $asset->linkedLoanAccount();
 
         return [
             'asset'           => $asset,
@@ -152,9 +152,13 @@ class AssetSummaryReportService
             'loan_payment_amount'  => $asset->loan_payment_amount !== null ? (float) $asset->loan_payment_amount : null,
             'loan_balance'         => $asset->loan_balance !== null ? (float) $asset->loan_balance : null,
             'equity_required'      => $asset->equity_required !== null ? (float) $asset->equity_required : null,
-            'loan_repayment_bsb'   => $loanRepaymentAccount ? BankAccount::formatBsb($loanRepaymentAccount->bsb) : null,
-            'loan_repayment_bank_account_id' => $loanRepaymentAccount?->id,
-            'loan_repayment_account_number' => $loanRepaymentAccount?->maskedAccountNumber(),
+            'loan_bsb'   => $loanAccount ? BankAccount::formatBsb($loanAccount->bsb) : null,
+            'loan_bank_account_id' => $loanAccount?->id,
+            'loan_account_number' => $loanAccount?->maskedAccountNumber(),
+            // @deprecated Use loan_* keys — kept for any external consumers
+            'loan_repayment_bsb'   => $loanAccount ? BankAccount::formatBsb($loanAccount->bsb) : null,
+            'loan_repayment_bank_account_id' => $loanAccount?->id,
+            'loan_repayment_account_number' => $loanAccount?->maskedAccountNumber(),
             'direct_debit_amount'  => $asset->direct_debit_amount !== null ? (float) $asset->direct_debit_amount : null,
             'rent_paid_by'         => filled($asset->rent_paid_by) ? $asset->rent_paid_by : null,
             'land_tax_amount'      => $asset->land_tax_amount !== null ? (float) $asset->land_tax_amount : null,

@@ -63,9 +63,13 @@ class BankAccount extends Model
 
     public const ASSET_ROLES = [
         self::ROLE_LOAN,
-        self::ROLE_LOAN_REPAYMENT,
         self::ROLE_OFFSET,
         self::ROLE_RENT_COLLECTION,
+    ];
+
+    /** @deprecated Legacy pivot role — merged into ROLE_LOAN; kept for data migration and unlink only */
+    public const LEGACY_ASSET_ROLES = [
+        self::ROLE_LOAN_REPAYMENT,
     ];
 
     // Account holder types
@@ -384,16 +388,26 @@ class BankAccount extends Model
                 && (int) $this->businessEntity->user_id === (int) $userId;
         }
 
-        // Loan repayment: portfolio-wide account owned by this user
-        if ($role === self::ROLE_LOAN_REPAYMENT) {
-            return $this->account_purpose === self::PURPOSE_LOAN_REPAYMENT
-                && $this->isPortfolioWide()
-                && (int) $this->user_id === (int) $userId;
+        if ($role === self::ROLE_LOAN) {
+            if ($this->account_purpose === self::PURPOSE_LOAN) {
+                return (int) $this->business_entity_id === (int) $entity->id;
+            }
+
+            // Legacy portfolio lender accounts previously linked as loan_repayment
+            if ($this->account_purpose === self::PURPOSE_LOAN_REPAYMENT) {
+                return $this->isPortfolioWide()
+                    && (int) $this->user_id === (int) $userId;
+            }
+
+            return false;
         }
 
-        // Loan / Offset: entity-scoped, purpose must match role
-        return $this->account_purpose === $role
-            && (int) $this->business_entity_id === (int) $entity->id;
+        if ($role === self::ROLE_OFFSET) {
+            return $this->account_purpose === self::PURPOSE_OFFSET
+                && (int) $this->business_entity_id === (int) $entity->id;
+        }
+
+        return false;
     }
 
     // ── Query scopes ──────────────────────────────────────────────────────────
@@ -409,9 +423,9 @@ class BankAccount extends Model
     /**
      * Accounts available for a given role picker on an asset form.
      *
-     * loan / offset          → entity-scoped, matching purpose
-     * loan_repayment         → portfolio-wide, matching purpose
-     * rent_collection        → any general account across all user's entities
+     * loan            → entity loan accounts plus legacy portfolio loan_repayment accounts
+     * offset          → entity-scoped offset accounts
+     * rent_collection → any general / rent receiving account across the user's entities
      */
     public function scopeSelectableForAssetRole(Builder $query, BusinessEntity $entity, string $role): Builder
     {
@@ -421,27 +435,44 @@ class BankAccount extends Model
                 ->whereHas('businessEntity', fn (Builder $q) => $q->where('user_id', auth()->id()));
         }
 
-        if ($role === self::ROLE_LOAN_REPAYMENT) {
-            return $query
-                ->where('account_purpose', self::PURPOSE_LOAN_REPAYMENT)
-                ->whereNull('business_entity_id')
-                ->where('user_id', auth()->id());
+        if ($role === self::ROLE_LOAN) {
+            return $query->forLoanAssetLinkPicker($entity);
         }
 
-        // loan / offset
         return $query
-            ->where('account_purpose', $role)
+            ->where('account_purpose', self::PURPOSE_OFFSET)
             ->where('business_entity_id', $entity->id);
+    }
+
+    /**
+     * Entity loan accounts plus legacy portfolio loan_repayment accounts for asset linking.
+     */
+    public function scopeForLoanAssetLinkPicker(Builder $query, BusinessEntity $entity): Builder
+    {
+        $userId = auth()->id();
+
+        return $query->where(function (Builder $q) use ($entity, $userId) {
+            $q->where(function (Builder $inner) use ($entity) {
+                $inner->where('account_purpose', self::PURPOSE_LOAN)
+                    ->where('business_entity_id', $entity->id);
+            })->orWhere(function (Builder $inner) use ($userId) {
+                $inner->where('account_purpose', self::PURPOSE_LOAN_REPAYMENT)
+                    ->whereNull('business_entity_id')
+                    ->where('user_id', $userId);
+            });
+        });
     }
 
     /** @deprecated Use scopeSelectableForAssetRole */
     public function scopeSelectableForEntity(Builder $query, BusinessEntity $entity, string $purpose): Builder
     {
-        $query->where('account_purpose', $purpose);
-        if ($purpose === self::PURPOSE_LOAN_REPAYMENT) {
-            return $query->whereNull('business_entity_id')->where('user_id', auth()->id());
+        if ($purpose === self::PURPOSE_LOAN || $purpose === self::PURPOSE_LOAN_REPAYMENT) {
+            return $query->forLoanAssetLinkPicker($entity);
         }
-        return $query->where('business_entity_id', $entity->id);
+
+        return $query
+            ->where('account_purpose', $purpose)
+            ->where('business_entity_id', $entity->id);
     }
 
     // ── Relationships ─────────────────────────────────────────────────────────
