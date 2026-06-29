@@ -59,6 +59,21 @@ class BankAccountFormTest extends TestCase
         $this->assertSame('Rent paying', BankAccount::purposeLabel(BankAccount::PURPOSE_RENT_PAYING));
     }
 
+    public function test_purpose_label_for_loan_repayment_paying(): void
+    {
+        $this->assertSame(
+            'Loan repayment paying',
+            BankAccount::purposeLabel(BankAccount::PURPOSE_LOAN_REPAYMENT_PAYING)
+        );
+    }
+
+    public function test_entity_purposes_include_loan_repayment_paying(): void
+    {
+        $this->assertContains(BankAccount::PURPOSE_LOAN_REPAYMENT_PAYING, BankAccount::ENTITY_PURPOSES);
+        $this->assertContains(BankAccount::PURPOSE_LOAN_REPAYMENT_PAYING, BankAccount::ENTITY_OPERATING_PURPOSES);
+        $this->assertNotContains(BankAccount::PURPOSE_LOAN_REPAYMENT, BankAccount::ENTITY_PURPOSES);
+    }
+
     public function test_rent_receiving_purposes_include_general_and_rent_receiving(): void
     {
         $this->assertContains(BankAccount::PURPOSE_GENERAL, BankAccount::RENT_RECEIVING_PURPOSES);

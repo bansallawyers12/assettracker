@@ -17,6 +17,7 @@ class BankAccount extends Model
     public const PURPOSE_GENERAL = 'general';
     public const PURPOSE_LOAN = 'loan';
     public const PURPOSE_LOAN_REPAYMENT = 'loan_repayment';
+    public const PURPOSE_LOAN_REPAYMENT_PAYING = 'loan_repayment_paying';
     public const PURPOSE_OFFSET = 'offset';
     public const PURPOSE_RENT_RECEIVING = 'rent_receiving';
     public const PURPOSE_RENT_PAYING = 'rent_paying';
@@ -25,6 +26,7 @@ class BankAccount extends Model
         self::PURPOSE_GENERAL,
         self::PURPOSE_LOAN,
         self::PURPOSE_LOAN_REPAYMENT,
+        self::PURPOSE_LOAN_REPAYMENT_PAYING,
         self::PURPOSE_OFFSET,
         self::PURPOSE_RENT_RECEIVING,
         self::PURPOSE_RENT_PAYING,
@@ -33,6 +35,7 @@ class BankAccount extends Model
     public const ENTITY_PURPOSES = [
         self::PURPOSE_GENERAL,
         self::PURPOSE_LOAN,
+        self::PURPOSE_LOAN_REPAYMENT_PAYING,
         self::PURPOSE_OFFSET,
         self::PURPOSE_RENT_RECEIVING,
         self::PURPOSE_RENT_PAYING,
@@ -47,6 +50,7 @@ class BankAccount extends Model
     /** Entity-scoped purposes usable for bank import and statement matching. */
     public const ENTITY_OPERATING_PURPOSES = [
         self::PURPOSE_GENERAL,
+        self::PURPOSE_LOAN_REPAYMENT_PAYING,
         self::PURPOSE_RENT_RECEIVING,
         self::PURPOSE_RENT_PAYING,
     ];
@@ -194,8 +198,9 @@ class BankAccount extends Model
         return match ($purpose) {
             self::PURPOSE_GENERAL        => 'General',
             self::PURPOSE_LOAN           => 'Loan',
-            self::PURPOSE_LOAN_REPAYMENT => 'Loan repayment',
-            self::PURPOSE_OFFSET         => 'Offset',
+            self::PURPOSE_LOAN_REPAYMENT        => 'Loan repayment',
+            self::PURPOSE_LOAN_REPAYMENT_PAYING => 'Loan repayment paying',
+            self::PURPOSE_OFFSET                => 'Offset',
             self::PURPOSE_RENT_RECEIVING => 'Rent receiving',
             self::PURPOSE_RENT_PAYING    => 'Rent paying',
             default => ucfirst(str_replace('_', ' ', $purpose)),
