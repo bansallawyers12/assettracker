@@ -406,11 +406,17 @@ class BankAccount extends Model
 
     /**
      * Route to delete this account, or null when deletion is blocked.
+     *
+     * @param  BusinessEntity|null  $contextEntity  When set (e.g. entity bank tab), use that entity's delete route.
      */
-    public function destroyRoute(): ?string
+    public function destroyRoute(?BusinessEntity $contextEntity = null): ?string
     {
         if (! $this->canBeDeleted()) {
             return null;
+        }
+
+        if ($contextEntity !== null) {
+            return route('business-entities.bank-accounts.destroy', [$contextEntity, $this]);
         }
 
         if ($this->isPortfolioWide()) {

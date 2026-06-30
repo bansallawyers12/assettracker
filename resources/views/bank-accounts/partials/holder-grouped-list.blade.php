@@ -110,9 +110,11 @@
                                                     : null,
                                                 'unlinkTitle' => 'Remove '.BankAccount::purposeLabel($purpose).' link',
                                                 'unlinkConfirm' => 'Remove '.BankAccount::purposeLabel($purpose).' for this account on this entity?',
-                                                'deleteUrl' => $account->destroyRoute(),
+                                                'deleteUrl' => $account->destroyRoute($linkBusinessEntity),
                                                 'deleteTitle' => 'Delete bank account',
-                                                'deleteConfirm' => 'Delete this bank account permanently? This cannot be undone.',
+                                                'deleteConfirm' => $account->isPortfolioWide()
+                                                    ? 'Delete this shared bank account from the entire portfolio? This cannot be undone.'
+                                                    : 'Delete this bank account permanently? This cannot be undone.',
                                             ])
                                         </td>
                                     </tr>

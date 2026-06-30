@@ -10,6 +10,12 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @if(session('success'))
+                <div class="mb-4 rounded-sm border border-green-400 bg-green-100 px-4 py-3 text-green-800">{{ session('success') }}</div>
+            @endif
+            @if(session('error'))
+                <div class="mb-4 rounded-sm border border-red-400 bg-red-100 px-4 py-3 text-red-800">{{ session('error') }}</div>
+            @endif
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6 text-gray-900 dark:text-gray-100">
                 <!-- Person Header -->

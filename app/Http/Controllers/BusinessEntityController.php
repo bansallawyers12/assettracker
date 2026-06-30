@@ -2150,6 +2150,10 @@ class BusinessEntityController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
         $this->ensureBankAccountOwnedByUser($bankAccount);
 
+        if (! $bankAccount->isPortfolioWide()) {
+            abort(403, 'Entity-scoped bank accounts must be deleted via their business entity.');
+        }
+
         return $this->deleteBankAccountIfAllowed($bankAccount);
     }
 
@@ -2585,6 +2589,8 @@ class BusinessEntityController extends Controller
 
     private function deleteBankAccountIfAllowed(BankAccount $bankAccount): RedirectResponse
     {
+        $bankAccount->loadCount(['transactions', 'bankStatementEntries', 'assets']);
+
         if (! $bankAccount->canBeDeleted()) {
             return redirect()->back()->with('error', $bankAccount->deleteBlockedReason());
         }
