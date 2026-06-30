@@ -198,7 +198,9 @@ class BusinessEntity extends Model
     public function bankAccountLinksForDisplay()
     {
         $links = $this->bankAccountLinks()
-            ->with(['bankAccount.holderEntity', 'bankAccount.holderPerson', 'bankAccount.businessEntity'])
+            ->with([
+                'bankAccount' => fn ($query) => $query->withDeleteCounts()->with(['holderEntity', 'holderPerson', 'businessEntity']),
+            ])
             ->get();
 
         if ($links->isNotEmpty()) {
@@ -208,6 +210,7 @@ class BusinessEntity extends Model
         }
 
         return $this->bankAccounts()
+            ->withDeleteCounts()
             ->with(['holderEntity', 'holderPerson', 'businessEntity'])
             ->whereIn('account_purpose', BankAccount::ENTITY_PURPOSES)
             ->orderBy('account_name')

@@ -199,6 +199,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::delete('/business-entities/{businessEntity}/bank-account-links/{bankAccountLink}', [BusinessEntityController::class, 'detachBankAccountLink'])->name('business-entities.bank-account-links.destroy');
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/edit', [BusinessEntityController::class, 'editBankAccount'])->name('business-entities.bank-accounts.edit');
     Route::put('/business-entities/{businessEntity}/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'updateBankAccount'])->name('business-entities.bank-accounts.update');
+    Route::delete('/business-entities/{businessEntity}/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'destroyBankAccount'])->name('business-entities.bank-accounts.destroy');
 
     // Transaction Routes
     Route::post('business-entities/{businessEntity}/transactions/store', [BusinessEntityController::class, 'storeTransaction'])->name('business-entities.transactions.store');
@@ -304,6 +305,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('/bank-accounts', [BusinessEntityController::class, 'storePortfolioBankAccount'])->name('bank-accounts.store');
     Route::get('/bank-accounts/{bankAccount}/edit', [BusinessEntityController::class, 'editPortfolioBankAccount'])->name('bank-accounts.edit');
     Route::put('/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'updatePortfolioBankAccount'])->name('bank-accounts.update');
+    Route::delete('/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'destroyPortfolioBankAccount'])->name('bank-accounts.destroy');
     Route::get('/bank-accounts/{bankAccount}/reveal-account-number', [BusinessEntityController::class, 'revealBankAccountNumber'])->name('bank-accounts.reveal-account-number');
     Route::get('/transactions', [BusinessEntityController::class, 'transactionsIndex'])->name('transactions.index');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');

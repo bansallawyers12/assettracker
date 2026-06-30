@@ -152,4 +152,43 @@ class BankAccountFormTest extends TestCase
 
         $this->assertSame('portfolio (unassigned)', $account->assignPickerScopeLabel($entity));
     }
+
+    public function test_can_be_deleted_when_no_related_records(): void
+    {
+        $account = new BankAccount([
+            'id' => 1,
+            'business_entity_id' => 5,
+        ]);
+        $account->setAttribute('transactions_count', 0);
+        $account->setAttribute('bank_statement_entries_count', 0);
+        $account->setAttribute('assets_count', 0);
+
+        $this->assertTrue($account->canBeDeleted());
+    }
+
+    public function test_cannot_be_deleted_when_transactions_exist(): void
+    {
+        $account = new BankAccount([
+            'id' => 1,
+            'business_entity_id' => 5,
+        ]);
+        $account->setAttribute('transactions_count', 1);
+        $account->setAttribute('bank_statement_entries_count', 0);
+        $account->setAttribute('assets_count', 0);
+
+        $this->assertFalse($account->canBeDeleted());
+    }
+
+    public function test_destroy_route_is_null_when_account_cannot_be_deleted(): void
+    {
+        $account = new BankAccount([
+            'id' => 1,
+            'business_entity_id' => 5,
+        ]);
+        $account->setAttribute('transactions_count', 2);
+        $account->setAttribute('bank_statement_entries_count', 0);
+        $account->setAttribute('assets_count', 0);
+
+        $this->assertNull($account->destroyRoute());
+    }
 }

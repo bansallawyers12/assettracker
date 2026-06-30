@@ -2078,6 +2078,7 @@ class BusinessEntityController extends Controller
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $bankAccounts = BankAccount::query()
             ->visibleInPortfolio()
+            ->withDeleteCounts()
             ->with(['businessEntity', 'holderEntity', 'holderPerson', 'bankStatementEntries.transaction'])
             ->orderBy('account_name')
             ->get();
@@ -2142,6 +2143,25 @@ class BusinessEntityController extends Controller
 
         return redirect()->route('bank-accounts.index')
             ->with('success', 'Bank account updated successfully!');
+    }
+
+    public function destroyPortfolioBankAccount(BankAccount $bankAccount)
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+        $this->ensureBankAccountOwnedByUser($bankAccount);
+
+        return $this->deleteBankAccountIfAllowed($bankAccount);
+    }
+
+    public function destroyBankAccount(BusinessEntity $businessEntity, BankAccount $bankAccount)
+    {
+        $this->authorize('update', $businessEntity);
+
+        $this->ensureOperationalForAccounting($businessEntity);
+
+        $this->ensureBankAccountAccessibleOnEntity($businessEntity, $bankAccount);
+
+        return $this->deleteBankAccountIfAllowed($bankAccount);
     }
 
     public function revealBankAccountNumber(Request $request, BankAccount $bankAccount)
@@ -2561,6 +2581,17 @@ class BusinessEntityController extends Controller
             ->get()
             ->sortBy(fn (Person $person) => $person->displayName(), SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
+    }
+
+    private function deleteBankAccountIfAllowed(BankAccount $bankAccount): RedirectResponse
+    {
+        if (! $bankAccount->canBeDeleted()) {
+            return redirect()->back()->with('error', $bankAccount->deleteBlockedReason());
+        }
+
+        $bankAccount->delete();
+
+        return redirect()->back()->with('success', 'Bank account deleted successfully.');
     }
 
     private function ensureBankAccountOwnedByUser(BankAccount $bankAccount): void

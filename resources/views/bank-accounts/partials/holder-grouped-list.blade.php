@@ -110,6 +110,9 @@
                                                     : null,
                                                 'unlinkTitle' => 'Remove '.BankAccount::purposeLabel($purpose).' link',
                                                 'unlinkConfirm' => 'Remove '.BankAccount::purposeLabel($purpose).' for this account on this entity?',
+                                                'deleteUrl' => $account->destroyRoute(),
+                                                'deleteTitle' => 'Delete bank account',
+                                                'deleteConfirm' => 'Delete this bank account permanently? This cannot be undone.',
                                             ])
                                         </td>
                                     </tr>
@@ -138,6 +141,9 @@
                                             @include('bank-accounts.partials.account-link-actions', [
                                                 'editUrl' => $account->editRoute(),
                                                 'editTitle' => 'Edit account',
+                                                'deleteUrl' => $account->destroyRoute(),
+                                                'deleteTitle' => 'Delete bank account',
+                                                'deleteConfirm' => 'Delete this bank account permanently? This cannot be undone.',
                                             ])
                                         </td>
                                     </tr>

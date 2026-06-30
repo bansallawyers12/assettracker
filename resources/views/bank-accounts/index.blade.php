@@ -21,6 +21,10 @@
         <div class="mb-4 rounded-sm border border-green-400 bg-green-100 px-4 py-3 text-green-800">{{ session('success') }}</div>
     @endif
 
+    @if(session('error'))
+        <div class="mb-4 rounded-sm border border-red-400 bg-red-100 px-4 py-3 text-red-800">{{ session('error') }}</div>
+    @endif
+
     @include('bank-accounts.partials.holder-grouped-list', [
         'holderGroups' => $holderGroups ?? [],
         'showScope' => true,

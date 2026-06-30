@@ -53,4 +53,19 @@
             </button>
         </form>
     @endif
+
+    @if(! empty($deleteUrl))
+        <form method="POST" action="{{ $deleteUrl }}" class="inline" onsubmit="return confirm({{ json_encode($deleteConfirm ?? 'Delete this bank account? This cannot be undone.') }});">
+            @csrf
+            @method('DELETE')
+            <button
+                type="submit"
+                title="{{ $deleteTitle ?? 'Delete bank account' }}"
+                class="{{ $btnClass }} border-red-300 bg-red-50 text-red-700 hover:bg-red-100"
+            >
+                <x-lucide-trash-2 class="h-4 w-4" aria-hidden="true" />
+                <span class="sr-only">{{ $deleteTitle ?? 'Delete bank account' }}</span>
+            </button>
+        </form>
+    @endif
 </div>

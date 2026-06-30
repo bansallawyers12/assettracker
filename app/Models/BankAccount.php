@@ -404,6 +404,45 @@ class BankAccount extends Model
         return route('business-entities.bank-accounts.edit', [$this->business_entity_id, $this]);
     }
 
+    /**
+     * Route to delete this account, or null when deletion is blocked.
+     */
+    public function destroyRoute(): ?string
+    {
+        if (! $this->canBeDeleted()) {
+            return null;
+        }
+
+        if ($this->isPortfolioWide()) {
+            return route('bank-accounts.destroy', $this);
+        }
+
+        return route('business-entities.bank-accounts.destroy', [$this->business_entity_id, $this]);
+    }
+
+    public function canBeDeleted(): bool
+    {
+        if (isset($this->transactions_count, $this->bank_statement_entries_count, $this->assets_count)) {
+            return (int) $this->transactions_count === 0
+                && (int) $this->bank_statement_entries_count === 0
+                && (int) $this->assets_count === 0;
+        }
+
+        return ! $this->transactions()->exists()
+            && ! $this->bankStatementEntries()->exists()
+            && ! $this->assets()->exists();
+    }
+
+    public function deleteBlockedReason(): string
+    {
+        return 'This bank account cannot be deleted because it has transactions, bank statement entries, or asset links.';
+    }
+
+    public function scopeWithDeleteCounts(Builder $query): Builder
+    {
+        return $query->withCount(['transactions', 'bankStatementEntries', 'assets']);
+    }
+
     // ── Scope helpers ─────────────────────────────────────────────────────────
 
     public function isPortfolioWide(): bool

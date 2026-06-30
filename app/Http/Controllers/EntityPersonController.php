@@ -364,6 +364,7 @@ class EntityPersonController extends Controller
 
         $heldBankAccounts = BankAccount::query()
             ->visibleInPortfolio()
+            ->withDeleteCounts()
             ->where('holder_type', BankAccount::HOLDER_PERSON)
             ->where('holder_person_id', $person->id)
             ->with(['businessEntity', 'holderEntity', 'holderPerson'])
