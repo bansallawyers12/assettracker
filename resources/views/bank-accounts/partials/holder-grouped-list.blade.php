@@ -66,6 +66,7 @@
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Account</th>
                                 <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">BSB</th>
+                                <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Account No.</th>
                                 <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Purpose</th>
                                 @if($showScope)
                                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Scope</th>
@@ -86,9 +87,7 @@
                                             <div class="font-medium">{{ $account->account_name }}</div>
                                             <div class="text-xs text-gray-500">{{ $account->bank_name }}</div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm">
-                                            @include('bank-accounts.partials.bsb-toggle-cell', ['account' => $account])
-                                        </td>
+                                        @include('bank-accounts.partials.account-banking-details-cells', ['account' => $account])
                                         <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ BankAccount::purposeLabel($purpose) }}</td>
                                         @if($showScope)
                                             <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
@@ -126,9 +125,7 @@
                                             <div class="font-medium">{{ $account->account_name }}</div>
                                             <div class="text-xs text-gray-500">{{ $account->bank_name }}</div>
                                         </td>
-                                        <td class="px-4 py-3 text-sm">
-                                            @include('bank-accounts.partials.bsb-toggle-cell', ['account' => $account])
-                                        </td>
+                                        @include('bank-accounts.partials.account-banking-details-cells', ['account' => $account])
                                         <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ BankAccount::purposeLabel($account->account_purpose) }}</td>
                                         @if($showScope)
                                             <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
@@ -157,5 +154,4 @@
             </div>
         @endforeach
     </div>
-    @include('bank-accounts.partials.bsb-toggle-scripts')
 @endif
