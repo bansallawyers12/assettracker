@@ -47,7 +47,20 @@ class ContactListController extends Controller
 
         $contact = $businessEntity->contactLists()->create($validated);
 
-        return redirect()->route('business-entities.contact-lists.index', $businessEntity)
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Contact created successfully.',
+                'contact' => (new \App\Http\Resources\ContactListResource($contact))->resolve(),
+                'list_html' => view('business-entities.partials.contact-lists.list', [
+                    'businessEntity' => $businessEntity,
+                    'contactLists' => $businessEntity->contactLists()->latest()->get(),
+                ])->render(),
+            ]);
+        }
+
+        return redirect()->route('business-entities.show', $businessEntity->id)
+            ->withFragment('tab_contact_lists')
             ->with('success', 'Contact created successfully.');
     }
 
@@ -101,7 +114,20 @@ class ContactListController extends Controller
 
         $contactList->update($validated);
 
-        return redirect()->route('business-entities.contact-lists.index', $businessEntity)
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Contact updated successfully.',
+                'contact' => (new \App\Http\Resources\ContactListResource($contactList))->resolve(),
+                'list_html' => view('business-entities.partials.contact-lists.list', [
+                    'businessEntity' => $businessEntity,
+                    'contactLists' => $businessEntity->contactLists()->latest()->get(),
+                ])->render(),
+            ]);
+        }
+
+        return redirect()->route('business-entities.show', $businessEntity->id)
+            ->withFragment('tab_contact_lists')
             ->with('success', 'Contact updated successfully.');
     }
 
@@ -118,7 +144,19 @@ class ContactListController extends Controller
         
         $contactList->delete();
 
-        return redirect()->route('business-entities.contact-lists.index', $businessEntity)
+        if (request()->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Contact deleted successfully.',
+                'list_html' => view('business-entities.partials.contact-lists.list', [
+                    'businessEntity' => $businessEntity,
+                    'contactLists' => $businessEntity->contactLists()->latest()->get(),
+                ])->render(),
+            ]);
+        }
+
+        return redirect()->route('business-entities.show', $businessEntity->id)
+            ->withFragment('tab_contact_lists')
             ->with('success', 'Contact deleted successfully.');
     }
 } 

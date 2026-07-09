@@ -7,21 +7,21 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <div>
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white" data-entity-page-title>
                     {{ $businessEntity->legal_name }}
                 </h2>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">{{ $businessEntity->entity_type }}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1" data-entity-page-type>{{ $businessEntity->entity_type }}</p>
             </div>
             <div class="flex space-x-2">
-                <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
+                <button type="button" data-entity-profile-edit class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
                     <x-lucide-pencil class="h-4 w-4 mr-1.5" />
                     Edit company profile
-                </a>
+                </button>
             </div>
         </div>
     </x-slot>
 
-    <div class="entity-show-page py-6 bg-gray-50 dark:bg-gray-800 min-h-screen">
+    <div class="entity-show-page py-6 bg-gray-50 dark:bg-gray-800 min-h-screen" data-profile-form-url="{{ route('entities.profile.form', $businessEntity) }}">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             @if (session('success'))
                 <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200" role="alert">
@@ -49,7 +49,9 @@
                 </div>
             @endif
             <div class="flex flex-col lg:flex-row gap-6">
-                @include('business-entities.partials.entity-details-sidebar', compact('businessEntity'))
+                <div data-entity-sidebar>
+                    @include('business-entities.partials.entity-details-sidebar', compact('businessEntity'))
+                </div>
 
                 <!-- Right Content: Tabs and Details -->
                 <div class="flex-1 min-w-0">
@@ -99,110 +101,18 @@
                         <div class="tab-content-container">
                             <!-- Assets Tab -->
                             <div id="tab_assets" class="tab-content hidden">
-                                <div class="space-y-3">
-                                    <div class="flex justify-between items-center">
-                                        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Assets</h3>
-                                        @if (isset($assets) && !$assets->isEmpty())
-                                            <a href="{{ route('business-entities.assets.create', $businessEntity->id) }}#tab_assets" class="entity-btn-primary">
-                                                <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
-                                                Add Asset
-                                            </a>
-                                        @endif
-                                    </div>
-                                    @if (isset($assets) && $assets->isEmpty())
-                                        <div class="text-center py-6">
-                                            <div class="w-12 h-12 mx-auto mb-3 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                                                <x-lucide-package class="h-6 w-6 text-gray-400" />
-                                            </div>
-                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No assets yet</p>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">Assets are items this entity owns or manages—such as property, vehicles, or equipment.</p>
-                                            <a href="{{ route('business-entities.assets.create', $businessEntity->id) }}#tab_assets" class="entity-btn-primary mt-4 inline-flex">
-                                                <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
-                                                Add your first asset
-                                            </a>
-                                        </div>
-                                    @else
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                            @foreach ($assets as $asset)
-                                                <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                                    <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $asset->id]) }}#tab_assets" class="block">
-                                                        <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $asset->name }}</div>
-                                                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $asset->asset_type }}</div>
-                                                    </a>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endif
-                                </div>
+                                @include('business-entities.partials.assets-workspace', [
+                                    'businessEntity' => $businessEntity,
+                                    'assets' => $assets ?? collect(),
+                                ])
                             </div>
 
                             <!-- Persons Tab -->
                             <div id="tab_persons" class="tab-content hidden">
-                                @php
-                                    $personAddLabel = $businessEntity->isTrust()
-                                        ? 'Add Person/Company'
-                                        : 'Add Person';
-                                    $personEmptyCta = $businessEntity->isTrust()
-                                        ? 'Add your first person or company'
-                                        : 'Add your first person';
-                                @endphp
-                                <div class="space-y-3">
-                                    <div class="flex justify-between items-center">
-                                        <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Persons</h3>
-                                        @if (isset($persons) && !$persons->isEmpty())
-                                            <a href="{{ route('entity-persons.create', $businessEntity->id) }}#tab_persons" class="entity-btn-primary">
-                                                <x-lucide-user-plus class="h-4 w-4 mr-1" aria-hidden="true" />
-                                                {{ $personAddLabel }}
-                                            </a>
-                                        @endif
-                                    </div>
-                                    @if (isset($persons) && $persons->isEmpty())
-                                        <div class="text-center py-6">
-                                            <div class="w-12 h-12 mx-auto mb-3 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
-                                                <x-lucide-users class="h-6 w-6 text-gray-400" />
-                                            </div>
-                                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No persons yet</p>
-                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">Persons are directors, shareholders, trustees, or other roles linked to this entity.</p>
-                                            <a href="{{ route('entity-persons.create', $businessEntity->id) }}#tab_persons" class="entity-btn-primary mt-4 inline-flex">
-                                                <x-lucide-user-plus class="h-4 w-4 mr-1" aria-hidden="true" />
-                                                {{ $personEmptyCta }}
-                                            </a>
-                                        </div>
-                                    @else
-                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                            @foreach ($persons as $entityPerson)
-                                                <div class="bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
-                                                    <div class="flex items-start justify-between gap-2">
-                                                        <a href="{{ route('entity-persons.show', $entityPerson->id) }}#tab_persons" class="block flex-1 min-w-0">
-                                                            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                                @if ($entityPerson->person)
-                                                                    {{ $entityPerson->person->first_name }} {{ $entityPerson->person->last_name }}
-                                                                @elseif ($entityPerson->trusteeEntity)
-                                                                    {{ $entityPerson->trusteeEntity->legal_name }} (Trustee)
-                                                                @endif
-                                                            </div>
-                                                            <div class="flex items-center justify-between mt-1">
-                                                                <span class="inline-flex items-center px-2 py-0.5 rounded-sm text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">
-                                                                    {{ $entityPerson->role }}
-                                                                </span>
-                                                                <span class="text-xs text-gray-500 dark:text-gray-400">{{ $entityPerson->role_status }}</span>
-                                                            </div>
-                                                            @if ($entityPerson->asic_due_date)
-                                                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">ASIC Due: {{ $entityPerson->asic_due_date->format('d/m/Y') }}</div>
-                                                            @endif
-                                                        </a>
-                                                        @if ($entityPerson->person)
-                                                            @include('bank-accounts.partials.account-link-actions', [
-                                                                'associateUrl' => BankAccount::createUrlForHolder(BankAccount::HOLDER_PERSON, $entityPerson->person->id, $businessEntity->id),
-                                                                'associateTitle' => 'Add bank account for '.$entityPerson->person->first_name.' '.$entityPerson->person->last_name,
-                                                            ])
-                                                        @endif
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endif
-                                </div>
+                                @include('business-entities.partials.persons-workspace', [
+                                    'businessEntity' => $businessEntity,
+                                    'persons' => $persons ?? collect(),
+                                ])
                             </div>
 
 
@@ -241,7 +151,7 @@
                                                                 @endif
                                                             </td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">{{ $transaction->description }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-40 truncate">{{ $transaction->vendor_name ?? '—' }}</td>
+                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-40 truncate">{{ $transaction->vendor_display ?? '—' }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->invoice_number ?? '—' }}</td>
                                                             <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
                                                                 @if ($transaction->asset)
@@ -333,7 +243,7 @@
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Date:</span> {{ $selectedTransaction->date->format('d/m/Y') }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Amount:</span> ${{ number_format($selectedTransaction->amount, 2) }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Description:</span> {{ $selectedTransaction->description ?? '—' }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Vendor:</span> {{ $selectedTransaction->vendor_name ?? '—' }}</p>
+                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Vendor:</span> {{ $selectedTransaction->vendor_display ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Invoice #:</span> {{ $selectedTransaction->invoice_number ?? '—' }}</p>
                                                             <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> {{ Transaction::allTypes()[$selectedTransaction->transaction_type] ?? 'N/A' }}</p>
                                                             @if ($selectedTransaction->relatedEntity)
@@ -619,106 +529,19 @@
 
                             <!-- Notes Tab -->
                             <div id="tab_notes" class="tab-content hidden">
-                                <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md">
-                                    <div class="flex justify-between items-center mb-4">
-                                        <h3 class="text-lg font-semibold text-blue-700 dark:text-blue-300">Notes</h3>
-                                        <button type="button" class="inline-flex items-center bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-200 px-3 py-1 rounded-md text-sm" onclick="document.getElementById('note-form').classList.toggle('hidden')">
-                                            <x-lucide-plus class="h-4 w-4 mr-1" />
-                                            Add Note
-                                        </button>
-                                    </div>
-                                    <form id="note-form" class="hidden mb-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-xs" method="POST" action="{{ route('business-entities.notes.store', $businessEntity->id) }}#tab_notes">
-                                        @csrf
-                                        <div class="mb-4">
-                                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Note</label>
-                                            <textarea name="content" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white" rows="3" required>{{ old('content') }}</textarea>
-                                            @error('content') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                                        </div>
-                                        <div class="flex justify-end">
-                                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md shadow-xs transition duration-200">
-                                                <x-lucide-check class="h-4 w-4 mr-1" />
-                                                Save Note
-                                            </button>
-                                        </div>
-                                    </form>
-                                    @if (isset($notes) && $notes->isEmpty())
-                                        <p class="text-gray-500 dark:text-gray-400">No notes yet.</p>
-                                    @else
-                                        <div class="space-y-3">
-                                            @foreach ($notes as $note)
-                                                <div class="bg-white dark:bg-gray-800 p-4 rounded-md shadow-xs">
-                                                    <div class="flex justify-between items-start">
-                                                        <div class="grow">
-                                                            <p class="text-gray-700 dark:text-gray-200">{{ $note->content }}</p>
-                                                            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                                                                Added by {{ $note->user->name ?? 'Unknown' }} on {{ $note->created_at ? $note->created_at->format('d/m/Y H:i') : 'N/A' }}
-                                                            </p>
-                                                        </div>
-                                                        <form action="{{ route('business-entities.notes.destroy', [$businessEntity->id, $note->id]) }}" method="POST" class="ml-4">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" onclick="return confirm('Are you sure you want to delete this note?')">
-                                                                <x-lucide-trash-2 class="h-5 w-5" />
-                                                            </button>
-                                                        </form>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    @endif
-                                </div>
+                                @include('business-entities.partials.notes-workspace', [
+                                    'businessEntity' => $businessEntity,
+                                    'notes' => $notes ?? collect(),
+                                ])
                             </div>
 
                             <!-- Contact Lists Tab -->
                             <div id="tab_contact_lists" class="tab-content hidden">
                                 <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                                    <div class="flex justify-between items-center mb-4">
-                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Contact Lists</h3>
-                                        <a href="{{ route('business-entities.contact-lists.create', $businessEntity->id) }}#tab_contact_lists" class="inline-flex items-center px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
-                                            <x-lucide-plus class="h-4 w-4 mr-1" />
-                                            Add Contact
-                                        </a>
-                                    </div>
-                                    @if ($contactLists->isEmpty())
-                                        <p class="text-gray-500 dark:text-gray-400 text-center py-4">No contact lists yet.</p>
-                                    @else
-                                        <div class="overflow-x-auto">
-                                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900 rounded-lg">
-                                                <thead class="bg-indigo-50 dark:bg-indigo-900/50">
-                                                    <tr>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">First Name</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Last Name</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Email</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Phone</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                                                    @foreach ($contactLists as $contactList)
-                                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $contactList->first_name }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $contactList->last_name }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $contactList->email }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $contactList->phone_no }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                                                <a href="{{ route('business-entities.contact-lists.edit', [$businessEntity->id, $contactList->id]) }}#tab_contact_lists" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs">
-                                                                    Edit
-                                                                </a>
-                                                                <form action="{{ route('business-entities.contact-lists.destroy', [$businessEntity->id, $contactList->id]) }}" method="POST" class="inline-block" onsubmit="return confirm('Are you sure you want to delete this contact?');">
-                                                                    @csrf
-                                                                    @method('DELETE')
-                                                                    <button type="submit" class="inline-flex items-center px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900 dark:hover:bg-red-800 dark:text-red-200 rounded-sm text-xs ml-2">
-                                                                        Delete
-                                                                    </button>
-                                                                </form>
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        {{ $contactLists->links() }}
-                                    @endif
+                                    @include('business-entities.partials.contact-lists-workspace', [
+                                        'businessEntity' => $businessEntity,
+                                        'contactLists' => $contactLists ?? collect(),
+                                    ])
                                 </div>
                             </div>
 
@@ -813,7 +636,11 @@
 
                             <!-- Bank Accounts Tab -->
                             <div id="tab_bank_accounts" class="tab-content hidden">
-                                <div class="space-y-3">
+                                <div
+                                    class="bank-accounts-workspace space-y-3"
+                                    data-entity-id="{{ $businessEntity->id }}"
+                                    data-list-url="{{ route('entities.bank-accounts.workspace', $businessEntity) }}"
+                                >
                                     <div class="flex flex-wrap justify-between items-center gap-2">
                                         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Bank Accounts</h3>
                                         <div class="flex flex-wrap gap-2">
@@ -831,19 +658,12 @@
                                         </div>
                                     </div>
 
-                                    @include('bank-accounts.partials.holder-grouped-list', [
-                                        'holderGroups' => $entityBankAccountGroups ?? [],
-                                        'showScope' => false,
-                                        'useAddAccountModal' => true,
-                                        'useEntityLinks' => true,
-                                        'linkBusinessEntity' => $businessEntity,
-                                        'emptyMessage' => 'No bank accounts for this entity yet.',
-                                    ])
-
-                                    @include('bank-accounts.partials.add-account-modal', [
-                                        'businessEntity' => $businessEntity,
-                                        'portfolioBankAccounts' => $portfolioBankAccounts ?? collect(),
-                                    ])
+                                    <div data-bank-accounts-list>
+                                        @include('business-entities.partials.bank-accounts.list', [
+                                            'businessEntity' => $businessEntity,
+                                            'holderGroups' => $entityBankAccountGroups ?? [],
+                                        ])
+                                    </div>
                                 </div>
                             </div>
 
@@ -951,6 +771,10 @@
             </div> {{-- End of main flex container --}}
         </div> {{-- End of max-w-7xl container --}}
     </div> {{-- End of py-8 background div --}}
+
+    @include('bank-accounts.partials.add-account-modal', [
+        'businessEntity' => $businessEntity,
+    ])
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

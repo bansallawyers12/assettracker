@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminUsersWorkspaceController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetInvoiceController;
@@ -19,7 +20,14 @@ use App\Http\Controllers\DocumentWorkspaceController;
 use App\Http\Controllers\Email\GmailController;
 use App\Http\Controllers\Email\MailMessageController;
 use App\Http\Controllers\EmailTemplateController;
+use App\Http\Controllers\AssetsWorkspaceController;
+use App\Http\Controllers\BankAccountPanelController;
+use App\Http\Controllers\BankAccountsWorkspaceController;
+use App\Http\Controllers\ContactListsWorkspaceController;
+use App\Http\Controllers\EntityShowWorkspaceController;
 use App\Http\Controllers\EntityPersonController;
+use App\Http\Controllers\PersonsWorkspaceController;
+use App\Http\Controllers\PersonShowWorkspaceController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ProfileController;
@@ -28,6 +36,7 @@ use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\RentInvoiceController;
 use App\Http\Controllers\TrackingCategoryController;
 use App\Http\Controllers\TrackingSubCategoryController;
+use App\Http\Controllers\VendorController;
 use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -182,12 +191,34 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::resource('entity-persons', EntityPersonController::class)->except(['create', 'destroy']);
     Route::post('entity-persons/{entityPerson}/finalize-due-date', [EntityPersonController::class, 'finalizeDueDate'])->name('entity-persons.finalize-due-date');
     Route::post('entity-persons/{entityPerson}/extend-due-date', [EntityPersonController::class, 'extendDueDate'])->name('entity-persons.extend-due-date');
+    Route::get('/business-entities/{businessEntity}/persons/workspace', [PersonsWorkspaceController::class, 'index'])->name('entities.persons.workspace');
+    Route::get('/business-entities/{businessEntity}/persons/form/create', [PersonsWorkspaceController::class, 'createForm'])->name('entities.persons.form.create');
+    Route::get('/business-entities/{businessEntity}/persons/{entityPerson}/form/edit', [PersonsWorkspaceController::class, 'editForm'])->name('entities.persons.form.edit');
+    Route::get('/business-entities/{businessEntity}/persons/{entityPerson}/detail', [PersonsWorkspaceController::class, 'showDetail'])->name('entities.persons.detail');
+    Route::get('/business-entities/{businessEntity}/assets/workspace', [AssetsWorkspaceController::class, 'index'])->name('entities.assets.workspace');
+    Route::get('/business-entities/{businessEntity}/assets/form/create', [AssetsWorkspaceController::class, 'createForm'])->name('entities.assets.form.create');
+    Route::get('/business-entities/{businessEntity}/assets/{asset}/form/edit', [AssetsWorkspaceController::class, 'editForm'])->name('entities.assets.form.edit');
+    Route::get('/business-entities/{businessEntity}/assets/{asset}/detail', [AssetsWorkspaceController::class, 'showDetail'])->name('entities.assets.detail');
+    Route::get('/business-entities/{businessEntity}/contact-lists/workspace', [ContactListsWorkspaceController::class, 'index'])->name('entities.contact-lists.workspace');
+    Route::get('/business-entities/{businessEntity}/contact-lists/form/create', [ContactListsWorkspaceController::class, 'createForm'])->name('entities.contact-lists.form.create');
+    Route::get('/business-entities/{businessEntity}/contact-lists/{contactList}/form/edit', [ContactListsWorkspaceController::class, 'editForm'])->name('entities.contact-lists.form.edit');
+    Route::get('/business-entities/{businessEntity}/profile/form', [EntityShowWorkspaceController::class, 'profileForm'])->name('entities.profile.form');
+
+    Route::get('/business-entities/{businessEntity}/bank-accounts/workspace', [BankAccountsWorkspaceController::class, 'index'])->name('entities.bank-accounts.workspace');
+    Route::get('/business-entities/{businessEntity}/bank-accounts/attach-form', [BankAccountsWorkspaceController::class, 'attachForm'])->name('entities.bank-accounts.attach-form');
+    Route::get('/business-entities/{businessEntity}/bank-accounts/form/create', [BankAccountsWorkspaceController::class, 'createForm'])->name('entities.bank-accounts.form.create');
+    Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/form/edit', [BankAccountsWorkspaceController::class, 'editForm'])->name('entities.bank-accounts.form.edit');
 
     // Person routes
     Route::get('persons', [EntityPersonController::class, 'indexPersons'])->name('persons.index');
     Route::get('persons/create', [EntityPersonController::class, 'createPerson'])->name('persons.create');
     Route::post('persons', [EntityPersonController::class, 'storePerson'])->name('persons.store');
     Route::get('persons/{person}', [EntityPersonController::class, 'showPerson'])->name('persons.show');
+    Route::get('/persons/{person}/workspace/roles', [PersonShowWorkspaceController::class, 'roles'])->name('persons.workspace.roles');
+    Route::get('/persons/{person}/roles/form/create', [PersonShowWorkspaceController::class, 'entityPicker'])->name('persons.roles.form.create');
+    Route::get('/persons/{person}/bank-accounts/workspace', [PersonShowWorkspaceController::class, 'bankAccounts'])->name('persons.bank-accounts.workspace');
+    Route::get('/persons/{person}/bank-accounts/form/create', [PersonShowWorkspaceController::class, 'createBankAccountForm'])->name('persons.bank-accounts.form.create');
+    Route::get('/persons/{person}/bank-accounts/{bankAccount}/form/edit', [PersonShowWorkspaceController::class, 'editBankAccountForm'])->name('persons.bank-accounts.form.edit');
 
     // Bank Accounts
     Route::get('/business-entities/{businessEntity}/bank-accounts/create', [BusinessEntityController::class, 'createBankAccount'])->name('business-entities.bank-accounts.create');
@@ -300,7 +331,15 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Global chart of accounts (single shared GL for all entities)
     Route::resource('chart-of-accounts', ChartOfAccountController::class)->except(['show']);
+    Route::resource('vendors', VendorController::class)->except(['show']);
+    Route::post('vendors/auto-link-all', [VendorController::class, 'autoLinkAll'])->name('vendors.auto-link-all');
+    Route::post('vendors/sync-all-names', [VendorController::class, 'syncAllNames'])->name('vendors.sync-all-names');
+    Route::post('vendors/resolve-unlinked', [VendorController::class, 'resolveUnlinked'])->name('vendors.resolve-unlinked');
+    Route::post('vendors/{vendor}/link-transactions', [VendorController::class, 'linkTransactions'])->name('vendors.link-transactions');
     Route::get('/bank-accounts', [BusinessEntityController::class, 'bankAccountsIndex'])->name('bank-accounts.index');
+    Route::get('/bank-accounts/workspace', [BankAccountPanelController::class, 'portfolioWorkspace'])->name('bank-accounts.workspace');
+    Route::get('/bank-accounts/form/create', [BankAccountPanelController::class, 'portfolioCreateForm'])->name('bank-accounts.form.create');
+    Route::get('/bank-accounts/{bankAccount}/form/edit', [BankAccountPanelController::class, 'portfolioEditForm'])->name('bank-accounts.form.edit');
     Route::get('/bank-accounts/create', [BusinessEntityController::class, 'createPortfolioBankAccount'])->name('bank-accounts.create');
     Route::post('/bank-accounts', [BusinessEntityController::class, 'storePortfolioBankAccount'])->name('bank-accounts.store');
     Route::get('/bank-accounts/{bankAccount}/edit', [BusinessEntityController::class, 'editPortfolioBankAccount'])->name('bank-accounts.edit');
@@ -329,6 +368,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
 Route::middleware(['auth', 'super.admin'])->group(function () {
     Route::get('/admin/users', [UserManagementController::class, 'index'])->name('admin.users.index');
+    Route::get('/admin/users/workspace', [AdminUsersWorkspaceController::class, 'workspace'])->name('admin.users.workspace');
+    Route::get('/admin/users/form/create', [AdminUsersWorkspaceController::class, 'createForm'])->name('admin.users.form.create');
+    Route::get('/admin/users/{user}/form/password', [AdminUsersWorkspaceController::class, 'passwordForm'])->name('admin.users.form.password');
     Route::get('/admin/users/create', [UserManagementController::class, 'create'])->name('admin.users.create');
     Route::post('/admin/users', [UserManagementController::class, 'store'])->name('admin.users.store');
     Route::patch('/admin/users/{user}/activate', [UserManagementController::class, 'activate'])->name('admin.users.activate');

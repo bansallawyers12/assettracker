@@ -1,5 +1,11 @@
 import './documents-workspace.js';
 import './compliance-workspace.js';
+import './entity-show-workspace.js';
+import './person-show-workspace.js';
+import './admin-users-workspace.js';
+import './entity-create-form.js';
+import { initBankAccountModal } from './bank-account-modal.js';
+import { initBankAccountFormFields } from './bank-form-fields.js';
 import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput } from './flatpickr-init';
 import {
     initTomSelect,
@@ -73,6 +79,8 @@ document.addEventListener('DOMContentLoaded', function() {
     initTomSelect();
     watchTomSelect();
     initTransactionPaidByValidation();
+    initBankAccountModal();
+    initBankAccountFormFields();
 
     if (document.querySelector('[data-rich-text]')) {
         loadRichTextModule().then(exposeRichTextHelpers);

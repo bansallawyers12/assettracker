@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,22 +26,19 @@ class UserManagementController extends Controller
         DB::table('sessions')->where('user_id', $user->id)->delete();
     }
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $users = User::query()
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
+        $users = AdminUsersWorkspaceController::paginatedUsers($request);
 
         return view('admin.users.index', compact('users'));
     }
 
-    public function create(): View
+    public function create(): RedirectResponse
     {
-        return view('admin.users.create');
+        return redirect()->route('admin.users.index');
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
         $email = strtolower(trim((string) $request->input('email')));
         $emailHash = hash_hmac('sha256', $email, config('app.key'));
@@ -65,6 +63,14 @@ class UserManagementController extends Controller
         ]);
 
         if (strcasecmp($email, strtolower(trim((string) config('admin.email')))) === 0) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => __('This address is reserved for the primary administrator.'),
+                    'errors' => ['email' => [__('This address is reserved for the primary administrator.')]],
+                ], 422);
+            }
+
             return back()->withErrors(['email' => __('This address is reserved for the primary administrator.')])->withInput();
         }
 
@@ -77,28 +83,36 @@ class UserManagementController extends Controller
             'is_active' => true,
         ]);
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, __('User created successfully.'));
+        }
+
         return redirect()->route('admin.users.index')->with('status', __('User created successfully.'));
     }
 
-    public function activate(User $user): RedirectResponse
+    public function activate(Request $request, User $user): RedirectResponse|JsonResponse
     {
         if ($user->isPrimaryAdministrator()) {
-            return back()->with('error', __('The primary administrator account is always active.'));
+            return $this->actionError($request, __('The primary administrator account is always active.'));
         }
 
         $user->update(['is_active' => true]);
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, __('User activated.'));
+        }
+
         return back()->with('status', __('User activated.'));
     }
 
-    public function deactivate(User $user): RedirectResponse
+    public function deactivate(Request $request, User $user): RedirectResponse|JsonResponse
     {
         if ($user->isPrimaryAdministrator()) {
-            return back()->with('error', __('You cannot deactivate the primary administrator.'));
+            return $this->actionError($request, __('You cannot deactivate the primary administrator.'));
         }
 
         if ($user->is(auth()->user())) {
-            return back()->with('error', __('You cannot deactivate your own account.'));
+            return $this->actionError($request, __('You cannot deactivate your own account.'));
         }
 
         $user->update([
@@ -107,14 +121,16 @@ class UserManagementController extends Controller
         ]);
         $this->flushDatabaseSessionsForUser($user);
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, __('User deactivated. They can no longer sign in.'));
+        }
+
         return back()->with('status', __('User deactivated. They can no longer sign in.'));
     }
 
-    public function updatePassword(Request $request, User $user): RedirectResponse
+    public function updatePassword(Request $request, User $user): RedirectResponse|JsonResponse
     {
-        $bag = 'password_user_'.$user->id;
-
-        $validated = $request->validateWithBag($bag, [
+        $validated = $request->validate([
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -126,22 +142,55 @@ class UserManagementController extends Controller
 
         $this->flushDatabaseSessionsForUser($user);
 
-        return back()->with('status', __('Password updated for :name.', ['name' => $user->name]));
+        $message = __('Password updated for :name.', ['name' => $user->name]);
+
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, $message);
+        }
+
+        return back()->with('status', $message);
     }
 
-    public function destroy(User $user): RedirectResponse
+    public function destroy(Request $request, User $user): RedirectResponse|JsonResponse
     {
         if ($user->isPrimaryAdministrator()) {
-            return back()->with('error', __('You cannot delete the primary administrator.'));
+            return $this->actionError($request, __('You cannot delete the primary administrator.'));
         }
 
         if ($user->is(auth()->user())) {
-            return back()->with('error', __('You cannot delete your own account.'));
+            return $this->actionError($request, __('You cannot delete your own account.'));
         }
 
         $this->flushDatabaseSessionsForUser($user);
         $user->delete();
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, __('User deleted.'));
+        }
+
         return back()->with('status', __('User deleted.'));
+    }
+
+    private function workspaceJsonResponse(Request $request, string $message): JsonResponse
+    {
+        $users = AdminUsersWorkspaceController::paginatedUsers($request);
+
+        return response()->json([
+            'status' => true,
+            'message' => $message,
+            'list_html' => AdminUsersWorkspaceController::listHtml($users),
+        ]);
+    }
+
+    private function actionError(Request $request, string $message): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => false,
+                'message' => $message,
+            ], 422);
+        }
+
+        return back()->with('error', $message);
     }
 }

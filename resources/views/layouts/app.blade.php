@@ -40,6 +40,10 @@
             </main>
         </div>
 
+        @stack('bank-panel-config')
+        @include('bank-accounts.partials.bank-account-panel-shell')
+        @include('business-entities.partials.entity-workspace-panel')
+
         @stack('scripts')
     </body>
 </html>

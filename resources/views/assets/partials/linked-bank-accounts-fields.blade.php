@@ -66,14 +66,19 @@
             const option = select.options[select.selectedIndex];
             const hasValue = select.value !== '';
             const editUrl = option?.dataset?.editUrl || '';
+            const editFormUrl = option?.dataset?.editFormUrl || '';
 
-            editBtn.classList.toggle('hidden', !hasValue || !editUrl);
+            editBtn.classList.toggle('hidden', !hasValue || (!editUrl && !editFormUrl));
             clearBtn.classList.toggle('hidden', !hasValue);
 
-            if (hasValue && editUrl) {
+            if (editBtn.tagName === 'A' && hasValue && editUrl) {
                 editBtn.href = editUrl;
                 editBtn.target = '_blank';
                 editBtn.rel = 'noopener';
+            }
+
+            if (editBtn.tagName === 'BUTTON' && hasValue && editFormUrl) {
+                editBtn.dataset.bankEditUrl = editFormUrl;
             }
         }
 
@@ -85,6 +90,10 @@
 
         select.addEventListener('change', refresh);
         refresh();
+    });
+
+    window.addEventListener('bank-account-changed', function () {
+        window.location.reload();
     });
 
     const assetTypeEl = document.getElementById('asset_type');

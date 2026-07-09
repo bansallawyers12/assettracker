@@ -204,4 +204,6 @@
             </div>
         </div>
     </div>
+
+    @include('bank-accounts.partials.add-account-modal', ['businessEntity' => $businessEntity])
 </x-app-layout>

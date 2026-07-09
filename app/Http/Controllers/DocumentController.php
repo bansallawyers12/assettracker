@@ -9,9 +9,9 @@ use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Services\ChecklistFilenameMatcher;
 use App\Services\DocumentUploadService;
+use App\Support\DocumentStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class DocumentController extends Controller
@@ -383,7 +383,7 @@ class DocumentController extends Controller
             abort(404);
         }
 
-        if (! $document->path || ! Storage::disk('s3')->exists($document->path)) {
+        if (! $document->path) {
             abort(404);
         }
 
@@ -394,11 +394,15 @@ class DocumentController extends Controller
             'Cache-Control' => 'private, max-age=120',
         ];
 
-        if ($request->boolean('download')) {
-            return Storage::disk('s3')->download($document->path, $name, $headers);
-        }
+        try {
+            if ($request->boolean('download')) {
+                return DocumentStorage::disk()->download($document->path, $name, $headers);
+            }
 
-        return Storage::disk('s3')->response($document->path, $name, $headers, 'inline');
+            return DocumentStorage::disk()->response($document->path, $name, $headers, 'inline');
+        } catch (\Throwable) {
+            abort(404);
+        }
     }
 
     // ─── Private helpers ──────────────────────────────────────────────────────
@@ -439,7 +443,7 @@ class DocumentController extends Controller
         }
 
         try {
-            $detected = Storage::disk('s3')->mimeType($document->path);
+            $detected = DocumentStorage::disk()->mimeType($document->path);
 
             return $detected ?: 'application/octet-stream';
         } catch (\Throwable) {

@@ -1,5 +1,5 @@
 <div id="tab_invoices" class="tab-content hidden">
-    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg space-y-6">
+    <div class="asset-panel space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Invoices</h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">Create rent invoices from a lease, post from the invoice page, then record payment or send reminders.</p>

@@ -7,8 +7,8 @@ use App\Models\BusinessEntity;
 use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Models\Transaction;
+use App\Support\DocumentStorage;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 
 class DocumentUploadService
 {
@@ -72,8 +72,8 @@ class DocumentUploadService
         }
 
         if ($document->path) {
-            if (Storage::disk('s3')->exists($document->path)) {
-                Storage::disk('s3')->delete($document->path);
+            if (DocumentStorage::exists($document->path)) {
+                DocumentStorage::delete($document->path);
             }
             $document->path = null;
             $document->file_name = null;
@@ -100,7 +100,7 @@ class DocumentUploadService
                 $mime = $byExt;
             }
         }
-        Storage::disk('s3')->put($path, file_get_contents($file->getRealPath()), ['ContentType' => $mime]);
+        DocumentStorage::put($path, file_get_contents($file->getRealPath()), ['ContentType' => $mime]);
 
         $document->path = $path;
         $document->file_name = $displayFileName ?? $file->getClientOriginalName();
@@ -114,15 +114,13 @@ class DocumentUploadService
 
     public function ensureDirectory(string $path): void
     {
-        if (! Storage::disk('s3')->exists($path)) {
-            Storage::disk('s3')->makeDirectory($path);
-        }
+        DocumentStorage::ensureDirectory($path);
     }
 
     public function deleteFileFromDocument(Document $document): void
     {
-        if ($document->path && Storage::disk('s3')->exists($document->path)) {
-            Storage::disk('s3')->delete($document->path);
+        if ($document->path && DocumentStorage::exists($document->path)) {
+            DocumentStorage::delete($document->path);
         }
         $document->path = null;
         $document->file_name = null;
@@ -212,7 +210,7 @@ class DocumentUploadService
         ?string $checklistLabel = null,
         ?string $description = null
     ): Document {
-        if (! Storage::disk('s3')->exists($sourceS3Path)) {
+        if (! DocumentStorage::exists($sourceS3Path)) {
             throw new \InvalidArgumentException('Receipt file not found in storage.');
         }
 
@@ -234,8 +232,8 @@ class DocumentUploadService
         if (str_starts_with($sourceS3Path, 'Receipts/')
             && $document->path
             && $sourceS3Path !== $document->path
-            && Storage::disk('s3')->exists($sourceS3Path)) {
-            Storage::disk('s3')->delete($sourceS3Path);
+            && DocumentStorage::exists($sourceS3Path)) {
+            DocumentStorage::delete($sourceS3Path);
         }
 
         return $document->fresh();
@@ -274,17 +272,17 @@ class DocumentUploadService
         $storedName = "{$entityToken}_{$checklistToken}_{$unique}.{$extension}";
         $path = "{$prefix}/{$storedName}";
 
-        $contents = Storage::disk('s3')->get($sourceS3Path);
+        $contents = DocumentStorage::disk()->get($sourceS3Path);
         $mime = $this->mimeTypeForExtension($extension);
         try {
-            $detected = Storage::disk('s3')->mimeType($sourceS3Path);
+            $detected = DocumentStorage::disk()->mimeType($sourceS3Path);
             if ($detected && $detected !== 'application/octet-stream') {
                 $mime = $detected;
             }
         } catch (\Throwable) {
             // keep extension-based guess
         }
-        Storage::disk('s3')->put($path, $contents, ['ContentType' => $mime]);
+        DocumentStorage::put($path, $contents, ['ContentType' => $mime]);
 
         $document->path = $path;
         $document->file_name = $displayFileName;

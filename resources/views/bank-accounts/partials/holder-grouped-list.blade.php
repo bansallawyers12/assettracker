@@ -4,9 +4,11 @@
     $holderGroups = $holderGroups ?? [];
     $showScope = $showScope ?? true;
     $emptyMessage = $emptyMessage ?? 'No bank accounts yet.';
-    $useAddAccountModal = $useAddAccountModal ?? false;
+    $useAddAccountModal = $useAddAccountModal ?? true;
+    $useSpaActions = $useSpaActions ?? true;
     $useEntityLinks = $useEntityLinks ?? false;
     $linkBusinessEntity = $linkBusinessEntity ?? null;
+    $personContext = $personContext ?? null;
 @endphp
 
 @if(empty($holderGroups))
@@ -22,10 +24,16 @@
                 Add account
             </button>
         @elseif(! empty($emptyCreateUrl))
-            <a href="{{ $emptyCreateUrl }}" class="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+            <button
+                type="button"
+                data-open-add-bank-account
+                data-create-url="{{ $emptyCreateUrl }}"
+                data-bank-modal-tab="create"
+                class="mt-4 inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500"
+            >
                 <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
                 Add account
-            </a>
+            </button>
         @endif
     </div>
 @else
@@ -51,6 +59,7 @@
                         @include('bank-accounts.partials.account-link-actions', [
                             'associateModal' => true,
                             'associateCreateUrl' => $group['create_url'],
+                            'associateModalTab' => 'create',
                             'associateTitle' => 'Add account for '.$group['label'],
                         ])
                     @else
@@ -103,6 +112,9 @@
                                                 'editUrl' => $linkBusinessEntity
                                                     ? route('business-entities.bank-accounts.edit', [$linkBusinessEntity, $account])
                                                     : $account->editRoute(),
+                                                'editFormUrl' => $linkBusinessEntity
+                                                    ? route('entities.bank-accounts.form.edit', [$linkBusinessEntity, $account])
+                                                    : route('bank-accounts.form.edit', $account),
                                                 'editTitle' => 'Edit account',
                                                 'unlinkUrl' => ($linkBusinessEntity && $link->id)
                                                     ? route('business-entities.bank-account-links.destroy', [$linkBusinessEntity, $link])
@@ -114,6 +126,8 @@
                                                 'deleteConfirm' => $account->isPortfolioWide()
                                                     ? 'Delete this shared bank account from the entire portfolio? This cannot be undone.'
                                                     : 'Delete this bank account permanently? This cannot be undone.',
+                                                'deleteContext' => $linkBusinessEntity ? 'entity:'.$linkBusinessEntity->id : 'portfolio',
+                                                'useSpaActions' => $useSpaActions,
                                             ])
                                         </td>
                                     </tr>
@@ -137,12 +151,23 @@
                                             </td>
                                         @endif
                                         <td class="px-4 py-3 text-right">
+                                            @php
+                                                $editFormUrl = $personContext
+                                                    ? route('persons.bank-accounts.form.edit', [$personContext, $account])
+                                                    : route('bank-accounts.form.edit', $account);
+                                                $deleteContext = $personContext
+                                                    ? 'person:'.$personContext->id
+                                                    : 'portfolio';
+                                            @endphp
                                             @include('bank-accounts.partials.account-link-actions', [
                                                 'editUrl' => $account->editRoute(),
+                                                'editFormUrl' => $editFormUrl,
                                                 'editTitle' => 'Edit account',
                                                 'deleteUrl' => $account->destroyRoute(),
                                                 'deleteTitle' => 'Delete bank account',
                                                 'deleteConfirm' => 'Delete this bank account permanently? This cannot be undone.',
+                                                'deleteContext' => $deleteContext,
+                                                'useSpaActions' => $useSpaActions,
                                             ])
                                         </td>
                                     </tr>

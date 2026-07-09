@@ -27,7 +27,18 @@ class SecurityHeaders
 
         // Allow same-origin framing for routes whose responses are intentionally embedded in an iframe
         // (email viewer, document preview pane).
-        $allowSameOriginFraming = $request->routeIs('emails.show', 'business-entities.documents.content');
+        $allowSameOriginFraming = $request->routeIs(
+            'emails.show',
+            'business-entities.documents.content',
+            'entities.compliance-files.content',
+        );
+
+        // Streamed PDF/image bytes must not inherit the app HTML CSP — Chrome's built-in PDF
+        // viewer (iframe or new tab) needs extension/blob resources blocked by default-src 'self'.
+        $isEmbeddedDocumentStream = $request->routeIs(
+            'business-entities.documents.content',
+            'entities.compliance-files.content',
+        );
 
         // Security Headers
         $response->headers->set('X-Content-Type-Options', 'nosniff');
@@ -38,13 +49,15 @@ class SecurityHeaders
         $response->headers->set('X-XSS-Protection', config('security.headers.x_xss_protection', '1; mode=block'));
         $response->headers->set('Referrer-Policy', config('security.headers.referrer_policy', 'strict-origin-when-cross-origin'));
 
-        // Content Security Policy
-        $csp = config('security.headers.content_security_policy');
-        if ($allowSameOriginFraming && is_string($csp)) {
-            $csp = preg_replace("/frame-ancestors\\s+'none'/i", "frame-ancestors 'self'", $csp) ?? $csp;
-        }
-        if ($csp) {
-            $response->headers->set('Content-Security-Policy', $csp);
+        // Content Security Policy — skip on proxied document streams (see $isEmbeddedDocumentStream).
+        if (! $isEmbeddedDocumentStream) {
+            $csp = config('security.headers.content_security_policy');
+            if ($allowSameOriginFraming && is_string($csp)) {
+                $csp = preg_replace("/frame-ancestors\\s+'none'/i", "frame-ancestors 'self'", $csp) ?? $csp;
+            }
+            if ($csp) {
+                $response->headers->set('Content-Security-Policy', $csp);
+            }
         }
 
         // HSTS (HTTP Strict Transport Security)

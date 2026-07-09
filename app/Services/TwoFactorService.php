@@ -25,7 +25,7 @@ class TwoFactorService
     }
 
     /**
-     * Generate an inline QR code (SVG or PNG data URI) for 2FA setup.
+     * Generate a QR code data URI (SVG or PNG) for 2FA setup.
      */
     public function getQRCodeInline(User $user, string $secret, int $size = 200): string
     {
@@ -37,6 +37,17 @@ class TwoFactorService
             $secret,
             $size
         );
+    }
+
+    /**
+     * Render the QR code as an HTML img tag (getQRCodeInline returns a bare data URI).
+     */
+    public function getQRCodeImageHtml(User $user, string $secret, int $size = 200): string
+    {
+        $dataUri = $this->getQRCodeInline($user, $secret, $size);
+        $alt = e(__('Two-factor authentication QR code'));
+
+        return '<img src="'.e($dataUri).'" width="'.$size.'" height="'.$size.'" alt="'.$alt.'" class="two-factor-qr-code" decoding="async" />';
     }
 
     /**

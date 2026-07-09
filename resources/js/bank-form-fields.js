@@ -1,0 +1,104 @@
+/**
+ * Bank account form field behaviour (holder type toggle, bank name "Other").
+ */
+const BANK_OTHER_VALUE = '__other__';
+export function initBankAccountFormFields(root = document) {
+    const scope = root?.querySelector?.('.bank-account-form-root') ?? root;
+    if (!scope || scope.dataset.bankFormInit === '1') {
+        return;
+    }
+
+    if (scope.classList?.contains('bank-account-form-root') || scope.querySelector?.('.bank-account-form-root')) {
+        const formRoot = scope.classList.contains('bank-account-form-root')
+            ? scope
+            : scope.querySelector('.bank-account-form-root');
+
+        if (!formRoot || formRoot.dataset.bankFormInit === '1') {
+            return;
+        }
+
+        formRoot.dataset.bankFormInit = '1';
+        bindBankFormFields(formRoot);
+        return;
+    }
+
+    document.querySelectorAll('.bank-account-form-root:not([data-bank-form-init="1"])').forEach((formRoot) => {
+        formRoot.dataset.bankFormInit = '1';
+        bindBankFormFields(formRoot);
+    });
+}
+
+function bindBankFormFields(formRoot) {
+    const bankSelect = formRoot.querySelector('#bank_name_select');
+    const bankOther = formRoot.querySelector('#bank_name_other');
+
+    if (bankSelect && bankOther) {
+        const bankOtherValue = bankSelect.dataset.otherValue || BANK_OTHER_VALUE;
+
+        const refreshBankNameField = () => {
+            const isOther = bankOtherValue && bankSelect.value === bankOtherValue;
+            bankOther.classList.toggle('hidden', !isOther);
+            bankOther.required = isOther;
+        };
+
+        bankSelect.addEventListener('change', refreshBankNameField);
+        refreshBankNameField();
+    }
+
+    const holderSelect = formRoot.querySelector('#holder_type');
+    if (!holderSelect) {
+        return;
+    }
+
+    const sections = {
+        entity: formRoot.querySelector('#holder-entity-section'),
+        person: formRoot.querySelector('#holder-person-section'),
+        other: formRoot.querySelector('#holder-other-section'),
+    };
+
+    const refreshHolderSections = (fromUserChange = false) => {
+        const val = holderSelect.value;
+
+        Object.entries(sections).forEach(([type, el]) => {
+            el?.classList.toggle('hidden', val !== type);
+        });
+
+        const entitySelect = formRoot.querySelector('#holder_entity_id');
+        const personSelect = formRoot.querySelector('#holder_person_id');
+        const otherInput = formRoot.querySelector('#holder-other-section input[name="holder_other"]');
+
+        if (entitySelect) {
+            entitySelect.required = val === 'entity';
+        }
+        if (personSelect) {
+            personSelect.required = val === 'person';
+        }
+        if (otherInput) {
+            otherInput.required = val === 'other';
+        }
+
+        if (fromUserChange) {
+            if (val === 'entity') {
+                window.setSelectValue?.(personSelect, '');
+                window.reinitTomSelect?.(entitySelect);
+            } else if (val === 'person') {
+                window.setSelectValue?.(entitySelect, '');
+                window.reinitTomSelect?.(personSelect);
+            } else {
+                window.setSelectValue?.(entitySelect, '');
+                window.setSelectValue?.(personSelect, '');
+            }
+
+            return;
+        }
+
+        if (val === 'entity') {
+            window.reinitTomSelect?.(entitySelect);
+        } else if (val === 'person') {
+            window.reinitTomSelect?.(personSelect);
+        }
+    };
+
+    holderSelect.addEventListener('change', () => refreshHolderSections(true));
+    refreshHolderSections(false);
+}

@@ -6,8 +6,8 @@ use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\ComplianceDocumentFile;
 use App\Support\FinancialYear;
+use App\Support\DocumentStorage;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
 
 class ComplianceUploadService
 {
@@ -40,15 +40,15 @@ class ComplianceUploadService
         $this->documentUploadService->ensureDirectory($prefix);
 
         $typeCode = $file->type?->code ?? 'document';
-        $entityToken = $this->documentUploadService->sanitizeLabelForStorage($entity->legal_name);
-        $typeToken = $this->documentUploadService->sanitizeLabelForStorage($typeCode);
+        $entityToken = str_replace(' ', '_', $this->documentUploadService->sanitizeLabelForStorage($entity->legal_name));
+        $typeToken = str_replace(' ', '_', $this->documentUploadService->sanitizeLabelForStorage($typeCode));
         $extension = strtolower($upload->getClientOriginalExtension() ?: 'bin');
         $unique = time().'_'.mt_rand(1000, 9999);
         $storedName = "{$entityToken}_{$typeToken}_{$unique}.{$extension}";
         $path = "{$prefix}/{$storedName}";
 
         $mime = $upload->getMimeType() ?: 'application/octet-stream';
-        Storage::disk('s3')->put($path, file_get_contents($upload->getRealPath()), ['ContentType' => $mime]);
+        DocumentStorage::put($path, file_get_contents($upload->getRealPath()), ['ContentType' => $mime]);
 
         $file->path = $path;
         $file->file_name = $upload->getClientOriginalName();
@@ -98,8 +98,8 @@ class ComplianceUploadService
 
     private function deleteStoredFile(ComplianceDocumentFile $file): void
     {
-        if ($file->path && Storage::disk('s3')->exists($file->path)) {
-            Storage::disk('s3')->delete($file->path);
+        if ($file->path && DocumentStorage::exists($file->path)) {
+            DocumentStorage::delete($file->path);
         }
 
         $file->path = null;

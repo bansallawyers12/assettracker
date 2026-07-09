@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 class Transaction extends Model
 {
     protected $fillable = [
-        'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description', 'vendor_name',
+        'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description', 'vendor_id', 'vendor_name',
         'transaction_type', 'gst_amount', 'gst_status', 'gst_basis', 'receipt_path', 'document_id',
         'bank_account_id', 'tracking_category_id', 'tracking_sub_category_id',
         'invoice_number', 'payment_status', 'due_date', 'paid_at', 'payment_method',
@@ -195,6 +195,16 @@ class Transaction extends Model
     public function getPaidByDisplayAttribute(): string
     {
         return TransactionPayerResolver::paidByLabel($this->paid_by);
+    }
+
+    public function getVendorDisplayAttribute(): ?string
+    {
+        return $this->vendor?->name ?? $this->vendor_name;
+    }
+
+    public function vendor()
+    {
+        return $this->belongsTo(Vendor::class);
     }
 
     public function bankAccount()

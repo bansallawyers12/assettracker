@@ -66,7 +66,7 @@
                                             <p class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $t->description ?: 'Transaction' }}</p>
                                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                                 {{ $t->businessEntity?->legal_name ?? 'Entity' }}
-                                                @if ($t->vendor_name) · {{ $t->vendor_name }} @endif
+                                                @if ($t->vendor_display) · {{ $t->vendor_display }} @endif
                                             </p>
                                             <div class="mt-2 flex flex-wrap gap-2 text-xs">
                                                 <span class="px-2 py-0.5 rounded-md {{ $txnDirectionLabel($t) === 'Income' ? 'bg-green-50 text-green-800 dark:bg-green-900/30 dark:text-green-200' : 'bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200' }} font-medium">{{ $txnDirectionLabel($t) }}</span>
@@ -188,7 +188,7 @@
                                             @elseif ($row->kind === 'bill')
                                                 @php $t = $row->transaction; @endphp
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
-                                                    Bill: {{ $t->description ?: 'Unpaid' }}{{ $t->vendor_name ? ' · '.$t->vendor_name : '' }} — ${{ number_format((float) $t->amount, 2) }}
+                                                    Bill: {{ $t->description ?: 'Unpaid' }}{{ $t->vendor_display ? ' · '.$t->vendor_display : '' }} — ${{ number_format((float) $t->amount, 2) }}
                                                     <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">BILL</span>
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $t->businessEntity?->legal_name }}</p>

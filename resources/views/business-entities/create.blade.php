@@ -1,323 +1,96 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex justify-between items-center">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Create Business Entity') }}
-            </h2>
-            <a href="{{ route('business-entities.index') }}" class="px-4 py-2 bg-gray-200 rounded-md text-gray-700 hover:bg-gray-300 transition-colors duration-200 flex items-center">
-                <x-lucide-arrow-left class="h-5 w-5 mr-1" />
-                Back to List
-            </a>
-        </div>
-    </x-slot>
+    <div class="entity-form-page py-8 lg:py-10">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <a href="{{ route('business-entities.index') }}" class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
+                        <x-lucide-arrow-left class="h-4 w-4" aria-hidden="true" />
+                        {{ __('Back to entities') }}
+                    </a>
+                    <h1 class="mt-3 text-2xl font-bold text-gray-900 dark:text-white">{{ __('Create business entity') }}</h1>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {{ __('Add a company, trust, sole trader, or partnership to your portfolio.') }}
+                    </p>
+                </div>
+            </div>
 
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-lg sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('business-entities.store') }}">
-                        @csrf
+            @if ($errors->any())
+                <div class="mb-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200" role="alert">
+                    <p class="font-semibold">{{ __('We couldn’t save this entity. Please check the following:') }}</p>
+                    <ul class="mt-2 list-inside list-disc space-y-1">
+                        @foreach ($errors->all() as $message)
+                            <li>{{ $message }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
-                        @if ($errors->any())
-                            <div class="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
-                                <p class="font-semibold text-red-900">We couldn’t save this entity. Please check the following:</p>
-                                <ul class="mt-2 list-inside list-disc space-y-1">
-                                    @foreach ($errors->all() as $message)
-                                        <li>{{ $message }}</li>
-                                    @endforeach
-                                </ul>
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
+                <aside class="lg:col-span-4 xl:col-span-3">
+                    <div class="profile-page-card p-5 lg:sticky lg:top-6">
+                        <div class="flex items-start gap-3">
+                            <div class="profile-section-icon profile-section-icon-indigo shrink-0">
+                                <x-lucide-building-2 class="h-5 w-5" aria-hidden="true" />
                             </div>
-                        @endif
-
-                        <div class="bg-blue-50 rounded-lg p-4 mb-6 border-l-4 border-blue-500">
-                            <h3 class="text-lg font-medium text-blue-800 mb-2">Business Information</h3>
-                            <p class="text-sm text-blue-600">Enter the basic information about your business entity.</p>
-                        </div>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
-                                <label for="legal_name" class="block text-sm font-medium text-gray-700 mb-1">Legal Name*</label>
-                                <input type="text" name="legal_name" id="legal_name" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required>
-                                @error('legal_name') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                            </div>
-                            
-                            <div>
-                                <label for="trading_name" class="block text-sm font-medium text-gray-700 mb-1">Trading Name</label>
-                                <input type="text" name="trading_name" id="trading_name" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition">
-                            </div>
-                            
-                            <div>
-                                <label for="entity_type" class="block text-sm font-medium text-gray-700 mb-1">Entity Type*</label>
-                                <select name="entity_type" id="entity_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required onchange="toggleTrustFields()">
-                                    <option value="">Select entity type</option>
-                                    <option value="Sole Trader" @selected(old('entity_type') === 'Sole Trader')>Sole Trader</option>
-                                    <option value="Company" @selected(old('entity_type') === 'Company')>Company</option>
-                                    <option value="Trust" @selected(old('entity_type') === 'Trust')>Trust</option>
-                                    <option value="Partnership" @selected(old('entity_type') === 'Partnership')>Partnership</option>
-                                </select>
-                                @error('entity_type') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                            </div>
-                            
-                            <div>
-                                <label for="registered_email" class="block text-sm font-medium text-gray-700 mb-1">Email Address*</label>
-                                <input type="email" name="registered_email" id="registered_email" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required>
-                                @error('registered_email') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                                <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ __('What you’ll need') }}</p>
+                                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Required fields are marked with an asterisk.') }}</p>
                             </div>
                         </div>
 
-                        <!-- Trust-Specific Fields (Hidden by default) -->
-                        <div id="trust_fields" class="mt-8 bg-green-50 rounded-lg p-4 mb-6 border-l-4 border-green-500 hidden">
-                            <h3 class="text-lg font-medium text-green-800 mb-2">Trust Information</h3>
-                            <p class="text-sm text-green-600 mb-4">Additional information required for trust entities.</p>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label for="trust_type" class="block text-sm font-medium text-gray-700 mb-1">Trust Type*</label>
-                                    <select name="trust_type" id="trust_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
-                                        <option value="" disabled selected>Select trust type</option>
-                                        <option value="Discretionary">Discretionary Trust</option>
-                                        <option value="Unit">Unit Trust</option>
-                                        <option value="Fixed">Fixed Trust</option>
-                                        <option value="Testamentary">Testamentary Trust</option>
-                                        <option value="Charitable">Charitable Trust</option>
-                                    </select>
-                                    @error('trust_type') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                                </div>
-                                
-                                <div>
-                                    <label for="trust_establishment_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Establishment Date*</label>
-                                    <x-date-input name="trust_establishment_date" id="trust_establishment_date" value="{{ old('trust_establishment_date') }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
-                                    @error('trust_establishment_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                                </div>
-                                
-                                <div>
-                                    <label for="trust_deed_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Deed Date*</label>
-                                    <x-date-input name="trust_deed_date" id="trust_deed_date" value="{{ old('trust_deed_date') }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
-                                    @error('trust_deed_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                                </div>
-                                
-                                <div>
-                                    <label for="trust_deed_reference" class="block text-sm font-medium text-gray-700 mb-1">Trust Deed Reference</label>
-                                    <input type="text" name="trust_deed_reference" id="trust_deed_reference" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" placeholder="e.g., TD-2024-001">
-                                    @error('trust_deed_reference') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                                </div>
-                                
-                                <div>
-                                    <label for="trust_vesting_date" class="block text-sm font-medium text-gray-700 mb-1">Trust Vesting Date</label>
-                                    <x-date-input name="trust_vesting_date" id="trust_vesting_date" value="{{ old('trust_vesting_date') }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" />
-                                    @error('trust_vesting_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                                </div>
-                                
-                                <div>
-                                    <label for="appointor_type" class="block text-sm font-medium text-gray-700 mb-1">Appointor Type*</label>
-                                    <select name="appointor_type" id="appointor_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" onchange="toggleAppointorFields()">
-                                        <option value="">Select appointor type</option>
-                                        <option value="person" @selected(old('appointor_type') === 'person')>Person</option>
-                                        <option value="entity" @selected(old('appointor_type') === 'entity')>Company/Entity</option>
-                                    </select>
-                                    @error('appointor_type') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                                </div>
-                            </div>
-                            
-                            <!-- Appointor Person Fields -->
-                            <div id="appointor_person_fields" class="mt-6 hidden">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label for="appointor_person_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Person*</label>
-                                        <x-tom-select name="appointor_person_id" id="appointor_person_id" class="rounded-md focus:border-green-500 focus:ring-green-200/50 transition">
-                                            <option value="">Select a person</option>
-                                            @foreach($persons as $person)
-                                                <option value="{{ $person->id }}" @selected((string) old('appointor_person_id') === (string) $person->id)>{{ $person->first_name }} {{ $person->last_name }}</option>
-                                            @endforeach
-                                        </x-tom-select>
-                                        @error('appointor_person_id') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Appointor Entity Fields -->
-                            <div id="appointor_entity_fields" class="mt-6 hidden">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div>
-                                        <label for="appointor_entity_id" class="block text-sm font-medium text-gray-700 mb-1">Select Appointor Entity*</label>
-                                        <x-tom-select name="appointor_entity_id" id="appointor_entity_id" class="rounded-md focus:border-green-500 focus:ring-green-200/50 transition">
-                                            <option value="">Select an entity</option>
-                                            @foreach($businessEntities as $entity)
-                                                <option value="{{ $entity->id }}" @selected((string) old('appointor_entity_id') === (string) $entity->id)>{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
-                                            @endforeach
-                                        </x-tom-select>
-                                        @error('appointor_entity_id') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="mt-6">
-                                <label for="trust_vesting_conditions" class="block text-sm font-medium text-gray-700 mb-1">Trust Vesting Conditions</label>
-                                <textarea name="trust_vesting_conditions" id="trust_vesting_conditions" rows="3" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" placeholder="Describe any specific vesting conditions..."></textarea>
-                                @error('trust_vesting_conditions') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                            </div>
-                        </div>
-                        
-                        <div class="mt-8 bg-blue-50 rounded-lg p-4 mb-6 border-l-4 border-blue-500">
-                            <h3 class="text-lg font-medium text-blue-800 mb-2">Identifiers & Contact Details</h3>
-                            <p class="text-sm text-blue-600">Official business identifiers and contact information.</p>
-                        </div>
-                        
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div>
-                                <label for="abn" class="block text-sm font-medium text-gray-700 mb-1">ABN</label>
-                                <input type="text" name="abn" id="abn" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="11" placeholder="11 digits">
-                            </div>
-                            
-                            <div>
-                                <label for="acn" class="block text-sm font-medium text-gray-700 mb-1">ACN</label>
-                                <input type="text" name="acn" id="acn" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="9" placeholder="9 digits">
-                            </div>
-                            
-                            <div>
-                                <label for="tfn" class="block text-sm font-medium text-gray-700 mb-1">TFN</label>
-                                <input type="text" name="tfn" id="tfn" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="9" placeholder="9 digits">
-                            </div>
-                            
-                            <div>
-                                <label for="corporate_key" class="block text-sm font-medium text-gray-700 mb-1">Corporate Key</label>
-                                <input type="text" name="corporate_key" id="corporate_key" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition">
-                            </div>
-                            
-                            <div>
-                                <label for="phone_number" class="block text-sm font-medium text-gray-700 mb-1">Phone Number*</label>
-                                <input type="text" name="phone_number" id="phone_number" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required maxlength="15">
-                                @error('phone_number') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                            </div>
-                            
-                            <div>
-                                <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">ASIC Renewal Date</label>
-                                <x-date-input name="asic_renewal_date" id="asic_renewal_date" value="{{ old('asic_renewal_date') }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" />
-                            </div>
-                        </div>
-                        
-                        <div class="mt-6">
-                            <label for="registered_address" class="block text-sm font-medium text-gray-700 mb-1">Registered Address*</label>
-                            <x-google-address-input name="registered_address" id="registered_address" :value="old('registered_address')" required class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" />
-                            @error('registered_address') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
-                        </div>
+                        <ul class="mt-5 space-y-3 border-t border-gray-100 pt-5 text-sm dark:border-gray-700">
+                            <li class="flex gap-2 text-gray-600 dark:text-gray-400">
+                                <x-lucide-check class="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" aria-hidden="true" />
+                                <span>{{ __('Legal name and entity type') }}</span>
+                            </li>
+                            <li class="flex gap-2 text-gray-600 dark:text-gray-400">
+                                <x-lucide-check class="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" aria-hidden="true" />
+                                <span>{{ __('Registered email and phone') }}</span>
+                            </li>
+                            <li class="flex gap-2 text-gray-600 dark:text-gray-400">
+                                <x-lucide-check class="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" aria-hidden="true" />
+                                <span>{{ __('Registered business address') }}</span>
+                            </li>
+                            <li class="flex gap-2 text-gray-600 dark:text-gray-400">
+                                <x-lucide-shield class="h-4 w-4 shrink-0 text-gray-400 mt-0.5" aria-hidden="true" />
+                                <span>{{ __('Trust deed details if entity type is Trust') }}</span>
+                            </li>
+                        </ul>
 
-                        <div class="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-                            <p class="font-medium">{{ __('Managing rentals?') }}</p>
-                            <p class="mt-1 text-blue-800">{{ __('Property managers and agencies should be added when you add a tenant on a property asset (not as a business entity here). Use the checkbox below only for legacy or special cases.') }}</p>
-                        </div>
+                        <nav class="mt-5 border-t border-gray-100 pt-4 dark:border-gray-700" aria-label="{{ __('Form sections') }}">
+                            <ul class="space-y-1 text-sm">
+                                <li><a href="#section-business" class="profile-nav-link">{{ __('Business information') }}</a></li>
+                                <li><a href="#trust_fields" class="profile-nav-link">{{ __('Trust details') }}</a></li>
+                                <li><a href="#section-identifiers" class="profile-nav-link">{{ __('Identifiers & address') }}</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </aside>
 
-                        <div class="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                            <label class="flex items-start gap-3 cursor-pointer">
-                                <input type="hidden" name="exclude_from_financial_reports" value="0">
-                                <input type="checkbox" name="exclude_from_financial_reports" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('exclude_from_financial_reports') ? 'checked' : '' }}>
-                                <span>
-                                    <span class="block text-sm font-medium text-gray-900">{{ __('This is a tenancy / property manager contact only') }}</span>
-                                    <span class="block text-xs text-gray-600 mt-1">{{ __('Exclude from your operating entity list, reports, and accounting pickers.') }}</span>
-                                </span>
-                            </label>
-                            @error('exclude_from_financial_reports') <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span> @enderror
-                        </div>
-                        
-                        <div class="mt-8 flex items-center justify-end">
-                            <span class="text-sm text-gray-500 mr-4">* Required fields</span>
-                            <button type="submit" class="inline-flex items-center px-6 py-3 bg-blue-600 border border-transparent rounded-md font-semibold text-white hover:bg-blue-700 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shadow-lg transform transition hover:-translate-y-0.5 duration-200">
-                                <x-lucide-check-circle class="h-5 w-5 mr-2" />
-                                Save Business Entity
-                            </button>
-                        </div>
-                    </form>
+                <div class="lg:col-span-8 xl:col-span-9">
+                    <div class="profile-page-card overflow-hidden">
+                        <form id="entity-create-form" method="POST" action="{{ route('business-entities.store') }}" class="bank-ws-form p-5 sm:p-6 lg:p-8 space-y-6">
+                            @csrf
+
+                            @include('business-entities.partials.create-form-fields', [
+                                'persons' => $persons,
+                                'businessEntities' => $businessEntities,
+                            ])
+
+                            <div class="bank-form-actions !justify-between">
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ __('Fields marked * are required') }}</p>
+                                <div class="flex flex-wrap gap-2">
+                                    <a href="{{ route('business-entities.index') }}" class="bank-btn-secondary">{{ __('Cancel') }}</a>
+                                    <button type="submit" class="bank-btn-primary inline-flex items-center gap-2">
+                                        <x-lucide-check class="h-4 w-4" aria-hidden="true" />
+                                        {{ __('Create entity') }}
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <script>
-        function clearDateField(input) {
-            if (window.clearDateInput) {
-                window.clearDateInput(input);
-                return;
-            }
-
-            if (input) {
-                input.value = '';
-            }
-        }
-
-        function toggleTrustFields() {
-            const entityType = document.getElementById('entity_type').value;
-            const trustFields = document.getElementById('trust_fields');
-            const trustTypeField = document.getElementById('trust_type');
-            const trustEstablishmentDateField = document.getElementById('trust_establishment_date');
-            const trustDeedDateField = document.getElementById('trust_deed_date');
-            const trustDeedReferenceField = document.getElementById('trust_deed_reference');
-            const trustVestingDateField = document.getElementById('trust_vesting_date');
-            const appointorTypeField = document.getElementById('appointor_type');
-            
-            if (entityType === 'Trust') {
-                trustFields.classList.remove('hidden');
-                // Make trust-specific fields required
-                trustTypeField.required = true;
-                trustEstablishmentDateField.required = true;
-                trustDeedDateField.required = true;
-                appointorTypeField.required = true;
-            } else {
-                trustFields.classList.add('hidden');
-                // Make trust-specific fields not required
-                trustTypeField.required = false;
-                trustEstablishmentDateField.required = false;
-                trustDeedDateField.required = false;
-                appointorTypeField.required = false;
-                // Clear trust fields
-                trustTypeField.value = '';
-                clearDateField(trustEstablishmentDateField);
-                clearDateField(trustDeedDateField);
-                trustDeedReferenceField.value = '';
-                clearDateField(trustVestingDateField);
-                appointorTypeField.value = '';
-                window.setSelectValue?.(document.getElementById('appointor_person_id'), '');
-                window.setSelectValue?.(document.getElementById('appointor_entity_id'), '');
-                // Hide appointor fields
-                document.getElementById('appointor_person_fields').classList.add('hidden');
-                document.getElementById('appointor_entity_fields').classList.add('hidden');
-            }
-        }
-
-        function toggleAppointorFields() {
-            const appointorType = document.getElementById('appointor_type').value;
-            const personFields = document.getElementById('appointor_person_fields');
-            const entityFields = document.getElementById('appointor_entity_fields');
-            const personSelect = document.getElementById('appointor_person_id');
-            const entitySelect = document.getElementById('appointor_entity_id');
-            
-            if (appointorType === 'person') {
-                personFields.classList.remove('hidden');
-                entityFields.classList.add('hidden');
-                personSelect.required = true;
-                entitySelect.required = false;
-                window.setSelectValue?.(entitySelect, '');
-                window.reinitTomSelect?.(personSelect);
-            } else if (appointorType === 'entity') {
-                personFields.classList.add('hidden');
-                entityFields.classList.remove('hidden');
-                personSelect.required = false;
-                entitySelect.required = true;
-                window.setSelectValue?.(personSelect, '');
-                window.reinitTomSelect?.(entitySelect);
-            } else {
-                personFields.classList.add('hidden');
-                entityFields.classList.add('hidden');
-                personSelect.required = false;
-                entitySelect.required = false;
-                window.setSelectValue?.(personSelect, '');
-                window.setSelectValue?.(entitySelect, '');
-            }
-        }
-
-        // Initialize on page load (after app.js initTomSelect)
-        document.addEventListener('DOMContentLoaded', function() {
-            toggleTrustFields();
-            toggleAppointorFields();
-        });
-    </script>
 </x-app-layout>

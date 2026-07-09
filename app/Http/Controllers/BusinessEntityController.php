@@ -17,6 +17,7 @@ use App\Models\Note;
 use App\Models\Person; // Added for date manipulation
 use App\Models\Reminder; // Added for logging
 use App\Models\Transaction; // Added for file storage
+use App\Models\Vendor;
 use App\Rules\UniqueAbnHash;
 use App\Rules\UniqueAcnHash;
 use App\Services\CommitmentReportService;
@@ -379,7 +380,7 @@ class BusinessEntityController extends Controller
             ])
             ->orderBy('account_name')
             ->get();
-        $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument'])->orderBy('date', 'desc')->get();
+        $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument', 'vendor'])->orderBy('date', 'desc')->get();
         $invoices = Invoice::where('business_entity_id', $businessEntity->id)
             ->with(['asset'])
             ->orderByDesc('issue_date')
@@ -485,13 +486,13 @@ class BusinessEntityController extends Controller
                             ->whereDate('due_date', '<=', now()->addDays(15));
                     });
             })
-            ->with(['businessEntity.user', 'asset'])
+            ->with(['businessEntity.user', 'asset', 'vendor'])
             ->orderBy('due_date')
             ->get()
             ->map(function (Transaction $t) {
                 $amt = number_format((float) $t->amount, 2);
                 $desc = $t->description ?: 'Unpaid bill';
-                $vendor = $t->vendor_name ? ' · '.$t->vendor_name : '';
+                $vendor = $t->vendor_display ? ' · '.$t->vendor_display : '';
                 $content = 'Bill due: '.$desc.$vendor.' — $'.$amt;
 
                 return (object) [
@@ -538,6 +539,7 @@ class BusinessEntityController extends Controller
             ->get();
 
         $payerOptions = TransactionPayerResolver::payerOptions();
+        $vendors = Vendor::orderedForSelect();
 
         $commitmentSummary = app(CommitmentReportService::class)->dashboardSummary(
             $businessEntities->modelKeys()
@@ -552,6 +554,7 @@ class BusinessEntityController extends Controller
             'assetDueDateItems',
             'entityDueDates',
             'payerOptions',
+            'vendors',
             'commitmentSummary'
         ));
     }
@@ -574,6 +577,7 @@ class BusinessEntityController extends Controller
 
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeOptionalRelatedEntityId($request);
+        $this->normalizeOptionalVendorId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
         $resolvedEntityId = $request->filled('business_entity_id')
@@ -587,7 +591,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
-            'vendor_name' => 'nullable|string|max:255',
+            'vendor_id' => ['nullable', 'integer', Rule::exists('vendors', 'id')],
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::allTypes())),
             'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
@@ -640,8 +644,9 @@ class BusinessEntityController extends Controller
                 : null;
 
             $paidBy = $this->validatedPaidBy($request);
+            $vendorData = $this->resolveTransactionVendorData($request);
 
-            $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved, $paidBy) {
+            $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved, $paidBy, $vendorData) {
                 $receiptPath = null;
                 $documentId = null;
                 $prefillPath = $request->input('receipt_path');
@@ -710,7 +715,8 @@ class BusinessEntityController extends Controller
                     'date' => $request->date,
                     'amount' => $request->amount,
                     'description' => $request->description,
-                    'vendor_name' => $request->vendor_name,
+                    'vendor_id' => $vendorData['vendor_id'],
+                    'vendor_name' => $vendorData['vendor_name'],
                     'invoice_number' => $request->invoice_number,
                     'transaction_type' => $request->transaction_type,
                     'gst_amount' => $gstResolved['gst_amount'],
@@ -772,6 +778,7 @@ class BusinessEntityController extends Controller
 
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeOptionalRelatedEntityId($request);
+        $this->normalizeOptionalVendorId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
         $this->prepareTransactionUploadValidation($request, ['document', 'payment_document']);
@@ -781,7 +788,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
-            'vendor_name' => 'nullable|string|max:255',
+            'vendor_id' => ['nullable', 'integer', Rule::exists('vendors', 'id')],
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::allTypes())),
             'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
@@ -816,8 +823,9 @@ class BusinessEntityController extends Controller
             : null;
 
         $paidBy = $this->validatedPaidBy($request);
+        $vendorData = $this->resolveTransactionVendorData($request);
 
-        $transaction = DB::transaction(function () use ($request, $businessEntity, $bankAccount, $asset, $gstResolved, $paidBy) {
+        $transaction = DB::transaction(function () use ($request, $businessEntity, $bankAccount, $asset, $gstResolved, $paidBy, $vendorData) {
             $receiptPath = null;
             $documentId = null;
             $prefillPath = $request->input('receipt_path');
@@ -887,7 +895,8 @@ class BusinessEntityController extends Controller
                 'date' => $request->date,
                 'amount' => $request->amount,
                 'description' => $request->description,
-                'vendor_name' => $request->vendor_name,
+                'vendor_id' => $vendorData['vendor_id'],
+                'vendor_name' => $vendorData['vendor_name'],
                 'invoice_number' => $request->invoice_number,
                 'transaction_type' => $request->transaction_type,
                 'gst_amount' => $gstResolved['gst_amount'],
@@ -928,8 +937,9 @@ class BusinessEntityController extends Controller
         $transaction->load('asset');
 
         $payerOptions = TransactionPayerResolver::payerOptions();
+        $vendors = Vendor::orderedForSelect();
 
-        return view('business-entities.bank-accounts.transactions.edit', compact('businessEntity', 'transaction', 'payerOptions'));
+        return view('business-entities.bank-accounts.transactions.edit', compact('businessEntity', 'transaction', 'payerOptions', 'vendors'));
     }
 
     /**
@@ -950,6 +960,7 @@ class BusinessEntityController extends Controller
 
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeOptionalRelatedEntityId($request);
+        $this->normalizeOptionalVendorId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
         $this->prepareTransactionUploadValidation($request, ['payment_document']);
@@ -958,7 +969,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
-            'vendor_name' => 'nullable|string|max:255',
+            'vendor_id' => ['nullable', 'integer', Rule::exists('vendors', 'id')],
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::allTypes())),
             'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
@@ -989,6 +1000,9 @@ class BusinessEntityController extends Controller
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
         $data['related_entity_id'] = $request->filled('related_entity_id') ? (int) $data['related_entity_id'] : null;
+        $vendorData = $this->resolveTransactionVendorData($request);
+        $data['vendor_id'] = $vendorData['vendor_id'];
+        $data['vendor_name'] = $vendorData['vendor_name'];
 
         $this->detachIncompatibleReceiptDocument($transaction, $data['asset_id']);
 
@@ -1016,7 +1030,7 @@ class BusinessEntityController extends Controller
 
         $transaction->update(array_merge(
             Arr::only($data, [
-                'date', 'amount', 'description', 'vendor_name', 'invoice_number', 'transaction_type',
+                'date', 'amount', 'description', 'vendor_id', 'vendor_name', 'invoice_number', 'transaction_type',
                 'related_entity_id', 'asset_id',
                 'payment_status', 'due_date', 'paid_at', 'payment_method',
                 'payment_document_id',
@@ -1090,6 +1104,7 @@ class BusinessEntityController extends Controller
 
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeOptionalRelatedEntityId($request);
+        $this->normalizeOptionalVendorId($request);
         $this->normalizeEmptyGstBasisRequest($request);
 
         $this->prepareTransactionUploadValidation($request, ['payment_document']);
@@ -1098,7 +1113,7 @@ class BusinessEntityController extends Controller
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
-            'vendor_name' => 'nullable|string|max:255',
+            'vendor_id' => ['nullable', 'integer', Rule::exists('vendors', 'id')],
             'invoice_number' => 'nullable|string|max:100',
             'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::allTypes())),
             'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
@@ -1129,6 +1144,9 @@ class BusinessEntityController extends Controller
 
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
         $data['related_entity_id'] = $request->filled('related_entity_id') ? (int) $data['related_entity_id'] : null;
+        $vendorData = $this->resolveTransactionVendorData($request);
+        $data['vendor_id'] = $vendorData['vendor_id'];
+        $data['vendor_name'] = $vendorData['vendor_name'];
 
         $this->detachIncompatibleReceiptDocument($transaction, $data['asset_id']);
 
@@ -1156,7 +1174,7 @@ class BusinessEntityController extends Controller
 
         $transaction->update(array_merge(
             Arr::only($data, [
-                'date', 'amount', 'description', 'vendor_name', 'invoice_number', 'transaction_type',
+                'date', 'amount', 'description', 'vendor_id', 'vendor_name', 'invoice_number', 'transaction_type',
                 'related_entity_id', 'asset_id',
                 'payment_status', 'due_date', 'paid_at', 'payment_method',
                 'payment_document_id',
@@ -1295,10 +1313,16 @@ class BusinessEntityController extends Controller
                 'reminder_date.after_or_equal' => 'The reminder date must be today or a future date.',
             ]);
         } catch (ValidationException $e) {
-            // Log validation errors for debugging
             Log::error('Note validation failed: ', $e->errors());
 
-            // Redirect back with validation errors
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => collect($e->errors())->flatten()->first(),
+                    'errors' => $e->errors(),
+                ], 422);
+            }
+
             return redirect()->back()->withErrors($e->errors())->withInput();
         }
 
@@ -1323,7 +1347,20 @@ class BusinessEntityController extends Controller
         }
 
         // Redirect back with success message
-        return redirect()->back()->with('success', 'Note added successfully!');
+        if ($request->expectsJson()) {
+            $note->load('user');
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Note added successfully.',
+                'list_html' => view('business-entities.partials.notes.list', [
+                    'businessEntity' => $businessEntity,
+                    'notes' => $businessEntity->notes()->where('is_reminder', false)->orderByDesc('created_at')->get(),
+                ])->render(),
+            ]);
+        }
+
+        return redirect()->back()->withFragment('tab_notes')->with('success', 'Note added successfully!');
     }
 
     /**
@@ -1423,6 +1460,22 @@ class BusinessEntityController extends Controller
             'exclude_from_financial_reports' => $request->boolean('exclude_from_financial_reports'),
         ]);
 
+        if ($request->expectsJson()) {
+            $businessEntity->refresh();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Business entity updated successfully.',
+                'sidebar_html' => view('business-entities.partials.entity-details-sidebar', [
+                    'businessEntity' => $businessEntity->fresh(['appointorPerson', 'appointorEntity']),
+                ])->render(),
+                'entity' => [
+                    'legal_name' => $businessEntity->legal_name,
+                    'entity_type' => $businessEntity->entity_type,
+                ],
+            ]);
+        }
+
         // Redirect to the show page for the updated entity with success message
         return redirect()->route('business-entities.show', $businessEntity->id)->with('success', 'Business entity updated successfully!');
     }
@@ -1472,6 +1525,13 @@ class BusinessEntityController extends Controller
             'purpose' => $validated['account_purpose'],
         ]);
 
+        if ($request->expectsJson()) {
+            return $this->bankAccountWorkspaceJsonResponse(
+                $businessEntity,
+                'Bank account added successfully!'
+            );
+        }
+
         return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
             ->with('success', 'Bank account added successfully!');
     }
@@ -1504,12 +1564,20 @@ class BusinessEntityController extends Controller
 
         if (! $bankAccount->canAttachPurposeToEntity($businessEntity, $purpose)) {
             if (! $bankAccount->canReceiveEntityPurposeLinks()) {
-                return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
-                    ->with('error', 'Portfolio lender accounts cannot be attached to an entity.');
+                $message = 'Portfolio lender accounts cannot be attached to an entity.';
+            } else {
+                $message = 'This account already has purpose '.BankAccount::purposeLabel($purpose).' on this entity.';
+            }
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $message,
+                ], 422);
             }
 
             return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
-                ->with('error', 'This account already has purpose '.BankAccount::purposeLabel($purpose).' on this entity.');
+                ->with('error', $message);
         }
 
         BusinessEntityBankAccount::firstOrCreate([
@@ -1525,8 +1593,14 @@ class BusinessEntityController extends Controller
             ]);
         }
 
+        $message = 'Bank account attached as '.BankAccount::purposeLabel($purpose).'.';
+
+        if ($request->expectsJson()) {
+            return $this->bankAccountWorkspaceJsonResponse($businessEntity, $message);
+        }
+
         return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
-            ->with('success', 'Bank account attached as '.BankAccount::purposeLabel($purpose).'.');
+            ->with('success', $message);
     }
 
     /**
@@ -1597,6 +1671,10 @@ class BusinessEntityController extends Controller
         }
 
         $bankAccount->update($attributes);
+
+        if ($request->expectsJson()) {
+            return $this->bankPanelJsonResponse($request, 'Bank account updated successfully.');
+        }
 
         // Redirect back to the entity show page (bank accounts tab) with success message
         return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
@@ -1680,6 +1758,7 @@ class BusinessEntityController extends Controller
             'date' => now()->toDateString(),
             'amount' => '',
             'description' => '',
+            'vendor_id' => '',
             'vendor_name' => '',
             'invoice_number' => '',
             'transaction_type' => '',
@@ -1695,10 +1774,20 @@ class BusinessEntityController extends Controller
             'direction' => 'expense',
         ]);
 
+        if (empty($transactionData['vendor_id']) && ! empty($transactionData['vendor_name'])) {
+            $matchedVendorId = Vendor::query()
+                ->where('name', $transactionData['vendor_name'])
+                ->value('id');
+            if ($matchedVendorId) {
+                $transactionData['vendor_id'] = $matchedVendorId;
+            }
+        }
+
         $payerOptions = TransactionPayerResolver::payerOptions();
+        $vendors = Vendor::orderedForSelect();
 
         return view('business-entities.bank-accounts.transactions.create', compact(
-            'businessEntity', 'bankAccount', 'businessEntities', 'transactionData', 'payerOptions'
+            'businessEntity', 'bankAccount', 'businessEntities', 'transactionData', 'payerOptions', 'vendors'
         ));
     }
 
@@ -1765,7 +1854,18 @@ class BusinessEntityController extends Controller
 
         $note->delete();
 
-        return redirect()->back()->with('success', 'Note deleted successfully.');
+        if (request()->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Note deleted successfully.',
+                'list_html' => view('business-entities.partials.notes.list', [
+                    'businessEntity' => $businessEntity,
+                    'notes' => $businessEntity->notes()->where('is_reminder', false)->orderByDesc('created_at')->get(),
+                ])->render(),
+            ]);
+        }
+
+        return redirect()->back()->withFragment('tab_notes')->with('success', 'Note deleted successfully.');
     }
 
     // --- Helper Methods ---
@@ -2110,6 +2210,10 @@ class BusinessEntityController extends Controller
             $this->portfolioBankAccountAttributesFromRequest($validated, null)
         );
 
+        if ($request->expectsJson()) {
+            return $this->bankPanelJsonResponse($request, 'Bank account added successfully!');
+        }
+
         return redirect()->route('bank-accounts.index')
             ->with('success', 'Bank account added successfully!');
     }
@@ -2141,11 +2245,15 @@ class BusinessEntityController extends Controller
             $this->portfolioBankAccountAttributesFromRequest($validated, $bankAccount)
         );
 
+        if ($request->expectsJson()) {
+            return $this->bankPanelJsonResponse($request, 'Bank account updated successfully!');
+        }
+
         return redirect()->route('bank-accounts.index')
             ->with('success', 'Bank account updated successfully!');
     }
 
-    public function destroyPortfolioBankAccount(BankAccount $bankAccount)
+    public function destroyPortfolioBankAccount(Request $request, BankAccount $bankAccount)
     {
         $this->authorize('viewAny', BusinessEntity::class);
         $this->ensureBankAccountOwnedByUser($bankAccount);
@@ -2154,10 +2262,10 @@ class BusinessEntityController extends Controller
             abort(403, 'Entity-scoped bank accounts must be deleted via their business entity.');
         }
 
-        return $this->deleteBankAccountIfAllowed($bankAccount);
+        return $this->deleteBankAccountIfAllowed($bankAccount, $request);
     }
 
-    public function destroyBankAccount(BusinessEntity $businessEntity, BankAccount $bankAccount)
+    public function destroyBankAccount(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount)
     {
         $this->authorize('update', $businessEntity);
 
@@ -2165,7 +2273,7 @@ class BusinessEntityController extends Controller
 
         $this->ensureBankAccountAccessibleOnEntity($businessEntity, $bankAccount);
 
-        return $this->deleteBankAccountIfAllowed($bankAccount);
+        return $this->deleteBankAccountIfAllowed($bankAccount, $request);
     }
 
     public function revealBankAccountNumber(Request $request, BankAccount $bankAccount)
@@ -2195,7 +2303,7 @@ class BusinessEntityController extends Controller
 
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
 
-        $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries', 'asset', 'relatedEntity'])
+        $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries', 'asset', 'relatedEntity', 'vendor'])
             ->orderBy('date', 'desc');
 
         if ($entityId = request('entity_id')) {
@@ -2269,6 +2377,31 @@ class BusinessEntityController extends Controller
         }
     }
 
+    private function normalizeOptionalVendorId(Request $request): void
+    {
+        if ($request->has('vendor_id') && $request->input('vendor_id') === '') {
+            $request->merge(['vendor_id' => null]);
+        }
+    }
+
+    /**
+     * @return array{vendor_id: ?int, vendor_name: ?string}
+     */
+    private function resolveTransactionVendorData(Request $request): array
+    {
+        $vendorId = $request->filled('vendor_id') ? (int) $request->input('vendor_id') : null;
+        $vendorName = null;
+
+        if ($vendorId) {
+            $vendorName = Vendor::query()->find($vendorId)?->name;
+        }
+
+        return [
+            'vendor_id' => $vendorId,
+            'vendor_name' => $vendorName,
+        ];
+    }
+
     private function validatedPaidBy(Request $request): ?string
     {
         $raw = $request->input('paid_by_select');
@@ -2301,6 +2434,21 @@ class BusinessEntityController extends Controller
         TransactionPayerResolver::assertSelectionAllowed($paidBy);
 
         return $paidBy;
+    }
+
+    private function bankAccountWorkspaceJsonResponse(BusinessEntity $businessEntity, string $message): JsonResponse
+    {
+        $entityBankAccountLinks = $businessEntity->bankAccountLinksForDisplay();
+        $entityBankAccountGroups = BankAccount::groupedLinksByHolder($entityBankAccountLinks, $businessEntity->id);
+
+        return response()->json([
+            'status' => true,
+            'message' => $message,
+            'list_html' => view('business-entities.partials.bank-accounts.list', [
+                'businessEntity' => $businessEntity,
+                'holderGroups' => $entityBankAccountGroups,
+            ])->render(),
+        ]);
     }
 
     private function redirectToBusinessEntityShow(
@@ -2587,17 +2735,43 @@ class BusinessEntityController extends Controller
             ->values();
     }
 
-    private function deleteBankAccountIfAllowed(BankAccount $bankAccount): RedirectResponse
+    private function deleteBankAccountIfAllowed(BankAccount $bankAccount, ?Request $request = null): RedirectResponse|JsonResponse
     {
         $bankAccount->loadCount(['transactions', 'bankStatementEntries', 'assets']);
 
         if (! $bankAccount->canBeDeleted()) {
+            if ($request?->expectsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => $bankAccount->deleteBlockedReason(),
+                ], 422);
+            }
+
             return redirect()->back()->with('error', $bankAccount->deleteBlockedReason());
         }
 
         $bankAccount->delete();
 
+        if ($request?->expectsJson()) {
+            return $this->bankPanelJsonResponse($request, 'Bank account deleted successfully.');
+        }
+
         return redirect()->back()->with('success', 'Bank account deleted successfully.');
+    }
+
+    private function bankPanelJsonResponse(Request $request, string $message): JsonResponse
+    {
+        $context = $request->input('_bank_list_context');
+
+        if ($context === null && $request->integer('_person_workspace_id')) {
+            $context = 'person:'.$request->integer('_person_workspace_id');
+        }
+
+        return response()->json([
+            'status' => true,
+            'message' => $message,
+            'list_html' => BankAccountPanelController::listHtmlForContext($context),
+        ]);
     }
 
     private function ensureBankAccountOwnedByUser(BankAccount $bankAccount): void

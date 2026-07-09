@@ -2,6 +2,11 @@
 
 return [
 
+    /*
+     * Disk for entity/asset documents and compliance files (must be s3).
+     */
+    'storage_disk' => env('DOCUMENTS_STORAGE_DISK', 's3'),
+
     'max_kilobytes' => (int) env('DOCUMENTS_MAX_KB', 10240),
 
     'mimes' => 'pdf,doc,docx,jpg,jpeg,png,gif,bmp,svg,webp,xls,xlsx,csv,ppt,pptx,eml,msg,txt,rtf',

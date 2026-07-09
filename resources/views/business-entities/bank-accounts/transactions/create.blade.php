@@ -80,11 +80,11 @@
                             <input type="text" name="description" value="{{ old('description', $td['description'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
                             @error('description') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor name</label>
-                            <input type="text" name="vendor_name" value="{{ old('vendor_name', $td['vendor_name'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" placeholder="Supplier or party name">
-                            @error('vendor_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
+                        @include('partials.vendor-select', [
+                            'vendors' => $vendors,
+                            'selected' => old('vendor_id', $td['vendor_id'] ?? null),
+                            'selectClass' => 'mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs',
+                        ])
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Invoice Number <span class="text-gray-400 font-normal">(optional)</span></label>
                             <input type="text" name="invoice_number" value="{{ old('invoice_number', $td['invoice_number'] ?? '') }}" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs" placeholder="e.g., INV-0042">

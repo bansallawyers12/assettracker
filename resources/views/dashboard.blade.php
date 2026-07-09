@@ -37,30 +37,54 @@
             </div>
 
             {{-- Add Transaction Section (Collapsible) --}}
-            <div id="add-transaction-section" class="{{ session('keep_open') ? '' : 'hidden' }} bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-6 border border-gray-200 dark:border-gray-700 transition-all duration-300">
-                <div class="flex items-center justify-between mb-5">
-                    <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <x-lucide-clipboard class="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        Add Transaction
-                    </h3>
-                    <button id="cancel-transaction-btn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                        <x-lucide-x class="w-5 h-5" />
-                    </button>
+            @php
+                $oldDirection = old('direction', session('transactionData.direction', 'expense'));
+                $dashGstBasis = old('gst_basis', session('transactionData.gst_basis', ''));
+                $oldStatus = old('payment_status', session('transactionData.payment_status', 'paid'));
+                $txnLabel = 'block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5';
+                $txnInput = 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 shadow-xs placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
+                $txnSelect = 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 text-sm text-gray-900 dark:text-gray-100 shadow-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
+                $txnSection = 'rounded-xl border border-gray-100 dark:border-gray-700/80 bg-gray-50/60 dark:bg-gray-900/30 p-5 space-y-4';
+            @endphp
+            <div id="add-transaction-section" class="{{ session('keep_open') ? '' : 'hidden' }} overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl transition-all duration-300">
+                <div class="relative border-b border-gray-100 dark:border-gray-700 bg-linear-to-r from-blue-50 via-white to-indigo-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800/90 px-6 py-5">
+                    <div class="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-blue-500 via-indigo-500 to-violet-500"></div>
+                    <div class="flex items-start justify-between gap-4">
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
+                                <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/10 dark:bg-blue-500/15 ring-1 ring-blue-600/20 dark:ring-blue-400/30">
+                                    <x-lucide-clipboard class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                </span>
+                                Add Transaction
+                            </h3>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Record income or expenses and link them to entities, assets, and vendors.</p>
+                        </div>
+                        <button type="button" id="cancel-transaction-btn" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors" aria-label="Close form">
+                            <x-lucide-x class="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
+
+                <div class="p-6">
                 @if (session('success'))
-                    <div class="mb-4 p-3 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-xl text-sm border border-green-200 dark:border-green-800">
-                        {{ session('success') }}
+                    <div class="mb-5 flex items-start gap-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-800 dark:text-green-200">
+                        <x-lucide-circle-check class="w-5 h-5 shrink-0 mt-0.5" />
+                        <span>{{ session('success') }}</span>
                     </div>
                 @endif
                 @if (session('error'))
-                    <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-xl text-sm border border-red-200 dark:border-red-800">
-                        {{ session('error') }}
+                    <div class="mb-5 flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-800 dark:text-red-200">
+                        <x-lucide-circle-alert class="w-5 h-5 shrink-0 mt-0.5" />
+                        <span>{{ session('error') }}</span>
                     </div>
                 @endif
                 @if ($errors->any())
-                    <div class="mb-4 p-3 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 rounded-xl text-sm border border-red-200 dark:border-red-800" role="alert">
-                        <p class="font-semibold mb-2">Could not save this transaction:</p>
-                        <ul class="list-disc list-inside space-y-1.5 text-sm leading-snug">
+                    <div class="mb-5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-800 dark:text-red-200" role="alert">
+                        <p class="font-semibold mb-2 flex items-center gap-2">
+                            <x-lucide-circle-alert class="w-4 h-4" />
+                            Could not save this transaction
+                        </p>
+                        <ul class="list-disc list-inside space-y-1.5 leading-snug ml-1">
                             @foreach ($errors->all() as $err)
                                 <li class="whitespace-normal wrap-break-word">{{ $err }}</li>
                             @endforeach
@@ -68,34 +92,39 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('business-entities.transactions.store', ['businessEntity' => $businessEntities->first() ? $businessEntities->first()->id : 0]) }}" id="store-transaction-form" data-transaction-paid-by-form enctype="multipart/form-data">
+                <form method="POST" action="{{ route('business-entities.transactions.store', ['businessEntity' => $businessEntities->first() ? $businessEntities->first()->id : 0]) }}" id="store-transaction-form" data-transaction-paid-by-form enctype="multipart/form-data" class="space-y-6">
                     @csrf
 
-                    {{-- Step 1: Direction toggle --}}
-                    @php $oldDirection = old('direction', session('transactionData.direction', 'expense')); @endphp
-                    <div class="flex gap-3 mb-5">
-                        <label class="flex-1 cursor-pointer">
+                    {{-- Direction toggle --}}
+                    <div class="rounded-xl bg-gray-100/80 dark:bg-gray-900/50 p-1.5 grid grid-cols-2 gap-1.5">
+                        <label class="cursor-pointer">
                             <input type="radio" name="direction" value="expense" class="sr-only peer" {{ $oldDirection === 'expense' ? 'checked' : '' }}>
-                            <div class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 peer-checked:border-red-500 peer-checked:bg-red-50 dark:peer-checked:bg-red-900/20 peer-checked:text-red-700 dark:peer-checked:text-red-300 text-gray-600 dark:text-gray-400 font-semibold text-sm transition-all">
-                                <x-lucide-arrow-down class="w-4 h-4" />
+                            <div class="flex items-center justify-center gap-2 rounded-lg py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400 transition-all peer-checked:bg-white dark:peer-checked:bg-gray-800 peer-checked:text-red-600 dark:peer-checked:text-red-400 peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-red-200 dark:peer-checked:ring-red-900/50">
+                                <x-lucide-arrow-down-right class="w-4 h-4" />
                                 Expense
                             </div>
                         </label>
-                        <label class="flex-1 cursor-pointer">
+                        <label class="cursor-pointer">
                             <input type="radio" name="direction" value="income" class="sr-only peer" {{ $oldDirection === 'income' ? 'checked' : '' }}>
-                            <div class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 peer-checked:border-green-500 peer-checked:bg-green-50 dark:peer-checked:bg-green-900/20 peer-checked:text-green-700 dark:peer-checked:text-green-300 text-gray-600 dark:text-gray-400 font-semibold text-sm transition-all">
-                                <x-lucide-arrow-up class="w-4 h-4" />
+                            <div class="flex items-center justify-center gap-2 rounded-lg py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400 transition-all peer-checked:bg-white dark:peer-checked:bg-gray-800 peer-checked:text-emerald-600 dark:peer-checked:text-emerald-400 peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-emerald-200 dark:peer-checked:ring-emerald-900/50">
+                                <x-lucide-arrow-up-right class="w-4 h-4" />
                                 Income
                             </div>
                         </label>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {{-- Context --}}
+                    <section class="{{ $txnSection }}">
+                        <div class="flex items-center gap-2 pb-1">
+                            <x-lucide-building-2 class="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Where</h4>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
                         {{-- Business Entity --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Business Entity</label>
-                            <x-tom-select name="business_entity_id" id="business_entity_id" class="rounded-xl focus:ring-blue-500 focus:border-blue-500" required>
+                            <label class="{{ $txnLabel }}">Business Entity</label>
+                            <x-tom-select name="business_entity_id" id="business_entity_id" class="{{ $txnSelect }}" required>
                                 <option value="">Select Entity</option>
                                 @foreach ($businessEntities as $entity)
                                     <option value="{{ $entity->id }}" {{ old('business_entity_id', session('transactionData.business_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
@@ -106,8 +135,8 @@
 
                         {{-- Asset --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <x-tom-select name="asset_id" id="transaction_asset_id" class="rounded-xl focus:ring-blue-500 focus:border-blue-500">
+                            <label class="{{ $txnLabel }}">Asset <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                            <x-tom-select name="asset_id" id="transaction_asset_id" class="{{ $txnSelect }}">
                                 <option value="">None — entity only</option>
                                 @foreach ($assets as $asset)
                                     <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}"
@@ -119,60 +148,82 @@
 
                         {{-- Date --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
-                            <x-date-input  name="date" value="{{ old('date', session('transactionData.date', now()->toDateString())) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required />
+                            <label class="{{ $txnLabel }}">Date</label>
+                            <x-date-input name="date" value="{{ old('date', session('transactionData.date', now()->toDateString())) }}"
+                                   class="{{ $txnInput }}" required />
                             @error('date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
+                        </div>
+                    </section>
+
+                    {{-- Details --}}
+                    <section class="{{ $txnSection }}">
+                        <div class="flex items-center gap-2 pb-1">
+                            <x-lucide-receipt class="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Transaction details</h4>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
                         {{-- Amount --}}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount</label>
-                            <input type="number" name="amount" id="dashboard_txn_amount" step="0.01" value="{{ old('amount', session('transactionData.amount')) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" required>
+                        <div class="lg:col-span-1">
+                            <label class="{{ $txnLabel }}">Amount</label>
+                            <div class="relative">
+                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-base font-semibold text-gray-400">$</span>
+                                <input type="number" name="amount" id="dashboard_txn_amount" step="0.01" value="{{ old('amount', session('transactionData.amount')) }}"
+                                       class="{{ $txnInput }} pl-8 text-lg font-semibold tabular-nums" required>
+                            </div>
                             @error('amount') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
                         {{-- Description --}}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
+                        <div class="lg:col-span-2">
+                            <label class="{{ $txnLabel }}">Description</label>
                             <input type="text" name="description" value="{{ old('description', session('transactionData.description')) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                   class="{{ $txnInput }}" placeholder="What was this transaction for?">
                             @error('description') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
-                        {{-- Vendor name --}}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Vendor name</label>
-                            <input type="text" name="vendor_name" value="{{ old('vendor_name', session('transactionData.vendor_name')) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
-                                   placeholder="Supplier or party name">
-                            @error('vendor_name') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
+                        {{-- Vendor --}}
+                        @php
+                            $dashboardVendorId = old('vendor_id', session('transactionData.vendor_id'));
+                            if ($dashboardVendorId === null || $dashboardVendorId === '') {
+                                $sessionVendorName = session('transactionData.vendor_name');
+                                if ($sessionVendorName) {
+                                    $matched = $vendors->firstWhere('name', $sessionVendorName);
+                                    $dashboardVendorId = $matched?->id;
+                                }
+                            }
+                        @endphp
+                        @include('partials.vendor-select', [
+                            'vendors' => $vendors,
+                            'selected' => $dashboardVendorId,
+                            'selectClass' => $txnSelect,
+                            'labelClass' => $txnLabel,
+                        ])
 
-                        {{-- Invoice Number --}}
+                        {{-- Transaction Type --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invoice Number <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <input type="text" name="invoice_number" value="{{ old('invoice_number', session('transactionData.invoice_number')) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
-                                   placeholder="e.g., INV-0042">
-                            @error('invoice_number') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        {{-- Transaction Type (filtered by direction via JS) --}}
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Transaction Type</label>
+                            <label class="{{ $txnLabel }}">Transaction Type</label>
                             @include('partials.transaction-type-select', [
                                 'selected' => old('transaction_type', session('transactionData.transaction_type')),
-                                'class' => 'block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm',
+                                'class' => $txnSelect,
                             ])
                             @error('transaction_type') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
-                        {{-- Related Entity (shown for related-party types) --}}
-                        <div id="related_entity_field" style="display: none;">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Related Entity</label>
-                            <x-tom-select name="related_entity_id" class="rounded-xl focus:ring-blue-500 focus:border-blue-500">
+                        {{-- Invoice Number --}}
+                        <div>
+                            <label class="{{ $txnLabel }}">Invoice Number <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                            <input type="text" name="invoice_number" value="{{ old('invoice_number', session('transactionData.invoice_number')) }}"
+                                   class="{{ $txnInput }}"
+                                   placeholder="e.g., INV-0042">
+                            @error('invoice_number') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        </div>
+
+                        {{-- Related Entity --}}
+                        <div id="related_entity_field" class="md:col-span-2 lg:col-span-3" style="display: none;">
+                            <label class="{{ $txnLabel }}">Related Entity</label>
+                            <x-tom-select name="related_entity_id" class="{{ $txnSelect }}">
                                 <option value="">Select Related Entity</option>
                                 @foreach($businessEntities->sortBy('legal_name') as $entity)
                                     <option value="{{ $entity->id }}" {{ old('related_entity_id', session('transactionData.related_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
@@ -180,101 +231,130 @@
                             </x-tom-select>
                             @error('related_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
+                        </div>
+                    </section>
 
-                        @php
-                            $dashGstBasis = old('gst_basis', session('transactionData.gst_basis', ''));
-                        @endphp
-                        {{-- GST: basis + amount --}}
-                        <div class="md:col-span-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GST (10%)</label>
-                            <div class="space-y-2">
-                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                    <input type="radio" name="gst_basis" value="" class="rounded-full border-gray-300 text-blue-600" {{ $dashGstBasis === '' || $dashGstBasis === null ? 'checked' : '' }}>
-                                    No GST
-                                </label>
-                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                    <input type="radio" name="gst_basis" value="inclusive" class="rounded-full border-gray-300 text-blue-600" {{ $dashGstBasis === 'inclusive' ? 'checked' : '' }}>
-                                    GST inclusive — amount includes 10% GST
-                                </label>
-                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                    <input type="radio" name="gst_basis" value="exclusive" class="rounded-full border-gray-300 text-blue-600" {{ $dashGstBasis === 'exclusive' ? 'checked' : '' }}>
-                                    GST exclusive — 10% added on top of amount
-                                </label>
+                    {{-- GST --}}
+                    <section class="{{ $txnSection }}">
+                        <div class="flex items-center gap-2 pb-1">
+                            <x-lucide-percent class="w-4 h-4 text-amber-500 dark:text-amber-400" />
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">GST (10%)</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <label class="cursor-pointer">
+                                <input type="radio" name="gst_basis" value="" class="sr-only peer" {{ $dashGstBasis === '' || $dashGstBasis === null ? 'checked' : '' }}>
+                                <div class="h-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-3 py-3 text-sm transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 peer-checked:ring-1 peer-checked:ring-blue-500/30">
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100">No GST</span>
+                                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Tax not applicable</p>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="gst_basis" value="inclusive" class="sr-only peer" {{ $dashGstBasis === 'inclusive' ? 'checked' : '' }}>
+                                <div class="h-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-3 py-3 text-sm transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 peer-checked:ring-1 peer-checked:ring-blue-500/30">
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100">Inclusive</span>
+                                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Amount includes 10% GST</p>
+                                </div>
+                            </label>
+                            <label class="cursor-pointer">
+                                <input type="radio" name="gst_basis" value="exclusive" class="sr-only peer" {{ $dashGstBasis === 'exclusive' ? 'checked' : '' }}>
+                                <div class="h-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-3 py-3 text-sm transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 peer-checked:ring-1 peer-checked:ring-blue-500/30">
+                                    <span class="font-semibold text-gray-900 dark:text-gray-100">Exclusive</span>
+                                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">10% added on top</p>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                            <div>
+                                <label class="{{ $txnLabel }}">GST amount <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                                <div class="relative">
+                                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-sm font-medium text-gray-400">$</span>
+                                    <input type="number" name="gst_amount" id="dashboard_gst_amount" step="0.01" value="{{ old('gst_amount', session('transactionData.gst_amount')) }}"
+                                           class="{{ $txnInput }} pl-8 tabular-nums">
+                                </div>
+                                @error('gst_amount') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Leave GST amount blank to auto-calculate. Enter a value to override. If you enter GST, pick inclusive or exclusive.</p>
-                            @error('gst_basis') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            <div class="flex items-end">
+                                <p class="text-xs leading-relaxed text-gray-500 dark:text-gray-400 pb-2.5">Leave blank to auto-calculate from the amount. Enter a value to override — if you enter GST, pick inclusive or exclusive above.</p>
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST amount <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <input type="number" name="gst_amount" id="dashboard_gst_amount" step="0.01" value="{{ old('gst_amount', session('transactionData.gst_amount')) }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
-                            @error('gst_amount') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
+                        @error('gst_basis') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    </section>
 
+                    {{-- Documents --}}
+                    <section class="{{ $txnSection }}">
+                        <div class="flex items-center gap-2 pb-1">
+                            <x-lucide-paperclip class="w-4 h-4 text-violet-500 dark:text-violet-400" />
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Attachments</h4>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {{-- Invoice / Bill upload --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invoice / Bill <span class="text-gray-400 font-normal">(optional)</span></label>
-                            <input type="file" name="document"
-                                   class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-blue-300"
-                                   accept="{{ config('documents.transaction_file_accept') }}">
+                            <label class="{{ $txnLabel }}">Invoice / Bill <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                            <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/40 px-4 py-3">
+                                <input type="file" name="document"
+                                       class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-500 dark:file:bg-blue-600"
+                                       accept="{{ config('documents.transaction_file_accept') }}">
+                            </div>
                             @php $dashDocMaxKb = max(1, (int) config('documents.max_kilobytes', 10240)); @endphp
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Up to {{ number_format($dashDocMaxKb / 1024, 1) }} MB per file. Ensure PHP <span class="font-mono">upload_max_filesize</span> and <span class="font-mono">post_max_size</span> are not smaller.</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Up to {{ number_format($dashDocMaxKb / 1024, 1) }} MB. Check PHP <span class="font-mono">upload_max_filesize</span> if uploads fail.</p>
                             @error('document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
                         {{-- Document Name --}}
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invoice / Bill Name</label>
+                            <label class="{{ $txnLabel }}">Invoice / Bill Name</label>
                             <input type="text" name="document_name" value="{{ old('document_name') }}"
-                                   class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                   class="{{ $txnInput }}"
                                    placeholder="e.g., Invoice123">
                             @error('document_name') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
+                        </div>
+                    </section>
 
-                    </div>
-
-                    {{-- Payment Status --}}
-                    <div class="mt-5 pt-4 border-t border-gray-100 dark:border-gray-700">
-                        <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Payment Status</p>
-                        <div class="flex gap-3 mb-4">
-                            @php $oldStatus = old('payment_status', session('transactionData.payment_status', 'paid')); @endphp
-                            <label class="flex-1 cursor-pointer">
+                    {{-- Payment --}}
+                    <section class="{{ $txnSection }}">
+                        <div class="flex items-center gap-2 pb-1">
+                            <x-lucide-wallet class="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Payment</h4>
+                        </div>
+                        <div class="rounded-xl bg-gray-100/80 dark:bg-gray-900/50 p-1.5 grid grid-cols-2 gap-1.5 max-w-md">
+                            <label class="cursor-pointer">
                                 <input type="radio" name="payment_status" value="paid" id="payment_status_paid" class="sr-only peer" {{ $oldStatus === 'paid' ? 'checked' : '' }}>
-                                <div class="flex items-center justify-center gap-2 py-2 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 peer-checked:text-blue-700 dark:peer-checked:text-blue-300 text-gray-600 dark:text-gray-400 font-semibold text-sm transition-all">
+                                <div class="flex items-center justify-center gap-2 rounded-lg py-2.5 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400 transition-all peer-checked:bg-white dark:peer-checked:bg-gray-800 peer-checked:text-blue-600 dark:peer-checked:text-blue-400 peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-blue-200 dark:peer-checked:ring-blue-900/50">
                                     <x-lucide-check class="w-4 h-4" />
                                     Paid
                                 </div>
                             </label>
-                            <label class="flex-1 cursor-pointer">
+                            <label class="cursor-pointer">
                                 <input type="radio" name="payment_status" value="unpaid" id="payment_status_unpaid" class="sr-only peer" {{ $oldStatus === 'unpaid' ? 'checked' : '' }}>
-                                <div class="flex items-center justify-center gap-2 py-2 px-4 rounded-xl border-2 border-gray-200 dark:border-gray-600 peer-checked:border-amber-500 peer-checked:bg-amber-50 dark:peer-checked:bg-amber-900/20 peer-checked:text-amber-700 dark:peer-checked:text-amber-300 text-gray-600 dark:text-gray-400 font-semibold text-sm transition-all">
+                                <div class="flex items-center justify-center gap-2 rounded-lg py-2.5 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400 transition-all peer-checked:bg-white dark:peer-checked:bg-gray-800 peer-checked:text-amber-600 dark:peer-checked:text-amber-400 peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-amber-200 dark:peer-checked:ring-amber-900/50">
                                     <x-lucide-clock class="w-4 h-4" />
                                     Unpaid
                                 </div>
                             </label>
                         </div>
 
-                        {{-- Unpaid block: due date --}}
-                        <div id="unpaid_block" class="{{ $oldStatus === 'unpaid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                        {{-- Unpaid block --}}
+                        <div id="unpaid_block" class="{{ $oldStatus === 'unpaid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due Date</label>
-                                <x-date-input  name="due_date" value="{{ old('due_date', session('transactionData.due_date')) }}"
-                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" />
+                                <label class="{{ $txnLabel }}">Due Date</label>
+                                <x-date-input name="due_date" value="{{ old('due_date', session('transactionData.due_date')) }}"
+                                       class="{{ $txnInput }}" />
                                 @error('due_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                         </div>
 
-                        {{-- Paid block: paid_at + method + who paid + payment receipt --}}
-                        <div id="paid_block" class="{{ $oldStatus === 'paid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                        {{-- Paid block --}}
+                        <div id="paid_block" class="{{ $oldStatus === 'paid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Date</label>
-                                <x-date-input  name="paid_at" value="{{ old('paid_at', session('transactionData.paid_at')) }}"
-                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm" />
+                                <label class="{{ $txnLabel }}">Payment Date</label>
+                                <x-date-input name="paid_at" value="{{ old('paid_at', session('transactionData.paid_at')) }}"
+                                       class="{{ $txnInput }}" />
                                 @error('paid_at') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Method</label>
-                                <select name="payment_method" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm">
+                                <label class="{{ $txnLabel }}">Payment Method</label>
+                                <select name="payment_method" class="{{ $txnSelect }} px-3 py-2.5">
                                     <option value="">Select Method</option>
                                     @foreach (\App\Models\Transaction::$paymentMethods as $val => $lbl)
                                         <option value="{{ $val }}" {{ old('payment_method', session('transactionData.payment_method')) == $val ? 'selected' : '' }}>{{ $lbl }}</option>
@@ -290,36 +370,45 @@
                                     'payerOptions' => $payerOptions,
                                     'paidBySelect' => $pbSplit['select'],
                                     'paidByOther' => $pbSplit['other'],
-                                    'labelClass' => 'mb-1',
-                                    'selectClass' => 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm',
+                                    'labelClass' => $txnLabel,
+                                    'selectClass' => $txnSelect . ' px-3 py-2.5',
                                     'errorClass' => 'text-xs mt-1',
                                 ])
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Receipt <span class="text-gray-400 font-normal">(optional)</span></label>
-                                <input type="file" name="payment_document"
-                                       class="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-green-50 file:text-green-700 hover:file:bg-green-100 dark:file:bg-gray-700 dark:file:text-green-300"
-                                       accept="{{ config('documents.transaction_file_accept') }}">
+                                <label class="{{ $txnLabel }}">Payment Receipt <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                                <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/40 px-4 py-3">
+                                    <input type="file" name="payment_document"
+                                           class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-emerald-500"
+                                           accept="{{ config('documents.transaction_file_accept') }}">
+                                </div>
                                 @error('payment_document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Receipt Name</label>
+                                <label class="{{ $txnLabel }}">Payment Receipt Name</label>
                                 <input type="text" name="payment_document_name" value="{{ old('payment_document_name') }}"
-                                       class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white text-sm"
+                                       class="{{ $txnInput }}"
                                        placeholder="e.g., Bank Transfer Confirmation">
                                 @error('payment_document_name') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                         </div>
-                    </div>
+                    </section>
 
                     <input type="hidden" name="receipt_path" value="{{ old('receipt_path', session('transactionData.receipt_path')) }}">
-                    <div class="flex gap-3 pt-2">
-                        <button type="submit" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-5 rounded-xl text-sm shadow-xs transition-colors">
+
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <button type="button" id="cancel-transaction-footer-btn"
+                                class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="submit"
+                                class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-colors">
                             <x-lucide-check class="w-4 h-4" />
                             Add Transaction
                         </button>
                     </div>
                 </form>
+                </div>
             </div>
 
             {{-- Stats Grid --}}
@@ -756,6 +845,12 @@
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">Transactions</span>
                             </a>
+                            <a href="{{ route('vendors.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors group">
+                                <div class="w-9 h-9 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0">
+                                    <x-lucide-truck class="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">Vendors</span>
+                            </a>
                             <a href="{{ route('invoices.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
                                     <x-lucide-file-text class="w-4 h-4 text-orange-600 dark:text-orange-400" />
@@ -774,9 +869,22 @@
             const transactionBtn = document.getElementById('add-transaction-btn');
             const transactionSection = document.getElementById('add-transaction-section');
             const cancelTransactionBtn = document.getElementById('cancel-transaction-btn');
+            const cancelTransactionFooterBtn = document.getElementById('cancel-transaction-footer-btn');
             const entitySelect = document.getElementById('business_entity_id');
             const relatedEntityField = document.getElementById('related_entity_field');
             const transactionAssetSelect = document.getElementById('transaction_asset_id');
+
+            function hideTransactionForm() {
+                if (!{{ session()->has('success') ? 'true' : 'false' }}) {
+                    transactionSection?.classList.add('hidden');
+                }
+            }
+
+            function showTransactionForm() {
+                transactionSection?.classList.remove('hidden');
+                reinitTransactionTomSelects();
+                transactionSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
 
             function reinitTransactionTomSelects() {
                 window.reinitTomSelect?.(entitySelect);
@@ -789,19 +897,20 @@
             if (transactionBtn && transactionSection) {
                 transactionBtn.addEventListener('click', () => {
                     const wasHidden = transactionSection.classList.contains('hidden');
-                    transactionSection.classList.toggle('hidden');
                     if (wasHidden) {
-                        reinitTransactionTomSelects();
+                        showTransactionForm();
+                    } else {
+                        hideTransactionForm();
                     }
                 });
             }
 
             if (cancelTransactionBtn && transactionSection) {
-                cancelTransactionBtn.addEventListener('click', () => {
-                    if (!{{ session()->has('success') ? 'true' : 'false' }}) {
-                        transactionSection.classList.add('hidden');
-                    }
-                });
+                cancelTransactionBtn.addEventListener('click', hideTransactionForm);
+            }
+
+            if (cancelTransactionFooterBtn && transactionSection) {
+                cancelTransactionFooterBtn.addEventListener('click', hideTransactionForm);
             }
 
             if (entitySelect) {
@@ -877,8 +986,7 @@
 
             @if (session('error') || session('transactionData'))
                 if (transactionSection) {
-                    transactionSection.classList.remove('hidden');
-                    reinitTransactionTomSelects();
+                    showTransactionForm();
                 }
             @endif
 

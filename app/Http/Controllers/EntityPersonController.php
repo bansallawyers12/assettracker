@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\EntityPersonResource;
 use App\Models\EntityPerson;
 use App\Models\BusinessEntity;
 use App\Models\BankAccount;
@@ -96,9 +97,7 @@ class EntityPersonController extends Controller
             // Email is stored encrypted so a raw WHERE clause cannot match; compare
             // after Eloquent decrypts each row via getAttribute().
             if ($request->email && Person::all()->contains(fn ($p) => $p->email === $request->email)) {
-                return redirect()->back()
-                    ->withInput()
-                    ->withErrors(['email' => 'A person with this email already exists. Please use the existing person instead.']);
+                return $this->personFormError($request, ['email' => 'A person with this email already exists. Please use the existing person instead.']);
             }
             
             $personData = [
@@ -115,14 +114,14 @@ class EntityPersonController extends Controller
                 $personId = $person->id;
             } catch (\Exception $e) {
                 Log::error('Failed to create new person', ['error' => $e->getMessage(), 'data' => $personData]);
-                return redirect()->back()->withErrors(['error' => 'Failed to create new person: ' . $e->getMessage()]);
+                return $this->personFormError($request, ['error' => 'Failed to create new person: ' . $e->getMessage()]);
             }
         }
 
         // Ensure either person_id or entity_trustee_id is filled, but not both
         if (($personId && $entityTrusteeId) || (! $personId && ! $entityTrusteeId)) {
             Log::warning('Validation failed: Either person_id or entity_trustee_id must be filled, but not both.', ['person_id' => $personId, 'entity_trustee_id' => $entityTrusteeId]);
-            return redirect()->back()->withInput()->withErrors(['error' => 'Either an existing person or a trustee company must be selected, but not both.']);
+            return $this->personFormError($request, ['error' => 'Either an existing person or a trustee company must be selected, but not both.']);
         }
 
         // Prepare data for EntityPerson creation
@@ -155,13 +154,26 @@ class EntityPersonController extends Controller
             ]);
             
             // Return to the form with a more descriptive error message
-            return redirect()->back()->withErrors([
-                'error' => 'Failed to create relationship: ' . $e->getMessage() . 
-                ' This may be due to a database constraint. We have attempted to remove unique constraints on entity_person table.']);
+            return $this->personFormError($request, [
+                'error' => 'Failed to create relationship: ' . $e->getMessage() .
+                ' This may be due to a database constraint. We have attempted to remove unique constraints on entity_person table.',
+            ]);
         }
 
         // Redirect back to the business entity page
-        return redirect()->route('business-entities.show', $request->business_entity_id)->with('success', 'Entity-Person relationship created successfully.');
+        if ($request->expectsJson()) {
+            $entityPerson->load(['person', 'trusteeEntity']);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Entity-Person relationship created successfully.',
+                'entity_person' => (new EntityPersonResource($entityPerson))->resolve(),
+            ]);
+        }
+
+        return redirect()->route('business-entities.show', $request->business_entity_id)
+            ->withFragment('tab_persons')
+            ->with('success', 'Entity-Person relationship created successfully.');
     }
 
     /**
@@ -214,7 +226,7 @@ class EntityPersonController extends Controller
         // Exception: legacy Appointor rows preserve hidden link fields
         if ($request->role !== 'Appointor') {
             if (($personId && $entityTrusteeId) || (! $personId && ! $entityTrusteeId)) {
-                return redirect()->back()->withInput()->withErrors(['error' => 'Either an existing person or a trustee company must be selected, but not both.']);
+                return $this->personFormError($request, ['error' => 'Either an existing person or a trustee company must be selected, but not both.']);
             }
         }
 
@@ -241,6 +253,15 @@ class EntityPersonController extends Controller
         }
 
         $entityPerson->update($data);
+        $entityPerson->load(['person', 'trusteeEntity']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Entity-Person relationship updated successfully.',
+                'entity_person' => (new EntityPersonResource($entityPerson))->resolve(),
+            ]);
+        }
 
         return redirect()->route('business-entities.show', $entityPerson->business_entity_id)
             ->withFragment('tab_persons')
@@ -374,5 +395,18 @@ class EntityPersonController extends Controller
         $heldBankAccountGroups = BankAccount::groupedByHolder($heldBankAccounts);
 
         return view('persons.show', compact('person', 'entityPersons', 'groupedRoles', 'heldBankAccounts', 'heldBankAccountGroups'));
+    }
+
+    private function personFormError(Request $request, array $errors)
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => false,
+                'message' => collect($errors)->flatten()->first(),
+                'errors' => collect($errors)->map(fn ($message) => is_array($message) ? $message : [$message])->all(),
+            ], 422);
+        }
+
+        return redirect()->back()->withInput()->withErrors($errors);
     }
 }

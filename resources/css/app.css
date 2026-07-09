@@ -23,9 +23,237 @@
     @apply inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white rounded-md text-sm font-medium transition-colors shadow-xs focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-indigo-400 dark:focus-visible:ring-offset-gray-900;
   }
 
+  .entity-workspace-panel-sheet {
+    animation: entity-panel-in 220ms ease-out;
+  }
+
+  @keyframes entity-panel-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0.6;
+    }
+
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .entity-workspace-panel-sheet {
+      border-left-width: 0;
+    }
+  }
+
   /* Shared date field — use via <x-date-input> or class="form-date-input" on input[type="date"] in JS */
   .form-date-input {
     @apply border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-indigo-500 dark:focus:ring-indigo-500 rounded-xl shadow-xs text-sm w-full;
+  }
+
+  /* Bank account workspace forms — modals, slide-over panels, and full pages */
+  .bank-ws-form {
+    @apply space-y-5;
+  }
+
+  .bank-field {
+    @apply space-y-1.5;
+  }
+
+  .bank-field-label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300;
+  }
+
+  .bank-field-control {
+    @apply block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs transition-colors
+      placeholder:text-gray-400
+      focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none
+      dark:border-gray-600 dark:bg-gray-900/50 dark:text-gray-100 dark:placeholder-gray-500
+      dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20;
+  }
+
+  select.bank-field-control {
+    @apply pr-9;
+  }
+
+  .bank-field-hint {
+    @apply text-xs leading-relaxed text-gray-500 dark:text-gray-400;
+  }
+
+  .bank-field-error {
+    @apply text-sm text-red-600 dark:text-red-400;
+  }
+
+  .bank-form-grid {
+    @apply grid grid-cols-1 gap-4 sm:grid-cols-2;
+  }
+
+  .bank-form-grid-full {
+    @apply sm:col-span-2;
+  }
+
+  .bank-form-section {
+    @apply rounded-xl border border-gray-200/80 bg-gray-50/90 p-4 sm:p-5
+      dark:border-gray-700/80 dark:bg-gray-900/35;
+  }
+
+  .bank-form-section-title {
+    @apply text-sm font-semibold text-gray-900 dark:text-gray-100;
+  }
+
+  .bank-form-section-desc {
+    @apply mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400;
+  }
+
+  .bank-form-actions {
+    @apply flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 pt-4
+      dark:border-gray-700;
+  }
+
+  .bank-btn-primary {
+    @apply inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xs transition-colors
+      hover:bg-indigo-500 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2
+      disabled:cursor-not-allowed disabled:opacity-50
+      dark:focus-visible:ring-offset-gray-900;
+  }
+
+  .bank-btn-secondary {
+    @apply inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs transition-colors
+      hover:bg-gray-50 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-gray-300
+      dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 dark:focus-visible:ring-gray-600;
+  }
+
+  /* Bank account right-side panel */
+  .bank-account-panel-sheet {
+    animation: bank-panel-in 220ms ease-out;
+  }
+
+  @keyframes bank-panel-in {
+    from {
+      transform: translateX(100%);
+      opacity: 0.6;
+    }
+
+    to {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  @media (max-width: 639px) {
+    .bank-account-panel-sheet {
+      border-left-width: 0;
+    }
+  }
+
+  .bank-account-panel-tabs {
+    @apply flex gap-1 rounded-xl border border-gray-200 bg-gray-100 p-1 dark:border-gray-700 dark:bg-gray-900/80;
+  }
+
+  .bank-account-panel-tab {
+    @apply inline-flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors
+      text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200;
+  }
+
+  .bank-account-panel-tab-active {
+    @apply bg-white text-indigo-700 shadow-sm dark:bg-gray-800 dark:text-indigo-300;
+  }
+
+  .bank-panel-status-ready {
+    @apply border-emerald-200 bg-emerald-50 text-emerald-800
+      dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200;
+  }
+
+  .bank-ws-form .ts-wrapper.single .ts-control,
+  .bank-ws-form .ts-wrapper.multi .ts-control {
+    @apply rounded-lg border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900/50 dark:text-gray-100;
+  }
+
+  /* Profile settings page */
+  .profile-page-card {
+    @apply overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs
+      dark:border-gray-700 dark:bg-gray-800;
+  }
+
+  .profile-page-card-danger {
+    @apply border-red-200/60 dark:border-red-900/40;
+  }
+
+  .profile-summary-avatar {
+    @apply flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-600 text-lg font-bold text-white
+      shadow-sm dark:bg-indigo-500;
+  }
+
+  .profile-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .profile-badge-success {
+    @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-200;
+  }
+
+  .profile-badge-warning {
+    @apply bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200;
+  }
+
+  .profile-badge-muted {
+    @apply bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-200;
+  }
+
+  .profile-nav-link {
+    @apply block rounded-lg px-3 py-2 font-medium text-gray-600 transition-colors
+      hover:bg-gray-50 hover:text-gray-900
+      dark:text-gray-400 dark:hover:bg-gray-800/80 dark:hover:text-gray-100;
+  }
+
+  .profile-nav-link-danger {
+    @apply text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-red-400 dark:hover:bg-red-950/30 dark:hover:text-red-300;
+  }
+
+  .profile-section-icon {
+    @apply flex h-10 w-10 shrink-0 items-center justify-center rounded-xl;
+  }
+
+  .profile-section-icon-indigo {
+    @apply bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-300;
+  }
+
+  .profile-section-icon-emerald {
+    @apply bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-300;
+  }
+
+  .profile-section-icon-danger {
+    @apply bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-300;
+  }
+
+  .entity-form-callout {
+    @apply rounded-xl border p-4;
+  }
+
+  .entity-form-callout-info {
+    @apply border-indigo-200/80 bg-indigo-50/50 dark:border-indigo-900/40 dark:bg-indigo-950/20;
+  }
+
+  .entity-form-callout-warning {
+    @apply border-amber-200/80 bg-amber-50/50 dark:border-amber-900/40 dark:bg-amber-950/20;
+  }
+
+  .two-factor-step-badge {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white
+      dark:bg-indigo-500;
+  }
+
+  .two-factor-qr-frame {
+    @apply rounded-xl border border-gray-200 bg-white p-4 shadow-xs
+      dark:border-gray-600 dark:bg-gray-950;
+  }
+
+  .two-factor-qr-code {
+    @apply block h-[200px] w-[200px] max-w-full;
+  }
+
+  .two-factor-secret-key {
+    @apply block min-w-0 flex-1 break-all rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm text-gray-900
+      dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100;
   }
 }
 
@@ -132,6 +360,353 @@
 .dark .entity-show-page .entity-tab-link.active {
     color: rgb(199 210 254);
     background: rgb(31 41 55);
+}
+
+.dark .asset-show-page .asset-tab-nav .tab-link.active {
+    color: rgb(199 210 254);
+    background: rgb(31 41 55);
+}
+
+/* Compliance workspace */
+.compliance-workspace .compliance-toolbar {
+    @apply rounded-xl border border-gray-200/80 bg-gray-50/70 dark:border-gray-700/80 dark:bg-gray-900/40 p-4;
+}
+
+.compliance-workspace .compliance-label {
+    @apply block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5;
+}
+
+.compliance-workspace .compliance-input {
+    @apply rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100;
+}
+
+.compliance-workspace .compliance-badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium;
+}
+
+.compliance-workspace .compliance-badge-neutral {
+    @apply bg-indigo-50 text-indigo-700 ring-1 ring-inset ring-indigo-200 dark:bg-indigo-950/40 dark:text-indigo-200 dark:ring-indigo-800;
+}
+
+.compliance-workspace .compliance-badge-warning {
+    @apply bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-800;
+}
+
+.compliance-workspace .compliance-btn {
+    @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors;
+}
+
+.compliance-workspace .compliance-btn-primary {
+    @apply bg-indigo-600 text-white hover:bg-indigo-500;
+}
+
+.compliance-workspace .compliance-btn-secondary {
+    @apply border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700;
+}
+
+.compliance-workspace .compliance-btn-danger {
+    @apply border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50;
+}
+
+.compliance-workspace .compliance-btn-ghost {
+    @apply text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800;
+}
+
+.compliance-workspace .compliance-cat-nav {
+    background: rgb(249 250 251);
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.75rem;
+    padding: 0.35rem 0.4rem;
+    gap: 0.15rem;
+}
+
+.compliance-workspace .compliance-cat-tab {
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: rgb(75 85 99);
+    transition: color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+
+.compliance-workspace .compliance-cat-tab:hover {
+    color: rgb(55 48 163);
+    background: rgb(238 242 255 / 0.7);
+}
+
+.compliance-workspace .compliance-cat-tab.active {
+    color: rgb(67 56 202);
+    background: white;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+}
+
+.dark .compliance-workspace .compliance-cat-nav {
+    background: rgb(17 24 39);
+    border-color: rgb(55 65 81);
+}
+
+.dark .compliance-workspace .compliance-cat-tab {
+    color: rgb(209 213 219);
+}
+
+.dark .compliance-workspace .compliance-cat-tab:hover {
+    color: rgb(199 210 254);
+    background: rgb(55 65 81 / 0.6);
+}
+
+.dark .compliance-workspace .compliance-cat-tab.active {
+    color: rgb(199 210 254);
+    background: rgb(31 41 55);
+}
+
+.compliance-workspace .compliance-panel {
+    @apply rounded-xl border border-gray-100 bg-gray-50/60 p-5 dark:border-gray-700/80 dark:bg-gray-900/30;
+}
+
+.compliance-workspace .compliance-row-preview-active {
+    @apply bg-indigo-50/80 dark:bg-indigo-950/30;
+}
+
+.compliance-workspace .compliance-row-preview-active .compliance-file-name {
+    @apply text-indigo-700 dark:text-indigo-300;
+}
+
+.compliance-workspace .compliance-checklist-layout {
+    @apply flex flex-col gap-4;
+}
+
+.compliance-workspace .compliance-table-wrap {
+    @apply overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900;
+}
+
+.compliance-workspace .compliance-table {
+    @apply w-full min-w-[920px] table-fixed;
+}
+
+.compliance-workspace .compliance-col-type {
+    @apply w-[22%];
+}
+
+.compliance-workspace .compliance-col-file {
+    @apply w-[28%];
+}
+
+.compliance-workspace .compliance-col-status {
+    @apply w-[28%];
+}
+
+.compliance-workspace .compliance-col-actions {
+    @apply w-[22%];
+}
+
+.compliance-workspace .compliance-table-wrap thead {
+    @apply bg-gray-50 dark:bg-gray-800/80;
+}
+
+.compliance-workspace .compliance-table-wrap th {
+    @apply px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400;
+}
+
+.compliance-workspace .compliance-table-wrap td {
+    @apply px-3 py-3 align-top text-sm;
+}
+
+.compliance-workspace .compliance-status-cell {
+    @apply max-w-[14rem];
+}
+
+.compliance-workspace .compliance-row-actions {
+    @apply flex min-w-[9rem] flex-col items-stretch gap-1;
+}
+
+.compliance-workspace .compliance-row-actions .compliance-link-btn {
+    @apply justify-center px-2 py-1.5;
+}
+
+.compliance-workspace .compliance-preview-card {
+    @apply w-full rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 min-h-[360px] flex flex-col;
+}
+
+.compliance-workspace .compliance-preview-body {
+    @apply relative flex-1 min-h-[320px] rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-800/60 overflow-hidden;
+}
+
+.compliance-workspace .compliance-preview-empty,
+.compliance-workspace .compliance-preview-loading,
+.compliance-workspace .compliance-preview-fallback {
+    @apply absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 px-6 text-center bg-gray-50/95 dark:bg-gray-900/95;
+}
+
+.compliance-workspace .compliance-preview-embed,
+.compliance-workspace .compliance-preview-image,
+.compliance-workspace .compliance-preview-frame {
+    @apply relative z-10 block h-full min-h-[320px] w-full border-0 bg-white dark:bg-gray-900;
+}
+
+.compliance-workspace .compliance-preview-image {
+    @apply object-contain p-2;
+}
+
+.compliance-workspace .compliance-preview-embed.hidden,
+.compliance-workspace .compliance-preview-image.hidden,
+.compliance-workspace .compliance-preview-frame.hidden {
+    @apply hidden;
+}
+
+.compliance-workspace .compliance-file-chip {
+    @apply flex min-w-0 flex-col items-start gap-1.5;
+}
+
+.compliance-workspace .compliance-file-name {
+    @apply max-w-full truncate text-left text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300;
+}
+
+.compliance-workspace .compliance-file-meta {
+    @apply flex flex-wrap items-center gap-1.5;
+}
+
+.compliance-workspace .compliance-file-type-badge {
+    @apply inline-flex shrink-0 items-center rounded-md bg-indigo-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300;
+}
+
+.compliance-workspace .compliance-file-status-badge {
+    @apply inline-flex shrink-0 items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300;
+}
+
+.compliance-workspace .compliance-file-empty {
+    @apply inline-flex rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400;
+}
+
+.compliance-workspace .compliance-preview-header {
+    @apply mb-3 space-y-1;
+}
+
+.compliance-workspace .compliance-preview-empty-icon {
+    @apply text-3xl opacity-70;
+}
+
+.compliance-workspace .compliance-preview-spinner {
+    @apply h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin dark:border-indigo-900 dark:border-t-indigo-400;
+}
+
+.compliance-workspace .compliance-preview-actions {
+    @apply mt-4 flex flex-wrap gap-2;
+}
+
+.compliance-workspace .compliance-link-btn {
+    @apply inline-flex items-center rounded-md px-2 py-1 text-xs font-medium transition-colors;
+}
+
+.compliance-workspace .compliance-link-btn-primary {
+    @apply text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-950/40;
+}
+
+.compliance-workspace .compliance-link-btn-muted {
+    @apply text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800;
+}
+
+.compliance-workspace .compliance-link-btn-warning {
+    @apply text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30;
+}
+
+.compliance-workspace .compliance-link-btn-danger {
+    @apply text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30;
+}
+
+.compliance-workspace .compliance-status-select {
+    @apply w-full max-w-[10rem] rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100;
+}
+
+.compliance-workspace .compliance-date-grid {
+    @apply mt-2 grid grid-cols-1 gap-1.5;
+}
+
+.compliance-workspace .compliance-date-field {
+    @apply flex flex-col gap-0.5 text-xs text-gray-500 dark:text-gray-400;
+}
+
+.compliance-workspace .compliance-date-field input {
+    @apply rounded-md border border-gray-200 bg-white px-2 py-1 text-xs dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100;
+}
+
+.workspace-row-uploading td {
+    @apply opacity-60;
+}
+
+.workspace-upload-status {
+    @apply ml-2 inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400;
+}
+
+/* Asset show page — tabs & layout */
+.asset-show-page .asset-main-card {
+    box-shadow:
+        0 1px 3px rgba(15, 23, 42, 0.06),
+        0 8px 24px rgba(15, 23, 42, 0.04);
+}
+
+.asset-show-page .asset-tab-nav {
+    background: rgb(249 250 251);
+    border: 1px solid rgb(229 231 235);
+    border-radius: 0.75rem;
+    padding: 0.35rem 0.4rem;
+    gap: 0.15rem;
+}
+
+.asset-show-page .asset-tab-nav .tab-link {
+    padding: 0.5rem 0.75rem;
+    border-bottom-width: 0;
+    border-bottom-color: transparent;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    white-space: nowrap;
+    color: rgb(75 85 99);
+}
+
+.asset-show-page .asset-tab-nav .tab-link:hover {
+    color: rgb(55 48 163);
+    background: rgb(238 242 255 / 0.7);
+}
+
+.asset-show-page .asset-tab-nav .tab-link.active {
+    color: rgb(67 56 202);
+    background: white;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    border-color: transparent;
+}
+
+.dark .asset-show-page .asset-tab-nav {
+    background: rgb(17 24 39);
+    border-color: rgb(55 65 81);
+}
+
+.dark .asset-show-page .asset-tab-nav .tab-link {
+    color: rgb(209 213 219);
+}
+
+.dark .asset-show-page .asset-tab-nav .tab-link:hover {
+    color: rgb(199 210 254);
+    background: rgb(55 65 81 / 0.6);
+}
+
+.dark .asset-show-page .asset-tab-nav .tab-link.active {
+    color: rgb(199 210 254);
+    background: rgb(31 41 55);
+}
+
+.asset-show-page .tab-content-container > .tab-content {
+    padding: 0;
+}
+
+.asset-show-page .asset-quick-action {
+    @apply inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors shadow-xs;
+}
+
+.asset-show-page .asset-panel {
+    @apply rounded-xl border border-gray-100 dark:border-gray-700/80 bg-gray-50/70 dark:bg-gray-900/40 p-5;
 }
 
 /* Tom Select — match Tailwind form controls */

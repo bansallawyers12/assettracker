@@ -97,7 +97,7 @@
                             @php
                                 $txDirection = \App\Models\Transaction::directionFromType((string) $tx->transaction_type);
                                 $txCounterparty = $tx->paid_by ? $tx->paid_by_display : '—';
-                                $txVendor = $tx->vendor_name ?: '—';
+                                $txVendor = $tx->vendor_display ?: '—';
                                 $txPaidBy = $txDirection === 'income' ? $txVendor : $txCounterparty;
                                 $txReceivedBy = $txDirection === 'income' ? $txCounterparty : $txVendor;
                             @endphp
@@ -147,8 +147,8 @@
                                 <td class="px-4 py-3 max-w-xs truncate text-gray-900 dark:text-gray-100" title="{{ $tx->description }}">
                                     {{ $tx->description ?? '—' }}
                                 </td>
-                                <td class="px-4 py-3 max-w-32 truncate text-gray-700 dark:text-gray-300" title="{{ $tx->vendor_name }}">
-                                    {{ $tx->vendor_name ?? '—' }}
+                                <td class="px-4 py-3 max-w-32 truncate text-gray-700 dark:text-gray-300" title="{{ $tx->vendor_display }}">
+                                    {{ $tx->vendor_display ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3 text-right font-medium whitespace-nowrap">
                                     @if (\App\Models\Transaction::directionFromType((string) $tx->transaction_type) === 'income')

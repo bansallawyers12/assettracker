@@ -1,15 +1,10 @@
 /**
  * Document workspace — all behaviour for .documents-workspace elements.
  * Imported via app.js (Vite). No inline script in Blade needed.
- *
- * Features:
- *  - Fully delegated event listeners (no per-element rebinding after DOM surgery)
- *  - Partial DOM updates instead of location.reload() for single-row ops
- *  - sessionStorage persistence for active tab + active preview doc
- *  - Rename and Move support for checklist rows
- *  - Enriched JSON from upload/slot endpoints drives live row patching
- *  - Bulk upload with per-file replace-existing toggle
  */
+import { showWorkspaceAlert, showWorkspaceConfirm, showWorkspacePrompt, showWorkspaceSelect } from './workspace-dialog.js';
+import { setRowUploading } from './workspace-upload-ui.js';
+
 (function () {
     'use strict';
 
@@ -46,18 +41,38 @@
     }
 
     function alertHttpError(status) {
-        if (status === 419) { alert('Your session has expired. Refresh the page and try again.'); return; }
-        if (status === 413) { alert('This file is too large for the server upload limit.'); return; }
-        if (status === 403) { alert('You are not allowed to perform this action.'); return; }
-        alert('Request failed. Please try again.');
+        if (status === 419) {
+            showWorkspaceAlert({ title: 'Session expired', message: 'Your session has expired. Refresh the page and try again.' });
+            return;
+        }
+        if (status === 413) {
+            showWorkspaceAlert({ message: 'This file is too large for the server upload limit.' });
+            return;
+        }
+        if (status === 403) {
+            showWorkspaceAlert({ message: 'You are not allowed to perform this action.' });
+            return;
+        }
+        showWorkspaceAlert({ message: 'Request failed. Please try again.' });
     }
 
     function alertValidationErrors(j) {
         if (j?.errors) {
-            alert(Object.values(j.errors).flat().join('\n') || j.message || 'Validation failed.');
+            showWorkspaceAlert({
+                title: 'Validation failed',
+                message: Object.values(j.errors).flat().join('\n') || j.message || 'Validation failed.',
+            });
             return true;
         }
         return false;
+    }
+
+    function showError(message, title) {
+        showWorkspaceAlert({ title, message: message || 'Something went wrong.' });
+    }
+
+    function showSuccess(message, title = 'Success') {
+        showWorkspaceAlert({ title, message, variant: 'success' });
     }
 
     // ─── Row HTML builder ─────────────────────────────────────────────────────
@@ -232,7 +247,7 @@
             return `${base}/documents/${docId}/content${q ? '?' + q : ''}`;
         }
 
-        function setCategoryPanelPreview(panel, docId, assetScope) {
+        function setCategoryPanelPreview(panel, docId, assetScope, { openInNewTab = false } = {}) {
             const frame  = panel.querySelector('.doc-cat-preview-frame');
             const dl     = panel.querySelector('.doc-cat-preview-dl');
             const delBtn = panel.querySelector('.doc-cat-preview-del');
@@ -245,6 +260,10 @@
             delBtn?.classList.remove('opacity-50', 'pointer-events-none');
             panel.dataset.previewDocId = String(docId);
             saveSession();
+
+            if (openInNewTab) {
+                window.open(viewUrl, '_blank', 'noopener,noreferrer');
+            }
         }
 
         function clearCategoryPanelPreview(panel) {
@@ -266,12 +285,15 @@
         }
 
         function alertFileTooLarge() {
-            alert(`This file is too large. Maximum is ${(maxFileBytes / 1048576).toFixed(1)} MB per file.`);
+            showError(`This file is too large. Maximum is ${(maxFileBytes / 1048576).toFixed(1)} MB per file.`);
         }
 
         function patchRowAfterUpload(docId, doc) {
             const tr = root.querySelector(`tr[data-slot-row="${docId}"]`);
-            if (!tr) { saveSession(); window.location.hash = '#tab_documents'; location.reload(); return; }
+            if (!tr) {
+                showError('Could not update the row. Switch tabs and try again.');
+                return;
+            }
 
             const assetScope = doc.asset_id ?? doc.assetScope ?? assetId ?? '';
             const fileName   = doc.file_name ?? '';
@@ -318,7 +340,10 @@
 
         function patchRowAfterClear(docId) {
             const tr = root.querySelector(`tr[data-slot-row="${docId}"]`);
-            if (!tr) { saveSession(); window.location.hash = '#tab_documents'; location.reload(); return; }
+            if (!tr) {
+                showError('Could not update the row. Switch tabs and try again.');
+                return;
+            }
 
             const fileCell = tr.querySelector('td:nth-child(2)');
             const actCell  = tr.querySelector('td:nth-child(3)');
@@ -361,7 +386,11 @@
             if (input.dataset.uploading === '1') return;
 
             const replace = input.dataset.replace === '1';
-            if (replace && !confirm('Replace existing file?')) { input.value = ''; return; }
+            if (replace && !await showWorkspaceConfirm({
+                title: 'Replace file?',
+                message: 'The existing file on this checklist row will be replaced.',
+                confirmText: 'Replace',
+            })) { input.value = ''; return; }
 
             const docId = input.dataset.documentId;
             const file  = input.files?.[0];
@@ -369,8 +398,7 @@
             if (fileExceedsLimit(file)) { alertFileTooLarge(); input.value = ''; return; }
 
             const labelNode = input.closest('label');
-            const origText  = labelNode?.firstChild?.textContent;
-            if (labelNode?.firstChild) labelNode.firstChild.textContent = '…';
+            setRowUploading(input, true);
             input.dataset.uploading = '1';
 
             const fd = new FormData();
@@ -393,16 +421,16 @@
                 input.value = '';
 
                 if (!j)                               { alertHttpError(r.status); return; }
-                if (!r.ok)                            { alertValidationErrors(j) || alert(j.message || 'Upload failed.'); return; }
+                if (!r.ok)                            { alertValidationErrors(j) || showError(j.message || 'Upload failed.'); return; }
                 if (j.status && j.document)           { patchRowAfterUpload(docId, j.document); return; }
-                if (j.status)                         { saveSession(); window.location.hash = '#tab_documents'; location.reload(); return; }
-                alertValidationErrors(j) || alert(j.message || 'Upload failed.');
+                if (j.status)                         { showSuccess(j.message || 'Document uploaded.'); return; }
+                alertValidationErrors(j) || showError(j.message || 'Upload failed.');
             } catch (_) {
                 input.value = '';
-                alert('Upload failed. Check your connection and try again.');
+                showError('Upload failed. Check your connection and try again.');
             } finally {
+                setRowUploading(input, false);
                 delete input.dataset.uploading;
-                if (labelNode?.firstChild && origText !== undefined) labelNode.firstChild.textContent = origText;
             }
         });
 
@@ -414,7 +442,7 @@
             const previewBtn = ev.target.closest('.doc-preview');
             if (previewBtn && root.contains(previewBtn)) {
                 const panel = previewBtn.closest('.doc-cat-panel');
-                if (panel) setCategoryPanelPreview(panel, previewBtn.dataset.docId, previewBtn.dataset.assetScope);
+                if (panel) setCategoryPanelPreview(panel, previewBtn.dataset.docId, previewBtn.dataset.assetScope, { openInNewTab: true });
                 return;
             }
 
@@ -423,11 +451,16 @@
             if (panelDelBtn && root.contains(panelDelBtn)) {
                 const panel    = panelDelBtn.closest('.doc-cat-panel');
                 const docId    = panel?.dataset.previewDocId;
-                if (!docId || !confirm('Remove the file from this checklist row? The row will be kept.')) return;
+                if (!docId || !await showWorkspaceConfirm({
+                    title: 'Remove file?',
+                    message: 'The checklist row will be kept, but the attached file will be removed.',
+                    confirmText: 'Remove file',
+                    variant: 'danger',
+                })) return;
                 const r = await api(`/business-entities/${entityId}/document-slots/${docId}/clear-file`, { method: 'POST', body: '{}' });
                 const j = await r.json();
                 if (j.status) patchRowAfterClear(docId);
-                else alert(j.message || 'Failed');
+                else showError(j.message || 'Failed');
                 return;
             }
 
@@ -435,18 +468,28 @@
             const clearBtn = ev.target.closest('.doc-clear:not(.opacity-40):not(.pointer-events-none)');
             if (clearBtn && root.contains(clearBtn)) {
                 const docId = clearBtn.dataset.docId;
-                if (!docId || !confirm('Remove file from this checklist row?')) return;
+                if (!docId || !await showWorkspaceConfirm({
+                    title: 'Remove file?',
+                    message: 'The attached file will be removed from this checklist row.',
+                    confirmText: 'Remove file',
+                    variant: 'danger',
+                })) return;
                 const r = await api(`${base}/document-slots/${docId}/clear-file`, { method: 'POST', body: '{}' });
                 const j = await r.json();
                 if (j.status) patchRowAfterClear(docId);
-                else alert(j.message || 'Failed');
+                else showError(j.message || 'Failed');
                 return;
             }
 
             // ── Delete row ────────────────────────────────────────────────────
             const delBtn = ev.target.closest('.doc-del');
             if (delBtn && root.contains(delBtn)) {
-                if (!confirm('Delete this checklist row entirely?')) return;
+                if (!await showWorkspaceConfirm({
+                    title: 'Delete checklist row?',
+                    message: 'This checklist row and any linked file will be deleted permanently.',
+                    confirmText: 'Delete row',
+                    variant: 'danger',
+                })) return;
                 const docId = delBtn.dataset.docId;
                 const tr    = root.querySelector(`tr[data-slot-row="${docId}"]`);
                 const panel = tr?.closest('.doc-cat-panel');
@@ -461,22 +504,27 @@
                             cat.documents = (cat.documents || []).filter(d => String(d.id) !== String(docId));
                         });
                     }
-                } else alert(j.message || 'Failed');
+                } else showError(j.message || 'Failed');
                 return;
             }
 
             // ── Add category ──────────────────────────────────────────────────
             const addCatEl = ev.target.closest(`#${prefix}-add-category`);
             if (addCatEl && root.contains(addCatEl)) {
-                const title = prompt('Category name');
-                if (!title?.trim()) return;
+                const title = await showWorkspacePrompt({
+                    title: 'Add category',
+                    label: 'Category name',
+                    placeholder: 'e.g. Insurance, Registration',
+                    confirmText: 'Create category',
+                });
+                if (!title) return;
                 const r = await api(`${base}/document-categories`, {
                     method: 'POST',
                     body: JSON.stringify({ title: title.trim(), asset_id: assetId ? parseInt(assetId, 10) : null }),
                 });
                 const j = await r.json();
                 if (j.status) { saveSession(); location.reload(); }
-                else alertValidationErrors(j) || alert(j.message || 'Failed');
+                else alertValidationErrors(j) || showError(j.message || 'Failed');
                 return;
             }
 
@@ -484,8 +532,13 @@
             const renameCatBtn = ev.target.closest('.doc-rename-cat');
             if (renameCatBtn && root.contains(renameCatBtn)) {
                 const catId = renameCatBtn.dataset.categoryId;
-                const title = prompt('New title', renameCatBtn.dataset.title);
-                if (!title?.trim()) return;
+                const title = await showWorkspacePrompt({
+                    title: 'Rename category',
+                    label: 'Category name',
+                    defaultValue: renameCatBtn.dataset.title,
+                    confirmText: 'Save changes',
+                });
+                if (!title) return;
                 const r = await api(`${base}/document-categories/${catId}`, {
                     method: 'PATCH',
                     body: JSON.stringify({ title: title.trim() }),
@@ -501,27 +554,37 @@
                         if (h4) h4.textContent = newTitle + ' — checklist';
                         renameCatBtn.dataset.title = newTitle;
                     }
-                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                } else alertValidationErrors(j) || showError(j.message || 'Failed');
                 return;
             }
 
             // ── Delete category ───────────────────────────────────────────────
             const deleteCatBtn = ev.target.closest('.doc-delete-cat');
             if (deleteCatBtn && root.contains(deleteCatBtn)) {
-                if (!confirm('Delete this category? All checklist rows must be removed first.')) return;
+                if (!await showWorkspaceConfirm({
+                    title: 'Delete category?',
+                    message: 'All checklist rows must be removed before this category can be deleted.',
+                    confirmText: 'Delete category',
+                    variant: 'danger',
+                })) return;
                 const catId = deleteCatBtn.dataset.categoryId;
                 const r = await api(`${base}/document-categories/${catId}`, { method: 'DELETE' });
                 const j = await r.json();
                 if (j.status) { saveSession(); location.reload(); }
-                else alert(j.message || 'Failed');
+                else showError(j.message || 'Failed');
                 return;
             }
 
             // ── Add checklist row ─────────────────────────────────────────────
             const addSlotBtn = ev.target.closest('.doc-add-slot');
             if (addSlotBtn && root.contains(addSlotBtn)) {
-                const label = prompt('Checklist item name (e.g. Passport)');
-                if (!label?.trim()) return;
+                const label = await showWorkspacePrompt({
+                    title: 'Add checklist item',
+                    label: 'Checklist item name',
+                    placeholder: 'e.g. Passport, Registration certificate',
+                    confirmText: 'Add item',
+                });
+                if (!label) return;
                 const catId = addSlotBtn.dataset.categoryId;
                 const r = await api(`${base}/document-categories/${catId}/slots`, {
                     method: 'POST',
@@ -538,7 +601,7 @@
                             if (cat) cat.documents = [...(cat.documents || []), j.document];
                         }
                     } else { saveSession(); location.reload(); }
-                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                } else alertValidationErrors(j) || showError(j.message || 'Failed');
                 return;
             }
 
@@ -547,8 +610,13 @@
             if (renameSlotBtn && root.contains(renameSlotBtn)) {
                 const docId = renameSlotBtn.dataset.docId;
                 const current = renameSlotBtn.dataset.label || '';
-                const label = prompt('New checklist item name', current);
-                if (!label?.trim() || label.trim() === current) return;
+                const label = await showWorkspacePrompt({
+                    title: 'Rename checklist item',
+                    label: 'Checklist item name',
+                    defaultValue: current,
+                    confirmText: 'Save changes',
+                });
+                if (!label || label === current) return;
                 const r = await api(`${base}/document-slots/${docId}`, {
                     method: 'PATCH',
                     body: JSON.stringify({ checklist_label: label.trim() }),
@@ -567,7 +635,7 @@
                             if (slot) slot.checklist_label = j.document.checklist_label;
                         });
                     }
-                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                } else alertValidationErrors(j) || showError(j.message || 'Failed');
                 return;
             }
 
@@ -582,13 +650,18 @@
                     .filter(t => t.dataset.categoryId !== srcCatId)
                     .map(t => ({ id: t.dataset.categoryId, title: t.textContent.trim() }));
 
-                if (!otherCats.length) { alert('No other categories to move to.'); return; }
+                if (!otherCats.length) { showError('No other categories to move to.'); return; }
 
-                const options = otherCats.map((c, i) => `${i + 1}. ${c.title}`).join('\n');
-                const choice  = prompt(`Move to which category?\n${options}\n\nEnter number:`);
-                if (!choice) return;
-                const target  = otherCats[parseInt(choice, 10) - 1];
-                if (!target) { alert('Invalid selection.'); return; }
+                const targetId = await showWorkspaceSelect({
+                    title: 'Move checklist item',
+                    message: 'Choose which category this item should belong to.',
+                    label: 'Destination category',
+                    options: otherCats.map(c => ({ value: c.id, label: c.title })),
+                    confirmText: 'Move item',
+                });
+                if (!targetId) return;
+                const target = otherCats.find(c => String(c.id) === String(targetId));
+                if (!target) { showError('Invalid selection.'); return; }
 
                 const r = await api(`${base}/document-slots/${docId}/move`, {
                     method: 'PATCH',
@@ -612,7 +685,7 @@
                             if (destCat && movedDoc) destCat.documents = [...(destCat.documents || []), movedDoc];
                         }
                     } else { saveSession(); location.reload(); }
-                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                } else alertValidationErrors(j) || showError(j.message || 'Failed');
                 return;
             }
         });
@@ -628,7 +701,7 @@
         bulkBtn?.addEventListener('click', () => {
             const active = root.querySelector('.doc-cat-tab.bg-indigo-600');
             bulkCategoryId = active?.dataset.categoryId ?? null;
-            if (!bulkCategoryId) { alert('Select a category tab first.'); return; }
+            if (!bulkCategoryId) { showError('Select a category tab first.'); return; }
             if (bulkFiles) bulkFiles.value = '';
             if (bulkMap)   bulkMap.innerHTML = '';
             modal?.classList.remove('hidden');
@@ -716,7 +789,7 @@
 
         document.getElementById(prefix + '-bulk-go')?.addEventListener('click', async () => {
             const files = bulkFiles?.files;
-            if (!files?.length) { alert('Choose files first.'); return; }
+            if (!files?.length) { showError('Choose files first.'); return; }
 
             for (const f of Array.from(files)) {
                 if (fileExceedsLimit(f)) { alertFileTooLarge(); return; }
@@ -745,7 +818,7 @@
                 formData.append('mappings[]', JSON.stringify({ type, name, replace }));
             });
 
-            if (!mapOk) { alert('Map all files to a checklist row, or enable auto-create.'); return; }
+            if (!mapOk) { showError('Map all files to a checklist row, or enable auto-create.'); return; }
 
             const pw = document.getElementById(prefix + '-bulk-progress-wrap');
             const pb = document.getElementById(prefix + '-bulk-progress');
@@ -759,18 +832,23 @@
                 if (e.lengthComputable && pb) pb.style.width = (e.loaded / e.total * 100) + '%';
             });
             xhr.onload = () => {
-                if (xhr.status === 419) { alert('Session expired. Refresh and try again.'); return; }
-                if (xhr.status === 413) { alert('File is too large for the server upload limit.'); return; }
+                pw?.classList.add('hidden');
+                if (xhr.status === 419) { showError('Session expired. Refresh and try again.'); return; }
+                if (xhr.status === 413) { showError('File is too large for the server upload limit.'); return; }
                 const res = parseJson(xhr.responseText);
-                if (!res) { alert('Upload failed.'); return; }
+                if (!res) { showError('Upload failed.'); return; }
                 modal?.classList.add('hidden');
-                const parts = [res.message, ...(res.errors?.length ? ['Errors:\n' + res.errors.join('\n')] : [])];
-                alert(parts.filter(Boolean).join('\n\n'));
-                saveSession();
-                window.location.hash = '#tab_documents';
-                location.reload();
+                if (res.documents?.length) {
+                    res.documents.forEach(doc => patchRowAfterUpload(doc.id, doc));
+                    if (res.message) showSuccess(res.message);
+                } else if (res.uploaded > 0) {
+                    if (res.message) showSuccess(res.message);
+                } else {
+                    const parts = [res.message, ...(res.errors?.length ? ['Errors:\n' + res.errors.join('\n')] : [])];
+                    showError(parts.filter(Boolean).join('\n\n') || 'Upload failed.');
+                }
             };
-            xhr.onerror = () => alert('Upload failed. Check your connection.');
+            xhr.onerror = () => showError('Upload failed. Check your connection.');
             xhr.send(formData);
         });
     }

@@ -21,7 +21,7 @@
         </div>
     </x-slot>
 
-    <div class="py-8 bg-blue-50 dark:bg-blue-900 min-h-screen">
+    <div class="asset-show-page py-8 bg-linear-to-br from-gray-50 via-white to-indigo-50/40 dark:from-gray-950 dark:via-gray-900 dark:to-gray-900 min-h-screen">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             @if (session('success'))
                 <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200" role="alert">
@@ -38,69 +38,71 @@
 
                 <!-- Right Content: Tabs and Details -->
                 <div class="flex-1 min-w-0">
-                    <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6">
-                        <!-- Action Buttons -->
-                        <div class="flex flex-wrap gap-3 mb-6">
+                    <div class="asset-main-card bg-white dark:bg-gray-900 rounded-2xl shadow-lg border border-gray-200/80 dark:border-gray-700 overflow-hidden">
+                        {{-- Quick actions --}}
+                        <div class="border-b border-gray-100 dark:border-gray-800 px-5 py-4">
+                            <div class="flex flex-wrap gap-2">
                             @if ($asset->asset_type === 'Car')
-                                <a href="#tab_documents" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <x-lucide-upload class="h-5 w-5 mr-2" />
+                                <a href="#tab_documents" class="asset-quick-action bg-violet-600 hover:bg-violet-700 text-white">
+                                    <x-lucide-upload class="h-4 w-4" />
                                     Documents
                                 </a>
                             @elseif ($isLeasable)
-                                <a href="{{ route('assets.financials', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <x-lucide-bar-chart-3 class="h-5 w-5 mr-2" />
+                                <a href="{{ route('assets.financials', [$businessEntity->id, $asset->id]) }}" class="asset-quick-action bg-teal-600 hover:bg-teal-700 text-white">
+                                    <x-lucide-bar-chart-3 class="h-4 w-4" />
                                     Financials
                                 </a>
-                                <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <x-lucide-user-plus class="h-5 w-5 mr-2" />
+                                <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="asset-quick-action bg-emerald-600 hover:bg-emerald-700 text-white">
+                                    <x-lucide-user-plus class="h-4 w-4" />
                                     Add Tenant
                                 </a>
-                                <a href="{{ route('business-entities.assets.leases.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <x-lucide-file-text class="h-5 w-5 mr-2" />
+                                <a href="{{ route('business-entities.assets.leases.create', [$businessEntity->id, $asset->id]) }}" class="asset-quick-action bg-blue-600 hover:bg-blue-700 text-white">
+                                    <x-lucide-file-text class="h-4 w-4" />
                                     Add Lease
                                 </a>
-                                <a href="#tab_documents" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <x-lucide-upload class="h-5 w-5 mr-2" />
+                                <a href="#tab_documents" class="asset-quick-action bg-violet-600 hover:bg-violet-700 text-white">
+                                    <x-lucide-upload class="h-4 w-4" />
                                     Documents
                                 </a>
                             @else
-                                <a href="#tab_documents" class="inline-flex items-center px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                    <x-lucide-upload class="h-5 w-5 mr-2" />
+                                <a href="#tab_documents" class="asset-quick-action bg-violet-600 hover:bg-violet-700 text-white">
+                                    <x-lucide-upload class="h-4 w-4" />
                                     Documents
                                 </a>
                             @endif
+                            </div>
                         </div>
 
-                        <!-- Tabs -->
-                        <div class="border-b border-gray-200 dark:border-gray-700 mb-6">
-                            <nav class="flex flex-wrap gap-2" aria-label="Tabs" id="asset-tabs">
-                                <a href="#tab_details" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Details</a>
+                        {{-- Tabs --}}
+                        <div class="px-5 pt-4 pb-2">
+                            <nav class="asset-tab-nav flex flex-wrap" aria-label="Asset sections" id="asset-tabs">
+                                <a href="#tab_details" class="tab-link">Details</a>
                                 @if ($asset->asset_type === 'Car')
-                                    <a href="#tab_registration" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Registration</a>
-                                    <a href="#tab_insurance" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Insurance</a>
-                                    <a href="#tab_service" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Service History</a>
+                                    <a href="#tab_registration" class="tab-link">Registration</a>
+                                    <a href="#tab_insurance" class="tab-link">Insurance</a>
+                                    <a href="#tab_service" class="tab-link">Service History</a>
                                 @elseif ($isLeasable)
-                                    <a href="#tab_tenants" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Tenants</a>
-                                    <a href="#tab_leases" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Leases</a>
-                                    <a href="#tab_financials" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Financials</a>
-                                    <a href="#tab_invoices" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Invoices</a>
+                                    <a href="#tab_tenants" class="tab-link">Tenants</a>
+                                    <a href="#tab_leases" class="tab-link">Leases</a>
+                                    <a href="#tab_financials" class="tab-link">Financials</a>
+                                    <a href="#tab_invoices" class="tab-link">Invoices</a>
                                 @else
-                                    <a href="#tab_financials" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Financials</a>
+                                    <a href="#tab_financials" class="tab-link">Financials</a>
                                 @endif
-                                <a href="#tab_transactions" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Transactions</a>
-                                <a href="#tab_documents" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Documents</a>
-                                <a href="#tab_compliance" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Compliance</a>
-                                <a href="#tab_notes" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Notes</a>
-                                <a href="#tab_reminders" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Reminders</a>
-                                <a href="#tab_emails" class="tab-link px-4 py-2 text-sm font-medium text-gray-600 hover:text-indigo-600 dark:text-gray-300 dark:hover:text-indigo-400 border-b-2 border-transparent hover:border-indigo-500 transition-all duration-200">Emails</a>
+                                <a href="#tab_transactions" class="tab-link">Transactions</a>
+                                <a href="#tab_documents" class="tab-link">Documents</a>
+                                <a href="#tab_compliance" class="tab-link">Compliance</a>
+                                <a href="#tab_notes" class="tab-link">Notes</a>
+                                <a href="#tab_reminders" class="tab-link">Reminders</a>
+                                <a href="#tab_emails" class="tab-link">Emails</a>
                             </nav>
                         </div>
 
-                        <!-- Tab Content -->
-                        <div class="tab-content-container">
+                        {{-- Tab Content --}}
+                        <div class="tab-content-container px-5 pb-6">
                             <!-- Details Tab -->
                             <div id="tab_details" class="tab-content hidden">
-                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                <div class="asset-panel">
                                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">General Details</h3>
                                     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div>
@@ -123,7 +125,7 @@
                             <!-- Car: Registration Tab -->
                             @if ($asset->asset_type === 'Car')
                                 <div id="tab_registration" class="tab-content hidden">
-                                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div class="asset-panel">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Registration Details</h3>
                                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
@@ -160,7 +162,7 @@
 
                                 <!-- Car: Insurance Tab -->
                                 <div id="tab_insurance" class="tab-content hidden">
-                                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div class="asset-panel">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Insurance Details</h3>
                                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
@@ -197,7 +199,7 @@
 
                                 <!-- Car: Service History Tab -->
                                 <div id="tab_service" class="tab-content hidden">
-                                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div class="asset-panel">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Service History</h3>
                                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
@@ -238,7 +240,7 @@
                             @elseif ($isLeasable)
                                 <!-- Real Estate: Tenants Tab -->
                                 <div id="tab_tenants" class="tab-content hidden">
-                                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div class="asset-panel">
                                         <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
                                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Tenants</h3>
                                             <div class="flex flex-wrap gap-2">
@@ -351,7 +353,7 @@
 
                                 <!-- Real Estate: Leases Tab -->
                                 <div id="tab_leases" class="tab-content hidden">
-                                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div class="asset-panel">
                                         <div class="flex justify-between items-center mb-4">
                                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Leases</h3>
                                             <a href="{{ route('business-entities.assets.leases.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
@@ -397,7 +399,7 @@
 
                                 <!-- Real Estate: Financials Tab -->
                                 <div id="tab_financials" class="tab-content hidden">
-                                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div class="asset-panel">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Financial Details</h3>
                                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
@@ -504,7 +506,7 @@
                             @else
                                 <!-- Generic: Financials Tab -->
                                 <div id="tab_financials" class="tab-content hidden">
-                                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                    <div class="asset-panel">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Financial Details</h3>
                                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
@@ -545,7 +547,7 @@
 
                             <!-- Transactions (entity-level tx linked to this asset) -->
                             <div id="tab_transactions" class="tab-content hidden">
-                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                <div class="asset-panel">
                                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Transactions</h3>
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Book transactions tagged to this asset also appear on the business entity. Leave asset blank when adding a transaction to keep it entity-wide only.</p>
                                     @if ($asset->transactions->isEmpty())
@@ -594,7 +596,7 @@
 
                             <!-- Documents Tab -->
                             <div id="tab_documents" class="tab-content hidden">
-                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                <div class="asset-panel">
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Asset documents are separate from entity-level documents. Add categories and checklist rows here.</p>
                                     @include('business-entities.partials.documents-workspace', [
                                         'businessEntity' => $businessEntity,
@@ -606,7 +608,7 @@
 
                             <!-- Compliance Tab -->
                             <div id="tab_compliance" class="tab-content hidden">
-                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                <div class="asset-panel">
                                     <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Property compliance documents by financial year (land tax, council rates, insurance, etc.).</p>
                                     @include('business-entities.partials.compliance-workspace', [
                                         'businessEntity' => $businessEntity,
@@ -617,7 +619,7 @@
 
                             <!-- Notes Tab -->
                             <div id="tab_notes" class="tab-content hidden">
-                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                <div class="asset-panel">
                                     <div class="flex justify-between items-center mb-4">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Notes</h3>
                                         <button type="button" class="inline-flex items-center px-3 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105" onclick="document.getElementById('note-form').classList.toggle('hidden')">
@@ -672,7 +674,7 @@
 
                             <!-- Reminders Tab -->
                             <div id="tab_reminders" class="tab-content hidden">
-                                <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-md">
+                                <div class="asset-panel border-amber-200/60 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20">
                                     <div class="flex justify-between items-center mb-4">
                                         <h3 class="text-lg font-semibold text-yellow-700 dark:text-yellow-300">Reminders</h3>
                                         <button type="button" class="inline-flex items-center bg-yellow-100 hover:bg-yellow-200 text-yellow-700 dark:bg-yellow-900 dark:hover:bg-yellow-800 dark:text-yellow-200 px-3 py-1 rounded-md text-sm" onclick="document.getElementById('reminder-form').classList.toggle('hidden')">
@@ -762,7 +764,7 @@
 
                             <!-- Emails Tab -->
                             <div id="tab_emails" class="tab-content hidden">
-                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                                <div class="asset-panel">
                                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Allocated Emails</h3>
                                     @php($allocatedEmails = $asset->mailMessages()->latest('sent_date')->with('labels')->paginate(10))
                                     @if ($allocatedEmails->isEmpty())
@@ -803,70 +805,109 @@
     @push('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Tab functionality
-            const tabs = document.querySelectorAll('.tab-link');
-            const tabContents = document.querySelectorAll('.tab-content');
+            const tabsRoot = document.getElementById('asset-tabs');
+            const tabLinks = tabsRoot ? tabsRoot.querySelectorAll('a.tab-link') : [];
+            const tabContents = document.querySelectorAll('.tab-content-container > .tab-content');
+            const hashTabLinks = document.querySelectorAll('.asset-show-page a[href^="#tab_"]');
 
-            function showTab(tabId) {
-                tabContents.forEach(content => {
-                    content.classList.add('hidden');
-                });
-                document.getElementById(tabId).classList.remove('hidden');
+            function escapeHashId(id) {
+                return (typeof CSS !== 'undefined' && CSS.escape) ? CSS.escape(id) : id.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            }
 
-                if (tabId.startsWith('tab_') && window.location.hash !== '#' + tabId) {
-                    history.replaceState(null, '', '#' + tabId);
+            function defaultTabId() {
+                return tabLinks.length > 0 ? tabLinks[0].getAttribute('href').substring(1) : 'tab_details';
+            }
+
+            function switchTab(targetId, options) {
+                const opts = options || {};
+                const candidate = document.getElementById(targetId);
+                let resolvedId = targetId;
+
+                if (!candidate || !candidate.classList.contains('tab-content')) {
+                    resolvedId = defaultTabId();
+                    if (opts.fixInvalidHash && window.location.hash !== '#' + resolvedId) {
+                        history.replaceState(null, '', '#' + resolvedId);
+                    }
                 }
 
-                if (tabId === 'tab_compliance') {
+                tabContents.forEach(content => content.classList.add('hidden'));
+
+                const selectedTab = document.getElementById(resolvedId);
+                if (selectedTab) {
+                    selectedTab.classList.remove('hidden');
+                }
+
+                tabLinks.forEach(tab => tab.classList.remove('active'));
+
+                if (tabsRoot) {
+                    const activeLink = tabsRoot.querySelector('a.tab-link[href="#' + escapeHashId(resolvedId) + '"]');
+                    if (activeLink) {
+                        activeLink.classList.add('active');
+                    }
+                }
+
+                if (resolvedId === 'tab_compliance') {
                     window.dispatchEvent(new CustomEvent('compliance-tab-activated'));
                 }
             }
 
-            tabs.forEach(tab => {
-                tab.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const tabId = this.getAttribute('href').substring(1);
-                    showTab(tabId);
-                });
-            });
+            function openTabFromLink(link, pushHistory) {
+                const href = link.getAttribute('href');
+                if (!href || !href.startsWith('#tab_')) {
+                    return;
+                }
 
-            // Show tab from URL hash (e.g. after "Sync to Leases tab") or first tab by default
-            if (tabs.length > 0) {
-                const hash = window.location.hash ? window.location.hash.substring(1) : '';
-                const hashEl = hash && document.getElementById(hash);
-                if (hashEl && hash.startsWith('tab_')) {
-                    showTab(hash);
-                } else {
-                    const firstTabId = tabs[0].getAttribute('href').substring(1);
-                    showTab(firstTabId);
+                const targetId = href.substring(1);
+                switchTab(targetId);
+                if (pushHistory && window.location.hash !== href) {
+                    history.pushState(null, '', href);
                 }
             }
 
-            // Initialize reminder logic
+            tabLinks.forEach(tab => {
+                tab.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    openTabFromLink(this, true);
+                });
+            });
+
+            hashTabLinks.forEach(link => {
+                if (link.classList.contains('tab-link')) {
+                    return;
+                }
+
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    openTabFromLink(this, true);
+                });
+            });
+
+            window.addEventListener('popstate', function() {
+                const targetId = window.location.hash ? window.location.hash.substring(1) : defaultTabId();
+                switchTab(targetId);
+            });
+
+            window.addEventListener('hashchange', function() {
+                const targetId = window.location.hash ? window.location.hash.substring(1) : defaultTabId();
+                switchTab(targetId);
+            });
+
+            const initialTab = window.location.hash ? window.location.hash.substring(1) : defaultTabId();
+            switchTab(initialTab, { fixInvalidHash: true });
+
             function initializeReminderLogic() {
                 const repeatTypeSelect = document.getElementById('repeat_type');
                 const repeatEndDateContainer = document.getElementById('repeat_end_date_container');
 
                 if (repeatTypeSelect && repeatEndDateContainer) {
-                    // Set initial state
-                    if (repeatTypeSelect.value !== 'none') {
-                        repeatEndDateContainer.style.display = 'block';
-                    } else {
-                        repeatEndDateContainer.style.display = 'none';
-                    }
+                    repeatEndDateContainer.style.display = repeatTypeSelect.value !== 'none' ? 'block' : 'none';
 
-                    // Add event listener
                     repeatTypeSelect.addEventListener('change', function() {
-                        if (this.value !== 'none') {
-                            repeatEndDateContainer.style.display = 'block';
-                        } else {
-                            repeatEndDateContainer.style.display = 'none';
-                        }
+                        repeatEndDateContainer.style.display = this.value !== 'none' ? 'block' : 'none';
                     });
                 }
             }
 
-            // Call the function directly
             initializeReminderLogic();
         });
 

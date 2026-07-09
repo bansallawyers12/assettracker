@@ -52,7 +52,7 @@
 
                 <div class="sm:col-span-2">
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Vendor</p>
-                    <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->vendor_name ?? '—' }}</p>
+                    <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->vendor_display ?? '—' }}</p>
                 </div>
 
                 <div>

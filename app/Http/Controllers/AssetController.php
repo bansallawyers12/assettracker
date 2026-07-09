@@ -58,12 +58,23 @@ class AssetController extends Controller
     {
         $this->authorize('view', $businessEntity);
 
-        $rentPaidBySuggestions = $this->rentPaidBySuggestions($businessEntity);
+        return view('assets.create', $this->workspaceFormContext($businessEntity));
+    }
 
-        return view('assets.create', array_merge(
-            compact('businessEntity', 'rentPaidBySuggestions'),
-            $this->bankAccountPickerData($businessEntity)
-        ));
+    /**
+     * @return array<string, mixed>
+     */
+    public function workspaceFormContext(BusinessEntity $businessEntity, ?Asset $asset = null, string $mode = 'create'): array
+    {
+        return array_merge(
+            [
+                'businessEntity' => $businessEntity,
+                'asset' => $asset,
+                'mode' => $mode,
+                'rentPaidBySuggestions' => $this->rentPaidBySuggestions($businessEntity, $asset),
+            ],
+            $this->bankAccountPickerData($businessEntity, $asset)
+        );
     }
 
     public function store(Request $request, BusinessEntity $businessEntity)
@@ -116,7 +127,18 @@ class AssetController extends Controller
         $asset = $businessEntity->assets()->create($assetData);
         $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity, $validatedData['asset_type'] ?? 'Car');
 
-        return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
+        if ($request->expectsJson()) {
+            $asset->refresh();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Asset created successfully.',
+                'asset' => (new \App\Http\Resources\AssetResource($asset))->resolve(),
+            ]);
+        }
+
+        return redirect()->route('business-entities.show', $businessEntity->id)
+            ->withFragment('tab_assets')
             ->with('success', 'Asset created successfully');
     }
 
@@ -224,7 +246,20 @@ class AssetController extends Controller
         $this->validateBankAccountLinks($bankAccountLinks, $businessEntity, $validatedData['asset_type']);
         $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity, $validatedData['asset_type']);
 
-        return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])
+        $asset->update($validatedData);
+
+        if ($request->expectsJson()) {
+            $asset->refresh();
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Asset updated successfully.',
+                'asset' => (new \App\Http\Resources\AssetResource($asset))->resolve(),
+            ]);
+        }
+
+        return redirect()->route('business-entities.show', $businessEntity->id)
+            ->withFragment('tab_assets')
             ->with('success', 'Asset updated successfully');
     }
 

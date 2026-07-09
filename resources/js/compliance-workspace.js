@@ -1,6 +1,9 @@
 /**
  * FY compliance workspace — category tabs, loaded when #tab_compliance is activated.
  */
+import { showWorkspaceAlert, showWorkspaceConfirm, showWorkspacePrompt, showWorkspaceSelect } from './workspace-dialog.js';
+import { setRowUploading } from './workspace-upload-ui.js';
+
 (function () {
     'use strict';
 
@@ -31,17 +34,34 @@
     }
 
     function alertHttpError(status) {
-        if (status === 419) { alert('Your session has expired. Refresh the page and try again.'); return; }
-        if (status === 413) { alert('This file is too large for the server upload limit.'); return; }
-        alert('Request failed. Please try again.');
+        if (status === 419) {
+            showWorkspaceAlert({ title: 'Session expired', message: 'Your session has expired. Refresh the page and try again.' });
+            return;
+        }
+        if (status === 413) {
+            showWorkspaceAlert({ message: 'This file is too large for the server upload limit.' });
+            return;
+        }
+        showWorkspaceAlert({ message: 'Request failed. Please try again.' });
     }
 
     function alertValidationErrors(j) {
         if (j?.errors) {
-            alert(Object.values(j.errors).flat().join('\n') || j.message || 'Validation failed.');
+            showWorkspaceAlert({
+                title: 'Validation failed',
+                message: Object.values(j.errors).flat().join('\n') || j.message || 'Validation failed.',
+            });
             return true;
         }
         return false;
+    }
+
+    function showError(message, title) {
+        showWorkspaceAlert({ title, message: message || 'Something went wrong.' });
+    }
+
+    function showSuccess(message, title = 'Success') {
+        showWorkspaceAlert({ title, message, variant: 'success' });
     }
 
     const STATUS_LABELS = {
@@ -51,34 +71,64 @@
         paid: 'Paid',
     };
 
-    const DATE_INPUT_CLASS = 'form-date-input text-xs rounded-sm';
-
     function buildStatusCell(file, locked) {
         const fileId = file.id;
         const dueHint = file.due_date
-            ? `<div class="text-xs text-gray-400 mt-0.5">Due ${escHtml(file.due_date)}</div>`
+            ? `<div class="mt-1 text-xs text-amber-600 dark:text-amber-400">Due ${escHtml(file.due_date)}</div>`
             : '';
 
         if (locked) {
-            return `<span class="text-xs">${escHtml(STATUS_LABELS[file.status] || file.status)}</span>${dueHint}`;
+            return `<span class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-300">${escHtml(STATUS_LABELS[file.status] || file.status)}</span>${dueHint}`;
         }
 
         const opts = Object.entries(STATUS_LABELS).map(([value, label]) =>
             `<option value="${value}" ${file.status === value ? 'selected' : ''}>${escHtml(label)}</option>`
         ).join('');
 
-        return `<div>
-            <select class="compliance-status-select text-xs border border-gray-300 dark:border-gray-600 rounded-sm dark:bg-gray-800 w-full max-w-[140px]" data-file-id="${fileId}">${opts}</select>
-            <div class="compliance-status-dates mt-1 flex flex-col gap-1">
-                <label class="text-xs text-gray-500 flex items-center gap-1">Lodged
-                    <input type="date" class="${DATE_INPUT_CLASS} compliance-lodged-date" data-file-id="${fileId}" value="${escAttr(file.lodged_date || '')}">
+        return `<div class="min-w-0 compliance-status-cell">
+            <select class="compliance-status-select" data-file-id="${fileId}">${opts}</select>
+            <div class="compliance-date-grid">
+                <label class="compliance-date-field">Lodged
+                    <input type="date" class="compliance-lodged-date" data-file-id="${fileId}" value="${escAttr(file.lodged_date || '')}">
                 </label>
-                <label class="text-xs text-gray-500 flex items-center gap-1">Paid
-                    <input type="date" class="${DATE_INPUT_CLASS} compliance-paid-date" data-file-id="${fileId}" value="${escAttr(file.paid_date || '')}">
+                <label class="compliance-date-field">Paid
+                    <input type="date" class="compliance-paid-date" data-file-id="${fileId}" value="${escAttr(file.paid_date || '')}">
                 </label>
             </div>
             ${dueHint}
         </div>`;
+    }
+
+    function truncateFileName(name, max = 40) {
+        const raw = String(name ?? '');
+        if (raw.length <= max) {
+            return raw;
+        }
+        const dot = raw.lastIndexOf('.');
+        const ext = dot > 0 ? raw.slice(dot) : '';
+        const base = dot > 0 ? raw.slice(0, dot) : raw;
+        const keep = Math.max(8, max - ext.length - 1);
+
+        return `${base.slice(0, keep)}…${ext}`;
+    }
+
+    function fileTypeLabel(fileName, filetype) {
+        if (filetype && filetype.includes('pdf')) {
+            return 'PDF';
+        }
+        if (filetype && filetype.startsWith('image/')) {
+            return 'IMG';
+        }
+        const ext = String(fileName ?? '').split('.').pop();
+
+        return ext ? ext.toUpperCase().slice(0, 4) : 'FILE';
+    }
+
+    function isImageFile(file) {
+        const type = String(file?.filetype ?? '').toLowerCase();
+        const name = String(file?.file_name ?? '').toLowerCase();
+        return type.startsWith('image/')
+            || /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(name);
     }
 
     function buildFileRow(file, fileAccept, locked) {
@@ -90,47 +140,54 @@
         const requiredMark = file.is_required ? '' : ' <span class="text-gray-400 text-xs">(optional)</span>';
 
         const fileCell = hasFile
-            ? `<button type="button"
-                    class="text-indigo-600 dark:text-indigo-400 hover:underline compliance-preview-btn"
-                    data-file-id="${fileId}"
-                    data-name="${escAttr(fileName)}">${escHtml(fileName)}</button>`
-            : `<span class="text-gray-400">No file</span>`;
+            ? `<div class="compliance-file-chip">
+                    <button type="button"
+                        class="compliance-preview-btn compliance-file-name"
+                        data-file-id="${fileId}"
+                        data-name="${escAttr(fileName)}"
+                        title="${escAttr(fileName)}">${escHtml(truncateFileName(fileName, 32))}</button>
+                    <div class="compliance-file-meta">
+                        <span class="compliance-file-type-badge">${escHtml(fileTypeLabel(fileName, file.filetype))}</span>
+                        <span class="compliance-file-status-badge">On S3</span>
+                    </div>
+                </div>`
+            : `<span class="compliance-file-empty">No file uploaded</span>`;
 
         let actions = '';
         if (!locked) {
             if (!hasFile) {
-                actions += `<label class="cursor-pointer text-indigo-600 text-xs">Upload
+                actions += `<label class="compliance-link-btn compliance-link-btn-primary cursor-pointer">Upload
                     <input type="file" class="hidden compliance-slot-file"
                         accept="${escAttr(fileAccept)}"
                         data-file-id="${fileId}">
                 </label>`;
             } else {
-                actions += `<label class="cursor-pointer text-xs text-gray-600 dark:text-gray-400 mr-1">Replace
+                actions += `<label class="compliance-link-btn compliance-link-btn-muted cursor-pointer">Replace
                     <input type="file" class="hidden compliance-slot-file"
                         accept="${escAttr(fileAccept)}"
                         data-file-id="${fileId}"
                         data-replace="1">
                 </label>`;
             }
-            const clearCls = hasFile ? '' : 'opacity-40 pointer-events-none';
-            actions += `<button type="button" class="compliance-clear text-xs text-amber-600 ${clearCls}" data-file-id="${fileId}">Clear</button>`;
-            actions += `<button type="button" class="compliance-rename-file text-xs text-gray-500 dark:text-gray-400 ml-1" data-file-id="${fileId}" data-label="${escAttr(label)}">Rename</button>`;
-            actions += `<button type="button" class="compliance-move-file text-xs text-gray-500 dark:text-gray-400" data-file-id="${fileId}">Move</button>`;
+            const clearCls = hasFile ? 'compliance-link-btn-warning' : 'compliance-link-btn-muted opacity-40 pointer-events-none';
+            actions += `<button type="button" class="compliance-link-btn ${clearCls} compliance-clear" data-file-id="${fileId}">Clear</button>`;
+            actions += `<button type="button" class="compliance-link-btn compliance-link-btn-muted compliance-rename-file" data-file-id="${fileId}" data-label="${escAttr(label)}">Rename</button>`;
+            actions += `<button type="button" class="compliance-link-btn compliance-link-btn-muted compliance-move-file" data-file-id="${fileId}">Move</button>`;
             if (file.custom_label) {
-                actions += `<button type="button" class="compliance-del-file text-xs text-red-600 ml-1" data-file-id="${fileId}">×</button>`;
+                actions += `<button type="button" class="compliance-link-btn compliance-link-btn-danger compliance-del-file" data-file-id="${fileId}">Delete</button>`;
             }
         } else {
             actions = `<span class="text-xs text-gray-400">Locked</span>`;
         }
 
-        return `<tr class="border-t border-gray-200 dark:border-gray-700" data-compliance-row="${fileId}">
-            <td class="px-3 py-2 align-top">
+        return `<tr class="border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50/70 dark:hover:bg-gray-800/40" data-compliance-row="${fileId}">
+            <td class="compliance-col-type">
                 <span class="font-medium text-gray-900 dark:text-gray-100">${escHtml(label)}${requiredMark}</span>
-                <div class="text-xs text-gray-500">${escHtml(freq)}</div>
+                <div class="mt-0.5 text-xs text-gray-500">${escHtml(freq)}</div>
             </td>
-            <td class="px-3 py-2 align-top">${fileCell}</td>
-            <td class="px-3 py-2 align-top">${buildStatusCell(file, locked)}</td>
-            <td class="px-3 py-2 align-top text-right whitespace-nowrap">${actions}</td>
+            <td class="compliance-col-file">${fileCell}</td>
+            <td class="compliance-col-status">${buildStatusCell(file, locked)}</td>
+            <td class="compliance-col-actions"><div class="compliance-row-actions">${actions}</div></td>
         </tr>`;
     }
 
@@ -148,41 +205,70 @@
             : '<tr><td colspan="4" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No checklist items in this category.</td></tr>';
 
         const headerActions = locked ? '' : `
-            <div class="flex gap-2">
-                <button type="button" class="compliance-add-slot text-sm px-2 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-sm" data-category-id="${cat.id}">+ Checklist</button>
-                <button type="button" class="compliance-rename-cat text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-sm dark:text-gray-300" data-category-id="${cat.id}" data-title="${escAttr(cat.title)}">Rename</button>
-                <button type="button" class="compliance-delete-cat text-xs px-2 py-1 border border-red-300 text-red-600 rounded-sm" data-category-id="${cat.id}">Delete</button>
+            <div class="flex flex-wrap gap-2">
+                <button type="button" class="compliance-btn compliance-btn-primary compliance-add-slot" data-category-id="${cat.id}">+ Checklist</button>
+                <button type="button" class="compliance-btn compliance-btn-secondary compliance-rename-cat" data-category-id="${cat.id}" data-title="${escAttr(cat.title)}">Rename</button>
+                <button type="button" class="compliance-btn compliance-btn-danger compliance-delete-cat" data-category-id="${cat.id}">Delete</button>
             </div>`;
 
         const catBadge = cat.completeness && cat.completeness.required_missing > 0
-            ? `<span class="text-xs text-amber-600 ml-2">${cat.completeness.required_missing} required missing</span>`
+            ? `<span class="compliance-badge compliance-badge-warning ml-2">${cat.completeness.required_missing} required missing</span>`
             : '';
 
-        return `<div class="compliance-cat-panel hidden" data-category-panel="${cat.id}">
-            <div class="flex justify-between items-center mb-3">
-                <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100">${escHtml(cat.title)} — checklist${catBadge}</h4>
+        return `<div class="compliance-cat-panel hidden compliance-panel" data-category-panel="${cat.id}">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+                <div>
+                    <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-1">
+                        ${escHtml(cat.title)}
+                        <span class="text-sm font-normal text-gray-500 dark:text-gray-400">— checklist</span>
+                        ${catBadge}
+                    </h4>
+                </div>
                 ${headerActions}
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-100 dark:bg-gray-800">
+            <div class="compliance-checklist-layout">
+                <div class="compliance-table-wrap">
+                    <table class="compliance-table">
+                        <thead>
                             <tr>
-                                <th class="text-left px-3 py-2">Document type</th>
-                                <th class="text-left px-3 py-2">File</th>
-                                <th class="text-left px-3 py-2">Status</th>
-                                <th class="px-3 py-2"></th>
+                                <th class="compliance-col-type">Document type</th>
+                                <th class="compliance-col-file">File</th>
+                                <th class="compliance-col-status">Status</th>
+                                <th class="compliance-col-actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody data-category-tbody="${cat.id}">${rows}</tbody>
                     </table>
                 </div>
-                <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4 min-h-[280px]">
-                    <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview</h5>
-                    <iframe class="compliance-preview-frame w-full h-[240px] bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-600" title="Preview"></iframe>
-                    <div class="mt-3 flex gap-2 flex-wrap">
-                        <a href="#" target="_blank" class="compliance-preview-dl text-sm px-3 py-1 bg-blue-600 text-white rounded-sm opacity-50 pointer-events-none">Download</a>
-                        <button type="button" class="compliance-preview-clear text-sm px-3 py-1 bg-amber-600 text-white rounded-sm opacity-50 pointer-events-none">Clear file</button>
+                <div class="compliance-preview-card">
+                    <div class="compliance-preview-header">
+                        <h5 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Preview</h5>
+                        <p class="compliance-preview-filename text-xs text-gray-500 dark:text-gray-400 truncate">Select a file to preview</p>
+                    </div>
+                    <div class="compliance-preview-body">
+                        <div class="compliance-preview-empty">
+                            <div class="compliance-preview-empty-icon" aria-hidden="true">📄</div>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-200">No preview yet</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">Upload a file or click a filename to preview here.</p>
+                        </div>
+                        <div class="compliance-preview-loading hidden">
+                            <div class="compliance-preview-spinner" aria-hidden="true"></div>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Loading preview…</p>
+                        </div>
+                        <embed class="compliance-preview-embed hidden" type="application/pdf" title="Document preview" />
+                        <img class="compliance-preview-image hidden" alt="Document preview" />
+                        <iframe class="compliance-preview-frame hidden" title="Document preview"></iframe>
+                        <div class="compliance-preview-fallback hidden">
+                            <p class="text-sm text-gray-700 dark:text-gray-200">Preview could not be embedded.</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Use Open or Download below.</p>
+                        </div>
+                    </div>
+                    <div class="compliance-preview-actions">
+                        <a href="#" target="_blank" rel="noopener noreferrer"
+                            class="compliance-btn compliance-btn-secondary compliance-preview-open opacity-50 pointer-events-none hidden">Open</a>
+                        <a href="#" target="_blank" rel="noopener noreferrer"
+                            class="compliance-btn compliance-btn-primary compliance-preview-dl opacity-50 pointer-events-none">Download</a>
+                        <button type="button" class="compliance-btn compliance-btn-danger compliance-preview-clear opacity-50 pointer-events-none">Clear file</button>
                     </div>
                 </div>
             </div>
@@ -204,6 +290,16 @@
         const prefix = root.id.replace('-workspace', '');
         const SESSION_KEY = `compliance-ws-${entityId}-${assetId || 'entity'}`;
         const base = `/business-entities/${entityId}`;
+
+        function complianceContentUrl(fileId, download = false) {
+            if (!fileId) return null;
+            return `${base}/compliance-files/${fileId}/content${download ? '?download=1' : ''}`;
+        }
+
+        function previewSourceUrl(file) {
+            if (!file?.id || file.has_file === false) return null;
+            return complianceContentUrl(file.id) || file.content_url || null;
+        }
 
         const fySelect = document.getElementById(prefix + '-fy-select');
         const completenessEl = document.getElementById(prefix + '-completeness');
@@ -255,7 +351,7 @@
             categoryBarEl?.classList.add('hidden');
         }
 
-        function showError(message) {
+        function showLoadError(message) {
             loadingEl?.classList.add('hidden');
             contentEl?.classList.add('hidden');
             categoryBarEl?.classList.add('hidden');
@@ -329,14 +425,7 @@
         function setActiveCategory(categoryId) {
             activeCategoryId = String(categoryId);
             root.querySelectorAll('.compliance-cat-tab').forEach(t => {
-                const active = String(t.dataset.categoryId) === activeCategoryId;
-                if (active) {
-                    t.classList.add('bg-indigo-600', 'text-white');
-                    t.classList.remove('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-gray-200');
-                } else {
-                    t.classList.remove('bg-indigo-600', 'text-white');
-                    t.classList.add('bg-gray-200', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-gray-200');
-                }
+                t.classList.toggle('active', String(t.dataset.categoryId) === activeCategoryId);
             });
             root.querySelectorAll('.compliance-cat-panel').forEach(p => {
                 p.classList.toggle('hidden', p.dataset.categoryPanel !== activeCategoryId);
@@ -344,56 +433,166 @@
             saveSession();
         }
 
-        function applyPreviewToPanel(panel, file) {
-            if (!panel || !file?.content_url) return;
+        function hidePreviewMedia(panel) {
+            panel?.querySelector('.compliance-preview-embed')?.classList.add('hidden');
+            panel?.querySelector('.compliance-preview-image')?.classList.add('hidden');
+            panel?.querySelector('.compliance-preview-frame')?.classList.add('hidden');
+        }
 
+        function resetPreviewPanel(panel) {
+            if (!panel) return;
+
+            if (panel._previewLoadTimer) {
+                clearTimeout(panel._previewLoadTimer);
+                panel._previewLoadTimer = null;
+            }
+
+            const previewEmbed = panel.querySelector('.compliance-preview-embed');
+            const previewImage = panel.querySelector('.compliance-preview-image');
             const previewFrame = panel.querySelector('.compliance-preview-frame');
             const previewDl = panel.querySelector('.compliance-preview-dl');
+            const previewOpen = panel.querySelector('.compliance-preview-open');
             const previewClear = panel.querySelector('.compliance-preview-clear');
-            if (!previewFrame || !previewDl) return;
+            const emptyEl = panel.querySelector('.compliance-preview-empty');
+            const loadingEl = panel.querySelector('.compliance-preview-loading');
+            const fallbackEl = panel.querySelector('.compliance-preview-fallback');
+            const nameEl = panel.querySelector('.compliance-preview-filename');
+
+            if (previewEmbed) {
+                previewEmbed.removeAttribute('src');
+            }
+            if (previewImage) {
+                previewImage.removeAttribute('src');
+            }
+            if (previewFrame) {
+                previewFrame.removeAttribute('src');
+                previewFrame.onload = null;
+            }
+            hidePreviewMedia(panel);
+            if (previewDl) {
+                previewDl.href = '#';
+                previewDl.classList.add('opacity-50', 'pointer-events-none');
+            }
+            if (previewOpen) {
+                previewOpen.href = '#';
+                previewOpen.classList.add('hidden', 'opacity-50', 'pointer-events-none');
+            }
+            previewClear?.classList.add('opacity-50', 'pointer-events-none');
+            if (previewClear) delete previewClear.dataset.fileId;
+            emptyEl?.classList.remove('hidden');
+            loadingEl?.classList.add('hidden');
+            fallbackEl?.classList.add('hidden');
+            if (nameEl) nameEl.textContent = 'Select a file to preview';
+        }
+
+        function revealPreviewMedia(panel, mediaEl) {
+            if (!panel || !mediaEl) return;
+
+            const loadingEl = panel.querySelector('.compliance-preview-loading');
+            const emptyEl = panel.querySelector('.compliance-preview-empty');
+            const fallbackEl = panel.querySelector('.compliance-preview-fallback');
+
+            hidePreviewMedia(panel);
+            loadingEl?.classList.add('hidden');
+            emptyEl?.classList.add('hidden');
+            fallbackEl?.classList.add('hidden');
+            mediaEl.classList.remove('hidden');
+        }
+
+        function applyPreviewToPanel(panel, file) {
+            const viewUrl = previewSourceUrl(file);
+            if (!panel || !viewUrl) return;
+
+            const previewImage = panel.querySelector('.compliance-preview-image');
+            const previewFrame = panel.querySelector('.compliance-preview-frame');
+            const previewDl = panel.querySelector('.compliance-preview-dl');
+            const previewOpen = panel.querySelector('.compliance-preview-open');
+            const previewClear = panel.querySelector('.compliance-preview-clear');
+            const emptyEl = panel.querySelector('.compliance-preview-empty');
+            const loadingEl = panel.querySelector('.compliance-preview-loading');
+            const fallbackEl = panel.querySelector('.compliance-preview-fallback');
+            const nameEl = panel.querySelector('.compliance-preview-filename');
+
+            if (panel._previewLoadTimer) {
+                clearTimeout(panel._previewLoadTimer);
+                panel._previewLoadTimer = null;
+            }
 
             previewFileId = String(file.id);
-            previewFrame.removeAttribute('src');
-            window.requestAnimationFrame(() => { previewFrame.src = file.content_url; });
-            previewDl.href = file.download_url || (file.content_url + (file.content_url.includes('?') ? '&download=1' : '?download=1'));
+            const downloadUrl = complianceContentUrl(file.id, true) || file.download_url;
+
+            emptyEl?.classList.add('hidden');
+            fallbackEl?.classList.add('hidden');
+            loadingEl?.classList.add('hidden');
+            hidePreviewMedia(panel);
+
+            if (nameEl) nameEl.textContent = file.file_name || 'Document';
+            previewDl.href = downloadUrl || viewUrl;
             previewDl.classList.remove('opacity-50', 'pointer-events-none');
+            if (previewOpen) {
+                previewOpen.href = viewUrl;
+                previewOpen.classList.remove('hidden', 'opacity-50', 'pointer-events-none');
+            }
             previewClear?.classList.remove('opacity-50', 'pointer-events-none');
             if (previewClear) previewClear.dataset.fileId = String(file.id);
+
+            if (isImageFile(file) && previewImage) {
+                previewImage.onload = null;
+                previewImage.onerror = null;
+                previewImage.src = viewUrl;
+                revealPreviewMedia(panel, previewImage);
+            } else if (previewFrame) {
+                previewFrame.onload = null;
+                previewFrame.removeAttribute('src');
+                window.requestAnimationFrame(() => { previewFrame.src = viewUrl; });
+                revealPreviewMedia(panel, previewFrame);
+            } else {
+                fallbackEl?.classList.remove('hidden');
+            }
+
             saveSession();
         }
 
-        function setPreview(fileId) {
-            if (!fileId) return;
+        function setPreview(fileOrId, { openInNewTab = false } = {}) {
+            if (!fileOrId) return;
 
-            const file = findFile(fileId);
-            if (!file?.content_url) return;
+            const file = (typeof fileOrId === 'object')
+                ? fileOrId
+                : findFile(fileOrId);
+            if (!previewSourceUrl(file)) return;
 
             if (file.category_id && String(file.category_id) !== String(activeCategoryId)) {
                 setActiveCategory(file.category_id);
             }
 
             applyPreviewToPanel(getActivePanel(), file);
+            root.querySelectorAll('[data-compliance-row]').forEach(row => {
+                row.classList.toggle('compliance-row-preview-active', row.dataset.complianceRow === String(fileId));
+            });
+
+            getActivePanel()?.querySelector('.compliance-preview-card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+            if (openInNewTab) {
+                window.open(previewSourceUrl(file), '_blank', 'noopener,noreferrer');
+            }
         }
 
         function clearPreview() {
             previewFileId = null;
-            const panel = getActivePanel();
-            if (!panel) return;
-
-            const previewFrame = panel.querySelector('.compliance-preview-frame');
-            const previewDl = panel.querySelector('.compliance-preview-dl');
-            const previewClear = panel.querySelector('.compliance-preview-clear');
-            if (previewFrame) previewFrame.removeAttribute('src');
-            if (previewDl) { previewDl.href = '#'; previewDl.classList.add('opacity-50', 'pointer-events-none'); }
-            previewClear?.classList.add('opacity-50', 'pointer-events-none');
-            if (previewClear) delete previewClear.dataset.fileId;
+            resetPreviewPanel(getActivePanel());
+            root.querySelectorAll('.compliance-row-preview-active').forEach(row => {
+                row.classList.remove('compliance-row-preview-active');
+            });
             saveSession();
         }
 
         function updateCompleteness(c) {
             if (!completenessEl || !c) { completenessEl?.classList.add('hidden'); return; }
-            completenessEl.textContent = `${c.uploaded}/${c.total} uploaded` +
-                (c.required_missing > 0 ? ` · ${c.required_missing} required missing` : '');
+            completenessEl.innerHTML =
+                `<span class="compliance-badge compliance-badge-neutral">${c.uploaded}/${c.total} uploaded</span>` +
+                (c.required_missing > 0
+                    ? `<span class="compliance-badge compliance-badge-warning">${c.required_missing} required missing</span>`
+                    : '');
             completenessEl.classList.remove('hidden');
         }
 
@@ -425,7 +624,7 @@
             } else {
                 categoryTabsEl.innerHTML = categories.map((cat, i) =>
                     `<button type="button"
-                        class="compliance-cat-tab px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${i === 0 ? 'bg-indigo-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200'}"
+                        class="compliance-cat-tab${i === 0 ? ' active' : ''}"
                         data-category-id="${cat.id}">${categoryTabLabel(cat)}</button>`
                 ).join('');
 
@@ -503,7 +702,7 @@
                 const r = await api(url.pathname + url.search, { method: 'GET', headers: { 'Content-Type': 'application/json' } });
                 const j = parseJson(await r.text());
                 if (!r.ok || !j?.status) {
-                    showError(workspaceErrorMessage(r.status, j));
+                    showLoadError(workspaceErrorMessage(r.status, j));
                     return;
                 }
                 populateYearSelect(j.workspace.available_years, j.workspace.fy_start);
@@ -512,7 +711,7 @@
                 root.dataset.loaded = '1';
                 saveSession({ fyStart: j.workspace.fy_start });
             } catch (_) {
-                showError('Could not reach the server. Check your connection and try again.');
+                showLoadError('Could not reach the server. Check your connection and try again.');
             } finally {
                 fetchInFlight = false;
                 loadingEl?.classList.add('hidden');
@@ -584,7 +783,7 @@
             }
 
             if (file.has_file) {
-                setPreview(file.id);
+                setPreview(file);
             } else if (previewFileId === String(file.id)) {
                 clearPreview();
             }
@@ -665,14 +864,18 @@
             if (j.status && j.file) {
                 patchRow(j.file);
             } else {
-                alertValidationErrors(j) || alert(j.message || 'Failed to update status.');
+                alertValidationErrors(j) || showError(j.message || 'Failed to update status.');
             }
         }
 
         async function handleSlotUpload(input) {
             if (input.dataset.uploading === '1') return;
 
-            if (input.dataset.replace === '1' && !confirm('Replace existing file?')) {
+            if (input.dataset.replace === '1' && !await showWorkspaceConfirm({
+                title: 'Replace file?',
+                message: 'The existing file on this checklist row will be replaced.',
+                confirmText: 'Replace',
+            })) {
                 input.value = '';
                 return;
             }
@@ -681,14 +884,12 @@
             const file = input.files?.[0];
             if (!fileId || !file) { input.value = ''; return; }
             if (maxFileBytes > 0 && file.size > maxFileBytes) {
-                alert(`This file is too large. Maximum is ${(maxFileBytes / 1048576).toFixed(1)} MB per file.`);
+                showError(`This file is too large. Maximum is ${(maxFileBytes / 1048576).toFixed(1)} MB per file.`);
                 input.value = '';
                 return;
             }
 
-            const labelNode = input.closest('label');
-            const origText = labelNode?.firstChild?.textContent;
-            if (labelNode?.firstChild) labelNode.firstChild.textContent = '…';
+            setRowUploading(input, true);
             input.dataset.uploading = '1';
 
             const fd = new FormData();
@@ -708,15 +909,15 @@
                 const j = parseJson(await r.text());
                 input.value = '';
                 if (!j) { alertHttpError(r.status); return; }
-                if (!r.ok) { alert(j.message || 'Upload failed.'); return; }
+                if (!r.ok) { showError(j.message || 'Upload failed.'); return; }
                 if (j.status && j.file) applyFilePatch(j.file);
-                else alert(j.message || 'Upload failed.');
+                else showError(j.message || 'Upload failed.');
             } catch (_) {
                 input.value = '';
-                alert('Upload failed.');
+                showError('Upload failed.');
             } finally {
+                setRowUploading(input, false);
                 delete input.dataset.uploading;
-                if (labelNode?.firstChild && origText !== undefined) labelNode.firstChild.textContent = origText;
             }
         }
 
@@ -739,18 +940,22 @@
         });
 
         copyPriorBtn?.addEventListener('click', async () => {
-            if (!workspace?.year_record_id) { alert('Workspace not loaded.'); return; }
-            if (!confirm('Copy custom checklist rows from the prior financial year?')) return;
+            if (!workspace?.year_record_id) { showError('Workspace not loaded.'); return; }
+            if (!await showWorkspaceConfirm({
+                title: 'Copy from prior year?',
+                message: 'Custom checklist rows from the previous financial year will be copied into this year.',
+                confirmText: 'Copy rows',
+            })) return;
             const r = await api(`${base}/compliance-years/${workspace.year_record_id}/copy-custom-rows`, {
                 method: 'POST',
                 body: '{}',
             });
             const j = await r.json();
             if (j.status) {
-                alert(j.message || 'Copied.');
+                showSuccess(j.message || 'Copied.');
                 refreshWorkspace();
             } else {
-                alert(j.message || 'Failed');
+                showError(j.message || 'Failed');
             }
         });
 
@@ -772,30 +977,45 @@
             const clearBtn = ev.target.closest('.compliance-clear:not(.opacity-40):not(.pointer-events-none)');
             if (clearBtn && root.contains(clearBtn)) {
                 const fileId = clearBtn.dataset.fileId;
-                if (!fileId || !confirm('Remove the file from this row?')) return;
+                if (!fileId || !await showWorkspaceConfirm({
+                    title: 'Remove file?',
+                    message: 'The attached file will be removed from this checklist row.',
+                    confirmText: 'Remove file',
+                    variant: 'danger',
+                })) return;
                 const r = await api(`${filesPrefix}/${fileId}/clear`, { method: 'POST', body: '{}' });
                 const j = await r.json();
                 if (j.status && j.file) applyFilePatch(j.file);
-                else alert(j.message || 'Failed');
+                else showError(j.message || 'Failed');
                 return;
             }
 
             const panelClear = ev.target.closest('.compliance-preview-clear:not(.opacity-50):not(.pointer-events-none)');
             if (panelClear && root.contains(panelClear)) {
                 const fileId = panelClear.dataset.fileId;
-                if (!fileId || !confirm('Remove the file from this row?')) return;
+                if (!fileId || !await showWorkspaceConfirm({
+                    title: 'Remove file?',
+                    message: 'The attached file will be removed from this checklist row.',
+                    confirmText: 'Remove file',
+                    variant: 'danger',
+                })) return;
                 const r = await api(`${filesPrefix}/${fileId}/clear`, { method: 'POST', body: '{}' });
                 const j = await r.json();
                 if (j.status && j.file) applyFilePatch(j.file);
-                else alert(j.message || 'Failed');
+                else showError(j.message || 'Failed');
                 return;
             }
 
             const addCatBtn = ev.target.closest(`#${prefix}-add-category`);
             if (addCatBtn && root.contains(addCatBtn)) {
-                if (!workspace?.year_record_id) { alert('Workspace not loaded.'); return; }
-                const title = prompt('Category name');
-                if (!title?.trim()) return;
+                if (!workspace?.year_record_id) { showError('Workspace not loaded.'); return; }
+                const title = await showWorkspacePrompt({
+                    title: 'Add category',
+                    label: 'Category name',
+                    placeholder: 'e.g. Insurance, Land tax',
+                    confirmText: 'Create category',
+                });
+                if (!title) return;
                 const r = await api(`${base}/compliance-years/${workspace.year_record_id}/categories`, {
                     method: 'POST',
                     body: JSON.stringify({ title: title.trim() }),
@@ -804,15 +1024,20 @@
                 if (j.status) {
                     saveSession({ activeCategoryId: j.category?.id ?? activeCategoryId });
                     refreshWorkspace();
-                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                } else alertValidationErrors(j) || showError(j.message || 'Failed');
                 return;
             }
 
             const renameCatBtn = ev.target.closest('.compliance-rename-cat');
             if (renameCatBtn && root.contains(renameCatBtn)) {
                 const catId = renameCatBtn.dataset.categoryId;
-                const title = prompt('New title', renameCatBtn.dataset.title);
-                if (!title?.trim()) return;
+                const title = await showWorkspacePrompt({
+                    title: 'Rename category',
+                    label: 'Category name',
+                    defaultValue: renameCatBtn.dataset.title,
+                    confirmText: 'Save changes',
+                });
+                if (!title) return;
                 const r = await api(`${base}/compliance-categories/${catId}`, {
                     method: 'PATCH',
                     body: JSON.stringify({ title: title.trim() }),
@@ -830,17 +1055,26 @@
                     }
                     if (panel) {
                         const h4 = panel.querySelector('h4');
-                        if (h4) h4.textContent = newTitle + ' — checklist';
+                        if (h4) {
+                            const badgeEl = h4.querySelector('.compliance-badge');
+                            const badgeHtml = badgeEl ? badgeEl.outerHTML : '';
+                            h4.innerHTML = `${escHtml(newTitle)}<span class="text-sm font-normal text-gray-500 dark:text-gray-400">— checklist</span>${badgeHtml}`;
+                        }
                         panel.querySelector('.compliance-rename-cat')?.setAttribute('data-title', newTitle);
                     }
                     if (cat) cat.title = newTitle;
-                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                } else alertValidationErrors(j) || showError(j.message || 'Failed');
                 return;
             }
 
             const deleteCatBtn = ev.target.closest('.compliance-delete-cat');
             if (deleteCatBtn && root.contains(deleteCatBtn)) {
-                if (!confirm('Delete this category? All checklist rows must be removed first.')) return;
+                if (!await showWorkspaceConfirm({
+                    title: 'Delete category?',
+                    message: 'All checklist rows must be removed before this category can be deleted.',
+                    confirmText: 'Delete category',
+                    variant: 'danger',
+                })) return;
                 const catId = deleteCatBtn.dataset.categoryId;
                 const r = await api(`${base}/compliance-categories/${catId}`, { method: 'DELETE' });
                 const j = await r.json();
@@ -849,14 +1083,19 @@
                         saveSession({ activeCategoryId: null, previewFileId: null });
                     }
                     refreshWorkspace();
-                } else alert(j.message || 'Failed');
+                } else showError(j.message || 'Failed');
                 return;
             }
 
             const addSlotBtn = ev.target.closest('.compliance-add-slot');
             if (addSlotBtn && root.contains(addSlotBtn)) {
-                const label = prompt('Checklist item name (e.g. Accountant workpapers)');
-                if (!label?.trim()) return;
+                const label = await showWorkspacePrompt({
+                    title: 'Add checklist item',
+                    label: 'Checklist item name',
+                    placeholder: 'e.g. Accountant workpapers',
+                    confirmText: 'Add item',
+                });
+                if (!label) return;
                 const catId = addSlotBtn.dataset.categoryId;
                 const r = await api(`${base}/compliance-categories/${catId}/slots`, {
                     method: 'POST',
@@ -876,7 +1115,7 @@
                         cat.files = [...(cat.files || []), j.file];
                     }
                     adjustCompletenessAfterAdd(j.file);
-                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                } else alertValidationErrors(j) || showError(j.message || 'Failed');
                 return;
             }
 
@@ -884,8 +1123,13 @@
             if (renameFileBtn && root.contains(renameFileBtn)) {
                 const fileId = renameFileBtn.dataset.fileId;
                 const current = renameFileBtn.dataset.label || '';
-                const label = prompt('New checklist item name', current);
-                if (!label?.trim() || label.trim() === current) return;
+                const label = await showWorkspacePrompt({
+                    title: 'Rename checklist item',
+                    label: 'Checklist item name',
+                    defaultValue: current,
+                    confirmText: 'Save changes',
+                });
+                if (!label || label === current) return;
                 const r = await api(`${base}/compliance-files/${fileId}`, {
                     method: 'PATCH',
                     body: JSON.stringify({ checklist_label: label.trim() }),
@@ -893,7 +1137,7 @@
                 const j = await r.json();
                 if (j.status && j.file) {
                     patchRow(j.file);
-                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                } else alertValidationErrors(j) || showError(j.message || 'Failed');
                 return;
             }
 
@@ -907,13 +1151,18 @@
                     .filter(c => String(c.id) !== String(srcCatId))
                     .map(c => ({ id: c.id, title: c.title }));
 
-                if (!otherCats.length) { alert('No other categories to move to.'); return; }
+                if (!otherCats.length) { showError('No other categories to move to.'); return; }
 
-                const options = otherCats.map((c, i) => `${i + 1}. ${c.title}`).join('\n');
-                const choice = prompt(`Move to which category?\n${options}\n\nEnter number:`);
-                if (!choice) return;
-                const target = otherCats[parseInt(choice, 10) - 1];
-                if (!target) { alert('Invalid selection.'); return; }
+                const targetId = await showWorkspaceSelect({
+                    title: 'Move checklist item',
+                    message: 'Choose which category this item should belong to.',
+                    label: 'Destination category',
+                    options: otherCats.map(c => ({ value: c.id, label: c.title })),
+                    confirmText: 'Move item',
+                });
+                if (!targetId) return;
+                const target = otherCats.find(c => String(c.id) === String(targetId));
+                if (!target) { showError('Invalid selection.'); return; }
 
                 const r = await api(`${base}/compliance-files/${fileId}/move`, {
                     method: 'PATCH',
@@ -943,13 +1192,18 @@
                     } else {
                         refreshWorkspace();
                     }
-                } else alertValidationErrors(j) || alert(j.message || 'Failed');
+                } else alertValidationErrors(j) || showError(j.message || 'Failed');
                 return;
             }
 
             const delFileBtn = ev.target.closest('.compliance-del-file');
             if (delFileBtn && root.contains(delFileBtn)) {
-                if (!confirm('Delete this checklist row entirely?')) return;
+                if (!await showWorkspaceConfirm({
+                    title: 'Delete checklist row?',
+                    message: 'This checklist row and any linked file will be deleted permanently.',
+                    confirmText: 'Delete row',
+                    variant: 'danger',
+                })) return;
                 const fileId = delFileBtn.dataset.fileId;
                 const tr = root.querySelector(`tr[data-compliance-row="${fileId}"]`);
                 const panel = tr?.closest('.compliance-cat-panel');
@@ -965,7 +1219,7 @@
                         panel.querySelector('tbody').innerHTML =
                             '<tr><td colspan="4" class="px-3 py-4 text-center text-gray-500 dark:text-gray-400">No checklist items in this category.</td></tr>';
                     }
-                } else alert(j.message || 'Failed');
+                } else showError(j.message || 'Failed');
             }
         });
 
@@ -979,7 +1233,7 @@
         bulkBtn?.addEventListener('click', () => {
             if (locked) return;
             bulkCategoryId = activeCategoryId;
-            if (!bulkCategoryId) { alert('Select a category tab first.'); return; }
+            if (!bulkCategoryId) { showError('Select a category tab first.'); return; }
             if (bulkFiles) bulkFiles.value = '';
             if (bulkMap) bulkMap.innerHTML = '';
             modal?.classList.remove('hidden');
@@ -1071,12 +1325,12 @@
 
         document.getElementById(prefix + '-bulk-go')?.addEventListener('click', async () => {
             const files = bulkFiles?.files;
-            if (!files?.length) { alert('Choose files first.'); return; }
+            if (!files?.length) { showError('Choose files first.'); return; }
             if (!bulkUrl) return;
 
             for (const f of Array.from(files)) {
                 if (maxFileBytes > 0 && f.size > maxFileBytes) {
-                    alert(`This file is too large. Maximum is ${(maxFileBytes / 1048576).toFixed(1)} MB per file.`);
+                    showError(`This file is too large. Maximum is ${(maxFileBytes / 1048576).toFixed(1)} MB per file.`);
                     return;
                 }
             }
@@ -1104,7 +1358,7 @@
                 formData.append('mappings[]', JSON.stringify({ type, name, replace }));
             });
 
-            if (!mapOk) { alert('Map all files to a checklist row, or enable auto-create.'); return; }
+            if (!mapOk) { showError('Map all files to a checklist row, or enable auto-create.'); return; }
 
             const pw = document.getElementById(prefix + '-bulk-progress-wrap');
             const pb = document.getElementById(prefix + '-bulk-progress');
@@ -1119,20 +1373,23 @@
             });
             xhr.onload = () => {
                 pw?.classList.add('hidden');
-                if (xhr.status === 419) { alert('Session expired. Refresh and try again.'); return; }
-                if (xhr.status === 413) { alert('File is too large for the server upload limit.'); return; }
+                if (xhr.status === 419) { showError('Session expired. Refresh and try again.'); return; }
+                if (xhr.status === 413) { showError('File is too large for the server upload limit.'); return; }
                 const res = parseJson(xhr.responseText);
-                if (!res) { alert('Upload failed.'); return; }
+                if (!res) { showError('Upload failed.'); return; }
                 modal?.classList.add('hidden');
-                const parts = [res.message, ...(res.errors?.length ? ['Errors:\n' + res.errors.join('\n')] : [])];
-                alert(parts.filter(Boolean).join('\n\n'));
                 if (res.files?.length) {
                     res.files.forEach(f => applyFilePatch(f));
+                    if (res.message) showSuccess(res.message);
                 } else if (res.uploaded > 0) {
+                    if (res.message) showSuccess(res.message);
                     refreshWorkspace();
+                } else {
+                    const parts = [res.message, ...(res.errors?.length ? ['Errors:\n' + res.errors.join('\n')] : [])];
+                    showError(parts.filter(Boolean).join('\n\n') || 'Upload failed.');
                 }
             };
-            xhr.onerror = () => alert('Upload failed. Check your connection.');
+            xhr.onerror = () => showError('Upload failed. Check your connection.');
             xhr.send(formData);
         });
 

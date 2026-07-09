@@ -9,9 +9,9 @@ use App\Models\ComplianceCategory;
 use App\Models\ComplianceDocumentFile;
 use App\Services\ComplianceFilenameMatcher;
 use App\Services\ComplianceUploadService;
+use App\Support\DocumentStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 class ComplianceController extends Controller
 {
@@ -153,7 +153,7 @@ class ComplianceController extends Controller
             abort(404);
         }
 
-        if (! $complianceFile->path || ! Storage::disk('s3')->exists($complianceFile->path)) {
+        if (! $complianceFile->path) {
             abort(404);
         }
 
@@ -164,11 +164,15 @@ class ComplianceController extends Controller
             'Cache-Control' => 'private, max-age=120',
         ];
 
-        if ($request->boolean('download')) {
-            return Storage::disk('s3')->download($complianceFile->path, $name, $headers);
-        }
+        try {
+            if ($request->boolean('download')) {
+                return DocumentStorage::disk()->download($complianceFile->path, $name, $headers);
+            }
 
-        return Storage::disk('s3')->response($complianceFile->path, $name, $headers, 'inline');
+            return DocumentStorage::disk()->response($complianceFile->path, $name, $headers, 'inline');
+        } catch (\Throwable) {
+            abort(404);
+        }
     }
 
     public function autoMatch(Request $request, BusinessEntity $businessEntity)
@@ -409,7 +413,7 @@ class ComplianceController extends Controller
         }
 
         try {
-            return Storage::disk('s3')->mimeType($file->path) ?: 'application/octet-stream';
+            return DocumentStorage::disk()->mimeType($file->path) ?: 'application/octet-stream';
         } catch (\Throwable) {
             return 'application/octet-stream';
         }

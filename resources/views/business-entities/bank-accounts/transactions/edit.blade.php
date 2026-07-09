@@ -69,13 +69,11 @@
                             @error('description') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Vendor name</label>
-                            <input type="text" name="vendor_name" value="{{ old('vendor_name', $transaction->vendor_name) }}"
-                                   class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
-                                   placeholder="Supplier or party name">
-                            @error('vendor_name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
+                        @include('partials.vendor-select', [
+                            'vendors' => $vendors,
+                            'selected' => old('vendor_id', $transaction->vendor_id),
+                            'selectClass' => 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white',
+                        ])
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Invoice Number <span class="text-gray-400 font-normal">(optional)</span></label>

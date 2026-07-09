@@ -137,7 +137,7 @@
                     <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
                         @if ($businessEntity->registeredEmailIsPlaceholder())
                             <span class="text-gray-500 dark:text-gray-400">Not set</span>
-                            <a href="{{ route('business-entities.edit', $businessEntity->id) }}#registered_email" class="text-indigo-600 dark:text-indigo-400 hover:underline ml-1">Add email</a>
+                            <a href="#" data-entity-profile-edit class="text-indigo-600 dark:text-indigo-400 hover:underline ml-1">Add email</a>
                         @else
                             {{ $businessEntity->registered_email }}
                         @endif
@@ -149,7 +149,7 @@
                     <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
                         @if ($businessEntity->phoneNumberIsPlaceholder())
                             <span class="text-gray-500 dark:text-gray-400">Not set</span>
-                            <a href="{{ route('business-entities.edit', $businessEntity->id) }}#phone_number" class="text-indigo-600 dark:text-indigo-400 hover:underline ml-1">Add phone</a>
+                            <a href="#" data-entity-profile-edit class="text-indigo-600 dark:text-indigo-400 hover:underline ml-1">Add phone</a>
                         @else
                             {{ $businessEntity->phone_number }}
                         @endif

@@ -458,7 +458,7 @@ class FinancialReportService
         $direction = Transaction::directionFromType((string) $transaction->transaction_type);
         $counterparty = TransactionPayerResolver::paidByLabel($transaction->paid_by);
         $counterparty = $counterparty !== '' ? $counterparty : '—';
-        $vendor = trim((string) ($transaction->vendor_name ?? ''));
+        $vendor = trim((string) ($transaction->vendor_display ?? ''));
         $vendor = $vendor !== '' ? $vendor : '—';
 
         return [

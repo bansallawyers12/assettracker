@@ -11,7 +11,7 @@ class ComplianceDocumentFileResource extends JsonResource
         $entityId = $this->yearRecord?->business_entity_id;
 
         $contentUrl = $this->path && $entityId
-            ? route('entities.compliance-files.content', [$entityId, $this->id])
+            ? route('entities.compliance-files.content', [$entityId, $this->id], absolute: false)
             : null;
 
         return [
@@ -27,6 +27,7 @@ class ComplianceDocumentFileResource extends JsonResource
             'status'           => $this->status,
             'has_file'         => (bool) $this->path,
             'file_name'        => $this->file_name,
+            'filetype'         => $this->filetype,
             'due_date'         => $this->due_date?->toDateString(),
             'lodged_date'      => $this->lodged_date?->toDateString(),
             'paid_date'        => $this->paid_date?->toDateString(),
