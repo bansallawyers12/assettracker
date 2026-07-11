@@ -70,6 +70,12 @@ export function initFlatpickr(root = document) {
 
                 instance.altInput.placeholder = instance.altInput.placeholder || 'dd/mm/yyyy';
 
+                for (const attr of instance.input.attributes) {
+                    if (attr.name.startsWith('data-')) {
+                        instance.altInput.setAttribute(attr.name, attr.value);
+                    }
+                }
+
                 if (wasRequired) {
                     setDateInputRequired(instance.input, true);
                 }
@@ -102,6 +108,27 @@ export function redrawFlatpickr(root = document) {
     root.querySelectorAll('input').forEach((input) => {
         input._flatpickr?.redraw();
     });
+}
+
+/**
+ * Set a date field value (Y-m-d) and keep the visible DD/MM/YYYY input in sync.
+ */
+export function setDateInputValue(input, value) {
+    if (!input) {
+        return;
+    }
+
+    if (!value) {
+        clearDateInput(input);
+        return;
+    }
+
+    if (input._flatpickr) {
+        input._flatpickr.setDate(value, false);
+        return;
+    }
+
+    input.value = value;
 }
 
 /**

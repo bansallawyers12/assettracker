@@ -258,8 +258,8 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             const appointmentDate = document.getElementById('appointment_date');
-            if (!appointmentDate.value) {
-                appointmentDate.value = new Date().toISOString().split('T')[0];
+            if (appointmentDate && !appointmentDate.value) {
+                window.setDateInputValue?.(appointmentDate, new Date().toISOString().split('T')[0]);
             }
 
             toggleRoleFields();
