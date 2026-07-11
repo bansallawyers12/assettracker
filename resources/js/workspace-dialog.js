@@ -2,6 +2,8 @@
  * Styled modal dialogs for document/compliance workspaces (replaces window.prompt/confirm).
  */
 
+import { markOverlayPanelClosed, markOverlayPanelOpen } from './overlay-panels.js';
+
 let dialogRoot = null;
 
 function ensureDialogRoot() {
@@ -11,6 +13,9 @@ function ensureDialogRoot() {
 
     dialogRoot = document.createElement('div');
     dialogRoot.id = 'workspace-dialog-root';
+    dialogRoot.hidden = true;
+    dialogRoot.inert = true;
+    dialogRoot.dataset.panelOpen = 'false';
     dialogRoot.className = 'hidden fixed inset-0 z-[120] flex items-center justify-center p-4';
     dialogRoot.innerHTML = `
         <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-[2px]" data-ws-dialog-backdrop></div>
@@ -47,7 +52,7 @@ function closeDialog() {
         return;
     }
 
-    dialogRoot.classList.add('hidden');
+    markOverlayPanelClosed(dialogRoot);
     dialogRoot.querySelector('[data-ws-dialog-body]').innerHTML = '';
     document.body.classList.remove('overflow-hidden');
 }
@@ -119,7 +124,7 @@ function openDialog(config) {
 
         document.addEventListener('keydown', onKeydown);
         document.body.classList.add('overflow-hidden');
-        root.classList.remove('hidden');
+        markOverlayPanelOpen(root);
 
         const focusTarget = config.focusSelector
             ? bodyEl.querySelector(config.focusSelector)

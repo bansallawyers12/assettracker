@@ -2,6 +2,7 @@
  * Bank account right-side panel — create, link, edit, delete everywhere.
  */
 import { initBankAccountFormFields } from './bank-form-fields.js';
+import { markOverlayPanelClosed, markOverlayPanelOpen } from './overlay-panels.js';
 import { showWorkspaceAlert, showWorkspaceConfirm } from './workspace-dialog.js';
 import {
     apiFetch,
@@ -10,7 +11,7 @@ import {
     showInlineFormErrors,
     submitWorkspaceForm,
 } from './workspace-panel.js';
-import { reinitTomSelect } from './tomselect-init';
+import { reinitTomSelect, destroyTomSelectsIn } from './tomselect-init';
 
 function parseConfig() {
     const configEl = document.getElementById('add-bank-account-config');
@@ -153,15 +154,15 @@ export function initBankAccountModal() {
 
     function openBankPanel() {
         panelOpen = true;
-        panelRoot.classList.remove('hidden');
-        panelRoot.setAttribute('aria-hidden', 'false');
+        markOverlayPanelOpen(panelRoot);
         document.body.classList.add('overflow-hidden');
     }
 
     function closeBankPanel() {
         panelOpen = false;
-        panelRoot.classList.add('hidden');
-        panelRoot.setAttribute('aria-hidden', 'true');
+        destroyTomSelectsIn(createHost);
+        destroyTomSelectsIn(attachHost);
+        markOverlayPanelClosed(panelRoot);
         document.body.classList.remove('overflow-hidden');
         attachController?.abort();
         createController?.abort();
@@ -348,6 +349,7 @@ export function initBankAccountModal() {
 
         attachController?.abort();
         attachController = new AbortController();
+        destroyTomSelectsIn(attachHost);
         attachHost.innerHTML = '<div class="flex items-center justify-center py-16 text-sm text-gray-500 dark:text-gray-400">Loading accounts…</div>';
 
         const response = await apiFetch(config.attachFormUrl);
@@ -364,7 +366,6 @@ export function initBankAccountModal() {
 
     function bindWorkspaceForm(root, signal) {
         initBankAccountFormFields(root);
-        window.initTomSelect?.(root);
 
         const form = root.querySelector('.bank-ws-form');
         if (!form) {
@@ -399,6 +400,7 @@ export function initBankAccountModal() {
 
         createController?.abort();
         createController = new AbortController();
+        destroyTomSelectsIn(createHost);
         createHost.innerHTML = '<div class="flex items-center justify-center py-16 text-sm text-gray-500 dark:text-gray-400">Loading form…</div>';
 
         const response = await apiFetch(url);

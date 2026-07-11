@@ -20,6 +20,7 @@ use App\Http\Controllers\DocumentWorkspaceController;
 use App\Http\Controllers\Email\GmailController;
 use App\Http\Controllers\Email\MailMessageController;
 use App\Http\Controllers\EmailTemplateController;
+use App\Http\Controllers\EmailTemplatesWorkspaceController;
 use App\Http\Controllers\AssetsWorkspaceController;
 use App\Http\Controllers\BankAccountPanelController;
 use App\Http\Controllers\BankAccountsWorkspaceController;
@@ -233,7 +234,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::delete('/business-entities/{businessEntity}/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'destroyBankAccount'])->name('business-entities.bank-accounts.destroy');
 
     // Transaction Routes
-    Route::post('business-entities/{businessEntity}/transactions/store', [BusinessEntityController::class, 'storeTransaction'])->name('business-entities.transactions.store');
+    Route::post('business-entities/{businessEntity}/transactions', [BusinessEntityController::class, 'storeTransaction'])->name('business-entities.transactions.store');
     Route::get('business-entities/{businessEntity}/transactions/{transaction}/edit', [BusinessEntityController::class, 'editTransaction'])->name('business-entities.transactions.edit');
     Route::put('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'updateTransaction'])->name('business-entities.transactions.update');
     Route::delete('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'destroyTransaction'])->name('business-entities.transactions.destroy');
@@ -282,6 +283,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/emails/drafts', [MailMessageController::class, 'drafts'])->name('emails.drafts');
 
     // Email Template Management Routes
+    Route::get('/email-templates/workspace', [EmailTemplatesWorkspaceController::class, 'workspace'])->name('email-templates.workspace');
+    Route::get('/email-templates/form/create', [EmailTemplatesWorkspaceController::class, 'createForm'])->name('email-templates.form.create');
+    Route::get('/email-templates/{emailTemplate}/form/edit', [EmailTemplatesWorkspaceController::class, 'editForm'])->name('email-templates.form.edit');
     Route::resource('email-templates', EmailTemplateController::class);
     Route::get('/email-templates/{emailTemplate}/preview', [EmailTemplateController::class, 'preview'])->name('email-templates.preview');
     Route::get('/email-templates-api/templates', [EmailTemplateController::class, 'getTemplates'])->name('email-templates.api');

@@ -11,7 +11,12 @@
                 <form method="POST" action="{{ route('bank-accounts.update', $bankAccount) }}" class="bank-ws-form bank-account-form-root">
                     @csrf
                     @method('PUT')
-                    @include('bank-accounts.partials.form-fields', ['portfolio' => true, 'bankAccount' => $bankAccount])
+                    @include('bank-accounts.partials.form-fields', [
+                        'portfolio' => true,
+                        'bankAccount' => $bankAccount,
+                        'businessEntities' => $businessEntities,
+                        'persons' => $persons,
+                    ])
                     @include('bank-accounts.partials.form-actions', [
                         'submitLabel' => 'Update account',
                         'workspace' => false,

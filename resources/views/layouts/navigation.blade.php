@@ -100,14 +100,13 @@
          x-transition:leave="transition ease-in duration-100"
          x-transition:leave-start="opacity-100 translate-y-0"
          x-transition:leave-end="opacity-0 -translate-y-1"
-         @click.outside="open = false"
          class="sm:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
         @auth
             <div class="px-3 pt-3 pb-2 border-b border-gray-100 dark:border-gray-700/80">
                 @include('partials.header-global-search-field', ['variant' => 'mobile'])
             </div>
         @endauth
-        <div class="pt-2 pb-3 space-y-1 px-3">
+        <div class="pt-2 pb-3 space-y-1 px-3" @click="if ($event.target.closest('a')) open = false">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>

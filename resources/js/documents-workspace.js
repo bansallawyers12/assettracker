@@ -77,6 +77,41 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
     // ─── Row HTML builder ─────────────────────────────────────────────────────
 
+    function buildRowActionsHtml(docId, hasFile, label, fileAccept) {
+        const uploadBtn = !hasFile
+            ? `<label class="doc-action-btn doc-action-primary cursor-pointer">Upload
+                    <input type="file" class="hidden doc-slot-file"
+                        accept="${escAttr(fileAccept)}"
+                        data-document-id="${docId}"
+                        data-replace="0">
+               </label>`
+            : `<label class="doc-action-btn doc-action-primary cursor-pointer">Reupload
+                    <input type="file" class="hidden doc-slot-file"
+                        accept="${escAttr(fileAccept)}"
+                        data-document-id="${docId}"
+                        data-replace="1">
+               </label>`;
+
+        const clearDisabled = hasFile ? '' : 'doc-action-disabled';
+
+        return `<div class="doc-row-actions">
+                ${uploadBtn}
+                <button type="button"
+                    class="doc-action-btn doc-action-warning doc-clear ${clearDisabled}"
+                    data-doc-id="${docId}">Clear</button>
+                <button type="button"
+                    class="doc-action-btn doc-action-muted doc-rename-slot"
+                    data-doc-id="${docId}"
+                    data-label="${escAttr(label)}">Rename</button>
+                <button type="button"
+                    class="doc-action-btn doc-action-muted doc-move-slot"
+                    data-doc-id="${docId}">Move</button>
+                <button type="button"
+                    class="doc-action-btn doc-action-danger doc-del"
+                    data-doc-id="${docId}">Delete</button>
+            </div>`;
+    }
+
     function buildSlotRow(doc, fileAccept) {
         const hasFile = doc.has_file !== undefined ? doc.has_file : !!doc.path;
         const docId   = doc.id;
@@ -87,50 +122,20 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
         const fileCell = hasFile
             ? `<button type="button"
-                    class="text-indigo-600 dark:text-indigo-400 hover:underline doc-preview"
+                    class="doc-preview doc-file-name"
                     data-doc-id="${docId}"
                     data-asset-scope="${escAttr(String(assetScope))}"
-                    data-name="${escAttr(fileName)}">${escHtml(fileName)}</button>`
-            : `<span class="text-gray-400">No file</span>`;
-
-        const uploadBtn = !hasFile
-            ? `<label class="cursor-pointer text-indigo-600 text-xs">Upload
-                    <input type="file" class="hidden doc-slot-file"
-                        accept="${escAttr(fileAccept)}"
-                        data-document-id="${docId}"
-                        data-replace="0">
-               </label>`
-            : `<label class="cursor-pointer text-xs text-gray-600 dark:text-gray-400 mr-1">Replace
-                    <input type="file" class="hidden doc-slot-file"
-                        accept="${escAttr(fileAccept)}"
-                        data-document-id="${docId}"
-                        data-replace="1">
-               </label>`;
-
-        const clearDisabled = hasFile ? '' : 'opacity-40 pointer-events-none';
+                    data-name="${escAttr(fileName)}"
+                    title="${escAttr(fileName)}">${escHtml(fileName)}</button>`
+            : `<span class="doc-file-empty">No file</span>`;
 
         return `<tr class="border-t border-gray-200 dark:border-gray-700" data-slot-row="${docId}">
-            <td class="px-3 py-2 align-top">
+            <td class="doc-col-checklist">
                 <span class="font-medium text-gray-900 dark:text-gray-100">${escHtml(label)}</span>
                 <div class="text-xs text-gray-500">${escHtml(type)}</div>
             </td>
-            <td class="px-3 py-2 align-top">${fileCell}</td>
-            <td class="px-3 py-2 align-top text-right whitespace-nowrap">
-                ${uploadBtn}
-                <button type="button"
-                    class="doc-clear text-xs text-amber-600 ${clearDisabled}"
-                    data-doc-id="${docId}">Clear</button>
-                <button type="button"
-                    class="doc-rename-slot text-xs text-gray-500 dark:text-gray-400"
-                    data-doc-id="${docId}"
-                    data-label="${escAttr(label)}">Rename</button>
-                <button type="button"
-                    class="doc-move-slot text-xs text-gray-500 dark:text-gray-400"
-                    data-doc-id="${docId}">Move</button>
-                <button type="button"
-                    class="doc-del text-xs text-red-600"
-                    data-doc-id="${docId}">×</button>
-            </td>
+            <td class="doc-col-file">${fileCell}</td>
+            <td class="doc-col-actions">${buildRowActionsHtml(docId, hasFile, label, fileAccept)}</td>
         </tr>`;
     }
 
@@ -247,34 +252,68 @@ import { setRowUploading } from './workspace-upload-ui.js';
             return `${base}/documents/${docId}/content${q ? '?' + q : ''}`;
         }
 
-        function setCategoryPanelPreview(panel, docId, assetScope, { openInNewTab = false } = {}) {
+        function setPreviewRowActive(docId) {
+            root.querySelectorAll('tr[data-slot-row]').forEach((tr) => {
+                tr.classList.toggle('doc-row-preview-active', tr.dataset.slotRow === String(docId));
+            });
+        }
+
+        function clearPreviewRowActive() {
+            root.querySelectorAll('tr.doc-row-preview-active').forEach((tr) => {
+                tr.classList.remove('doc-row-preview-active');
+            });
+        }
+
+        function togglePreviewEmptyState(panel, showEmpty) {
+            const empty = panel.querySelector('.doc-preview-empty');
+            const frame = panel.querySelector('.doc-cat-preview-frame');
+            empty?.classList.toggle('hidden', !showEmpty);
+            frame?.classList.toggle('hidden', showEmpty);
+        }
+
+        function setCategoryPanelPreview(panel, docId, assetScope) {
             const frame  = panel.querySelector('.doc-cat-preview-frame');
             const dl     = panel.querySelector('.doc-cat-preview-dl');
+            const openBtn = panel.querySelector('.doc-cat-preview-open');
             const delBtn = panel.querySelector('.doc-cat-preview-del');
+            const hint   = panel.querySelector('.doc-preview-hint');
             if (!docId || !frame || !dl) return;
             const viewUrl = documentContentUrl(docId, false, assetScope);
             frame.removeAttribute('src');
             window.requestAnimationFrame(() => { frame.src = viewUrl; });
             dl.href = documentContentUrl(docId, true, assetScope);
             dl.classList.remove('opacity-50', 'pointer-events-none');
+            openBtn?.classList.remove('opacity-50', 'pointer-events-none');
             delBtn?.classList.remove('opacity-50', 'pointer-events-none');
             panel.dataset.previewDocId = String(docId);
+            panel.dataset.previewViewUrl = viewUrl;
+            panel.dataset.previewAssetScope = assetScope !== undefined ? String(assetScope) : '';
+            togglePreviewEmptyState(panel, false);
+            hint?.classList.add('hidden');
+            setPreviewRowActive(docId);
             saveSession();
-
-            if (openInNewTab) {
-                window.open(viewUrl, '_blank', 'noopener,noreferrer');
-            }
         }
 
         function clearCategoryPanelPreview(panel) {
             if (!panel) return;
             const frame  = panel.querySelector('.doc-cat-preview-frame');
             const dl     = panel.querySelector('.doc-cat-preview-dl');
+            const openBtn = panel.querySelector('.doc-cat-preview-open');
             const delBtn = panel.querySelector('.doc-cat-preview-del');
-            if (frame) frame.removeAttribute('src');
+            const hint   = panel.querySelector('.doc-preview-hint');
+            if (frame) {
+                frame.removeAttribute('src');
+                frame.classList.add('hidden');
+            }
             if (dl)    { dl.href = '#'; dl.classList.add('opacity-50', 'pointer-events-none'); }
+            openBtn?.classList.add('opacity-50', 'pointer-events-none');
             delBtn?.classList.add('opacity-50', 'pointer-events-none');
+            togglePreviewEmptyState(panel, true);
+            hint?.classList.remove('hidden');
             delete panel.dataset.previewDocId;
+            delete panel.dataset.previewViewUrl;
+            delete panel.dataset.previewAssetScope;
+            clearPreviewRowActive();
             saveSession();
         }
 
@@ -297,29 +336,20 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
             const assetScope = doc.asset_id ?? doc.assetScope ?? assetId ?? '';
             const fileName   = doc.file_name ?? '';
-            const fileCell   = tr.querySelector('td:nth-child(2)');
-            const actCell    = tr.querySelector('td:nth-child(3)');
+            const label      = tr.querySelector('td.doc-col-checklist span.font-medium')?.textContent?.trim() ?? '—';
+            const fileCell   = tr.querySelector('td.doc-col-file');
+            const actCell    = tr.querySelector('td.doc-col-actions');
 
             if (fileCell) {
                 fileCell.innerHTML = `<button type="button"
-                    class="text-indigo-600 dark:text-indigo-400 hover:underline doc-preview"
+                    class="doc-preview doc-file-name"
                     data-doc-id="${docId}"
                     data-asset-scope="${escAttr(String(assetScope))}"
-                    data-name="${escAttr(fileName)}">${escHtml(fileName)}</button>`;
+                    data-name="${escAttr(fileName)}"
+                    title="${escAttr(fileName)}">${escHtml(fileName)}</button>`;
             }
             if (actCell) {
-                actCell.innerHTML = `<label class="cursor-pointer text-xs text-gray-600 dark:text-gray-400 mr-1">Replace
-                        <input type="file" class="hidden doc-slot-file"
-                            accept="${escAttr(fileAccept)}"
-                            data-document-id="${docId}"
-                            data-replace="1">
-                    </label>
-                    <button type="button" class="doc-clear text-xs text-amber-600" data-doc-id="${docId}">Clear</button>
-                    <button type="button" class="doc-rename-slot text-xs text-gray-500 dark:text-gray-400"
-                        data-doc-id="${docId}"
-                        data-label="${escAttr(tr.querySelector('td:first-child span')?.textContent?.trim() ?? '')}">Rename</button>
-                    <button type="button" class="doc-move-slot text-xs text-gray-500 dark:text-gray-400" data-doc-id="${docId}">Move</button>
-                    <button type="button" class="doc-del text-xs text-red-600" data-doc-id="${docId}">×</button>`;
+                actCell.innerHTML = buildRowActionsHtml(docId, true, label, fileAccept);
             }
 
             // Update workspace JSON state so bulk map stays accurate
@@ -345,24 +375,12 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 return;
             }
 
-            const fileCell = tr.querySelector('td:nth-child(2)');
-            const actCell  = tr.querySelector('td:nth-child(3)');
+            const fileCell = tr.querySelector('td.doc-col-file');
+            const actCell  = tr.querySelector('td.doc-col-actions');
+            const label    = tr.querySelector('td.doc-col-checklist span.font-medium')?.textContent?.trim() ?? '—';
 
-            if (fileCell) fileCell.innerHTML = `<span class="text-gray-400">No file</span>`;
-            if (actCell) {
-                actCell.innerHTML = `<label class="cursor-pointer text-indigo-600 text-xs">Upload
-                        <input type="file" class="hidden doc-slot-file"
-                            accept="${escAttr(fileAccept)}"
-                            data-document-id="${docId}"
-                            data-replace="0">
-                    </label>
-                    <button type="button" class="doc-clear text-xs text-amber-600 opacity-40 pointer-events-none" data-doc-id="${docId}">Clear</button>
-                    <button type="button" class="doc-rename-slot text-xs text-gray-500 dark:text-gray-400"
-                        data-doc-id="${docId}"
-                        data-label="${escAttr(tr.querySelector('td:first-child span')?.textContent?.trim() ?? '')}">Rename</button>
-                    <button type="button" class="doc-move-slot text-xs text-gray-500 dark:text-gray-400" data-doc-id="${docId}">Move</button>
-                    <button type="button" class="doc-del text-xs text-red-600" data-doc-id="${docId}">×</button>`;
-            }
+            if (fileCell) fileCell.innerHTML = `<span class="doc-file-empty">No file</span>`;
+            if (actCell) actCell.innerHTML = buildRowActionsHtml(docId, false, label, fileAccept);
 
             // Update workspace JSON state
             if (workspaceCategories) {
@@ -442,7 +460,18 @@ import { setRowUploading } from './workspace-upload-ui.js';
             const previewBtn = ev.target.closest('.doc-preview');
             if (previewBtn && root.contains(previewBtn)) {
                 const panel = previewBtn.closest('.doc-cat-panel');
-                if (panel) setCategoryPanelPreview(panel, previewBtn.dataset.docId, previewBtn.dataset.assetScope, { openInNewTab: true });
+                if (panel) setCategoryPanelPreview(panel, previewBtn.dataset.docId, previewBtn.dataset.assetScope);
+                return;
+            }
+
+            // ── Open preview in new tab ─────────────────────────────────────
+            const panelOpenBtn = ev.target.closest('.doc-cat-preview-open:not(.pointer-events-none)');
+            if (panelOpenBtn && root.contains(panelOpenBtn)) {
+                const panel = panelOpenBtn.closest('.doc-cat-panel');
+                const viewUrl = panel?.dataset.previewViewUrl;
+                if (viewUrl) {
+                    window.open(viewUrl, '_blank', 'noopener,noreferrer');
+                }
                 return;
             }
 
@@ -465,7 +494,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
             }
 
             // ── Clear file (row inline button) ────────────────────────────────
-            const clearBtn = ev.target.closest('.doc-clear:not(.opacity-40):not(.pointer-events-none)');
+            const clearBtn = ev.target.closest('.doc-clear:not(.doc-action-disabled)');
             if (clearBtn && root.contains(clearBtn)) {
                 const docId = clearBtn.dataset.docId;
                 if (!docId || !await showWorkspaceConfirm({
@@ -724,8 +753,8 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 filledLabels = (catData.documents || []).filter(d => d.has_file).map(d => d.checklist_label).filter(Boolean);
             } else {
                 root.querySelector(`[data-category-panel="${bulkCategoryId}"]`)?.querySelectorAll('tbody tr').forEach(tr => {
-                    const label    = tr.querySelector('td span.font-medium')?.textContent?.trim();
-                    const hasNoFile = tr.querySelector('td:nth-child(2) span.text-gray-400');
+                    const label    = tr.querySelector('td.doc-col-checklist span.font-medium')?.textContent?.trim();
+                    const hasNoFile = tr.querySelector('td.doc-col-file .doc-file-empty');
                     if (label) (hasNoFile ? emptyLabels : filledLabels).push(label);
                 });
             }

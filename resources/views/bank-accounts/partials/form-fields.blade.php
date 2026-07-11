@@ -138,14 +138,14 @@
         @if($isPortfolio)
             <div class="bank-field" id="entity-picker">
                 <label class="bank-field-label" for="business_entity_id">Business Entity</label>
-                <x-tom-select name="business_entity_id" id="business_entity_id" class="bank-field-control rounded-lg">
+                <select name="business_entity_id" id="business_entity_id" class="bank-field-control">
                     <option value="">Select entity</option>
                     @foreach($businessEntities ?? [] as $entity)
                         <option value="{{ $entity->id }}" @selected((string) old('business_entity_id', $bankAccountModel?->business_entity_id) === (string) $entity->id)>
                             {{ $entity->legal_name }}
                         </option>
                     @endforeach
-                </x-tom-select>
+                </select>
                 @error('business_entity_id') <p class="bank-field-error">{{ $message }}</p> @enderror
                 <p class="bank-field-hint">Optional for general and loan repayment accounts. Required for loan, offset, and rent accounts.</p>
             </div>
@@ -174,27 +174,27 @@
 
             <div class="bank-field bank-form-grid-full holder-section @if($currentHolderType !== BankAccount::HOLDER_ENTITY) hidden @endif" id="holder-entity-section">
                 <label class="bank-field-label" for="holder_entity_id">Entity Name</label>
-                <x-tom-select name="holder_entity_id" id="holder_entity_id" class="bank-field-control rounded-lg">
+                <select name="holder_entity_id" id="holder_entity_id" class="bank-field-control">
                     <option value="">Select entity</option>
                     @foreach($businessEntities ?? [] as $entity)
                         <option value="{{ $entity->id }}" @selected((string) $currentHolderEntityId === (string) $entity->id)>
                             {{ $entity->legal_name }}
                         </option>
                     @endforeach
-                </x-tom-select>
+                </select>
                 @error('holder_entity_id') <p class="bank-field-error">{{ $message }}</p> @enderror
             </div>
 
             <div class="bank-field bank-form-grid-full holder-section @if($currentHolderType !== BankAccount::HOLDER_PERSON) hidden @endif" id="holder-person-section">
                 <label class="bank-field-label" for="holder_person_id">Person</label>
-                <x-tom-select name="holder_person_id" id="holder_person_id" class="bank-field-control rounded-lg">
+                <select name="holder_person_id" id="holder_person_id" class="bank-field-control">
                     <option value="">Select person</option>
                     @foreach($persons ?? [] as $person)
                         <option value="{{ $person->id }}" @selected((string) $currentHolderPersonId === (string) $person->id)>
                             {{ $person->displayName() }}
                         </option>
                     @endforeach
-                </x-tom-select>
+                </select>
                 @error('holder_person_id') <p class="bank-field-error">{{ $message }}</p> @enderror
                 @if(($persons ?? collect())->isEmpty())
                     <p class="bank-field-hint text-amber-600 dark:text-amber-400">No persons found. Add a person under an entity first.</p>

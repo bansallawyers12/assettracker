@@ -30,7 +30,7 @@
             <x-tom-select
                 name="bank_account_id"
                 id="link_bank_account_id"
-                class="bank-field-control rounded-lg"
+                minimal
                 :allowEmpty="true"
             >
                 <option value="">Search accounts…</option>

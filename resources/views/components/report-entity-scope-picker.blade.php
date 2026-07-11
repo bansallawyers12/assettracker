@@ -61,40 +61,40 @@
     @submit.window="if ($event.target.contains($el)) { validateScope($event); }"
 >
     @if($isCard)
-        <h2 class="text-sm font-semibold text-gray-900">Entity scope</h2>
+        <h2 class="text-sm font-semibold text-gray-900 dark:text-white sr-only">Entity scope</h2>
     @endif
 
     <div class="{{ $isCard ? 'space-y-4' : 'space-y-2' }}">
         @if($isRadio)
-            <label class="flex items-start gap-3 cursor-pointer group">
+            <label class="flex items-start gap-3 cursor-pointer group rounded-xl border border-transparent p-3 -mx-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 has-checked:border-indigo-200 dark:has-checked:border-indigo-800 has-checked:bg-indigo-50/50 dark:has-checked:bg-indigo-950/20">
                 <input type="radio" name="scope" value="all" x-model="scope"
-                       class="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500">
+                       class="mt-1 h-4 w-4 border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900">
                 <span>
-                    <span class="text-sm font-medium text-gray-800 group-hover:text-gray-900">All reporting entities</span>
-                    <span class="block text-xs text-gray-500 mt-0.5">
+                    <span class="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white">All reporting entities</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                         Consolidated across every entity included in reports ({{ $entityCount }}).
                     </span>
                 </span>
             </label>
 
-            <label class="flex items-start gap-3 cursor-pointer group">
+            <label class="flex items-start gap-3 cursor-pointer group rounded-xl border border-transparent p-3 -mx-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 has-checked:border-indigo-200 dark:has-checked:border-indigo-800 has-checked:bg-indigo-50/50 dark:has-checked:bg-indigo-950/20">
                 <input type="radio" name="scope" value="selected" x-model="scope"
-                       class="mt-1 h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500">
+                       class="mt-1 h-4 w-4 border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-900">
                 <span>
-                    <span class="text-sm font-medium text-gray-800 group-hover:text-gray-900">Selected entities only</span>
-                    <span class="block text-xs text-gray-500 mt-0.5">Search and pick one or more entities below.</span>
+                    <span class="text-sm font-medium text-gray-800 dark:text-gray-200 group-hover:text-gray-900 dark:group-hover:text-white">Selected entities only</span>
+                    <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Search and pick one or more entities below.</span>
                 </span>
             </label>
 
-            <div class="{{ $isCard ? 'pl-7 sm:pl-8 border-l-2 border-gray-100 ml-1.5' : '' }}"
+            <div class="{{ $isCard ? 'pl-7 sm:pl-8 border-l-2 border-gray-100 dark:border-gray-800 ml-1.5' : '' }}"
                  :class="scope === 'selected' ? '' : 'opacity-50 pointer-events-none'">
-                <label class="text-xs font-medium text-gray-600 block mb-1">Entities</label>
+                <label class="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1.5">Entities</label>
                 <x-tom-select
                     multiple
                     name="entity_ids[]"
                     x-ref="entitySelect"
                     :disabled="$formsScope === 'all'"
-                    class="rounded-sm bg-white"
+                    class="rounded-lg bg-white dark:bg-gray-900"
                 >
                     @foreach($businessEntities as $entity)
                         <option value="{{ $entity->id }}"

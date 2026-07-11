@@ -3,79 +3,63 @@
 namespace App\Http\Controllers;
 
 use App\Models\EmailTemplate;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class EmailTemplateController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(Request $request): View
     {
-        $templates = EmailTemplate::query()
-            ->orderBy('name')
-            ->paginate(10);
+        $templates = EmailTemplatesWorkspaceController::paginatedTemplates($request);
 
         return view('email-templates.index', compact('templates'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function create(): RedirectResponse
     {
-        return view('email-templates.create');
+        return redirect()->route('email-templates.index');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
+        $this->authorize('create', EmailTemplate::class);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'subject' => 'required|string|max:255',
             'description' => 'required|string',
         ]);
 
-        $template = EmailTemplate::create([
+        EmailTemplate::create([
             ...$validated,
             'user_id' => Auth::id(),
         ]);
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, __('Email template created successfully.'));
+        }
+
         return redirect()->route('email-templates.index')
-            ->with('success', 'Email template created successfully!');
+            ->with('success', __('Email template created successfully.'));
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(EmailTemplate $emailTemplate)
+    public function show(EmailTemplate $emailTemplate): RedirectResponse
     {
-        $this->authorize('view', $emailTemplate);
-        
-        return view('email-templates.show', compact('emailTemplate'));
+        return redirect()->route('email-templates.index');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(EmailTemplate $emailTemplate)
+    public function edit(EmailTemplate $emailTemplate): RedirectResponse
+    {
+        return redirect()->route('email-templates.index');
+    }
+
+    public function update(Request $request, EmailTemplate $emailTemplate): RedirectResponse|JsonResponse
     {
         $this->authorize('update', $emailTemplate);
-        
-        return view('email-templates.edit', compact('emailTemplate'));
-    }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, EmailTemplate $emailTemplate)
-    {
-        $this->authorize('update', $emailTemplate);
-        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'subject' => 'required|string|max:255',
@@ -84,30 +68,32 @@ class EmailTemplateController extends Controller
 
         $emailTemplate->update($validated);
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, __('Email template updated successfully.'));
+        }
+
         return redirect()->route('email-templates.index')
-            ->with('success', 'Email template updated successfully!');
+            ->with('success', __('Email template updated successfully.'));
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(EmailTemplate $emailTemplate)
+    public function destroy(Request $request, EmailTemplate $emailTemplate): RedirectResponse|JsonResponse
     {
         $this->authorize('delete', $emailTemplate);
-        
+
         $emailTemplate->delete();
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, __('Email template deleted successfully.'));
+        }
+
         return redirect()->route('email-templates.index')
-            ->with('success', 'Email template deleted successfully!');
+            ->with('success', __('Email template deleted successfully.'));
     }
 
-    /**
-     * Preview a template with sample data.
-     */
-    public function preview(EmailTemplate $emailTemplate)
+    public function preview(EmailTemplate $emailTemplate): JsonResponse
     {
         $this->authorize('view', $emailTemplate);
-        
+
         $sampleData = [
             'recipient_name' => 'John Doe',
             'sender_name' => Auth::user()->name,
@@ -115,19 +101,14 @@ class EmailTemplateController extends Controller
             'current_date' => now()->format('Y-m-d'),
         ];
 
-        $processedSubject = $this->processTemplate($emailTemplate->subject, $sampleData);
-        $processedBody = $this->processTemplate($emailTemplate->description, $sampleData);
-
         return response()->json([
-            'subject' => $processedSubject,
-            'body' => $processedBody,
+            'status' => true,
+            'subject' => $this->processTemplate($emailTemplate->subject, $sampleData),
+            'body' => $this->processTemplate($emailTemplate->description, $sampleData),
         ]);
     }
 
-    /**
-     * Get templates for the compose email form.
-     */
-    public function getTemplates()
+    public function getTemplates(): JsonResponse
     {
         $templates = EmailTemplate::query()
             ->select('id', 'name', 'subject', 'description')
@@ -137,9 +118,17 @@ class EmailTemplateController extends Controller
         return response()->json($templates);
     }
 
-    /**
-     * Process template variables.
-     */
+    private function workspaceJsonResponse(Request $request, string $message): JsonResponse
+    {
+        $templates = EmailTemplatesWorkspaceController::paginatedTemplates($request);
+
+        return response()->json([
+            'status' => true,
+            'message' => $message,
+            'list_html' => EmailTemplatesWorkspaceController::listHtml($templates),
+        ]);
+    }
+
     private function processTemplate(string $template, array $data): string
     {
         foreach ($data as $key => $value) {

@@ -92,7 +92,16 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('business-entities.transactions.store', ['businessEntity' => $businessEntities->first() ? $businessEntities->first()->id : 0]) }}" id="store-transaction-form" data-transaction-paid-by-form enctype="multipart/form-data" class="space-y-6">
+                @php
+                    $dashboardTransactionEntityId = $businessEntities->first()?->id ?? 0;
+                @endphp
+                <form method="POST"
+                      action="/business-entities/{{ $dashboardTransactionEntityId }}/transactions"
+                      data-store-action-template="/business-entities/__ID__/transactions"
+                      id="store-transaction-form"
+                      data-transaction-paid-by-form
+                      enctype="multipart/form-data"
+                      class="space-y-6">
                     @csrf
 
                     {{-- Direction toggle --}}
@@ -918,8 +927,9 @@
 
                 function syncTransactionFormFromEntitySelect() {
                     const entityId = entitySelect.value;
-                    if (entityId && storeForm) {
-                        storeForm.action = `{{ url('business-entities') }}/${entityId}/transactions/store`;
+                    const actionTemplate = storeForm?.dataset.storeActionTemplate;
+                    if (entityId && storeForm && actionTemplate) {
+                        storeForm.action = actionTemplate.replace('__ID__', entityId);
                     }
                     const relatedSel = relatedEntityField ? relatedEntityField.querySelector('select') : null;
                     if (relatedSel) {

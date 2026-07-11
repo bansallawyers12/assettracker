@@ -20,7 +20,8 @@ class SecurityHeaders
         }
 
         if (config('security.headers.force_https', true) && !$request->secure()) {
-            return redirect()->secure($request->getRequestUri(), 301);
+            // 308 preserves POST/PUT (301 would downgrade form submissions to GET).
+            return redirect()->secure($request->getRequestUri(), 308);
         }
 
         $response = $next($request);

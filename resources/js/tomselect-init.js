@@ -22,11 +22,62 @@ function placeholderFromSelect(select) {
     return isMultiSelect(select) ? 'Search entities…' : 'Select…';
 }
 
+function resolveDropdownParent(select) {
+    if (select.dataset.tomselectDropdownParent) {
+        const explicit = document.querySelector(select.dataset.tomselectDropdownParent);
+        if (explicit) {
+            return explicit;
+        }
+    }
+
+    // Anchor to the slide-over sheet so the list aligns with the field and is not clipped.
+    const panelSheet = select.closest('.bank-account-panel-sheet, .entity-workspace-panel-sheet');
+    if (panelSheet) {
+        return panelSheet;
+    }
+
+    return document.body;
+}
+
+function panelScrollRoot(select) {
+    return select.closest('[data-bank-panel-pane], [data-entity-panel-body]');
+}
+
+function bindPanelDropdownReposition(select, ts) {
+    const scrollRoot = panelScrollRoot(select);
+    if (!scrollRoot) {
+        return;
+    }
+
+    select._tomselectScrollAbort?.abort();
+    const abort = new AbortController();
+    select._tomselectScrollAbort = abort;
+
+    const reposition = () => {
+        if (ts.isOpen) {
+            ts.positionDropdown();
+        }
+    };
+
+    scrollRoot.addEventListener('scroll', reposition, { passive: true, signal: abort.signal });
+    window.addEventListener('resize', reposition, { passive: true, signal: abort.signal });
+}
+
+function createTomSelect(select) {
+    const ts = new TomSelect(select, buildOptions(select));
+    bindPanelDropdownReposition(select, ts);
+
+    return ts;
+}
+
 function buildOptions(select) {
     const create = select.dataset.tomselectCreate === 'true';
     const multi = isMultiSelect(select);
+    const useSearch = select.dataset.tomselectSearch !== 'false';
 
-    const plugins = multi ? ['remove_button', 'dropdown_input'] : ['dropdown_input'];
+    const plugins = multi
+        ? ['remove_button', 'dropdown_input']
+        : (useSearch ? ['dropdown_input'] : []);
 
     const options = {
         plugins,
@@ -34,9 +85,12 @@ function buildOptions(select) {
         create,
         maxOptions: null,
         placeholder: placeholderFromSelect(select),
-        dropdownParent: 'body',
+        dropdownParent: resolveDropdownParent(select),
         onChange() {
             select.dispatchEvent(new Event('change', { bubbles: true }));
+        },
+        onDropdownOpen() {
+            this.positionDropdown();
         },
     };
 
@@ -117,13 +171,39 @@ export function initTomSelect(root = document) {
             return;
         }
 
-        new TomSelect(select, buildOptions(select));
+        createTomSelect(select);
     });
 }
 
 export function destroyTomSelect(select) {
     const el = resolveSelect(select);
+    el?._tomselectScrollAbort?.abort();
+    delete el?._tomselectScrollAbort;
     el?.tomselect?.destroy();
+}
+
+/** Destroy every Tom Select instance under a container (call before replacing innerHTML). */
+export function destroyTomSelectsIn(root) {
+    if (!root?.querySelectorAll) {
+        return;
+    }
+
+    root.querySelectorAll('select[data-tomselect]').forEach((select) => {
+        destroyTomSelect(select);
+    });
+}
+
+/** Reinitialize all searchable selects under a container (for AJAX-injected forms). */
+export function reinitTomSelectsIn(root) {
+    if (!root?.querySelectorAll) {
+        return;
+    }
+
+    root.querySelectorAll('select[data-tomselect]').forEach((select) => {
+        if (select.dataset.tomselectSkip !== 'true') {
+            reinitTomSelect(select);
+        }
+    });
 }
 
 export function refreshTomSelect(select) {
@@ -176,7 +256,7 @@ export function reinitTomSelect(select) {
     }
 
     destroyTomSelect(el);
-    new TomSelect(el, buildOptions(el));
+    createTomSelect(el);
 }
 
 export function setSelectValue(select, value) {
