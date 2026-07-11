@@ -1,6 +1,7 @@
 import TomSelect from 'tom-select';
 import remove_button from 'tom-select/dist/esm/plugins/remove_button/plugin.js';
 import 'tom-select/dist/css/tom-select.default.css';
+import '../css/tom-select-overrides.css';
 
 function resolveSelect(select) {
     if (!select) {
@@ -22,32 +23,69 @@ function placeholderFromSelect(select) {
     return isMultiSelect(select) ? 'Search entities…' : 'Select…';
 }
 
+function isSelectInHiddenContainer(select) {
+    let node = select;
+
+    while (node && node !== document.body) {
+        if (node.classList?.contains('hidden')) {
+            return true;
+        }
+
+        node = node.parentElement;
+    }
+
+    return false;
+}
+
 function resolveDropdownParent(select) {
     if (select.dataset.tomselectDropdownParent) {
-        const explicit = document.querySelector(select.dataset.tomselectDropdownParent);
+        const parentValue = select.dataset.tomselectDropdownParent.trim();
+        if (parentValue === 'body') {
+            return 'body';
+        }
+
+        const explicit = document.querySelector(parentValue);
         if (explicit) {
             return explicit;
         }
     }
 
-    // Anchor to the slide-over sheet so the list aligns with the field and is not clipped.
-    const panelSheet = select.closest('.bank-account-panel-sheet, .entity-workspace-panel-sheet');
-    if (panelSheet) {
-        return panelSheet;
+    // Tom Select only calls positionDropdown() when dropdownParent === 'body'.
+    // Custom DOM parents append the list without coordinates, so it appears at
+    // the bottom of large containers (dashboard form, slide-over panels).
+    if (select.closest('#add-transaction-section, .bank-account-panel-sheet, .entity-workspace-panel-sheet')) {
+        return 'body';
     }
 
-    return document.body;
+    return null;
 }
 
-function panelScrollRoot(select) {
-    return select.closest('[data-bank-panel-pane], [data-entity-panel-body]');
+function scheduleDropdownReposition(ts) {
+    ts.positionDropdown();
+    requestAnimationFrame(() => {
+        ts.positionDropdown();
+        requestAnimationFrame(() => ts.positionDropdown());
+    });
 }
 
-function bindPanelDropdownReposition(select, ts) {
-    const scrollRoot = panelScrollRoot(select);
-    if (!scrollRoot) {
-        return;
+function dropdownScrollRoots(select) {
+    const roots = new Set();
+
+    const panelRoot = select.closest('[data-bank-panel-pane], [data-entity-panel-body]');
+    if (panelRoot) {
+        roots.add(panelRoot);
     }
+
+    const transactionSection = select.closest('#add-transaction-section');
+    if (transactionSection) {
+        roots.add(transactionSection);
+    }
+
+    return roots;
+}
+
+function bindDropdownReposition(select, ts) {
+    const scrollRoots = dropdownScrollRoots(select);
 
     select._tomselectScrollAbort?.abort();
     const abort = new AbortController();
@@ -55,17 +93,20 @@ function bindPanelDropdownReposition(select, ts) {
 
     const reposition = () => {
         if (ts.isOpen) {
-            ts.positionDropdown();
+            scheduleDropdownReposition(ts);
         }
     };
 
-    scrollRoot.addEventListener('scroll', reposition, { passive: true, signal: abort.signal });
+    scrollRoots.forEach((root) => {
+        root.addEventListener('scroll', reposition, { passive: true, signal: abort.signal });
+    });
+    window.addEventListener('scroll', reposition, { passive: true, signal: abort.signal });
     window.addEventListener('resize', reposition, { passive: true, signal: abort.signal });
 }
 
 function createTomSelect(select) {
     const ts = new TomSelect(select, buildOptions(select));
-    bindPanelDropdownReposition(select, ts);
+    bindDropdownReposition(select, ts);
 
     return ts;
 }
@@ -90,7 +131,7 @@ function buildOptions(select) {
             select.dispatchEvent(new Event('change', { bubbles: true }));
         },
         onDropdownOpen() {
-            this.positionDropdown();
+            scheduleDropdownReposition(this);
         },
     };
 
@@ -116,7 +157,11 @@ function addNativeOptionToTomSelect(ts, opt) {
     }
 
     if (opt.parentElement?.tagName === 'OPTGROUP') {
-        option.optgroup = opt.parentElement.label;
+        const groupLabel = opt.parentElement.label;
+        option.optgroup = groupLabel;
+        if (!ts.optgroups[groupLabel]) {
+            ts.addOptionGroup(groupLabel, { label: groupLabel });
+        }
     }
 
     ts.addOption(option);
@@ -171,7 +216,29 @@ export function initTomSelect(root = document) {
             return;
         }
 
+        if (isSelectInHiddenContainer(select)) {
+            select.dataset.tomselectDeferred = 'true';
+
+            return;
+        }
+
+        delete select.dataset.tomselectDeferred;
         createTomSelect(select);
+    });
+}
+
+function initDeferredTomSelectsIn(container) {
+    if (!container?.querySelectorAll) {
+        return;
+    }
+
+    container.querySelectorAll('select[data-tomselect][data-tomselect-deferred="true"]').forEach((select) => {
+        if (select.dataset.tomselectSkip === 'true') {
+            return;
+        }
+
+        delete select.dataset.tomselectDeferred;
+        reinitTomSelect(select);
     });
 }
 
@@ -228,6 +295,9 @@ export function rebuildTomSelectFromNative(select) {
 
     ts.clear(true);
     ts.clearOptions();
+    Object.keys(ts.optgroups).forEach((key) => {
+        delete ts.optgroups[key];
+    });
 
     Array.from(el.options).forEach((opt) => addNativeOptionToTomSelect(ts, opt));
 
@@ -328,6 +398,33 @@ export function watchTomSelect() {
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
+
+    const visibilityObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.type !== 'attributes' || mutation.attributeName !== 'class') {
+                continue;
+            }
+
+            const target = mutation.target;
+            if (target.nodeType !== Node.ELEMENT_NODE || target.classList.contains('hidden')) {
+                continue;
+            }
+
+            initDeferredTomSelectsIn(target);
+            target.querySelectorAll?.('select[data-tomselect][data-tomselect-deferred="true"]').forEach((select) => {
+                if (!isSelectInHiddenContainer(select)) {
+                    delete select.dataset.tomselectDeferred;
+                    reinitTomSelect(select);
+                }
+            });
+        }
+    });
+
+    visibilityObserver.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class'],
+        subtree: true,
+    });
 }
 
 // Register remove_button for multi-select instances.

@@ -169,6 +169,18 @@
     overflow: visible;
   }
 
+  #add-transaction-section {
+    position: relative;
+    overflow: visible;
+  }
+
+  body > .ts-dropdown {
+    position: absolute;
+    z-index: 10050;
+    max-height: min(16rem, 50vh);
+    overflow-y: auto;
+  }
+
   .bank-account-panel-sheet .ts-dropdown,
   .entity-workspace-panel-sheet .ts-dropdown {
     z-index: 40;
@@ -997,6 +1009,22 @@
     @apply mt-4 flex flex-wrap gap-2;
 }
 
+/* Dashboard Tom Select styles live in tom-select-overrides.css (loaded after Tom Select defaults). */
+
+/* Toast notifications */
+.app-toast {
+    transform: translateY(0);
+    opacity: 1;
+    transition:
+        transform 0.28s ease,
+        opacity 0.28s ease;
+}
+
+.app-toast--leaving {
+    transform: translateY(-0.75rem);
+    opacity: 0;
+}
+
 /* Asset show page — tabs & layout */
 .asset-show-page .asset-main-card {
     box-shadow:
@@ -1070,6 +1098,7 @@
 /* Tom Select — match Tailwind form controls */
 .ts-wrapper {
     width: 100%;
+    position: relative;
 }
 
 .ts-wrapper.single .ts-control,

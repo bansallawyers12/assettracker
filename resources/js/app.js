@@ -21,6 +21,7 @@ import {
 import { initTransactionPaidByValidation } from './transaction-paid-by-validation';
 import { initFinancialReportsHub } from './financial-reports-hub.js';
 import { sealOverlayPanels } from './overlay-panels.js';
+import { showToast } from './notify.js';
 
 import Alpine from 'alpinejs';
 
@@ -35,6 +36,7 @@ window.setSelectDisabled = setSelectDisabled;
 window.initFlatpickr = initFlatpickr;
 window.redrawFlatpickr = redrawFlatpickr;
 window.clearDateInput = clearDateInput;
+window.showToast = showToast;
 
 let richTextModulePromise = null;
 

@@ -1,0 +1,205 @@
+/**
+ * Tom Select theme overrides — must load after tom-select.default.css (see tomselect-init.js).
+ * Default Tom Select styles set a light gradient background that wins over app.css in dark mode,
+ * while dark-mode text color rules still apply → unreadable selected values.
+ */
+
+/* Reset Tom Select gradient / inset shadow on all controls */
+.ts-wrapper.single .ts-control,
+.ts-wrapper.multi .ts-control {
+    background-image: none !important;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05) !important;
+}
+
+.full .ts-control {
+    background-color: rgb(255 255 255) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .ts-wrapper.single .ts-control,
+    .ts-wrapper.multi .ts-control {
+        border-color: rgb(75 85 99) !important;
+        background-color: rgb(55 65 81) !important;
+        color: rgb(243 244 246) !important;
+    }
+
+    .ts-wrapper.single .ts-control .item,
+    .ts-wrapper.single .ts-control input,
+    .ts-wrapper.multi .ts-control .item,
+    .ts-wrapper.multi .ts-control input {
+        color: rgb(243 244 246) !important;
+    }
+
+    .full .ts-control {
+        background-color: rgb(55 65 81) !important;
+    }
+}
+
+.dark .ts-wrapper.single .ts-control,
+.dark .ts-wrapper.multi .ts-control {
+    border-color: rgb(75 85 99) !important;
+    background-color: rgb(55 65 81) !important;
+    color: rgb(243 244 246) !important;
+}
+
+.dark .ts-wrapper.single .ts-control .item,
+.dark .ts-wrapper.single .ts-control input,
+.dark .ts-wrapper.multi .ts-control .item,
+.dark .ts-wrapper.multi .ts-control input {
+    color: rgb(243 244 246) !important;
+}
+
+/* Dashboard add-transaction form — match $txnSelect / txnInput */
+.dashboard-txn-form .ts-wrapper {
+    width: 100%;
+}
+
+.dashboard-txn-form .ts-wrapper.single .ts-control,
+.dashboard-txn-form .ts-wrapper.multi .ts-control {
+    min-height: 42px;
+    border-radius: 0.5rem;
+    border: 1px solid rgb(229 231 235) !important;
+    background-color: rgb(255 255 255) !important;
+    color: rgb(17 24 39) !important;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    padding: 0.5rem 0.75rem;
+}
+
+.dashboard-txn-form .ts-wrapper.single .ts-control:focus-within,
+.dashboard-txn-form .ts-wrapper.multi .ts-control:focus-within {
+    border-color: rgb(59 130 246) !important;
+    outline: 2px solid rgb(59 130 246 / 0.2);
+    outline-offset: 0;
+}
+
+.dashboard-txn-form .ts-wrapper .ts-control .item,
+.dashboard-txn-form .ts-wrapper .ts-control input {
+    color: rgb(17 24 39) !important;
+    font-size: 0.875rem;
+}
+
+.dashboard-txn-form .ts-wrapper .ts-control .ts-placeholder {
+    color: rgb(156 163 175) !important;
+}
+
+@media (prefers-color-scheme: dark) {
+    .full .ts-control {
+        background-color: rgb(17 24 39 / 0.8) !important;
+    }
+
+    .dashboard-txn-form .ts-wrapper.single .ts-control,
+    .dashboard-txn-form .ts-wrapper.multi .ts-control {
+        border-color: rgb(75 85 99) !important;
+        background-color: rgb(17 24 39 / 0.8) !important;
+        color: rgb(243 244 246) !important;
+    }
+
+    .dashboard-txn-form .ts-wrapper.single .ts-control:focus-within,
+    .dashboard-txn-form .ts-wrapper.multi .ts-control:focus-within {
+        border-color: rgb(96 165 250) !important;
+        outline-color: rgb(96 165 250 / 0.2);
+    }
+
+    .dashboard-txn-form .ts-wrapper .ts-control .item,
+    .dashboard-txn-form .ts-wrapper .ts-control input {
+        color: rgb(243 244 246) !important;
+    }
+
+    .dashboard-txn-form .ts-wrapper .ts-control .ts-placeholder {
+        color: rgb(156 163 175) !important;
+    }
+}
+
+.dark .full .ts-control {
+    background-color: rgb(17 24 39 / 0.8) !important;
+}
+
+.dark .dashboard-txn-form .ts-wrapper.single .ts-control,
+.dark .dashboard-txn-form .ts-wrapper.multi .ts-control {
+    border-color: rgb(75 85 99) !important;
+    background-color: rgb(17 24 39 / 0.8) !important;
+    color: rgb(243 244 246) !important;
+}
+
+.dark .dashboard-txn-form .ts-wrapper.single .ts-control:focus-within,
+.dark .dashboard-txn-form .ts-wrapper.multi .ts-control:focus-within {
+    border-color: rgb(96 165 250) !important;
+    outline-color: rgb(96 165 250 / 0.2);
+}
+
+.dark .dashboard-txn-form .ts-wrapper .ts-control .item,
+.dark .dashboard-txn-form .ts-wrapper .ts-control input {
+    color: rgb(243 244 246) !important;
+}
+
+.dark .dashboard-txn-form .ts-wrapper .ts-control .ts-placeholder {
+    color: rgb(156 163 175) !important;
+}
+
+/* Dropdown menus appended to body from dashboard form */
+#add-transaction-section .ts-dropdown,
+body > .ts-dropdown {
+    border-radius: 0.5rem;
+    border: 1px solid rgb(229 231 235);
+    background-color: rgb(255 255 255);
+    color: rgb(17 24 39);
+    font-size: 0.875rem;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+}
+
+#add-transaction-section .ts-dropdown .option,
+body > .ts-dropdown .option {
+    padding: 0.5rem 0.75rem;
+    color: rgb(17 24 39);
+}
+
+#add-transaction-section .ts-dropdown .active,
+#add-transaction-section .ts-dropdown .option:hover,
+body > .ts-dropdown .active,
+body > .ts-dropdown .option:hover {
+    background-color: rgb(238 242 255);
+    color: rgb(67 56 202);
+}
+
+@media (prefers-color-scheme: dark) {
+    #add-transaction-section .ts-dropdown,
+    body > .ts-dropdown {
+        border-color: rgb(75 85 99);
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+    }
+
+    #add-transaction-section .ts-dropdown .option,
+    body > .ts-dropdown .option {
+        color: rgb(243 244 246);
+    }
+
+    #add-transaction-section .ts-dropdown .active,
+    #add-transaction-section .ts-dropdown .option:hover,
+    body > .ts-dropdown .active,
+    body > .ts-dropdown .option:hover {
+        background-color: rgb(55 65 81);
+        color: rgb(165 180 252);
+    }
+}
+
+.dark #add-transaction-section .ts-dropdown,
+.dark body > .ts-dropdown {
+    border-color: rgb(75 85 99);
+    background-color: rgb(31 41 55);
+    color: rgb(243 244 246);
+}
+
+.dark #add-transaction-section .ts-dropdown .option,
+.dark body > .ts-dropdown .option {
+    color: rgb(243 244 246);
+}
+
+.dark #add-transaction-section .ts-dropdown .active,
+.dark #add-transaction-section .ts-dropdown .option:hover,
+.dark body > .ts-dropdown .active,
+.dark body > .ts-dropdown .option:hover {
+    background-color: rgb(55 65 81);
+    color: rgb(165 180 252);
+}

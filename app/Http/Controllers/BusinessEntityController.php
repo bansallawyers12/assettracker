@@ -756,7 +756,10 @@ class BusinessEntityController extends Controller
                 'trace' => $e->getTraceAsString(),
             ]));
 
-            throw $e;
+            return redirect()
+                ->route('dashboard')
+                ->withInput()
+                ->with('error', 'Could not save this transaction. Please try again.');
         }
     }
 
