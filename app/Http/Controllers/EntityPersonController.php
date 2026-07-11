@@ -342,6 +342,7 @@ class EntityPersonController extends Controller
             'date_of_birth' => 'nullable|date',
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'role' => 'required|string|max:255',
+            'appointment_date' => 'required|date',
             'role_status' => 'required|in:Active,Inactive',
             'asic_due_date' => 'nullable|date',
         ]);
@@ -361,6 +362,7 @@ class EntityPersonController extends Controller
             'business_entity_id' => $validated['business_entity_id'],
             'person_id' => $person->id,
             'role' => $validated['role'],
+            'appointment_date' => $validated['appointment_date'],
             'role_status' => $validated['role_status'],
             'asic_due_date' => $validated['asic_due_date'],
         ]);
