@@ -1338,6 +1338,21 @@ input.flatpickr-input:focus {
     --tw-ring-color: rgb(99 102 241);
 }
 
+/* Keep the hidden Flatpickr source input out of layout/focus order */
+input[data-flatpickr-source] {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
 .dark .flatpickr-calendar {
     background: rgb(31 41 55);
     border-color: rgb(75 85 99);

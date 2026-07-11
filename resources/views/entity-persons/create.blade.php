@@ -257,10 +257,12 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            const appointmentDate = document.getElementById('appointment_date');
-            if (appointmentDate && !appointmentDate.value) {
-                window.setDateInputValue?.(appointmentDate, new Date().toISOString().split('T')[0]);
-            }
+            setTimeout(function() {
+                const appointmentDate = document.getElementById('appointment_date');
+                if (appointmentDate && !window.getDateInputValue?.(appointmentDate)) {
+                    window.setDateInputValue?.(appointmentDate, window.formatLocalYmd?.() ?? new Date().toLocaleDateString('en-CA'));
+                }
+            }, 0);
 
             toggleRoleFields();
 

@@ -325,8 +325,10 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            toggleTrustFields();
-            toggleAppointorFields();
+            setTimeout(function() {
+                toggleTrustFields();
+                toggleAppointorFields();
+            }, 0);
         });
     </script>
 </x-app-layout>

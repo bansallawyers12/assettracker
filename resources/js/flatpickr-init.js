@@ -2,6 +2,18 @@ import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 
 /**
+ * Format a Date (or date parts) as Y-m-d in local time.
+ */
+export function formatLocalYmd(date = new Date()) {
+    const d = date instanceof Date ? date : new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
+}
+
+/**
  * Parse typed/pasted dates as DD/MM/YYYY (AU), also accepting ISO Y-m-d.
  */
 function parseFlexibleDate(datestr, format) {
@@ -38,6 +50,49 @@ function parseFlexibleDate(datestr, format) {
     return flatpickr.parseDate(value, format);
 }
 
+function syncAltInputAttributes(instance) {
+    const { input, altInput } = instance;
+    if (!altInput) {
+        return;
+    }
+
+    altInput.placeholder = altInput.placeholder || input.placeholder || 'dd/mm/yyyy';
+
+    for (const attr of input.attributes) {
+        const { name, value } = attr;
+
+        if (name.startsWith('data-') && name !== 'data-flatpickr-source') {
+            altInput.setAttribute(name, value);
+        }
+
+        if (name === 'aria-label' || name === 'aria-labelledby' || name === 'aria-describedby') {
+            altInput.setAttribute(name, value);
+        }
+    }
+
+    input.setAttribute('data-flatpickr-source', '1');
+    input.setAttribute('tabindex', '-1');
+    input.setAttribute('aria-hidden', 'true');
+}
+
+function bindLabelToAltInput(instance) {
+    const inputId = instance.input.id;
+    if (!inputId || !instance.altInput) {
+        return;
+    }
+
+    const label = document.querySelector(`label[for="${inputId}"]`);
+    if (!label || label.dataset.flatpickrLabelBound) {
+        return;
+    }
+
+    label.dataset.flatpickrLabelBound = '1';
+    label.addEventListener('click', (event) => {
+        event.preventDefault();
+        instance.altInput.focus();
+    });
+}
+
 /**
  * Flatpickr is the only date picker in this app (no jQuery UI / bootstrap-datepicker).
  * All date fields use `<x-date-input>` in Blade or `input[type="date"].form-date-input` in JS templates;
@@ -68,34 +123,32 @@ export function initFlatpickr(root = document) {
                     return;
                 }
 
-                instance.altInput.placeholder = instance.altInput.placeholder || 'dd/mm/yyyy';
-
-                for (const attr of instance.input.attributes) {
-                    if (attr.name.startsWith('data-')) {
-                        instance.altInput.setAttribute(attr.name, attr.value);
-                    }
-                }
+                syncAltInputAttributes(instance);
 
                 if (wasRequired) {
                     setDateInputRequired(instance.input, true);
                 }
 
-                const inputId = instance.input.id;
-                if (inputId) {
-                    const label = document.querySelector(`label[for="${inputId}"]`);
-                    if (label && !label.dataset.flatpickrLabelBound) {
-                        label.dataset.flatpickrLabelBound = '1';
-                        label.addEventListener('click', () => {
-                            instance.altInput.focus();
-                        });
-                    }
-                }
+                bindLabelToAltInput(instance);
             },
             onClose(_selectedDates, _dateStr, instance) {
                 const visible = instance.altInput || instance.input;
-                if (visible.value && !instance.selectedDates.length) {
-                    instance.clear();
+
+                if (!visible.value) {
+                    return;
                 }
+
+                if (instance.selectedDates.length) {
+                    return;
+                }
+
+                const parsed = parseFlexibleDate(visible.value, instance.config.altFormat);
+                if (parsed) {
+                    instance.setDate(parsed, false);
+                    return;
+                }
+
+                instance.clear();
             },
         });
     });
@@ -105,9 +158,42 @@ export function initFlatpickr(root = document) {
  * Re-draw Flatpickr calendars inside a container (e.g. after toggling visibility).
  */
 export function redrawFlatpickr(root = document) {
-    root.querySelectorAll('input').forEach((input) => {
+    root.querySelectorAll('input[data-flatpickr-source]').forEach((input) => {
         input._flatpickr?.redraw();
     });
+}
+
+/**
+ * Read the canonical Y-m-d value from a date field.
+ */
+export function getDateInputValue(input) {
+    if (!input) {
+        return '';
+    }
+
+    if (input._flatpickr) {
+        return input._flatpickr.input.value;
+    }
+
+    return input.value ?? '';
+}
+
+/**
+ * Find the Flatpickr-bound source input within a container and selector.
+ */
+export function queryDateInput(root, selector) {
+    if (!root?.querySelectorAll) {
+        return null;
+    }
+
+    const matches = root.querySelectorAll(selector);
+    for (const candidate of matches) {
+        if (candidate._flatpickr) {
+            return candidate;
+        }
+    }
+
+    return matches[0] ?? null;
 }
 
 /**

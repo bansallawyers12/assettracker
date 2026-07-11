@@ -853,8 +853,8 @@ import { setRowUploading } from './workspace-upload-ui.js';
             if (!tr) return;
 
             const status = tr.querySelector('.compliance-status-select')?.value || 'not_started';
-            const lodged = tr.querySelector('.compliance-lodged-date')?.value || null;
-            const paid = tr.querySelector('.compliance-paid-date')?.value || null;
+            const lodged = window.getDateInputValue?.(window.queryDateInput?.(tr, '.compliance-lodged-date')) || null;
+            const paid = window.getDateInputValue?.(window.queryDateInput?.(tr, '.compliance-paid-date')) || null;
 
             const r = await api(`${base}/compliance-files/${fileId}/status`, {
                 method: 'PATCH',

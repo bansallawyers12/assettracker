@@ -117,8 +117,13 @@ export function initEntityCreateForm() {
 
     document.getElementById('appointor_type')?.addEventListener('change', toggleAppointorFields);
 
-    toggleTrustFields();
-    toggleAppointorFields();
+    const syncFieldState = () => {
+        toggleTrustFields();
+        toggleAppointorFields();
+    };
+
+    // Run after initFlatpickr on the same DOMContentLoaded tick.
+    setTimeout(syncFieldState, 0);
 }
 
 if (document.readyState === 'loading') {
