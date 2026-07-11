@@ -175,7 +175,8 @@ function initPersonsToggleLogic(form) {
         const entityTrusteeSelect = form.querySelector('#persons_entity_trustee_id');
         const personSelect = form.querySelector('#persons_person_id');
         const createNewPerson = form.querySelector('#persons_create_new_person');
-        const personInputs = personFields?.querySelectorAll('input, select, textarea') ?? [];
+        const newPersonFields = form.querySelector('#persons_new_person_fields');
+        const personInputs = newPersonFields?.querySelectorAll('input, select, textarea') ?? [];
 
         if (!personFields || !companySelection) {
             return;
@@ -192,7 +193,6 @@ function initPersonsToggleLogic(form) {
                 createNewPerson.disabled = true;
             }
             personInputs.forEach((el) => { el.disabled = true; });
-            window.reinitTomSelect?.(entityTrusteeSelect);
         } else {
             personFields.classList.remove('hidden');
             companySelection.classList.add('hidden');
@@ -203,7 +203,6 @@ function initPersonsToggleLogic(form) {
                 createNewPerson.disabled = false;
             }
             personInputs.forEach((el) => { el.disabled = false; });
-            window.reinitTomSelect?.(personSelect);
         }
     }
 

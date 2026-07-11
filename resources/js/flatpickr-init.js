@@ -128,7 +128,7 @@ function syncAltInputAttributes(instance) {
         altInput.className = `${input.className} ${altInput.className}`.trim();
     }
 
-    altInput.placeholder = altInput.placeholder || input.placeholder || 'dd/mm/yyyy';
+    altInput.placeholder = altInput.placeholder || input.placeholder || 'DD/MM/YYYY';
 
     for (const attr of input.attributes) {
         const { name, value } = attr;
