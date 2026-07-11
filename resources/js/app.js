@@ -6,7 +6,7 @@ import './admin-users-workspace.js';
 import './entity-create-form.js';
 import { initBankAccountModal } from './bank-account-modal.js';
 import { initBankAccountFormFields } from './bank-form-fields.js';
-import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput } from './flatpickr-init';
+import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput, setDateInputRequired } from './flatpickr-init';
 import {
     initTomSelect,
     watchTomSelect,
@@ -32,6 +32,7 @@ window.setSelectDisabled = setSelectDisabled;
 window.initFlatpickr = initFlatpickr;
 window.redrawFlatpickr = redrawFlatpickr;
 window.clearDateInput = clearDateInput;
+window.setDateInputRequired = setDateInputRequired;
 
 let richTextModulePromise = null;
 

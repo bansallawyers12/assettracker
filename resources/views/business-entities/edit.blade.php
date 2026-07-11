@@ -283,14 +283,14 @@
             if (entityType === 'Trust') {
                 trustFields.classList.remove('hidden');
                 trustTypeField.required = true;
-                trustEstablishmentDateField.required = true;
-                trustDeedDateField.required = true;
+                window.setDateInputRequired?.(trustEstablishmentDateField, true);
+                window.setDateInputRequired?.(trustDeedDateField, true);
                 appointorTypeField.required = true;
             } else {
                 trustFields.classList.add('hidden');
                 trustTypeField.required = false;
-                trustEstablishmentDateField.required = false;
-                trustDeedDateField.required = false;
+                window.setDateInputRequired?.(trustEstablishmentDateField, false);
+                window.setDateInputRequired?.(trustDeedDateField, false);
                 appointorTypeField.required = false;
             }
         }

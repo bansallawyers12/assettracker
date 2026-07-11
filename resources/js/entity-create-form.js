@@ -29,8 +29,8 @@ export function toggleTrustFields() {
     if (entityType === 'Trust') {
         trustFields.classList.remove('hidden');
         if (trustTypeField) trustTypeField.required = true;
-        if (trustEstablishmentDateField) trustEstablishmentDateField.required = true;
-        if (trustDeedDateField) trustDeedDateField.required = true;
+        if (trustEstablishmentDateField) window.setDateInputRequired?.(trustEstablishmentDateField, true);
+        if (trustDeedDateField) window.setDateInputRequired?.(trustDeedDateField, true);
         if (appointorTypeField) appointorTypeField.required = true;
     } else {
         trustFields.classList.add('hidden');
@@ -39,11 +39,11 @@ export function toggleTrustFields() {
             trustTypeField.value = '';
         }
         if (trustEstablishmentDateField) {
-            trustEstablishmentDateField.required = false;
+            window.setDateInputRequired?.(trustEstablishmentDateField, false);
             clearDateField(trustEstablishmentDateField);
         }
         if (trustDeedDateField) {
-            trustDeedDateField.required = false;
+            window.setDateInputRequired?.(trustDeedDateField, false);
             clearDateField(trustDeedDateField);
         }
         if (trustDeedReferenceField) trustDeedReferenceField.value = '';
