@@ -2,7 +2,7 @@ import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 
 /**
- * Format a Date (or date parts) as Y-m-d in local time.
+ * Format a Date as Y-m-d in local time.
  */
 export function formatLocalYmd(date = new Date()) {
     const d = date instanceof Date ? date : new Date();
@@ -13,10 +13,18 @@ export function formatLocalYmd(date = new Date()) {
     return `${year}-${month}-${day}`;
 }
 
+function isCompleteDateString(value) {
+    const typed = String(value || '').trim();
+
+    return /^(\d{4})-(\d{1,2})-(\d{1,2})$/.test(typed)
+        || /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.test(typed);
+}
+
 /**
  * Parse typed/pasted dates as DD/MM/YYYY (AU), also accepting ISO Y-m-d.
+ * Incomplete strings return undefined so Flatpickr does not invent dates.
  */
-function parseFlexibleDate(datestr, format) {
+function parseFlexibleDate(datestr) {
     if (!datestr || !String(datestr).trim()) {
         return undefined;
     }
@@ -47,13 +55,77 @@ function parseFlexibleDate(datestr, format) {
             : undefined;
     }
 
-    return flatpickr.parseDate(value, format);
+    return undefined;
+}
+
+function sameDay(a, b) {
+    return a instanceof Date
+        && b instanceof Date
+        && a.getFullYear() === b.getFullYear()
+        && a.getMonth() === b.getMonth()
+        && a.getDate() === b.getDate();
+}
+
+/**
+ * Apply the visible typed value to Flatpickr's selected date + hidden Y-m-d field.
+ * Returns true when a complete valid date was applied.
+ */
+function applyTypedDate(instance, { triggerChange = false, rewriteVisible = true } = {}) {
+    const visible = instance.altInput || instance.input;
+    if (!visible) {
+        return false;
+    }
+
+    const typed = visible.value.trim();
+
+    if (!typed) {
+        if (instance.selectedDates.length) {
+            instance.clear(triggerChange);
+        }
+        return false;
+    }
+
+    if (!isCompleteDateString(typed)) {
+        return false;
+    }
+
+    const parsed = parseFlexibleDate(typed);
+    if (!parsed) {
+        return false;
+    }
+
+    if (instance.selectedDates[0] && sameDay(instance.selectedDates[0], parsed)) {
+        instance.jumpToDate(parsed);
+        return true;
+    }
+
+    const caret = visible.selectionStart;
+    instance.setDate(parsed, triggerChange, instance.config.altFormat);
+
+    if (!rewriteVisible && instance.altInput && typed !== instance.altInput.value) {
+        // Keep the user's exact keystrokes while the calendar/hidden value stay correct.
+        instance.altInput.value = typed;
+        if (typeof caret === 'number') {
+            try {
+                instance.altInput.setSelectionRange(caret, caret);
+            } catch (_) {
+                // Ignore unsupported selection ranges.
+            }
+        }
+    }
+
+    return true;
 }
 
 function syncAltInputAttributes(instance) {
     const { input, altInput } = instance;
     if (!altInput) {
         return;
+    }
+
+    // Preserve app field styling on the visible input.
+    if (input.className) {
+        altInput.className = `${input.className} ${altInput.className}`.trim();
     }
 
     altInput.placeholder = altInput.placeholder || input.placeholder || 'dd/mm/yyyy';
@@ -94,9 +166,38 @@ function bindLabelToAltInput(instance) {
 }
 
 /**
- * Flatpickr is the only date picker in this app (no jQuery UI / bootstrap-datepicker).
- * All date fields use `<x-date-input>` in Blade or `input[type="date"].form-date-input` in JS templates;
- * users see/type DD/MM/YYYY while the hidden field keeps Y-m-d for Laravel.
+ * Keep calendar + hidden value in sync while the user types DD/MM/YYYY.
+ */
+function bindTypedDateSync(instance) {
+    const visible = instance.altInput || instance.input;
+    if (!visible || visible.dataset.flatpickrTypeSync === '1') {
+        return;
+    }
+
+    visible.dataset.flatpickrTypeSync = '1';
+
+    visible.addEventListener('input', () => {
+        applyTypedDate(instance, { triggerChange: false, rewriteVisible: false });
+    });
+
+    visible.addEventListener('change', () => {
+        applyTypedDate(instance, { triggerChange: true, rewriteVisible: true });
+    });
+
+    visible.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter') {
+            return;
+        }
+
+        if (applyTypedDate(instance, { triggerChange: true, rewriteVisible: true })) {
+            instance.close();
+        }
+    });
+}
+
+/**
+ * Flatpickr is the only date picker in this app.
+ * Users see/type DD/MM/YYYY; the hidden field keeps Y-m-d for Laravel.
  */
 export function initFlatpickr(root = document) {
     root.querySelectorAll('input[type="date"]:not([data-no-flatpickr])').forEach((input) => {
@@ -118,12 +219,16 @@ export function initFlatpickr(root = document) {
             minDate: min,
             maxDate: max,
             parseDate: parseFlexibleDate,
+            errorHandler() {
+                // Ignore parse noise from partial typing.
+            },
             onReady(_selectedDates, _dateStr, instance) {
                 if (!instance.altInput) {
                     return;
                 }
 
                 syncAltInputAttributes(instance);
+                bindTypedDateSync(instance);
 
                 if (wasRequired) {
                     setDateInputRequired(instance.input, true);
@@ -133,22 +238,27 @@ export function initFlatpickr(root = document) {
             },
             onClose(_selectedDates, _dateStr, instance) {
                 const visible = instance.altInput || instance.input;
+                const typed = (visible?.value || '').trim();
 
-                if (!visible.value) {
+                if (!typed) {
+                    if (instance.selectedDates.length) {
+                        // Keep selected date and refresh the visible format.
+                        instance.setDate(instance.selectedDates[0], false);
+                    }
                     return;
                 }
 
+                if (applyTypedDate(instance, { triggerChange: true, rewriteVisible: true })) {
+                    return;
+                }
+
+                // Invalid typed value: restore visible text from the last valid selection.
                 if (instance.selectedDates.length) {
+                    instance.setDate(instance.selectedDates[0], false);
                     return;
                 }
 
-                const parsed = parseFlexibleDate(visible.value, instance.config.altFormat);
-                if (parsed) {
-                    instance.setDate(parsed, false);
-                    return;
-                }
-
-                instance.clear();
+                instance.clear(false);
             },
         });
     });
