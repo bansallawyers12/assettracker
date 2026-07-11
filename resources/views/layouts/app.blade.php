@@ -7,6 +7,8 @@
 
         <title>{{ config('app.name', 'Asset Tracker') }}</title>
 
+        <link rel="preconnect" href="https://fonts.bunny.net">
+
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -40,9 +42,20 @@
             </main>
         </div>
 
-        @stack('bank-panel-config')
-        @include('bank-accounts.partials.bank-account-panel-shell')
-        @include('business-entities.partials.entity-workspace-panel')
+        @unless ($skipWorkspacePanels ?? false)
+            @stack('bank-panel-config')
+            @include('bank-accounts.partials.bank-account-panel-shell')
+            @include('business-entities.partials.entity-workspace-panel')
+            <script>
+                document.querySelectorAll('.bank-account-panel, .entity-workspace-panel').forEach(function (panel) {
+                    panel.hidden = true;
+                    panel.inert = true;
+                    panel.dataset.panelOpen = 'false';
+                    panel.classList.add('hidden');
+                    panel.style.pointerEvents = 'none';
+                });
+            </script>
+        @endunless
 
         @stack('scripts')
     </body>

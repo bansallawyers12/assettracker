@@ -8,7 +8,9 @@
 
 <select name="{{ $name }}" id="{{ $id }}" @if($required) required @endif
         class="{{ $class }}"
-        data-transaction-type-select>
+        data-transaction-type-select
+        data-tomselect
+        data-tomselect-search="false">
     <option value="">Select Type</option>
     @foreach (\App\Models\Transaction::typeSelectGroups() as $groupLabel => $types)
         <optgroup label="{{ $groupLabel }}">

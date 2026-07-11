@@ -3,10 +3,11 @@ import './compliance-workspace.js';
 import './entity-show-workspace.js';
 import './person-show-workspace.js';
 import './admin-users-workspace.js';
+import './email-templates-workspace.js';
 import './entity-create-form.js';
 import { initBankAccountModal } from './bank-account-modal.js';
 import { initBankAccountFormFields } from './bank-form-fields.js';
-import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput, setDateInputRequired } from './flatpickr-init';
+import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput } from './flatpickr-init';
 import {
     initTomSelect,
     watchTomSelect,
@@ -18,6 +19,9 @@ import {
     setSelectDisabled,
 } from './tomselect-init';
 import { initTransactionPaidByValidation } from './transaction-paid-by-validation';
+import { initFinancialReportsHub } from './financial-reports-hub.js';
+import { sealOverlayPanels } from './overlay-panels.js';
+import { showToast } from './notify.js';
 
 import Alpine from 'alpinejs';
 
@@ -32,7 +36,7 @@ window.setSelectDisabled = setSelectDisabled;
 window.initFlatpickr = initFlatpickr;
 window.redrawFlatpickr = redrawFlatpickr;
 window.clearDateInput = clearDateInput;
-window.setDateInputRequired = setDateInputRequired;
+window.showToast = showToast;
 
 let richTextModulePromise = null;
 
@@ -74,7 +78,11 @@ window.initRichTextEditors = async (root = document, options = {}) => {
 
 Alpine.start();
 
+sealOverlayPanels();
+window.addEventListener('pageshow', sealOverlayPanels);
+
 document.addEventListener('DOMContentLoaded', function() {
+    sealOverlayPanels();
     initFlatpickr();
     watchFlatpickr();
     initTomSelect();
@@ -82,6 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initTransactionPaidByValidation();
     initBankAccountModal();
     initBankAccountFormFields();
+    initFinancialReportsHub();
 
     if (document.querySelector('[data-rich-text]')) {
         loadRichTextModule().then(exposeRichTextHelpers);

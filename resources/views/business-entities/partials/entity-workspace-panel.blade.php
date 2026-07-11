@@ -1,5 +1,8 @@
 <div
     id="entity-workspace-panel"
+    hidden
+    inert
+    data-panel-open="false"
     class="entity-workspace-panel hidden fixed inset-0 z-[95]"
     aria-hidden="true"
 >

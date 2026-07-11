@@ -60,62 +60,75 @@
                     <button type="button" class="doc-delete-cat text-xs px-2 py-1 border border-red-300 text-red-600 rounded-sm" data-category-id="{{ $category->id }}">Delete</button>
                 </div>
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                    <table class="min-w-full text-sm">
-                        <thead class="bg-gray-100 dark:bg-gray-800">
+            <div class="doc-checklist-layout">
+                <div class="doc-table-wrap">
+                    <table class="doc-table">
+                        <thead>
                             <tr>
-                                <th class="text-left px-3 py-2">Checklist</th>
-                                <th class="text-left px-3 py-2">File</th>
-                                <th class="px-3 py-2"></th>
+                                <th class="doc-col-checklist">Checklist</th>
+                                <th class="doc-col-file">File</th>
+                                <th class="doc-col-actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($category->documents as $doc)
                                 <tr class="border-t border-gray-200 dark:border-gray-700" data-slot-row="{{ $doc->id }}">
-                                    <td class="px-3 py-2 align-top">
+                                    <td class="doc-col-checklist">
                                         <span class="font-medium text-gray-900 dark:text-gray-100">{{ $doc->checklist_label ?: '—' }}</span>
                                         <div class="text-xs text-gray-500">{{ ucfirst($doc->type ?? 'other') }}</div>
                                     </td>
-                                    <td class="px-3 py-2 align-top">
+                                    <td class="doc-col-file">
                                         @if($doc->path)
-                                            <button type="button" class="text-indigo-600 dark:text-indigo-400 hover:underline doc-preview"
+                                            <button type="button" class="doc-preview doc-file-name"
                                                     data-doc-id="{{ $doc->id }}"
-                                                    data-asset-scope="{{ $doc->asset_id ?? '' }}"
+                                                    data-asset-scope="{{ $doc->asset_id ?? ($wsAssetId ?: '') }}"
                                                     data-path="{{ $doc->path }}"
-                                                    data-name="{{ addslashes($doc->file_name ?? '') }}">
+                                                    data-name="{{ addslashes($doc->file_name ?? '') }}"
+                                                    title="{{ $doc->file_name }}">
                                                 {{ $doc->file_name }}
                                             </button>
                                         @else
-                                            <span class="text-gray-400">No file</span>
+                                            <span class="doc-file-empty">No file</span>
                                         @endif
                                     </td>
-                                    <td class="px-3 py-2 align-top text-right whitespace-nowrap">
-                                        @if(!$doc->path)
-                                            <label class="cursor-pointer text-indigo-600 text-xs">Upload
-                                                <input type="file" class="hidden doc-slot-file" accept="{{ $wsDocAccept }}" data-document-id="{{ $doc->id }}" data-replace="0">
-                                            </label>
-                                        @else
-                                            <label class="cursor-pointer text-xs text-gray-600 dark:text-gray-400 mr-1">Replace
-                                                <input type="file" class="hidden doc-slot-file" accept="{{ $wsDocAccept }}" data-document-id="{{ $doc->id }}" data-replace="1">
-                                            </label>
-                                        @endif
-                                        <button type="button" class="doc-clear text-xs text-amber-600 {{ $doc->path ? '' : 'opacity-40 pointer-events-none' }}" data-doc-id="{{ $doc->id }}">Clear</button>
-                                        <button type="button" class="doc-rename-slot text-xs text-gray-500 dark:text-gray-400" data-doc-id="{{ $doc->id }}" data-label="{{ addslashes($doc->checklist_label ?? '') }}">Rename</button>
-                                        <button type="button" class="doc-move-slot text-xs text-gray-500 dark:text-gray-400" data-doc-id="{{ $doc->id }}">Move</button>
-                                        <button type="button" class="doc-del text-xs text-red-600" data-doc-id="{{ $doc->id }}">×</button>
+                                    <td class="doc-col-actions">
+                                        <div class="doc-row-actions">
+                                            @if(!$doc->path)
+                                                <label class="doc-action-btn doc-action-primary cursor-pointer">Upload
+                                                    <input type="file" class="hidden doc-slot-file" accept="{{ $wsDocAccept }}" data-document-id="{{ $doc->id }}" data-replace="0">
+                                                </label>
+                                            @else
+                                                <label class="doc-action-btn doc-action-primary cursor-pointer">Reupload
+                                                    <input type="file" class="hidden doc-slot-file" accept="{{ $wsDocAccept }}" data-document-id="{{ $doc->id }}" data-replace="1">
+                                                </label>
+                                            @endif
+                                            <button type="button" class="doc-action-btn doc-action-warning doc-clear {{ $doc->path ? '' : 'doc-action-disabled' }}" data-doc-id="{{ $doc->id }}">Clear</button>
+                                            <button type="button" class="doc-action-btn doc-action-muted doc-rename-slot" data-doc-id="{{ $doc->id }}" data-label="{{ addslashes($doc->checklist_label ?? '') }}">Rename</button>
+                                            <button type="button" class="doc-action-btn doc-action-muted doc-move-slot" data-doc-id="{{ $doc->id }}">Move</button>
+                                            <button type="button" class="doc-action-btn doc-action-danger doc-del" data-doc-id="{{ $doc->id }}">Delete</button>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
                 </div>
-                <div class="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-4 min-h-[280px]">
-                    <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview</h5>
-                    <iframe class="doc-cat-preview-frame w-full h-[240px] bg-gray-50 dark:bg-gray-800 rounded-sm border border-gray-200 dark:border-gray-600" title="Preview"></iframe>
-                    <div class="mt-3 flex gap-2 flex-wrap">
-                        <a href="#" target="_blank" class="doc-cat-preview-dl text-sm px-3 py-1 bg-blue-600 text-white rounded-sm opacity-50 pointer-events-none">Download</a>
-                        <button type="button" class="doc-cat-preview-del text-sm px-3 py-1 bg-red-600 text-white rounded-sm opacity-50 pointer-events-none">Delete</button>
+                <div class="doc-preview-card">
+                    <div class="doc-preview-header">
+                        <h5 class="text-sm font-semibold text-gray-800 dark:text-gray-100">Preview</h5>
+                        <p class="doc-preview-hint text-xs text-gray-500 dark:text-gray-400">Click a file name to preview it here</p>
+                    </div>
+                    <div class="doc-preview-body">
+                        <div class="doc-preview-empty">
+                            <span class="doc-preview-empty-icon" aria-hidden="true">📄</span>
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Select a document from the list to preview</p>
+                        </div>
+                        <iframe class="doc-cat-preview-frame hidden" title="Document preview"></iframe>
+                    </div>
+                    <div class="doc-preview-actions">
+                        <a href="#" class="doc-cat-preview-dl doc-action-btn doc-action-primary opacity-50 pointer-events-none">Download</a>
+                        <button type="button" class="doc-cat-preview-open doc-action-btn doc-action-muted opacity-50 pointer-events-none">Preview</button>
+                        <button type="button" class="doc-cat-preview-del doc-action-btn doc-action-danger opacity-50 pointer-events-none">Delete file</button>
                     </div>
                 </div>
             </div>

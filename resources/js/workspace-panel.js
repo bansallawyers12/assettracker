@@ -2,6 +2,8 @@
  * Shared slide-over panel for entity show page workspaces.
  */
 
+import { markOverlayPanelClosed, markOverlayPanelOpen } from './overlay-panels.js';
+
 let panelRoot = null;
 let panelTitleEl = null;
 let panelBodyEl = null;
@@ -43,8 +45,7 @@ export function openWorkspacePanel(title, html = null) {
     }
 
     panelOpen = true;
-    root.classList.remove('hidden');
-    root.setAttribute('aria-hidden', 'false');
+    markOverlayPanelOpen(root);
 
     if (panelTitleEl) {
         panelTitleEl.textContent = title || 'Details';
@@ -78,8 +79,7 @@ export function closeWorkspacePanel() {
     }
 
     panelOpen = false;
-    panelRoot.classList.add('hidden');
-    panelRoot.setAttribute('aria-hidden', 'true');
+    markOverlayPanelClosed(panelRoot);
 
     if (panelBodyEl) {
         panelBodyEl.innerHTML = '';

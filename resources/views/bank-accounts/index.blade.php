@@ -11,11 +11,12 @@
     ];
 @endphp
 
-@include('bank-accounts.partials.bank-account-panel-config', [
-    'bankAccountPanelConfig' => $bankAccountPanelConfig,
-])
-
 <x-app-layout>
+@push('bank-panel-config')
+<script type="application/json" id="add-bank-account-config">
+@json($bankAccountPanelConfig)
+</script>
+@endpush
 <div class="container mx-auto px-4 py-8">
 
     <div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">

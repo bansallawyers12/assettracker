@@ -1,11 +1,14 @@
 @php
-    $createOnly = (bool) ($bankAccountPanelConfig['createOnly'] ?? false);
-    $panelTitle = $panelTitle ?? 'Add bank account';
-    $panelSubtitle = $panelSubtitle ?? '';
+    $createOnly = false;
+    $panelTitle = 'Add bank account';
+    $panelSubtitle = '';
 @endphp
 
 <div
     id="bank-account-panel"
+    hidden
+    inert
+    data-panel-open="false"
     class="bank-account-panel hidden fixed inset-0 z-[100]"
     aria-hidden="true"
 >

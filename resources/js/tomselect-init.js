@@ -1,6 +1,7 @@
 import TomSelect from 'tom-select';
 import remove_button from 'tom-select/dist/esm/plugins/remove_button/plugin.js';
 import 'tom-select/dist/css/tom-select.default.css';
+import '../css/tom-select-overrides.css';
 
 function resolveSelect(select) {
     if (!select) {
@@ -22,11 +23,102 @@ function placeholderFromSelect(select) {
     return isMultiSelect(select) ? 'Search entities…' : 'Select…';
 }
 
+function isSelectInHiddenContainer(select) {
+    let node = select;
+
+    while (node && node !== document.body) {
+        if (node.classList?.contains('hidden')) {
+            return true;
+        }
+
+        node = node.parentElement;
+    }
+
+    return false;
+}
+
+function resolveDropdownParent(select) {
+    if (select.dataset.tomselectDropdownParent) {
+        const parentValue = select.dataset.tomselectDropdownParent.trim();
+        if (parentValue === 'body') {
+            return 'body';
+        }
+
+        const explicit = document.querySelector(parentValue);
+        if (explicit) {
+            return explicit;
+        }
+    }
+
+    // Tom Select only calls positionDropdown() when dropdownParent === 'body'.
+    // Custom DOM parents append the list without coordinates, so it appears at
+    // the bottom of large containers (dashboard form, slide-over panels).
+    if (select.closest('#add-transaction-section, .bank-account-panel-sheet, .entity-workspace-panel-sheet')) {
+        return 'body';
+    }
+
+    return null;
+}
+
+function scheduleDropdownReposition(ts) {
+    ts.positionDropdown();
+    requestAnimationFrame(() => {
+        ts.positionDropdown();
+        requestAnimationFrame(() => ts.positionDropdown());
+    });
+}
+
+function dropdownScrollRoots(select) {
+    const roots = new Set();
+
+    const panelRoot = select.closest('[data-bank-panel-pane], [data-entity-panel-body]');
+    if (panelRoot) {
+        roots.add(panelRoot);
+    }
+
+    const transactionSection = select.closest('#add-transaction-section');
+    if (transactionSection) {
+        roots.add(transactionSection);
+    }
+
+    return roots;
+}
+
+function bindDropdownReposition(select, ts) {
+    const scrollRoots = dropdownScrollRoots(select);
+
+    select._tomselectScrollAbort?.abort();
+    const abort = new AbortController();
+    select._tomselectScrollAbort = abort;
+
+    const reposition = () => {
+        if (ts.isOpen) {
+            scheduleDropdownReposition(ts);
+        }
+    };
+
+    scrollRoots.forEach((root) => {
+        root.addEventListener('scroll', reposition, { passive: true, signal: abort.signal });
+    });
+    window.addEventListener('scroll', reposition, { passive: true, signal: abort.signal });
+    window.addEventListener('resize', reposition, { passive: true, signal: abort.signal });
+}
+
+function createTomSelect(select) {
+    const ts = new TomSelect(select, buildOptions(select));
+    bindDropdownReposition(select, ts);
+
+    return ts;
+}
+
 function buildOptions(select) {
     const create = select.dataset.tomselectCreate === 'true';
     const multi = isMultiSelect(select);
+    const useSearch = select.dataset.tomselectSearch !== 'false';
 
-    const plugins = multi ? ['remove_button', 'dropdown_input'] : ['dropdown_input'];
+    const plugins = multi
+        ? ['remove_button', 'dropdown_input']
+        : (useSearch ? ['dropdown_input'] : []);
 
     const options = {
         plugins,
@@ -34,9 +126,12 @@ function buildOptions(select) {
         create,
         maxOptions: null,
         placeholder: placeholderFromSelect(select),
-        dropdownParent: 'body',
+        dropdownParent: resolveDropdownParent(select),
         onChange() {
             select.dispatchEvent(new Event('change', { bubbles: true }));
+        },
+        onDropdownOpen() {
+            scheduleDropdownReposition(this);
         },
     };
 
@@ -62,7 +157,11 @@ function addNativeOptionToTomSelect(ts, opt) {
     }
 
     if (opt.parentElement?.tagName === 'OPTGROUP') {
-        option.optgroup = opt.parentElement.label;
+        const groupLabel = opt.parentElement.label;
+        option.optgroup = groupLabel;
+        if (!ts.optgroups[groupLabel]) {
+            ts.addOptionGroup(groupLabel, { label: groupLabel });
+        }
     }
 
     ts.addOption(option);
@@ -117,13 +216,61 @@ export function initTomSelect(root = document) {
             return;
         }
 
-        new TomSelect(select, buildOptions(select));
+        if (isSelectInHiddenContainer(select)) {
+            select.dataset.tomselectDeferred = 'true';
+
+            return;
+        }
+
+        delete select.dataset.tomselectDeferred;
+        createTomSelect(select);
+    });
+}
+
+function initDeferredTomSelectsIn(container) {
+    if (!container?.querySelectorAll) {
+        return;
+    }
+
+    container.querySelectorAll('select[data-tomselect][data-tomselect-deferred="true"]').forEach((select) => {
+        if (select.dataset.tomselectSkip === 'true') {
+            return;
+        }
+
+        delete select.dataset.tomselectDeferred;
+        reinitTomSelect(select);
     });
 }
 
 export function destroyTomSelect(select) {
     const el = resolveSelect(select);
+    el?._tomselectScrollAbort?.abort();
+    delete el?._tomselectScrollAbort;
     el?.tomselect?.destroy();
+}
+
+/** Destroy every Tom Select instance under a container (call before replacing innerHTML). */
+export function destroyTomSelectsIn(root) {
+    if (!root?.querySelectorAll) {
+        return;
+    }
+
+    root.querySelectorAll('select[data-tomselect]').forEach((select) => {
+        destroyTomSelect(select);
+    });
+}
+
+/** Reinitialize all searchable selects under a container (for AJAX-injected forms). */
+export function reinitTomSelectsIn(root) {
+    if (!root?.querySelectorAll) {
+        return;
+    }
+
+    root.querySelectorAll('select[data-tomselect]').forEach((select) => {
+        if (select.dataset.tomselectSkip !== 'true') {
+            reinitTomSelect(select);
+        }
+    });
 }
 
 export function refreshTomSelect(select) {
@@ -148,6 +295,9 @@ export function rebuildTomSelectFromNative(select) {
 
     ts.clear(true);
     ts.clearOptions();
+    Object.keys(ts.optgroups).forEach((key) => {
+        delete ts.optgroups[key];
+    });
 
     Array.from(el.options).forEach((opt) => addNativeOptionToTomSelect(ts, opt));
 
@@ -176,7 +326,7 @@ export function reinitTomSelect(select) {
     }
 
     destroyTomSelect(el);
-    new TomSelect(el, buildOptions(el));
+    createTomSelect(el);
 }
 
 export function setSelectValue(select, value) {
@@ -248,6 +398,33 @@ export function watchTomSelect() {
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
+
+    const visibilityObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            if (mutation.type !== 'attributes' || mutation.attributeName !== 'class') {
+                continue;
+            }
+
+            const target = mutation.target;
+            if (target.nodeType !== Node.ELEMENT_NODE || target.classList.contains('hidden')) {
+                continue;
+            }
+
+            initDeferredTomSelectsIn(target);
+            target.querySelectorAll?.('select[data-tomselect][data-tomselect-deferred="true"]').forEach((select) => {
+                if (!isSelectInHiddenContainer(select)) {
+                    delete select.dataset.tomselectDeferred;
+                    reinitTomSelect(select);
+                }
+            });
+        }
+    });
+
+    visibilityObserver.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class'],
+        subtree: true,
+    });
 }
 
 // Register remove_button for multi-select instances.

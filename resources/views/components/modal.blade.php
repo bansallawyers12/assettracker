@@ -46,7 +46,9 @@ $maxWidth = [
     x-on:keydown.shift.tab.prevent="prevFocusable().focus()"
     x-show="show"
     class="fixed inset-0 z-[{{ $zIndex }}] flex items-end justify-center p-4 sm:items-center sm:p-6"
+    :class="show ? 'pointer-events-auto' : 'pointer-events-none hidden'"
     style="display: {{ $show ? 'flex' : 'none' }};"
+    :inert="!show"
     role="dialog"
     aria-modal="true"
 >

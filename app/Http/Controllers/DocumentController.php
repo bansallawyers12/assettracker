@@ -375,16 +375,35 @@ class DocumentController extends Controller
             abort(404);
         }
 
-        if ($document->asset_id === null) {
-            if ($request->query->has('asset_id')) {
+        if ($document->asset_id !== null) {
+            $requestedAssetId = $request->query('asset_id');
+            if ($requestedAssetId !== null && (int) $requestedAssetId !== (int) $document->asset_id) {
                 abort(404);
             }
-        } elseif ((int) $request->query('asset_id') !== (int) $document->asset_id) {
-            abort(404);
         }
 
         if (! $document->path) {
             abort(404);
+        }
+
+        if (! DocumentStorage::exists($document->path)) {
+            Log::warning('Document preview: file missing from storage', [
+                'document_id' => $document->id,
+                'business_entity_id' => $businessEntity->id,
+                'asset_id' => $document->asset_id,
+                'path' => $document->path,
+                'storage_disk' => DocumentStorage::diskName(),
+            ]);
+
+            return response(
+                '<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;padding:1.5rem;color:#374151">'
+                .'<p><strong>File not found in storage.</strong></p>'
+                .'<p>The checklist record exists but the file is missing from '
+                .htmlspecialchars(DocumentStorage::diskName(), ENT_QUOTES, 'UTF-8')
+                .'. Re-upload the document or contact support.</p></body></html>',
+                404,
+                ['Content-Type' => 'text/html; charset=UTF-8']
+            );
         }
 
         $name    = $this->safeContentDispositionFilename($document->file_name, $document->path);
@@ -400,8 +419,23 @@ class DocumentController extends Controller
             }
 
             return DocumentStorage::disk()->response($document->path, $name, $headers, 'inline');
-        } catch (\Throwable) {
-            abort(404);
+        } catch (\Throwable $e) {
+            Log::warning('Document preview: failed to stream from storage', [
+                'document_id' => $document->id,
+                'path' => $document->path,
+                'storage_disk' => DocumentStorage::diskName(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response(
+                '<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;padding:1.5rem;color:#374151">'
+                .'<p><strong>Could not load this file.</strong></p>'
+                .'<p>Storage error while reading from '
+                .htmlspecialchars(DocumentStorage::diskName(), ENT_QUOTES, 'UTF-8')
+                .'. Try downloading instead or re-upload the file.</p></body></html>',
+                404,
+                ['Content-Type' => 'text/html; charset=UTF-8']
+            );
         }
     }
 

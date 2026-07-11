@@ -1,7 +1,8 @@
 /**
- * Bank account form field behaviour (holder type toggle, bank name "Other").
+ * Bank account form field behaviour (holder type toggle, bank name "Other", purpose-to-entity-picker toggle).
  */
 const BANK_OTHER_VALUE = '__other__';
+const PURPOSE_LOAN_REPAYMENT = 'loan_repayment';
 export function initBankAccountFormFields(root = document) {
     const scope = root?.querySelector?.('.bank-account-form-root') ?? root;
     if (!scope || scope.dataset.bankFormInit === '1') {
@@ -45,6 +46,19 @@ function bindBankFormFields(formRoot) {
         refreshBankNameField();
     }
 
+    // Purpose → Business Entity picker toggle (portfolio forms only)
+    const purposeSelect = formRoot.querySelector('#account_purpose');
+    const entityPicker = formRoot.querySelector('#entity-picker');
+
+    if (purposeSelect && entityPicker) {
+        const refreshEntityPicker = () => {
+            entityPicker.classList.toggle('hidden', purposeSelect.value === PURPOSE_LOAN_REPAYMENT);
+        };
+
+        purposeSelect.addEventListener('change', refreshEntityPicker);
+        refreshEntityPicker();
+    }
+
     const holderSelect = formRoot.querySelector('#holder_type');
     if (!holderSelect) {
         return;
@@ -79,23 +93,23 @@ function bindBankFormFields(formRoot) {
 
         if (fromUserChange) {
             if (val === 'entity') {
-                window.setSelectValue?.(personSelect, '');
-                window.reinitTomSelect?.(entitySelect);
+                if (personSelect) {
+                    personSelect.value = '';
+                }
             } else if (val === 'person') {
-                window.setSelectValue?.(entitySelect, '');
-                window.reinitTomSelect?.(personSelect);
+                if (entitySelect) {
+                    entitySelect.value = '';
+                }
             } else {
-                window.setSelectValue?.(entitySelect, '');
-                window.setSelectValue?.(personSelect, '');
+                if (entitySelect) {
+                    entitySelect.value = '';
+                }
+                if (personSelect) {
+                    personSelect.value = '';
+                }
             }
 
             return;
-        }
-
-        if (val === 'entity') {
-            window.reinitTomSelect?.(entitySelect);
-        } else if (val === 'person') {
-            window.reinitTomSelect?.(personSelect);
         }
     };
 

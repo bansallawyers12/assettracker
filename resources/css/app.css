@@ -1,3 +1,5 @@
+@import url('https://fonts.bunny.net/css?family=inter:400,500,600,700');
+
 @import 'tailwindcss';
 
 @plugin '@tailwindcss/forms';
@@ -8,13 +10,46 @@
 
 @theme {
   --font-sans:
-    ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 
 @layer base {
   [x-cloak] {
     display: none !important;
+  }
+
+  html {
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Closed slide-over panels must never intercept the first page click. */
+  .entity-workspace-panel[hidden],
+  .entity-workspace-panel.hidden,
+  .entity-workspace-panel:not([data-panel-open='true']),
+  .bank-account-panel[hidden],
+  .bank-account-panel.hidden,
+  .bank-account-panel:not([data-panel-open='true']),
+  #workspace-dialog-root[hidden],
+  #workspace-dialog-root.hidden,
+  #workspace-dialog-root:not([data-panel-open='true']) {
+    display: none !important;
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+
+  .entity-workspace-panel[data-panel-open='true'],
+  .bank-account-panel[data-panel-open='true'] {
+    display: block !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
+  }
+
+  #workspace-dialog-root[data-panel-open='true'] {
+    display: flex !important;
+    pointer-events: auto !important;
+    visibility: visible !important;
   }
 }
 
@@ -125,6 +160,30 @@
   /* Bank account right-side panel */
   .bank-account-panel-sheet {
     animation: bank-panel-in 220ms ease-out;
+    position: relative;
+    overflow: visible;
+  }
+
+  .entity-workspace-panel-sheet {
+    position: relative;
+    overflow: visible;
+  }
+
+  #add-transaction-section {
+    position: relative;
+    overflow: visible;
+  }
+
+  body > .ts-dropdown {
+    position: absolute;
+    z-index: 10050;
+    max-height: min(16rem, 50vh);
+    overflow-y: auto;
+  }
+
+  .bank-account-panel-sheet .ts-dropdown,
+  .entity-workspace-panel-sheet .ts-dropdown {
+    z-index: 40;
   }
 
   @keyframes bank-panel-in {
@@ -161,11 +220,6 @@
   .bank-panel-status-ready {
     @apply border-emerald-200 bg-emerald-50 text-emerald-800
       dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200;
-  }
-
-  .bank-ws-form .ts-wrapper.single .ts-control,
-  .bank-ws-form .ts-wrapper.multi .ts-control {
-    @apply rounded-lg border-gray-300 bg-white dark:border-gray-600 dark:bg-gray-900/50 dark:text-gray-100;
   }
 
   /* Profile settings page */
@@ -254,6 +308,216 @@
   .two-factor-secret-key {
     @apply block min-w-0 flex-1 break-all rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 font-mono text-sm text-gray-900
       dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100;
+  }
+
+  /* Portfolio report — typography & financial figures */
+  .portfolio-page {
+    @apply text-[15px] leading-relaxed text-gray-800 dark:text-gray-200;
+  }
+
+  .portfolio-page .portfolio-kicker {
+    @apply text-xs font-semibold uppercase tracking-[0.12em] text-emerald-100/95;
+  }
+
+  .portfolio-page .portfolio-title {
+    @apply text-[1.75rem] lg:text-[2rem] font-semibold tracking-[-0.025em] leading-tight text-white;
+  }
+
+  .portfolio-page .portfolio-lead {
+    @apply text-sm lg:text-[15px] leading-relaxed text-emerald-50/90;
+  }
+
+  .portfolio-page .portfolio-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium tracking-wide backdrop-blur-xs;
+  }
+
+  .portfolio-page .portfolio-section-title {
+    @apply text-sm font-semibold tracking-[-0.01em] text-gray-900 dark:text-white;
+  }
+
+  .portfolio-page .portfolio-section-desc {
+    @apply text-xs leading-relaxed text-gray-500 dark:text-gray-400;
+  }
+
+  .portfolio-page .portfolio-stat-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400;
+  }
+
+  .portfolio-page .portfolio-stat-value {
+    @apply mt-3 text-[1.65rem] font-semibold tracking-[-0.03em] tabular-nums leading-none text-gray-900 dark:text-white;
+  }
+
+  .portfolio-page .portfolio-stat-hint {
+    @apply mt-1.5 text-xs leading-snug text-gray-500 dark:text-gray-400;
+  }
+
+  .portfolio-page .portfolio-table {
+    @apply w-full text-[13px] leading-normal;
+  }
+
+  .portfolio-page .portfolio-table thead th {
+    @apply px-4 py-3.5 text-left text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400;
+  }
+
+  .portfolio-page .portfolio-table tbody td {
+    @apply px-4 py-3.5 align-middle;
+  }
+
+  .portfolio-page .portfolio-money {
+    @apply tabular-nums tracking-tight font-medium;
+  }
+
+  .portfolio-page .portfolio-filter-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400;
+  }
+
+  .portfolio-page .portfolio-filter-control {
+    @apply rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/70 text-sm text-gray-900 dark:text-gray-100
+      shadow-xs focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 dark:focus:border-emerald-400;
+  }
+
+  .portfolio-page .portfolio-filter-chip {
+    @apply text-xs font-medium rounded-lg border border-gray-200 dark:border-gray-600 px-2.5 py-1.5
+      text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-900/50
+      hover:border-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors whitespace-nowrap;
+  }
+
+  .portfolio-page .portfolio-basis-toggle {
+    @apply flex rounded-lg border border-gray-200 dark:border-gray-600 overflow-hidden text-sm font-medium shadow-xs;
+  }
+
+  .portfolio-page .portfolio-basis-toggle a {
+    @apply px-3.5 py-2 transition-colors;
+  }
+
+  .portfolio-page .portfolio-basis-toggle a.is-active {
+    @apply bg-emerald-600 text-white;
+  }
+
+  .portfolio-page .portfolio-basis-toggle a:not(.is-active) {
+    @apply bg-white dark:bg-gray-900/70 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800;
+  }
+
+  /* Financial reports hub */
+  .reports-hub-page {
+    @apply text-gray-900 dark:text-gray-100;
+  }
+
+  .reports-hub-kicker {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-indigo-600 dark:text-indigo-400;
+  }
+
+  .reports-hub-title {
+    @apply text-2xl sm:text-3xl font-semibold tracking-tight text-gray-900 dark:text-white;
+  }
+
+  .reports-hub-subtitle {
+    @apply text-sm sm:text-base text-gray-600 dark:text-gray-400 leading-relaxed;
+  }
+
+  .reports-hub-section-title {
+    @apply text-sm font-semibold text-gray-900 dark:text-white;
+  }
+
+  .reports-hub-section-desc {
+    @apply text-xs text-gray-500 dark:text-gray-400 mt-0.5;
+  }
+
+  .reports-hub-card {
+    @apply relative flex w-full items-start gap-3 rounded-2xl border border-gray-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 p-4 sm:p-5 text-left shadow-xs transition-all duration-200 hover:-translate-y-0.5 hover:border-indigo-300 dark:hover:border-indigo-600 hover:shadow-md focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-gray-950;
+  }
+
+  .reports-hub-card-icon {
+    @apply shrink-0 flex h-10 w-10 items-center justify-center rounded-xl transition-colors;
+  }
+
+  .reports-hub-card-title {
+    @apply text-sm font-semibold text-gray-900 dark:text-white;
+  }
+
+  .reports-hub-card-desc {
+    @apply mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400;
+  }
+
+  .reports-hub-card-arrow {
+    @apply absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 opacity-0 transition-all;
+  }
+
+  /* Entity summary report */
+  .entity-summary-page {
+    @apply text-[15px] leading-relaxed text-gray-800 dark:text-gray-200;
+  }
+
+  .entity-summary-page .entity-summary-kicker {
+    @apply text-xs font-semibold uppercase tracking-[0.12em] text-amber-100/95;
+  }
+
+  .entity-summary-page .entity-summary-title {
+    @apply text-[1.75rem] lg:text-[2rem] font-semibold tracking-[-0.025em] leading-tight text-white;
+  }
+
+  .entity-summary-page .entity-summary-lead {
+    @apply text-sm lg:text-[15px] leading-relaxed text-amber-50/90;
+  }
+
+  .entity-summary-page .entity-summary-chip {
+    @apply inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium tracking-wide backdrop-blur-xs;
+  }
+
+  .entity-summary-page .entity-summary-section-title {
+    @apply text-sm font-semibold tracking-[-0.01em] text-gray-900 dark:text-white;
+  }
+
+  .entity-summary-page .entity-summary-stat-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400;
+  }
+
+  .entity-summary-page .entity-summary-stat-value {
+    @apply mt-3 text-[1.65rem] font-semibold tracking-[-0.03em] tabular-nums leading-none text-gray-900 dark:text-white;
+  }
+
+  .entity-summary-page .entity-summary-stat-hint {
+    @apply mt-1.5 text-xs leading-snug text-gray-500 dark:text-gray-400;
+  }
+
+  .entity-summary-page .entity-summary-table {
+    @apply w-full text-[13px] leading-normal border-collapse;
+  }
+
+  .entity-summary-page .entity-summary-table thead th {
+    @apply px-4 py-3.5 text-right text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500 dark:text-gray-400 whitespace-nowrap;
+  }
+
+  .entity-summary-page .entity-summary-table thead th:first-child {
+    @apply text-left sticky left-0 z-20 bg-white dark:bg-gray-800;
+  }
+
+  .entity-summary-page .entity-summary-table tbody td {
+    @apply px-4 py-3 align-middle tabular-nums;
+  }
+
+  .entity-summary-page .entity-summary-table tbody td:first-child {
+    @apply sticky left-0 z-10 text-gray-700 dark:text-gray-300;
+  }
+
+  .entity-summary-page .entity-summary-table tbody tr.section-row td {
+    @apply bg-amber-50/80 dark:bg-amber-950/20 text-[11px] font-semibold uppercase tracking-[0.08em] text-amber-800 dark:text-amber-200 py-2.5;
+  }
+
+  .entity-summary-page .entity-summary-table tbody tr.metric-row--bold td {
+    @apply font-semibold;
+  }
+
+  .entity-summary-page .entity-summary-table tbody tr.metric-row--bold td:first-child {
+    @apply text-gray-900 dark:text-white;
+  }
+
+  .entity-summary-page .entity-summary-money {
+    @apply tabular-nums tracking-tight font-medium text-gray-900 dark:text-gray-100;
+  }
+
+  .entity-summary-page .entity-summary-money--negative {
+    @apply text-rose-600 dark:text-rose-400;
   }
 }
 
@@ -639,6 +903,128 @@
     @apply ml-2 inline-flex items-center gap-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400;
 }
 
+/* Entity / asset document workspace */
+.documents-workspace .doc-checklist-layout {
+    @apply flex flex-col gap-4 xl:flex-row xl:items-start;
+}
+
+.documents-workspace .doc-table-wrap {
+    @apply min-w-0 flex-1 overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900;
+    -webkit-overflow-scrolling: touch;
+}
+
+.documents-workspace .doc-table {
+    @apply w-full min-w-[720px] table-fixed text-sm;
+}
+
+.documents-workspace .doc-col-checklist {
+    @apply w-[26%] px-3 py-3 align-top;
+}
+
+.documents-workspace .doc-col-file {
+    @apply w-[34%] px-3 py-3 align-top;
+}
+
+.documents-workspace .doc-col-actions {
+    @apply w-[40%] min-w-[16rem] px-3 py-3 align-top;
+}
+
+.documents-workspace .doc-table thead {
+    @apply bg-gray-50 dark:bg-gray-800/80;
+}
+
+.documents-workspace .doc-table th {
+    @apply px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400;
+}
+
+.documents-workspace .doc-file-name {
+    @apply block max-w-full truncate text-left text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300;
+}
+
+.documents-workspace .doc-file-empty {
+    @apply inline-flex rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-500 dark:bg-gray-800 dark:text-gray-400;
+}
+
+.documents-workspace .doc-row-actions {
+    @apply flex min-w-[15rem] flex-wrap items-center gap-1;
+}
+
+.documents-workspace .doc-action-btn {
+    @apply inline-flex shrink-0 items-center justify-center rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors;
+}
+
+.documents-workspace .doc-action-primary {
+    @apply bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-950/60;
+}
+
+.documents-workspace .doc-action-warning {
+    @apply bg-amber-50 text-amber-800 hover:bg-amber-100 dark:bg-amber-950/30 dark:text-amber-300 dark:hover:bg-amber-950/50;
+}
+
+.documents-workspace .doc-action-muted {
+    @apply bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700;
+}
+
+.documents-workspace .doc-action-danger {
+    @apply bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50;
+}
+
+.documents-workspace .doc-action-disabled {
+    @apply pointer-events-none opacity-40;
+}
+
+.documents-workspace .doc-row-preview-active {
+    @apply bg-indigo-50/80 dark:bg-indigo-950/30;
+}
+
+.documents-workspace .doc-row-preview-active .doc-file-name {
+    @apply text-indigo-800 dark:text-indigo-200;
+}
+
+.documents-workspace .doc-preview-card {
+    @apply w-full shrink-0 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 xl:w-[min(100%,28rem)];
+}
+
+.documents-workspace .doc-preview-header {
+    @apply mb-3 space-y-0.5;
+}
+
+.documents-workspace .doc-preview-body {
+    @apply relative min-h-[320px] overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-800/60;
+}
+
+.documents-workspace .doc-preview-empty {
+    @apply absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 px-6 text-center;
+}
+
+.documents-workspace .doc-preview-empty-icon {
+    @apply text-3xl opacity-70;
+}
+
+.documents-workspace .doc-cat-preview-frame {
+    @apply relative z-20 block h-full min-h-[320px] w-full border-0 bg-white dark:bg-gray-900;
+}
+
+.documents-workspace .doc-preview-actions {
+    @apply mt-4 flex flex-wrap gap-2;
+}
+
+/* Dashboard Tom Select styles live in tom-select-overrides.css (loaded after Tom Select defaults). */
+
+/* Toast notifications */
+.app-toast {
+    transform: translateY(0);
+    opacity: 1;
+    transition:
+        transform 0.28s ease,
+        opacity 0.28s ease;
+}
+
+.app-toast--leaving {
+    transform: translateY(-0.75rem);
+    opacity: 0;
+}
+
 /* Asset show page — tabs & layout */
 .asset-show-page .asset-main-card {
     box-shadow:
@@ -712,6 +1098,7 @@
 /* Tom Select — match Tailwind form controls */
 .ts-wrapper {
     width: 100%;
+    position: relative;
 }
 
 .ts-wrapper.single .ts-control,
@@ -739,7 +1126,7 @@
     background: white;
     font-size: 0.875rem;
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
-    z-index: 9999;
+    z-index: 10050;
 }
 
 .ts-dropdown .option {
@@ -771,6 +1158,35 @@
 
 .dark .ts-dropdown .option:hover {
     background: rgb(55 65 81);
+}
+
+@media (prefers-color-scheme: dark) {
+    .ts-wrapper.single .ts-control,
+    .ts-wrapper.multi .ts-control {
+        border-color: rgb(75 85 99);
+        background: rgb(55 65 81);
+        color: rgb(243 244 246);
+    }
+
+    .ts-wrapper.single .ts-control input,
+    .ts-wrapper.multi .ts-control input {
+        color: rgb(243 244 246);
+    }
+
+    .ts-dropdown {
+        border-color: rgb(75 85 99);
+        background: rgb(31 41 55);
+        color: rgb(243 244 246);
+    }
+
+    .ts-dropdown .active {
+        background: rgb(55 65 81);
+        color: rgb(165 180 252);
+    }
+
+    .ts-dropdown .option:hover {
+        background: rgb(55 65 81);
+    }
 }
 
 /* Tiptap rich text editor */
@@ -964,4 +1380,98 @@ input.flatpickr-input:focus {
 .dark .flatpickr-time input,
 .dark .flatpickr-time .flatpickr-am-pm {
     color: rgb(229 231 235);
+}
+
+/* Bank workspace Tom Select — match native .bank-field-control (must follow global .ts-* rules) */
+.bank-ws-form .ts-wrapper {
+    width: 100%;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+.bank-ws-form .ts-wrapper.single .ts-control,
+.bank-ws-form .ts-wrapper.multi .ts-control {
+    border-radius: 0.5rem;
+    border: 1px solid rgb(209 213 219);
+    background-color: rgb(255 255 255);
+    color: rgb(17 24 39);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    min-height: 2.5rem;
+    padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+}
+
+.bank-ws-form .ts-wrapper.single .ts-control:focus-within,
+.bank-ws-form .ts-wrapper.multi .ts-control:focus-within {
+    border-color: rgb(99 102 241);
+    outline: 2px solid rgb(99 102 241 / 0.2);
+    outline-offset: 0;
+}
+
+.bank-ws-form .ts-wrapper .ts-control input {
+    color: inherit !important;
+    font-size: 0.875rem;
+}
+
+.bank-ws-form .ts-wrapper.single .ts-control .item,
+.bank-ws-form .ts-wrapper.single .ts-control .ts-placeholder {
+    color: inherit;
+}
+
+.bank-ws-form .ts-wrapper.single .ts-control .ts-placeholder {
+    color: rgb(156 163 175);
+}
+
+.bank-account-panel-sheet .ts-dropdown,
+.entity-workspace-panel-sheet .ts-dropdown {
+    z-index: 40;
+    width: auto;
+    min-width: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+    .bank-ws-form .ts-wrapper.single .ts-control,
+    .bank-ws-form .ts-wrapper.multi .ts-control {
+        border-color: rgb(75 85 99);
+        background-color: rgb(17 24 39 / 0.5);
+        color: rgb(243 244 246);
+    }
+
+    .bank-ws-form .ts-wrapper.single .ts-control:focus-within,
+    .bank-ws-form .ts-wrapper.multi .ts-control:focus-within {
+        border-color: rgb(129 140 248);
+        outline-color: rgb(129 140 248 / 0.2);
+    }
+
+    .bank-ws-form .ts-wrapper.single .ts-control .ts-placeholder {
+        color: rgb(107 114 128);
+    }
+
+    .bank-account-panel-sheet .ts-dropdown,
+    .entity-workspace-panel-sheet .ts-dropdown {
+        border-color: rgb(75 85 99);
+        background-color: rgb(31 41 55);
+        color: rgb(243 244 246);
+    }
+
+    .bank-account-panel-sheet .ts-dropdown .active,
+    .entity-workspace-panel-sheet .ts-dropdown .active {
+        background: rgb(55 65 81);
+        color: rgb(165 180 252);
+    }
+}
+
+.tom-select-native {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }

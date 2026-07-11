@@ -10,7 +10,11 @@
             <div class="bg-white dark:bg-gray-800 shadow-xs rounded-xl border border-gray-200 dark:border-gray-700 p-6 sm:p-8">
                 <form method="POST" action="{{ route('bank-accounts.store') }}" class="bank-ws-form bank-account-form-root">
                     @csrf
-                    @include('bank-accounts.partials.form-fields', ['portfolio' => true])
+                    @include('bank-accounts.partials.form-fields', [
+                        'portfolio' => true,
+                        'businessEntities' => $businessEntities,
+                        'persons' => $persons,
+                    ])
                     @include('bank-accounts.partials.form-actions', [
                         'submitLabel' => 'Save account',
                         'workspace' => false,

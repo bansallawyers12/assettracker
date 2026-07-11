@@ -46,7 +46,7 @@
                 $txnSelect = 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 text-sm text-gray-900 dark:text-gray-100 shadow-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
                 $txnSection = 'rounded-xl border border-gray-100 dark:border-gray-700/80 bg-gray-50/60 dark:bg-gray-900/30 p-5 space-y-4';
             @endphp
-            <div id="add-transaction-section" class="{{ session('keep_open') ? '' : 'hidden' }} overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl transition-all duration-300">
+            <div id="add-transaction-section" class="{{ ($errors->any() || session('error') || session('keep_open')) ? '' : 'hidden' }} overflow-visible rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl transition-all duration-300">
                 <div class="relative border-b border-gray-100 dark:border-gray-700 bg-linear-to-r from-blue-50 via-white to-indigo-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800/90 px-6 py-5">
                     <div class="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-blue-500 via-indigo-500 to-violet-500"></div>
                     <div class="flex items-start justify-between gap-4">
@@ -66,33 +66,22 @@
                 </div>
 
                 <div class="p-6">
-                @if (session('success'))
-                    <div class="mb-5 flex items-start gap-3 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-800 dark:text-green-200">
-                        <x-lucide-circle-check class="w-5 h-5 shrink-0 mt-0.5" />
-                        <span>{{ session('success') }}</span>
-                    </div>
-                @endif
-                @if (session('error'))
-                    <div class="mb-5 flex items-start gap-3 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-800 dark:text-red-200">
-                        <x-lucide-circle-alert class="w-5 h-5 shrink-0 mt-0.5" />
-                        <span>{{ session('error') }}</span>
-                    </div>
-                @endif
-                @if ($errors->any())
-                    <div class="mb-5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-800 dark:text-red-200" role="alert">
-                        <p class="font-semibold mb-2 flex items-center gap-2">
-                            <x-lucide-circle-alert class="w-4 h-4" />
-                            Could not save this transaction
-                        </p>
-                        <ul class="list-disc list-inside space-y-1.5 leading-snug ml-1">
-                            @foreach ($errors->all() as $err)
-                                <li class="whitespace-normal wrap-break-word">{{ $err }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                @endif
-
-                <form method="POST" action="{{ route('business-entities.transactions.store', ['businessEntity' => $businessEntities->first() ? $businessEntities->first()->id : 0]) }}" id="store-transaction-form" data-transaction-paid-by-form enctype="multipart/form-data" class="space-y-6">
+                @php
+                    $dashboardTransactionEntityId = $businessEntities->first()?->id ?? 0;
+                    $dashboardTxnErrorToast = null;
+                    if ($errors->any()) {
+                        $dashboardTxnErrorToast = $errors->count() === 1
+                            ? $errors->first()
+                            : "Could not save this transaction:\n" . implode("\n", $errors->all());
+                    }
+                @endphp
+                <form method="POST"
+                      action="/business-entities/{{ $dashboardTransactionEntityId }}/transactions"
+                      data-store-action-template="/business-entities/__ID__/transactions"
+                      id="store-transaction-form"
+                      data-transaction-paid-by-form
+                      enctype="multipart/form-data"
+                      class="dashboard-txn-form space-y-6">
                     @csrf
 
                     {{-- Direction toggle --}}
@@ -354,12 +343,12 @@
                             </div>
                             <div>
                                 <label class="{{ $txnLabel }}">Payment Method</label>
-                                <select name="payment_method" class="{{ $txnSelect }} px-3 py-2.5">
+                                <x-tom-select name="payment_method" class="{{ $txnSelect }} px-3 py-2.5">
                                     <option value="">Select Method</option>
                                     @foreach (\App\Models\Transaction::$paymentMethods as $val => $lbl)
                                         <option value="{{ $val }}" {{ old('payment_method', session('transactionData.payment_method')) == $val ? 'selected' : '' }}>{{ $lbl }}</option>
                                     @endforeach
-                                </select>
+                                </x-tom-select>
                                 @error('payment_method') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                             <div class="md:col-span-2 lg:col-span-1">
@@ -875,23 +864,32 @@
             const transactionAssetSelect = document.getElementById('transaction_asset_id');
 
             function hideTransactionForm() {
-                if (!{{ session()->has('success') ? 'true' : 'false' }}) {
-                    transactionSection?.classList.add('hidden');
-                }
+                transactionSection?.classList.add('hidden');
             }
 
             function showTransactionForm() {
                 transactionSection?.classList.remove('hidden');
-                reinitTransactionTomSelects();
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        reinitTransactionTomSelects();
+                        if (typeof filterTypesByDirection === 'function') {
+                            filterTypesByDirection(getDirection());
+                        }
+                    });
+                });
                 transactionSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
 
             function reinitTransactionTomSelects() {
-                window.reinitTomSelect?.(entitySelect);
-                window.reinitTomSelect?.(transactionAssetSelect);
-                const relatedSel = relatedEntityField?.querySelector('select');
-                window.reinitTomSelect?.(relatedSel);
-                window.reinitTomSelect?.(document.getElementById('paid_by_select'));
+                const form = document.getElementById('store-transaction-form');
+                if (!form) {
+                    return;
+                }
+
+                form.querySelectorAll('select[data-tomselect]').forEach((select) => {
+                    delete select.dataset.tomselectDeferred;
+                    window.reinitTomSelect?.(select);
+                });
             }
 
             if (transactionBtn && transactionSection) {
@@ -918,8 +916,9 @@
 
                 function syncTransactionFormFromEntitySelect() {
                     const entityId = entitySelect.value;
-                    if (entityId && storeForm) {
-                        storeForm.action = `{{ url('business-entities') }}/${entityId}/transactions/store`;
+                    const actionTemplate = storeForm?.dataset.storeActionTemplate;
+                    if (entityId && storeForm && actionTemplate) {
+                        storeForm.action = actionTemplate.replace('__ID__', entityId);
                     }
                     const relatedSel = relatedEntityField ? relatedEntityField.querySelector('select') : null;
                     if (relatedSel) {
@@ -984,10 +983,28 @@
                 }));
             })();
 
-            @if (session('error') || session('transactionData'))
+            @if (session('error') || $errors->any())
                 if (transactionSection) {
                     showTransactionForm();
                 }
+            @endif
+
+            @if (session('success'))
+                window.showToast?.(@json(session('success')), 'success', {
+                    title: 'Transaction saved',
+                    duration: 7000,
+                });
+                hideTransactionForm();
+            @elseif (session('error'))
+                window.showToast?.(@json(session('error')), 'error', {
+                    title: 'Could not save transaction',
+                    duration: 9000,
+                });
+            @elseif ($dashboardTxnErrorToast)
+                window.showToast?.(@json($dashboardTxnErrorToast), 'error', {
+                    title: 'Could not save transaction',
+                    duration: 9000,
+                });
             @endif
 
             function initializeReminderLogic() {
@@ -1067,8 +1084,9 @@
                     opt.disabled = !match;
                 });
                 if (transactionTypeSelect.value && transactionTypeSelect.options[transactionTypeSelect.selectedIndex]?.disabled) {
-                    transactionTypeSelect.value = '';
+                    window.setSelectValue?.(transactionTypeSelect, '');
                 }
+                window.refreshTomSelect?.(transactionTypeSelect);
             }
 
             function updatePaidByLabel(direction) {
