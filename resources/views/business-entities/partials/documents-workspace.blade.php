@@ -81,7 +81,7 @@
                                         @if($doc->path)
                                             <button type="button" class="doc-preview doc-file-name"
                                                     data-doc-id="{{ $doc->id }}"
-                                                    data-asset-scope="{{ $doc->asset_id ?? '' }}"
+                                                    data-asset-scope="{{ $doc->asset_id ?? ($wsAssetId ?: '') }}"
                                                     data-path="{{ $doc->path }}"
                                                     data-name="{{ addslashes($doc->file_name ?? '') }}"
                                                     title="{{ $doc->file_name }}">

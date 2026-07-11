@@ -117,7 +117,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
         const docId   = doc.id;
         const label   = doc.checklist_label || '—';
         const type    = capitalize(doc.type || 'other');
-        const assetScope = doc.asset_id ?? '';
+        const assetScope = doc.asset_id ?? doc.assetScope ?? '';
         const fileName   = doc.file_name ?? '';
 
         const fileCell = hasFile
@@ -245,11 +245,29 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
         function documentContentUrl(docId, download, assetScope) {
             const params = new URLSearchParams();
-            const scope = assetScope !== undefined ? String(assetScope).trim() : (assetId || '');
-            if (scope !== '') params.set('asset_id', scope);
+            const scope = assetScope !== undefined && assetScope !== null
+                ? String(assetScope).trim()
+                : '';
+            if (scope !== '') {
+                params.set('asset_id', scope);
+            }
             if (download) params.set('download', '1');
             const q = params.toString();
             return `${base}/documents/${docId}/content${q ? '?' + q : ''}`;
+        }
+
+        function resolveAssetScope(explicitScope, docId) {
+            if (explicitScope !== undefined && explicitScope !== null && String(explicitScope).trim() !== '') {
+                return String(explicitScope).trim();
+            }
+
+            const rowBtn = root.querySelector(`tr[data-slot-row="${docId}"] .doc-preview`);
+            const rowScope = rowBtn?.dataset?.assetScope;
+            if (rowScope !== undefined && String(rowScope).trim() !== '') {
+                return String(rowScope).trim();
+            }
+
+            return '';
         }
 
         function setPreviewRowActive(docId) {
@@ -277,17 +295,36 @@ import { setRowUploading } from './workspace-upload-ui.js';
             const openBtn = panel.querySelector('.doc-cat-preview-open');
             const delBtn = panel.querySelector('.doc-cat-preview-del');
             const hint   = panel.querySelector('.doc-preview-hint');
+            const empty  = panel.querySelector('.doc-preview-empty');
             if (!docId || !frame || !dl) return;
-            const viewUrl = documentContentUrl(docId, false, assetScope);
+
+            const scope = resolveAssetScope(assetScope, docId);
+            const viewUrl = documentContentUrl(docId, false, scope);
+
+            frame.onload = () => {
+                try {
+                    const title = frame.contentDocument?.title ?? '';
+                    const bodyText = frame.contentDocument?.body?.innerText ?? '';
+                    const looksMissing = /not found|404/i.test(title) || /file not found in storage|could not load this file/i.test(bodyText);
+                    if (looksMissing) {
+                        showError('This file could not be previewed. It may be missing from cloud storage (S3) — try re-uploading it.');
+                    }
+                } catch (_) {
+                    // Cross-origin or unloaded frame — ignore.
+                }
+            };
+
             frame.removeAttribute('src');
             window.requestAnimationFrame(() => { frame.src = viewUrl; });
-            dl.href = documentContentUrl(docId, true, assetScope);
+            dl.href = documentContentUrl(docId, true, scope);
             dl.classList.remove('opacity-50', 'pointer-events-none');
             openBtn?.classList.remove('opacity-50', 'pointer-events-none');
             delBtn?.classList.remove('opacity-50', 'pointer-events-none');
             panel.dataset.previewDocId = String(docId);
             panel.dataset.previewViewUrl = viewUrl;
-            panel.dataset.previewAssetScope = assetScope !== undefined ? String(assetScope) : '';
+            panel.dataset.previewAssetScope = scope;
+            empty?.classList.add('hidden');
+            frame.classList.remove('hidden');
             togglePreviewEmptyState(panel, false);
             hint?.classList.add('hidden');
             setPreviewRowActive(docId);
@@ -334,7 +371,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 return;
             }
 
-            const assetScope = doc.asset_id ?? doc.assetScope ?? assetId ?? '';
+            const assetScope = doc.asset_id ?? doc.assetScope ?? '';
             const fileName   = doc.file_name ?? '';
             const label      = tr.querySelector('td.doc-col-checklist span.font-medium')?.textContent?.trim() ?? '—';
             const fileCell   = tr.querySelector('td.doc-col-file');
