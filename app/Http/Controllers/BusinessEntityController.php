@@ -647,7 +647,7 @@ class BusinessEntityController extends Controller
                 : null;
 
             $paidBy = $this->validatedPaidBy($request);
-            $bankAccountId = $this->validatedBankAccountId($request);
+            $bankAccountId = $this->resolveBankAccountIdForTransactionSave($request);
             $vendorData = $this->resolveTransactionVendorData($request);
 
             $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved, $paidBy, $bankAccountId, $vendorData) {
@@ -1037,7 +1037,7 @@ class BusinessEntityController extends Controller
         }
 
         $paidBy = $this->validatedPaidBy($request);
-        $bankAccountId = $this->validatedBankAccountId($request);
+        $bankAccountId = $this->resolveBankAccountIdForTransactionSave($request, $transaction);
 
         $transaction->update(array_merge(
             Arr::only($data, [
@@ -2610,6 +2610,45 @@ class BusinessEntityController extends Controller
         }
 
         return $bankAccountId;
+    }
+
+    private function resolveBankAccountIdForTransactionSave(Request $request, ?Transaction $existing = null): ?int
+    {
+        $raw = $request->input('paid_by_select');
+        $sel = is_string($raw) ? trim($raw) : '';
+
+        if ($sel === '' || ! preg_match('/^be:\d+$/', $sel)) {
+            return $existing?->bank_account_id;
+        }
+
+        $validated = $this->validatedBankAccountId($request);
+
+        if ($validated !== null) {
+            return $validated;
+        }
+
+        if ($existing === null) {
+            return null;
+        }
+
+        $transactionType = trim((string) $request->input('transaction_type', ''));
+        $direction = $transactionType !== '' ? Transaction::directionFromType($transactionType) : null;
+
+        if ($request->input('payment_status') !== 'paid'
+            || $direction !== 'expense'
+            || $existing->paid_by !== $sel
+            || $existing->bank_account_id === null) {
+            return null;
+        }
+
+        $entity = BusinessEntity::query()->find((int) substr($sel, 3));
+        $account = BankAccount::query()->find($existing->bank_account_id);
+
+        if ($entity && $account && $account->canUseForTransaction($entity)) {
+            return $existing->bank_account_id;
+        }
+
+        return null;
     }
 
     private function bankAccountWorkspaceJsonResponse(BusinessEntity $businessEntity, string $message): JsonResponse

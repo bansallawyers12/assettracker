@@ -9,10 +9,11 @@
     $payerDirectors = $payerOptions['directors'] ?? [];
     $sel = $paidBySelect ?? '';
     $oth = $paidByOther ?? '';
-    $showOther = ($sel === 'other');
+    $effectiveSel = old('paid_by_select', $sel);
+    $showOther = ($effectiveSel === 'other');
     $bankAccountId = old('bank_account_id', $bankAccountId ?? '');
     $hideBankAccountField = $hideBankAccountField ?? false;
-    $showBankAccount = ! $hideBankAccountField && preg_match('/^be:\d+$/', (string) $sel);
+    $showBankAccount = ! $hideBankAccountField && preg_match('/^be:\d+$/', (string) $effectiveSel);
 @endphp
 <div>
     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 {{ $labelClass ?? 'mb-1' }}" id="paid_by_label">

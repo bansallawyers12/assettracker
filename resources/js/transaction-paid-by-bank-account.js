@@ -51,10 +51,20 @@ async function loadBankAccountsForEntity(entityId) {
 
 function bindPaidBySelectChange(paidBySelect, handler) {
     paidBySelect.addEventListener('change', handler);
+    bindPaidByTomSelectChange(paidBySelect, handler);
+}
 
-    if (paidBySelect.tomselect) {
-        paidBySelect.tomselect.on('change', handler);
+function bindPaidByTomSelectChange(paidBySelect, handler) {
+    if (!paidBySelect?.tomselect) {
+        return;
     }
+
+    if (paidBySelect._bankAccountTomSelectHandler) {
+        paidBySelect.tomselect.off('change', paidBySelect._bankAccountTomSelectHandler);
+    }
+
+    paidBySelect._bankAccountTomSelectHandler = handler;
+    paidBySelect.tomselect.on('change', handler);
 }
 
 function setupTransactionPaidByBankAccount(form) {
@@ -83,8 +93,13 @@ function setupTransactionPaidByBankAccount(form) {
         wrap.classList.remove('hidden');
         window.setSelectDisabled?.(bankSelect, false);
 
+        const previousEntityId = bankSelect.dataset.loadedEntityId || '';
+        if (previousEntityId && previousEntityId !== entityId) {
+            bankSelect.dataset.selected = '';
+        }
+
         const preselected = bankSelect.dataset.selected || '';
-        const keepCurrent = bankSelect.dataset.loadedEntityId === entityId
+        const keepCurrent = previousEntityId === entityId
             ? paidBySelectValue(bankSelect)
             : preselected;
 
@@ -130,6 +145,7 @@ function setupTransactionPaidByBankAccount(form) {
     }
 
     form._syncPaidByBankAccount = syncBankAccountField;
+    form._paidBySelectForBankAccount = paidBySelect;
 
     return syncBankAccountField;
 }
@@ -139,9 +155,13 @@ export function refreshTransactionPaidByBankAccount(form) {
         return;
     }
 
+    const paidBySelect = form.querySelector('#paid_by_select');
     const sync = form._syncPaidByBankAccount ?? setupTransactionPaidByBankAccount(form);
 
-    sync?.();
+    if (paidBySelect && sync) {
+        bindPaidByTomSelectChange(paidBySelect, sync);
+        sync();
+    }
 }
 
 export function initTransactionPaidByBankAccount(root = document) {
