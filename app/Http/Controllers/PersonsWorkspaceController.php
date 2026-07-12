@@ -41,6 +41,7 @@ class PersonsWorkspaceController extends Controller
 
         $persons = Person::orderBy('first_name')->orderBy('last_name')->get();
         $businessEntities = BusinessEntity::query()
+            ->operationalEntities()
             ->where('entity_type', '!=', 'Trust')
             ->orderBy('legal_name')
             ->get();
@@ -65,6 +66,7 @@ class PersonsWorkspaceController extends Controller
         $entityPerson->load(['person', 'trusteeEntity', 'appointorEntity']);
         $persons = Person::orderBy('first_name')->orderBy('last_name')->get();
         $businessEntities = BusinessEntity::query()
+            ->operationalEntities()
             ->where('entity_type', '!=', 'Trust')
             ->orderBy('legal_name')
             ->get();

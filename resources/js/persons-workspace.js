@@ -193,6 +193,7 @@ function initPersonsToggleLogic(form) {
                 createNewPerson.disabled = true;
             }
             personInputs.forEach((el) => { el.disabled = true; });
+            window.reinitTomSelect?.(entityTrusteeSelect);
         } else {
             personFields.classList.remove('hidden');
             companySelection.classList.add('hidden');
@@ -203,6 +204,7 @@ function initPersonsToggleLogic(form) {
                 createNewPerson.disabled = false;
             }
             personInputs.forEach((el) => { el.disabled = false; });
+            window.reinitTomSelect?.(personSelect);
         }
     }
 
@@ -259,8 +261,9 @@ function initPersonsToggleLogic(form) {
 }
 
 function initPersonForm(form, initFormPlugins, toggleLogic) {
-    initFormPlugins(form);
+    // Show/hide trustee sections before Tom Select runs so hidden selects are not left deferred.
     toggleLogic(form);
+    initFormPlugins(form);
 }
 
 export { initPersonsToggleLogic, initPersonForm };

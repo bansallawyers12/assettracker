@@ -2,9 +2,35 @@ const PANEL_SELECTOR = '.bank-account-panel, .entity-workspace-panel, #workspace
 
 function releaseFocusFrom(panel) {
     const active = document.activeElement;
-    if (active instanceof HTMLElement && panel.contains(active)) {
-        active.blur();
+    if (!(active instanceof HTMLElement) || !panel.contains(active)) {
+        return;
     }
+
+    active.blur();
+
+    // If focus is still inside (some browsers keep it briefly), park it on <body>
+    // before aria-hidden is applied so Chrome does not block the attribute.
+    if (panel.contains(document.activeElement)) {
+        const body = document.body;
+        const hadTabIndex = body.hasAttribute('tabindex');
+        if (!hadTabIndex) {
+            body.setAttribute('tabindex', '-1');
+        }
+        body.focus({ preventScroll: true });
+        if (!hadTabIndex) {
+            body.removeAttribute('tabindex');
+        }
+    }
+}
+
+function sealPanel(panel) {
+    releaseFocusFrom(panel);
+    // inert first: removes focusability before aria-hidden is applied
+    panel.inert = true;
+    panel.hidden = true;
+    panel.dataset.panelOpen = 'false';
+    panel.classList.add('hidden');
+    panel.setAttribute('aria-hidden', 'true');
 }
 
 export function sealOverlayPanels() {
@@ -13,12 +39,7 @@ export function sealOverlayPanels() {
             return;
         }
 
-        releaseFocusFrom(panel);
-        panel.hidden = true;
-        panel.dataset.panelOpen = 'false';
-        panel.classList.add('hidden');
-        panel.setAttribute('aria-hidden', 'true');
-        panel.inert = true;
+        sealPanel(panel);
     });
 }
 
@@ -27,11 +48,11 @@ export function markOverlayPanelOpen(panel) {
         return;
     }
 
+    panel.inert = false;
+    panel.setAttribute('aria-hidden', 'false');
     panel.hidden = false;
     panel.dataset.panelOpen = 'true';
     panel.classList.remove('hidden');
-    panel.setAttribute('aria-hidden', 'false');
-    panel.inert = false;
     panel.style.removeProperty('pointer-events');
     panel.style.removeProperty('display');
 }
@@ -41,10 +62,5 @@ export function markOverlayPanelClosed(panel) {
         return;
     }
 
-    releaseFocusFrom(panel);
-    panel.hidden = true;
-    panel.dataset.panelOpen = 'false';
-    panel.classList.add('hidden');
-    panel.setAttribute('aria-hidden', 'true');
-    panel.inert = true;
+    sealPanel(panel);
 }
