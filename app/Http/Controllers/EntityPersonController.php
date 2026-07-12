@@ -43,10 +43,10 @@ class EntityPersonController extends Controller
         }
 
         $persons = Person::all();
-        $businessEntities = BusinessEntity::operationalEntities()
+        $businessEntities = BusinessEntity::query()
             ->where('entity_type', '!=', 'Trust')
             ->orderBy('legal_name')
-            ->get(); // Operating entities only; exclude trusts to prevent circular references
+            ->get(); // Exclude trusts to prevent circular references
 
         return view('entity-persons.create', compact('businessEntity', 'persons', 'businessEntities'));
     }
@@ -63,7 +63,7 @@ class EntityPersonController extends Controller
         $validated = $request->validate([
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'person_id' => 'nullable|exists:persons,id',
-            'entity_trustee_id' => ['nullable', BusinessEntity::ruleExistsOperationalAppointorCompany()],
+            'entity_trustee_id' => ['nullable', BusinessEntity::ruleExistsNonTrustCompany()],
             'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Owner',
             'appointment_date' => 'required|date',
             'resignation_date' => 'nullable|date|after:appointment_date',
@@ -192,7 +192,7 @@ class EntityPersonController extends Controller
     {
         $entityPerson->load(['businessEntity', 'person', 'trusteeEntity', 'appointorEntity']);
         $businessEntity = $entityPerson->businessEntity;
-        $businessEntities = BusinessEntity::operationalEntities()
+        $businessEntities = BusinessEntity::query()
             ->where('entity_type', '!=', 'Trust')
             ->orderBy('legal_name')
             ->get();
@@ -209,7 +209,7 @@ class EntityPersonController extends Controller
         $validated = $request->validate([
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'person_id' => 'nullable|exists:persons,id',
-            'entity_trustee_id' => ['nullable', BusinessEntity::ruleExistsOperationalAppointorCompany()],
+            'entity_trustee_id' => ['nullable', BusinessEntity::ruleExistsNonTrustCompany()],
             'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Appointor,Owner',
             'appointment_date' => 'required|date',
             'resignation_date' => 'nullable|date|after:appointment_date',

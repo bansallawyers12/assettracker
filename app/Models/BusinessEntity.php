@@ -145,6 +145,16 @@ class BusinessEntity extends Model
         );
     }
 
+    /**
+     * Corporate trustee / company link: any non-trust business entity.
+     */
+    public static function ruleExistsNonTrustCompany(): \Illuminate\Validation\Rules\Exists
+    {
+        return Rule::exists('business_entities', 'id')->using(
+            fn ($query) => $query->where('entity_type', '!=', 'Trust')
+        );
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);
