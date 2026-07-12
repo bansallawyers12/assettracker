@@ -20,6 +20,7 @@ use App\Models\Transaction; // Added for file storage
 use App\Models\Vendor;
 use App\Rules\UniqueAbnHash;
 use App\Rules\UniqueAcnHash;
+use App\Services\BankAccountAssetLinkService;
 use App\Services\CommitmentReportService;
 use App\Services\DocumentUploadService;
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
@@ -48,7 +49,8 @@ class BusinessEntityController extends Controller
     use EnsuresOperationalBusinessEntity;
 
     public function __construct(
-        private DocumentUploadService $documentUploadService
+        private DocumentUploadService $documentUploadService,
+        private BankAccountAssetLinkService $bankAccountAssetLinkService
     ) {}
 
     /**
@@ -360,7 +362,7 @@ class BusinessEntityController extends Controller
         $assets = $businessEntity->assets;
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
         $entityBankAccountLinks = $businessEntity->bankAccountLinksForDisplay();
-        $entityBankAccountGroups = BankAccount::groupedLinksByHolder($entityBankAccountLinks, $businessEntity->id);
+        $entityBankAccountGroups = $this->entityBankAccountHolderGroups($businessEntity, $entityBankAccountLinks);
         $operatingAccountIds = $entityBankAccountLinks
             ->filter(fn (BusinessEntityBankAccount $link) => in_array($link->purpose, BankAccount::ENTITY_OPERATING_PURPOSES, true))
             ->pluck('bank_account_id')
@@ -1498,8 +1500,9 @@ class BusinessEntityController extends Controller
 
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $persons = $this->personOptionsForHolder();
+        $leasableAssets = $this->bankAccountAssetLinkService->leasableAssetsForEntity($businessEntity);
 
-        return view('business-entities.bank-accounts.create', compact('businessEntity', 'businessEntities', 'persons'));
+        return view('business-entities.bank-accounts.create', compact('businessEntity', 'businessEntities', 'persons', 'leasableAssets'));
     }
 
     /**
@@ -1516,7 +1519,10 @@ class BusinessEntityController extends Controller
         $this->mergeBankNameFromRequest($request);
 
         // Validate bank account details
-        $validated = $request->validate($this->entityBankAccountValidationRules());
+        $validated = $request->validate(array_merge(
+            $this->entityBankAccountValidationRules(),
+            $this->bankAccountAssetLinkService->rentCollectionAssetValidationRules()
+        ));
 
         $bankAccount = $businessEntity->bankAccounts()->create(
             $this->bankAccountAttributesFromRequest($validated, $businessEntity)
@@ -1528,15 +1534,24 @@ class BusinessEntityController extends Controller
             'purpose' => $validated['account_purpose'],
         ]);
 
-        if ($request->expectsJson()) {
-            return $this->bankAccountWorkspaceJsonResponse(
+        $message = 'Bank account added successfully!';
+        if ($validated['account_purpose'] === BankAccount::PURPOSE_RENT_RECEIVING) {
+            $linked = $this->bankAccountAssetLinkService->linkRentCollectionToAssets(
+                $bankAccount,
                 $businessEntity,
-                'Bank account added successfully!'
+                $validated['rent_collection_asset_ids'] ?? []
             );
+            if ($linked > 0) {
+                $message .= ' Linked as Rent Paid Into on '.$linked.' asset'.($linked === 1 ? '' : 's').'.';
+            }
+        }
+
+        if ($request->expectsJson()) {
+            return $this->bankAccountWorkspaceJsonResponse($businessEntity, $message);
         }
 
         return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
-            ->with('success', 'Bank account added successfully!');
+            ->with('success', $message);
     }
 
     /**
@@ -1550,10 +1565,10 @@ class BusinessEntityController extends Controller
 
         $this->ensureOperationalForAccounting($businessEntity);
 
-        $validated = $request->validate([
+        $validated = $request->validate(array_merge([
             'bank_account_id' => 'required|integer|exists:bank_accounts,id',
             'account_purpose' => ['required', Rule::in(BankAccount::ENTITY_PURPOSES)],
-        ]);
+        ], $this->bankAccountAssetLinkService->rentCollectionAssetValidationRules()));
 
         $bankAccount = BankAccount::query()
             ->visibleInPortfolio()
@@ -1597,6 +1612,71 @@ class BusinessEntityController extends Controller
         }
 
         $message = 'Bank account attached as '.BankAccount::purposeLabel($purpose).'.';
+        if ($purpose === BankAccount::PURPOSE_RENT_RECEIVING) {
+            $linked = $this->bankAccountAssetLinkService->linkRentCollectionToAssets(
+                $bankAccount,
+                $businessEntity,
+                $validated['rent_collection_asset_ids'] ?? []
+            );
+            if ($linked > 0) {
+                $message .= ' Linked as Rent Paid Into on '.$linked.' asset'.($linked === 1 ? '' : 's').'.';
+            }
+        }
+
+        if ($request->expectsJson()) {
+            return $this->bankAccountWorkspaceJsonResponse($businessEntity, $message);
+        }
+
+        return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
+            ->with('success', $message);
+    }
+
+    /**
+     * Sync assets that use this rent-receiving account as Rent Paid Into.
+     */
+    public function syncRentCollectionAssets(
+        Request $request,
+        BusinessEntity $businessEntity,
+        BusinessEntityBankAccount $bankAccountLink
+    ) {
+        $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
+
+        if ((int) $bankAccountLink->business_entity_id !== (int) $businessEntity->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        if ($bankAccountLink->purpose !== BankAccount::PURPOSE_RENT_RECEIVING) {
+            throw ValidationException::withMessages([
+                'rent_collection_asset_ids' => 'Asset links can only be managed for rent receiving accounts.',
+            ]);
+        }
+
+        $validated = $request->validate(
+            $this->bankAccountAssetLinkService->rentCollectionAssetValidationRules()
+        );
+
+        $bankAccount = $bankAccountLink->bankAccount;
+        if ($bankAccount === null) {
+            abort(404);
+        }
+
+        $result = $this->bankAccountAssetLinkService->syncRentCollectionAssets(
+            $bankAccount,
+            $businessEntity,
+            $validated['rent_collection_asset_ids'] ?? []
+        );
+
+        $parts = [];
+        if ($result['linked'] > 0) {
+            $parts[] = 'linked '.$result['linked'].' asset'.($result['linked'] === 1 ? '' : 's');
+        }
+        if ($result['unlinked'] > 0) {
+            $parts[] = 'unlinked '.$result['unlinked'];
+        }
+        $message = $parts === []
+            ? 'Rent asset links updated.'
+            : 'Rent asset links updated ('.implode(', ', $parts).').';
 
         if ($request->expectsJson()) {
             return $this->bankAccountWorkspaceJsonResponse($businessEntity, $message);
@@ -2442,7 +2522,7 @@ class BusinessEntityController extends Controller
     private function bankAccountWorkspaceJsonResponse(BusinessEntity $businessEntity, string $message): JsonResponse
     {
         $entityBankAccountLinks = $businessEntity->bankAccountLinksForDisplay();
-        $entityBankAccountGroups = BankAccount::groupedLinksByHolder($entityBankAccountLinks, $businessEntity->id);
+        $entityBankAccountGroups = $this->entityBankAccountHolderGroups($businessEntity, $entityBankAccountLinks);
 
         return response()->json([
             'status' => true,
@@ -2452,6 +2532,17 @@ class BusinessEntityController extends Controller
                 'holderGroups' => $entityBankAccountGroups,
             ])->render(),
         ]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, BusinessEntityBankAccount>  $links
+     * @return array<int, array<string, mixed>>
+     */
+    private function entityBankAccountHolderGroups(BusinessEntity $businessEntity, $links): array
+    {
+        $groups = BankAccount::groupedLinksByHolder($links, $businessEntity->id);
+
+        return $this->bankAccountAssetLinkService->enrichHolderGroupsWithRentAssets($businessEntity, $groups);
     }
 
     private function redirectToBusinessEntityShow(

@@ -103,10 +103,13 @@ class BankAccountPanelController extends Controller
             }
 
             $links = $entity->bankAccountLinksForDisplay();
+            $groups = BankAccount::groupedLinksByHolder($links, $entity->id);
+            $groups = app(\App\Services\BankAccountAssetLinkService::class)
+                ->enrichHolderGroupsWithRentAssets($entity, $groups);
 
             return view('business-entities.partials.bank-accounts.list', [
                 'businessEntity' => $entity,
-                'holderGroups' => BankAccount::groupedLinksByHolder($links, $entity->id),
+                'holderGroups' => $groups,
             ])->render();
         }
 

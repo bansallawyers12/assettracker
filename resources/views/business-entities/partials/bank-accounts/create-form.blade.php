@@ -14,6 +14,7 @@
         'businessEntity' => $businessEntity,
         'businessEntities' => $businessEntities,
         'persons' => $persons,
+        'leasableAssets' => $leasableAssets ?? collect(),
     ])
 
     @include('bank-accounts.partials.form-actions', ['submitLabel' => 'Save account'])

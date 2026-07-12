@@ -1,7 +1,7 @@
 /**
  * Bank account right-side panel — create, link, edit, delete everywhere.
  */
-import { initBankAccountFormFields } from './bank-form-fields.js';
+import { initBankAccountFormFields, refreshRentCollectionAssetSection } from './bank-form-fields.js';
 import { markOverlayPanelClosed, markOverlayPanelOpen } from './overlay-panels.js';
 import { showWorkspaceAlert, showWorkspaceConfirm } from './workspace-dialog.js';
 import {
@@ -304,9 +304,18 @@ export function initBankAccountModal() {
             }, { signal });
         }
 
-        purposeEl?.addEventListener('change', refreshAttachForm, { signal });
+        purposeEl?.addEventListener('change', () => {
+            refreshRentCollectionAssetSection(root);
+            refreshAttachForm();
+        }, { signal });
         updatePurposeOptions();
+        refreshRentCollectionAssetSection(root);
         refreshAttachForm();
+
+        // Re-init tom-select for optional rent asset multi-select
+        root.querySelectorAll('[data-rent-assets-section] select[data-tomselect]').forEach((el) => {
+            reinitTomSelect(el);
+        });
 
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -366,11 +375,18 @@ export function initBankAccountModal() {
 
     function bindWorkspaceForm(root, signal) {
         initBankAccountFormFields(root);
+        refreshRentCollectionAssetSection(root);
+
+        root.querySelectorAll('[data-rent-assets-section] select[data-tomselect]').forEach((el) => {
+            reinitTomSelect(el);
+        });
 
         const form = root.querySelector('.bank-ws-form');
         if (!form) {
             return;
         }
+
+        const isRentAssetsManage = form.hasAttribute('data-rent-assets-manage-form');
 
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -380,8 +396,12 @@ export function initBankAccountModal() {
                     closeBankPanel();
                     await refreshBankList(payload.list_html);
                     showWorkspaceAlert({
-                        title: panelMode === 'edit' ? 'Account updated' : 'Account saved',
-                        message: payload.message || 'Bank account saved successfully.',
+                        title: isRentAssetsManage
+                            ? 'Asset links updated'
+                            : (panelMode === 'edit' ? 'Account updated' : 'Account saved'),
+                        message: payload.message || (isRentAssetsManage
+                            ? 'Rent asset links updated.'
+                            : 'Bank account saved successfully.'),
                         variant: 'success',
                     });
                 },
@@ -443,6 +463,21 @@ export function initBankAccountModal() {
         }
     }
 
+    async function openRentAssetsPanel(formUrl) {
+        closeWorkspacePanel();
+        panelMode = 'edit';
+        showTabs(false);
+        setActiveTab('create');
+        setPanelCopy({
+            title: 'Linked assets',
+            subtitle: 'Choose assets that deposit rent into this account.',
+            eyebrow: 'Rent receiving',
+        });
+
+        openBankPanel();
+        await loadFormIntoCreateHost(formUrl);
+    }
+
     async function openEditPanel(editUrl) {
         closeWorkspacePanel();
         panelMode = 'edit';
@@ -489,6 +524,13 @@ export function initBankAccountModal() {
         if (editBtn?.dataset.bankEditUrl) {
             event.preventDefault();
             await openEditPanel(editBtn.dataset.bankEditUrl);
+            return;
+        }
+
+        const rentAssetsBtn = event.target.closest('[data-bank-action="manage-rent-assets"]');
+        if (rentAssetsBtn?.dataset.bankRentAssetsUrl) {
+            event.preventDefault();
+            await openRentAssetsPanel(rentAssetsBtn.dataset.bankRentAssetsUrl);
             return;
         }
 

@@ -66,6 +66,19 @@
         @endif
     @endif
 
+    @if(! empty($manageRentAssetsUrl) && $useSpaActions)
+        <button
+            type="button"
+            data-bank-action="manage-rent-assets"
+            data-bank-rent-assets-url="{{ $manageRentAssetsUrl }}"
+            title="{{ $manageRentAssetsTitle ?? 'Manage linked assets' }}"
+            class="{{ $btnClass }} border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50"
+        >
+            <x-lucide-building-2 class="h-4 w-4" aria-hidden="true" />
+            <span class="sr-only">{{ $manageRentAssetsTitle ?? 'Manage linked assets' }}</span>
+        </button>
+    @endif
+
     @if(! empty($unlinkUrl))
         <form method="POST" action="{{ $unlinkUrl }}" class="inline" onsubmit="return confirm({{ json_encode($unlinkConfirm ?? 'Remove this account link?') }});">
             @csrf

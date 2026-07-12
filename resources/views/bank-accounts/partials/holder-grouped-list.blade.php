@@ -77,6 +77,9 @@
                                 <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">BSB</th>
                                 <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Account No.</th>
                                 <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Purpose</th>
+                                @if($useEntityLinks)
+                                    <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Linked assets</th>
+                                @endif
                                 @if($showScope)
                                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Scope</th>
                                 @endif
@@ -90,6 +93,7 @@
                                         $account = $entry['account'];
                                         $purpose = $entry['purpose'];
                                         $link = $entry['link'];
+                                        $rentAssets = $entry['rent_assets'] ?? collect();
                                     @endphp
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
                                         <td class="px-4 py-3 text-sm text-gray-900 dark:text-gray-100">
@@ -98,6 +102,28 @@
                                         </td>
                                         @include('bank-accounts.partials.account-banking-details-cells', ['account' => $account])
                                         <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">{{ BankAccount::purposeLabel($purpose) }}</td>
+                                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                                            @if($purpose === BankAccount::PURPOSE_RENT_RECEIVING)
+                                                @if($rentAssets->isNotEmpty())
+                                                    <ul class="space-y-0.5">
+                                                        @foreach($rentAssets as $rentAsset)
+                                                            <li>
+                                                                <a
+                                                                    href="{{ route('business-entities.assets.show', [$linkBusinessEntity, $rentAsset]) }}"
+                                                                    class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                                                                >
+                                                                    {{ $rentAsset->name }}
+                                                                </a>
+                                                            </li>
+                                                        @endforeach
+                                                    </ul>
+                                                @else
+                                                    <span class="text-gray-400">No assets linked</span>
+                                                @endif
+                                            @else
+                                                <span class="text-gray-400">—</span>
+                                            @endif
+                                        </td>
                                         @if($showScope)
                                             <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
                                                 @if($account->isPortfolioWide())
@@ -116,6 +142,10 @@
                                                     ? route('entities.bank-accounts.form.edit', [$linkBusinessEntity, $account])
                                                     : route('bank-accounts.form.edit', $account),
                                                 'editTitle' => 'Edit account',
+                                                'manageRentAssetsUrl' => ($linkBusinessEntity && $link->id && $purpose === BankAccount::PURPOSE_RENT_RECEIVING)
+                                                    ? route('entities.bank-account-links.rent-assets-form', [$linkBusinessEntity, $link])
+                                                    : null,
+                                                'manageRentAssetsTitle' => 'Manage linked assets',
                                                 'unlinkUrl' => ($linkBusinessEntity && $link->id)
                                                     ? route('business-entities.bank-account-links.destroy', [$linkBusinessEntity, $link])
                                                     : null,

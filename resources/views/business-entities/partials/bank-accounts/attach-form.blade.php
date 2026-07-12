@@ -81,6 +81,13 @@
             @enderror
         </div>
 
+        @include('bank-accounts.partials.rent-collection-asset-fields', [
+            'leasableAssets' => $leasableAssets ?? collect(),
+            'purposeSelectId' => 'attach_account_purpose',
+            'defaultPurpose' => $defaultPurpose,
+            'fieldId' => 'attach_rent_collection_asset_ids',
+        ])
+
         <p id="link-account-status" class="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-600 dark:border-gray-700 dark:bg-gray-900/50 dark:text-gray-300">
             Select an account to see available purposes.
         </p>

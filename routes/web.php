@@ -209,6 +209,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/bank-accounts/attach-form', [BankAccountsWorkspaceController::class, 'attachForm'])->name('entities.bank-accounts.attach-form');
     Route::get('/business-entities/{businessEntity}/bank-accounts/form/create', [BankAccountsWorkspaceController::class, 'createForm'])->name('entities.bank-accounts.form.create');
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/form/edit', [BankAccountsWorkspaceController::class, 'editForm'])->name('entities.bank-accounts.form.edit');
+    Route::get('/business-entities/{businessEntity}/bank-account-links/{bankAccountLink}/rent-assets-form', [BankAccountsWorkspaceController::class, 'rentAssetsForm'])->name('entities.bank-account-links.rent-assets-form');
 
     // Person routes
     Route::get('persons', [EntityPersonController::class, 'indexPersons'])->name('persons.index');
@@ -228,6 +229,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     });
     Route::post('/business-entities/{businessEntity}/bank-accounts', [BusinessEntityController::class, 'storeBankAccount'])->name('business-entities.bank-accounts.store');
     Route::post('/business-entities/{businessEntity}/bank-accounts/assign', [BusinessEntityController::class, 'assignBankAccountToEntity'])->name('business-entities.bank-accounts.assign');
+    Route::post('/business-entities/{businessEntity}/bank-account-links/{bankAccountLink}/rent-assets', [BusinessEntityController::class, 'syncRentCollectionAssets'])->name('business-entities.bank-account-links.rent-assets');
     Route::delete('/business-entities/{businessEntity}/bank-account-links/{bankAccountLink}', [BusinessEntityController::class, 'detachBankAccountLink'])->name('business-entities.bank-account-links.destroy');
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/edit', [BusinessEntityController::class, 'editBankAccount'])->name('business-entities.bank-accounts.edit');
     Route::put('/business-entities/{businessEntity}/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'updateBankAccount'])->name('business-entities.bank-accounts.update');

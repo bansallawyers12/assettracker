@@ -135,6 +135,17 @@
             @error('account_purpose') <p class="bank-field-error">{{ $message }}</p> @enderror
         </div>
 
+        @if(! $isPortfolio && $scopedEntity && ! $bankAccountModel)
+            <div class="bank-form-grid-full">
+                @include('bank-accounts.partials.rent-collection-asset-fields', [
+                    'leasableAssets' => $leasableAssets ?? collect(),
+                    'purposeSelectId' => 'account_purpose',
+                    'defaultPurpose' => $defaultPurpose,
+                    'fieldId' => 'create_rent_collection_asset_ids',
+                ])
+            </div>
+        @endif
+
         @if($isPortfolio)
             <div class="bank-field" id="entity-picker">
                 <label class="bank-field-label" for="business_entity_id">Business Entity</label>

@@ -3,6 +3,8 @@
  */
 const BANK_OTHER_VALUE = '__other__';
 const PURPOSE_LOAN_REPAYMENT = 'loan_repayment';
+const PURPOSE_RENT_RECEIVING = 'rent_receiving';
+
 export function initBankAccountFormFields(root = document) {
     const formRoots = [];
 
@@ -19,6 +21,29 @@ export function initBankAccountFormFields(root = document) {
 
         formRoot.dataset.bankFormInit = '1';
         bindBankFormFields(formRoot);
+    });
+}
+
+export function refreshRentCollectionAssetSection(root = document) {
+    const sections = root.querySelectorAll
+        ? root.querySelectorAll('[data-rent-assets-section]')
+        : [];
+
+    sections.forEach((section) => {
+        const purposeSelectId = section.dataset.purposeSelect;
+        const showWhen = section.dataset.showWhenPurpose || PURPOSE_RENT_RECEIVING;
+
+        // Manage form has no purpose select — always visible
+        if (!purposeSelectId) {
+            section.classList.remove('hidden');
+            return;
+        }
+
+        const purposeEl = root.querySelector?.(`#${CSS.escape(purposeSelectId)}`)
+            || document.getElementById(purposeSelectId);
+
+        const visible = purposeEl ? purposeEl.value === showWhen : false;
+        section.classList.toggle('hidden', !visible);
     });
 }
 
@@ -51,6 +76,23 @@ function bindBankFormFields(formRoot) {
         purposeSelect.addEventListener('change', refreshEntityPicker);
         refreshEntityPicker();
     }
+
+    // Purpose → optional rent-collection asset links (entity create forms)
+    const rentPurposeSelects = new Set();
+    formRoot.querySelectorAll('[data-rent-assets-section]').forEach((section) => {
+        const purposeSelectId = section.dataset.purposeSelect;
+        if (!purposeSelectId) {
+            return;
+        }
+        const el = formRoot.querySelector(`#${CSS.escape(purposeSelectId)}`);
+        if (el) {
+            rentPurposeSelects.add(el);
+        }
+    });
+    rentPurposeSelects.forEach((el) => {
+        el.addEventListener('change', () => refreshRentCollectionAssetSection(formRoot));
+    });
+    refreshRentCollectionAssetSection(formRoot);
 
     const holderSelect = formRoot.querySelector('#holder_type');
     if (!holderSelect) {

@@ -4,18 +4,27 @@ namespace App\Http\Controllers;
 
 use App\Models\BankAccount;
 use App\Models\BusinessEntity;
+use App\Models\BusinessEntityBankAccount;
 use App\Models\Person;
+use App\Services\BankAccountAssetLinkService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BankAccountsWorkspaceController extends Controller
 {
+    public function __construct(
+        private BankAccountAssetLinkService $bankAccountAssetLinkService
+    ) {}
+
     public function index(BusinessEntity $businessEntity): JsonResponse
     {
         $this->authorize('view', $businessEntity);
 
         $entityBankAccountLinks = $businessEntity->bankAccountLinksForDisplay();
-        $entityBankAccountGroups = BankAccount::groupedLinksByHolder($entityBankAccountLinks, $businessEntity->id);
+        $entityBankAccountGroups = $this->bankAccountAssetLinkService->enrichHolderGroupsWithRentAssets(
+            $businessEntity,
+            BankAccount::groupedLinksByHolder($entityBankAccountLinks, $businessEntity->id)
+        );
 
         return response()->json([
             'status' => true,
@@ -46,6 +55,7 @@ class BankAccountsWorkspaceController extends Controller
             'html' => view('business-entities.partials.bank-accounts.attach-form', [
                 'businessEntity' => $businessEntity,
                 'portfolioBankAccounts' => $portfolioBankAccounts,
+                'leasableAssets' => $this->bankAccountAssetLinkService->leasableAssetsForEntity($businessEntity),
             ])->render(),
         ]);
     }
@@ -70,6 +80,7 @@ class BankAccountsWorkspaceController extends Controller
                 'holderType' => $request->query('holder_type'),
                 'holderEntityId' => $request->query('holder_entity_id'),
                 'holderPersonId' => $request->query('holder_person_id'),
+                'leasableAssets' => $this->bankAccountAssetLinkService->leasableAssetsForEntity($businessEntity),
             ])->render(),
         ]);
     }
@@ -99,6 +110,40 @@ class BankAccountsWorkspaceController extends Controller
                 'bankAccount' => $bankAccount,
                 'businessEntities' => $businessEntities,
                 'persons' => $persons,
+            ])->render(),
+        ]);
+    }
+
+    public function rentAssetsForm(BusinessEntity $businessEntity, BusinessEntityBankAccount $bankAccountLink): JsonResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        if ((int) $bankAccountLink->business_entity_id !== (int) $businessEntity->id) {
+            abort(403);
+        }
+
+        if ($bankAccountLink->purpose !== BankAccount::PURPOSE_RENT_RECEIVING) {
+            abort(404);
+        }
+
+        $bankAccount = $bankAccountLink->bankAccount;
+        if ($bankAccount === null) {
+            abort(404);
+        }
+
+        $selectedIds = $this->bankAccountAssetLinkService
+            ->rentCollectionAssetsForAccount($businessEntity, $bankAccount)
+            ->pluck('id')
+            ->all();
+
+        return response()->json([
+            'status' => true,
+            'html' => view('business-entities.partials.bank-accounts.rent-assets-form', [
+                'businessEntity' => $businessEntity,
+                'bankAccountLink' => $bankAccountLink,
+                'bankAccount' => $bankAccount,
+                'leasableAssets' => $this->bankAccountAssetLinkService->leasableAssetsForEntity($businessEntity),
+                'selectedAssetIds' => $selectedIds,
             ])->render(),
         ]);
     }
