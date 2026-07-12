@@ -359,6 +359,7 @@
                                     'payerOptions' => $payerOptions,
                                     'paidBySelect' => $pbSplit['select'],
                                     'paidByOther' => $pbSplit['other'],
+                                    'bankAccountId' => old('bank_account_id', session('transactionData.bank_account_id')),
                                     'labelClass' => $txnLabel,
                                     'selectClass' => $txnSelect . ' px-3 py-2.5',
                                     'errorClass' => 'text-xs mt-1',
@@ -890,6 +891,8 @@
                     delete select.dataset.tomselectDeferred;
                     window.reinitTomSelect?.(select);
                 });
+
+                window.refreshTransactionPaidByBankAccount?.(form);
             }
 
             if (transactionBtn && transactionSection) {
@@ -1091,7 +1094,7 @@
 
             function updatePaidByLabel(direction) {
                 if (paidByLabel) {
-                    paidByLabel.textContent = direction === 'income' ? 'Received By / Account' : 'Paid By';
+                    paidByLabel.textContent = direction === 'income' ? 'Received By' : 'Paid By';
                 }
             }
 

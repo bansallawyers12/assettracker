@@ -19,6 +19,7 @@ import {
     setSelectDisabled,
 } from './tomselect-init';
 import { initTransactionPaidByValidation } from './transaction-paid-by-validation';
+import { initTransactionPaidByBankAccount, refreshTransactionPaidByBankAccount } from './transaction-paid-by-bank-account';
 import { initFinancialReportsHub } from './financial-reports-hub.js';
 import { sealOverlayPanels } from './overlay-panels.js';
 import { showToast } from './notify.js';
@@ -33,6 +34,7 @@ window.rebuildTomSelectFromNative = rebuildTomSelectFromNative;
 window.reinitTomSelect = reinitTomSelect;
 window.setSelectValue = setSelectValue;
 window.setSelectDisabled = setSelectDisabled;
+window.refreshTransactionPaidByBankAccount = refreshTransactionPaidByBankAccount;
 window.initFlatpickr = initFlatpickr;
 window.redrawFlatpickr = redrawFlatpickr;
 window.clearDateInput = clearDateInput;
@@ -93,6 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initTomSelect();
     watchTomSelect();
     initTransactionPaidByValidation();
+    initTransactionPaidByBankAccount();
     initBankAccountModal();
     initBankAccountFormFields();
     initFinancialReportsHub();

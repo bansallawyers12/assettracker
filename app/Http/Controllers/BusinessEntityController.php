@@ -581,6 +581,7 @@ class BusinessEntityController extends Controller
         $this->normalizeOptionalRelatedEntityId($request);
         $this->normalizeOptionalVendorId($request);
         $this->normalizeEmptyGstBasisRequest($request);
+        $this->normalizeOptionalBankAccountId($request);
 
         $resolvedEntityId = $request->filled('business_entity_id')
             ? (int) $request->business_entity_id
@@ -646,9 +647,10 @@ class BusinessEntityController extends Controller
                 : null;
 
             $paidBy = $this->validatedPaidBy($request);
+            $bankAccountId = $this->validatedBankAccountId($request);
             $vendorData = $this->resolveTransactionVendorData($request);
 
-            $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved, $paidBy, $vendorData) {
+            $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved, $paidBy, $bankAccountId, $vendorData) {
                 $receiptPath = null;
                 $documentId = null;
                 $prefillPath = $request->input('receipt_path');
@@ -731,6 +733,7 @@ class BusinessEntityController extends Controller
                     'paid_at' => $request->paid_at,
                     'payment_method' => $request->payment_method,
                     'paid_by' => $paidBy,
+                    'bank_account_id' => $bankAccountId,
                     'payment_document_id' => $paymentDocumentId,
                 ]);
             });
@@ -967,6 +970,7 @@ class BusinessEntityController extends Controller
         $this->normalizeOptionalRelatedEntityId($request);
         $this->normalizeOptionalVendorId($request);
         $this->normalizeEmptyGstBasisRequest($request);
+        $this->normalizeOptionalBankAccountId($request);
 
         $this->prepareTransactionUploadValidation($request, ['payment_document']);
 
@@ -991,6 +995,7 @@ class BusinessEntityController extends Controller
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
+            'bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
             'payment_document_name' => 'nullable|string|max:255',
         ], $this->transactionReceiptUploadRules(false)), $this->transactionReceiptValidationMessages());
 
@@ -1032,6 +1037,7 @@ class BusinessEntityController extends Controller
         }
 
         $paidBy = $this->validatedPaidBy($request);
+        $bankAccountId = $this->validatedBankAccountId($request);
 
         $transaction->update(array_merge(
             Arr::only($data, [
@@ -1045,6 +1051,7 @@ class BusinessEntityController extends Controller
                 'gst_status' => $gstResolved['gst_status'],
                 'gst_basis' => $gstResolved['gst_basis'],
                 'paid_by' => $paidBy,
+                'bank_account_id' => $bankAccountId,
             ]
         ));
 
@@ -1256,8 +1263,10 @@ class BusinessEntityController extends Controller
             return response()->json([], 422);
         }
 
+        $forTransaction = $request->boolean('for_transaction');
+
         $query = BankAccount::query()
-            ->select('id', 'account_name', 'bank_name', 'bsb', 'account_purpose', 'business_entity_id');
+            ->select('id', 'account_name', 'bank_name', 'bsb', 'account_number', 'account_purpose', 'business_entity_id', 'user_id');
 
         if ($purpose === BankAccount::PURPOSE_LOAN || $purpose === BankAccount::PURPOSE_LOAN_REPAYMENT) {
             $query->forLoanAssetLinkPicker($businessEntity);
@@ -1284,14 +1293,22 @@ class BusinessEntityController extends Controller
             });
         }
 
+        $accounts = $query->orderBy('account_name')->get();
+
+        if ($forTransaction) {
+            $accounts = $accounts
+                ->filter(fn (BankAccount $account) => $account->canUseForTransaction($businessEntity))
+                ->values();
+        }
+
         return response()->json(
-            $query->orderBy('account_name')->get()->map(fn (BankAccount $account) => [
+            $accounts->map(fn (BankAccount $account) => [
                 'id' => $account->id,
                 'account_name' => $account->account_name,
                 'bank_name' => $account->bank_name,
                 'bsb' => BankAccount::formatBsb($account->bsb),
                 'account_purpose' => $account->account_purpose,
-                'label' => $account->displayLabel(),
+                'label' => $forTransaction ? $account->transactionAccountLabel() : $account->displayLabel(),
             ])
         );
     }
@@ -1517,6 +1534,7 @@ class BusinessEntityController extends Controller
         $this->ensureOperationalForAccounting($businessEntity);
 
         $this->mergeBankNameFromRequest($request);
+        $this->forgetRentCollectionAssetIdsUnlessRentReceiving($request);
 
         // Validate bank account details
         $validated = $request->validate(array_merge(
@@ -1564,6 +1582,8 @@ class BusinessEntityController extends Controller
         $this->authorize('update', $businessEntity);
 
         $this->ensureOperationalForAccounting($businessEntity);
+
+        $this->forgetRentCollectionAssetIdsUnlessRentReceiving($request);
 
         $validated = $request->validate(array_merge([
             'bank_account_id' => 'required|integer|exists:bank_accounts,id',
@@ -1701,10 +1721,26 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        $message = 'Bank account purpose removed from this entity.';
+
+        if ($bankAccountLink->purpose === BankAccount::PURPOSE_RENT_RECEIVING && $bankAccountLink->bankAccount) {
+            $unlinked = $this->bankAccountAssetLinkService->unlinkAllRentCollectionAssetsForAccount(
+                $bankAccountLink->bankAccount,
+                $businessEntity
+            );
+            if ($unlinked > 0) {
+                $message .= ' Also cleared Rent Paid Into on '.$unlinked.' asset'.($unlinked === 1 ? '' : 's').'.';
+            }
+        }
+
         $bankAccountLink->delete();
 
+        if (request()->expectsJson()) {
+            return $this->bankAccountWorkspaceJsonResponse($businessEntity, $message);
+        }
+
         return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
-            ->with('success', 'Bank account purpose removed from this entity.');
+            ->with('success', $message);
     }
 
     /**
@@ -1888,7 +1924,7 @@ class BusinessEntityController extends Controller
             abort(404); // Or abort(403) if preferred
         }
 
-        $transaction->load('asset');
+        $transaction->load(['asset', 'bankAccount']);
 
         return view('business-entities.bank-accounts.transactions.show', compact('businessEntity', 'bankAccount', 'transaction'));
     }
@@ -2508,7 +2544,7 @@ class BusinessEntityController extends Controller
             if ($paidBy === null || trim($paidBy) === '') {
                 throw ValidationException::withMessages([
                     'paid_by_select' => $direction === 'income'
-                        ? 'Received by / account is required.'
+                        ? 'Received by is required.'
                         : 'Paid by is required.',
                 ]);
             }
@@ -2517,6 +2553,63 @@ class BusinessEntityController extends Controller
         TransactionPayerResolver::assertSelectionAllowed($paidBy);
 
         return $paidBy;
+    }
+
+    private function normalizeOptionalBankAccountId(Request $request): void
+    {
+        $raw = $request->input('paid_by_select');
+        $sel = is_string($raw) ? trim($raw) : '';
+
+        if ($sel === '' || ! preg_match('/^be:\d+$/', $sel)) {
+            $request->merge(['bank_account_id' => null]);
+        } elseif (! $request->filled('bank_account_id')) {
+            $request->merge(['bank_account_id' => null]);
+        }
+    }
+
+    private function validatedBankAccountId(Request $request): ?int
+    {
+        $raw = $request->input('paid_by_select');
+        $sel = is_string($raw) ? trim($raw) : '';
+
+        if ($sel === '' || ! preg_match('/^be:(\d+)$/', $sel, $matches)) {
+            return null;
+        }
+
+        $entity = BusinessEntity::query()->find((int) $matches[1]);
+        if (! $entity) {
+            throw ValidationException::withMessages([
+                'paid_by_select' => 'Invalid entity selected.',
+            ]);
+        }
+
+        $bankAccountId = $request->filled('bank_account_id')
+            ? (int) $request->integer('bank_account_id')
+            : null;
+
+        $transactionType = trim((string) $request->input('transaction_type', ''));
+        $direction = $transactionType !== '' ? Transaction::directionFromType($transactionType) : null;
+
+        if ($request->input('payment_status') === 'paid'
+            && $direction === 'income'
+            && $bankAccountId === null) {
+            throw ValidationException::withMessages([
+                'bank_account_id' => 'Bank account is required when an entity is selected.',
+            ]);
+        }
+
+        if ($bankAccountId === null) {
+            return null;
+        }
+
+        $bankAccount = BankAccount::query()->find($bankAccountId);
+        if (! $bankAccount || ! $bankAccount->canUseForTransaction($entity)) {
+            throw ValidationException::withMessages([
+                'bank_account_id' => 'The selected bank account is not linked to this entity.',
+            ]);
+        }
+
+        return $bankAccountId;
     }
 
     private function bankAccountWorkspaceJsonResponse(BusinessEntity $businessEntity, string $message): JsonResponse
@@ -2543,6 +2636,18 @@ class BusinessEntityController extends Controller
         $groups = BankAccount::groupedLinksByHolder($links, $businessEntity->id);
 
         return $this->bankAccountAssetLinkService->enrichHolderGroupsWithRentAssets($businessEntity, $groups);
+    }
+
+    /**
+     * Hidden rent-asset pickers can still submit stale IDs when purpose is not rent receiving.
+     */
+    private function forgetRentCollectionAssetIdsUnlessRentReceiving(Request $request): void
+    {
+        if ($request->input('account_purpose') !== BankAccount::PURPOSE_RENT_RECEIVING) {
+            $request->merge([
+                'rent_collection_asset_ids' => null,
+            ]);
+        }
     }
 
     private function redirectToBusinessEntityShow(

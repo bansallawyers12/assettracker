@@ -24,7 +24,6 @@
         'leasableAssets' => $leasableAssets,
         'selectedAssetIds' => $selectedAssetIds,
         'fieldId' => 'manage_rent_collection_asset_ids',
-        'purposeSelectId' => null,
         'forceVisible' => true,
     ])
 

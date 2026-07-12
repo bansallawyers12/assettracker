@@ -1,4 +1,4 @@
-function paidBySelectValue(select) {
+export function paidBySelectValue(select) {
     if (!select) {
         return '';
     }
@@ -24,14 +24,18 @@ function transactionDirection(form) {
     return checked?.value ?? 'expense';
 }
 
+function isEntityPaidBy(selected) {
+    return /^be:\d+$/.test(String(selected).trim());
+}
+
 function paidByRequiredMessage(form) {
     return transactionDirection(form) === 'income'
-        ? 'Received by / account is required.'
+        ? 'Received by is required.'
         : 'Paid by is required.';
 }
 
 function clearPaidByClientErrors(form) {
-    form.querySelectorAll('.js-paid-by-select-client-error, .js-paid-by-other-client-error').forEach((el) => {
+    form.querySelectorAll('.js-paid-by-select-client-error, .js-paid-by-other-client-error, .js-paid-by-bank-account-client-error').forEach((el) => {
         el.textContent = '';
         el.classList.add('hidden');
     });
@@ -47,12 +51,21 @@ function clearPaidByClientErrors(form) {
     if (other) {
         other.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
     }
+
+    const bankSelect = form.querySelector('#paid_by_bank_account_id');
+    const bankWrapper = bankSelect?.tomselect?.wrapper ?? bankSelect;
+
+    if (bankWrapper) {
+        bankWrapper.classList.remove('ring-2', 'ring-red-500', 'border-red-500');
+    }
 }
 
 function showPaidByClientError(form, field, message) {
     const selector = field === 'other'
         ? '.js-paid-by-other-client-error'
-        : '.js-paid-by-select-client-error';
+        : field === 'bank_account'
+            ? '.js-paid-by-bank-account-client-error'
+            : '.js-paid-by-select-client-error';
     const errorEl = form.querySelector(selector);
 
     if (errorEl) {
@@ -62,8 +75,13 @@ function showPaidByClientError(form, field, message) {
 
     const select = form.querySelector('#paid_by_select');
     const other = form.querySelector('#paid_by_other');
-    const target = field === 'other' ? other : select;
-    const wrapper = field === 'other' ? other : (select?.tomselect?.wrapper ?? select);
+    const bankSelect = form.querySelector('#paid_by_bank_account_id');
+    const target = field === 'other' ? other : field === 'bank_account' ? bankSelect : select;
+    const wrapper = field === 'other'
+        ? other
+        : field === 'bank_account'
+            ? (bankSelect?.tomselect?.wrapper ?? bankSelect)
+            : (select?.tomselect?.wrapper ?? select);
 
     if (wrapper) {
         wrapper.classList.add('ring-2', 'ring-red-500', 'border-red-500');
@@ -72,6 +90,8 @@ function showPaidByClientError(form, field, message) {
 
     if (field === 'select' && select?.tomselect) {
         select.tomselect.focus();
+    } else if (field === 'bank_account' && bankSelect?.tomselect) {
+        bankSelect.tomselect.focus();
     } else if (target) {
         target.focus();
     }
@@ -101,6 +121,21 @@ export function validateTransactionPaidBy(form) {
         return false;
     }
 
+    if (isEntityPaidBy(selected) && transactionDirection(form) === 'income') {
+        const bankWrap = form.querySelector('#paid_by_bank_account_wrap');
+        const bankSelect = form.querySelector('#paid_by_bank_account_id');
+
+        if (bankWrap && !bankWrap.classList.contains('hidden') && bankSelect) {
+            const bankValue = String(paidBySelectValue(bankSelect)).trim();
+
+            if (bankValue === '') {
+                showPaidByClientError(form, 'bank_account', 'Bank account is required when an entity is selected.');
+
+                return false;
+            }
+        }
+    }
+
     return true;
 }
 
@@ -121,6 +156,7 @@ export function initTransactionPaidByValidation(root = document) {
 
         const paidBySelect = form.querySelector('#paid_by_select');
         const paidByOther = form.querySelector('#paid_by_other');
+        const bankSelect = form.querySelector('#paid_by_bank_account_id');
 
         if (paidBySelect) {
             paidBySelect.addEventListener('change', () => clearPaidByClientErrors(form));
@@ -128,6 +164,10 @@ export function initTransactionPaidByValidation(root = document) {
 
         if (paidByOther) {
             paidByOther.addEventListener('input', () => clearPaidByClientErrors(form));
+        }
+
+        if (bankSelect) {
+            bankSelect.addEventListener('change', () => clearPaidByClientErrors(form));
         }
 
         form.querySelectorAll('input[name="payment_status"], input[name="direction"]').forEach((input) => {

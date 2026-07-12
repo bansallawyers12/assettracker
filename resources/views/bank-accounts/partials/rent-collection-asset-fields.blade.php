@@ -6,18 +6,24 @@
         ->map(fn ($id) => (int) $id)
         ->all();
     $fieldId = $fieldId ?? 'rent_collection_asset_ids';
-    $purposeSelectId = $purposeSelectId ?? 'account_purpose';
+    $forceVisible = (bool) ($forceVisible ?? false);
+    // Empty string = always visible (manage panel). Do not coalesce null → account_purpose when forced.
+    if ($forceVisible) {
+        $purposeSelectId = '';
+    } else {
+        $purposeSelectId = $purposeSelectId ?? 'account_purpose';
+    }
     $defaultPurpose = $defaultPurpose ?? null;
-    $forceVisible = $forceVisible ?? false;
     $showWhenPurpose = BankAccount::PURPOSE_RENT_RECEIVING;
     $isVisible = $forceVisible || $defaultPurpose === $showWhenPurpose;
 @endphp
 
 <div
-    id="rent-collection-assets-section"
+    id="{{ $fieldId }}-section"
     class="bank-field {{ $isVisible ? '' : 'hidden' }}"
     data-rent-assets-section
-    data-purpose-select="{{ $purposeSelectId }}"
+    @if($forceVisible) data-force-visible="1" @endif
+    @if($purposeSelectId !== '') data-purpose-select="{{ $purposeSelectId }}" @endif
     data-show-when-purpose="{{ $showWhenPurpose }}"
 >
     <label for="{{ $fieldId }}" class="bank-field-label">Link to assets (optional)</label>

@@ -393,6 +393,24 @@ class BankAccount extends Model
     }
 
     /**
+     * Compact label for transaction paid-by bank account pickers.
+     * e.g. "Operating · ****1234"
+     */
+    public function transactionAccountLabel(): string
+    {
+        $name = $this->account_name ?: self::purposeLabel($this->account_purpose);
+        $masked = $this->maskedAccountNumber();
+
+        if ($masked) {
+            return "{$name} · {$masked}";
+        }
+
+        $bsb = self::formatBsb($this->bsb);
+
+        return $bsb !== '' ? "{$name} · {$bsb}" : $name;
+    }
+
+    /**
      * Route to edit this account (portfolio-wide or entity-scoped).
      */
     public function editRoute(): string

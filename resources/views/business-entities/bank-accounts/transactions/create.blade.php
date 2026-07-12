@@ -205,7 +205,8 @@
                                 'payerOptions' => $payerOptions,
                                 'paidBySelect' => $pbSplit['select'],
                                 'paidByOther' => $pbSplit['other'],
-                                'paidByLabelText' => $oldDir === 'income' ? 'Received By / Account' : 'Paid By',
+                                'paidByLabelText' => $oldDir === 'income' ? 'Received By' : 'Paid By',
+                                'hideBankAccountField' => true,
                             ])
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Receipt <span class="text-gray-400 font-normal">(optional)</span></label>
@@ -260,7 +261,7 @@
             }
 
             function updatePaidByLabel(direction) {
-                if (paidByLabel) paidByLabel.textContent = direction === 'income' ? 'Received By / Account' : 'Paid By';
+                if (paidByLabel) paidByLabel.textContent = direction === 'income' ? 'Received By' : 'Paid By';
             }
 
             directionRadios.forEach(r => r.addEventListener('change', function () {

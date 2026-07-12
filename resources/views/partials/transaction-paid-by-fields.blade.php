@@ -1,5 +1,6 @@
 {{--
     Payer dropdown: all business entities + all director appointments; optional free-text "Other".
+    When an entity is selected, a second dropdown loads linked operating bank accounts.
     Expects: $payerOptions (TransactionPayerResolver::payerOptions), $paidBySelect / $paidByOther
     as defaults from stored data. After validation errors, old('paid_by_select'|'paid_by_other') wins.
 --}}
@@ -9,6 +10,9 @@
     $sel = $paidBySelect ?? '';
     $oth = $paidByOther ?? '';
     $showOther = ($sel === 'other');
+    $bankAccountId = old('bank_account_id', $bankAccountId ?? '');
+    $hideBankAccountField = $hideBankAccountField ?? false;
+    $showBankAccount = ! $hideBankAccountField && preg_match('/^be:\d+$/', (string) $sel);
 @endphp
 <div>
     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 {{ $labelClass ?? 'mb-1' }}" id="paid_by_label">
@@ -45,3 +49,17 @@
     @error('paid_by_other') <span class="text-red-500 {{ $errorClass ?? 'text-sm' }}">{{ $message }}</span> @enderror
     <span class="js-paid-by-other-client-error text-red-500 {{ $errorClass ?? 'text-sm' }} hidden" role="alert"></span>
 </div>
+@if (! $hideBankAccountField)
+    <div id="paid_by_bank_account_wrap" class="mt-2 {{ $showBankAccount ? '' : 'hidden' }}">
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 {{ $labelClass ?? 'mb-1' }}" id="paid_by_bank_account_label">
+            Bank account
+        </label>
+        <x-tom-select name="bank_account_id" id="paid_by_bank_account_id"
+                data-selected="{{ $bankAccountId }}"
+                class="{{ $selectClass ?? 'mt-1 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500' }}">
+            <option value="">— Select account —</option>
+        </x-tom-select>
+        @error('bank_account_id') <span class="text-red-500 {{ $errorClass ?? 'text-sm' }}">{{ $message }}</span> @enderror
+        <span class="js-paid-by-bank-account-client-error text-red-500 {{ $errorClass ?? 'text-sm' }} hidden" role="alert"></span>
+    </div>
+@endif

@@ -18,7 +18,7 @@
                         </ul>
                     </div>
                 @endif
-                <form method="POST" id="bank-edit-transaction-form" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data">
+                <form method="POST" id="bank-edit-transaction-form" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data" data-transaction-paid-by-form>
                     @csrf
                     @method('PUT')
 
@@ -197,7 +197,8 @@
                                 'payerOptions' => $payerOptions,
                                 'paidBySelect' => $pbSplit['select'],
                                 'paidByOther' => $pbSplit['other'],
-                                'paidByLabelText' => $oldDir === 'income' ? 'Received By / Account' : 'Paid By',
+                                'bankAccountId' => old('bank_account_id', $transaction->bank_account_id),
+                                'paidByLabelText' => $oldDir === 'income' ? 'Received By' : 'Paid By',
                             ])
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -269,7 +270,7 @@
 
             function updatePaidByLabel(direction) {
                 if (paidByLabel) {
-                    paidByLabel.textContent = direction === 'income' ? 'Received By / Account' : 'Paid By';
+                    paidByLabel.textContent = direction === 'income' ? 'Received By' : 'Paid By';
                 }
             }
 

@@ -235,7 +235,9 @@ class BankAccountAssetLinkService
                 ->first();
 
             if ($asset) {
-                $asset->bankAccounts()->wherePivot('role', BankAccount::ROLE_RENT_COLLECTION)->detach();
+                $asset->bankAccounts()
+                    ->wherePivot('role', BankAccount::ROLE_RENT_COLLECTION)
+                    ->detach($account->id);
             }
         }
 
@@ -245,6 +247,26 @@ class BankAccountAssetLinkService
             'linked' => $linked,
             'unlinked' => count($toUnlink),
         ];
+    }
+
+    /**
+     * Unlink this account as Rent Paid Into on all leasable assets of the entity.
+     */
+    public function unlinkAllRentCollectionAssetsForAccount(
+        BankAccount $account,
+        BusinessEntity $entity
+    ): int {
+        $assets = $this->rentCollectionAssetsForAccount($entity, $account);
+        $unlinked = 0;
+
+        foreach ($assets as $asset) {
+            $asset->bankAccounts()
+                ->wherePivot('role', BankAccount::ROLE_RENT_COLLECTION)
+                ->detach($account->id);
+            $unlinked++;
+        }
+
+        return $unlinked;
     }
 
     /**

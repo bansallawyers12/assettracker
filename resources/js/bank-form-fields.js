@@ -30,10 +30,15 @@ export function refreshRentCollectionAssetSection(root = document) {
         : [];
 
     sections.forEach((section) => {
-        const purposeSelectId = section.dataset.purposeSelect;
+        // Manage panel (or any always-visible section)
+        if (section.dataset.forceVisible === '1') {
+            section.classList.remove('hidden');
+            return;
+        }
+
+        const purposeSelectId = section.dataset.purposeSelect || '';
         const showWhen = section.dataset.showWhenPurpose || PURPOSE_RENT_RECEIVING;
 
-        // Manage form has no purpose select — always visible
         if (!purposeSelectId) {
             section.classList.remove('hidden');
             return;
