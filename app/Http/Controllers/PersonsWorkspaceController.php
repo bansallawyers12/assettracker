@@ -39,19 +39,12 @@ class PersonsWorkspaceController extends Controller
             return $this->errorResponse('Company roles and officers apply to operating entities only, not tenancy or property manager contacts.');
         }
 
-        $persons = Person::orderBy('first_name')->orderBy('last_name')->get();
-        $businessEntities = BusinessEntity::query()
-            ->operationalEntities()
-            ->where('entity_type', '!=', 'Trust')
-            ->orderBy('legal_name')
-            ->get();
-
         $preselectedPersonId = $request->integer('person_id') ?: null;
 
         return $this->formResponse('business-entities.partials.persons.form', [
             'businessEntity' => $businessEntity,
-            'persons' => $persons,
-            'businessEntities' => $businessEntities,
+            'persons' => $this->personOptions(),
+            'businessEntities' => $this->trusteeCompanyOptions($businessEntity),
             'entityPerson' => null,
             'mode' => 'create',
             'preselectedPersonId' => $preselectedPersonId,
@@ -64,17 +57,14 @@ class PersonsWorkspaceController extends Controller
         $this->ensureBelongsToEntity($businessEntity, $entityPerson);
 
         $entityPerson->load(['person', 'trusteeEntity', 'appointorEntity']);
-        $persons = Person::orderBy('first_name')->orderBy('last_name')->get();
-        $businessEntities = BusinessEntity::query()
-            ->operationalEntities()
-            ->where('entity_type', '!=', 'Trust')
-            ->orderBy('legal_name')
-            ->get();
 
         return $this->formResponse('business-entities.partials.persons.form', [
             'businessEntity' => $businessEntity,
-            'persons' => $persons,
-            'businessEntities' => $businessEntities,
+            'persons' => $this->personOptions(),
+            'businessEntities' => $this->trusteeCompanyOptions(
+                $businessEntity,
+                $entityPerson->entity_trustee_id ? (int) $entityPerson->entity_trustee_id : null
+            ),
             'entityPerson' => $entityPerson,
             'mode' => 'edit',
         ]);
@@ -130,6 +120,37 @@ class PersonsWorkspaceController extends Controller
             'add' => $isTrust ? 'Add Person/Company' : 'Add Person',
             'empty_cta' => $isTrust ? 'Add your first person or company' : 'Add your first person',
         ];
+    }
+
+    /**
+     * Person names are encrypted at rest, so sort in PHP after decryption.
+     */
+    private function personOptions()
+    {
+        return Person::query()
+            ->get()
+            ->sortBy(fn (Person $person) => mb_strtolower($person->displayName()), SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+    }
+
+    /**
+     * Corporate trustee candidates: operating non-trust companies, excluding the current entity.
+     * Keep a previously selected trustee even if it later became a tenancy-only contact.
+     */
+    private function trusteeCompanyOptions(BusinessEntity $businessEntity, ?int $includeEntityId = null)
+    {
+        return BusinessEntity::query()
+            ->where('entity_type', '!=', 'Trust')
+            ->where('id', '!=', $businessEntity->id)
+            ->where(function ($query) use ($includeEntityId) {
+                $query->operationalEntities();
+
+                if ($includeEntityId) {
+                    $query->orWhere('id', $includeEntityId);
+                }
+            })
+            ->orderBy('legal_name')
+            ->get();
     }
 
     private function formResponse(string $view, array $data): JsonResponse|View

@@ -238,6 +238,7 @@
                     createNewPerson.disabled = false;
                 }
                 personInputs.forEach(el => { el.disabled = false; });
+                window.reinitTomSelect?.(personSelect);
             }
         }
 
@@ -253,6 +254,7 @@
             } else {
                 existingPerson.classList.remove('hidden');
                 newPersonFields.classList.add('hidden');
+                window.reinitTomSelect?.(personId);
             }
         }
 

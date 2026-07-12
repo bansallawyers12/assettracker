@@ -42,9 +42,14 @@ class EntityPersonController extends Controller
                 ->withErrors(['error' => 'Company roles and officers apply to operating entities only, not tenancy or property manager contacts.']);
         }
 
-        $persons = Person::all();
+        $persons = Person::query()
+            ->get()
+            ->sortBy(fn (Person $person) => mb_strtolower($person->displayName()), SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
         $businessEntities = BusinessEntity::query()
+            ->operationalEntities()
             ->where('entity_type', '!=', 'Trust')
+            ->where('id', '!=', $businessEntity->id)
             ->orderBy('legal_name')
             ->get(); // Exclude trusts to prevent circular references
 
@@ -194,9 +199,20 @@ class EntityPersonController extends Controller
         $businessEntity = $entityPerson->businessEntity;
         $businessEntities = BusinessEntity::query()
             ->where('entity_type', '!=', 'Trust')
+            ->where('id', '!=', $businessEntity->id)
+            ->where(function ($query) use ($entityPerson) {
+                $query->operationalEntities();
+
+                if ($entityPerson->entity_trustee_id) {
+                    $query->orWhere('id', $entityPerson->entity_trustee_id);
+                }
+            })
             ->orderBy('legal_name')
             ->get();
-        $persons = Person::all();
+        $persons = Person::query()
+            ->get()
+            ->sortBy(fn (Person $person) => mb_strtolower($person->displayName()), SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
 
         return view('entity-persons.edit', compact('entityPerson', 'businessEntity', 'businessEntities', 'persons'));
     }

@@ -242,6 +242,7 @@ function initPersonsToggleLogic(form) {
         } else {
             existingPerson.classList.remove('hidden');
             newPersonFields.classList.add('hidden');
+            window.reinitTomSelect?.(personId);
         }
     }
 

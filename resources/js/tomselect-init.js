@@ -325,7 +325,14 @@ export function reinitTomSelect(select) {
         return;
     }
 
+    // Skip while still hidden — keep deferred so the visibility observer can init later.
+    if (isSelectInHiddenContainer(el)) {
+        el.dataset.tomselectDeferred = 'true';
+        return;
+    }
+
     destroyTomSelect(el);
+    delete el.dataset.tomselectDeferred;
     createTomSelect(el);
 }
 
