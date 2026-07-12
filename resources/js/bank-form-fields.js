@@ -4,26 +4,19 @@
 const BANK_OTHER_VALUE = '__other__';
 const PURPOSE_LOAN_REPAYMENT = 'loan_repayment';
 export function initBankAccountFormFields(root = document) {
-    const scope = root?.querySelector?.('.bank-account-form-root') ?? root;
-    if (!scope || scope.dataset.bankFormInit === '1') {
-        return;
+    const formRoots = [];
+
+    if (root instanceof Element && root.classList.contains('bank-account-form-root')) {
+        formRoots.push(root);
+    } else if (root?.querySelectorAll) {
+        formRoots.push(...root.querySelectorAll('.bank-account-form-root'));
     }
 
-    if (scope.classList?.contains('bank-account-form-root') || scope.querySelector?.('.bank-account-form-root')) {
-        const formRoot = scope.classList.contains('bank-account-form-root')
-            ? scope
-            : scope.querySelector('.bank-account-form-root');
-
-        if (!formRoot || formRoot.dataset.bankFormInit === '1') {
+    formRoots.forEach((formRoot) => {
+        if (formRoot.dataset.bankFormInit === '1') {
             return;
         }
 
-        formRoot.dataset.bankFormInit = '1';
-        bindBankFormFields(formRoot);
-        return;
-    }
-
-    document.querySelectorAll('.bank-account-form-root:not([data-bank-form-init="1"])').forEach((formRoot) => {
         formRoot.dataset.bankFormInit = '1';
         bindBankFormFields(formRoot);
     });

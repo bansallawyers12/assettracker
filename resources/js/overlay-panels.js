@@ -1,11 +1,19 @@
 const PANEL_SELECTOR = '.bank-account-panel, .entity-workspace-panel, #workspace-dialog-root';
 
+function releaseFocusFrom(panel) {
+    const active = document.activeElement;
+    if (active instanceof HTMLElement && panel.contains(active)) {
+        active.blur();
+    }
+}
+
 export function sealOverlayPanels() {
     document.querySelectorAll(PANEL_SELECTOR).forEach((panel) => {
         if (panel.dataset.panelOpen === 'true') {
             return;
         }
 
+        releaseFocusFrom(panel);
         panel.hidden = true;
         panel.dataset.panelOpen = 'false';
         panel.classList.add('hidden');
@@ -33,6 +41,7 @@ export function markOverlayPanelClosed(panel) {
         return;
     }
 
+    releaseFocusFrom(panel);
     panel.hidden = true;
     panel.dataset.panelOpen = 'false';
     panel.classList.add('hidden');
