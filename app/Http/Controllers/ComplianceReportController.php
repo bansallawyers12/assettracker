@@ -42,7 +42,7 @@ class ComplianceReportController extends Controller
         );
 
         if ($request->query('format') === 'csv') {
-            return $this->csvResponse($report);
+            return $this->missingItrCsvResponse($report);
         }
 
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
@@ -57,6 +57,72 @@ class ComplianceReportController extends Controller
             'formsEntityIds',
             'availableYears',
             'fyStart'
+        ));
+    }
+
+    public function atoLodgements(Request $request): View|RedirectResponse|StreamedResponse
+    {
+        $this->authorize('viewAny', Asset::class);
+
+        $entityIds = $this->resolveReportEntityIds($request);
+
+        if ($entityIds === null) {
+            return redirect()
+                ->route('financial-reports.ato-lodgements', $request->except('entity_ids'))
+                ->with('error', 'Choose at least one entity, or select "All reporting entities".');
+        }
+
+        $availableYears = $this->yearService->listAvailableYears();
+        [$fyFrom, $fyTo] = $this->resolveFyRange($request, $availableYears);
+
+        $obligationKeys = $this->reportService->normalizeObligationKeys(
+            array_values(array_filter((array) $request->input('obligations', ComplianceReportService::DEFAULT_OBLIGATIONS)))
+        );
+        $statusFilter = $this->reportService->normalizeStatusFilter($request->input('status'));
+
+        $report = $this->reportService->lodgementStatusReport(
+            $entityIds === [] ? null : $entityIds,
+            $fyFrom,
+            $fyTo,
+            $obligationKeys,
+            $statusFilter
+        );
+
+        if ($request->query('format') === 'csv') {
+            return $this->atoLodgementsCsvResponse($report);
+        }
+
+        $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+        $formsScope = $request->input('scope') === 'selected' ? 'selected' : 'all';
+        $formsEntityIds = $formsScope === 'selected' ? ($entityIds ?? []) : [];
+
+        $obligationOptions = [
+            ComplianceReportService::OBLIGATION_ITR => 'ITR',
+            ComplianceReportService::OBLIGATION_BAS => 'BAS',
+            ComplianceReportService::OBLIGATION_ANNUAL_ACCOUNTS => 'Annual accounts',
+            ComplianceReportService::OBLIGATION_ASIC => 'ASIC',
+        ];
+
+        $statusOptions = [
+            'all' => 'All statuses',
+            ComplianceReportService::STATUS_MISSING => 'Missing',
+            ComplianceReportService::STATUS_UPLOADED => 'Uploaded',
+            ComplianceReportService::STATUS_OVERDUE => 'Overdue',
+            ComplianceReportService::STATUS_DUE_SOON => 'Due soon',
+            ComplianceReportService::STATUS_LODGED_UNPAID => 'Lodged, unpaid',
+            ComplianceReportService::STATUS_COMPLETE => 'Complete',
+        ];
+
+        return view('compliance-reports.ato-lodgements', compact(
+            'report',
+            'businessEntities',
+            'formsScope',
+            'formsEntityIds',
+            'availableYears',
+            'obligationOptions',
+            'statusOptions',
+            'obligationKeys',
+            'statusFilter'
         ));
     }
 
@@ -76,9 +142,48 @@ class ComplianceReportController extends Controller
     }
 
     /**
+     * @param  array<int, array{start: string, end: string, label: string}>  $availableYears
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function resolveFyRange(Request $request, array $availableYears): array
+    {
+        $oldest = isset($availableYears[array_key_last($availableYears)])
+            ? $this->yearService->normalizeFyStart($availableYears[array_key_last($availableYears)]['start'])
+            : FinancialYear::currentStart();
+        $newest = isset($availableYears[0])
+            ? $this->yearService->normalizeFyStart($availableYears[0]['start'])
+            : FinancialYear::currentStart();
+
+        $fyFrom = $oldest;
+        $fyTo = $newest;
+
+        try {
+            if ($request->query('fy_from')) {
+                $fyFrom = $this->yearService->normalizeFyStart(Carbon::parse($request->query('fy_from')));
+            }
+        } catch (\Throwable) {
+            $fyFrom = $oldest;
+        }
+
+        try {
+            if ($request->query('fy_to')) {
+                $fyTo = $this->yearService->normalizeFyStart(Carbon::parse($request->query('fy_to')));
+            }
+        } catch (\Throwable) {
+            $fyTo = $newest;
+        }
+
+        if ($fyFrom->gt($fyTo)) {
+            [$fyFrom, $fyTo] = [$fyTo, $fyFrom];
+        }
+
+        return [$fyFrom, $fyTo];
+    }
+
+    /**
      * @param  array{fy_label: string, fy_start: string, rows: list<array{entity_name: string, fy_label: string}>}  $report
      */
-    private function csvResponse(array $report): StreamedResponse
+    private function missingItrCsvResponse(array $report): StreamedResponse
     {
         $filename = 'compliance-missing-itr-'.$report['fy_start'].'.csv';
 
@@ -87,6 +192,34 @@ class ComplianceReportController extends Controller
             fputcsv($out, ['Entity', 'Financial year', 'Status']);
             foreach ($report['rows'] as $row) {
                 fputcsv($out, [$row['entity_name'], $row['fy_label'], 'ITR missing']);
+            }
+            fclose($out);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * @param  array{fy_from: string, fy_to: string, rows: list<array<string, mixed>>}  $report
+     */
+    private function atoLodgementsCsvResponse(array $report): StreamedResponse
+    {
+        $filename = 'ato-asic-lodgements-'.$report['fy_from'].'-to-'.$report['fy_to'].'.csv';
+
+        return response()->streamDownload(function () use ($report) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['Entity', 'Financial year', 'Obligation', 'Due date', 'Lodged', 'Paid', 'Status', 'Document']);
+            foreach ($report['rows'] as $row) {
+                fputcsv($out, [
+                    $row['entity_name'],
+                    $row['fy_label'],
+                    $row['obligation_label'],
+                    $row['due_date'] ?? '',
+                    $row['lodged_date'] ?? '',
+                    $row['paid_date'] ?? '',
+                    $row['status_label'],
+                    $row['has_document'] ? 'Yes' : 'No',
+                ]);
             }
             fclose($out);
         }, $filename, [

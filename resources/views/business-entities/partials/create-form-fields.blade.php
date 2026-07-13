@@ -181,6 +181,37 @@
             @error('asic_renewal_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
+        <div class="bank-field">
+            <label for="bas_reporting_frequency" class="bank-field-label">{{ __('BAS reporting') }}</label>
+            <select name="bas_reporting_frequency" id="bas_reporting_frequency" class="bank-field-control">
+                <option value="" @selected(old('bas_reporting_frequency', '') === '')>{{ __('App default') }}</option>
+                <option value="annual" @selected(old('bas_reporting_frequency') === 'annual')>{{ __('Annual') }}</option>
+                <option value="quarterly" @selected(old('bas_reporting_frequency') === 'quarterly')>{{ __('Quarterly') }}</option>
+                <option value="monthly" @selected(old('bas_reporting_frequency') === 'monthly')>{{ __('Monthly (uses quarterly slots)') }}</option>
+            </select>
+            @error('bas_reporting_frequency') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
+        </div>
+
+        <div class="bank-field bank-form-grid-full">
+            <div class="flex flex-col gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="hidden" name="uses_tax_agent" value="0">
+                    <input type="checkbox" name="uses_tax_agent" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('uses_tax_agent') ? 'checked' : '' }}>
+                    <span>{{ __('Uses a registered tax / BAS agent (extended lodgement dates)') }}</span>
+                </label>
+                <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="hidden" name="gst_registered" value="0">
+                    <input type="checkbox" name="gst_registered" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('gst_registered', '1') ? 'checked' : '' }}>
+                    <span>{{ __('GST registered (BAS obligations apply)') }}</span>
+                </label>
+                <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <input type="hidden" name="entity_tax_return_required" value="0">
+                    <input type="checkbox" name="entity_tax_return_required" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('entity_tax_return_required', '1') ? 'checked' : '' }}>
+                    <span>{{ __('Income tax return required') }}</span>
+                </label>
+            </div>
+        </div>
+
         <div class="bank-field bank-form-grid-full">
             <label for="registered_address" class="bank-field-label">{{ __('Registered address') }} <span class="text-red-500">*</span></label>
             <x-google-address-input name="registered_address" id="registered_address" :value="old('registered_address')" required class="bank-field-control" />

@@ -2,7 +2,7 @@
 
 **Date:** 12 July 2026  
 **Last reviewed against codebase:** 12 July 2026  
-**Context:** Review of Australian Taxation Office (ATO) filing timelines, existing Asset Tracker compliance features, and a proposed portfolio-wide lodgement status report — including support for pending items from past financial years.
+**Context:** Review of Australian Taxation Office (ATO) filing timelines, ASIC annual statement/fees tracking, existing Asset Tracker compliance features, and a proposed portfolio-wide lodgement status report — including support for pending items from past financial years.
 
 ---
 
@@ -12,7 +12,7 @@ Asset Tracker already has a **compliance workspace** that tracks ITR, BAS, annua
 
 What is missing is a **portfolio-wide report** that surfaces overdue, missing, and incomplete lodgements across **multiple past years** and obligation types (not only ITR file upload for one FY).
 
-Given potential gaps from prior financial years, the highest-value next step is an **ATO Lodgement Status** report that aggregates existing `compliance_document_files` data across entities and FYs, classifies each obligation (overdue / due soon / lodged / paid / missing), and exports to CSV.
+Given potential gaps from prior financial years, the highest-value next step is an **ATO / ASIC Lodgement Status** report that aggregates existing `compliance_document_files` data across entities and FYs — covering ITR, BAS, annual accounts, and **ASIC annual statement / fees** — classifies each obligation (overdue / due soon / lodged / paid / missing), and exports to CSV.
 
 ---
 
@@ -298,7 +298,7 @@ One compliance report exists today:
 | **Document checklist, not lodgement engine** | No lodgement reference numbers, amendments, or payment amounts |
 | **No ATO deadline automation** | Entity-level ITR/BAS/ASIC get no auto `due_date` (`dueDateForType()` returns null for entity scope) |
 | **Global BAS mode** | Annual vs quarterly is app-wide (`config/compliance.php`), not per entity |
-| **Thin reporting** | Only “missing ITR file” for one FY; no overdue BAS, multi-year scan, or lodgement-status view |
+| **Thin reporting** | Only “missing ITR file” for one FY; no overdue BAS, ASIC fee status, multi-year scan, or lodgement-status view |
 | **Upload ≠ lodged** | Existing report and workspace completeness care about file `path`; lodgement/payment status is separate and underused in reporting |
 | **No ATO reminders** | `reminders` table exists but is not wired to BAS/ITR due dates |
 | **GST ≠ lodgement** | GST clearing supports BAS prep in GL; lodgement state lives only in compliance files |
@@ -309,7 +309,7 @@ One compliance report exists today:
 
 ---
 
-## Part 4 — Proposed Report: ATO Lodgement Status
+## Part 4 — Proposed Report: ATO / ASIC Lodgement Status
 
 ### Purpose
 
@@ -317,15 +317,28 @@ Answer portfolio-wide questions that the per-entity compliance tab (and single-F
 
 1. **What's overdue?** (past due date, not lodged/paid)
 2. **What's missing?** (no FY record, no slot, or still `not_started` / no file)
-3. **What's lodged but unpaid?** (`lodged` but no `paid_date`)
-4. **Which entities are at risk?** (e.g. ITR outstanding for FY22–FY24)
+3. **What's lodged but unpaid?** (`lodged` but no `paid_date`) — including **ASIC annual review fees**
+4. **Which entities are at risk?** (e.g. ITR outstanding for FY22–FY24; ASIC statement unpaid)
 5. **What's coming up?** (next 30/60/90 days — once due dates exist)
 
 ### Suggested route
 
 - Path: `/financial-reports/ato-lodgements`
 - Name: `financial-reports.ato-lodgements`
-- Hub: add card next to “Compliance gaps” under **Registers & compliance**
+- Hub title: **ATO / ASIC lodgements** (card next to “Compliance gaps” under **Registers & compliance**)
+
+### Obligation types in scope (Phase 1)
+
+| Code | Label | Category | Notes |
+|------|-------|----------|-------|
+| `itr` | Income Tax Return | Tax & ATO | Always included |
+| `bas_annual` **or** `bas_q1`–`bas_q4` | BAS | Tax & ATO | Respects `compliance.bas_mode` (never both) |
+| `annual_accounts` | Annual Accounts | Tax & ATO | Included by default; filterable |
+| `asic_statement` | ASIC Annual Statement | ASIC & Company | **Included** — covers annual statement lodgement and fee payment via `lodged` / `paid` status |
+
+Custom Tax & ATO / ASIC slots (nullable `compliance_document_type_id`) are **excluded** by default.
+
+Entity applicability: ASIC applies mainly to companies (and other ASIC-registered entities). Phase 1 still surfaces the seeded `asic_statement` slot for every reporting entity that has (or should have) a year record; Phase 3 may add an `asic_registered` / entity-type filter so trusts without ASIC obligations are not flagged.
 
 ### Filters
 
@@ -333,8 +346,8 @@ Answer portfolio-wide questions that the per-entity compliance tab (and single-F
 |--------|---------|
 | Entity | Single / multi / all reporting entities (`forFinancialReports()`) |
 | Financial year range | e.g. FY2020–FY2026 (critical for past-year gaps; contrast with current one-FY picker) |
-| Obligation type | ITR, BAS (respect `bas_mode`), annual accounts; optionally ASIC |
-| Status | Overdue, due soon, lodged, paid, missing, uploaded |
+| Obligation type | ITR, BAS (respect `bas_mode`), annual accounts, **ASIC** |
+| Status | Overdue, due soon, lodged unpaid, complete, missing, uploaded |
 
 ### Report columns
 
@@ -342,15 +355,17 @@ Answer portfolio-wide questions that the per-entity compliance tab (and single-F
 |--------|-----|------------|----------|--------|------|--------|----------|--------|
 | ABC Pty Ltd | 2023-2024 | BAS Q2 | 28 Feb 2024 | — | — | **Overdue** | — | Open workspace |
 | XYZ Trust | 2024-2025 | ITR | 31 Oct 2025 | 15 Nov 2025 | — | Lodged, unpaid | ✓ | Open workspace |
+| ABC Pty Ltd | 2024-2025 | ASIC Annual Statement | — | 12 Sep 2025 | — | Lodged, unpaid | ✓ | Open workspace |
 
 Use `FinancialYear::label()` format (e.g. `2025-2026`) for consistency with existing reports.
 
 ### Summary tiles
 
-- Overdue count
-- Due in next 30 days (only meaningful once due dates are populated)
-- Missing (no file / not lodged, depending on chosen definition)
-- Fully compliant entities (define as lodged/paid for required ATO types — **stricter** than current upload-based completeness)
+- Missing
+- Uploaded
+- Lodged, unpaid (especially useful for ASIC fees)
+- Complete
+- Overdue / due soon (only when `due_date` is set — Phase 2 for ATO rules; ASIC may later use `business_entities.asic_renewal_date`)
 
 ### Views
 
@@ -362,7 +377,7 @@ Use `FinancialYear::label()` format (e.g. `2025-2026`) for consistency with exis
 
 ```
 For each reporting entity + FY in range:
-  For each required ATO obligation (ITR + BAS slots per compliance.bas_mode):
+  For each required obligation (ITR + BAS per compliance.bas_mode + annual_accounts + asic_statement):
     If no compliance_year_record for entity/FY:
       → flag as missing (do not auto-create unless user runs ensure-years)
     Else if no matching compliance_document_file for type code:
@@ -370,30 +385,34 @@ For each reporting entity + FY in range:
     Else classify by status / due_date / path (see below)
 ```
 
-### Status classification (proposed)
+### Status classification (locked for Phase 1)
 
-| Status | Condition |
-|--------|-----------|
-| **Complete** | `status` = `paid`, or (`status` = `lodged` and `paid_date` set) |
-| **Lodged, unpaid** | `status` = `lodged`, no `paid_date` |
-| **Overdue** | `due_date` &lt; today and status not lodged/paid *(skipped if due_date null until Phase 2)* |
-| **Due soon** | `due_date` within next 30 days, not lodged/paid |
-| **Uploaded** | File present (`path`), status not lodged/paid |
-| **Missing** | No FY record, no slot, `not_started`, or no file — product decision: treat “uploaded but not lodged” separately from “missing” |
+Apply **first matching** rule in this order:
 
-**Product note:** Today’s missing-ITR report treats “has file” as OK. The new report should preferably track **lodgement**, with an optional filter for “file missing” vs “not lodged”.
+| Priority | Status | Condition |
+|----------|--------|-----------|
+| 1 | **Complete** | `status` = `paid`, or (`status` = `lodged` and `paid_date` set) |
+| 2 | **Lodged, unpaid** | `status` = `lodged`, no `paid_date` |
+| 3 | **Overdue** | effective due date &lt; today and not complete/lodged |
+| 4 | **Due soon** | effective due date within next 30 days, not complete/lodged |
+| 5 | **Uploaded** | File present (`path`), not lodged/paid |
+| 6 | **Missing** | No FY record, no slot, `not_started`, or no file (and not overdue/due soon) |
+
+**Effective due date:** stored `compliance_document_files.due_date` if set; otherwise Phase 2 estimate from `AtoDueDateService` (so overdue still surfaces for never-opened FYs).
+
+**Product note:** Today’s missing-ITR report treats “has file” as OK. This report tracks **lodgement/payment**, with Uploaded kept distinct from Missing. ASIC annual review fees are expected to move Missing → Uploaded → Lodged, unpaid → Complete once the fee is paid.
 
 ---
 
 ## Part 5 — Implementation Plan
 
-### Phase 1 — Lodgement status report (high value, low risk)
+### Phase 1 — Lodgement status report (high value, low risk) ✅
 
 - Extend `ComplianceReportService` with `lodgementStatusReport()`
-- Add route `financial-reports.ato-lodgements` and hub card
+- Add route `financial-reports.ato-lodgements` and hub card (**ATO / ASIC lodgements**)
 - Reuse `<x-report-shell>` and entity scope picker
 - Scan **multiple FYs** (range filter; default e.g. last N years from `compliance.years_shown`)
-- Include entity-scope Tax & ATO seeded types (`itr`, BAS per `bas_mode`, optionally `annual_accounts`)
+- Include entity-scope seeded types: `itr`, BAS per `bas_mode`, `annual_accounts`, and **`asic_statement`**
 - Classify: missing, uploaded, lodged-unpaid, complete; overdue only when `due_date` present
 - CSV export
 - Link each row to entity compliance workspace (`business-entities.show` + `fy_start` + `#tab_compliance`)
@@ -407,21 +426,29 @@ For each reporting entity + FY in range:
 - `routes/web.php` — new route
 - `resources/views/financial-reports/index.blade.php` — hub card
 
-### Phase 2 — Smarter due dates
+### Phase 2 — Smarter due dates ✅
 
-- Add `AtoDueDateService` (or extend `ComplianceYearService::dueDateForType()` for entity scope) with ATO rules:
+- Added `App\Services\AtoDueDateService` with self-lodge defaults:
   - Quarterly BAS: 28 Oct, 28 Feb, 28 Apr, 28 Jul (relative to FY)
-  - ITR (self-lodge default): 31 October after FY end
-  - Annual BAS/GST: align with tax-return due date or 28 February when no return
-- Backfill `due_date` when FY slots are provisioned
-- Optionally respect tax-agent extended dates (per-entity flag in Phase 3)
+  - ITR / annual accounts: 31 October after FY end
+  - Annual BAS/GST: same as tax-return due date (31 Oct); 28 February path reserved for when no return is required (Phase 3 flag)
+  - ASIC annual statement: anniversary from `business_entities.asic_renewal_date` falling within the FY (null if unset)
+- `ComplianceYearService::dueDateForType()` uses the service for **entity** scope; asset slots unchanged
+- New slots and existing slots with null `due_date` get dates on provision
+- Artisan: `php artisan compliance:backfill-due-dates` (`--dry-run`, `--force`)
+- Tax-agent extended dates deferred to Phase 3 (`uses_tax_agent`)
 
-### Phase 3 — Per-entity config & reminders
+### Phase 3 — Per-entity config & reminders ✅
 
-- Per-entity `bas_reporting_frequency` on `business_entities` (replace global-only `COMPLIANCE_BAS_MODE`)
-- Per-entity `uses_tax_agent` flag for extended lodgement dates
-- Auto-create reminders 30 / 14 / 7 days before due date
-- Artisan command: ensure compliance year records/slots for a FY range without requiring UI open
+- Per-entity fields on `business_entities`:
+  - `bas_reporting_frequency` (`annual` / `quarterly` / `monthly`; null = app `COMPLIANCE_BAS_MODE`)
+  - `uses_tax_agent` — extended ITR (15 May) and BAS agent concession dates
+  - `gst_registered` — when false, BAS slots/report rows are omitted
+  - `entity_tax_return_required` — when false, ITR slots/report rows are omitted; annual BAS uses 28 Feb path
+- ASIC statement only for companies (or entities with ACN / ASIC renewal date)
+- `ComplianceReminderService` + `php artisan compliance:sync-reminders` (scheduled daily 06:30) creates 30/14/7-day reminders
+- `php artisan compliance:ensure-years` provisions year records/slots for a FY range without opening the UI
+- Entity create/edit forms expose the new settings (profile workspace update leaves them unchanged)
 
 ### Phase 4 — Additional obligation types (optional)
 
@@ -439,21 +466,22 @@ For each reporting entity + FY in range:
 | Config key | Env | Default | Purpose |
 |------------|-----|---------|---------|
 | `years_shown` | `COMPLIANCE_YEARS_SHOWN` | `10` | FY tabs / year list depth |
-| `bas_mode` | `COMPLIANCE_BAS_MODE` | `annual` | `annual` or `quarterly` — app-wide |
+| `bas_mode` | `COMPLIANCE_BAS_MODE` | `annual` | Fallback when entity `bas_reporting_frequency` is null |
 | `auto_provision_on_view` | *(none — hardcoded)* | `true` | Create categories/slots when workspace FY opened |
 | `enable_year_lock` | *(none — hardcoded)* | `false` | Allow locking a FY record |
 | `max_kilobytes` / `mimes` / `file_accept` | `DOCUMENTS_MAX_KB` (+ hardcodes) | mirrors documents config | Upload limits |
 
-`.env.example` does not currently document the `COMPLIANCE_*` keys.
+See `.env.example` for `COMPLIANCE_*` keys.
 
-### Proposed per-entity fields (Phase 3)
+### Per-entity fields (Phase 3) ✅
 
 | Field | Type | Purpose |
 |-------|------|---------|
-| `bas_reporting_frequency` | enum | `annual`, `quarterly`, `monthly` |
+| `bas_reporting_frequency` | enum nullable | `annual`, `quarterly`, `monthly` (monthly → quarterly slots); null = app default |
 | `uses_tax_agent` | boolean | Extended lodgement dates |
 | `gst_registered` | boolean | Whether BAS obligations apply |
 | `entity_tax_return_required` | boolean | Whether ITR obligation applies |
+| *(existing)* `asic_renewal_date` | date | ASIC annual review anniversary — feed due dates for `asic_statement` |
 
 ---
 
@@ -461,14 +489,14 @@ For each reporting entity + FY in range:
 
 **Build the report.** The compliance workspace is already a lodgement tracker at the entity level. The proposed report mainly:
 
-1. Aggregates existing `compliance_document_files` across entities and FYs
+1. Aggregates existing `compliance_document_files` across entities and FYs (ATO **and** ASIC)
 2. Classifies by lodgement status (and due date once Phase 2 exists)
-3. Surfaces past-year gaps that are hard to see entity-by-entity
+3. Surfaces past-year gaps — including unpaid ASIC annual review fees — that are hard to see entity-by-entity
 
 For entities with pending items from past years, **multi-year range filtering** should be first-class. That is the main upgrade over the existing missing-ITR report, which:
 
 - Covers **one FY at a time** (selectable, defaults to current)
-- Only checks **ITR file upload** (`path`), not BAS or lodgement/payment status
+- Only checks **ITR file upload** (`path`), not BAS, ASIC, or lodgement/payment status
 
 ---
 

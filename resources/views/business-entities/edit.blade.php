@@ -224,6 +224,35 @@
                                 <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">ASIC Renewal Date</label>
                                 <x-date-input name="asic_renewal_date" id="asic_renewal_date" value="{{ old('asic_renewal_date', $businessEntity->asic_renewal_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" />
                             </div>
+
+                            <div>
+                                <label for="bas_reporting_frequency" class="block text-sm font-medium text-gray-700 mb-1">BAS reporting</label>
+                                <select name="bas_reporting_frequency" id="bas_reporting_frequency" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition">
+                                    <option value="" @selected(old('bas_reporting_frequency', $businessEntity->bas_reporting_frequency) === null || old('bas_reporting_frequency', $businessEntity->bas_reporting_frequency) === '')>App default</option>
+                                    <option value="annual" @selected(old('bas_reporting_frequency', $businessEntity->bas_reporting_frequency) === 'annual')>Annual</option>
+                                    <option value="quarterly" @selected(old('bas_reporting_frequency', $businessEntity->bas_reporting_frequency) === 'quarterly')>Quarterly</option>
+                                    <option value="monthly" @selected(old('bas_reporting_frequency', $businessEntity->bas_reporting_frequency) === 'monthly')>Monthly (uses quarterly slots)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 rounded-lg border border-gray-200 bg-gray-50 p-4 space-y-3">
+                            <p class="text-sm font-medium text-gray-900">ATO / ASIC lodgement settings</p>
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="hidden" name="uses_tax_agent" value="0">
+                                <input type="checkbox" name="uses_tax_agent" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('uses_tax_agent', $businessEntity->uses_tax_agent ?? false) ? 'checked' : '' }}>
+                                <span class="text-sm text-gray-700">Uses a registered tax / BAS agent (extended lodgement dates)</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="hidden" name="gst_registered" value="0">
+                                <input type="checkbox" name="gst_registered" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('gst_registered', $businessEntity->gst_registered ?? true) ? 'checked' : '' }}>
+                                <span class="text-sm text-gray-700">GST registered (BAS obligations apply)</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer">
+                                <input type="hidden" name="entity_tax_return_required" value="0">
+                                <input type="checkbox" name="entity_tax_return_required" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('entity_tax_return_required', $businessEntity->entity_tax_return_required ?? true) ? 'checked' : '' }}>
+                                <span class="text-sm text-gray-700">Income tax return required</span>
+                            </label>
                         </div>
                         
                         <div class="mt-6">

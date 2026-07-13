@@ -280,6 +280,10 @@ class BusinessEntityController extends Controller
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
             'asic_renewal_date' => 'nullable|date',
+            'bas_reporting_frequency' => 'nullable|in:annual,quarterly,monthly',
+            'uses_tax_agent' => 'nullable|boolean',
+            'gst_registered' => 'nullable|boolean',
+            'entity_tax_return_required' => 'nullable|boolean',
 
             // Trust-specific validation (nullable first so empty values skip date/rules when entity is not Trust)
             'trust_type' => 'nullable|required_if:entity_type,Trust|in:Discretionary,Unit,Fixed,Testamentary,Charitable',
@@ -330,6 +334,12 @@ class BusinessEntityController extends Controller
                 'registered_email' => $request->registered_email,
                 'phone_number' => $request->phone_number,
                 'asic_renewal_date' => $request->asic_renewal_date,
+                'bas_reporting_frequency' => $request->input('bas_reporting_frequency') ?: null,
+                'uses_tax_agent' => $request->boolean('uses_tax_agent'),
+                'gst_registered' => $request->has('gst_registered') ? $request->boolean('gst_registered') : true,
+                'entity_tax_return_required' => $request->has('entity_tax_return_required')
+                    ? $request->boolean('entity_tax_return_required')
+                    : true,
                 'user_id' => auth()->id(), // Associate with the logged-in user
                 'status' => 'Active', // Default status
                 'exclude_from_financial_reports' => $request->boolean('exclude_from_financial_reports'),
@@ -1429,6 +1439,10 @@ class BusinessEntityController extends Controller
             'asic_renewal_date' => 'nullable|date',
             'status' => 'required|in:Active,Inactive,Deregistered',
             'exclude_from_financial_reports' => 'nullable|boolean',
+            'bas_reporting_frequency' => 'nullable|in:annual,quarterly,monthly',
+            'uses_tax_agent' => 'nullable|boolean',
+            'gst_registered' => 'nullable|boolean',
+            'entity_tax_return_required' => 'nullable|boolean',
             'trust_type' => 'nullable|required_if:entity_type,Trust|in:Discretionary,Unit,Fixed,Testamentary,Charitable',
             'trust_establishment_date' => 'nullable|required_if:entity_type,Trust|date|before_or_equal:today',
             'trust_deed_date' => 'nullable|required_if:entity_type,Trust|date|before_or_equal:today',
@@ -1458,7 +1472,7 @@ class BusinessEntityController extends Controller
         $isTrust = $request->entity_type === 'Trust';
 
         // Update the business entity with validated data
-        $businessEntity->update([
+        $payload = [
             'legal_name' => $request->legal_name,
             'trading_name' => $request->trading_name,
             'entity_type' => $request->entity_type,
@@ -1480,8 +1494,17 @@ class BusinessEntityController extends Controller
             'asic_renewal_date' => $request->asic_renewal_date,
             'status' => $request->status, // Update status
             'exclude_from_financial_reports' => $request->boolean('exclude_from_financial_reports'),
-        ]);
+        ];
 
+        // Profile workspace form omits these; only persist when the compliance section is submitted.
+        if ($request->has('bas_reporting_frequency')) {
+            $payload['bas_reporting_frequency'] = $request->input('bas_reporting_frequency') ?: null;
+            $payload['uses_tax_agent'] = $request->boolean('uses_tax_agent');
+            $payload['gst_registered'] = $request->boolean('gst_registered');
+            $payload['entity_tax_return_required'] = $request->boolean('entity_tax_return_required');
+        }
+
+        $businessEntity->update($payload);
         if ($request->expectsJson()) {
             $businessEntity->refresh();
 

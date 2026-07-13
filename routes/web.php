@@ -366,6 +366,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     Route::get('/financial-reports/car-register', [CarReportController::class, 'carRegister'])->name('financial-reports.car-register');
     Route::get('/financial-reports/compliance-gaps', [ComplianceReportController::class, 'missingItr'])->name('financial-reports.compliance-gaps');
+    Route::get('/financial-reports/ato-lodgements', [ComplianceReportController::class, 'atoLodgements'])->name('financial-reports.ato-lodgements');
     Route::redirect('/financial-reports/fleet-register', '/financial-reports/car-register');
     Route::get('/financial-reports/asset-summary', [PropertyReportController::class, 'assetSummary'])->name('financial-reports.asset-summary');
     Route::get('/portfolio', [PropertyReportController::class, 'portfolio'])->name('portfolio.index');

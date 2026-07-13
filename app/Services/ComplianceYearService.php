@@ -24,6 +24,10 @@ class ComplianceYearService
         'Other' => 99,
     ];
 
+    public function __construct(
+        private AtoDueDateService $atoDueDateService
+    ) {}
+
     /**
      * @return array<int, array{start: string, end: string, label: string}>
      */
@@ -244,12 +248,31 @@ class ComplianceYearService
 
     private function typeApplies(ComplianceDocumentType $type, ComplianceYearRecord $record): bool
     {
-        if (! $this->basTypeEnabled($type->code)) {
+        $record->loadMissing('businessEntity');
+        $entity = $record->businessEntity;
+
+        if (! $this->basTypeEnabled($type->code, $entity)) {
             return false;
         }
 
         if ($record->asset_id === null) {
-            return $type->scope === 'entity';
+            if ($type->scope !== 'entity') {
+                return false;
+            }
+
+            if ($type->code === 'itr' && $entity && ! $entity->requiresTaxReturn()) {
+                return false;
+            }
+
+            if (str_starts_with($type->code, 'bas_') && $entity && ! $entity->isGstRegistered()) {
+                return false;
+            }
+
+            if ($type->code === 'asic_statement' && $entity && ! $entity->requiresAsicStatement()) {
+                return false;
+            }
+
+            return true;
         }
 
         return $type->appliesToAssetType($record->asset?->asset_type);
@@ -258,7 +281,7 @@ class ComplianceYearService
     private function dueDateForType(ComplianceDocumentType $type, ComplianceYearRecord $record): ?Carbon
     {
         if ($record->asset_id === null) {
-            return null;
+            return $this->atoDueDateService->dueDateForType($type, $record);
         }
 
         $record->loadMissing('asset');
@@ -281,9 +304,10 @@ class ComplianceYearService
         return Carbon::parse($asset->{$field});
     }
 
-    private function basTypeEnabled(string $code): bool
+    private function basTypeEnabled(string $code, ?BusinessEntity $entity = null): bool
     {
-        $basMode = config('compliance.bas_mode', 'annual');
+        $basMode = $entity?->effectiveBasReportingFrequency()
+            ?? (config('compliance.bas_mode', 'annual') === 'quarterly' ? 'quarterly' : 'annual');
 
         if (str_starts_with($code, 'bas_q')) {
             return $basMode === 'quarterly';

@@ -37,6 +37,10 @@ class BusinessEntity extends Model
         'registered_email',
         'phone_number',
         'asic_renewal_date',
+        'bas_reporting_frequency',
+        'uses_tax_agent',
+        'gst_registered',
+        'entity_tax_return_required',
         'user_id',
         'status',
         'exclude_from_financial_reports',
@@ -51,6 +55,9 @@ class BusinessEntity extends Model
         'trust_deed_date' => 'date',
         'trust_vesting_date' => 'date',
         'asic_renewal_date' => 'datetime',
+        'uses_tax_agent' => 'boolean',
+        'gst_registered' => 'boolean',
+        'entity_tax_return_required' => 'boolean',
         'exclude_from_financial_reports' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
@@ -334,6 +341,51 @@ class BusinessEntity extends Model
     public function isTrust()
     {
         return $this->entity_type === 'Trust';
+    }
+
+    /**
+     * Effective BAS frequency: per-entity override, else app config (annual|quarterly|monthly).
+     * Monthly falls back to quarterly slots until dedicated monthly types exist.
+     */
+    public function effectiveBasReportingFrequency(): string
+    {
+        $value = $this->bas_reporting_frequency;
+        if (in_array($value, ['annual', 'quarterly', 'monthly'], true)) {
+            return $value === 'monthly' ? 'quarterly' : $value;
+        }
+
+        $fallback = config('compliance.bas_mode', 'annual');
+
+        return $fallback === 'quarterly' ? 'quarterly' : 'annual';
+    }
+
+    public function usesTaxAgent(): bool
+    {
+        return (bool) $this->uses_tax_agent;
+    }
+
+    public function isGstRegistered(): bool
+    {
+        return $this->gst_registered !== false;
+    }
+
+    public function requiresTaxReturn(): bool
+    {
+        return $this->entity_tax_return_required !== false;
+    }
+
+    public function requiresAsicStatement(): bool
+    {
+        if ($this->entity_type === 'Company') {
+            return true;
+        }
+
+        return $this->asic_renewal_date !== null || filled($this->acn);
+    }
+
+    public function complianceYearRecords()
+    {
+        return $this->hasMany(ComplianceYearRecord::class);
     }
 
     public static function formatAbn(?string $abn): string

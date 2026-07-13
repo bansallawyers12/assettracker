@@ -18,6 +18,11 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping()
             ->onOneServer()
             ->runInBackground();
+
+        $schedule->command('compliance:sync-reminders')
+            ->dailyAt('06:30')
+            ->withoutOverlapping()
+            ->onOneServer();
     }
 
     /**

@@ -115,6 +115,15 @@
                     'iconColor' => 'text-violet-600 dark:text-violet-400',
                     'hoverBorder' => 'hover:border-violet-300 dark:hover:border-violet-600',
                 ],
+                [
+                    'route' => 'financial-reports.ato-lodgements',
+                    'title' => 'ATO / ASIC lodgements',
+                    'description' => 'Multi-year ITR, BAS, accounts & ASIC fee status',
+                    'icon' => 'lucide-file-check-2',
+                    'iconBg' => 'bg-indigo-100 dark:bg-indigo-950/50',
+                    'iconColor' => 'text-indigo-600 dark:text-indigo-400',
+                    'hoverBorder' => 'hover:border-indigo-300 dark:hover:border-indigo-600',
+                ],
             ],
         ],
     ];
@@ -209,6 +218,7 @@
                                             @case('lucide-truck') <x-lucide-truck class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
                                             @case('lucide-file-text') <x-lucide-file-text class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
                                             @case('lucide-shield-check') <x-lucide-shield-check class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
+                                            @case('lucide-file-check-2') <x-lucide-file-check-2 class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
                                         @endswitch
                                     </div>
                                     <div class="min-w-0 flex-1 pr-6">
