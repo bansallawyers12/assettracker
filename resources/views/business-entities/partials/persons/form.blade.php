@@ -81,7 +81,7 @@
 
         <div id="persons_trustee_company_selection" class="hidden">
             <label for="persons_entity_trustee_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Select Trustee Company*</label>
-            <x-tom-select name="entity_trustee_id" id="persons_entity_trustee_id" class="mt-1 rounded-lg">
+            <x-tom-select name="entity_trustee_id" id="persons_entity_trustee_id" data-tomselect-dropdown-parent="body" class="mt-1 rounded-lg">
                 <option value="">Select a company</option>
                 @foreach ($businessEntities as $entity)
                     <option value="{{ $entity->id }}" @selected((string) old('entity_trustee_id', $entityPerson?->entity_trustee_id) === (string) $entity->id)>{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
@@ -100,7 +100,6 @@
             @endif
 
             @if ($preselectedPersonId)
-                <input type="hidden" name="person_id" value="{{ $preselectedPersonId }}">
                 <div class="mt-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 px-3 py-2.5 text-sm text-gray-700 dark:text-gray-300">
                     @php
                         $preselectedPerson = $persons->firstWhere('id', $preselectedPersonId);
@@ -108,15 +107,16 @@
                     Assigning role to:
                     <span class="font-medium">{{ $preselectedPerson ? $preselectedPerson->first_name.' '.$preselectedPerson->last_name : 'Selected person' }}</span>
                 </div>
-            @else
+            @endif
+
             <div id="persons_existing_person" class="mt-3">
                 <label for="persons_person_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300">
                     {{ $isEdit ? 'Select Person' : 'Select Existing Person' }}
                 </label>
-                <x-tom-select name="person_id" id="persons_person_id" class="mt-1 rounded-lg">
+                <x-tom-select name="person_id" id="persons_person_id" data-tomselect-dropdown-parent="body" class="mt-1 rounded-lg">
                     <option value="">Select a person</option>
                     @foreach ($persons as $person)
-                        <option value="{{ $person->id }}" @selected((string) old('person_id', $entityPerson?->person_id) === (string) $person->id)>{{ $person->first_name }} {{ $person->last_name }}</option>
+                        <option value="{{ $person->id }}" @selected((string) old('person_id', $preselectedPersonId ?? $entityPerson?->person_id) === (string) $person->id)>{{ $person->first_name }} {{ $person->last_name }}</option>
                     @endforeach
                 </x-tom-select>
             </div>
@@ -154,7 +154,6 @@
                         </div>
                     </div>
                 </div>
-            @endif
             @endif
         </div>
     @else

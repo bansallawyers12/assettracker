@@ -193,7 +193,9 @@
 
                         <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                             @foreach($group['reports'] as $report)
-                                <a  href="{{ route($report['route']) }}" class="reports-hub-card group {{ $report['hoverBorder'] }}">
+                                <button type="button"
+                                        data-report-url="{{ route($report['route']) }}"
+                                        class="reports-hub-card group {{ $report['hoverBorder'] }}">
                                     <div class="reports-hub-card-icon {{ $report['iconBg'] }} group-hover:scale-105 transition-transform">
                                         @switch($report['icon'])
                                             @case('lucide-align-justify') <x-lucide-align-justify class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
@@ -214,13 +216,13 @@
                                         <p class="reports-hub-card-desc">{{ $report['description'] }}</p>
                                     </div>
                                     <x-lucide-chevron-right class="reports-hub-card-arrow h-4 w-4 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:text-indigo-400" />
-</a>
+                                </button>
                             @endforeach
                         </div>
                     </section>
                 @endforeach
 
-                <!-- @if($businessEntities->isNotEmpty())
+                @if($businessEntities->isNotEmpty())
                     <section aria-labelledby="entity-scope-heading" class="rounded-2xl border border-gray-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 shadow-xs overflow-hidden">
                         <div class="border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/80 px-5 sm:px-6 py-4">
                             <div class="flex items-start gap-3">
@@ -243,7 +245,7 @@
                             />
                         </div>
                     </section>
-                @endif -->
+                @endif
             </div>
         </div>
     </div>

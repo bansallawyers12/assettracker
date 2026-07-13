@@ -25,8 +25,11 @@
     data-report-entity-scope-picker
     x-data="{
         scope: '{{ $formsScope }}',
+        entitySelect() {
+            return this.$el.querySelector('select[name=\'entity_ids[]\']');
+        },
         selectedEntityCount() {
-            const sel = this.$refs.entitySelect;
+            const sel = this.entitySelect();
             if (!sel) return 0;
             if (sel.tomselect) {
                 const raw = sel.tomselect.getValue();
@@ -36,9 +39,13 @@
             return Array.from(sel.selectedOptions).filter((opt) => opt.value).length;
         },
         syncTomSelectDisabled() {
-            const sel = this.$refs.entitySelect;
+            const sel = this.entitySelect();
             if (!sel) return;
-            window.setSelectDisabled?.(sel, this.scope === 'all');
+            const disable = this.scope === 'all';
+            window.setSelectDisabled?.(sel, disable);
+            if (!disable) {
+                window.reinitTomSelect?.(sel);
+            }
         },
         validateScope(ev) {
             this.syncTomSelectDisabled();
@@ -92,7 +99,6 @@
                 <x-tom-select
                     multiple
                     name="entity_ids[]"
-                    x-ref="entitySelect"
                     :disabled="$formsScope === 'all'"
                     class="rounded-lg bg-white dark:bg-gray-900"
                 >
@@ -121,7 +127,6 @@
                 <x-tom-select
                     multiple
                     name="entity_ids[]"
-                    x-ref="entitySelect"
                     :disabled="$formsScope === 'all'"
                     class="rounded-sm bg-white"
                 >

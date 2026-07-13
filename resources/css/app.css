@@ -174,8 +174,9 @@
     overflow: visible;
   }
 
+  /* Fixed avoids clipping when body has overflow-hidden (workspace panels). */
   body > .ts-dropdown {
-    position: absolute;
+    position: fixed !important;
     z-index: 10050;
     max-height: min(16rem, 50vh);
     overflow-y: auto;

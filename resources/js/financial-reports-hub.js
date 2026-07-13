@@ -77,9 +77,19 @@ export function initFinancialReportsHub() {
                 ?? picker.querySelector('select[name=scope]')?.value
                 ?? 'all';
             const sel = picker.querySelector('select[name="entity_ids[]"]');
-            window.setSelectDisabled?.(sel, scope === 'all');
+            const disable = scope === 'all';
+            window.setSelectDisabled?.(sel, disable);
+            if (sel && !disable) {
+                window.reinitTomSelect?.(sel);
+            }
         });
     };
+
+    form.addEventListener('change', (event) => {
+        if (event.target.matches('input[name=scope], select[name=scope]')) {
+            syncHubEntitySelects();
+        }
+    });
 
     syncHubEntitySelects();
     window.addEventListener('pageshow', syncHubEntitySelects);

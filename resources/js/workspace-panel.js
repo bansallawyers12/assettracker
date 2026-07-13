@@ -3,6 +3,7 @@
  */
 
 import { markOverlayPanelClosed, markOverlayPanelOpen } from './overlay-panels.js';
+import { destroyTomSelectsIn } from './tomselect-init.js';
 
 let panelRoot = null;
 let panelTitleEl = null;
@@ -52,8 +53,10 @@ export function openWorkspacePanel(title, html = null) {
     }
 
     if (html !== null && panelBodyEl) {
+        destroyTomSelectsIn(panelBodyEl);
         panelBodyEl.innerHTML = html;
     } else if (panelBodyEl) {
+        destroyTomSelectsIn(panelBodyEl);
         panelBodyEl.innerHTML = '<div class="flex items-center justify-center py-16 text-sm text-gray-500 dark:text-gray-400">Loading…</div>';
     }
 
@@ -63,6 +66,7 @@ export function openWorkspacePanel(title, html = null) {
 
 export function setWorkspacePanelContent(html) {
     if (panelBodyEl) {
+        destroyTomSelectsIn(panelBodyEl);
         panelBodyEl.innerHTML = html;
     }
 }
@@ -82,6 +86,7 @@ export function closeWorkspacePanel() {
     markOverlayPanelClosed(panelRoot);
 
     if (panelBodyEl) {
+        destroyTomSelectsIn(panelBodyEl);
         panelBodyEl.innerHTML = '';
     }
 

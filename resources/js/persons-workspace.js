@@ -1,6 +1,55 @@
 /**
  * Persons workspace — in-tab SPA using shared entity panel.
  */
+import { destroyTomSelect, reinitTomSelect } from './tomselect-init.js';
+
+function isSelectInVisibleSection(select, root) {
+    let node = select;
+
+    while (node && node !== root) {
+        if (node.classList?.contains('hidden')) {
+            return false;
+        }
+
+        node = node.parentElement;
+    }
+
+    return Boolean(select);
+}
+
+/**
+ * Force-init every visible Tom Select in the persons form.
+ * Hidden trustee selects stay uninitialized until their section is shown.
+ */
+function refreshPersonFormSelects(form) {
+    if (!form) {
+        return;
+    }
+
+    form.querySelectorAll('select[data-tomselect]').forEach((select) => {
+        delete select.dataset.tomselectSkip;
+        delete select.dataset.tomselectDeferred;
+
+        if (!isSelectInVisibleSection(select, form)) {
+            destroyTomSelect(select);
+            select.dataset.tomselectDeferred = 'true';
+            return;
+        }
+
+        select.disabled = false;
+        reinitTomSelect(select);
+    });
+}
+
+function scheduleRefreshPersonFormSelects(form) {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            refreshPersonFormSelects(form);
+            window.redrawFlatpickr?.(form);
+        });
+    });
+}
+
 export function initPersonsWorkspace(root, deps) {
     if (!root || root.dataset.initialized === '1') {
         return;
@@ -168,7 +217,7 @@ function initPersonsToggleLogic(form) {
         return role === 'Trustee' && linkType === 'company';
     }
 
-    function toggleLinkTypeFields() {
+    function applyVisibility() {
         const companyMode = isTrusteeCompanyMode();
         const personFields = form.querySelector('#persons_person_link_fields');
         const companySelection = form.querySelector('#persons_trustee_company_selection');
@@ -176,95 +225,116 @@ function initPersonsToggleLogic(form) {
         const personSelect = form.querySelector('#persons_person_id');
         const createNewPerson = form.querySelector('#persons_create_new_person');
         const newPersonFields = form.querySelector('#persons_new_person_fields');
+        const existingPerson = form.querySelector('#persons_existing_person');
         const personInputs = newPersonFields?.querySelectorAll('input, select, textarea') ?? [];
 
-        if (!personFields || !companySelection) {
-            return;
-        }
-
-        if (companyMode) {
+        if (companyMode && personFields && companySelection) {
             personFields.classList.add('hidden');
             companySelection.classList.remove('hidden');
-            window.setSelectDisabled?.(entityTrusteeSelect, false);
-            window.setSelectDisabled?.(personSelect, true);
-            window.setSelectValue?.(personSelect, '');
             if (createNewPerson) {
                 createNewPerson.checked = false;
                 createNewPerson.disabled = true;
             }
             personInputs.forEach((el) => { el.disabled = true; });
-            window.reinitTomSelect?.(entityTrusteeSelect);
-        } else {
-            personFields.classList.remove('hidden');
-            companySelection.classList.add('hidden');
-            window.setSelectDisabled?.(personSelect, false);
-            window.setSelectValue?.(entityTrusteeSelect, '');
-            window.setSelectDisabled?.(entityTrusteeSelect, true);
-            if (createNewPerson) {
-                createNewPerson.disabled = false;
+            if (personSelect) {
+                personSelect.disabled = true;
+                personSelect.value = '';
             }
-            personInputs.forEach((el) => { el.disabled = false; });
-            window.reinitTomSelect?.(personSelect);
+            if (entityTrusteeSelect) {
+                entityTrusteeSelect.disabled = false;
+            }
+            existingPerson?.classList.remove('hidden');
+            newPersonFields?.classList.add('hidden');
+            return;
         }
+
+        companySelection?.classList.add('hidden');
+        personFields?.classList.remove('hidden');
+        if (entityTrusteeSelect) {
+            entityTrusteeSelect.value = '';
+            entityTrusteeSelect.disabled = true;
+        }
+        if (createNewPerson) {
+            createNewPerson.disabled = false;
+        }
+        personInputs.forEach((el) => { el.disabled = false; });
+
+        if (createNewPerson?.checked) {
+            existingPerson?.classList.add('hidden');
+            newPersonFields?.classList.remove('hidden');
+            if (personSelect) {
+                personSelect.disabled = true;
+                personSelect.value = '';
+            }
+        } else {
+            existingPerson?.classList.remove('hidden');
+            newPersonFields?.classList.add('hidden');
+            if (personSelect) {
+                personSelect.disabled = false;
+            }
+        }
+    }
+
+    function syncForm() {
+        applyVisibility();
+        refreshPersonFormSelects(form);
     }
 
     function toggleRoleFields() {
         const role = form.querySelector('#persons_role')?.value;
         const trusteeLinkType = form.querySelector('#persons_trustee_link_type_fields');
-        if (!trusteeLinkType) {
-            return;
-        }
 
-        if (role === 'Trustee') {
-            trusteeLinkType.classList.remove('hidden');
-        } else {
-            trusteeLinkType.classList.add('hidden');
-            const personRadio = form.querySelector('input[name="link_type"][value="person"]');
-            if (personRadio) {
-                personRadio.checked = true;
+        if (trusteeLinkType) {
+            if (role === 'Trustee') {
+                trusteeLinkType.classList.remove('hidden');
+            } else {
+                trusteeLinkType.classList.add('hidden');
+                const personRadio = form.querySelector('input[name="link_type"][value="person"]');
+                if (personRadio) {
+                    personRadio.checked = true;
+                }
             }
         }
-        toggleLinkTypeFields();
+
+        syncForm();
     }
 
     function togglePersonFields(checkbox) {
-        const existingPerson = form.querySelector('#persons_existing_person');
-        const newPersonFields = form.querySelector('#persons_new_person_fields');
-        const personId = form.querySelector('#persons_person_id');
-        if (!existingPerson || !newPersonFields) {
+        applyVisibility();
+        if (!checkbox.checked) {
+            refreshPersonFormSelects(form);
             return;
         }
-
-        if (checkbox.checked) {
-            existingPerson.classList.add('hidden');
-            newPersonFields.classList.remove('hidden');
-            window.setSelectValue?.(personId, '');
-        } else {
-            existingPerson.classList.remove('hidden');
-            newPersonFields.classList.add('hidden');
-            window.reinitTomSelect?.(personId);
-        }
+        refreshPersonFormSelects(form);
     }
 
     form.querySelector('#persons_role')?.addEventListener('change', toggleRoleFields);
     form.querySelectorAll('input[name="link_type"]').forEach((input) => {
-        input.addEventListener('change', toggleLinkTypeFields);
+        input.addEventListener('change', syncForm);
     });
     form.querySelector('#persons_create_new_person')?.addEventListener('change', (event) => {
         togglePersonFields(event.target);
     });
 
-    toggleRoleFields();
-    const createNewPerson = form.querySelector('#persons_create_new_person');
-    if (createNewPerson?.checked) {
-        togglePersonFields(createNewPerson);
-    }
+    // Initial visibility only — Tom Select is activated by initPersonForm after layout.
+    applyVisibility();
 }
 
 function initPersonForm(form, initFormPlugins, toggleLogic) {
-    // Show/hide trustee sections before Tom Select runs so hidden selects are not left deferred.
+    if (!form) {
+        return;
+    }
+
+    // Tear down any auto-inited instances from the mutation observer before wiring toggles.
+    form.querySelectorAll('select[data-tomselect]').forEach((select) => {
+        destroyTomSelect(select);
+        delete select.dataset.tomselectSkip;
+        delete select.dataset.tomselectDeferred;
+    });
+
     toggleLogic(form);
-    initFormPlugins(form);
+    initFormPlugins?.(form);
+    scheduleRefreshPersonFormSelects(form);
 }
 
 export { initPersonsToggleLogic, initPersonForm };

@@ -53,7 +53,8 @@ function resolveDropdownParent(select) {
     // Tom Select only calls positionDropdown() when dropdownParent === 'body'.
     // Custom DOM parents append the list without coordinates, so it appears at
     // the bottom of large containers (dashboard form, slide-over panels).
-    if (select.closest('#add-transaction-section, .bank-account-panel-sheet, .entity-workspace-panel-sheet')) {
+    // Report hub entity scope cards use overflow-hidden, which clips inline dropdowns.
+    if (select.closest('#add-transaction-section, .bank-account-panel-sheet, .entity-workspace-panel-sheet, [data-entity-panel-body], .persons-ws-form, [data-report-entity-scope-picker]')) {
         return 'body';
     }
 
@@ -374,6 +375,31 @@ export function setSelectDisabled(select, disabled) {
             el.tomselect.enable();
         }
     }
+}
+
+export function activateTomSelectsIn(root = document) {
+    if (!root?.querySelectorAll) {
+        return;
+    }
+
+    root.querySelectorAll('select[data-tomselect]').forEach((select) => {
+        if (isSelectInHiddenContainer(select)) {
+            select.dataset.tomselectDeferred = 'true';
+            return;
+        }
+
+        delete select.dataset.tomselectSkip;
+        delete select.dataset.tomselectDeferred;
+        reinitTomSelect(select);
+    });
+}
+
+export function scheduleActivateTomSelectsIn(root) {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            activateTomSelectsIn(root);
+        });
+    });
 }
 
 let tomSelectObserverStarted = false;
