@@ -5,7 +5,6 @@ namespace App\Services;
 use App\Models\ComplianceDocumentFile;
 use App\Models\Reminder;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -25,11 +24,7 @@ class ComplianceReminderService
      */
     public function sync(?int $entityId = null, bool $dryRun = false, ?int $userId = null): array
     {
-        $userId = $userId ?? Auth::id() ?? User::query()->value('id');
-        if ($userId === null) {
-            return ['created' => 0, 'skipped' => 0, 'examined' => 0];
-        }
-
+        $fallbackUserId = $userId ?? Auth::id();
         $today = now()->startOfDay();
         $created = 0;
         $skipped = 0;
@@ -50,13 +45,20 @@ class ComplianceReminderService
             })
             ->with(['type', 'yearRecord.businessEntity']);
 
-        $query->orderBy('id')->chunkById(100, function ($files) use ($today, $userId, $dryRun, &$created, &$skipped, &$examined) {
+        $query->orderBy('id')->chunkById(100, function ($files) use ($today, $fallbackUserId, $dryRun, &$created, &$skipped, &$examined) {
             foreach ($files as $file) {
                 $examined++;
                 $due = $file->due_date?->copy()->startOfDay();
                 $entity = $file->yearRecord?->businessEntity;
 
                 if ($due === null || $entity === null || $due->lt($today)) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                $ownerId = $fallbackUserId ?? $entity->user_id ?? User::query()->value('id');
+                if ($ownerId === null) {
                     $skipped++;
 
                     continue;
@@ -75,10 +77,12 @@ class ComplianceReminderService
                         continue;
                     }
 
+                    $marker = $this->marker($file->id, $offset);
+
                     $exists = Reminder::query()
                         ->where('reminder_type', self::REMINDER_TYPE)
                         ->where('reminder_id', $file->id)
-                        ->where('notes', $this->marker($file->id, $offset))
+                        ->where('notes', $marker)
                         ->where('is_completed', false)
                         ->exists();
 
@@ -104,10 +108,10 @@ class ComplianceReminderService
                             'business_entity_id' => $entity->id,
                             'category' => self::CATEGORY,
                             'priority' => $offset <= 7 ? 'high' : 'medium',
-                            'notes' => $this->marker($file->id, $offset),
+                            'notes' => $marker,
                             'reminder_type' => self::REMINDER_TYPE,
                             'reminder_id' => $file->id,
-                            'user_id' => $userId,
+                            'user_id' => $ownerId,
                             'status' => 'active',
                             'is_completed' => false,
                         ]);

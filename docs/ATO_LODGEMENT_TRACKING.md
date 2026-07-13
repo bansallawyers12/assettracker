@@ -447,7 +447,7 @@ Apply **first matching** rule in this order:
   - `entity_tax_return_required` — when false, ITR slots/report rows are omitted; annual BAS uses 28 Feb path
 - ASIC statement only for companies (or entities with ACN / ASIC renewal date)
 - `ComplianceReminderService` + `php artisan compliance:sync-reminders` (scheduled daily 06:30) creates 30/14/7-day reminders
-- `php artisan compliance:ensure-years` provisions year records/slots for a FY range without opening the UI
+- `php artisan compliance:ensure-years` — provisions year records/slots for a FY range without opening the UI (defaults to **current FY** only; pass `--fy-from` / `--fy-to` for a range)
 - Entity create/edit forms expose the new settings (profile workspace update leaves them unchanged)
 
 ### Phase 4 — Additional obligation types (optional)

@@ -196,17 +196,17 @@
             <div class="flex flex-col gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
                 <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="hidden" name="uses_tax_agent" value="0">
-                    <input type="checkbox" name="uses_tax_agent" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('uses_tax_agent') ? 'checked' : '' }}>
+                    <input type="checkbox" name="uses_tax_agent" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked((string) old('uses_tax_agent', '0') === '1')>
                     <span>{{ __('Uses a registered tax / BAS agent (extended lodgement dates)') }}</span>
                 </label>
                 <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="hidden" name="gst_registered" value="0">
-                    <input type="checkbox" name="gst_registered" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('gst_registered', '1') ? 'checked' : '' }}>
+                    <input type="checkbox" name="gst_registered" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked((string) old('gst_registered', '1') === '1')>
                     <span>{{ __('GST registered (BAS obligations apply)') }}</span>
                 </label>
                 <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="hidden" name="entity_tax_return_required" value="0">
-                    <input type="checkbox" name="entity_tax_return_required" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('entity_tax_return_required', '1') ? 'checked' : '' }}>
+                    <input type="checkbox" name="entity_tax_return_required" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked((string) old('entity_tax_return_required', '1') === '1')>
                     <span>{{ __('Income tax return required') }}</span>
                 </label>
             </div>

@@ -240,17 +240,17 @@
                             <p class="text-sm font-medium text-gray-900">ATO / ASIC lodgement settings</p>
                             <label class="flex items-start gap-3 cursor-pointer">
                                 <input type="hidden" name="uses_tax_agent" value="0">
-                                <input type="checkbox" name="uses_tax_agent" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('uses_tax_agent', $businessEntity->uses_tax_agent ?? false) ? 'checked' : '' }}>
+                                <input type="checkbox" name="uses_tax_agent" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked((string) old('uses_tax_agent', ($businessEntity->uses_tax_agent ?? false) ? '1' : '0') === '1')>
                                 <span class="text-sm text-gray-700">Uses a registered tax / BAS agent (extended lodgement dates)</span>
                             </label>
                             <label class="flex items-start gap-3 cursor-pointer">
                                 <input type="hidden" name="gst_registered" value="0">
-                                <input type="checkbox" name="gst_registered" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('gst_registered', $businessEntity->gst_registered ?? true) ? 'checked' : '' }}>
+                                <input type="checkbox" name="gst_registered" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked((string) old('gst_registered', ($businessEntity->gst_registered ?? true) ? '1' : '0') === '1')>
                                 <span class="text-sm text-gray-700">GST registered (BAS obligations apply)</span>
                             </label>
                             <label class="flex items-start gap-3 cursor-pointer">
                                 <input type="hidden" name="entity_tax_return_required" value="0">
-                                <input type="checkbox" name="entity_tax_return_required" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('entity_tax_return_required', $businessEntity->entity_tax_return_required ?? true) ? 'checked' : '' }}>
+                                <input type="checkbox" name="entity_tax_return_required" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked((string) old('entity_tax_return_required', ($businessEntity->entity_tax_return_required ?? true) ? '1' : '0') === '1')>
                                 <span class="text-sm text-gray-700">Income tax return required</span>
                             </label>
                         </div>

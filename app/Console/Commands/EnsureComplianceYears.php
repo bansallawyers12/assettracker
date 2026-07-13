@@ -14,7 +14,7 @@ use Illuminate\Console\Command;
 class EnsureComplianceYears extends Command
 {
     protected $signature = 'compliance:ensure-years
-                            {--fy-from= : First FY start date (Y-m-d); defaults to oldest in years_shown}
+                            {--fy-from= : First FY start date (Y-m-d); defaults to current FY}
                             {--fy-to= : Last FY start date (Y-m-d); defaults to current FY}
                             {--entity= : Limit to a business entity ID}
                             {--dry-run : Show what would be created without writing}';
@@ -24,13 +24,11 @@ class EnsureComplianceYears extends Command
     public function handle(ComplianceYearService $yearService): int
     {
         $dryRun = (bool) $this->option('dry-run');
-        $years = $yearService->listAvailableYears();
-        $oldest = $years !== [] ? $years[array_key_last($years)]['start'] : FinancialYear::currentStart()->toDateString();
-        $newest = $years !== [] ? $years[0]['start'] : FinancialYear::currentStart()->toDateString();
+        $current = FinancialYear::currentStart()->toDateString();
 
         try {
-            $fyFrom = $yearService->normalizeFyStart($this->option('fy-from') ?: $oldest);
-            $fyTo = $yearService->normalizeFyStart($this->option('fy-to') ?: $newest);
+            $fyFrom = $yearService->normalizeFyStart($this->option('fy-from') ?: $current);
+            $fyTo = $yearService->normalizeFyStart($this->option('fy-to') ?: $current);
         } catch (\Throwable $e) {
             $this->error('Invalid FY date: '.$e->getMessage());
 

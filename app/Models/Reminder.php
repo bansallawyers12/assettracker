@@ -33,6 +33,8 @@ class Reminder extends Model
         'priority',
         'status',
         'user_id',
+        'reminder_type',
+        'reminder_id',
     ];
 
     /**

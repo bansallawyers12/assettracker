@@ -380,7 +380,8 @@ class BusinessEntity extends Model
             return true;
         }
 
-        return $this->asic_renewal_date !== null || filled($this->acn);
+        // Non-companies only when an ASIC renewal anniversary is configured on the entity.
+        return $this->asic_renewal_date !== null;
     }
 
     public function complianceYearRecords()
