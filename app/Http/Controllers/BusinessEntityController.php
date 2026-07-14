@@ -259,6 +259,45 @@ class BusinessEntityController extends Controller
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    private function trustAttributesFromRequest(Request $request, bool $isTrust): array
+    {
+        if (! $isTrust) {
+            return [
+                'trust_type' => null,
+                'trust_establishment_date' => null,
+                'trust_deed_date' => null,
+                'trust_deed_reference' => null,
+                'trust_vesting_date' => null,
+                'trust_vesting_conditions' => null,
+                'appointor_person_id' => null,
+                'appointor_entity_id' => null,
+            ];
+        }
+
+        return [
+            'trust_type' => $request->trust_type,
+            'trust_establishment_date' => $request->trust_establishment_date,
+            'trust_deed_date' => $request->trust_deed_date,
+            'trust_deed_reference' => $request->trust_deed_reference,
+            'trust_vesting_date' => $request->trust_vesting_date,
+            'trust_vesting_conditions' => $request->trust_vesting_conditions,
+            'appointor_person_id' => $request->appointor_type === 'person' ? $request->appointor_person_id : null,
+            'appointor_entity_id' => $request->appointor_type === 'entity' ? $request->appointor_entity_id : null,
+        ];
+    }
+
+    private function registrationDateFromRequest(Request $request, bool $isTrust): ?string
+    {
+        if ($isTrust || ! $request->has('registration_date')) {
+            return null;
+        }
+
+        return $request->filled('registration_date') ? $request->input('registration_date') : null;
+    }
+
+    /**
      * Store a newly created business entity in storage.
      *
      * @return RedirectResponse
@@ -279,7 +318,7 @@ class BusinessEntityController extends Controller
             'registered_address' => 'required|string',
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
-            'registration_date' => 'nullable|date|before_or_equal:today',
+            'registration_date' => 'nullable|prohibited_if:entity_type,Trust|date|before_or_equal:today',
             'asic_renewal_date' => 'nullable|date',
             'bas_reporting_frequency' => 'nullable|in:annual,quarterly,monthly',
             'uses_tax_agent' => 'nullable|boolean',
@@ -321,14 +360,7 @@ class BusinessEntityController extends Controller
                 'legal_name' => $request->legal_name,
                 'trading_name' => $request->trading_name,
                 'entity_type' => $request->entity_type,
-                'trust_type' => $request->trust_type,
-                'trust_establishment_date' => $request->trust_establishment_date,
-                'trust_deed_date' => $request->trust_deed_date,
-                'trust_deed_reference' => $request->trust_deed_reference,
-                'trust_vesting_date' => $request->trust_vesting_date,
-                'trust_vesting_conditions' => $request->trust_vesting_conditions,
-                'appointor_person_id' => $request->appointor_person_id,
-                'appointor_entity_id' => $request->appointor_entity_id,
+                ...$this->trustAttributesFromRequest($request, $isTrust),
                 'abn' => $request->abn,
                 'acn' => $request->acn,
                 'tfn' => $request->tfn, // Ensure proper encryption/security if stored
@@ -336,7 +368,7 @@ class BusinessEntityController extends Controller
                 'registered_address' => $request->registered_address,
                 'registered_email' => $request->registered_email,
                 'phone_number' => $request->phone_number,
-                'registration_date' => $isTrust ? null : $request->registration_date,
+                'registration_date' => $this->registrationDateFromRequest($request, $isTrust),
                 'asic_renewal_date' => $request->asic_renewal_date,
                 'bas_reporting_frequency' => $request->input('bas_reporting_frequency') ?: null,
                 'uses_tax_agent' => $request->boolean('uses_tax_agent'),
@@ -1440,7 +1472,7 @@ class BusinessEntityController extends Controller
             'registered_address' => 'required|string',
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
-            'registration_date' => 'nullable|date|before_or_equal:today',
+            'registration_date' => 'nullable|prohibited_if:entity_type,Trust|date|before_or_equal:today',
             'asic_renewal_date' => 'nullable|date',
             'status' => 'required|in:Active,Inactive,Deregistered',
             'exclude_from_financial_reports' => 'nullable|boolean',
@@ -1481,14 +1513,7 @@ class BusinessEntityController extends Controller
             'legal_name' => $request->legal_name,
             'trading_name' => $request->trading_name,
             'entity_type' => $request->entity_type,
-            'trust_type' => $isTrust ? $request->trust_type : null,
-            'trust_establishment_date' => $isTrust ? $request->trust_establishment_date : null,
-            'trust_deed_date' => $isTrust ? $request->trust_deed_date : null,
-            'trust_deed_reference' => $isTrust ? $request->trust_deed_reference : null,
-            'trust_vesting_date' => $isTrust ? $request->trust_vesting_date : null,
-            'trust_vesting_conditions' => $isTrust ? $request->trust_vesting_conditions : null,
-            'appointor_person_id' => $isTrust && $request->appointor_type === 'person' ? $request->appointor_person_id : null,
-            'appointor_entity_id' => $isTrust && $request->appointor_type === 'entity' ? $request->appointor_entity_id : null,
+            ...$this->trustAttributesFromRequest($request, $isTrust),
             'abn' => $request->abn,
             'acn' => $request->acn,
             'tfn' => $request->tfn, // Ensure proper encryption/security
@@ -1496,11 +1521,16 @@ class BusinessEntityController extends Controller
             'registered_address' => $request->registered_address,
             'registered_email' => $request->registered_email,
             'phone_number' => $request->phone_number,
-            'registration_date' => $isTrust ? null : $request->registration_date,
             'asic_renewal_date' => $request->asic_renewal_date,
             'status' => $request->status, // Update status
             'exclude_from_financial_reports' => $request->boolean('exclude_from_financial_reports'),
         ];
+
+        if ($isTrust) {
+            $payload['registration_date'] = null;
+        } elseif ($request->has('registration_date')) {
+            $payload['registration_date'] = $this->registrationDateFromRequest($request, false);
+        }
 
         // Profile workspace form omits these; only persist when the compliance section is submitted.
         if ($request->has('bas_reporting_frequency')) {

@@ -12,6 +12,30 @@ function clearDateField(input) {
     }
 }
 
+function setRegistrationDateFieldState({ entityType, registrationDateField, registrationDateInput, registrationDateLabel }) {
+    const registrationLabels = {
+        Company: 'Registration date',
+        'Sole Trader': 'Commencement date',
+        Partnership: 'Formation date',
+    };
+
+    if (entityType === 'Trust') {
+        registrationDateField?.classList.add('hidden');
+        window.setDateInputRequired?.(registrationDateInput, false);
+        window.setDateInputDisabled?.(registrationDateInput, true);
+        clearDateField(registrationDateInput);
+        return;
+    }
+
+    registrationDateField?.classList.remove('hidden');
+    window.setDateInputRequired?.(registrationDateInput, false);
+    window.setDateInputDisabled?.(registrationDateInput, false);
+
+    if (registrationDateLabel && registrationLabels[entityType]) {
+        registrationDateLabel.textContent = registrationLabels[entityType];
+    }
+}
+
 export function toggleTrustFields() {
     const entityType = document.getElementById('entity_type')?.value;
     const trustFields = document.getElementById('trust_fields');
@@ -25,11 +49,16 @@ export function toggleTrustFields() {
     const trustVestingDateField = document.getElementById('trust_vesting_date');
     const appointorTypeField = document.getElementById('appointor_type');
 
-    const registrationLabels = {
-        Company: 'Registration date',
-        'Sole Trader': 'Commencement date',
-        Partnership: 'Formation date',
-    };
+    if (!trustFields && !registrationDateField) {
+        return;
+    }
+
+    setRegistrationDateFieldState({
+        entityType,
+        registrationDateField,
+        registrationDateInput,
+        registrationDateLabel,
+    });
 
     if (!trustFields) {
         return;
@@ -37,20 +66,12 @@ export function toggleTrustFields() {
 
     if (entityType === 'Trust') {
         trustFields.classList.remove('hidden');
-        registrationDateField?.classList.add('hidden');
-        window.setDateInputRequired?.(registrationDateInput, false);
-        clearDateField(registrationDateInput);
         if (trustTypeField) trustTypeField.required = true;
         if (trustEstablishmentDateField) window.setDateInputRequired?.(trustEstablishmentDateField, true);
         if (trustDeedDateField) window.setDateInputRequired?.(trustDeedDateField, true);
         if (appointorTypeField) appointorTypeField.required = true;
     } else {
         trustFields.classList.add('hidden');
-        registrationDateField?.classList.remove('hidden');
-        window.setDateInputRequired?.(registrationDateInput, false);
-        if (registrationDateLabel && registrationLabels[entityType]) {
-            registrationDateLabel.textContent = registrationLabels[entityType];
-        }
         if (trustTypeField) {
             trustTypeField.required = false;
             trustTypeField.value = '';

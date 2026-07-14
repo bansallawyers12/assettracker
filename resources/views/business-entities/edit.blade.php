@@ -316,6 +316,8 @@
             const trustTypeField = document.getElementById('trust_type');
             const trustEstablishmentDateField = document.getElementById('trust_establishment_date');
             const trustDeedDateField = document.getElementById('trust_deed_date');
+            const trustDeedReferenceField = document.getElementById('trust_deed_reference');
+            const trustVestingDateField = document.getElementById('trust_vesting_date');
             const appointorTypeField = document.getElementById('appointor_type');
 
             const registrationLabels = {
@@ -328,6 +330,7 @@
                 trustFields.classList.remove('hidden');
                 registrationDateField?.classList.add('hidden');
                 window.setDateInputRequired?.(registrationDateInput, false);
+                window.setDateInputDisabled?.(registrationDateInput, true);
                 clearDateField(registrationDateInput);
                 trustTypeField.required = true;
                 window.setDateInputRequired?.(trustEstablishmentDateField, true);
@@ -337,13 +340,24 @@
                 trustFields.classList.add('hidden');
                 registrationDateField?.classList.remove('hidden');
                 window.setDateInputRequired?.(registrationDateInput, false);
+                window.setDateInputDisabled?.(registrationDateInput, false);
                 if (registrationDateLabel && registrationLabels[entityType]) {
                     registrationDateLabel.textContent = registrationLabels[entityType];
                 }
                 trustTypeField.required = false;
+                trustTypeField.value = '';
                 window.setDateInputRequired?.(trustEstablishmentDateField, false);
+                clearDateField(trustEstablishmentDateField);
                 window.setDateInputRequired?.(trustDeedDateField, false);
+                clearDateField(trustDeedDateField);
+                if (trustDeedReferenceField) trustDeedReferenceField.value = '';
+                clearDateField(trustVestingDateField);
                 appointorTypeField.required = false;
+                appointorTypeField.value = '';
+                window.setSelectValue?.(document.getElementById('appointor_person_id'), '');
+                window.setSelectValue?.(document.getElementById('appointor_entity_id'), '');
+                document.getElementById('appointor_person_fields')?.classList.add('hidden');
+                document.getElementById('appointor_entity_fields')?.classList.add('hidden');
             }
         }
 

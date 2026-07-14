@@ -345,6 +345,21 @@ export function setDateInputRequired(input, required) {
 }
 
 /**
+ * Disable a date field (and Flatpickr alt input) so it is omitted from form posts.
+ */
+export function setDateInputDisabled(input, disabled) {
+    if (!input) {
+        return;
+    }
+
+    input.disabled = disabled;
+
+    if (input._flatpickr?.altInput) {
+        input._flatpickr.altInput.disabled = disabled;
+    }
+}
+
+/**
  * Clear a date field whether or not Flatpickr has initialized yet.
  */
 export function clearDateInput(input) {

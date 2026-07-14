@@ -7,7 +7,7 @@ import './email-templates-workspace.js';
 import './entity-create-form.js';
 import { initBankAccountModal } from './bank-account-modal.js';
 import { initBankAccountFormFields } from './bank-form-fields.js';
-import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput, setDateInputRequired, setDateInputValue, getDateInputValue, queryDateInput, formatLocalYmd } from './flatpickr-init';
+import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput, setDateInputRequired, setDateInputDisabled, setDateInputValue, getDateInputValue, queryDateInput, formatLocalYmd } from './flatpickr-init';
 import {
     initTomSelect,
     watchTomSelect,
@@ -39,6 +39,7 @@ window.initFlatpickr = initFlatpickr;
 window.redrawFlatpickr = redrawFlatpickr;
 window.clearDateInput = clearDateInput;
 window.setDateInputRequired = setDateInputRequired;
+window.setDateInputDisabled = setDateInputDisabled;
 window.setDateInputValue = setDateInputValue;
 window.getDateInputValue = getDateInputValue;
 window.queryDateInput = queryDateInput;

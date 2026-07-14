@@ -37,6 +37,7 @@
             <div>
                 <label for="profile_registration_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $businessEntity->registrationDateLabel() }}</label>
                 <x-date-input name="registration_date" id="profile_registration_date" class="mt-1 block w-full" value="{{ old('registration_date', $businessEntity->registration_date?->format('Y-m-d')) }}" />
+                @error('registration_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
             </div>
         @endunless
         <div>

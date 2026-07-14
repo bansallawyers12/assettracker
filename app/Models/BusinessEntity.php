@@ -350,7 +350,12 @@ class BusinessEntity extends Model
      */
     public function registrationDateLabel(): string
     {
-        return match ($this->entity_type) {
+        return self::registrationDateLabelFor($this->entity_type);
+    }
+
+    public static function registrationDateLabelFor(?string $entityType): string
+    {
+        return match ($entityType) {
             'Company' => 'Registration date',
             'Sole Trader' => 'Commencement date',
             'Partnership' => 'Formation date',

@@ -109,12 +109,19 @@
                 </div>
             @endif
 
-            @if (! $businessEntity->isTrust() && $businessEntity->registration_date)
+            @unless ($businessEntity->isTrust())
                 <div>
                     <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">{{ $businessEntity->registrationDateLabel() }}</p>
-                    <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">{{ $businessEntity->registration_date->format('d/m/Y') }}</p>
+                    <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
+                        @if ($businessEntity->registration_date)
+                            {{ $businessEntity->registration_date->format('d/m/Y') }}
+                        @else
+                            <span class="text-gray-500 dark:text-gray-400">Not set</span>
+                            <a href="#" data-entity-profile-edit class="text-indigo-600 dark:text-indigo-400 hover:underline ml-1">Add date</a>
+                        @endif
+                    </p>
                 </div>
-            @endif
+            @endunless
 
             @if ($businessEntity->abn || $businessEntity->acn)
                 <dl class="grid grid-cols-2 gap-3 border-t border-gray-100 dark:border-gray-800 pt-4">

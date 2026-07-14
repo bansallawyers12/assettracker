@@ -39,7 +39,7 @@
         </div>
 
         <div id="registration_date_field" class="bank-field">
-            <label for="registration_date" id="registration_date_label" class="bank-field-label">{{ __('Registration date') }}</label>
+            <label for="registration_date" id="registration_date_label" class="bank-field-label">{{ \App\Models\BusinessEntity::registrationDateLabelFor(old('entity_type')) }}</label>
             <x-date-input name="registration_date" id="registration_date" value="{{ old('registration_date') }}" class="bank-field-control" />
             @error('registration_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
