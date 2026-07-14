@@ -21,6 +21,10 @@ export function buildReportNavigationUrl(form, url) {
             ids = Array.from(sel.selectedOptions)
                 .map((opt) => opt.value)
                 .filter((value) => value !== '' && value !== null);
+        } else {
+            ids = Array.from(picker.querySelectorAll('input[name="entity_ids[]"]'))
+                .map((input) => input.value)
+                .filter((value) => value !== '' && value !== null);
         }
 
         if (ids.length === 0) {
@@ -70,27 +74,4 @@ export function initFinancialReportsHub() {
         event.preventDefault();
         navigateToReport(trigger.dataset.reportUrl);
     });
-
-    const syncHubEntitySelects = () => {
-        form.querySelectorAll('[data-report-entity-scope-picker]').forEach((picker) => {
-            const scope = picker.querySelector('input[name=scope]:checked')?.value
-                ?? picker.querySelector('select[name=scope]')?.value
-                ?? 'all';
-            const sel = picker.querySelector('select[name="entity_ids[]"]');
-            const disable = scope === 'all';
-            window.setSelectDisabled?.(sel, disable);
-            if (sel && !disable) {
-                window.reinitTomSelect?.(sel);
-            }
-        });
-    };
-
-    form.addEventListener('change', (event) => {
-        if (event.target.matches('input[name=scope], select[name=scope]')) {
-            syncHubEntitySelects();
-        }
-    });
-
-    syncHubEntitySelects();
-    window.addEventListener('pageshow', syncHubEntitySelects);
 }

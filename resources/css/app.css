@@ -444,6 +444,22 @@
     @apply absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 dark:text-gray-600 opacity-0 transition-all;
   }
 
+  .reports-hub-entity-search-input {
+    @apply appearance-none;
+  }
+
+  .reports-hub-entity-search-input::-webkit-search-cancel-button {
+    @apply cursor-pointer;
+  }
+
+  .reports-hub-entity-search-results {
+    @apply shadow-xs;
+  }
+
+  .reports-hub-entity-search-list {
+    @apply divide-y divide-indigo-100/80 dark:divide-indigo-900/40;
+  }
+
   /* Entity summary report */
   .entity-summary-page {
     @apply text-[15px] leading-relaxed text-gray-800 dark:text-gray-200;

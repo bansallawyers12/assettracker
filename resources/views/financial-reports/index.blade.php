@@ -191,6 +191,32 @@
 
             <div id="financial-reports-hub-form" class="space-y-8">
 
+                @if($businessEntities->isNotEmpty())
+                    <section aria-labelledby="entity-scope-heading" class="rounded-2xl border border-gray-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 shadow-xs overflow-visible">
+                        <div class="border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/80 px-5 sm:px-6 py-4">
+                            <div class="flex items-start gap-3">
+                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-950/50">
+                                    <x-lucide-sliders-horizontal class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <div>
+                                    <h2 id="entity-scope-heading" class="reports-hub-section-title">Entity scope</h2>
+                                    <p class="reports-hub-section-desc">
+                                        Applies to general ledger reports. Choose all entities or pick specific ones before opening a report.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="p-5 sm:p-6">
+                            <x-report-entity-scope-picker
+                                :business-entities="$businessEntities"
+                                layout="card"
+                                scope-style="radio"
+                                entity-select-mode="search"
+                            />
+                        </div>
+                    </section>
+                @endif
+
                 @foreach($reportGroups as $group)
                     <section aria-labelledby="report-group-{{ Str::slug($group['title']) }}">
                         <div class="mb-4">
@@ -231,31 +257,6 @@
                         </div>
                     </section>
                 @endforeach
-
-                @if($businessEntities->isNotEmpty())
-                    <section aria-labelledby="entity-scope-heading" class="rounded-2xl border border-gray-200/80 dark:border-gray-700/80 bg-white dark:bg-gray-900/60 shadow-xs overflow-hidden">
-                        <div class="border-b border-gray-100 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/80 px-5 sm:px-6 py-4">
-                            <div class="flex items-start gap-3">
-                                <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 dark:bg-indigo-950/50">
-                                    <x-lucide-sliders-horizontal class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                                </div>
-                                <div>
-                                    <h2 id="entity-scope-heading" class="reports-hub-section-title">Entity scope</h2>
-                                    <p class="reports-hub-section-desc">
-                                        Applies to general ledger reports. Choose all entities or a custom selection before opening a report.
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="p-5 sm:p-6">
-                            <x-report-entity-scope-picker
-                                :business-entities="$businessEntities"
-                                layout="card"
-                                scope-style="radio"
-                            />
-                        </div>
-                    </section>
-                @endif
             </div>
         </div>
     </div>

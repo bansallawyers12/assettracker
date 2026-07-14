@@ -11,7 +11,7 @@ function assert(condition, message) {
     }
 }
 
-function makeForm(scope, selectedIds = []) {
+function makeForm(scope, selectedIds = [], mode = 'select') {
     return {
         querySelector(selector) {
             if (selector === '[data-report-entity-scope-picker]') {
@@ -24,11 +24,17 @@ function makeForm(scope, selectedIds = []) {
                             return null;
                         }
                         if (inner === 'select[name="entity_ids[]"]') {
-                            return {
-                                selectedOptions: selectedIds.map((id) => ({ value: String(id) })),
-                            };
+                            return mode === 'select'
+                                ? { selectedOptions: selectedIds.map((id) => ({ value: String(id) })) }
+                                : null;
                         }
                         return null;
+                    },
+                    querySelectorAll(inner) {
+                        if (inner === 'input[name="entity_ids[]"]' && mode === 'hidden') {
+                            return selectedIds.map((id) => ({ value: String(id) }));
+                        }
+                        return [];
                     },
                 };
             }
@@ -53,6 +59,12 @@ assert(
     buildReportNavigationUrl(makeForm('selected', [1]), '/financial-reports/profit-loss')
         === '/financial-reports/profit-loss?scope=selected&entity_ids%5B%5D=1',
     'selected scope should include entity ids',
+);
+
+assert(
+    buildReportNavigationUrl(makeForm('selected', [1, 3], 'hidden'), '/financial-reports/profit-loss')
+        === '/financial-reports/profit-loss?scope=selected&entity_ids%5B%5D=1&entity_ids%5B%5D=3',
+    'search picker hidden inputs should include entity ids',
 );
 
 console.log('PASS: financial-reports hub first-click navigation tests');
