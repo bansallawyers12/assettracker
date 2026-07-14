@@ -43,6 +43,7 @@ class BusinessEntity extends Model
         'entity_tax_return_required',
         'user_id',
         'status',
+        'registration_date',
         'exclude_from_financial_reports',
         'abn_hash',
         'acn_hash',
@@ -54,6 +55,7 @@ class BusinessEntity extends Model
         'trust_establishment_date' => 'date',
         'trust_deed_date' => 'date',
         'trust_vesting_date' => 'date',
+        'registration_date' => 'date',
         'asic_renewal_date' => 'datetime',
         'uses_tax_agent' => 'boolean',
         'gst_registered' => 'boolean',
@@ -341,6 +343,29 @@ class BusinessEntity extends Model
     public function isTrust()
     {
         return $this->entity_type === 'Trust';
+    }
+
+    /**
+     * UI label for registration_date (non-trust entities only).
+     */
+    public function registrationDateLabel(): string
+    {
+        return match ($this->entity_type) {
+            'Company' => 'Registration date',
+            'Sole Trader' => 'Commencement date',
+            'Partnership' => 'Formation date',
+            default => 'Registration date',
+        };
+    }
+
+    /**
+     * When the entity was formed: trust establishment or registration/commencement date.
+     */
+    public function formationDate(): ?\Illuminate\Support\Carbon
+    {
+        return $this->isTrust()
+            ? $this->trust_establishment_date
+            : $this->registration_date;
     }
 
     /**

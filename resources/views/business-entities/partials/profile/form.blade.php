@@ -33,6 +33,12 @@
             <label for="profile_trading_name" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Trading Name</label>
             <input type="text" name="trading_name" id="profile_trading_name" value="{{ old('trading_name', $businessEntity->trading_name) }}" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm shadow-xs">
         </div>
+        @unless ($businessEntity->isTrust())
+            <div>
+                <label for="profile_registration_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ $businessEntity->registrationDateLabel() }}</label>
+                <x-date-input name="registration_date" id="profile_registration_date" class="mt-1 block w-full" value="{{ old('registration_date', $businessEntity->registration_date?->format('Y-m-d')) }}" />
+            </div>
+        @endunless
         <div>
             <label for="profile_asic_renewal_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ASIC Renewal Date</label>
             <x-date-input name="asic_renewal_date" id="profile_asic_renewal_date" class="mt-1 block w-full" value="{{ old('asic_renewal_date', $businessEntity->asic_renewal_date?->format('Y-m-d')) }}" />

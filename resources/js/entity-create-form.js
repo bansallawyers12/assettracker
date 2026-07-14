@@ -15,6 +15,9 @@ function clearDateField(input) {
 export function toggleTrustFields() {
     const entityType = document.getElementById('entity_type')?.value;
     const trustFields = document.getElementById('trust_fields');
+    const registrationDateField = document.getElementById('registration_date_field');
+    const registrationDateInput = document.getElementById('registration_date');
+    const registrationDateLabel = document.getElementById('registration_date_label');
     const trustTypeField = document.getElementById('trust_type');
     const trustEstablishmentDateField = document.getElementById('trust_establishment_date');
     const trustDeedDateField = document.getElementById('trust_deed_date');
@@ -22,18 +25,32 @@ export function toggleTrustFields() {
     const trustVestingDateField = document.getElementById('trust_vesting_date');
     const appointorTypeField = document.getElementById('appointor_type');
 
+    const registrationLabels = {
+        Company: 'Registration date',
+        'Sole Trader': 'Commencement date',
+        Partnership: 'Formation date',
+    };
+
     if (!trustFields) {
         return;
     }
 
     if (entityType === 'Trust') {
         trustFields.classList.remove('hidden');
+        registrationDateField?.classList.add('hidden');
+        window.setDateInputRequired?.(registrationDateInput, false);
+        clearDateField(registrationDateInput);
         if (trustTypeField) trustTypeField.required = true;
         if (trustEstablishmentDateField) window.setDateInputRequired?.(trustEstablishmentDateField, true);
         if (trustDeedDateField) window.setDateInputRequired?.(trustDeedDateField, true);
         if (appointorTypeField) appointorTypeField.required = true;
     } else {
         trustFields.classList.add('hidden');
+        registrationDateField?.classList.remove('hidden');
+        window.setDateInputRequired?.(registrationDateInput, false);
+        if (registrationDateLabel && registrationLabels[entityType]) {
+            registrationDateLabel.textContent = registrationLabels[entityType];
+        }
         if (trustTypeField) {
             trustTypeField.required = false;
             trustTypeField.value = '';

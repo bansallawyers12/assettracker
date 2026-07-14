@@ -80,6 +80,12 @@
                                 </select>
                                 @error('status') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
+
+                            <div id="registration_date_field">
+                                <label for="registration_date" id="registration_date_label" class="block text-sm font-medium text-gray-700 mb-1">{{ $businessEntity->registrationDateLabel() }}</label>
+                                <x-date-input name="registration_date" id="registration_date" value="{{ old('registration_date', $businessEntity->registration_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" />
+                                @error('registration_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
+                            </div>
                             
                             <div>
                                 <label for="registered_email" class="block text-sm font-medium text-gray-700 mb-1">Email Address*</label>
@@ -304,19 +310,36 @@
         function toggleTrustFields() {
             const entityType = document.getElementById('entity_type').value;
             const trustFields = document.getElementById('trust_fields');
+            const registrationDateField = document.getElementById('registration_date_field');
+            const registrationDateInput = document.getElementById('registration_date');
+            const registrationDateLabel = document.getElementById('registration_date_label');
             const trustTypeField = document.getElementById('trust_type');
             const trustEstablishmentDateField = document.getElementById('trust_establishment_date');
             const trustDeedDateField = document.getElementById('trust_deed_date');
             const appointorTypeField = document.getElementById('appointor_type');
 
+            const registrationLabels = {
+                'Company': 'Registration date',
+                'Sole Trader': 'Commencement date',
+                'Partnership': 'Formation date',
+            };
+
             if (entityType === 'Trust') {
                 trustFields.classList.remove('hidden');
+                registrationDateField?.classList.add('hidden');
+                window.setDateInputRequired?.(registrationDateInput, false);
+                clearDateField(registrationDateInput);
                 trustTypeField.required = true;
                 window.setDateInputRequired?.(trustEstablishmentDateField, true);
                 window.setDateInputRequired?.(trustDeedDateField, true);
                 appointorTypeField.required = true;
             } else {
                 trustFields.classList.add('hidden');
+                registrationDateField?.classList.remove('hidden');
+                window.setDateInputRequired?.(registrationDateInput, false);
+                if (registrationDateLabel && registrationLabels[entityType]) {
+                    registrationDateLabel.textContent = registrationLabels[entityType];
+                }
                 trustTypeField.required = false;
                 window.setDateInputRequired?.(trustEstablishmentDateField, false);
                 window.setDateInputRequired?.(trustDeedDateField, false);

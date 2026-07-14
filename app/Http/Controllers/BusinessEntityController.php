@@ -279,6 +279,7 @@ class BusinessEntityController extends Controller
             'registered_address' => 'required|string',
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
+            'registration_date' => 'nullable|date|before_or_equal:today',
             'asic_renewal_date' => 'nullable|date',
             'bas_reporting_frequency' => 'nullable|in:annual,quarterly,monthly',
             'uses_tax_agent' => 'nullable|boolean',
@@ -313,6 +314,8 @@ class BusinessEntityController extends Controller
             'appointor_entity_id.required_if' => 'Please select an appointor entity.',
         ]);
 
+        $isTrust = $request->entity_type === 'Trust';
+
         try {
             BusinessEntity::create([
                 'legal_name' => $request->legal_name,
@@ -333,6 +336,7 @@ class BusinessEntityController extends Controller
                 'registered_address' => $request->registered_address,
                 'registered_email' => $request->registered_email,
                 'phone_number' => $request->phone_number,
+                'registration_date' => $isTrust ? null : $request->registration_date,
                 'asic_renewal_date' => $request->asic_renewal_date,
                 'bas_reporting_frequency' => $request->input('bas_reporting_frequency') ?: null,
                 'uses_tax_agent' => $request->boolean('uses_tax_agent'),
@@ -1436,6 +1440,7 @@ class BusinessEntityController extends Controller
             'registered_address' => 'required|string',
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
+            'registration_date' => 'nullable|date|before_or_equal:today',
             'asic_renewal_date' => 'nullable|date',
             'status' => 'required|in:Active,Inactive,Deregistered',
             'exclude_from_financial_reports' => 'nullable|boolean',
@@ -1491,6 +1496,7 @@ class BusinessEntityController extends Controller
             'registered_address' => $request->registered_address,
             'registered_email' => $request->registered_email,
             'phone_number' => $request->phone_number,
+            'registration_date' => $isTrust ? null : $request->registration_date,
             'asic_renewal_date' => $request->asic_renewal_date,
             'status' => $request->status, // Update status
             'exclude_from_financial_reports' => $request->boolean('exclude_from_financial_reports'),

@@ -38,6 +38,12 @@
             @error('entity_type') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
+        <div id="registration_date_field" class="bank-field">
+            <label for="registration_date" id="registration_date_label" class="bank-field-label">{{ __('Registration date') }}</label>
+            <x-date-input name="registration_date" id="registration_date" value="{{ old('registration_date') }}" class="bank-field-control" />
+            @error('registration_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
+        </div>
+
         <div class="bank-field">
             <label for="registered_email" class="bank-field-label">{{ __('Email address') }} <span class="text-red-500">*</span></label>
             <input type="email" name="registered_email" id="registered_email" required autocomplete="email" class="bank-field-control" value="{{ old('registered_email') }}">
