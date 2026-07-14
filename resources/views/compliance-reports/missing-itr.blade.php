@@ -54,6 +54,8 @@
         </div>
     @endif
 
+    @include('compliance-reports.partials.formation-date-warning')
+
     <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 px-6 py-5 border-b border-gray-100 bg-gray-50/70">
         <div class="text-center">
             <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Entities in scope</p>

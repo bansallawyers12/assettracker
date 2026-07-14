@@ -50,8 +50,15 @@ class ComplianceReminderService
                 $examined++;
                 $due = $file->due_date?->copy()->startOfDay();
                 $entity = $file->yearRecord?->businessEntity;
+                $fyStart = $file->yearRecord?->fy_start_date;
 
                 if ($due === null || $entity === null || $due->lt($today)) {
+                    $skipped++;
+
+                    continue;
+                }
+
+                if ($fyStart !== null && ! $entity->complianceAppliesForFinancialYear($fyStart)) {
                     $skipped++;
 
                     continue;

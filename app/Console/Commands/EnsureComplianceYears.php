@@ -63,6 +63,10 @@ class EnsureComplianceYears extends Command
 
         foreach ($entities as $entity) {
             foreach ($fyStarts as $fyStart) {
+                if (! $entity->complianceAppliesForFinancialYear($fyStart)) {
+                    continue;
+                }
+
                 $exists = $entity->complianceYearRecords()
                     ->whereNull('asset_id')
                     ->whereDate('fy_start_date', $fyStart->toDateString())

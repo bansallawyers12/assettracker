@@ -43,6 +43,11 @@ class AtoDueDateService
     {
         $fyStart = $fyStart->copy()->startOfDay();
         $fyEnd = $fyEnd->copy()->startOfDay();
+
+        if ($entity !== null && ! $entity->complianceAppliesForFinancialYear($fyStart)) {
+            return null;
+        }
+
         $usesTaxAgent = $entity?->usesTaxAgent() ?? false;
         $taxReturnRequired = $entity?->requiresTaxReturn() ?? true;
 

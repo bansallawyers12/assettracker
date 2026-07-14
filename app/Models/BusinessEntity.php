@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Support\FinancialYear;
 use App\Traits\EncryptsAttributes;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\Rule;
 
@@ -366,11 +368,60 @@ class BusinessEntity extends Model
     /**
      * When the entity was formed: trust establishment or registration/commencement date.
      */
-    public function formationDate(): ?\Illuminate\Support\Carbon
+    public function formationDate(): ?Carbon
     {
         return $this->isTrust()
             ? $this->trust_establishment_date
             : $this->registration_date;
+    }
+
+    /**
+     * Whether a registration or trust establishment date is stored (not a fallback).
+     */
+    public function hasExplicitFormationDate(): bool
+    {
+        return $this->formationDate() !== null;
+    }
+
+    /**
+     * Formation date for compliance scoping: explicit date, else record created_at.
+     */
+    public function effectiveFormationDate(): ?Carbon
+    {
+        return $this->formationDate()?->copy()->startOfDay()
+            ?? $this->created_at?->copy()->startOfDay();
+    }
+
+    /**
+     * FY start of the first financial year in which this entity existed (partial year counts).
+     */
+    public function firstApplicableFyStart(): ?Carbon
+    {
+        $formation = $this->effectiveFormationDate();
+        if ($formation === null) {
+            return null;
+        }
+
+        return FinancialYear::forDate($formation)['start'];
+    }
+
+    /**
+     * Whether ATO/ASIC obligations apply for the given financial year.
+     * False when the entity was formed after the FY ended.
+     */
+    public function complianceAppliesForFinancialYear(Carbon|string $fyStart): bool
+    {
+        $formation = $this->effectiveFormationDate();
+        if ($formation === null) {
+            return true;
+        }
+
+        $normalizedStart = $fyStart instanceof Carbon
+            ? FinancialYear::forDate($fyStart)['start']
+            : FinancialYear::forDate(Carbon::parse($fyStart))['start'];
+        $fyEnd = FinancialYear::forDate($normalizedStart)['end']->startOfDay();
+
+        return $formation->lte($fyEnd);
     }
 
     /**

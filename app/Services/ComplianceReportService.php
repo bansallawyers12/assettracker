@@ -61,6 +61,7 @@ class ComplianceReportService
      *     fy_start: string,
      *     total_entities: int,
      *     missing_itr: int,
+     *     formation_date_warning: array{count: int},
      *     rows: list<array{entity_id: int, entity_name: string, fy_label: string, fy_start: string, compliance_url: string}>
      * }
      */
@@ -84,6 +85,10 @@ class ComplianceReportService
         $rows = [];
 
         foreach ($entities as $entity) {
+            if (! $entity->complianceAppliesForFinancialYear($fyStart)) {
+                continue;
+            }
+
             $record = ComplianceYearRecord::query()
                 ->where('business_entity_id', $entity->id)
                 ->whereNull('asset_id')
@@ -117,6 +122,7 @@ class ComplianceReportService
             'fy_start' => $fyStart->toDateString(),
             'total_entities' => $entities->count(),
             'missing_itr' => count($rows),
+            'formation_date_warning' => $this->formationDateWarning($entities),
             'rows' => $rows,
         ];
     }
@@ -137,6 +143,7 @@ class ComplianceReportService
      *     obligation_keys: list<string>,
      *     status_filter: string|null,
      *     counts: array<string, int>,
+     *     formation_date_warning: array{count: int},
      *     rows: list<array<string, mixed>>
      * }
      */
@@ -177,7 +184,14 @@ class ComplianceReportService
         $rows = [];
 
         if ($entities->isEmpty() || $candidateTypes->isEmpty() || $fyStarts === []) {
-            return $this->emptyLodgementReport($fyFrom, $fyTo, $entities->count(), $obligationKeys, $statusFilter, $counts);
+            return $this->emptyLodgementReport(
+                $fyFrom,
+                $fyTo,
+                $entities,
+                $obligationKeys,
+                $statusFilter,
+                $counts
+            );
         }
 
         $entityIdsList = $entities->pluck('id')->all();
@@ -218,6 +232,10 @@ class ComplianceReportService
             }
 
             foreach ($fyStarts as $fyStart) {
+                if (! $entity->complianceAppliesForFinancialYear($fyStart)) {
+                    continue;
+                }
+
                 $fyStartStr = $fyStart->toDateString();
                 $fyLabel = FinancialYear::label($fyStart);
                 $fyEnd = $this->atoDueDateService->fyEndForStart($fyStart);
@@ -274,7 +292,19 @@ class ComplianceReportService
             'obligation_keys' => $obligationKeys,
             'status_filter' => $statusFilter,
             'counts' => $counts,
+            'formation_date_warning' => $this->formationDateWarning($entities),
             'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @param  Collection<int, BusinessEntity>  $entities
+     * @return array{count: int}
+     */
+    private function formationDateWarning(Collection $entities): array
+    {
+        return [
+            'count' => $entities->filter(fn (BusinessEntity $entity) => ! $entity->hasExplicitFormationDate())->count(),
         ];
     }
 
@@ -475,13 +505,14 @@ class ComplianceReportService
      *     obligation_keys: list<string>,
      *     status_filter: string|null,
      *     counts: array<string, int>,
+     *     formation_date_warning: array{count: int},
      *     rows: list<array<string, mixed>>
      * }
      */
     private function emptyLodgementReport(
         Carbon $fyFrom,
         Carbon $fyTo,
-        int $totalEntities,
+        Collection $entities,
         array $obligationKeys,
         ?string $statusFilter,
         array $counts,
@@ -491,10 +522,11 @@ class ComplianceReportService
             'fy_to' => $fyTo->toDateString(),
             'fy_from_label' => FinancialYear::label($fyFrom),
             'fy_to_label' => FinancialYear::label($fyTo),
-            'total_entities' => $totalEntities,
+            'total_entities' => $entities->count(),
             'obligation_keys' => $obligationKeys,
             'status_filter' => $statusFilter,
             'counts' => $counts,
+            'formation_date_warning' => $this->formationDateWarning($entities),
             'rows' => [],
         ];
     }

@@ -98,6 +98,8 @@
         </div>
     @endif
 
+    @include('compliance-reports.partials.formation-date-warning')
+
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 px-6 py-5 border-b border-gray-100 bg-gray-50/70">
         <div class="text-center">
             <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Entities</p>
@@ -147,6 +149,7 @@
             Counts above include all statuses before the status filter;
             the table shows {{ count($report['rows']) }} row(s).
             Due dates are estimated (self-lodge defaults) when not set on the compliance slot.
+            Years before an entity's registration or establishment date are excluded.
             Does not create compliance year records — open a workspace FY to provision slots.
         </p>
 
