@@ -11,6 +11,9 @@
 
     $selectedStatus = $statusFilter ?? 'all';
     $counts = $report['counts'];
+    $totalRows = $rowsPaginator->total();
+    $rowFrom = $totalRows > 0 ? $rowsPaginator->firstItem() : 0;
+    $rowTo = $totalRows > 0 ? $rowsPaginator->lastItem() : 0;
 @endphp
 
 <x-report-shell
@@ -147,13 +150,17 @@
         <p class="text-xs text-gray-500 mb-4">
             FY range {{ $report['fy_from_label'] }} – {{ $report['fy_to_label'] }}.
             Counts above include all statuses before the status filter;
-            the table shows {{ count($report['rows']) }} row(s).
+            @if($totalRows > 0)
+                the table shows {{ $rowFrom }}–{{ $rowTo }} of {{ $totalRows }} row(s).
+            @else
+                the table shows 0 row(s).
+            @endif
             Due dates are estimated (self-lodge defaults) when not set on the compliance slot.
             Years before an entity's registration or establishment date are excluded.
             Does not create compliance year records — open a workspace FY to provision slots.
         </p>
 
-        @if($report['rows'] === [])
+        @if($totalRows === 0)
             <p class="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
                 No lodgement rows match the current filters.
             </p>
@@ -174,7 +181,7 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        @foreach($report['rows'] as $row)
+                        @foreach($rowsPaginator as $row)
                             @php
                                 $statusClass = match ($row['status']) {
                                     ComplianceReportService::STATUS_MISSING => 'text-red-700 bg-red-50',
@@ -210,6 +217,12 @@
                     </tbody>
                 </table>
             </div>
+
+            @if($rowsPaginator->hasPages())
+                <div class="mt-4">
+                    {{ $rowsPaginator->withQueryString()->links() }}
+                </div>
+            @endif
         @endif
     </div>
 </x-report-shell>

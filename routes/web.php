@@ -100,7 +100,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
 Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     // Business Entities
+    Route::get('business-entities/closed', [BusinessEntityController::class, 'closedIndex'])->name('business-entities.closed.index');
     Route::resource('business-entities', BusinessEntityController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update']);
+    Route::post('business-entities/{businessEntity}/close', [BusinessEntityController::class, 'close'])->name('business-entities.close');
     Route::post('business-entities/{businessEntity}/notes', [BusinessEntityController::class, 'storeNote'])->name('business-entities.notes.store');
     Route::delete('business-entities/{businessEntity}/notes/{note}', [BusinessEntityController::class, 'destroyNote'])->name('business-entities.notes.destroy');
     Route::post('business-entities/{businessEntity}/import-persons', [BusinessEntityController::class, 'importPersons'])->name('business-entities.import-persons');

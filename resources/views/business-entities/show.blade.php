@@ -12,11 +12,22 @@
                 </h2>
                 <p class="text-sm text-gray-600 dark:text-gray-400 mt-1" data-entity-page-type>{{ $businessEntity->entity_type }}</p>
             </div>
-            <div class="flex space-x-2">
+            <div class="flex flex-wrap gap-2">
                 <button type="button" data-entity-profile-edit class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
                     <x-lucide-pencil class="h-4 w-4 mr-1.5" />
                     Edit company profile
                 </button>
+                @unless ($businessEntity->isClosed())
+                    <button
+                        type="button"
+                        x-data=""
+                        x-on:click.prevent="$dispatch('open-modal', 'close-business-entity')"
+                        class="inline-flex items-center px-3 py-1.5 border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-gray-900 dark:hover:bg-rose-950/30 dark:text-rose-300 rounded-md text-sm font-medium transition-colors"
+                    >
+                        <x-lucide-archive class="h-4 w-4 mr-1.5" />
+                        Close entity
+                    </button>
+                @endunless
             </div>
         </div>
     </x-slot>
@@ -775,6 +786,10 @@
     @include('bank-accounts.partials.add-account-modal', [
         'businessEntity' => $businessEntity,
     ])
+
+    @unless ($businessEntity->isClosed())
+        @include('business-entities.partials.close-entity-modal', compact('businessEntity'))
+    @endunless
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {

@@ -45,6 +45,8 @@ class BusinessEntity extends Model
         'entity_tax_return_required',
         'user_id',
         'status',
+        'closed_date',
+        'closed_reason',
         'registration_date',
         'exclude_from_financial_reports',
         'abn_hash',
@@ -58,6 +60,7 @@ class BusinessEntity extends Model
         'trust_deed_date' => 'date',
         'trust_vesting_date' => 'date',
         'registration_date' => 'date',
+        'closed_date' => 'date',
         'asic_renewal_date' => 'datetime',
         'uses_tax_agent' => 'boolean',
         'gst_registered' => 'boolean',
@@ -100,11 +103,27 @@ class BusinessEntity extends Model
     }
 
     /**
-     * Your operating companies/trusts (excludes tenancy/property-manager contacts).
+     * Operating entities that are still open (not closed).
+     */
+    public function scopeOpen($query)
+    {
+        return $query->whereNull('closed_date');
+    }
+
+    /**
+     * Entities that have been closed via the close-entity workflow.
+     */
+    public function scopeClosedEntities($query)
+    {
+        return $query->whereNotNull('closed_date');
+    }
+
+    /**
+     * Your operating companies/trusts (excludes tenancy/property-manager contacts and closed entities).
      */
     public function scopeOperationalEntities($query)
     {
-        return $query->where('exclude_from_financial_reports', false);
+        return $query->where('exclude_from_financial_reports', false)->open();
     }
 
     /**
@@ -125,6 +144,11 @@ class BusinessEntity extends Model
         return ! $this->isTenancyContactOnly();
     }
 
+    public function isClosed(): bool
+    {
+        return $this->closed_date !== null;
+    }
+
     /**
      * Short label for report entity pickers (trading name when set).
      */
@@ -142,7 +166,7 @@ class BusinessEntity extends Model
     public static function ruleExistsOperational(string $column = 'id'): \Illuminate\Validation\Rules\Exists
     {
         return Rule::exists('business_entities', $column)->using(
-            fn ($query) => $query->where('exclude_from_financial_reports', false)
+            fn ($query) => $query->where('exclude_from_financial_reports', false)->whereNull('closed_date')
         );
     }
 

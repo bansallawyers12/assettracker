@@ -11,6 +11,7 @@ use App\Support\FinancialYear;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -92,6 +93,8 @@ class ComplianceReportController extends Controller
             return $this->atoLodgementsCsvResponse($report);
         }
 
+        $rowsPaginator = $this->paginateReportRows($request, $report['rows']);
+
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
         $formsScope = $request->input('scope') === 'selected' ? 'selected' : 'all';
         $formsEntityIds = $formsScope === 'selected' ? ($entityIds ?? []) : [];
@@ -115,6 +118,7 @@ class ComplianceReportController extends Controller
 
         return view('compliance-reports.ato-lodgements', compact(
             'report',
+            'rowsPaginator',
             'businessEntities',
             'formsScope',
             'formsEntityIds',
@@ -124,6 +128,26 @@ class ComplianceReportController extends Controller
             'obligationKeys',
             'statusFilter'
         ));
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function paginateReportRows(Request $request, array $rows): LengthAwarePaginator
+    {
+        $perPage = 25;
+        $page = max(1, (int) $request->query('page', 1));
+
+        return new LengthAwarePaginator(
+            array_slice($rows, ($page - 1) * $perPage, $perPage),
+            count($rows),
+            $perPage,
+            $page,
+            [
+                'path' => $request->url(),
+                'query' => $request->query(),
+            ]
+        );
     }
 
     private function resolveFyStart(Request $request): Carbon

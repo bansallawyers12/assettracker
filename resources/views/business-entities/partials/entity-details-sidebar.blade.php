@@ -94,14 +94,30 @@
                 </button>
             </div>
 
-            <div class="mt-3">
+            <div class="mt-3 flex flex-wrap items-center gap-2">
                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-white/15 text-indigo-50 ring-1 ring-inset ring-white/20">
                     {{ $businessEntity->entity_type }}
                 </span>
+                @if ($businessEntity->isClosed())
+                    <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-rose-500/20 text-rose-50 ring-1 ring-inset ring-rose-200/30">
+                        Closed
+                    </span>
+                @endif
             </div>
         </div>
 
         <div class="p-5 space-y-4">
+            @if ($businessEntity->isClosed())
+                <div class="rounded-lg border border-rose-200 dark:border-rose-900/60 bg-rose-50 dark:bg-rose-950/30 px-4 py-3">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-rose-700 dark:text-rose-300">Entity closed</p>
+                    <p class="mt-1 text-sm text-rose-900 dark:text-rose-100">
+                        <span class="font-medium">Date:</span>
+                        {{ $businessEntity->closed_date->format('d/m/Y') }}
+                    </p>
+                    <p class="mt-2 text-sm text-rose-900 dark:text-rose-100 whitespace-pre-line">{{ $businessEntity->closed_reason }}</p>
+                </div>
+            @endif
+
             @if ($businessEntity->trading_name)
                 <div>
                     <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Trading Name</p>

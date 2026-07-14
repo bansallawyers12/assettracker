@@ -98,4 +98,39 @@ class BusinessEntityRegistrationDateTest extends TestCase
         $this->assertFalse($entity->complianceAppliesForFinancialYear('2019-07-01'));
         $this->assertTrue($entity->complianceAppliesForFinancialYear('2020-07-01'));
     }
+
+    public function test_is_closed_when_closed_date_is_set(): void
+    {
+        $entity = new BusinessEntity([
+            'closed_date' => '2024-06-30',
+            'closed_reason' => 'Deregistered with ASIC',
+        ]);
+
+        $this->assertTrue($entity->isClosed());
+    }
+
+    public function test_is_not_closed_without_closed_date(): void
+    {
+        $entity = new BusinessEntity([
+            'status' => 'Inactive',
+        ]);
+
+        $this->assertFalse($entity->isClosed());
+    }
+
+    public function test_operational_entities_scope_excludes_closed_entities(): void
+    {
+        $sql = strtolower(BusinessEntity::query()->operationalEntities()->toSql());
+
+        $this->assertStringContainsString('closed_date', $sql);
+        $this->assertStringContainsString('is null', $sql);
+    }
+
+    public function test_closed_entities_scope_only_includes_closed_records(): void
+    {
+        $sql = strtolower(BusinessEntity::query()->closedEntities()->toSql());
+
+        $this->assertStringContainsString('closed_date', $sql);
+        $this->assertStringContainsString('is not null', $sql);
+    }
 }

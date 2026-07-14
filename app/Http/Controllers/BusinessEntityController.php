@@ -236,6 +236,19 @@ class BusinessEntityController extends Controller
         return view('business-entities.index', compact('businessEntities', 'tenancyContactEntities'));
     }
 
+    public function closedIndex(): View
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $businessEntities = BusinessEntity::query()
+            ->closedEntities()
+            ->orderByDesc('closed_date')
+            ->orderBy('legal_name')
+            ->get();
+
+        return view('business-entities.closed-index', compact('businessEntities'));
+    }
+
     /**
      * Show the form for creating a new business entity.
      *
@@ -1559,6 +1572,39 @@ class BusinessEntityController extends Controller
 
         // Redirect to the show page for the updated entity with success message
         return redirect()->route('business-entities.show', $businessEntity->id)->with('success', 'Business entity updated successfully!');
+    }
+
+    public function close(Request $request, BusinessEntity $businessEntity): RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        if ($businessEntity->isClosed()) {
+            return redirect()
+                ->route('business-entities.show', $businessEntity)
+                ->with('error', 'This entity is already closed.');
+        }
+
+        $validated = $request->validate([
+            'closed_date' => 'required|date|before_or_equal:today',
+            'closed_reason' => 'required|string|max:2000',
+        ], [
+            'closed_date.required' => 'Please enter the closed date.',
+            'closed_reason.required' => 'Please enter a reason for closing this entity.',
+        ]);
+
+        DB::transaction(function () use ($businessEntity, $validated) {
+            $businessEntity->update([
+                'status' => 'Inactive',
+                'closed_date' => $validated['closed_date'],
+                'closed_reason' => $validated['closed_reason'],
+            ]);
+
+            $businessEntity->assets()->update(['status' => 'Sold']);
+        });
+
+        return redirect()
+            ->route('business-entities.show', $businessEntity)
+            ->with('success', 'Entity closed successfully. Its assets are now marked as Sold.');
     }
 
     // --- Bank Account Methods ---

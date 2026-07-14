@@ -4,10 +4,16 @@
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
                 {{ __('Business Entities') }}
             </h2>
-            <a href="{{ route('business-entities.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md text-sm font-medium transition-colors">
-                <x-lucide-plus class="h-5 w-5 mr-2" />
-                {{ __('Add entity') }}
-            </a>
+            <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('business-entities.closed.index') }}" class="inline-flex items-center justify-center px-4 py-2 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-700 dark:text-rose-300 rounded-lg text-sm font-medium transition-colors">
+                    <x-lucide-archive class="h-4 w-4 mr-2" />
+                    {{ __('Closed entities') }}
+                </a>
+                <a href="{{ route('business-entities.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md text-sm font-medium transition-colors">
+                    <x-lucide-plus class="h-5 w-5 mr-2" />
+                    {{ __('Add entity') }}
+                </a>
+            </div>
         </div>
     </x-slot>
 
