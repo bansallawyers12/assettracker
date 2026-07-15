@@ -153,7 +153,7 @@ class AtoDueDateServiceTest extends TestCase
         );
 
         $this->assertSame(ComplianceReportService::STATUS_OVERDUE, $result['status']);
-        $this->assertSame('2025-10-31', $result['due_date']);
+        $this->assertSame('31/10/2025', $result['due_date']);
     }
 
     public function test_classification_prefers_stored_due_date_over_estimate(): void
@@ -176,7 +176,7 @@ class AtoDueDateServiceTest extends TestCase
         );
 
         $this->assertSame(ComplianceReportService::STATUS_DUE_SOON, $result['status']);
-        $this->assertSame('2026-08-01', $result['due_date']);
+        $this->assertSame('01/08/2026', $result['due_date']);
     }
 
     public function test_classification_complete_when_paid(): void

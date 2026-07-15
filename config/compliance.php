@@ -7,7 +7,7 @@ return [
     /*
     | Annual BAS summary vs quarterly BAS lodgements (mutually exclusive per year).
     */
-    'bas_mode' => env('COMPLIANCE_BAS_MODE', 'annual'),
+    'bas_mode' => env('COMPLIANCE_BAS_MODE', 'quarterly'),
 
     'auto_provision_on_view' => true,
 

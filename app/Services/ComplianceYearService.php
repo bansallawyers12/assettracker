@@ -173,6 +173,7 @@ class ComplianceYearService
         }
 
         $this->reconcileUncategorizedFiles($record);
+        $this->removeInactiveBasTemplateSlots($record);
     }
 
     private function reconcileUncategorizedFiles(ComplianceYearRecord $record): void
@@ -206,10 +207,61 @@ class ComplianceYearService
     /**
      * @return array{total: int, uploaded: int, required_missing: int}
      */
+    public function fileApplies(ComplianceDocumentFile $file, ComplianceYearRecord $record): bool
+    {
+        if ($file->custom_label || $file->compliance_document_type_id === null) {
+            return true;
+        }
+
+        $file->loadMissing('type');
+        if ($file->type === null) {
+            return true;
+        }
+
+        return $this->typeApplies($file->type, $record);
+    }
+
+    public function syncBasSlotsForEntity(BusinessEntity $entity): void
+    {
+        $records = ComplianceYearRecord::query()
+            ->where('business_entity_id', $entity->id)
+            ->whereNull('asset_id')
+            ->get();
+
+        foreach ($records as $record) {
+            $this->provisionCategoriesAndSlots($record);
+            $this->removeInactiveBasTemplateSlots($record);
+        }
+    }
+
+    public function removeInactiveBasTemplateSlots(ComplianceYearRecord $record): void
+    {
+        $record->loadMissing(['businessEntity', 'categories.files.type']);
+
+        foreach ($record->categories as $category) {
+            foreach ($category->files as $file) {
+                if ($file->custom_label || $file->hasFile()) {
+                    continue;
+                }
+
+                $code = $file->type?->code ?? '';
+                if (! str_starts_with($code, 'bas_')) {
+                    continue;
+                }
+
+                if (! $this->fileApplies($file, $record)) {
+                    $file->delete();
+                }
+            }
+        }
+    }
+
     public function categoryCompleteness(ComplianceCategory $category): array
     {
-        $category->loadMissing(['files.type']);
-        $files = $category->files;
+        $category->loadMissing(['files.type', 'yearRecord']);
+        $files = $category->files->filter(
+            fn (ComplianceDocumentFile $file) => $this->fileApplies($file, $category->yearRecord)
+        );
         $required = $files->filter(fn (ComplianceDocumentFile $f) => $f->type?->is_required);
         $requiredUploaded = $required->filter(fn (ComplianceDocumentFile $f) => $f->hasFile());
 
@@ -227,12 +279,18 @@ class ComplianceYearService
     {
         $record->loadMissing(['categories.files.type']);
 
-        $files = $record->categories->flatMap(fn (ComplianceCategory $cat) => $cat->files);
+        $files = $record->categories->flatMap(
+            fn (ComplianceCategory $cat) => $cat->files->filter(
+                fn (ComplianceDocumentFile $file) => $this->fileApplies($file, $record)
+            )
+        );
 
         // Include any legacy rows not yet linked to a category.
         $orphans = $record->files()->whereNull('compliance_category_id')->with('type')->get();
         if ($orphans->isNotEmpty()) {
-            $files = $files->merge($orphans)->unique('id');
+            $files = $files->merge(
+                $orphans->filter(fn (ComplianceDocumentFile $file) => $this->fileApplies($file, $record))
+            )->unique('id');
         }
 
         $required = $files->filter(fn (ComplianceDocumentFile $f) => $f->type?->is_required);

@@ -54,6 +54,16 @@
                         <option value="{{ $defaultFyStart }}">{{ $defaultFyLabel }}</option>
                     </select>
                 </div>
+                @if (! $wsAssetId)
+                    <div id="{{ $prefix }}-bas-frequency-wrap" class="hidden">
+                        <label for="{{ $prefix }}-bas-frequency" class="compliance-label">BAS reporting</label>
+                        <select id="{{ $prefix }}-bas-frequency" class="compliance-input min-w-[10rem]">
+                            <option value="quarterly">Quarterly (Q1–Q4)</option>
+                            <option value="annual">Annual summary</option>
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Used by ATO / ASIC lodgements report.</p>
+                    </div>
+                @endif
                 <div id="{{ $prefix }}-completeness" class="flex flex-wrap items-center gap-2 pb-0.5 hidden"></div>
             </div>
             <div class="flex flex-wrap gap-2">

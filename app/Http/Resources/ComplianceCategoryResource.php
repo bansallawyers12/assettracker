@@ -12,10 +12,14 @@ class ComplianceCategoryResource extends JsonResource
         /** @var ComplianceYearService $yearService */
         $yearService = app(ComplianceYearService::class);
 
-        $files = $this->files->sortBy(fn ($f) => [
-            $f->type?->sort_order ?? 999,
-            $f->type?->id ?? $f->id,
-        ])->values();
+        $this->loadMissing('yearRecord');
+
+        $files = $this->files
+            ->filter(fn ($file) => $yearService->fileApplies($file, $this->yearRecord))
+            ->sortBy(fn ($f) => [
+                $f->type?->sort_order ?? 999,
+                $f->type?->id ?? $f->id,
+            ])->values();
 
         return [
             'id'           => $this->id,

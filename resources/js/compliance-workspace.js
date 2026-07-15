@@ -29,6 +29,15 @@ import { setRowUploading } from './workspace-upload-ui.js';
         return String(str ?? '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
+    function formatAuDate(iso) {
+        if (!iso) return '';
+        const parts = String(iso).split('-');
+        if (parts.length !== 3) return iso;
+        const [year, month, day] = parts;
+        if (!year || !month || !day) return iso;
+        return `${day}/${month}/${year}`;
+    }
+
     function parseJson(text) {
         try { return JSON.parse(text); } catch (_) { return null; }
     }
@@ -74,7 +83,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
     function buildStatusCell(file, locked) {
         const fileId = file.id;
         const dueHint = file.due_date
-            ? `<div class="mt-1 text-xs text-amber-600 dark:text-amber-400">Due ${escHtml(file.due_date)}</div>`
+            ? `<div class="mt-1 text-xs text-amber-600 dark:text-amber-400">Due ${escHtml(formatAuDate(file.due_date))}</div>`
             : '';
 
         if (locked) {
@@ -302,6 +311,8 @@ import { setRowUploading } from './workspace-upload-ui.js';
         }
 
         const fySelect = document.getElementById(prefix + '-fy-select');
+        const basFrequencyWrap = document.getElementById(prefix + '-bas-frequency-wrap');
+        const basFrequencySelect = document.getElementById(prefix + '-bas-frequency');
         const completenessEl = document.getElementById(prefix + '-completeness');
         const categoryBarEl = document.getElementById(prefix + '-category-bar');
         const categoryTabsEl = document.getElementById(prefix + '-category-tabs');
@@ -608,6 +619,19 @@ import { setRowUploading } from './workspace-upload-ui.js';
             });
         }
 
+        function updateBasReportingControl(ws) {
+            if (!basFrequencyWrap || !basFrequencySelect) return;
+
+            if (!ws?.can_edit_bas_reporting) {
+                basFrequencyWrap.classList.add('hidden');
+                return;
+            }
+
+            basFrequencyWrap.classList.remove('hidden');
+            basFrequencySelect.value = ws.effective_bas_reporting_frequency === 'annual' ? 'annual' : 'quarterly';
+            basFrequencySelect.disabled = locked;
+        }
+
         function renderWorkspace(ws, session) {
             workspace = ws;
             locked = !!ws.locked;
@@ -650,6 +674,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
             }
 
             updateCompleteness(ws.completeness);
+            updateBasReportingControl(ws);
             loadingEl?.classList.add('hidden');
             hideError();
             contentEl.classList.remove('hidden');
@@ -817,6 +842,46 @@ import { setRowUploading } from './workspace-upload-ui.js';
             if (fySelect.value) {
                 root.dataset.loaded = '0';
                 fetchWorkspace(fySelect.value);
+            }
+        });
+
+        basFrequencySelect?.addEventListener('change', async () => {
+            if (!basFrequencySelect || locked) return;
+
+            const previous = workspace?.effective_bas_reporting_frequency === 'annual' ? 'annual' : 'quarterly';
+            const next = basFrequencySelect.value;
+            if (next === previous) return;
+
+            const confirmed = await showWorkspaceConfirm({
+                title: 'Change BAS reporting',
+                message: next === 'quarterly'
+                    ? 'Switch to quarterly BAS (Q1–Q4)? Annual summary slots will be hidden.'
+                    : 'Switch to annual BAS summary? Quarterly slots will be hidden.',
+                confirmText: 'Change',
+            });
+
+            if (!confirmed) {
+                basFrequencySelect.value = previous;
+                return;
+            }
+
+            try {
+                const r = await api(`${base}/compliance/bas-reporting`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ bas_reporting_frequency: next }),
+                });
+                const j = parseJson(await r.text());
+                if (!r.ok || !j?.status) {
+                    basFrequencySelect.value = previous;
+                    if (alertValidationErrors(j)) return;
+                    showError(j?.message || 'Could not update BAS reporting.');
+                    return;
+                }
+                showSuccess(j.message || 'BAS reporting updated.');
+                refreshWorkspace();
+            } catch (_) {
+                basFrequencySelect.value = previous;
+                showError('Could not reach the server. Check your connection and try again.');
             }
         });
 

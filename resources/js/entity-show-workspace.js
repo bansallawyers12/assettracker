@@ -309,7 +309,8 @@ function initProfileWorkspace(pageRoot) {
         return;
     }
 
-    pageRoot.addEventListener('click', async (event) => {
+    // Header "Edit company profile" lives outside .entity-show-page, so listen on document.
+    document.addEventListener('click', async (event) => {
         const trigger = event.target.closest('[data-entity-profile-edit]');
         if (!trigger) {
             return;

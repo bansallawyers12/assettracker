@@ -458,9 +458,9 @@ class ComplianceReportService
         ?Carbon $estimatedDueDate = null,
     ): array {
         $effectiveDue = $file?->due_date ?? $estimatedDueDate;
-        $dueDate = $effectiveDue?->toDateString();
-        $lodgedDate = $file?->lodged_date?->toDateString();
-        $paidDate = $file?->paid_date?->toDateString();
+        $dueDate = $effectiveDue?->format('d/m/Y');
+        $lodgedDate = $file?->lodged_date?->format('d/m/Y');
+        $paidDate = $file?->paid_date?->format('d/m/Y');
         $hasDocument = $file?->hasFile() ?? false;
         $statusValue = (string) ($file?->status ?? 'not_started');
 

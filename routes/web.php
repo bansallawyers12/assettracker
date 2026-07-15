@@ -159,6 +159,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     // Compliance / FY document workspace
     Route::get('/business-entities/{businessEntity}/compliance/workspace', [ComplianceWorkspaceController::class, 'indexWorkspace'])->name('entities.compliance.workspace');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/compliance/workspace', [ComplianceWorkspaceController::class, 'indexAssetWorkspace'])->name('entities.asset-compliance.workspace');
+    Route::patch('/business-entities/{businessEntity}/compliance/bas-reporting', [ComplianceWorkspaceController::class, 'updateBasReporting'])->name('entities.compliance.bas-reporting');
     Route::patch('/business-entities/{businessEntity}/compliance-years/{record}', [ComplianceWorkspaceController::class, 'updateYearNotes'])->name('entities.compliance-years.update');
     Route::post('/business-entities/{businessEntity}/compliance-years/{record}/categories', [ComplianceWorkspaceController::class, 'storeCategory'])->name('entities.compliance-categories.store');
     Route::patch('/business-entities/{businessEntity}/compliance-categories/{category}', [ComplianceWorkspaceController::class, 'updateCategory'])->name('entities.compliance-categories.update');

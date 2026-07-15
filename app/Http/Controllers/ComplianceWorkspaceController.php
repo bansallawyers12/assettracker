@@ -39,6 +39,28 @@ class ComplianceWorkspaceController extends Controller
         return $this->workspaceResponse($request, $businessEntity, $asset);
     }
 
+    public function updateBasReporting(Request $request, BusinessEntity $businessEntity): JsonResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        $data = $request->validate([
+            'bas_reporting_frequency' => 'required|in:annual,quarterly',
+        ]);
+
+        $businessEntity->update([
+            'bas_reporting_frequency' => $data['bas_reporting_frequency'],
+        ]);
+
+        $this->yearService->syncBasSlotsForEntity($businessEntity->fresh());
+
+        return response()->json([
+            'status' => true,
+            'bas_reporting_frequency' => $businessEntity->bas_reporting_frequency,
+            'effective_bas_reporting_frequency' => $businessEntity->effectiveBasReportingFrequency(),
+            'message' => 'BAS reporting updated. Checklist slots refreshed for this entity.',
+        ]);
+    }
+
     public function storeCategory(Request $request, BusinessEntity $businessEntity, ComplianceYearRecord $record)
     {
         $this->authorize('update', $businessEntity);
