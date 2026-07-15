@@ -459,7 +459,7 @@ class BusinessEntity extends Model
             return $value === 'monthly' ? 'quarterly' : $value;
         }
 
-        $fallback = config('compliance.bas_mode', 'annual');
+        $fallback = config('compliance.bas_mode', 'quarterly');
 
         return $fallback === 'quarterly' ? 'quarterly' : 'annual';
     }

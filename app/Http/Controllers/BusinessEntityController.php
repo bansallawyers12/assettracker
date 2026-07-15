@@ -22,6 +22,7 @@ use App\Rules\UniqueAbnHash;
 use App\Rules\UniqueAcnHash;
 use App\Services\BankAccountAssetLinkService;
 use App\Services\CommitmentReportService;
+use App\Services\ComplianceYearService;
 use App\Services\DocumentUploadService;
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Support\SecurityAuditLogger;
@@ -1546,14 +1547,30 @@ class BusinessEntityController extends Controller
         }
 
         // Profile workspace form omits these; only persist when the compliance section is submitted.
+        $shouldSyncBasSlots = false;
         if ($request->has('bas_reporting_frequency')) {
+            $previousBasFrequency = $businessEntity->bas_reporting_frequency;
+            $previousGstRegistered = $businessEntity->gst_registered;
+
             $payload['bas_reporting_frequency'] = $request->input('bas_reporting_frequency') ?: null;
             $payload['uses_tax_agent'] = $request->boolean('uses_tax_agent');
             $payload['gst_registered'] = $request->boolean('gst_registered');
             $payload['entity_tax_return_required'] = $request->boolean('entity_tax_return_required');
+
+            $shouldSyncBasSlots = true;
         }
 
         $businessEntity->update($payload);
+
+        if ($shouldSyncBasSlots) {
+            $businessEntity->refresh();
+            if (
+                $businessEntity->bas_reporting_frequency !== $previousBasFrequency
+                || $businessEntity->gst_registered !== $previousGstRegistered
+            ) {
+                app(ComplianceYearService::class)->syncBasSlotsForEntity($businessEntity);
+            }
+        }
         if ($request->expectsJson()) {
             $businessEntity->refresh();
 

@@ -207,8 +207,12 @@ class ComplianceYearService
     /**
      * @return array{total: int, uploaded: int, required_missing: int}
      */
-    public function fileApplies(ComplianceDocumentFile $file, ComplianceYearRecord $record): bool
+    public function fileApplies(ComplianceDocumentFile $file, ?ComplianceYearRecord $record): bool
     {
+        if ($record === null) {
+            return true;
+        }
+
         if ($file->custom_label || $file->compliance_document_type_id === null) {
             return true;
         }
@@ -230,7 +234,6 @@ class ComplianceYearService
 
         foreach ($records as $record) {
             $this->provisionCategoriesAndSlots($record);
-            $this->removeInactiveBasTemplateSlots($record);
         }
     }
 
@@ -238,22 +241,41 @@ class ComplianceYearService
     {
         $record->loadMissing(['businessEntity', 'categories.files.type']);
 
-        foreach ($record->categories as $category) {
-            foreach ($category->files as $file) {
-                if ($file->custom_label || $file->hasFile()) {
-                    continue;
-                }
+        $files = $record->categories->flatMap(fn (ComplianceCategory $category) => $category->files);
 
-                $code = $file->type?->code ?? '';
-                if (! str_starts_with($code, 'bas_')) {
-                    continue;
-                }
+        $orphans = ComplianceDocumentFile::query()
+            ->where('compliance_year_record_id', $record->id)
+            ->whereNull('compliance_category_id')
+            ->with('type')
+            ->get();
 
-                if (! $this->fileApplies($file, $record)) {
-                    $file->delete();
-                }
+        if ($orphans->isNotEmpty()) {
+            $files = $files->merge($orphans)->unique('id');
+        }
+
+        foreach ($files as $file) {
+            if ($file->custom_label || $this->basSlotHasProgress($file)) {
+                continue;
+            }
+
+            $code = $file->type?->code ?? '';
+            if (! str_starts_with($code, 'bas_')) {
+                continue;
+            }
+
+            if (! $this->fileApplies($file, $record)) {
+                $file->delete();
             }
         }
+    }
+
+    private function basSlotHasProgress(ComplianceDocumentFile $file): bool
+    {
+        return $file->hasFile()
+            || $file->status !== 'not_started'
+            || $file->lodged_date !== null
+            || $file->paid_date !== null
+            || filled($file->notes);
     }
 
     public function categoryCompleteness(ComplianceCategory $category): array
@@ -365,7 +387,7 @@ class ComplianceYearService
     private function basTypeEnabled(string $code, ?BusinessEntity $entity = null): bool
     {
         $basMode = $entity?->effectiveBasReportingFrequency()
-            ?? (config('compliance.bas_mode', 'annual') === 'quarterly' ? 'quarterly' : 'annual');
+            ?? (config('compliance.bas_mode', 'quarterly') === 'quarterly' ? 'quarterly' : 'annual');
 
         if (str_starts_with($code, 'bas_q')) {
             return $basMode === 'quarterly';
