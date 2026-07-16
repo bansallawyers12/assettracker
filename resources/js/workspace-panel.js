@@ -25,9 +25,19 @@ function ensurePanel() {
     panelBodyEl = panelRoot.querySelector('[data-entity-panel-body]');
 
     panelRoot.querySelector('[data-entity-panel-backdrop]')?.addEventListener('click', () => closeWorkspacePanel());
-    panelRoot.querySelectorAll('[data-entity-panel-close]').forEach((btn) => {
-        btn.addEventListener('click', () => closeWorkspacePanel());
-    });
+
+    if (panelRoot.dataset.closeHandlersBound !== '1') {
+        panelRoot.dataset.closeHandlersBound = '1';
+        panelRoot.addEventListener('click', (event) => {
+            const closeBtn = event.target.closest('[data-entity-panel-close]');
+            if (!closeBtn || !panelRoot.contains(closeBtn)) {
+                return;
+            }
+
+            event.preventDefault();
+            closeWorkspacePanel();
+        });
+    }
 
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && panelOpen) {

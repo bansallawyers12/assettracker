@@ -18,80 +18,104 @@
 
 <x-report-shell
     title="ATO / ASIC lodgement status"
+    :subtitle="'Status as at '.$report['as_of_date_label']"
     :entity-scope-label="$entityScopeLabel">
 
     <x-slot:filters>
-        <form method="GET" action="{{ route('financial-reports.ato-lodgements') }}"
-              class="flex flex-col gap-4">
+        @php
+            $selectClass = 'w-full border border-gray-300 rounded-md text-sm px-2.5 py-1.5 bg-white shadow-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500';
+        @endphp
 
-            <div class="flex flex-wrap items-end gap-3">
+        <form method="GET" action="{{ route('financial-reports.ato-lodgements') }}"
+              class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs divide-y divide-gray-100">
+
+            {{-- Entity scope --}}
+            <section class="px-4 py-4 sm:px-5">
                 <x-report-entity-scope-picker
                     :business-entities="$businessEntities"
                     :forms-scope="$formsScope"
                     :forms-entity-ids="$formsEntityIds"
+                    orientation="row"
                 />
+            </section>
 
-                <div>
-                    <label for="fy_from" class="block text-xs font-medium text-gray-500 mb-1">From FY</label>
-                    <select name="fy_from" id="fy_from"
-                            class="border border-gray-300 rounded-md text-sm px-3 py-1.5 min-w-[140px]">
-                        @foreach($availableYears as $year)
-                            <option value="{{ $year['start'] }}" @selected($year['start'] === $report['fy_from'])>
-                                {{ $year['label'] }}
-                            </option>
-                        @endforeach
-                    </select>
+            {{-- Period & status --}}
+            <section class="px-4 py-4 sm:px-5">
+                <div class="grid gap-4 xl:grid-cols-12 xl:items-end">
+                    <div class="xl:col-span-5">
+                        <x-report-as-of-date-filter
+                            :value="$asOfDate"
+                            route="financial-reports.ato-lodgements"
+                            :query="request()->query()"
+                        />
+                    </div>
+
+                    <div class="xl:col-span-4">
+                        <x-report-filter-field label="Financial year range">
+                            <div class="flex items-center gap-2">
+                                <select name="fy_from" id="fy_from" class="{{ $selectClass }} min-w-[7.5rem]">
+                                    @foreach($availableYears as $year)
+                                        <option value="{{ $year['start'] }}" @selected($year['start'] === $report['fy_from'])>
+                                            {{ $year['label'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <span class="shrink-0 text-sm text-gray-400" aria-hidden="true">to</span>
+                                <select name="fy_to" id="fy_to" class="{{ $selectClass }} min-w-[7.5rem]">
+                                    @foreach($availableYears as $year)
+                                        <option value="{{ $year['start'] }}" @selected($year['start'] === $report['fy_to'])>
+                                            {{ $year['label'] }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </x-report-filter-field>
+                    </div>
+
+                    <div class="xl:col-span-3">
+                        <x-report-filter-field label="Status" for="status">
+                            <select name="status" id="status" class="{{ $selectClass }}">
+                                @foreach($statusOptions as $value => $label)
+                                    <option value="{{ $value }}" @selected($selectedStatus === $value)>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </x-report-filter-field>
+                    </div>
                 </div>
+            </section>
 
-                <div>
-                    <label for="fy_to" class="block text-xs font-medium text-gray-500 mb-1">To FY</label>
-                    <select name="fy_to" id="fy_to"
-                            class="border border-gray-300 rounded-md text-sm px-3 py-1.5 min-w-[140px]">
-                        @foreach($availableYears as $year)
-                            <option value="{{ $year['start'] }}" @selected($year['start'] === $report['fy_to'])>
-                                {{ $year['label'] }}
-                            </option>
-                        @endforeach
-                    </select>
+            {{-- Obligations & actions --}}
+            <section class="px-4 py-4 sm:px-5">
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <x-report-filter-field label="Obligations" class="min-w-0">
+                        <div class="flex flex-wrap gap-2">
+                            @foreach($obligationOptions as $key => $label)
+                                <label class="inline-flex cursor-pointer items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors select-none hover:border-gray-300 hover:bg-white has-checked:border-indigo-500 has-checked:bg-indigo-50 has-checked:text-indigo-700 has-checked:ring-1 has-checked:ring-indigo-500/20">
+                                    <input type="checkbox"
+                                           name="obligations[]"
+                                           value="{{ $key }}"
+                                           class="sr-only"
+                                           @checked(in_array($key, $obligationKeys, true))>
+                                    {{ $label }}
+                                </label>
+                            @endforeach
+                        </div>
+                    </x-report-filter-field>
+
+                    <div class="flex shrink-0 items-center gap-2 lg:ml-auto">
+                        <button type="submit"
+                                class="inline-flex h-[34px] items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-md px-4 focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-1">
+                            Update
+                        </button>
+                        <a href="{{ route('financial-reports.ato-lodgements', array_merge(request()->query(), ['format' => 'csv'])) }}"
+                           class="inline-flex h-[34px] items-center border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-md px-4 focus:outline-hidden focus:ring-2 focus:ring-gray-400 focus:ring-offset-1">
+                            Export CSV
+                        </a>
+                    </div>
                 </div>
-
-                <div>
-                    <label for="status" class="block text-xs font-medium text-gray-500 mb-1">Status</label>
-                    <select name="status" id="status"
-                            class="border border-gray-300 rounded-md text-sm px-3 py-1.5 min-w-[160px]">
-                        @foreach($statusOptions as $value => $label)
-                            <option value="{{ $value }}" @selected($selectedStatus === $value)>
-                                {{ $label }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-4">
-                <span class="text-xs font-medium text-gray-500">Obligations</span>
-                @foreach($obligationOptions as $key => $label)
-                    <label class="inline-flex items-center gap-1.5 text-sm text-gray-700">
-                        <input type="checkbox"
-                               name="obligations[]"
-                               value="{{ $key }}"
-                               class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                               @checked(in_array($key, $obligationKeys, true))>
-                        {{ $label }}
-                    </label>
-                @endforeach
-
-                <div class="flex items-center gap-2 ml-auto">
-                    <button type="submit"
-                            class="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-sm px-4 py-1.5">
-                        Update
-                    </button>
-                    <a href="{{ route('financial-reports.ato-lodgements', array_merge(request()->query(), ['format' => 'csv'])) }}"
-                       class="inline-flex items-center border border-gray-300 hover:bg-gray-50 text-gray-700 text-sm font-semibold rounded-sm px-4 py-1.5">
-                        Export CSV
-                    </a>
-                </div>
-            </div>
+            </section>
         </form>
     </x-slot:filters>
 
@@ -149,6 +173,7 @@
     <div class="px-6 py-5">
         <p class="text-xs text-gray-500 mb-4">
             FY range {{ $report['fy_from_label'] }} – {{ $report['fy_to_label'] }}.
+            Overdue and due soon are calculated as at {{ $report['as_of_date_label'] }}.
             Counts above include all statuses before the status filter;
             @if($totalRows > 0)
                 the table shows {{ $rowFrom }}–{{ $rowTo }} of {{ $totalRows }} row(s).

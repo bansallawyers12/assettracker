@@ -47,7 +47,8 @@ export function refreshRentCollectionAssetSection(root = document) {
         const purposeEl = root.querySelector?.(`#${CSS.escape(purposeSelectId)}`)
             || document.getElementById(purposeSelectId);
 
-        const visible = purposeEl ? purposeEl.value === showWhen : false;
+        const purposeValue = purposeEl?.tomselect?.getValue?.() ?? purposeEl?.value ?? '';
+        const visible = purposeValue === showWhen;
         section.classList.toggle('hidden', !visible);
     });
 }

@@ -21,7 +21,11 @@
         </div>
     </x-slot>
 
-    <div class="asset-show-page py-8 bg-linear-to-br from-gray-50 via-white to-indigo-50/40 dark:from-gray-950 dark:via-gray-900 dark:to-gray-900 min-h-screen">
+    <div
+        class="asset-show-page py-8 bg-linear-to-br from-gray-50 via-white to-indigo-50/40 dark:from-gray-950 dark:via-gray-900 dark:to-gray-900 min-h-screen"
+        data-entity-id="{{ $businessEntity->id }}"
+        data-asset-id="{{ $asset->id }}"
+    >
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             @if (session('success'))
                 <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200" role="alert">
@@ -263,7 +267,16 @@
                                             <div class="space-y-4">
                                                 @foreach ($asset->tenants as $tenant)
                                                     <div class="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
-                                                        <h4 class="text-md font-medium text-gray-900 dark:text-gray-100">{{ $tenant->name }}</h4>
+                                                        <div class="flex flex-wrap items-start justify-between gap-2">
+                                                            <h4 class="text-md font-medium text-gray-900 dark:text-gray-100">{{ $tenant->name }}</h4>
+                                                            <button type="button"
+                                                                    data-tenant-edit
+                                                                    data-tenant-id="{{ $tenant->id }}"
+                                                                    class="inline-flex items-center px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm shadow-md transition-all duration-200">
+                                                                <x-lucide-pencil class="h-4 w-4 mr-1" />
+                                                                Edit
+                                                            </button>
+                                                        </div>
                                                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                                                             <div>
                                                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Email</dt>
@@ -367,7 +380,16 @@
                                             <div class="space-y-4">
                                                 @foreach ($asset->leases as $lease)
                                                     <div class="bg-white dark:bg-gray-900 p-4 rounded-lg shadow-md hover:shadow-lg transition-all duration-200">
-                                                        <h4 class="text-md font-medium text-gray-900 dark:text-gray-100">Lease with {{ $lease->tenant ? $lease->tenant->name : 'No Tenant' }}</h4>
+                                                        <div class="flex flex-wrap items-start justify-between gap-2">
+                                                            <h4 class="text-md font-medium text-gray-900 dark:text-gray-100">Lease with {{ $lease->tenant ? $lease->tenant->name : 'No Tenant' }}</h4>
+                                                            <button type="button"
+                                                                    data-lease-edit
+                                                                    data-lease-id="{{ $lease->id }}"
+                                                                    class="inline-flex items-center px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm shadow-md transition-all duration-200">
+                                                                <x-lucide-pencil class="h-4 w-4 mr-1" />
+                                                                Edit
+                                                            </button>
+                                                        </div>
                                                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                                                             <div>
                                                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Rental Amount</dt>

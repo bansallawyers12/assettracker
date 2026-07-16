@@ -1687,7 +1687,12 @@ class BusinessEntityController extends Controller
         }
 
         if ($request->expectsJson()) {
-            return $this->bankAccountWorkspaceJsonResponse($businessEntity, $message);
+            return $this->bankAccountWorkspaceJsonResponse(
+                $businessEntity,
+                $message,
+                $bankAccount,
+                $validated['account_purpose']
+            );
         }
 
         return $this->redirectToBusinessEntityShow($businessEntity, null, 'tab_bank_accounts')
@@ -1766,7 +1771,7 @@ class BusinessEntityController extends Controller
         }
 
         if ($request->expectsJson()) {
-            return $this->bankAccountWorkspaceJsonResponse($businessEntity, $message);
+            return $this->bankAccountWorkspaceJsonResponse($businessEntity, $message, $bankAccount, $purpose);
         }
 
         return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
@@ -2773,19 +2778,35 @@ class BusinessEntityController extends Controller
         return null;
     }
 
-    private function bankAccountWorkspaceJsonResponse(BusinessEntity $businessEntity, string $message): JsonResponse
-    {
+    private function bankAccountWorkspaceJsonResponse(
+        BusinessEntity $businessEntity,
+        string $message,
+        ?BankAccount $bankAccount = null,
+        ?string $linkedPurpose = null
+    ): JsonResponse {
         $entityBankAccountLinks = $businessEntity->bankAccountLinksForDisplay();
         $entityBankAccountGroups = $this->entityBankAccountHolderGroups($businessEntity, $entityBankAccountLinks);
 
-        return response()->json([
+        $payload = [
             'status' => true,
             'message' => $message,
             'list_html' => view('business-entities.partials.bank-accounts.list', [
                 'businessEntity' => $businessEntity,
                 'holderGroups' => $entityBankAccountGroups,
             ])->render(),
-        ]);
+        ];
+
+        if ($bankAccount !== null) {
+            $payload['bank_account'] = [
+                'id' => $bankAccount->id,
+                'label' => $bankAccount->displayLabel(),
+                'edit_url' => $bankAccount->editRoute(),
+                'edit_form_url' => route('entities.bank-accounts.form.edit', [$businessEntity, $bankAccount]),
+                'purpose' => $linkedPurpose ?? $bankAccount->account_purpose,
+            ];
+        }
+
+        return response()->json($payload);
     }
 
     /**

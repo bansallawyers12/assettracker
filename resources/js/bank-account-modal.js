@@ -11,7 +11,13 @@ import {
     showInlineFormErrors,
     submitWorkspaceForm,
 } from './workspace-panel.js';
-import { reinitTomSelect, destroyTomSelectsIn } from './tomselect-init';
+import { destroyTomSelectsIn, scheduleActivateTomSelectsIn } from './tomselect-init';
+import {
+    destroyBankSearchSelectsIn,
+    initBankSearchSelectsIn,
+    refreshBankSearchSelect,
+    setBankSearchSelectDisabled,
+} from './bank-search-select.js';
 
 function parseConfig() {
     const configEl = document.getElementById('add-bank-account-config');
@@ -37,11 +43,7 @@ function parseConfig() {
 }
 
 function getSelectValue(selectEl) {
-    if (!selectEl) {
-        return '';
-    }
-
-    return selectEl.tomselect?.getValue() ?? selectEl.value ?? '';
+    return selectEl?.value ?? '';
 }
 
 function getSelectedAccountOption(selectEl) {
@@ -84,6 +86,38 @@ function availablePurposes(opt) {
         .filter((purpose) => purpose && !used.includes(purpose));
 }
 
+function buildAttachFormUrl(baseUrl, trigger) {
+    if (!baseUrl) {
+        return baseUrl;
+    }
+
+    try {
+        const url = new URL(baseUrl, window.location.origin);
+        const purpose = trigger?.dataset.defaultAccountPurpose;
+        if (purpose) {
+            url.searchParams.set('default_purpose', purpose);
+        }
+
+        return `${url.pathname}${url.search}`;
+    } catch {
+        return baseUrl;
+    }
+}
+
+function resolveAssetPickerSelectId(explicitId, purpose) {
+    if (explicitId) {
+        return explicitId;
+    }
+
+    const map = {
+        loan: 'loan_bank_account_id',
+        offset: 'offset_bank_account_id',
+        rent_receiving: 'rent_collection_bank_account_id',
+    };
+
+    return map[purpose] || null;
+}
+
 function buildCreateFormUrl(baseUrl, trigger) {
     if (!trigger?.dataset.createUrl) {
         return baseUrl;
@@ -117,6 +151,12 @@ export function initBankAccountModal() {
         return;
     }
 
+    if (panelRoot.dataset.bankModalInit === '1') {
+        return;
+    }
+
+    panelRoot.dataset.bankModalInit = '1';
+
     const attachHost = document.getElementById('bank-attach-form-host');
     const createHost = document.getElementById('bank-create-form-host');
     const listEl = document.querySelector(config.listSelector || '[data-bank-accounts-list]');
@@ -129,10 +169,14 @@ export function initBankAccountModal() {
 
     let attachController = null;
     let createController = null;
+    let attachLoadSeq = 0;
     let panelOpen = false;
     let panelMode = 'create';
     let pendingCreateUrl = config.createFormUrl;
+    let pendingAttachFormUrl = config.attachFormUrl;
     let pendingTab = 'link';
+    let pendingTargetSelectId = null;
+    let pendingTrigger = null;
 
     function setPanelCopy({ title, subtitle, eyebrow = 'Bank account' }) {
         if (titleEl && title) {
@@ -152,6 +196,16 @@ export function initBankAccountModal() {
         }
     }
 
+    function resetAttachHostPlaceholder() {
+        if (!attachHost) {
+            return;
+        }
+
+        destroyTomSelectsIn(attachHost);
+        destroyBankSearchSelectsIn(attachHost);
+        attachHost.innerHTML = '<div class="flex items-center justify-center py-16 text-sm text-gray-500 dark:text-gray-400">Loading accounts…</div>';
+    }
+
     function openBankPanel() {
         panelOpen = true;
         markOverlayPanelOpen(panelRoot);
@@ -161,12 +215,18 @@ export function initBankAccountModal() {
     function closeBankPanel() {
         panelOpen = false;
         destroyTomSelectsIn(createHost);
-        destroyTomSelectsIn(attachHost);
+        resetAttachHostPlaceholder();
         markOverlayPanelClosed(panelRoot);
         document.body.classList.remove('overflow-hidden');
         attachController?.abort();
         createController?.abort();
         panelMode = 'create';
+        pendingTargetSelectId = null;
+        pendingTrigger = null;
+
+        if (!config.createOnly) {
+            setActiveTab('link');
+        }
     }
 
     panelRoot.querySelector('[data-bank-panel-backdrop]')?.addEventListener('click', closeBankPanel);
@@ -207,7 +267,6 @@ export function initBankAccountModal() {
         }
 
         if (!config.listUrl || !listEl) {
-            notifyBankAccountChange({ list_html: html });
             return;
         }
 
@@ -220,7 +279,37 @@ export function initBankAccountModal() {
     }
 
     function notifyBankAccountChange(detail = {}) {
-        window.dispatchEvent(new CustomEvent('bank-account-changed', { detail }));
+        const enriched = { ...detail };
+
+        if (detail.bankAccount?.id) {
+            enriched.targetSelectId = resolveAssetPickerSelectId(
+                detail.targetSelectId || pendingTargetSelectId,
+                detail.bankAccount?.purpose,
+            );
+        }
+
+        window.dispatchEvent(new CustomEvent('bank-account-changed', { detail: enriched }));
+    }
+
+    function handleBankAccountSaved(payload, { title, message }) {
+        const assetPickerRoot = document.getElementById('linked-accounts');
+        const pickerDetail = {
+            bankAccount: payload?.bank_account,
+            targetSelectId: pendingTargetSelectId,
+        };
+
+        notifyBankAccountChange(pickerDetail);
+
+        if (assetPickerRoot) {
+            window.showToast?.(message || payload?.message || 'Bank account saved.', 'success');
+            return;
+        }
+
+        showWorkspaceAlert({
+            title,
+            message: message || payload?.message || 'Bank account saved successfully.',
+            variant: 'success',
+        });
     }
 
     function bindAttachForm(root, signal) {
@@ -230,6 +319,7 @@ export function initBankAccountModal() {
         const form = root.querySelector('#assign-bank-account-form');
         const statusEl = root.querySelector('#link-account-status');
         const selectionError = document.getElementById('link-account-selection-error');
+        const presetPurpose = form?.dataset.presetPurpose || '';
 
         function updatePurposeOptions() {
             if (!purposeEl) {
@@ -237,21 +327,33 @@ export function initBankAccountModal() {
             }
 
             const opt = getSelectedAccountOption(selectEl);
+            const hasAccount = Boolean(getSelectValue(selectEl));
             const available = opt ? availablePurposes(opt) : [];
 
             Array.from(purposeEl.options).forEach((purposeOpt) => {
-                const allowed = !purposeOpt.value || available.includes(purposeOpt.value);
+                if (!purposeOpt.value) {
+                    return;
+                }
+
+                if (!hasAccount) {
+                    purposeOpt.disabled = false;
+                    purposeOpt.hidden = false;
+                    return;
+                }
+
+                const allowed = available.includes(purposeOpt.value);
                 purposeOpt.disabled = !allowed;
                 purposeOpt.hidden = !allowed;
             });
 
-            const current = purposeEl.value;
-            if (!available.includes(current)) {
-                const first = available[0];
-                if (first) {
-                    purposeEl.value = first;
-                }
+            const current = getSelectValue(purposeEl);
+            if (hasAccount && !available.includes(current)) {
+                purposeEl.value = available[0] ?? '';
             }
+
+            purposeEl.disabled = !hasAccount && !presetPurpose;
+            setBankSearchSelectDisabled(purposeEl, purposeEl.disabled);
+            refreshBankSearchSelect(purposeEl);
         }
 
         function refreshAttachForm() {
@@ -279,11 +381,12 @@ export function initBankAccountModal() {
                 const available = availablePurposes(opt);
                 if (available.length === 0) {
                     statusMessage = 'Every purpose is already linked for this account on this entity.';
-                } else if (!available.includes(purposeEl?.value)) {
+                } else if (!available.includes(getSelectValue(purposeEl))) {
                     statusMessage = `Choose one of the available purposes: ${available.map((p) => purposeEl?.querySelector(`option[value="${p}"]`)?.textContent?.trim() || p).join(', ')}.`;
                 } else {
                     valid = true;
-                    const purposeLabel = purposeEl?.selectedOptions?.[0]?.textContent?.trim() || purposeEl?.value;
+                    const purposeValue = getSelectValue(purposeEl);
+                    const purposeLabel = purposeEl?.querySelector(`option[value="${CSS.escape(String(purposeValue))}"]`)?.textContent?.trim() || purposeValue;
                     statusMessage = `Ready to link as ${purposeLabel}.`;
                 }
             }
@@ -297,7 +400,6 @@ export function initBankAccountModal() {
         }
 
         if (selectEl) {
-            reinitTomSelect(selectEl);
             selectEl.addEventListener('change', () => {
                 updatePurposeOptions();
                 refreshAttachForm();
@@ -308,14 +410,16 @@ export function initBankAccountModal() {
             refreshRentCollectionAssetSection(root);
             refreshAttachForm();
         }, { signal });
+
+        initBankSearchSelectsIn(root);
         updatePurposeOptions();
         refreshRentCollectionAssetSection(root);
         refreshAttachForm();
 
-        // Re-init tom-select for optional rent asset multi-select
-        root.querySelectorAll('[data-rent-assets-section] select[data-tomselect]').forEach((el) => {
-            reinitTomSelect(el);
-        });
+        const rentAssetsSection = root.querySelector('[data-rent-assets-section]');
+        if (rentAssetsSection) {
+            scheduleActivateTomSelectsIn(rentAssetsSection);
+        }
 
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -325,7 +429,7 @@ export function initBankAccountModal() {
                 return;
             }
 
-            if (purposesOnEntity(opt).includes(purposeEl?.value)) {
+            if (purposesOnEntity(opt).includes(getSelectValue(purposeEl))) {
                 if (selectionError) {
                     selectionError.textContent = 'This purpose is already linked for that account.';
                     selectionError.classList.remove('hidden');
@@ -337,10 +441,9 @@ export function initBankAccountModal() {
                 onSuccess: async (payload) => {
                     closeBankPanel();
                     await refreshBankList(payload.list_html);
-                    showWorkspaceAlert({
+                    handleBankAccountSaved(payload, {
                         title: 'Account linked',
                         message: payload.message || 'Bank account linked successfully.',
-                        variant: 'success',
                     });
                 },
             });
@@ -351,18 +454,23 @@ export function initBankAccountModal() {
         }, { signal });
     }
 
-    async function loadAttachForm() {
-        if (!attachHost || !config.attachFormUrl) {
+    async function loadAttachForm(url = pendingAttachFormUrl || config.attachFormUrl) {
+        if (!attachHost || !url) {
             return;
         }
 
+        const loadSeq = ++attachLoadSeq;
+
         attachController?.abort();
         attachController = new AbortController();
-        destroyTomSelectsIn(attachHost);
-        attachHost.innerHTML = '<div class="flex items-center justify-center py-16 text-sm text-gray-500 dark:text-gray-400">Loading accounts…</div>';
+        resetAttachHostPlaceholder();
 
-        const response = await apiFetch(config.attachFormUrl);
+        const response = await apiFetch(url);
         const payload = parseJson(await response.text());
+
+        if (loadSeq !== attachLoadSeq) {
+            return;
+        }
 
         if (!response.ok || !payload?.html) {
             attachHost.innerHTML = '<p class="text-sm text-red-600 dark:text-red-400">Could not load accounts. Refresh and try again.</p>';
@@ -376,10 +484,7 @@ export function initBankAccountModal() {
     function bindWorkspaceForm(root, signal) {
         initBankAccountFormFields(root);
         refreshRentCollectionAssetSection(root);
-
-        root.querySelectorAll('[data-rent-assets-section] select[data-tomselect]').forEach((el) => {
-            reinitTomSelect(el);
-        });
+        scheduleActivateTomSelectsIn(root);
 
         const form = root.querySelector('.bank-ws-form');
         if (!form) {
@@ -395,14 +500,13 @@ export function initBankAccountModal() {
                 onSuccess: async (payload) => {
                     closeBankPanel();
                     await refreshBankList(payload.list_html);
-                    showWorkspaceAlert({
+                    handleBankAccountSaved(payload, {
                         title: isRentAssetsManage
                             ? 'Asset links updated'
                             : (panelMode === 'edit' ? 'Account updated' : 'Account saved'),
                         message: payload.message || (isRentAssetsManage
                             ? 'Rent asset links updated.'
                             : 'Bank account saved successfully.'),
-                        variant: 'success',
                     });
                 },
             });
@@ -443,11 +547,20 @@ export function initBankAccountModal() {
     }
 
     async function openCreatePanel(options = {}) {
+        pendingTrigger = options.trigger || null;
+        pendingTargetSelectId = pendingTrigger?.dataset.targetBankSelect || null;
         pendingTab = config.createOnly ? 'create' : (options.tab || 'link');
         pendingCreateUrl = options.createFormUrl || config.createFormUrl;
+        pendingAttachFormUrl = buildAttachFormUrl(config.attachFormUrl, pendingTrigger);
+        panelMode = 'create';
 
         closeWorkspacePanel();
-        showTabs(!config.createOnly && panelMode !== 'edit');
+        showTabs(!config.createOnly);
+
+        if (!config.createOnly && pendingTab === 'link') {
+            setActiveTab('link');
+        }
+
         setPanelCopy({
             title: config.panelTitle || 'Add bank account',
             subtitle: config.panelSubtitle || '',
@@ -458,7 +571,6 @@ export function initBankAccountModal() {
         if (pendingTab === 'create' || config.createOnly) {
             await loadCreateForm(pendingCreateUrl);
         } else {
-            setActiveTab('link');
             await loadAttachForm();
         }
     }
@@ -513,7 +625,7 @@ export function initBankAccountModal() {
             setActiveTab(tab);
             if (tab === 'create') {
                 loadCreateForm(pendingCreateUrl);
-            } else {
+            } else if (!attachHost?.querySelector('#assign-bank-account-form')) {
                 loadAttachForm();
             }
         });
@@ -581,7 +693,7 @@ export function initBankAccountModal() {
             ? buildCreateFormUrl(config.createFormUrl, trigger)
             : (event.detail?.createFormUrl || config.createFormUrl);
 
-        openCreatePanel({ tab, createFormUrl });
+        openCreatePanel({ tab, createFormUrl, trigger });
     });
 
     document.addEventListener('click', (event) => {

@@ -80,13 +80,15 @@ class ComplianceReportController extends Controller
             array_values(array_filter((array) $request->input('obligations', ComplianceReportService::DEFAULT_OBLIGATIONS)))
         );
         $statusFilter = $this->reportService->normalizeStatusFilter($request->input('status'));
+        $asOfDate = $this->resolveAsOfDate($request);
 
         $report = $this->reportService->lodgementStatusReport(
             $entityIds === [] ? null : $entityIds,
             $fyFrom,
             $fyTo,
             $obligationKeys,
-            $statusFilter
+            $statusFilter,
+            $asOfDate
         );
 
         if ($request->query('format') === 'csv') {
@@ -126,7 +128,8 @@ class ComplianceReportController extends Controller
             'obligationOptions',
             'statusOptions',
             'obligationKeys',
-            'statusFilter'
+            'statusFilter',
+            'asOfDate'
         ));
     }
 
@@ -202,6 +205,15 @@ class ComplianceReportController extends Controller
         }
 
         return [$fyFrom, $fyTo];
+    }
+
+    private function resolveAsOfDate(Request $request): Carbon
+    {
+        try {
+            return Carbon::parse($request->query('as_of_date', now()))->startOfDay();
+        } catch (\Throwable) {
+            return now()->startOfDay();
+        }
     }
 
     /**

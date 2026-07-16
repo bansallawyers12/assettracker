@@ -107,9 +107,16 @@ function initAssetsWorkspace(root) {
         }
     }
 
-    root.addEventListener('click', async (event) => {
+    async function handleAssetsClick(event) {
         const actionEl = event.target.closest('[data-assets-action]');
-        if (!actionEl || !root.contains(actionEl)) {
+        if (!actionEl) {
+            return;
+        }
+
+        const panelBody = getWorkspacePanelBody();
+        const inWorkspace = root.contains(actionEl);
+        const inPanel = panelBody?.contains(actionEl) ?? false;
+        if (!inWorkspace && !inPanel) {
             return;
         }
 
@@ -140,7 +147,15 @@ function initAssetsWorkspace(root) {
             }
             setWorkspacePanelContent(payload.html);
         }
-    });
+    }
+
+    root.addEventListener('click', handleAssetsClick);
+
+    const panel = document.getElementById('entity-workspace-panel');
+    if (panel && panel.dataset.assetsActionsBound !== '1') {
+        panel.dataset.assetsActionsBound = '1';
+        panel.addEventListener('click', handleAssetsClick);
+    }
 
     registerPanelFormHandler('.assets-ws-form', async () => {
         closeWorkspacePanel();

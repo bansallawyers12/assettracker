@@ -123,6 +123,10 @@
                             <span class="doc-preview-empty-icon" aria-hidden="true">📄</span>
                             <p class="text-sm text-gray-500 dark:text-gray-400">Select a document from the list to preview</p>
                         </div>
+                        <div class="doc-preview-loading hidden" aria-live="polite" aria-busy="true">
+                            <div class="doc-preview-spinner" aria-hidden="true"></div>
+                            <p class="text-sm text-gray-600 dark:text-gray-300">Loading preview…</p>
+                        </div>
                         <iframe class="doc-cat-preview-frame hidden" title="Document preview"></iframe>
                     </div>
                     <div class="doc-preview-actions">

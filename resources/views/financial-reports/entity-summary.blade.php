@@ -164,44 +164,77 @@
                     <x-lucide-sliders-horizontal class="h-4 w-4 text-gray-400" aria-hidden="true" />
                     <h2 class="entity-summary-section-title">Report settings</h2>
                 </div>
-                <form method="GET" action="{{ $formRoute }}" class="p-5">
-                    <div class="flex flex-wrap items-end gap-x-5 gap-y-4">
+
+                @php
+                    $selectClass = 'w-full border border-gray-300 rounded-md text-sm px-2.5 py-1.5 bg-white text-gray-900 shadow-xs focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
+                @endphp
+
+                <form method="GET" action="{{ $formRoute }}" class="divide-y divide-gray-100 dark:divide-gray-700">
+                    {{-- Entity scope --}}
+                    <section class="px-4 py-4 sm:px-5">
                         <x-report-entity-scope-picker
                             :business-entities="$businessEntities"
                             :forms-scope="$formsScope"
                             :forms-entity-ids="$formsEntityIds"
+                            orientation="row"
                         />
+                    </section>
 
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Short period</label>
-                            <div class="flex items-center gap-2">
-                                <x-date-input name="period_start_date" value="{{ $periodStart->toDateString() }}"
-                                    class="rounded-xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
-                                <span class="text-sm text-gray-400">–</span>
-                                <x-date-input name="period_end_date" value="{{ $periodEnd->toDateString() }}"
-                                    class="rounded-xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
+                    {{-- Period & financial year --}}
+                    <section class="px-4 py-4 sm:px-5">
+                        <div class="grid gap-4 xl:grid-cols-12 xl:items-end">
+                            <div class="xl:col-span-5">
+                                <x-report-as-of-date-filter
+                                    name="period_end_date"
+                                    :value="$periodEnd"
+                                    route="financial-reports.entity-summary"
+                                    :query="request()->query()"
+                                    hint="Short period ends on this date."
+                                />
+                            </div>
+
+                            <div class="xl:col-span-4">
+                                <x-report-filter-field label="Financial year range" hint="From sets the short period start; to sets FY profit and tax metrics.">
+                                    <div class="flex items-center gap-2">
+                                        <select name="fy_from" id="fy_from" class="{{ $selectClass }} min-w-[7.5rem]">
+                                            @foreach($availableYears as $year)
+                                                <option value="{{ $year['start'] }}" @selected($year['start'] === $fyFromCarbon->toDateString())>
+                                                    {{ $year['label'] }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <span class="shrink-0 text-sm text-gray-400 dark:text-gray-500" aria-hidden="true">to</span>
+                                        <select name="fy_to" id="fy_to" class="{{ $selectClass }} min-w-[7.5rem]">
+                                            @foreach($availableYears as $year)
+                                                <option value="{{ $year['start'] }}" @selected($year['start'] === $fyToCarbon->toDateString())>
+                                                    {{ $year['label'] }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </x-report-filter-field>
+                            </div>
+
+                            <div class="xl:col-span-3">
+                                <x-report-filter-field label="Period" hint="Short period covered by sales and BAS columns.">
+                                    <p class="inline-flex h-[34px] items-center rounded-md border border-gray-200 bg-gray-50 px-2.5 text-sm text-gray-700 dark:border-gray-600 dark:bg-gray-900/50 dark:text-gray-200">
+                                        {{ $periodStart->format('j M Y') }} – {{ $periodEnd->format('j M Y') }}
+                                    </p>
+                                </x-report-filter-field>
                             </div>
                         </div>
+                    </section>
 
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Financial year</label>
-                            <div class="flex items-center gap-2">
-                                <x-date-input name="fy_start_date" value="{{ $fyStart->toDateString() }}"
-                                    class="rounded-xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
-                                <span class="text-sm text-gray-400">–</span>
-                                <x-date-input name="fy_end_date" value="{{ $fyEnd->toDateString() }}"
-                                    class="rounded-xl border-gray-300 bg-white text-sm dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100" />
-                            </div>
-                        </div>
-
-                        <div class="ml-auto flex items-end">
+                    {{-- Actions --}}
+                    <section class="px-4 py-4 sm:px-5">
+                        <div class="flex justify-end">
                             <button type="submit"
-                                    class="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-5 py-2.5 text-sm font-semibold tracking-tight text-white shadow-xs transition-colors hover:bg-amber-500">
+                                    class="inline-flex h-[34px] items-center gap-2 rounded-md bg-amber-600 px-5 text-sm font-semibold tracking-tight text-white shadow-xs transition-colors hover:bg-amber-500 focus:outline-hidden focus:ring-2 focus:ring-amber-500 focus:ring-offset-1">
                                 <x-lucide-refresh-cw class="h-4 w-4" aria-hidden="true" />
                                 Update report
                             </button>
                         </div>
-                    </div>
+                    </section>
                 </form>
             </div>
 

@@ -35,9 +35,14 @@ class BankAccountsWorkspaceController extends Controller
         ]);
     }
 
-    public function attachForm(BusinessEntity $businessEntity): JsonResponse
+    public function attachForm(Request $request, BusinessEntity $businessEntity): JsonResponse
     {
         $this->authorize('update', $businessEntity);
+
+        $defaultPurpose = $request->query('default_purpose');
+        if ($defaultPurpose && ! in_array($defaultPurpose, BankAccount::ENTITY_PURPOSES, true)) {
+            $defaultPurpose = BankAccount::PURPOSE_GENERAL;
+        }
 
         $portfolioBankAccounts = BankAccount::query()
             ->visibleInPortfolio()
@@ -56,6 +61,7 @@ class BankAccountsWorkspaceController extends Controller
                 'businessEntity' => $businessEntity,
                 'portfolioBankAccounts' => $portfolioBankAccounts,
                 'leasableAssets' => $this->bankAccountAssetLinkService->leasableAssetsForEntity($businessEntity),
+                'defaultPurpose' => $defaultPurpose ?: BankAccount::PURPOSE_GENERAL,
             ])->render(),
         ]);
     }

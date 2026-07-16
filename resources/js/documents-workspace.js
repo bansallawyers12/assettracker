@@ -284,9 +284,64 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
         function togglePreviewEmptyState(panel, showEmpty) {
             const empty = panel.querySelector('.doc-preview-empty');
+            const loading = panel.querySelector('.doc-preview-loading');
             const frame = panel.querySelector('.doc-cat-preview-frame');
             empty?.classList.toggle('hidden', !showEmpty);
+            loading?.classList.add('hidden');
             frame?.classList.toggle('hidden', showEmpty);
+        }
+
+        function clearPreviewLoadTimer(panel) {
+            if (!panel?._previewLoadTimer) {
+                return;
+            }
+            clearTimeout(panel._previewLoadTimer);
+            panel._previewLoadTimer = null;
+        }
+
+        function ensurePreviewLoadingEl(panel) {
+            let loading = panel.querySelector('.doc-preview-loading');
+            if (loading) {
+                return loading;
+            }
+
+            const body = panel.querySelector('.doc-preview-body');
+            if (!body) {
+                return null;
+            }
+
+            loading = document.createElement('div');
+            loading.className = 'doc-preview-loading hidden';
+            loading.setAttribute('aria-live', 'polite');
+            loading.setAttribute('aria-busy', 'true');
+            loading.innerHTML = `
+                <div class="doc-preview-spinner" aria-hidden="true"></div>
+                <p class="text-sm text-gray-600 dark:text-gray-300">Loading preview…</p>
+            `;
+            body.appendChild(loading);
+            return loading;
+        }
+
+        function showPreviewLoading(panel) {
+            const empty = panel.querySelector('.doc-preview-empty');
+            const loading = ensurePreviewLoadingEl(panel);
+            const frame = panel.querySelector('.doc-cat-preview-frame');
+
+            empty?.classList.add('hidden');
+            loading?.classList.remove('hidden');
+            frame?.classList.add('hidden');
+        }
+
+        function hidePreviewLoading(panel, { showFrame = true } = {}) {
+            const loading = panel.querySelector('.doc-preview-loading');
+            const frame = panel.querySelector('.doc-cat-preview-frame');
+
+            loading?.classList.add('hidden');
+            if (showFrame) {
+                frame?.classList.remove('hidden');
+            } else {
+                frame?.classList.add('hidden');
+            }
         }
 
         function setCategoryPanelPreview(panel, docId, assetScope) {
@@ -295,13 +350,47 @@ import { setRowUploading } from './workspace-upload-ui.js';
             const openBtn = panel.querySelector('.doc-cat-preview-open');
             const delBtn = panel.querySelector('.doc-cat-preview-del');
             const hint   = panel.querySelector('.doc-preview-hint');
-            const empty  = panel.querySelector('.doc-preview-empty');
             if (!docId || !frame || !dl) return;
 
             const scope = resolveAssetScope(assetScope, docId);
             const viewUrl = documentContentUrl(docId, false, scope);
+            const loadToken = (panel._previewLoadToken ?? 0) + 1;
+            panel._previewLoadToken = loadToken;
+            const loadStarted = performance.now();
+            const minLoaderMs = 300;
+
+            clearPreviewLoadTimer(panel);
+            frame.onload = null;
+            frame.onerror = null;
+            showPreviewLoading(panel);
+
+            const finishLoading = (showFrame = true) => {
+                if (loadToken !== panel._previewLoadToken) {
+                    return;
+                }
+
+                const wait = Math.max(0, minLoaderMs - (performance.now() - loadStarted));
+                clearPreviewLoadTimer(panel);
+                panel._previewLoadTimer = window.setTimeout(() => {
+                    panel._previewLoadTimer = null;
+                    if (loadToken !== panel._previewLoadToken) {
+                        return;
+                    }
+                    hidePreviewLoading(panel, { showFrame });
+                }, wait);
+            };
 
             frame.onload = () => {
+                if (loadToken !== panel._previewLoadToken) {
+                    return;
+                }
+
+                const currentSrc = frame.getAttribute('src') || frame.src || '';
+                if (!currentSrc || currentSrc === 'about:blank') {
+                    return;
+                }
+
+                finishLoading(true);
                 try {
                     const title = frame.contentDocument?.title ?? '';
                     const bodyText = frame.contentDocument?.body?.innerText ?? '';
@@ -314,8 +403,33 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 }
             };
 
-            frame.removeAttribute('src');
-            window.requestAnimationFrame(() => { frame.src = viewUrl; });
+            frame.onerror = () => {
+                if (loadToken !== panel._previewLoadToken) {
+                    return;
+                }
+
+                finishLoading(false);
+                togglePreviewEmptyState(panel, true);
+                showError('This file could not be previewed. Try downloading it instead.');
+            };
+
+            frame.src = 'about:blank';
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    if (loadToken !== panel._previewLoadToken) {
+                        return;
+                    }
+                    frame.src = viewUrl;
+                });
+            });
+
+            panel._previewLoadTimer = window.setTimeout(() => {
+                if (loadToken !== panel._previewLoadToken) {
+                    return;
+                }
+                finishLoading(true);
+            }, 15000);
+
             dl.href = documentContentUrl(docId, true, scope);
             dl.classList.remove('opacity-50', 'pointer-events-none');
             openBtn?.classList.remove('opacity-50', 'pointer-events-none');
@@ -323,9 +437,6 @@ import { setRowUploading } from './workspace-upload-ui.js';
             panel.dataset.previewDocId = String(docId);
             panel.dataset.previewViewUrl = viewUrl;
             panel.dataset.previewAssetScope = scope;
-            empty?.classList.add('hidden');
-            frame.classList.remove('hidden');
-            togglePreviewEmptyState(panel, false);
             hint?.classList.add('hidden');
             setPreviewRowActive(docId);
             saveSession();
@@ -333,15 +444,21 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
         function clearCategoryPanelPreview(panel) {
             if (!panel) return;
+            panel._previewLoadToken = (panel._previewLoadToken ?? 0) + 1;
+            clearPreviewLoadTimer(panel);
             const frame  = panel.querySelector('.doc-cat-preview-frame');
             const dl     = panel.querySelector('.doc-cat-preview-dl');
             const openBtn = panel.querySelector('.doc-cat-preview-open');
             const delBtn = panel.querySelector('.doc-cat-preview-del');
             const hint   = panel.querySelector('.doc-preview-hint');
+            const loading = panel.querySelector('.doc-preview-loading');
             if (frame) {
+                frame.onload = null;
+                frame.onerror = null;
                 frame.removeAttribute('src');
                 frame.classList.add('hidden');
             }
+            loading?.classList.add('hidden');
             if (dl)    { dl.href = '#'; dl.classList.add('opacity-50', 'pointer-events-none'); }
             openBtn?.classList.add('opacity-50', 'pointer-events-none');
             delBtn?.classList.add('opacity-50', 'pointer-events-none');

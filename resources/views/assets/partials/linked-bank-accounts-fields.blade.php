@@ -25,6 +25,7 @@
         'accounts' => $loanAccounts ?? [],
         'selectedId' => $selectedLoanBankAccountId ?? null,
         'createUrl' => $entityCreate(BankAccount::PURPOSE_LOAN),
+        'defaultAccountPurpose' => BankAccount::PURPOSE_LOAN,
         'businessEntity' => $businessEntity,
         'hint' => 'Loan / lender account for this property — BSB and account number used on reports.',
     ])
@@ -36,6 +37,7 @@
         'accounts' => $offsetAccounts ?? [],
         'selectedId' => $selectedOffsetBankAccountId ?? null,
         'createUrl' => $entityCreate(BankAccount::PURPOSE_OFFSET),
+        'defaultAccountPurpose' => BankAccount::PURPOSE_OFFSET,
         'businessEntity' => $businessEntity,
     ])
 
@@ -47,6 +49,7 @@
             'accounts' => $rentCollectionAccounts ?? [],
             'selectedId' => $selectedRentCollectionBankAccountId ?? null,
             'createUrl' => $entityCreate(BankAccount::PURPOSE_RENT_RECEIVING),
+            'defaultAccountPurpose' => BankAccount::PURPOSE_RENT_RECEIVING,
             'businessEntity' => $businessEntity,
             'showEntitySuffix' => true,
             'hint' => 'Where rent is deposited — use a rent receiving or general account across your portfolio.',
@@ -92,9 +95,48 @@
         refresh();
     });
 
-    window.addEventListener('bank-account-changed', function () {
-        window.location.reload();
+    window.addEventListener('bank-account-changed', function (event) {
+        const detail = event.detail || {};
+        const linkedAccounts = document.getElementById('linked-accounts');
+        if (!linkedAccounts || !detail.bankAccount?.id) {
+            return;
+        }
+
+        const selectId = detail.targetSelectId
+            || ({
+                loan: 'loan_bank_account_id',
+                offset: 'offset_bank_account_id',
+                rent_receiving: 'rent_collection_bank_account_id',
+            }[detail.bankAccount.purpose] || '');
+
+        if (selectId) {
+            applyBankAccountToPicker(selectId, detail.bankAccount);
+        }
     });
+
+    function applyBankAccountToPicker(selectId, account) {
+        const select = document.getElementById(selectId);
+        if (!select || !account?.id) {
+            return;
+        }
+
+        let option = select.querySelector('option[value="' + String(account.id) + '"]');
+        if (!option) {
+            option = document.createElement('option');
+            option.value = String(account.id);
+            option.textContent = account.label || ('Account #' + account.id);
+            if (account.edit_url) {
+                option.dataset.editUrl = account.edit_url;
+            }
+            if (account.edit_form_url) {
+                option.dataset.editFormUrl = account.edit_form_url;
+            }
+            select.appendChild(option);
+        }
+
+        select.value = String(account.id);
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    }
 
     const assetTypeEl = document.getElementById('asset_type');
     const rentRow = document.getElementById('rent-collection-row');
@@ -113,6 +155,10 @@
         }
         assetTypeEl.addEventListener('change', toggleRent);
         toggleRent();
+    }
+
+    if (window.location.hash === '#linked_accounts' || window.location.hash === '#linked-accounts') {
+        document.getElementById('linked-accounts')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 })();
 </script>

@@ -6,6 +6,7 @@
     'layout' => 'inline',
     'scopeStyle' => 'select',
     'entitySelectMode' => 'tom',
+    'orientation' => 'stacked',
 ])
 
 @php
@@ -17,6 +18,7 @@
     $formsEntityIds = array_values(array_map('intval', $formsEntityIds ?? []));
     $entityCount = $businessEntities->count();
     $isCard = $layout === 'card';
+    $isRow = $orientation === 'row';
     $isRadio = $scopeStyle === 'radio';
     $useSearchEntitySelect = in_array($entitySelectMode, ['search', 'native'], true);
     $entityOptions = $useSearchEntitySelect
@@ -30,7 +32,7 @@
 
 @if($businessEntities->isNotEmpty())
 <div
-    class="{{ $isCard ? 'space-y-4' : 'flex flex-col gap-2 w-full min-w-[14rem] sm:max-w-md' }}"
+    class="{{ $isCard ? 'space-y-4' : ($isRow ? 'w-full' : 'flex flex-col gap-2 w-full min-w-[14rem] sm:max-w-md') }}"
     data-report-entity-scope-picker
     data-entity-select-mode="{{ $entitySelectMode }}"
     x-data="{
@@ -121,7 +123,11 @@
         <h2 class="text-sm font-semibold text-gray-900 dark:text-white sr-only">Entity scope</h2>
     @endif
 
-    <div class="{{ $isCard ? 'space-y-4' : 'space-y-2' }}">
+    <div @class([
+        'space-y-4' => $isCard,
+        'space-y-2' => ! $isCard && ! $isRow,
+        'flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4' => $isRow && ! $isRadio,
+    ])>
         @if($isRadio)
             <label class="flex items-start gap-3 cursor-pointer group rounded-xl border border-transparent p-3 -mx-3 transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50 has-checked:border-indigo-200 dark:has-checked:border-indigo-800 has-checked:bg-indigo-50/50 dark:has-checked:bg-indigo-950/20">
                 <input type="radio" name="scope" value="all" x-model="scope"
@@ -247,23 +253,29 @@
                 </div>
             @endif
         @else
-            <div class="flex flex-col gap-1">
+            <div @class([
+                'flex flex-col gap-1',
+                'shrink-0 sm:min-w-[12rem]' => $isRow,
+            ])>
                 <label class="text-xs font-medium text-gray-600">Entity scope</label>
                 <select name="scope" x-model="scope"
-                        class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white min-w-[12rem]">
+                        class="border border-gray-300 rounded-md text-sm px-2.5 py-1.5 bg-white shadow-xs min-w-[12rem] focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
                     <option value="all">All reporting entities ({{ $entityCount }})</option>
                     <option value="selected">Selected entities…</option>
                 </select>
             </div>
 
-            <div class="flex flex-col gap-1 min-w-[14rem] sm:min-w-[18rem]"
+            <div @class([
+                'flex flex-col gap-1 min-w-[14rem] sm:min-w-[18rem]',
+                'flex-1 sm:min-w-[16rem]' => $isRow,
+            ])
                  :class="scope === 'selected' ? '' : 'opacity-50 pointer-events-none'">
                 <label class="text-xs font-medium text-gray-600">Entities</label>
                 <x-tom-select
                     multiple
                     name="entity_ids[]"
                     :disabled="$formsScope === 'all'"
-                    class="rounded-sm bg-white"
+                    class="rounded-md bg-white"
                 >
                     @foreach($businessEntities as $entity)
                         <option value="{{ $entity->id }}"

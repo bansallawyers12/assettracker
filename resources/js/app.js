@@ -1,6 +1,8 @@
 import './documents-workspace.js';
 import './compliance-workspace.js';
 import './entity-show-workspace.js';
+import './asset-show-workspace.js';
+import { initTenantFormFields } from './tenant-form-fields.js';
 import './person-show-workspace.js';
 import './admin-users-workspace.js';
 import './email-templates-workspace.js';
@@ -100,6 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initBankAccountModal();
     initBankAccountFormFields();
     initFinancialReportsHub();
+    initTenantFormFields();
 
     if (document.querySelector('[data-rich-text]')) {
         loadRichTextModule().then(exposeRichTextHelpers);

@@ -27,7 +27,7 @@ function isSelectInHiddenContainer(select) {
     let node = select;
 
     while (node && node !== document.body) {
-        if (node.classList?.contains('hidden')) {
+        if (node.classList?.contains('hidden') || node.hasAttribute?.('hidden')) {
             return true;
         }
 
@@ -110,6 +110,32 @@ function createTomSelect(select) {
     bindDropdownReposition(select, ts);
 
     return ts;
+}
+
+/** Initialize Tom Select even when inside a pane that was hidden at injection time. */
+export function forceActivateTomSelectsIn(root = document) {
+    if (!root?.querySelectorAll) {
+        return;
+    }
+
+    root.querySelectorAll('select[data-tomselect]').forEach((select) => {
+        if (select.dataset.tomselectSkip === 'true') {
+            return;
+        }
+
+        delete select.dataset.tomselectDeferred;
+        delete select.dataset.tomselectSkip;
+        destroyTomSelect(select);
+        createTomSelect(select);
+    });
+}
+
+export function scheduleForceActivateTomSelectsIn(root) {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            forceActivateTomSelectsIn(root);
+        });
+    });
 }
 
 function buildOptions(select) {
@@ -434,12 +460,21 @@ export function watchTomSelect() {
 
     const visibilityObserver = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
-            if (mutation.type !== 'attributes' || mutation.attributeName !== 'class') {
+            if (mutation.type !== 'attributes') {
+                continue;
+            }
+
+            const attr = mutation.attributeName;
+            if (attr !== 'class' && attr !== 'hidden') {
                 continue;
             }
 
             const target = mutation.target;
-            if (target.nodeType !== Node.ELEMENT_NODE || target.classList.contains('hidden')) {
+            if (target.nodeType !== Node.ELEMENT_NODE) {
+                continue;
+            }
+
+            if (target.classList?.contains('hidden') || target.hasAttribute('hidden')) {
                 continue;
             }
 
@@ -455,7 +490,7 @@ export function watchTomSelect() {
 
     visibilityObserver.observe(document.body, {
         attributes: true,
-        attributeFilter: ['class'],
+        attributeFilter: ['class', 'hidden'],
         subtree: true,
     });
 }

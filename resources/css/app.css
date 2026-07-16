@@ -82,7 +82,8 @@
 
   /* Shared date field — use via <x-date-input> or class="form-date-input" on input[type="date"] in JS */
   .form-date-input {
-    @apply border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-indigo-500 dark:focus:ring-indigo-500 rounded-xl shadow-xs text-sm w-full;
+    @apply border-gray-300 text-gray-900 placeholder:text-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-indigo-500 dark:focus:ring-indigo-500 rounded-xl shadow-xs text-sm w-full;
+    -webkit-text-fill-color: currentColor;
   }
 
   /* Bank account workspace forms — modals, slide-over panels, and full pages */
@@ -108,6 +109,82 @@
 
   select.bank-field-control {
     @apply pr-9;
+  }
+
+  /* Searchable bank workspace selects (attach-account form, etc.) */
+  .bank-search-select {
+    @apply relative w-full;
+  }
+
+  .bank-search-select-native {
+    @apply sr-only;
+  }
+
+  .bank-search-select-trigger {
+    @apply flex w-full items-center justify-between gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-left text-sm text-gray-900 shadow-xs transition-colors
+      hover:border-gray-400
+      focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none
+      disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 disabled:opacity-70
+      dark:border-gray-600 dark:bg-gray-900/50 dark:text-gray-100 dark:hover:border-gray-500
+      dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20
+      dark:disabled:bg-gray-900/30 dark:disabled:text-gray-500;
+  }
+
+  .bank-search-select-trigger.is-placeholder .bank-search-select-label {
+    @apply text-gray-400 dark:text-gray-500;
+  }
+
+  .bank-search-select-label {
+    @apply min-w-0 flex-1 truncate;
+  }
+
+  .bank-search-select-chevron {
+    @apply h-4 w-4 shrink-0 text-gray-400 dark:text-gray-500;
+  }
+
+  .bank-search-select-menu {
+    @apply overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg
+      dark:border-gray-600 dark:bg-gray-800;
+  }
+
+  .bank-search-select-search-wrap {
+    @apply border-b border-gray-100 p-2 dark:border-gray-700;
+  }
+
+  .bank-search-select-search {
+    @apply block w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900
+      placeholder:text-gray-400
+      focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none
+      dark:border-gray-600 dark:bg-gray-900/60 dark:text-gray-100 dark:placeholder:text-gray-500
+      dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20;
+  }
+
+  .bank-search-select-list {
+    @apply max-h-56 overflow-y-auto py-1;
+  }
+
+  .bank-search-select-option {
+    @apply cursor-pointer px-3 py-2 text-sm text-gray-800 hover:bg-indigo-50 hover:text-indigo-700
+      dark:text-gray-100 dark:hover:bg-gray-700 dark:hover:text-indigo-300;
+  }
+
+  .bank-search-select-option.is-selected {
+    @apply bg-indigo-50 font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300;
+  }
+
+  .bank-search-select-option.is-disabled {
+    @apply cursor-not-allowed text-gray-400 hover:bg-transparent hover:text-gray-400
+      dark:text-gray-500 dark:hover:bg-transparent dark:hover:text-gray-500;
+  }
+
+  .bank-search-select-empty {
+    @apply px-3 py-3 text-sm text-gray-500 dark:text-gray-400;
+  }
+
+  body > .bank-search-select-menu {
+    position: fixed !important;
+    z-index: 10050;
+    max-height: min(18rem, 50vh);
   }
 
   .bank-field-hint {
@@ -1011,7 +1088,21 @@
 }
 
 .documents-workspace .doc-preview-empty {
-    @apply absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 px-6 text-center;
+    @apply absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 px-6 text-center bg-gray-50 dark:bg-gray-800/60;
+}
+
+.documents-workspace .doc-preview-loading {
+    @apply absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 px-6 text-center bg-gray-50/95 dark:bg-gray-900/95;
+}
+
+.documents-workspace .doc-preview-spinner {
+    @apply h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin dark:border-indigo-900 dark:border-t-indigo-400;
+}
+
+.documents-workspace .doc-preview-empty.hidden,
+.documents-workspace .doc-preview-loading.hidden,
+.documents-workspace .doc-cat-preview-frame.hidden {
+    display: none !important;
 }
 
 .documents-workspace .doc-preview-empty-icon {
@@ -1019,7 +1110,7 @@
 }
 
 .documents-workspace .doc-cat-preview-frame {
-    @apply relative z-20 block h-full min-h-[320px] w-full border-0 bg-white dark:bg-gray-900;
+    @apply relative z-10 block h-full min-h-[320px] w-full border-0 bg-white dark:bg-gray-900;
 }
 
 .documents-workspace .doc-preview-actions {
@@ -1353,6 +1444,24 @@ input.flatpickr-input:focus {
     outline: 2px solid rgb(99 102 241 / 0.2);
     outline-offset: 0;
     --tw-ring-color: rgb(99 102 241);
+}
+
+input.flatpickr-input.form-date-input,
+input.form-date-input.flatpickr-input {
+    color: rgb(17 24 39);
+    -webkit-text-fill-color: currentColor;
+}
+
+input.flatpickr-input.form-date-input::placeholder,
+input.form-date-input.flatpickr-input::placeholder {
+    color: rgb(156 163 175);
+    -webkit-text-fill-color: rgb(156 163 175);
+}
+
+.dark input.flatpickr-input.form-date-input,
+.dark input.form-date-input.flatpickr-input {
+    color: rgb(229 231 235);
+    -webkit-text-fill-color: currentColor;
 }
 
 /* Keep the hidden Flatpickr source input out of layout/focus order */

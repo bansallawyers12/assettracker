@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesReportEntityScope;
 use App\Models\BusinessEntity;
+use App\Services\ComplianceYearService;
 use App\Services\FinancialReportService;
 use App\Support\FinancialYear;
 use Carbon\Carbon;
@@ -247,7 +248,7 @@ class FinancialReportController extends Controller
         return $this->trackingCategoriesHub($request);
     }
 
-    public function entitySummaryHub(Request $request)
+    public function entitySummaryHub(Request $request, ComplianceYearService $yearService)
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
@@ -261,15 +262,48 @@ class FinancialReportController extends Controller
             return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
         }
 
-        $fyStart = Carbon::parse($request->get('fy_start_date', FinancialYear::currentStart()->toDateString()))->toDateString();
-        $fyEnd = Carbon::parse($request->get('fy_end_date', FinancialYear::currentEnd()->toDateString()))->toDateString();
-        $periodStart = Carbon::parse($request->get('period_start_date', $fyStart))->toDateString();
-        $periodEnd = Carbon::parse($request->get('period_end_date', now()->toDateString()))->toDateString();
+        $availableYears = $yearService->listAvailableYears();
+        $defaultFyStart = FinancialYear::currentStart();
+
+        try {
+            $fyToCarbon = $request->filled('fy_to')
+                ? $yearService->normalizeFyStart(Carbon::parse($request->get('fy_to')))
+                : $defaultFyStart;
+        } catch (\Throwable) {
+            $fyToCarbon = $defaultFyStart;
+        }
+
+        try {
+            $fyFromCarbon = $request->filled('fy_from')
+                ? $yearService->normalizeFyStart(Carbon::parse($request->get('fy_from')))
+                : $fyToCarbon->copy();
+        } catch (\Throwable) {
+            $fyFromCarbon = $fyToCarbon->copy();
+        }
+
+        if ($fyFromCarbon->gt($fyToCarbon)) {
+            [$fyFromCarbon, $fyToCarbon] = [$fyToCarbon, $fyFromCarbon];
+        }
+
+        $fyPeriod = FinancialYear::forDate($fyToCarbon);
+        $fyStart = $fyPeriod['start']->toDateString();
+        $fyEnd = $fyPeriod['end']->toDateString();
+        $periodStart = $fyFromCarbon->toDateString();
+
+        try {
+            $periodEnd = Carbon::parse($request->get('period_end_date', now()))->startOfDay();
+        } catch (\Throwable) {
+            $periodEnd = now()->startOfDay();
+        }
+
+        if (Carbon::parse($periodStart)->gt($periodEnd)) {
+            $periodStart = $fyStart;
+        }
 
         $report = $this->financialReportService->generateEntitySummary(
             $entityIds,
             $periodStart,
-            $periodEnd,
+            $periodEnd->toDateString(),
             $fyStart,
             $fyEnd
         );
@@ -283,6 +317,11 @@ class FinancialReportController extends Controller
             'businessEntities',
             'formsScope',
             'formsEntityIds',
+            'availableYears',
+            'periodEnd',
+            'periodStart',
+            'fyFromCarbon',
+            'fyToCarbon',
         ));
     }
 }

@@ -139,6 +139,8 @@ class ComplianceReportService
      *     fy_to: string,
      *     fy_from_label: string,
      *     fy_to_label: string,
+     *     as_of_date: string,
+     *     as_of_date_label: string,
      *     total_entities: int,
      *     obligation_keys: list<string>,
      *     status_filter: string|null,
@@ -153,6 +155,7 @@ class ComplianceReportService
         Carbon|string|null $fyTo = null,
         ?array $obligationKeys = null,
         ?string $statusFilter = null,
+        Carbon|string|null $asOfDate = null,
     ): array {
         $fyFrom = FinancialYear::forDate(
             $fyFrom instanceof Carbon ? $fyFrom : ($fyFrom ? Carbon::parse($fyFrom) : FinancialYear::currentStart())
@@ -167,6 +170,9 @@ class ComplianceReportService
 
         $obligationKeys = $this->normalizeObligationKeys($obligationKeys);
         $statusFilter = $this->normalizeStatusFilter($statusFilter);
+        $asOfDate = $asOfDate instanceof Carbon
+            ? $asOfDate->copy()->startOfDay()
+            : ($asOfDate ? Carbon::parse($asOfDate)->startOfDay() : now()->startOfDay());
         $candidateTypes = $this->loadCandidateObligationTypes($obligationKeys);
 
         $entitiesQuery = BusinessEntity::query()
@@ -187,6 +193,7 @@ class ComplianceReportService
             return $this->emptyLodgementReport(
                 $fyFrom,
                 $fyTo,
+                $asOfDate,
                 $entities,
                 $obligationKeys,
                 $statusFilter,
@@ -223,8 +230,6 @@ class ComplianceReportService
                 ->keyBy(fn (ComplianceDocumentFile $f) => $f->compliance_year_record_id.'|'.$f->compliance_document_type_id);
         }
 
-        $today = now()->startOfDay();
-
         foreach ($entities as $entity) {
             $types = $this->filterTypesForEntity($candidateTypes, $obligationKeys, $entity);
             if ($types->isEmpty()) {
@@ -257,7 +262,7 @@ class ComplianceReportService
                         $entity
                     );
 
-                    $classified = $this->classifyLodgementRow($file, $today, $estimatedDue);
+                    $classified = $this->classifyLodgementRow($file, $asOfDate, $estimatedDue);
                     $counts[$classified['status']]++;
 
                     if ($statusFilter !== null && $classified['status'] !== $statusFilter) {
@@ -283,18 +288,16 @@ class ComplianceReportService
             }
         }
 
-        return [
-            'fy_from' => $fyFrom->toDateString(),
-            'fy_to' => $fyTo->toDateString(),
-            'fy_from_label' => FinancialYear::label($fyFrom),
-            'fy_to_label' => FinancialYear::label($fyTo),
-            'total_entities' => $entities->count(),
-            'obligation_keys' => $obligationKeys,
-            'status_filter' => $statusFilter,
-            'counts' => $counts,
-            'formation_date_warning' => $this->formationDateWarning($entities),
-            'rows' => $rows,
-        ];
+        return $this->buildLodgementReportPayload(
+            $fyFrom,
+            $fyTo,
+            $asOfDate,
+            $entities,
+            $obligationKeys,
+            $statusFilter,
+            $counts,
+            $rows
+        );
     }
 
     /**
@@ -501,6 +504,8 @@ class ComplianceReportService
      *     fy_to: string,
      *     fy_from_label: string,
      *     fy_to_label: string,
+     *     as_of_date: string,
+     *     as_of_date_label: string,
      *     total_entities: int,
      *     obligation_keys: list<string>,
      *     status_filter: string|null,
@@ -512,22 +517,67 @@ class ComplianceReportService
     private function emptyLodgementReport(
         Carbon $fyFrom,
         Carbon $fyTo,
+        Carbon $asOfDate,
         Collection $entities,
         array $obligationKeys,
         ?string $statusFilter,
         array $counts,
+    ): array {
+        return $this->buildLodgementReportPayload(
+            $fyFrom,
+            $fyTo,
+            $asOfDate,
+            $entities,
+            $obligationKeys,
+            $statusFilter,
+            $counts,
+            []
+        );
+    }
+
+    /**
+     * @param  Collection<int, BusinessEntity>  $entities
+     * @param  list<string>  $obligationKeys
+     * @param  array<string, int>  $counts
+     * @param  list<array<string, mixed>>  $rows
+     * @return array{
+     *     fy_from: string,
+     *     fy_to: string,
+     *     fy_from_label: string,
+     *     fy_to_label: string,
+     *     as_of_date: string,
+     *     as_of_date_label: string,
+     *     total_entities: int,
+     *     obligation_keys: list<string>,
+     *     status_filter: string|null,
+     *     counts: array<string, int>,
+     *     formation_date_warning: array{count: int},
+     *     rows: list<array<string, mixed>>
+     * }
+     */
+    private function buildLodgementReportPayload(
+        Carbon $fyFrom,
+        Carbon $fyTo,
+        Carbon $asOfDate,
+        Collection $entities,
+        array $obligationKeys,
+        ?string $statusFilter,
+        array $counts,
+        array $rows,
     ): array {
         return [
             'fy_from' => $fyFrom->toDateString(),
             'fy_to' => $fyTo->toDateString(),
             'fy_from_label' => FinancialYear::label($fyFrom),
             'fy_to_label' => FinancialYear::label($fyTo),
+            'as_of_date' => $asOfDate->toDateString(),
+            'as_of_date_label' => $asOfDate->format('j M Y'),
             'total_entities' => $entities->count(),
             'obligation_keys' => $obligationKeys,
             'status_filter' => $statusFilter,
             'counts' => $counts,
             'formation_date_warning' => $this->formationDateWarning($entities),
-            'rows' => [],
+            'rows' => $rows,
         ];
     }
 }

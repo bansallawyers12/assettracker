@@ -129,6 +129,7 @@ function syncAltInputAttributes(instance) {
     }
 
     altInput.placeholder = altInput.placeholder || input.placeholder || 'DD/MM/YYYY';
+    altInput.classList.add('text-gray-900');
 
     for (const attr of input.attributes) {
         const { name, value } = attr;

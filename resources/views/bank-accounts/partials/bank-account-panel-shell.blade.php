@@ -14,7 +14,7 @@
 >
     <div class="absolute inset-0 bg-slate-950/50 backdrop-blur-[1px]" data-bank-panel-backdrop></div>
 
-    <div class="absolute inset-y-0 right-0 flex w-full max-w-full sm:max-w-xl lg:max-w-2xl">
+    <div class="absolute inset-y-0 right-0 z-10 flex w-full max-w-full sm:max-w-xl lg:max-w-2xl">
         <div
             role="dialog"
             aria-modal="true"

@@ -6,6 +6,7 @@
     $selectedId = (string) ($selectedId ?? '');
     $businessEntity = $businessEntity ?? null;
     $usePanelActions = $usePanelActions ?? (bool) $businessEntity;
+    $defaultAccountPurpose = $defaultAccountPurpose ?? '';
 @endphp
 
 <div class="mb-4" data-bank-account-picker>
@@ -45,7 +46,8 @@
                     type="button"
                     data-open-add-bank-account
                     data-create-url="{{ $createUrl }}"
-                    data-bank-modal-tab="create"
+                    data-target-bank-select="{{ $selectId }}"
+                    @if($defaultAccountPurpose) data-default-account-purpose="{{ $defaultAccountPurpose }}" @endif
                     title="Add bank account"
                     class="inline-flex items-center justify-center w-9 h-9 rounded-md border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-800 dark:bg-green-950/40 dark:text-green-300 dark:hover:bg-green-900/50"
                 >

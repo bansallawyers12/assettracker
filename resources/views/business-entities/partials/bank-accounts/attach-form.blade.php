@@ -2,7 +2,7 @@
     use App\Models\BankAccount;
 
     $portfolioBankAccounts = $portfolioBankAccounts ?? collect();
-    $defaultPurpose = old('account_purpose', BankAccount::PURPOSE_GENERAL);
+    $defaultPurpose = old('account_purpose', $defaultPurpose ?? BankAccount::PURPOSE_GENERAL);
     $attachableAccounts = $portfolioBankAccounts->filter(
         fn (BankAccount $account) => $account->canReceiveEntityPurposeLinks()
     );
@@ -13,6 +13,9 @@
     action="{{ route('business-entities.bank-accounts.assign', $businessEntity) }}"
     id="assign-bank-account-form"
     class="bank-ws-form space-y-4"
+    @if(($defaultPurpose ?? BankAccount::PURPOSE_GENERAL) !== BankAccount::PURPOSE_GENERAL)
+        data-preset-purpose="{{ $defaultPurpose }}"
+    @endif
 >
     @csrf
     <input type="hidden" name="_bank_list_context" value="entity:{{ $businessEntity->id }}">
@@ -27,11 +30,12 @@
     @else
         <div class="bank-field">
             <label for="link_bank_account_id" class="bank-field-label">Portfolio account</label>
-            <x-tom-select
+            <select
                 name="bank_account_id"
                 id="link_bank_account_id"
-                minimal
-                :allowEmpty="true"
+                class="bank-field-control"
+                data-bank-search-select
+                data-search-placeholder="Search accounts…"
             >
                 <option value="">Search accounts…</option>
                 @foreach($portfolioBankAccounts as $account)
@@ -56,7 +60,7 @@
                         @endif
                     </option>
                 @endforeach
-            </x-tom-select>
+            </select>
             @error('bank_account_id')
                 <p class="bank-field-error">{{ $message }}</p>
             @enderror
@@ -68,7 +72,8 @@
                 name="account_purpose"
                 id="attach_account_purpose"
                 class="bank-field-control"
-                required
+                data-bank-search-select
+                data-search-placeholder="Search purposes…"
             >
                 @foreach(BankAccount::ENTITY_PURPOSES as $purpose)
                     <option value="{{ $purpose }}" @selected($defaultPurpose === $purpose)>
