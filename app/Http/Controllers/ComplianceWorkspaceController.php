@@ -444,6 +444,8 @@ class ComplianceWorkspaceController extends Controller
             ], 422);
         }
 
+        $normalized = $this->yearService->resolveApplicableFyStart($businessEntity, $normalized);
+
         $record = $this->yearService->findOrCreateYearRecord($businessEntity, $asset, $normalized);
 
         return response()->json([

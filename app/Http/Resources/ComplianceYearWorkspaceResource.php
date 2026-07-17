@@ -33,7 +33,7 @@ class ComplianceYearWorkspaceResource extends JsonResource
             'locked' => $this->isLocked(),
             'notes' => $this->notes,
             'completeness' => $yearService->completeness($this->resource),
-            'available_years' => $yearService->listAvailableYears(),
+            'available_years' => $yearService->listAvailableYears(null, $entity),
             'categories' => ComplianceCategoryResource::collection($categories)->resolve(),
         ];
     }

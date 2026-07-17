@@ -28,26 +28,85 @@ class ComplianceYearService
         private AtoDueDateService $atoDueDateService
     ) {}
 
+    /** Safety cap when walking back from the current FY to a formation date. */
+    private const MAX_FORMATION_SCOPED_YEARS = 100;
+
     /**
+     * FY options for pickers. Without an entity (or without an explicit formation date),
+     * returns the last N years. With a formation date, returns every FY from first
+     * applicable through the current year.
+     *
      * @return array<int, array{start: string, end: string, label: string}>
      */
-    public function listAvailableYears(?int $count = null): array
+    public function listAvailableYears(?int $count = null, ?BusinessEntity $entity = null): array
     {
         $count = $count ?? (int) config('compliance.years_shown', 10);
         $years = [];
         $cursor = FinancialYear::currentStart();
+        $minStart = ($entity !== null && $entity->hasExplicitFormationDate())
+            ? $entity->firstApplicableFyStart()
+            : null;
+
+        if ($minStart !== null) {
+            // Formation FY is after the current FY (bad/corrupt date) — keep the UI usable.
+            if ($cursor->lt($minStart)) {
+                return [$this->yearEntry($cursor)];
+            }
+
+            $guard = 0;
+            while ($cursor->gte($minStart) && $guard < self::MAX_FORMATION_SCOPED_YEARS) {
+                $years[] = $this->yearEntry($cursor);
+                $cursor = $cursor->copy()->subYear();
+                $guard++;
+            }
+
+            return $years;
+        }
 
         for ($i = 0; $i < $count; $i++) {
-            $period = FinancialYear::forDate($cursor);
-            $years[] = [
-                'start' => $period['start']->toDateString(),
-                'end' => $period['end']->toDateString(),
-                'label' => FinancialYear::label($period['start']),
-            ];
+            $years[] = $this->yearEntry($cursor);
             $cursor = $cursor->copy()->subYear();
         }
 
         return $years;
+    }
+
+    /**
+     * Clamp a requested FY start to one that applies for the entity.
+     * Pre-formation years snap to the first applicable FY; otherwise the
+     * normalized start is returned unchanged.
+     */
+    public function resolveApplicableFyStart(BusinessEntity $entity, Carbon|string $fyStart): Carbon
+    {
+        $normalized = $this->normalizeFyStart($fyStart);
+
+        if (! $entity->hasExplicitFormationDate()) {
+            return $normalized;
+        }
+
+        if ($entity->complianceAppliesForFinancialYear($normalized)) {
+            return $normalized;
+        }
+
+        $first = $entity->firstApplicableFyStart() ?? $normalized;
+        $current = FinancialYear::currentStart();
+
+        // Do not open a future FY if formation is after the current year.
+        return $first->gt($current) ? $current : $first;
+    }
+
+    /**
+     * @return array{start: string, end: string, label: string}
+     */
+    private function yearEntry(Carbon $cursor): array
+    {
+        $period = FinancialYear::forDate($cursor);
+
+        return [
+            'start' => $period['start']->toDateString(),
+            'end' => $period['end']->toDateString(),
+            'label' => FinancialYear::label($period['start']),
+        ];
     }
 
     public function normalizeFyStart(Carbon|string $fyStart): Carbon

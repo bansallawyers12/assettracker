@@ -28,6 +28,14 @@
             // keep defaults
         }
     }
+    // Keep the initial FY within the entity's formation-scoped range.
+    if ($businessEntity->hasExplicitFormationDate()) {
+        $firstFy = $businessEntity->firstApplicableFyStart();
+        if ($firstFy !== null && Carbon::parse($defaultFyStart)->lt($firstFy)) {
+            $defaultFyStart = $firstFy->toDateString();
+            $defaultFyLabel = FinancialYear::label($firstFy);
+        }
+    }
 @endphp
 
 <div id="{{ $prefix }}-workspace" class="compliance-workspace space-y-4"
