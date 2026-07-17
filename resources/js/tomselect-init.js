@@ -363,6 +363,27 @@ export function reinitTomSelect(select) {
     createTomSelect(el);
 }
 
+export function getSelectValue(select) {
+    const el = resolveSelect(select);
+    if (!el) {
+        return '';
+    }
+
+    if (el.tomselect) {
+        const raw = el.tomselect.getValue();
+
+        if (Array.isArray(raw)) {
+            const first = raw.find((value) => value !== '' && value !== null && value !== undefined);
+
+            return first !== undefined ? String(first) : '';
+        }
+
+        return raw !== null && raw !== undefined && raw !== '' ? String(raw) : '';
+    }
+
+    return el.value ?? '';
+}
+
 export function setSelectValue(select, value) {
     const el = resolveSelect(select);
     if (!el) {

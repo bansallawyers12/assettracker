@@ -346,6 +346,14 @@
                     recalc();
                 }));
             })();
+
+            const editForm = document.getElementById('bank-edit-transaction-form');
+            editForm?.addEventListener('submit', () => {
+                const assetSelect = editForm.querySelector('select[name="asset_id"]');
+                if (!assetSelect) return;
+                const value = window.getSelectValue?.(assetSelect) ?? assetSelect.value;
+                window.setSelectValue?.(assetSelect, value);
+            });
         });
     </script>
 </x-app-layout>

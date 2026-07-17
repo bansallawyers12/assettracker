@@ -17,6 +17,7 @@ import {
     refreshTomSelect,
     rebuildTomSelectFromNative,
     reinitTomSelect,
+    getSelectValue,
     setSelectValue,
     setSelectDisabled,
 } from './tomselect-init';
@@ -34,6 +35,7 @@ window.destroyTomSelect = destroyTomSelect;
 window.refreshTomSelect = refreshTomSelect;
 window.rebuildTomSelectFromNative = rebuildTomSelectFromNative;
 window.reinitTomSelect = reinitTomSelect;
+window.getSelectValue = getSelectValue;
 window.setSelectValue = setSelectValue;
 window.setSelectDisabled = setSelectDisabled;
 window.refreshTransactionPaidByBankAccount = refreshTransactionPaidByBankAccount;

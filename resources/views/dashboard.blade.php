@@ -872,10 +872,7 @@
                 transactionSection?.classList.remove('hidden');
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => {
-                        reinitTransactionTomSelects();
-                        if (typeof filterTypesByDirection === 'function') {
-                            filterTypesByDirection(getDirection());
-                        }
+                        afterTransactionFormVisible();
                     });
                 });
                 transactionSection?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -893,6 +890,75 @@
                 });
 
                 window.refreshTransactionPaidByBankAccount?.(form);
+            }
+
+            function readDashboardSelectValue(select) {
+                return window.getSelectValue?.(select) ?? select?.value ?? '';
+            }
+
+            function syncTransactionFormFromEntitySelect() {
+                if (!entitySelect) {
+                    return;
+                }
+
+                const entityId = readDashboardSelectValue(entitySelect);
+                const storeForm = document.getElementById('store-transaction-form');
+                const actionTemplate = storeForm?.dataset.storeActionTemplate;
+
+                if (entityId && storeForm && actionTemplate) {
+                    storeForm.action = actionTemplate.replace('__ID__', entityId);
+                }
+
+                const relatedSel = relatedEntityField ? relatedEntityField.querySelector('select') : null;
+                if (relatedSel) {
+                    Array.from(relatedSel.options).forEach(opt => {
+                        if (!opt.value) return;
+                        opt.disabled = String(opt.value) === String(entityId);
+                    });
+                }
+
+                if (transactionAssetSelect) {
+                    const keepValue = readDashboardSelectValue(transactionAssetSelect);
+
+                    Array.from(transactionAssetSelect.options).forEach(opt => {
+                        if (!opt.value) return;
+
+                        if (!entityId) {
+                            opt.hidden = false;
+                            opt.disabled = false;
+
+                            return;
+                        }
+
+                        const match = String(opt.dataset.entityId) === String(entityId);
+                        opt.hidden = !match;
+                        opt.disabled = !match;
+                    });
+
+                    if (entityId) {
+                        const stillValid = Array.from(transactionAssetSelect.options).some(
+                            o => String(o.value) === String(keepValue) && !o.disabled
+                        );
+
+                        if (keepValue && !stillValid) {
+                            window.setSelectValue(transactionAssetSelect, '');
+                        }
+                    }
+
+                    window.setSelectDisabled?.(transactionAssetSelect, !entityId);
+                    window.refreshTomSelect?.(transactionAssetSelect);
+                }
+
+                window.refreshTomSelect?.(relatedSel);
+            }
+
+            function afterTransactionFormVisible() {
+                reinitTransactionTomSelects();
+                syncTransactionFormFromEntitySelect();
+
+                if (typeof filterTypesByDirection === 'function') {
+                    filterTypesByDirection(getDirection());
+                }
             }
 
             if (transactionBtn && transactionSection) {
@@ -915,42 +981,15 @@
             }
 
             if (entitySelect) {
-                const storeForm = document.getElementById('store-transaction-form');
+                entitySelect.addEventListener('change', syncTransactionFormFromEntitySelect);
 
-                function syncTransactionFormFromEntitySelect() {
-                    const entityId = entitySelect.value;
-                    const actionTemplate = storeForm?.dataset.storeActionTemplate;
-                    if (entityId && storeForm && actionTemplate) {
-                        storeForm.action = actionTemplate.replace('__ID__', entityId);
-                    }
-                    const relatedSel = relatedEntityField ? relatedEntityField.querySelector('select') : null;
-                    if (relatedSel) {
-                        Array.from(relatedSel.options).forEach(opt => {
-                            if (!opt.value) return;
-                            opt.disabled = opt.value === entityId;
-                        });
-                    }
-                    if (transactionAssetSelect) {
-                        let keepValue = transactionAssetSelect.value;
-                        Array.from(transactionAssetSelect.options).forEach(opt => {
-                            if (!opt.value) return;
-                            const match = opt.dataset.entityId === entityId;
-                            opt.hidden = !match;
-                            opt.disabled = !match;
-                        });
-                        const stillValid = Array.from(transactionAssetSelect.options).some(
-                            o => o.value === keepValue && !o.disabled
-                        );
-                        if (!stillValid) {
-                            window.setSelectValue(transactionAssetSelect, '');
-                        }
-                        window.refreshTomSelect?.(transactionAssetSelect);
-                    }
-                    window.refreshTomSelect?.(relatedSel);
+                if (!transactionSection?.classList.contains('hidden')) {
+                    syncTransactionFormFromEntitySelect();
                 }
 
-                entitySelect.addEventListener('change', syncTransactionFormFromEntitySelect);
-                syncTransactionFormFromEntitySelect();
+                document.getElementById('store-transaction-form')?.addEventListener('submit', () => {
+                    syncTransactionFormFromEntitySelect();
+                });
             }
 
             (function initDashboardGstCalc() {
