@@ -306,6 +306,8 @@ class DocumentUploadService
             'webp' => 'image/webp',
             'svg' => 'image/svg+xml',
             'bmp' => 'image/bmp',
+            'heic' => 'image/heic',
+            'heif' => 'image/heif',
             'txt' => 'text/plain',
             'csv' => 'text/csv',
             default => 'application/octet-stream',

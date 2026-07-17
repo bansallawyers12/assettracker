@@ -10,6 +10,7 @@ use App\Models\DocumentCategory;
 use App\Services\ChecklistFilenameMatcher;
 use App\Services\DocumentUploadService;
 use App\Support\DocumentStorage;
+use App\Support\DocumentUploadValidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
@@ -23,12 +24,7 @@ class DocumentController extends Controller
 
     private function fileValidationRules(string $key = 'document'): array
     {
-        $max   = (int) config('documents.max_kilobytes', 10240);
-        $mimes = (string) config('documents.mimes', 'pdf');
-
-        return [
-            $key => "required|file|max:{$max}|mimes:{$mimes}",
-        ];
+        return DocumentUploadValidation::rules($key);
     }
 
     // ─── Single-file upload (entity-scoped) ───────────────────────────────────
@@ -228,6 +224,7 @@ class DocumentController extends Controller
 
         $uploaded = 0;
         $errors   = [];
+        $patchedDocuments = [];
 
         foreach ($files as $index => $file) {
             try {
@@ -315,6 +312,7 @@ class DocumentController extends Controller
 
                 $this->uploadService->attachFileToDocument($slot, $file, $businessEntity, $asset);
                 $uploaded++;
+                $patchedDocuments[] = (new DocumentSlotResource($slot->fresh()))->resolve();
             } catch (\Exception $e) {
                 $errors[] = ($file?->getClientOriginalName() ?? "file[$index]").': '.$e->getMessage();
                 Log::error('Bulk document upload row failed', ['error' => $e->getMessage()]);
@@ -322,10 +320,11 @@ class DocumentController extends Controller
         }
 
         return response()->json([
-            'status'   => $uploaded > 0,
-            'message'  => $uploaded > 0 ? "Uploaded {$uploaded} file(s)" : 'No files uploaded',
-            'uploaded' => $uploaded,
-            'errors'   => $errors,
+            'status'    => $uploaded > 0,
+            'message'   => $uploaded > 0 ? "Uploaded {$uploaded} file(s)" : 'No files uploaded',
+            'uploaded'  => $uploaded,
+            'errors'    => $errors,
+            'documents' => $patchedDocuments,
         ]);
     }
 
@@ -468,6 +467,8 @@ class DocumentController extends Controller
             'webp' => 'image/webp',
             'svg'  => 'image/svg+xml',
             'bmp'  => 'image/bmp',
+            'heic' => 'image/heic',
+            'heif' => 'image/heif',
             'txt'  => 'text/plain',
             'csv'  => 'text/csv',
         ];

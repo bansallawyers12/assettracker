@@ -75,6 +75,7 @@
                 <table class="min-w-full text-sm">
                     <thead class="bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
                         <tr>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Actions</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Date</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Entity</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Asset</th>
@@ -89,7 +90,6 @@
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Vendor</th>
                             <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300">Amount</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Matched</th>
-                            <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -102,6 +102,25 @@
                                 $txReceivedBy = $txDirection === 'income' ? $txCounterparty : $txVendor;
                             @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                                <td class="px-4 py-3">
+                                    <div class="inline-flex gap-2">
+                                        @if ($tx->businessEntity && $tx->bankAccount)
+                                            <a href="{{ route('business-entities.bank-accounts.transactions.show', [$tx->businessEntity, $tx->bankAccount, $tx]) }}"
+                                               class="inline-flex items-center px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900 dark:hover:bg-purple-800 dark:text-purple-200 rounded-sm text-xs font-medium transition-colors">
+                                                View
+                                            </a>
+                                        @endif
+                                        @if ($tx->businessEntity)
+                                            <a href="{{ route('business-entities.transactions.edit', [$tx->businessEntity, $tx]) }}"
+                                               class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs font-medium transition-colors">
+                                                Edit
+                                            </a>
+                                        @endif
+                                        @if (!$tx->businessEntity && !$tx->bankAccount)
+                                            <span class="text-gray-400">—</span>
+                                        @endif
+                                    </div>
+                                </td>
                                 <td class="px-4 py-3 whitespace-nowrap text-gray-700 dark:text-gray-300">
                                     {{ $tx->date?->format('d/m/Y') ?? '—' }}
                                 </td>
@@ -167,25 +186,6 @@
                                             Unmatched
                                         </span>
                                     @endif
-                                </td>
-                                <td class="px-4 py-3 text-right">
-                                    <div class="inline-flex gap-2 justify-end">
-                                        @if ($tx->businessEntity && $tx->bankAccount)
-                                            <a href="{{ route('business-entities.bank-accounts.transactions.show', [$tx->businessEntity, $tx->bankAccount, $tx]) }}"
-                                               class="inline-flex items-center px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900 dark:hover:bg-purple-800 dark:text-purple-200 rounded-sm text-xs font-medium transition-colors">
-                                                View
-                                            </a>
-                                        @endif
-                                        @if ($tx->businessEntity)
-                                            <a href="{{ route('business-entities.transactions.edit', [$tx->businessEntity, $tx]) }}"
-                                               class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs font-medium transition-colors">
-                                                Edit
-                                            </a>
-                                        @endif
-                                        @if (!$tx->businessEntity && !$tx->bankAccount)
-                                            <span class="text-gray-400">—</span>
-                                        @endif
-                                    </div>
                                 </td>
                             </tr>
                         @empty

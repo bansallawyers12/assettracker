@@ -286,9 +286,11 @@ import { setRowUploading } from './workspace-upload-ui.js';
             const empty = panel.querySelector('.doc-preview-empty');
             const loading = panel.querySelector('.doc-preview-loading');
             const frame = panel.querySelector('.doc-cat-preview-frame');
+            const img = panel.querySelector('.doc-cat-preview-image');
             empty?.classList.toggle('hidden', !showEmpty);
             loading?.classList.add('hidden');
             frame?.classList.toggle('hidden', showEmpty);
+            img?.classList.toggle('hidden', showEmpty);
         }
 
         function clearPreviewLoadTimer(panel) {
@@ -332,16 +334,42 @@ import { setRowUploading } from './workspace-upload-ui.js';
             frame?.classList.add('hidden');
         }
 
-        function hidePreviewLoading(panel, { showFrame = true } = {}) {
+        function hidePreviewLoading(panel, { showFrame = true, showImage = false } = {}) {
             const loading = panel.querySelector('.doc-preview-loading');
             const frame = panel.querySelector('.doc-cat-preview-frame');
+            const img = panel.querySelector('.doc-cat-preview-image');
 
             loading?.classList.add('hidden');
-            if (showFrame) {
-                frame?.classList.remove('hidden');
-            } else {
-                frame?.classList.add('hidden');
+            frame?.classList.toggle('hidden', !showFrame);
+            img?.classList.toggle('hidden', !showImage);
+        }
+
+        function previewFileNameForDoc(docId) {
+            const btn = root.querySelector(`tr[data-slot-row="${docId}"] .doc-preview`);
+
+            return btn?.dataset?.name || btn?.title || btn?.textContent?.trim() || '';
+        }
+
+        function isImagePreviewFile(name) {
+            return /\.(jpe?g|png|gif|webp|bmp|svg|heic|heif)$/i.test(name || '');
+        }
+
+        function ensurePreviewImageEl(panel) {
+            const body = panel.querySelector('.doc-preview-body');
+            let img = panel.querySelector('.doc-cat-preview-image');
+            if (!img && body) {
+                img = document.createElement('img');
+                img.className = 'doc-cat-preview-image hidden';
+                img.alt = 'Document preview';
+                body.appendChild(img);
             }
+
+            return img;
+        }
+
+        function hidePreviewMedia(panel) {
+            panel.querySelector('.doc-cat-preview-frame')?.classList.add('hidden');
+            panel.querySelector('.doc-cat-preview-image')?.classList.add('hidden');
         }
 
         function setCategoryPanelPreview(panel, docId, assetScope) {
@@ -354,6 +382,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
             const scope = resolveAssetScope(assetScope, docId);
             const viewUrl = documentContentUrl(docId, false, scope);
+            const fileName = previewFileNameForDoc(docId);
             const loadToken = (panel._previewLoadToken ?? 0) + 1;
             panel._previewLoadToken = loadToken;
             const loadStarted = performance.now();
@@ -364,7 +393,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
             frame.onerror = null;
             showPreviewLoading(panel);
 
-            const finishLoading = (showFrame = true) => {
+            const finishLoading = ({ showFrame = false, showImage = false } = {}) => {
                 if (loadToken !== panel._previewLoadToken) {
                     return;
                 }
@@ -376,9 +405,52 @@ import { setRowUploading } from './workspace-upload-ui.js';
                     if (loadToken !== panel._previewLoadToken) {
                         return;
                     }
-                    hidePreviewLoading(panel, { showFrame });
+                    hidePreviewLoading(panel, { showFrame, showImage });
                 }, wait);
             };
+
+            dl.href = documentContentUrl(docId, true, scope);
+            dl.classList.remove('opacity-50', 'pointer-events-none');
+            openBtn?.classList.remove('opacity-50', 'pointer-events-none');
+            delBtn?.classList.remove('opacity-50', 'pointer-events-none');
+            panel.dataset.previewDocId = String(docId);
+            panel.dataset.previewViewUrl = viewUrl;
+            panel.dataset.previewAssetScope = scope;
+            hint?.classList.add('hidden');
+            setPreviewRowActive(docId);
+            saveSession();
+
+            if (isImagePreviewFile(fileName)) {
+                const img = ensurePreviewImageEl(panel);
+                if (!img) {
+                    return;
+                }
+
+                img.onload = () => {
+                    if (loadToken !== panel._previewLoadToken) {
+                        return;
+                    }
+                    finishLoading({ showImage: true });
+                };
+                img.onerror = () => {
+                    if (loadToken !== panel._previewLoadToken) {
+                        return;
+                    }
+                    hidePreviewMedia(panel);
+                    togglePreviewEmptyState(panel, true);
+                    showError('This image could not be previewed. Try downloading it instead.');
+                };
+                img.src = viewUrl;
+
+                panel._previewLoadTimer = window.setTimeout(() => {
+                    if (loadToken !== panel._previewLoadToken) {
+                        return;
+                    }
+                    finishLoading({ showImage: true });
+                }, 15000);
+
+                return;
+            }
 
             frame.onload = () => {
                 if (loadToken !== panel._previewLoadToken) {
@@ -390,7 +462,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
                     return;
                 }
 
-                finishLoading(true);
+                finishLoading({ showFrame: true });
                 try {
                     const title = frame.contentDocument?.title ?? '';
                     const bodyText = frame.contentDocument?.body?.innerText ?? '';
@@ -408,7 +480,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
                     return;
                 }
 
-                finishLoading(false);
+                finishLoading({ showFrame: false });
                 togglePreviewEmptyState(panel, true);
                 showError('This file could not be previewed. Try downloading it instead.');
             };
@@ -427,19 +499,8 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 if (loadToken !== panel._previewLoadToken) {
                     return;
                 }
-                finishLoading(true);
+                finishLoading({ showFrame: true });
             }, 15000);
-
-            dl.href = documentContentUrl(docId, true, scope);
-            dl.classList.remove('opacity-50', 'pointer-events-none');
-            openBtn?.classList.remove('opacity-50', 'pointer-events-none');
-            delBtn?.classList.remove('opacity-50', 'pointer-events-none');
-            panel.dataset.previewDocId = String(docId);
-            panel.dataset.previewViewUrl = viewUrl;
-            panel.dataset.previewAssetScope = scope;
-            hint?.classList.add('hidden');
-            setPreviewRowActive(docId);
-            saveSession();
         }
 
         function clearCategoryPanelPreview(panel) {
@@ -457,6 +518,13 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 frame.onerror = null;
                 frame.removeAttribute('src');
                 frame.classList.add('hidden');
+            }
+            const img = panel.querySelector('.doc-cat-preview-image');
+            if (img) {
+                img.onload = null;
+                img.onerror = null;
+                img.removeAttribute('src');
+                img.classList.add('hidden');
             }
             loading?.classList.add('hidden');
             if (dl)    { dl.href = '#'; dl.classList.add('opacity-50', 'pointer-events-none'); }
@@ -484,8 +552,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
         function patchRowAfterUpload(docId, doc) {
             const tr = root.querySelector(`tr[data-slot-row="${docId}"]`);
             if (!tr) {
-                showError('Could not update the row. Switch tabs and try again.');
-                return;
+                return false;
             }
 
             const assetScope = doc.asset_id ?? doc.assetScope ?? '';
@@ -519,6 +586,33 @@ import { setRowUploading } from './workspace-upload-ui.js';
             if (panel) {
                 const btn = tr.querySelector('.doc-preview');
                 if (btn) setCategoryPanelPreview(panel, docId, assetScope);
+            }
+
+            return true;
+        }
+
+        function applyBulkUploadDocument(doc, categoryId) {
+            const docId = doc?.id;
+            if (!docId) return;
+
+            if (patchRowAfterUpload(docId, doc)) {
+                return;
+            }
+
+            const catId = categoryId || activeCategoryId;
+            const panel = root.querySelector(`.doc-cat-panel[data-category-panel="${catId}"]`);
+            const tbody = panel?.querySelector('tbody');
+            if (!tbody) {
+                return;
+            }
+
+            tbody.insertAdjacentHTML('beforeend', buildSlotRow(doc, fileAccept));
+
+            if (workspaceCategories) {
+                const cat = workspaceCategories.find(c => String(c.id) === String(catId));
+                if (cat) {
+                    cat.documents = [...(cat.documents || []), doc];
+                }
             }
         }
 
@@ -594,7 +688,12 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
                 if (!j)                               { alertHttpError(r.status); return; }
                 if (!r.ok)                            { alertValidationErrors(j) || showError(j.message || 'Upload failed.'); return; }
-                if (j.status && j.document)           { patchRowAfterUpload(docId, j.document); return; }
+                if (j.status && j.document)           {
+                    if (!patchRowAfterUpload(docId, j.document)) {
+                        showError('Could not update the row. Switch tabs and try again.');
+                    }
+                    return;
+                }
                 if (j.status)                         { showSuccess(j.message || 'Document uploaded.'); return; }
                 alertValidationErrors(j) || showError(j.message || 'Upload failed.');
             } catch (_) {
@@ -882,8 +981,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
         let   bulkCategoryId = null;
 
         bulkBtn?.addEventListener('click', () => {
-            const active = root.querySelector('.doc-cat-tab.bg-indigo-600');
-            bulkCategoryId = active?.dataset.categoryId ?? null;
+            bulkCategoryId = activeCategoryId;
             if (!bulkCategoryId) { showError('Select a category tab first.'); return; }
             if (bulkFiles) bulkFiles.value = '';
             if (bulkMap)   bulkMap.innerHTML = '';
@@ -913,10 +1011,19 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 });
             }
 
-            const payload = { category_id: bulkCategoryId, files: Array.from(files).map(f => ({ name: f.name })) };
-            const r = await api(autoMatchUrl, { method: 'POST', body: JSON.stringify(payload) });
-            const j = await r.json();
-            const matches = j.matches || {};
+            let matches = {};
+            try {
+                const payload = { category_id: bulkCategoryId, files: Array.from(files).map(f => ({ name: f.name })) };
+                const r = await api(autoMatchUrl, { method: 'POST', body: JSON.stringify(payload) });
+                const j = await r.json();
+                if (!r.ok) {
+                    alertValidationErrors(j) || showError(j.message || 'Could not match filenames to checklist rows.');
+                } else {
+                    matches = j.matches || {};
+                }
+            } catch (_) {
+                showError('Could not match filenames to checklist rows. You can still map files manually.');
+            }
 
             Array.from(files).forEach((file, i) => {
                 const m          = matches[file.name];
@@ -1020,12 +1127,27 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 if (xhr.status === 413) { showError('File is too large for the server upload limit.'); return; }
                 const res = parseJson(xhr.responseText);
                 if (!res) { showError('Upload failed.'); return; }
+                if (xhr.status >= 400) {
+                    alertValidationErrors(res) || showError(res.message || 'Upload failed.');
+                    return;
+                }
+
                 modal?.classList.add('hidden');
+
                 if (res.documents?.length) {
-                    res.documents.forEach(doc => patchRowAfterUpload(doc.id, doc));
-                    if (res.message) showSuccess(res.message);
+                    res.documents.forEach(doc => applyBulkUploadDocument(doc, bulkCategoryId));
+                    if (res.errors?.length) {
+                        showWorkspaceAlert({
+                            title: 'Partial upload',
+                            message: [res.message, 'Errors:', ...res.errors].filter(Boolean).join('\n'),
+                        });
+                    } else if (res.message) {
+                        showSuccess(res.message);
+                    }
                 } else if (res.uploaded > 0) {
                     if (res.message) showSuccess(res.message);
+                    saveSession();
+                    location.reload();
                 } else {
                     const parts = [res.message, ...(res.errors?.length ? ['Errors:\n' + res.errors.join('\n')] : [])];
                     showError(parts.filter(Boolean).join('\n\n') || 'Upload failed.');

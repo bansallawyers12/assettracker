@@ -1101,8 +1101,13 @@
 
 .documents-workspace .doc-preview-empty.hidden,
 .documents-workspace .doc-preview-loading.hidden,
-.documents-workspace .doc-cat-preview-frame.hidden {
+.documents-workspace .doc-cat-preview-frame.hidden,
+.documents-workspace .doc-cat-preview-image.hidden {
     display: none !important;
+}
+
+.documents-workspace .doc-cat-preview-image {
+    @apply relative z-10 mx-auto block max-h-full max-w-full object-contain bg-white dark:bg-gray-900;
 }
 
 .documents-workspace .doc-preview-empty-icon {

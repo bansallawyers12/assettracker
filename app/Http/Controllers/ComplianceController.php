@@ -10,6 +10,7 @@ use App\Models\ComplianceDocumentFile;
 use App\Services\ComplianceFilenameMatcher;
 use App\Services\ComplianceUploadService;
 use App\Support\DocumentStorage;
+use App\Support\DocumentUploadValidation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -22,12 +23,7 @@ class ComplianceController extends Controller
 
     private function fileValidationRules(string $key = 'document'): array
     {
-        $max   = (int) config('compliance.max_kilobytes', 10240);
-        $mimes = (string) config('compliance.mimes', 'pdf');
-
-        return [
-            $key => "required|file|max:{$max}|mimes:{$mimes}",
-        ];
+        return DocumentUploadValidation::rules($key, 'compliance.mimes', 'compliance.max_kilobytes');
     }
 
     public function upload(Request $request, BusinessEntity $businessEntity, ComplianceDocumentFile $complianceFile)
