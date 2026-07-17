@@ -61,6 +61,21 @@ function resolveDropdownParent(select) {
     return null;
 }
 
+/**
+ * Tom Select positionDropdown() adds window.scrollY/X for position:absolute on body.
+ * App CSS uses position:fixed on body > .ts-dropdown (see app.css), so we must use
+ * viewport coordinates from getBoundingClientRect() instead.
+ */
+function positionBodyDropdownFixed(ts) {
+    const rect = ts.control.getBoundingClientRect();
+
+    Object.assign(ts.dropdown.style, {
+        width: `${rect.width}px`,
+        top: `${rect.bottom}px`,
+        left: `${rect.left}px`,
+    });
+}
+
 function scheduleDropdownReposition(ts) {
     ts.positionDropdown();
     requestAnimationFrame(() => {
@@ -107,6 +122,11 @@ function bindDropdownReposition(select, ts) {
 
 function createTomSelect(select) {
     const ts = new TomSelect(select, buildOptions(select));
+
+    if (ts.settings.dropdownParent === 'body') {
+        ts.positionDropdown = () => positionBodyDropdownFixed(ts);
+    }
+
     bindDropdownReposition(select, ts);
 
     return ts;
