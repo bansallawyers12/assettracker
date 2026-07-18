@@ -2,6 +2,9 @@
 
 @import 'tailwindcss';
 
+/* Light theme only — ignore OS/browser dark mode (prefers-color-scheme). */
+@variant dark (false);
+
 @plugin '@tailwindcss/forms';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
@@ -22,6 +25,7 @@
   html {
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
     text-rendering: optimizeLegibility;
+    color-scheme: light;
   }
 
   /* Closed slide-over panels must never intercept the first page click. */
@@ -750,7 +754,7 @@
   [data-au-addr-mount] gmp-place-autocomplete {
     display: block;
     width: 100%;
-    color-scheme: light dark;
+    color-scheme: light;
   }
 
   .dark [data-au-addr-mount] gmp-place-autocomplete {
@@ -1385,35 +1389,6 @@
     background: rgb(55 65 81);
 }
 
-@media (prefers-color-scheme: dark) {
-    .ts-wrapper.single .ts-control,
-    .ts-wrapper.multi .ts-control {
-        border-color: rgb(75 85 99);
-        background: rgb(55 65 81);
-        color: rgb(243 244 246);
-    }
-
-    .ts-wrapper.single .ts-control input,
-    .ts-wrapper.multi .ts-control input {
-        color: rgb(243 244 246);
-    }
-
-    .ts-dropdown {
-        border-color: rgb(75 85 99);
-        background: rgb(31 41 55);
-        color: rgb(243 244 246);
-    }
-
-    .ts-dropdown .active {
-        background: rgb(55 65 81);
-        color: rgb(165 180 252);
-    }
-
-    .ts-dropdown .option:hover {
-        background: rgb(55 65 81);
-    }
-}
-
 /* Tiptap rich text editor */
 .rich-text-editor .ProseMirror {
     min-height: inherit;
@@ -1688,38 +1663,6 @@ input[data-flatpickr-source] {
     z-index: 40;
     width: auto;
     min-width: 100%;
-}
-
-@media (prefers-color-scheme: dark) {
-    .bank-ws-form .ts-wrapper.single .ts-control,
-    .bank-ws-form .ts-wrapper.multi .ts-control {
-        border-color: rgb(75 85 99);
-        background-color: rgb(17 24 39 / 0.5);
-        color: rgb(243 244 246);
-    }
-
-    .bank-ws-form .ts-wrapper.single .ts-control:focus-within,
-    .bank-ws-form .ts-wrapper.multi .ts-control:focus-within {
-        border-color: rgb(129 140 248);
-        outline-color: rgb(129 140 248 / 0.2);
-    }
-
-    .bank-ws-form .ts-wrapper.single .ts-control .ts-placeholder {
-        color: rgb(107 114 128);
-    }
-
-    .bank-account-panel-sheet .ts-dropdown,
-    .entity-workspace-panel-sheet .ts-dropdown {
-        border-color: rgb(75 85 99);
-        background-color: rgb(31 41 55);
-        color: rgb(243 244 246);
-    }
-
-    .bank-account-panel-sheet .ts-dropdown .active,
-    .entity-workspace-panel-sheet .ts-dropdown .active {
-        background: rgb(55 65 81);
-        color: rgb(165 180 252);
-    }
 }
 
 .tom-select-native {
