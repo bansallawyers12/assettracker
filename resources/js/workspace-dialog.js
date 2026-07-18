@@ -3,6 +3,7 @@
  */
 
 import { markOverlayPanelClosed, markOverlayPanelOpen } from './overlay-panels.js';
+import { showToast } from './notify.js';
 
 let dialogRoot = null;
 
@@ -234,12 +235,25 @@ export function showWorkspaceAlert({
     message = '',
     variant = 'error',
     confirmText = 'OK',
+    modal = false,
 } = {}) {
     const defaultTitles = {
         error: 'Something went wrong',
         success: 'Success',
         info: 'Notice',
     };
+
+    if (!modal) {
+        const type = variant === 'success' ? 'success' : variant === 'info' ? 'info' : 'error';
+        const body = String(message || '').trim() || String(title || '').trim() || defaultTitles[type];
+        const toastTitle = String(message || '').trim()
+            ? (title || defaultTitles[type])
+            : undefined;
+
+        showToast(body, type, toastTitle ? { title: toastTitle } : {});
+
+        return Promise.resolve(true);
+    }
 
     const confirmClasses = {
         error: 'inline-flex items-center justify-center rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500',

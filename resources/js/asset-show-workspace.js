@@ -12,6 +12,7 @@ import {
     setWorkspacePanelContent,
     showInlineFormErrors,
     submitWorkspaceForm,
+    notifyFormFailure,
 } from './workspace-panel.js';
 import { initTenantFormFields } from './tenant-form-fields.js';
 
@@ -53,13 +54,7 @@ function ensurePanelFormHandlers() {
             event.preventDefault();
             const result = await submitWorkspaceForm(form, { onSuccess });
             if (!result.ok && result.payload) {
-                showInlineFormErrors(form, result.payload);
-                if (form.querySelector('[data-ws-form-errors]')?.classList.contains('hidden')) {
-                    showWorkspaceAlert({
-                        title: 'Validation failed',
-                        message: result.payload.message || 'Please check the form.',
-                    });
-                }
+                notifyFormFailure(form, result.payload);
             }
             return;
         }

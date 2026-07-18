@@ -11,6 +11,8 @@ import {
     setWorkspacePanelContent,
     showInlineFormErrors,
     submitWorkspaceForm,
+    notifyFormFailure,
+    notifyFormSuccess,
 } from './workspace-panel.js';
 
 function alertHttpError(status, payload) {
@@ -195,23 +197,13 @@ export function initAdminUsersWorkspace(root) {
         }
 
         if (!result.ok) {
-            showInlineFormErrors(form, result.payload);
-            if (form.querySelector('[data-ws-form-errors]')?.classList.contains('hidden')) {
-                showWorkspaceAlert({
-                    title: 'Validation failed',
-                    message: result.payload?.message || 'Please check the form.',
-                });
-            }
+            notifyFormFailure(form, result.payload);
             return;
         }
 
         closeWorkspacePanel();
         await refreshList(result.payload?.list_html);
-        showWorkspaceAlert({
-            title: 'Success',
-            message: result.payload?.message || 'Saved successfully.',
-            variant: 'success',
-        });
+        notifyFormSuccess(result.payload?.message || 'Saved successfully.', 'User saved');
     });
 }
 

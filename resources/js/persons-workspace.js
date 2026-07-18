@@ -2,6 +2,7 @@
  * Persons workspace — in-tab SPA using shared entity panel.
  */
 import { destroyTomSelect, reinitTomSelect } from './tomselect-init.js';
+import { notifyFormFailure, notifyFormSuccess } from './workspace-panel.js';
 
 function isSelectInVisibleSection(select, root) {
     let node = select;
@@ -190,23 +191,13 @@ export function initPersonsWorkspace(root, deps) {
         const result = await submitWorkspaceForm(form);
 
         if (!result.ok) {
-            showInlineFormErrors(form, result.payload);
-            if (!form.querySelector('[data-ws-form-errors]') || form.querySelector('[data-ws-form-errors]')?.classList.contains('hidden')) {
-                showWorkspaceAlert({
-                    title: 'Validation failed',
-                    message: result.payload?.message || 'Please check the form.',
-                });
-            }
+            notifyFormFailure(form, result.payload);
             return;
         }
 
         closeWorkspacePanel();
         await refreshList();
-        showWorkspaceAlert({
-            title: 'Success',
-            message: result.payload?.message || 'Saved successfully.',
-            variant: 'success',
-        });
+        notifyFormSuccess(result.payload?.message || 'Saved successfully.', 'Person saved');
     });
 }
 

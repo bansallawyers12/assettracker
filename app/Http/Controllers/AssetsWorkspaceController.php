@@ -14,6 +14,16 @@ class AssetsWorkspaceController extends Controller
         private AssetController $assetController
     ) {}
 
+    public static function listHtml(BusinessEntity $businessEntity): string
+    {
+        $assets = $businessEntity->assets()->orderBy('name')->get();
+
+        return view('business-entities.partials.assets.list', [
+            'businessEntity' => $businessEntity,
+            'assets' => $assets,
+        ])->render();
+    }
+
     public function index(BusinessEntity $businessEntity): JsonResponse
     {
         $this->authorize('view', $businessEntity);
@@ -23,10 +33,7 @@ class AssetsWorkspaceController extends Controller
         return response()->json([
             'status' => true,
             'assets' => AssetResource::collection($assets)->resolve(),
-            'list_html' => view('business-entities.partials.assets.list', [
-                'businessEntity' => $businessEntity,
-                'assets' => $assets,
-            ])->render(),
+            'list_html' => self::listHtml($businessEntity),
         ]);
     }
 

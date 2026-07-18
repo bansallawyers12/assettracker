@@ -11,6 +11,8 @@ import {
     setWorkspacePanelContent,
     showInlineFormErrors,
     submitWorkspaceForm,
+    notifyFormFailure,
+    notifyFormSuccess,
 } from './workspace-panel.js';
 
 function alertHttpError(status, payload) {
@@ -133,23 +135,13 @@ export function initPersonsIndexWorkspace(root) {
         }
 
         if (!result.ok) {
-            showInlineFormErrors(form, result.payload);
-            if (form.querySelector('[data-ws-form-errors]')?.classList.contains('hidden')) {
-                showWorkspaceAlert({
-                    title: 'Validation failed',
-                    message: result.payload?.message || 'Please check the form.',
-                });
-            }
+            notifyFormFailure(form, result.payload);
             return;
         }
 
         closeWorkspacePanel();
         await refreshWorkspace(result.payload);
-        showWorkspaceAlert({
-            title: 'Person created',
-            message: result.payload?.message || 'Person created successfully.',
-            variant: 'success',
-        });
+        notifyFormSuccess(result.payload?.message || 'Person created successfully.', 'Person created');
     });
 }
 

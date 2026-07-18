@@ -12,6 +12,8 @@ import {
     setWorkspacePanelContent,
     showInlineFormErrors,
     submitWorkspaceForm,
+    notifyFormFailure,
+    notifyFormSuccess,
 } from './workspace-panel.js';
 
 function alertHttpError(status) {
@@ -195,23 +197,13 @@ export function initPersonShowWorkspace(root) {
             const result = await submitWorkspaceForm(roleForm);
 
             if (!result.ok) {
-                showInlineFormErrors(roleForm, result.payload);
-                if (!roleForm.querySelector('[data-ws-form-errors]') || roleForm.querySelector('[data-ws-form-errors]')?.classList.contains('hidden')) {
-                    showWorkspaceAlert({
-                        title: 'Validation failed',
-                        message: result.payload?.message || 'Please check the form.',
-                    });
-                }
+                notifyFormFailure(roleForm, result.payload);
                 return;
             }
 
             closeWorkspacePanel();
             await refreshRoles();
-            showWorkspaceAlert({
-                title: 'Success',
-                message: result.payload?.message || 'Role saved successfully.',
-                variant: 'success',
-            });
+            notifyFormSuccess(result.payload?.message || 'Role saved successfully.', 'Role saved');
         }
     });
 }

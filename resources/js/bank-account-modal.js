@@ -9,8 +9,9 @@ import {
     closeWorkspacePanel,
     isWorkspaceFormSaving,
     parseJson,
-    showInlineFormErrors,
     submitWorkspaceForm,
+    notifyFormFailure,
+    notifyFormSuccess,
 } from './workspace-panel.js';
 import { destroyTomSelectsIn, scheduleActivateTomSelectsIn } from './tomselect-init';
 import {
@@ -297,24 +298,13 @@ export function initBankAccountModal() {
     }
 
     function handleBankAccountSaved(payload, { title, message }) {
-        const assetPickerRoot = document.getElementById('linked-accounts');
         const pickerDetail = {
             bankAccount: payload?.bank_account,
             targetSelectId: pendingTargetSelectId,
         };
 
         notifyBankAccountChange(pickerDetail);
-
-        if (assetPickerRoot) {
-            window.showToast?.(message || payload?.message || 'Bank account saved.', 'success');
-            return;
-        }
-
-        showWorkspaceAlert({
-            title,
-            message: message || payload?.message || 'Bank account saved successfully.',
-            variant: 'success',
-        });
+        notifyFormSuccess(message || payload?.message || 'Bank account saved.', title || 'Account saved');
     }
 
     function bindAttachForm(root, signal) {
@@ -454,7 +444,7 @@ export function initBankAccountModal() {
             });
 
             if (!result.ok) {
-                showInlineFormErrors(form, result.payload);
+                notifyFormFailure(form, result.payload);
             }
         }, { signal });
     }
@@ -517,7 +507,7 @@ export function initBankAccountModal() {
             });
 
             if (!result.ok) {
-                showInlineFormErrors(form, result.payload);
+                notifyFormFailure(form, result.payload);
             }
         }, { signal });
     }
@@ -675,19 +665,12 @@ export function initBankAccountModal() {
             const payload = parseJson(await response.text());
 
             if (!response.ok) {
-                showWorkspaceAlert({
-                    title: 'Could not delete',
-                    message: payload?.message || 'Please try again.',
-                });
+                notifyFormFailure(null, payload, { title: 'Could not delete' });
                 return;
             }
 
             await refreshBankList(payload.list_html);
-            showWorkspaceAlert({
-                title: 'Deleted',
-                message: payload.message || 'Bank account deleted.',
-                variant: 'success',
-            });
+            notifyFormSuccess(payload.message || 'Bank account deleted.', 'Deleted');
         }
     });
 

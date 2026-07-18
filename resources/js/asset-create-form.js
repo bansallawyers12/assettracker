@@ -1,8 +1,7 @@
 /**
  * Full-page asset create form — AJAX submit, collapsible sections, asset type toggles.
  */
-import { showToast } from './notify.js';
-import { showInlineFormErrors, submitWorkspaceForm } from './workspace-panel.js';
+import { notifyFormFailure, notifyFormSuccess, submitWorkspaceForm } from './workspace-panel.js';
 
 function initCollapsibleSections(root) {
     root.querySelectorAll('[data-section-target]').forEach((button) => {
@@ -86,26 +85,12 @@ function initAssetCreateForm(form) {
         });
 
         if (!result.ok) {
-            const messages = showInlineFormErrors(form, result.payload);
-
-            if (messages.length) {
-                scrollToFirstError(form);
-            } else {
-                showToast(
-                    result.payload?.message || 'Could not save asset. Please check the form.',
-                    'error',
-                    { title: 'Validation failed' },
-                );
-            }
-
+            notifyFormFailure(form, result.payload);
+            scrollToFirstError(form);
             return;
         }
 
-        showToast(
-            result.payload?.message || 'Asset created successfully.',
-            'success',
-            { title: 'Asset created' },
-        );
+        notifyFormSuccess(result.payload?.message || 'Asset created successfully.', 'Asset created');
     });
 }
 

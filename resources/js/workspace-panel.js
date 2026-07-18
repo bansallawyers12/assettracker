@@ -4,6 +4,7 @@
 
 import { markOverlayPanelClosed, markOverlayPanelOpen } from './overlay-panels.js';
 import { hideFormSaving, isFormSaving, showFormSaving } from './form-saving-ui.js';
+import { showToast } from './notify.js';
 import { destroyTomSelectsIn } from './tomselect-init.js';
 
 let panelRoot = null;
@@ -183,6 +184,25 @@ export function showInlineFormErrors(form, payload, errorSelector = '[data-ws-fo
     errorBox.innerHTML = `<ul class="list-disc pl-4 space-y-1">${messages.map((msg) => `<li>${String(msg).replace(/</g, '&lt;')}</li>`).join('')}</ul>`;
     errorBox.classList.remove('hidden');
     return messages;
+}
+
+export function notifyFormSuccess(message, title = 'Success') {
+    showToast(
+        String(message || 'Saved successfully.').trim(),
+        'success',
+        { title },
+    );
+}
+
+export function notifyFormFailure(form, payload, { title = 'Validation failed' } = {}) {
+    const messages = form ? showInlineFormErrors(form, payload) : [];
+    const flat = payload?.errors ? Object.values(payload.errors).flat() : [];
+    const all = messages.length ? messages : flat;
+    const body = all[0] || payload?.message || 'Could not save. Please check the form.';
+
+    showToast(body, 'error', { title });
+
+    return all;
 }
 
 export async function submitWorkspaceForm(form, { onSuccess, savingLabel } = {}) {

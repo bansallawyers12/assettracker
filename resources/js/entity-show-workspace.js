@@ -11,6 +11,8 @@ import {
     setWorkspacePanelContent,
     showInlineFormErrors,
     submitWorkspaceForm,
+    notifyFormFailure,
+    notifyFormSuccess,
 } from './workspace-panel.js';
 import { initPersonsWorkspace } from './persons-workspace.js';
 
@@ -51,13 +53,7 @@ function ensurePanelFormHandlers() {
             event.preventDefault();
             const result = await submitWorkspaceForm(form, { onSuccess });
             if (!result.ok && result.payload) {
-                showInlineFormErrors(form, result.payload);
-                if (form.querySelector('[data-ws-form-errors]')?.classList.contains('hidden')) {
-                    showWorkspaceAlert({
-                        title: 'Validation failed',
-                        message: result.payload.message || 'Please check the form.',
-                    });
-                }
+                notifyFormFailure(form, result.payload);
             }
             return;
         }
@@ -76,19 +72,27 @@ function initAssetsWorkspace(root) {
     const listEl = root.querySelector('[data-assets-list]');
     const addBtn = root.querySelector('[data-assets-add-btn]');
 
-    async function refreshList() {
-        const response = await apiFetch(workspaceUrl);
-        const payload = parseJson(await response.text());
-        if (!response.ok || !payload?.list_html) {
-            alertHttpError(response.status);
-            return;
+    async function refreshList(html, assets) {
+        if (listEl && html) {
+            listEl.innerHTML = html;
+        } else {
+            const response = await apiFetch(workspaceUrl);
+            const payload = parseJson(await response.text());
+            if (!response.ok || !payload?.list_html) {
+                return false;
+            }
+            if (listEl) {
+                listEl.innerHTML = payload.list_html;
+            }
+            assets = payload.assets;
         }
-        if (listEl) {
-            listEl.innerHTML = payload.list_html;
-        }
+
         if (addBtn) {
-            addBtn.classList.toggle('hidden', !(payload.assets?.length > 0));
+            const assetCount = Array.isArray(assets) ? assets.length : 0;
+            addBtn.classList.toggle('hidden', assetCount === 0);
         }
+
+        return true;
     }
 
     async function loadForm(url, title) {
@@ -157,10 +161,10 @@ function initAssetsWorkspace(root) {
         panel.addEventListener('click', handleAssetsClick);
     }
 
-    registerPanelFormHandler('.assets-ws-form', async () => {
+    registerPanelFormHandler('.assets-ws-form', async (payload) => {
         closeWorkspacePanel();
-        await refreshList();
-        showWorkspaceAlert({ title: 'Success', message: 'Asset saved successfully.', variant: 'success' });
+        await refreshList(payload.list_html, payload.assets);
+        notifyFormSuccess(payload?.message || 'Asset saved successfully.', 'Asset saved');
     });
 }
 
@@ -234,7 +238,7 @@ function initNotesWorkspace(root) {
         });
 
         if (!result.ok) {
-            showInlineFormErrors(form, result.payload);
+            notifyFormFailure(form, result.payload);
         }
     });
 }
@@ -314,7 +318,7 @@ function initContactsWorkspace(root) {
     registerPanelFormHandler('.contacts-ws-form', async (payload) => {
         closeWorkspacePanel();
         await refreshList(payload.list_html);
-        showWorkspaceAlert({ title: 'Success', message: payload.message || 'Contact saved.', variant: 'success' });
+        notifyFormSuccess(payload.message || 'Contact saved.', 'Contact saved');
     });
 }
 
@@ -368,7 +372,7 @@ function initProfileWorkspace(pageRoot) {
             }
         }
 
-        showWorkspaceAlert({ title: 'Success', message: payload.message || 'Profile updated.', variant: 'success' });
+        notifyFormSuccess(payload.message || 'Profile updated.', 'Profile updated');
     });
 }
 

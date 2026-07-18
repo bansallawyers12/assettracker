@@ -129,11 +129,14 @@ class AssetController extends Controller
 
         if ($request->expectsJson()) {
             $asset->refresh();
+            $assets = $businessEntity->assets()->orderBy('name')->get();
 
             return response()->json([
                 'status' => true,
                 'message' => 'Asset created successfully.',
                 'asset' => (new \App\Http\Resources\AssetResource($asset))->resolve(),
+                'assets' => \App\Http\Resources\AssetResource::collection($assets)->resolve(),
+                'list_html' => AssetsWorkspaceController::listHtml($businessEntity),
             ]);
         }
 
@@ -250,11 +253,14 @@ class AssetController extends Controller
 
         if ($request->expectsJson()) {
             $asset->refresh();
+            $assets = $businessEntity->assets()->orderBy('name')->get();
 
             return response()->json([
                 'status' => true,
                 'message' => 'Asset updated successfully.',
                 'asset' => (new \App\Http\Resources\AssetResource($asset))->resolve(),
+                'assets' => \App\Http\Resources\AssetResource::collection($assets)->resolve(),
+                'list_html' => AssetsWorkspaceController::listHtml($businessEntity),
             ]);
         }
 
