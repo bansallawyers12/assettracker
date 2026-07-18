@@ -129,7 +129,8 @@ function syncAltInputAttributes(instance) {
     }
 
     altInput.placeholder = altInput.placeholder || input.placeholder || 'DD/MM/YYYY';
-    altInput.classList.add('text-gray-900');
+    altInput.classList.add('text-gray-900', 'dark:text-gray-100');
+    altInput.style.webkitTextFillColor = 'currentColor';
 
     for (const attr of input.attributes) {
         const { name, value } = attr;

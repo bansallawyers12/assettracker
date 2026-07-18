@@ -11,15 +11,26 @@
 @endphp
 
 @if (filled($googlePlacesKey))
-    {{-- Hidden input: form POST always includes the address (gmp-place-autocomplete often does not). --}}
+    {{-- Hidden input: form POST always includes the address. --}}
     <input type="hidden" name="{{ $name }}" id="{{ $hiddenId }}" value="{{ $value }}" />
+
+    <input
+        type="text"
+        id="{{ $fieldId }}"
+        value="{{ $value }}"
+        autocomplete="street-address"
+        placeholder="Start typing an address"
+        data-au-addr-visible
+        data-hidden-id="{{ $hiddenId }}"
+        {{ $attributes->except(['required', 'name'])->merge(['class' => 'au-address-visible-input']) }}
+    />
 
     <div
         data-au-addr-mount
         data-field-id="{{ $fieldId }}"
         data-hidden-id="{{ $hiddenId }}"
+        data-visible-id="{{ $fieldId }}"
         data-initial='@json($value)'
-        {{ $attributes->except('required') }}
     ></div>
 @else
     <input
@@ -27,7 +38,9 @@
         name="{{ $name }}"
         id="{{ $fieldId }}"
         value="{{ $value }}"
+        placeholder="Start typing an address"
         {{ $attributes->merge([
+            'class' => 'au-address-visible-input',
             'autocomplete' => 'street-address',
         ]) }}
     />
@@ -37,17 +50,49 @@
     @push('scripts')
         <script>
             document.addEventListener(
+                'input',
+                function (ev) {
+                    var visible = ev.target.closest('[data-au-addr-visible]');
+                    if (!visible) {
+                        return;
+                    }
+
+                    var hid = document.getElementById(visible.dataset.hiddenId);
+                    if (hid) {
+                        hid.value = visible.value || '';
+                    }
+                },
+                true
+            );
+
+            document.addEventListener(
                 'submit',
                 function (ev) {
                     var form = ev.target;
                     if (!form || form.tagName !== 'FORM') {
                         return;
                     }
+
+                    form.querySelectorAll('[data-au-addr-visible]').forEach(function (visible) {
+                        var hid = document.getElementById(visible.dataset.hiddenId);
+                        if (hid) {
+                            hid.value = visible.value || '';
+                        }
+                    });
+
                     form.querySelectorAll('[data-au-addr-mount]').forEach(function (div) {
                         var hid = document.getElementById(div.dataset.hiddenId);
+                        var visible = document.getElementById(div.dataset.visibleId);
                         var gmp = div.querySelector('gmp-place-autocomplete');
-                        if (hid && gmp) {
-                            hid.value = gmp.value || '';
+                        var value = visible?.value || gmp?.value || '';
+
+                        if (visible && gmp?.value) {
+                            visible.value = gmp.value;
+                            value = gmp.value;
+                        }
+
+                        if (hid) {
+                            hid.value = value;
                         }
                     });
                 },
@@ -80,10 +125,17 @@
                             return;
                         }
 
-                        function syncHidden(div, gmp) {
+                        function syncAddressFields(div, gmp) {
                             var hid = document.getElementById(div.dataset.hiddenId);
-                            if (hid && gmp) {
-                                hid.value = gmp.value || '';
+                            var visible = document.getElementById(div.dataset.visibleId);
+                            var value = gmp?.value || visible?.value || '';
+
+                            if (visible && value) {
+                                visible.value = value;
+                            }
+
+                            if (hid) {
+                                hid.value = value;
                             }
                         }
 
@@ -101,20 +153,18 @@
                                 initial = '';
                             }
 
-                            // Do not set `name` on the widget — the hidden input is the submit target.
-                            // Do not use HTML `required` on the widget — it can block submit with no visible error.
                             var el = new PlaceAutocompleteElement({
                                 includedRegionCodes: ['au'],
-                                placeholder: 'Enter a location',
+                                placeholder: 'Search with Google Places (optional)',
                             });
-                            el.id = fieldId;
+                            el.id = fieldId + '_gmp';
                             if (initial) {
                                 el.value = initial;
                             }
-                            syncHidden(div, el);
+                            syncAddressFields(div, el);
 
                             el.addEventListener('input', function () {
-                                syncHidden(div, el);
+                                syncAddressFields(div, el);
                             });
 
                             el.addEventListener('gmp-select', async function (event) {
@@ -133,7 +183,7 @@
                                 } catch (err) {
                                     console.error('Place fetchFields failed', err);
                                 }
-                                syncHidden(div, el);
+                                syncAddressFields(div, el);
                             });
 
                             div.appendChild(el);

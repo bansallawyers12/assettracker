@@ -39,6 +39,7 @@ function workspaceUrl(root) {
 function initFormPlugins(root) {
     window.initFlatpickr?.(root);
     window.initTomSelect?.(root);
+    window.redrawFlatpickr?.(root);
     requestAnimationFrame(() => {
         requestAnimationFrame(() => {
             document.dispatchEvent(new CustomEvent('au:address:refresh'));

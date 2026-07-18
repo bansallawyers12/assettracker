@@ -240,6 +240,58 @@
     @apply mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400;
   }
 
+  /* Asset create / edit collapsible sections */
+  .asset-form-section {
+    @apply overflow-hidden rounded-xl border border-gray-200/80 bg-white shadow-xs
+      dark:border-gray-700/80 dark:bg-gray-900/40;
+  }
+
+  .asset-form-section-header {
+    @apply flex w-full items-center justify-between gap-3 px-4 py-3.5 text-left sm:px-5;
+  }
+
+  .asset-form-section-header--static {
+    @apply border-b border-gray-200/80 bg-gray-50/80
+      dark:border-gray-700/80 dark:bg-gray-800/40;
+  }
+
+  .asset-form-section-toggle {
+    @apply cursor-pointer border-0 bg-gray-50/80 transition-colors
+      hover:bg-gray-100/90
+      dark:bg-gray-800/40 dark:hover:bg-gray-800/70;
+  }
+
+  .asset-form-section-icon {
+    @apply flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-100 text-indigo-700
+      dark:bg-indigo-950/50 dark:text-indigo-300;
+  }
+
+  .asset-form-section-chevron {
+    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-lg leading-none text-gray-400
+      dark:text-gray-500;
+  }
+
+  .asset-form-section-body {
+    @apply border-t border-gray-200/80 px-4 py-4 sm:px-5 sm:py-5
+      dark:border-gray-700/80;
+  }
+
+  .asset-form-section-body--open {
+    @apply block;
+  }
+
+  .asset-form-section-body--flush {
+    @apply border-t-0 px-0 py-0 sm:px-0 sm:py-0;
+  }
+
+  .asset-form-section-body--flush #linked-accounts {
+    @apply mt-0 border-t-0 pt-0;
+  }
+
+  .asset-form-section-body--flush #linked-accounts > h4:first-child {
+    @apply sr-only;
+  }
+
   .bank-form-actions {
     @apply flex flex-wrap items-center justify-end gap-2 border-t border-gray-200 pt-4
       dark:border-gray-700;
@@ -663,14 +715,46 @@
     max-width: 96rem !important; /* 1536px, wider than default 80rem */
   }
 
+  .bank-ws-form input.flatpickr-input,
+  .bank-ws-form input.form-date-input.flatpickr-input,
+  .entity-workspace-panel-sheet input.flatpickr-input,
+  .entity-workspace-panel-sheet input.form-date-input.flatpickr-input {
+    @apply text-gray-900 dark:text-gray-100;
+    -webkit-text-fill-color: currentColor;
+  }
+
+  .bank-ws-form input.flatpickr-input::placeholder,
+  .entity-workspace-panel-sheet input.flatpickr-input::placeholder {
+    @apply text-gray-400 dark:text-gray-500;
+    -webkit-text-fill-color: currentColor;
+  }
+
   /* Google PlaceAutocompleteElement (new Places widget) */
+  .au-address-field {
+    @apply space-y-2;
+  }
+
+  .au-address-visible-input {
+    @apply block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-xs transition-colors
+      placeholder:text-gray-400
+      focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-none
+      dark:border-gray-600 dark:bg-gray-900/50 dark:text-gray-100 dark:placeholder:text-gray-500
+      dark:focus:border-indigo-400 dark:focus:ring-indigo-400/20;
+    -webkit-text-fill-color: currentColor;
+  }
+
   .au-address-field [data-au-addr-mount] {
-    @apply block w-full min-h-[2.75rem] rounded-lg border border-gray-300 bg-white px-1 py-1 shadow-xs dark:border-gray-600 dark:bg-gray-900/50;
+    @apply block w-full min-h-[2.75rem] rounded-lg border border-dashed border-gray-300 bg-white/80 px-1 py-1 shadow-xs dark:border-gray-600 dark:bg-gray-900/50;
   }
 
   [data-au-addr-mount] gmp-place-autocomplete {
     display: block;
     width: 100%;
+    color-scheme: light dark;
+  }
+
+  .dark [data-au-addr-mount] gmp-place-autocomplete {
+    color: rgb(243 244 246);
   }
 
   /* Business entity page polish */

@@ -9,6 +9,7 @@ import './person-show-workspace.js';
 import './admin-users-workspace.js';
 import './email-templates-workspace.js';
 import './entity-create-form.js';
+import './asset-create-form.js';
 import { initBankAccountModal } from './bank-account-modal.js';
 import { initBankAccountFormFields } from './bank-form-fields.js';
 import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput, setDateInputRequired, setDateInputDisabled, setDateInputValue, getDateInputValue, queryDateInput, formatLocalYmd } from './flatpickr-init';
