@@ -7,6 +7,7 @@ import { showWorkspaceAlert, showWorkspaceConfirm } from './workspace-dialog.js'
 import {
     apiFetch,
     closeWorkspacePanel,
+    isWorkspaceFormSaving,
     parseJson,
     showInlineFormErrors,
     submitWorkspaceForm,
@@ -213,6 +214,10 @@ export function initBankAccountModal() {
     }
 
     function closeBankPanel() {
+        if (isWorkspaceFormSaving()) {
+            return;
+        }
+
         panelOpen = false;
         destroyTomSelectsIn(createHost);
         resetAttachHostPlaceholder();
@@ -235,7 +240,7 @@ export function initBankAccountModal() {
     });
 
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && panelOpen) {
+        if (event.key === 'Escape' && panelOpen && !isWorkspaceFormSaving()) {
             event.preventDefault();
             closeBankPanel();
         }

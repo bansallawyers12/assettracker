@@ -10,6 +10,88 @@ let panelTitleEl = null;
 let panelBodyEl = null;
 let panelOpen = false;
 let onCloseCallback = null;
+let activeFormSaves = 0;
+
+const PANEL_SHEET_SELECTOR = '.entity-workspace-panel-sheet, .bank-account-panel-sheet';
+
+export function isWorkspaceFormSaving() {
+    return activeFormSaves > 0;
+}
+
+function resolveFormSavingHost(form) {
+    return form.closest(PANEL_SHEET_SELECTOR) || form;
+}
+
+function savingLabelForForm(form) {
+    if (form.dataset.savingLabel) {
+        return form.dataset.savingLabel;
+    }
+
+    return form.dataset.mode === 'edit' ? 'Updating…' : 'Saving…';
+}
+
+function ensureFormSavingOverlay(host) {
+    let overlay = host.querySelector(':scope > [data-ws-form-saving-overlay]');
+    if (overlay) {
+        return overlay;
+    }
+
+    if (getComputedStyle(host).position === 'static') {
+        host.classList.add('relative');
+    }
+
+    overlay = document.createElement('div');
+    overlay.dataset.wsFormSavingOverlay = '1';
+    overlay.className = 'workspace-form-saving-overlay hidden';
+    overlay.setAttribute('aria-live', 'polite');
+    overlay.innerHTML = `
+        <div class="workspace-form-saving-inner">
+            <div class="workspace-form-saving-spinner" aria-hidden="true"></div>
+            <p class="workspace-form-saving-label" data-ws-form-saving-label>Saving…</p>
+        </div>
+    `;
+    host.appendChild(overlay);
+
+    return overlay;
+}
+
+function showWorkspaceFormSaving(form) {
+    activeFormSaves += 1;
+
+    const host = resolveFormSavingHost(form);
+    const overlay = ensureFormSavingOverlay(host);
+    const labelEl = overlay.querySelector('[data-ws-form-saving-label]');
+    if (labelEl) {
+        labelEl.textContent = savingLabelForForm(form);
+    }
+
+    overlay.classList.remove('hidden');
+    overlay.setAttribute('aria-busy', 'true');
+    form.setAttribute('aria-busy', 'true');
+
+    form.querySelectorAll('input:not([type="hidden"]), select, textarea, button').forEach((el) => {
+        if (el.dataset.wsSavingPrevDisabled === undefined) {
+            el.dataset.wsSavingPrevDisabled = el.disabled ? '1' : '0';
+        }
+        el.disabled = true;
+    });
+}
+
+function hideWorkspaceFormSaving(form) {
+    const host = resolveFormSavingHost(form);
+    const overlay = host.querySelector(':scope > [data-ws-form-saving-overlay]');
+    overlay?.classList.add('hidden');
+    overlay?.setAttribute('aria-busy', 'false');
+    form.removeAttribute('aria-busy');
+
+    form.querySelectorAll('input:not([type="hidden"]), select, textarea, button').forEach((el) => {
+        const wasDisabled = el.dataset.wsSavingPrevDisabled === '1';
+        delete el.dataset.wsSavingPrevDisabled;
+        el.disabled = wasDisabled;
+    });
+
+    activeFormSaves = Math.max(0, activeFormSaves - 1);
+}
 
 function ensurePanel() {
     if (panelRoot) {
@@ -24,7 +106,13 @@ function ensurePanel() {
     panelTitleEl = panelRoot.querySelector('[data-entity-panel-title]');
     panelBodyEl = panelRoot.querySelector('[data-entity-panel-body]');
 
-    panelRoot.querySelector('[data-entity-panel-backdrop]')?.addEventListener('click', () => closeWorkspacePanel());
+    panelRoot.querySelector('[data-entity-panel-backdrop]')?.addEventListener('click', () => {
+        if (isWorkspaceFormSaving()) {
+            return;
+        }
+
+        closeWorkspacePanel();
+    });
 
     if (panelRoot.dataset.closeHandlersBound !== '1') {
         panelRoot.dataset.closeHandlersBound = '1';
@@ -34,13 +122,17 @@ function ensurePanel() {
                 return;
             }
 
+            if (isWorkspaceFormSaving()) {
+                return;
+            }
+
             event.preventDefault();
             closeWorkspacePanel();
         });
     }
 
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && panelOpen) {
+        if (event.key === 'Escape' && panelOpen && !isWorkspaceFormSaving()) {
             event.preventDefault();
             closeWorkspacePanel();
         }
@@ -65,6 +157,7 @@ export function openWorkspacePanel(title, html = null) {
     if (html !== null && panelBodyEl) {
         destroyTomSelectsIn(panelBodyEl);
         panelBodyEl.innerHTML = html;
+        document.dispatchEvent(new CustomEvent('au:address:refresh'));
     } else if (panelBodyEl) {
         destroyTomSelectsIn(panelBodyEl);
         panelBodyEl.innerHTML = '<div class="flex items-center justify-center py-16 text-sm text-gray-500 dark:text-gray-400">Loading…</div>';
@@ -78,6 +171,7 @@ export function setWorkspacePanelContent(html) {
     if (panelBodyEl) {
         destroyTomSelectsIn(panelBodyEl);
         panelBodyEl.innerHTML = html;
+        document.dispatchEvent(new CustomEvent('au:address:refresh'));
     }
 }
 
@@ -88,7 +182,7 @@ export function setWorkspacePanelTitle(title) {
 }
 
 export function closeWorkspacePanel() {
-    if (!panelRoot) {
+    if (!panelRoot || isWorkspaceFormSaving()) {
         return;
     }
 
@@ -170,17 +264,25 @@ export function showInlineFormErrors(form, payload, errorSelector = '[data-ws-fo
     return messages;
 }
 
-export async function submitWorkspaceForm(form, { onSuccess } = {}) {
-    const submitBtn = form.querySelector('[type="submit"][data-ws-submit], [data-ws-submit]');
-    submitBtn?.setAttribute('disabled', 'disabled');
+export async function submitWorkspaceForm(form, { onSuccess, savingLabel } = {}) {
+    if (savingLabel) {
+        form.dataset.savingLabel = savingLabel;
+    }
 
     const formData = new FormData(form);
-    const method = (form.querySelector('[name="_method"]')?.value || form.method || 'POST').toUpperCase();
+    const spoofedMethod = (form.querySelector('[name="_method"]')?.value || '').toUpperCase();
+    if (spoofedMethod && !formData.has('_method')) {
+        formData.set('_method', spoofedMethod);
+    }
+    // PHP only fills $_POST for POST requests; PATCH/PUT + multipart FormData arrives empty on PHP < 8.4.
+    const httpMethod = spoofedMethod ? 'POST' : (form.method || 'POST').toUpperCase();
     const action = form.getAttribute('action');
+
+    showWorkspaceFormSaving(form);
 
     try {
         const response = await apiFetch(action, {
-            method,
+            method: httpMethod,
             body: formData,
         });
 
@@ -203,6 +305,7 @@ export async function submitWorkspaceForm(form, { onSuccess } = {}) {
     } catch (_) {
         return { ok: false, payload: { message: 'Could not save. Please try again.' } };
     } finally {
-        submitBtn?.removeAttribute('disabled');
+        hideWorkspaceFormSaving(form);
+        delete form.dataset.savingLabel;
     }
 }
