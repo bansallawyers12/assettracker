@@ -1,127 +1,45 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <h2 class="text-3xl font-bold text-gray-900 dark:text-white">
-                All Persons
-            </h2>
-            <div class="flex space-x-3">
-                <a href="{{ route('persons.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
-                    <x-lucide-plus class="h-5 w-5 mr-2" />
-                    Add New Person
-                </a>
-                <a href="{{ route('dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
-                    Back to Dashboard
-                </a>
-            </div>
-        </div>
-    </x-slot>
-
-    <div class="py-8 bg-blue-50 dark:bg-blue-900 min-h-screen">
+    <div
+        class="persons-index-workspace py-8 lg:py-10"
+        data-workspace-url="{{ route('persons.workspace') }}"
+        data-create-form-url="{{ route('persons.form.create') }}"
+        data-current-page="{{ $persons->currentPage() }}"
+    >
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            @if ($persons->isEmpty())
-                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center">
-                    <div class="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
-                        <x-lucide-users class="h-12 w-12 text-gray-400" />
-                    </div>
-                    <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No persons found</h3>
-                    <p class="text-gray-500 dark:text-gray-400 mb-6">Get started by adding your first person to the system.</p>
-                    <a href="{{ route('persons.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
-                        <x-lucide-plus class="h-5 w-5 mr-2" />
-                        Add First Person
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Persons</h1>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        Manage people and their roles across your business entities.
+                    </p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <button
+                        type="button"
+                        data-person-action="create"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500"
+                    >
+                        <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
+                        Add person
+                    </button>
+                    <a
+                        href="{{ route('dashboard') }}"
+                        class="inline-flex items-center justify-center rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+                    >
+                        Dashboard
                     </a>
                 </div>
-            @else
-                <!-- Persons Grid -->
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    @foreach ($persons as $person)
-                        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 ease-in-out transform hover:scale-105 border-l-4 border-indigo-500">
-                            <div class="p-6">
-                                <!-- Person Header -->
-                                <div class="flex items-start justify-between mb-4">
-                                    <div class="flex-1">
-                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                                            {{ $person->first_name }} {{ $person->last_name }}
-                                        </h3>
-                                        <p class="text-sm text-indigo-600 dark:text-indigo-400 font-medium">
-                                            {{ $person->entityPersons->count() }} {{ Str::plural('Role', $person->entityPersons->count()) }}
-                                        </p>
-                                    </div>
-                                    <div class="flex space-x-2">
-                                        <a href="{{ route('persons.show', $person->id) }}" class="text-gray-400 hover:text-indigo-600 transition-colors">
-                                            <x-lucide-eye class="h-5 w-5" />
-                                        </a>
-                                    </div>
-                                </div>
+            </div>
 
-                                <!-- Person Details -->
-                                <div class="space-y-3 mb-4">
-                                    @if($person->email)
-                                        <div class="flex justify-between">
-                                            <span class="text-sm text-gray-500 dark:text-gray-400">Email</span>
-                                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $person->email }}</span>
-                                        </div>
-                                    @endif
-                                    
-                                    @if($person->phone)
-                                        <div class="flex justify-between">
-                                            <span class="text-sm text-gray-500 dark:text-gray-400">Phone</span>
-                                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $person->phone }}</span>
-                                        </div>
-                                    @endif
-                                    
-                                    @if($person->date_of_birth)
-                                        <div class="flex justify-between">
-                                            <span class="text-sm text-gray-500 dark:text-gray-400">Date of Birth</span>
-                                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ \Carbon\Carbon::parse($person->date_of_birth)->format('d/m/Y') }}</span>
-                                        </div>
-                                    @endif
-                                </div>
+            <div class="mb-6" data-persons-stats-host>
+                @include('persons.partials.stats', compact('totalPersons', 'activeRoles', 'multiRolePersons'))
+            </div>
 
-                                <!-- Business Entities Section -->
-                                @if($person->entityPersons->isNotEmpty())
-                                    <div class="border-t border-gray-200 dark:border-gray-700 pt-3">
-                                        <h4 class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Business Entities</h4>
-                                        <div class="space-y-1">
-                                            @foreach($person->entityPersons->take(3) as $entityPerson)
-                                                <div class="flex justify-between items-center text-xs">
-                                                    <span class="text-gray-500 dark:text-gray-400">{{ $entityPerson->businessEntity->legal_name ?? 'Unknown Entity' }}</span>
-                                                    <span class="font-medium text-indigo-600 dark:text-indigo-400">
-                                                        {{ $entityPerson->role }}
-                                                    </span>
-                                                </div>
-                                            @endforeach
-                                            @if($person->entityPersons->count() > 3)
-                                                <div class="text-xs text-gray-400 text-center pt-1">
-                                                    +{{ $person->entityPersons->count() - 3 }} more
-                                                </div>
-                                            @endif
-                                        </div>
-                                    </div>
-                                @endif
-
-                                <!-- Action Buttons -->
-                                <div class="border-t border-gray-200 dark:border-gray-700 pt-4 mt-4">
-                                    <div class="flex space-x-2">
-                                        <a href="{{ route('persons.show', $person->id) }}" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-center py-2 px-3 rounded-lg text-sm font-medium transition-colors">
-                                            View Details
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    @endforeach
+            <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-700 dark:bg-gray-800">
+                <div data-persons-list>
+                    @include('persons.partials.list', ['persons' => $persons])
                 </div>
-
-                <!-- Pagination -->
-                @if($persons->hasPages())
-                    <div class="mt-8">
-                        {{ $persons->links() }}
-                    </div>
-                @endif
-            @endif
+            </div>
         </div>
     </div>
 </x-app-layout>
-
-
-

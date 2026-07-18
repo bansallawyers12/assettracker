@@ -23,6 +23,21 @@ class EntityPerson extends Model
         'asic_due_date',
     ];
 
+    public const ROLES = [
+        'Director',
+        'Secretary',
+        'Shareholder',
+        'Trustee',
+        'Beneficiary',
+        'Settlor',
+        'Owner',
+    ];
+
+    public const ROLE_STATUSES = [
+        'Active',
+        'Resigned',
+    ];
+
     protected $casts = [
         'appointment_date' => 'datetime',
         'resignation_date' => 'datetime',

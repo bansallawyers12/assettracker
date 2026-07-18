@@ -1,4 +1,5 @@
 import { initGlobalFormSaving } from './form-saving-ui.js';
+import './persons-index-workspace.js';
 import './documents-workspace.js';
 import './compliance-workspace.js';
 import './entity-show-workspace.js';

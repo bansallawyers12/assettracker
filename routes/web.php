@@ -29,6 +29,7 @@ use App\Http\Controllers\ContactListsWorkspaceController;
 use App\Http\Controllers\EntityShowWorkspaceController;
 use App\Http\Controllers\EntityPersonController;
 use App\Http\Controllers\PersonsWorkspaceController;
+use App\Http\Controllers\PersonsIndexWorkspaceController;
 use App\Http\Controllers\PersonShowWorkspaceController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\InvoiceController;
@@ -223,6 +224,8 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Person routes
     Route::get('persons', [EntityPersonController::class, 'indexPersons'])->name('persons.index');
+    Route::get('/persons/workspace', [PersonsIndexWorkspaceController::class, 'workspace'])->name('persons.workspace');
+    Route::get('/persons/form/create', [PersonsIndexWorkspaceController::class, 'createForm'])->name('persons.form.create');
     Route::get('persons/create', [EntityPersonController::class, 'createPerson'])->name('persons.create');
     Route::post('persons', [EntityPersonController::class, 'storePerson'])->name('persons.store');
     Route::get('persons/{person}', [EntityPersonController::class, 'showPerson'])->name('persons.show');

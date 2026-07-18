@@ -139,9 +139,18 @@
                             div.appendChild(el);
                         }
 
+                        function isMountTargetVisible(div) {
+                            if (div.offsetParent !== null) {
+                                return true;
+                            }
+
+                            var openPanel = div.closest('[data-panel-open="true"]');
+                            return Boolean(openPanel);
+                        }
+
                         function mountVisibleTargets() {
                             document.querySelectorAll('[data-au-addr-mount]').forEach(function (div) {
-                                if (div.offsetParent !== null) {
+                                if (isMountTargetVisible(div)) {
                                     mount(div);
                                 }
                             });

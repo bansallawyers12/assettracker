@@ -7,6 +7,8 @@ use App\Models\EntityPerson;
 use App\Models\BusinessEntity;
 use App\Models\BankAccount;
 use App\Models\Person;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -326,28 +328,28 @@ class EntityPersonController extends Controller
     /**
      * Display all persons.
      */
-    public function indexPersons()
+    public function indexPersons(Request $request)
     {
-        $persons = Person::with(['entityPersons.businessEntity'])
-            ->has('entityPersons')
-            ->paginate(15);
-        
-        return view('persons.index', compact('persons'));
+        $persons = PersonsIndexWorkspaceController::paginatedPersons($request);
+        $totalPersons = Person::has('entityPersons')->count();
+        $activeRoles = EntityPerson::where('role_status', 'Active')->count();
+        $multiRolePersons = Person::has('entityPersons', '>=', 2)->count();
+
+        return view('persons.index', compact('persons', 'totalPersons', 'activeRoles', 'multiRolePersons'));
     }
 
     /**
      * Show the form for creating a new person.
      */
-    public function createPerson()
+    public function createPerson(): RedirectResponse
     {
-        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
-        return view('persons.create', compact('businessEntities'));
+        return redirect()->route('persons.index');
     }
 
     /**
      * Store a newly created person.
      */
-    public function storePerson(Request $request)
+    public function storePerson(Request $request): RedirectResponse|JsonResponse
     {
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
@@ -355,12 +357,14 @@ class EntityPersonController extends Controller
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
-            'date_of_birth' => 'nullable|date',
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
-            'role' => 'required|string|max:255',
+            'role' => 'required|in:'.implode(',', EntityPerson::ROLES),
             'appointment_date' => 'required|date',
-            'role_status' => 'required|in:Active,Inactive',
+            'role_status' => 'required|in:'.implode(',', EntityPerson::ROLE_STATUSES),
             'asic_due_date' => 'nullable|date',
+        ], [
+            'role.in' => 'Please select a valid role.',
+            'role_status.in' => 'Please select a valid role status.',
         ]);
 
         // Create the person
@@ -368,9 +372,8 @@ class EntityPersonController extends Controller
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'email' => $validated['email'],
-            'phone' => $validated['phone'],
+            'phone_number' => $validated['phone'],
             'address' => $validated['address'],
-            'date_of_birth' => $validated['date_of_birth'],
         ]);
 
         // Create the entity-person relationship
@@ -382,6 +385,17 @@ class EntityPersonController extends Controller
             'role_status' => $validated['role_status'],
             'asic_due_date' => $validated['asic_due_date'],
         ]);
+
+        if ($request->expectsJson()) {
+            $persons = PersonsIndexWorkspaceController::paginatedPersons($request);
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Person created successfully.',
+                'list_html' => PersonsIndexWorkspaceController::listHtml($persons),
+                'stats_html' => PersonsIndexWorkspaceController::statsHtml(),
+            ]);
+        }
 
         return redirect()->route('persons.index')->with('success', 'Person created successfully.');
     }

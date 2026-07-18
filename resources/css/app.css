@@ -664,6 +664,10 @@
   }
 
   /* Google PlaceAutocompleteElement (new Places widget) */
+  .au-address-field [data-au-addr-mount] {
+    @apply block w-full min-h-[2.75rem] rounded-lg border border-gray-300 bg-white px-1 py-1 shadow-xs dark:border-gray-600 dark:bg-gray-900/50;
+  }
+
   [data-au-addr-mount] gmp-place-autocomplete {
     display: block;
     width: 100%;
