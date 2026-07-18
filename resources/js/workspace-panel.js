@@ -3,7 +3,9 @@
  */
 
 import { markOverlayPanelClosed, markOverlayPanelOpen } from './overlay-panels.js';
+import { syncAddressFieldsInForm } from './address-field-sync.js';
 import { hideFormSaving, isFormSaving, showFormSaving } from './form-saving-ui.js';
+import { commitDateFieldsInForm } from './flatpickr-init.js';
 import { showToast } from './notify.js';
 import { destroyTomSelectsIn } from './tomselect-init.js';
 
@@ -205,10 +207,17 @@ export function notifyFormFailure(form, payload, { title = 'Validation failed' }
     return all;
 }
 
+function prepareFormForSubmit(form) {
+    syncAddressFieldsInForm(form);
+    commitDateFieldsInForm(form);
+}
+
 export async function submitWorkspaceForm(form, { onSuccess, savingLabel } = {}) {
     if (savingLabel) {
         form.dataset.savingLabel = savingLabel;
     }
+
+    prepareFormForSubmit(form);
 
     const formData = new FormData(form);
     const spoofedMethod = (form.querySelector('[name="_method"]')?.value || '').toUpperCase();

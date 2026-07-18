@@ -377,6 +377,22 @@ export function clearDateInput(input) {
     input.value = '';
 }
 
+/**
+ * Commit typed Flatpickr alt-input values before building FormData (AJAX saves).
+ */
+export function commitDateFieldsInForm(form = document) {
+    if (!form?.querySelectorAll) {
+        return;
+    }
+
+    form.querySelectorAll('input[data-flatpickr-source]').forEach((input) => {
+        const instance = input._flatpickr;
+        if (instance) {
+            applyTypedDate(instance, { triggerChange: true, rewriteVisible: true });
+        }
+    });
+}
+
 let flatpickrObserverStarted = false;
 
 /**

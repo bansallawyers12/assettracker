@@ -46,62 +46,6 @@
     />
 @endif
 
-@once('au-address-form-sync')
-    @push('scripts')
-        <script>
-            document.addEventListener(
-                'input',
-                function (ev) {
-                    var visible = ev.target.closest('[data-au-addr-visible]');
-                    if (!visible) {
-                        return;
-                    }
-
-                    var hid = document.getElementById(visible.dataset.hiddenId);
-                    if (hid) {
-                        hid.value = visible.value || '';
-                    }
-                },
-                true
-            );
-
-            document.addEventListener(
-                'submit',
-                function (ev) {
-                    var form = ev.target;
-                    if (!form || form.tagName !== 'FORM') {
-                        return;
-                    }
-
-                    form.querySelectorAll('[data-au-addr-visible]').forEach(function (visible) {
-                        var hid = document.getElementById(visible.dataset.hiddenId);
-                        if (hid) {
-                            hid.value = visible.value || '';
-                        }
-                    });
-
-                    form.querySelectorAll('[data-au-addr-mount]').forEach(function (div) {
-                        var hid = document.getElementById(div.dataset.hiddenId);
-                        var visible = document.getElementById(div.dataset.visibleId);
-                        var gmp = div.querySelector('gmp-place-autocomplete');
-                        var value = visible?.value || gmp?.value || '';
-
-                        if (visible && gmp?.value) {
-                            visible.value = gmp.value;
-                            value = gmp.value;
-                        }
-
-                        if (hid) {
-                            hid.value = value;
-                        }
-                    });
-                },
-                true
-            );
-        </script>
-    @endpush
-@endonce
-
 @once('google-places-autocomplete-sdk')
     @push('scripts')
         @if (filled($googlePlacesKey))

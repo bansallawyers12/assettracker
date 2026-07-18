@@ -29,6 +29,9 @@ function alertHttpError(status) {
 function initFormPlugins(root) {
     window.initFlatpickr?.(root);
     window.initTomSelect?.(root);
+    requestAnimationFrame(() => {
+        document.dispatchEvent(new CustomEvent('au:address:refresh'));
+    });
 }
 
 function registerPanelFormHandler(selector, onSuccess) {

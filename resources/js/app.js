@@ -1,4 +1,5 @@
 import { initGlobalFormSaving } from './form-saving-ui.js';
+import { initAddressFieldSync } from './address-field-sync.js';
 import './persons-index-workspace.js';
 import './documents-workspace.js';
 import './compliance-workspace.js';
@@ -98,6 +99,7 @@ window.addEventListener('pageshow', sealOverlayPanels);
 
 document.addEventListener('DOMContentLoaded', function() {
     sealOverlayPanels();
+    initAddressFieldSync();
     initGlobalFormSaving();
     initFlatpickr();
     watchFlatpickr();
