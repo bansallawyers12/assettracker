@@ -1,3 +1,4 @@
+import { initGlobalFormSaving } from './form-saving-ui.js';
 import './documents-workspace.js';
 import './compliance-workspace.js';
 import './entity-show-workspace.js';
@@ -95,6 +96,7 @@ window.addEventListener('pageshow', sealOverlayPanels);
 
 document.addEventListener('DOMContentLoaded', function() {
     sealOverlayPanels();
+    initGlobalFormSaving();
     initFlatpickr();
     watchFlatpickr();
     initTomSelect();

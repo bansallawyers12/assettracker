@@ -3,6 +3,7 @@
  */
 
 import { markOverlayPanelClosed, markOverlayPanelOpen } from './overlay-panels.js';
+import { hideFormSaving, isFormSaving, showFormSaving } from './form-saving-ui.js';
 import { destroyTomSelectsIn } from './tomselect-init.js';
 
 let panelRoot = null;
@@ -10,88 +11,8 @@ let panelTitleEl = null;
 let panelBodyEl = null;
 let panelOpen = false;
 let onCloseCallback = null;
-let activeFormSaves = 0;
 
-const PANEL_SHEET_SELECTOR = '.entity-workspace-panel-sheet, .bank-account-panel-sheet';
-
-export function isWorkspaceFormSaving() {
-    return activeFormSaves > 0;
-}
-
-function resolveFormSavingHost(form) {
-    return form.closest(PANEL_SHEET_SELECTOR) || form;
-}
-
-function savingLabelForForm(form) {
-    if (form.dataset.savingLabel) {
-        return form.dataset.savingLabel;
-    }
-
-    return form.dataset.mode === 'edit' ? 'Updating…' : 'Saving…';
-}
-
-function ensureFormSavingOverlay(host) {
-    let overlay = host.querySelector(':scope > [data-ws-form-saving-overlay]');
-    if (overlay) {
-        return overlay;
-    }
-
-    if (getComputedStyle(host).position === 'static') {
-        host.classList.add('relative');
-    }
-
-    overlay = document.createElement('div');
-    overlay.dataset.wsFormSavingOverlay = '1';
-    overlay.className = 'workspace-form-saving-overlay hidden';
-    overlay.setAttribute('aria-live', 'polite');
-    overlay.innerHTML = `
-        <div class="workspace-form-saving-inner">
-            <div class="workspace-form-saving-spinner" aria-hidden="true"></div>
-            <p class="workspace-form-saving-label" data-ws-form-saving-label>Saving…</p>
-        </div>
-    `;
-    host.appendChild(overlay);
-
-    return overlay;
-}
-
-function showWorkspaceFormSaving(form) {
-    activeFormSaves += 1;
-
-    const host = resolveFormSavingHost(form);
-    const overlay = ensureFormSavingOverlay(host);
-    const labelEl = overlay.querySelector('[data-ws-form-saving-label]');
-    if (labelEl) {
-        labelEl.textContent = savingLabelForForm(form);
-    }
-
-    overlay.classList.remove('hidden');
-    overlay.setAttribute('aria-busy', 'true');
-    form.setAttribute('aria-busy', 'true');
-
-    form.querySelectorAll('input:not([type="hidden"]), select, textarea, button').forEach((el) => {
-        if (el.dataset.wsSavingPrevDisabled === undefined) {
-            el.dataset.wsSavingPrevDisabled = el.disabled ? '1' : '0';
-        }
-        el.disabled = true;
-    });
-}
-
-function hideWorkspaceFormSaving(form) {
-    const host = resolveFormSavingHost(form);
-    const overlay = host.querySelector(':scope > [data-ws-form-saving-overlay]');
-    overlay?.classList.add('hidden');
-    overlay?.setAttribute('aria-busy', 'false');
-    form.removeAttribute('aria-busy');
-
-    form.querySelectorAll('input:not([type="hidden"]), select, textarea, button').forEach((el) => {
-        const wasDisabled = el.dataset.wsSavingPrevDisabled === '1';
-        delete el.dataset.wsSavingPrevDisabled;
-        el.disabled = wasDisabled;
-    });
-
-    activeFormSaves = Math.max(0, activeFormSaves - 1);
-}
+export { isFormSaving, isFormSaving as isWorkspaceFormSaving } from './form-saving-ui.js';
 
 function ensurePanel() {
     if (panelRoot) {
@@ -107,7 +28,7 @@ function ensurePanel() {
     panelBodyEl = panelRoot.querySelector('[data-entity-panel-body]');
 
     panelRoot.querySelector('[data-entity-panel-backdrop]')?.addEventListener('click', () => {
-        if (isWorkspaceFormSaving()) {
+        if (isFormSaving()) {
             return;
         }
 
@@ -122,7 +43,7 @@ function ensurePanel() {
                 return;
             }
 
-            if (isWorkspaceFormSaving()) {
+            if (isFormSaving()) {
                 return;
             }
 
@@ -132,7 +53,7 @@ function ensurePanel() {
     }
 
     document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && panelOpen && !isWorkspaceFormSaving()) {
+        if (event.key === 'Escape' && panelOpen && !isFormSaving()) {
             event.preventDefault();
             closeWorkspacePanel();
         }
@@ -182,7 +103,7 @@ export function setWorkspacePanelTitle(title) {
 }
 
 export function closeWorkspacePanel() {
-    if (!panelRoot || isWorkspaceFormSaving()) {
+    if (!panelRoot || isFormSaving()) {
         return;
     }
 
@@ -278,7 +199,7 @@ export async function submitWorkspaceForm(form, { onSuccess, savingLabel } = {})
     const httpMethod = spoofedMethod ? 'POST' : (form.method || 'POST').toUpperCase();
     const action = form.getAttribute('action');
 
-    showWorkspaceFormSaving(form);
+    showFormSaving(form, { label: savingLabel, lockFields: true });
 
     try {
         const response = await apiFetch(action, {
@@ -305,7 +226,7 @@ export async function submitWorkspaceForm(form, { onSuccess, savingLabel } = {})
     } catch (_) {
         return { ok: false, payload: { message: 'Could not save. Please try again.' } };
     } finally {
-        hideWorkspaceFormSaving(form);
+        hideFormSaving(form);
         delete form.dataset.savingLabel;
     }
 }

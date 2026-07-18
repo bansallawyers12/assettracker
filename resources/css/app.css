@@ -62,24 +62,28 @@
     animation: entity-panel-in 220ms ease-out;
   }
 
-  .workspace-form-saving-overlay {
-    @apply absolute inset-0 z-30 flex items-center justify-center bg-white/80 backdrop-blur-[2px] dark:bg-gray-900/80;
+  .app-form-saving-overlay {
+    @apply fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/45 backdrop-blur-[2px];
   }
 
-  .workspace-form-saving-overlay.hidden {
+  .app-form-saving-overlay.hidden {
     @apply hidden;
   }
 
-  .workspace-form-saving-inner {
-    @apply flex flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-lg dark:border-gray-700 dark:bg-gray-900;
+  .app-form-saving-inner {
+    @apply flex flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white px-6 py-5 shadow-xl dark:border-gray-700 dark:bg-gray-900;
   }
 
-  .workspace-form-saving-spinner {
+  .app-form-saving-spinner {
     @apply h-8 w-8 rounded-full border-2 border-indigo-200 border-t-indigo-600 animate-spin dark:border-indigo-900 dark:border-t-indigo-400;
   }
 
-  .workspace-form-saving-label {
+  .app-form-saving-label {
     @apply text-sm font-medium text-gray-700 dark:text-gray-200;
+  }
+
+  html.form-save-in-progress {
+    @apply overflow-hidden;
   }
 
   @keyframes entity-panel-in {
