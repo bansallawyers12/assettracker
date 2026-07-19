@@ -165,7 +165,7 @@
                                     if (opt.direction !== direction) return;
                                     rows.push({
                                         value: opt.value,
-                                        label: group.label + ' — ' + opt.label,
+                                        label: opt.label + ' — ' + group.label,
                                     });
                                 });
                             });
