@@ -6,7 +6,7 @@
         return $d && $d->copy()->startOfDay()->lt(now()->startOfDay());
     };
     $txnDirectionLabel = function ($t): string {
-        return TransactionModel::directionFromType((string) $t->transaction_type) === 'income' ? 'Income' : 'Expense';
+        return $t->direction === 'income' ? 'Income' : 'Expense';
     };
 @endphp
 

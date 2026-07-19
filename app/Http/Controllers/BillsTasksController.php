@@ -46,7 +46,7 @@ class BillsTasksController extends Controller
         if ($tab === 'unpaid') {
             $unpaidTransactions = $this->transactionOperationalQuery($opIds)
                 ->where('payment_status', 'unpaid')
-                ->with(['businessEntity', 'asset'])
+                ->with(['businessEntity', 'asset', 'lines'])
                 ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
                 ->orderBy('due_date')
                 ->orderByDesc('date')
@@ -55,7 +55,7 @@ class BillsTasksController extends Controller
         } elseif ($tab === 'paid') {
             $paidTransactions = $this->transactionOperationalQuery($opIds)
                 ->where('payment_status', 'paid')
-                ->with(['businessEntity', 'asset'])
+                ->with(['businessEntity', 'asset', 'lines'])
                 ->orderByRaw('CASE WHEN paid_at IS NULL THEN 1 ELSE 0 END')
                 ->orderByDesc('paid_at')
                 ->orderByDesc('date')
@@ -142,7 +142,7 @@ class BillsTasksController extends Controller
         $this->transactionOperationalQuery($opIds)
             ->where('payment_status', 'unpaid')
             ->whereNotNull('due_date')
-            ->with(['businessEntity', 'asset'])
+            ->with(['businessEntity', 'asset', 'lines'])
             ->orderBy('due_date')
             ->get()
             ->each(function (Transaction $t) use ($items) {

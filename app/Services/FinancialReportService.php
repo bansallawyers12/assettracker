@@ -9,6 +9,7 @@ use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\TrackingCategory;
 use App\Models\Transaction;
+use App\Models\TransactionLine;
 use App\Support\FinancialYear;
 use App\Support\TransactionPayerResolver;
 use Carbon\Carbon;
@@ -455,19 +456,23 @@ class FinancialReportService
         Transaction $transaction,
         ?int $journalBusinessEntityId = null
     ): array {
-        $direction = Transaction::directionFromType((string) $transaction->transaction_type);
+        $direction = $transaction->direction;
         $counterparty = TransactionPayerResolver::paidByLabel($transaction->paid_by);
         $counterparty = $counterparty !== '' ? $counterparty : '—';
         $vendor = trim((string) ($transaction->vendor_display ?? ''));
         $vendor = $vendor !== '' ? $vendor : '—';
+
+        $typeLabel = $transaction->transaction_type === Transaction::TYPE_SPLIT
+            ? 'Split remittance'
+            : (Transaction::allTypes()[(string) $transaction->transaction_type]
+                ?? (string) $transaction->transaction_type);
 
         return [
             'booking_entity_name' => (string) ($transaction->businessEntity?->legal_name ?? '—'),
             'paid_by' => $direction === 'income' ? $vendor : $counterparty,
             'received_by' => $direction === 'income' ? $counterparty : $vendor,
             'bank_account' => $this->transactionBankAccountLabel($transaction, $journalBusinessEntityId),
-            'transaction_type' => Transaction::allTypes()[(string) $transaction->transaction_type]
-                ?? (string) $transaction->transaction_type,
+            'transaction_type' => $typeLabel,
             'vendor_name' => $vendor,
             'asset_name' => (string) ($transaction->asset?->name ?? '—'),
         ];
@@ -623,7 +628,7 @@ class FinancialReportService
                 }
                 $q->orWhereIn('related_entity_id', $ids);
             })
-            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset'])
+            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset', 'lines'])
             ->get();
 
         $crossEntity = $candidates
@@ -639,11 +644,14 @@ class FinancialReportService
             })
             ->values();
 
-        // Income booked to one entity but bank account (cash) belongs to another — include if either side is in scope.
+        // Income (incl. net-income split remittances) booked to one entity but cash in another's bank.
         $crossBankIncome = Transaction::query()
             ->where('payment_status', 'paid')
             ->whereNotNull('bank_account_id')
-            ->whereIn('transaction_type', $incomeTypesForCrossBank)
+            ->where(function ($q) use ($incomeTypesForCrossBank) {
+                $q->whereIn('transaction_type', $incomeTypesForCrossBank)
+                    ->orWhere('transaction_type', Transaction::TYPE_SPLIT);
+            })
             ->where(function ($q) use ($ids) {
                 $q->whereIn('business_entity_id', $ids)
                     ->orWhereHas('bankAccount', function ($q2) use ($ids) {
@@ -651,15 +659,23 @@ class FinancialReportService
                     })
                     ->orWhereIn('related_entity_id', $ids);
             })
-            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset'])
+            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset', 'lines'])
             ->get()
             ->filter(function (Transaction $t) {
                 $ba = $t->bankAccount;
                 if (! $ba) {
                     return false;
                 }
+                if ((int) $ba->business_entity_id === (int) $t->business_entity_id) {
+                    return false;
+                }
 
-                return (int) $ba->business_entity_id !== (int) $t->business_entity_id;
+                // Splits: only net-income remittances behave like operating income for this report.
+                if ($t->transaction_type === Transaction::TYPE_SPLIT) {
+                    return $t->direction === 'income';
+                }
+
+                return true;
             })
             ->values();
 
@@ -751,8 +767,11 @@ class FinancialReportService
             $baseDesc = (string) ($t->description ?? 'Intercompany loan movement');
 
             $refStr = (string) $ref;
-            $isOperatingIncome = in_array($t->transaction_type, $incomeTypeKeys, true)
-                && ! in_array($t->transaction_type, $excludeSyntheticDirectorLoan, true);
+            $isOperatingIncome = $this->isOperatingIncomeForDirectorLoanReport(
+                $t,
+                $incomeTypeKeys,
+                $excludeSyntheticDirectorLoan
+            );
 
             if ($isRepayment) {
                 $lineData[] = $this->mergeDirectorLoanLineWithTransactionDetails($t, [
@@ -997,11 +1016,7 @@ class FinancialReportService
     private function crossEntityPayerBankLineAmounts(Transaction $transaction): array
     {
         $gross = $this->transactionGrossAmount($transaction);
-        $isIncome = in_array(
-            (string) $transaction->transaction_type,
-            array_keys(Transaction::$incomeTypes),
-            true
-        );
+        $isIncome = $transaction->direction === 'income';
 
         if ($isIncome) {
             return ['debit' => $gross, 'credit' => 0.0];
@@ -1037,7 +1052,7 @@ class FinancialReportService
                 }
             })
             ->whereNotIn('transaction_type', $excludeTypes)
-            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset'])
+            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset', 'lines'])
             ->get()
             ->filter(function (Transaction $t) use ($entityIds) {
                 $payerId = $this->lenderEntityIdFromPaidBy($t);
@@ -1061,10 +1076,11 @@ class FinancialReportService
         }
 
         $incomeTypeKeys = array_keys(Transaction::$incomeTypes);
-        if (! in_array($t->transaction_type, $incomeTypeKeys, true)) {
-            return null;
-        }
-        if (in_array($t->transaction_type, ['director_loan_in', 'director_loan_out', 'director_loan_repayment'], true)) {
+        if (! $this->isOperatingIncomeForDirectorLoanReport($t, $incomeTypeKeys, [
+            'director_loan_in',
+            'director_loan_out',
+            'director_loan_repayment',
+        ])) {
             return null;
         }
         if (! $t->bankAccount) {
@@ -1076,6 +1092,23 @@ class FinancialReportService
         }
 
         return $bankEntityId;
+    }
+
+    /**
+     * @param  list<string>  $incomeTypeKeys
+     * @param  list<string>  $excludeTypes
+     */
+    private function isOperatingIncomeForDirectorLoanReport(
+        Transaction $t,
+        array $incomeTypeKeys,
+        array $excludeTypes
+    ): bool {
+        if ($t->transaction_type === Transaction::TYPE_SPLIT) {
+            return $t->direction === 'income';
+        }
+
+        return in_array($t->transaction_type, $incomeTypeKeys, true)
+            && ! in_array($t->transaction_type, $excludeTypes, true);
     }
 
     /**
@@ -1787,6 +1820,7 @@ class FinancialReportService
     private function netGstFromTransactions(int $entityId, string $start, string $end): float
     {
         $transactions = Transaction::query()
+            ->with('lines')
             ->where('business_entity_id', $entityId)
             ->where('payment_status', 'paid')
             ->where(function ($q) use ($start, $end) {
@@ -1803,6 +1837,22 @@ class FinancialReportService
         $incomeKeys = array_keys(Transaction::$incomeTypes);
 
         foreach ($transactions as $t) {
+            if ($t->isSplit()) {
+                foreach ($t->lines as $line) {
+                    $gst = (float) ($line->gst_amount ?? 0);
+                    if ($gst <= 0) {
+                        continue;
+                    }
+                    if (in_array($line->transaction_type, $incomeKeys, true)) {
+                        $collected += $gst;
+                    } else {
+                        $credits += $gst;
+                    }
+                }
+
+                continue;
+            }
+
             $gst = (float) ($t->gst_amount ?? 0);
             if ($gst <= 0) {
                 continue;
@@ -1823,18 +1873,31 @@ class FinancialReportService
             return 0.0;
         }
 
-        return round((float) Transaction::query()
+        $period = function ($q) use ($start, $end) {
+            $q->where(function ($q2) use ($start, $end) {
+                $q2->whereNotNull('paid_at')->whereBetween('paid_at', [$start, $end]);
+            })->orWhere(function ($q2) use ($start, $end) {
+                $q2->whereNull('paid_at')->whereBetween('date', [$start, $end]);
+            });
+        };
+
+        $direct = (float) Transaction::query()
             ->where('business_entity_id', $entityId)
             ->where('payment_status', 'paid')
             ->whereIn('transaction_type', $types)
-            ->where(function ($q) use ($start, $end) {
-                $q->where(function ($q2) use ($start, $end) {
-                    $q2->whereNotNull('paid_at')->whereBetween('paid_at', [$start, $end]);
-                })->orWhere(function ($q2) use ($start, $end) {
-                    $q2->whereNull('paid_at')->whereBetween('date', [$start, $end]);
-                });
+            ->where($period)
+            ->sum('amount');
+
+        $fromLines = (float) TransactionLine::query()
+            ->whereIn('transaction_type', $types)
+            ->whereHas('transaction', function ($q) use ($entityId, $period) {
+                $q->where('business_entity_id', $entityId)
+                    ->where('payment_status', 'paid')
+                    ->where($period);
             })
-            ->sum('amount'), 2);
+            ->sum('amount');
+
+        return round($direct + $fromLines, 2);
     }
 
     /**

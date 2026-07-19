@@ -213,32 +213,34 @@ class PropertyReportService
         $expenseTotal = 0.0;
 
         foreach ($transactions as $transaction) {
+            if ($transaction->isSplit()) {
+                if (! $transaction->relationLoaded('lines')) {
+                    $transaction->load('lines');
+                }
+                foreach ($transaction->lines as $line) {
+                    $type = (string) $line->transaction_type;
+                    if (in_array($type, self::EXCLUDED_TRANSACTION_TYPES, true)) {
+                        continue;
+                    }
+
+                    $net = $this->netAmountFromParts(
+                        (float) $line->amount,
+                        $line->gst_amount !== null ? (float) $line->gst_amount : null,
+                        $line->gst_basis
+                    );
+                    $this->accumulateByType($type, $net, $incomeByType, $expenseByType, $incomeTotal, $expenseTotal);
+                }
+
+                continue;
+            }
+
             if (in_array($transaction->transaction_type, self::EXCLUDED_TRANSACTION_TYPES, true)) {
                 continue;
             }
 
             $net = $this->netAmount($transaction);
             $type = (string) $transaction->transaction_type;
-
-            if (array_key_exists($type, Transaction::$incomeTypes)) {
-                if (! isset($incomeByType[$type])) {
-                    $incomeByType[$type] = [
-                        'label' => Transaction::$incomeTypes[$type],
-                        'amount' => 0.0,
-                    ];
-                }
-                $incomeByType[$type]['amount'] += $net;
-                $incomeTotal += $net;
-            } elseif (array_key_exists($type, Transaction::$expenseTypes)) {
-                if (! isset($expenseByType[$type])) {
-                    $expenseByType[$type] = [
-                        'label' => Transaction::$expenseTypes[$type],
-                        'amount' => 0.0,
-                    ];
-                }
-                $expenseByType[$type]['amount'] += $net;
-                $expenseTotal += $net;
-            }
+            $this->accumulateByType($type, $net, $incomeByType, $expenseByType, $incomeTotal, $expenseTotal);
         }
 
         ksort($incomeByType);
@@ -257,16 +259,58 @@ class PropertyReportService
         ];
     }
 
+    /**
+     * @param  array<string, array{label: string, amount: float}>  $incomeByType
+     * @param  array<string, array{label: string, amount: float}>  $expenseByType
+     */
+    private function accumulateByType(
+        string $type,
+        float $net,
+        array &$incomeByType,
+        array &$expenseByType,
+        float &$incomeTotal,
+        float &$expenseTotal
+    ): void {
+        if (array_key_exists($type, Transaction::$incomeTypes)) {
+            if (! isset($incomeByType[$type])) {
+                $incomeByType[$type] = [
+                    'label' => Transaction::$incomeTypes[$type],
+                    'amount' => 0.0,
+                ];
+            }
+            $incomeByType[$type]['amount'] += $net;
+            $incomeTotal += $net;
+        } elseif (array_key_exists($type, Transaction::$expenseTypes)) {
+            if (! isset($expenseByType[$type])) {
+                $expenseByType[$type] = [
+                    'label' => Transaction::$expenseTypes[$type],
+                    'amount' => 0.0,
+                ];
+            }
+            $expenseByType[$type]['amount'] += $net;
+            $expenseTotal += $net;
+        }
+    }
+
     public function netAmount(Transaction $transaction): float
     {
-        $amt = (float) $transaction->amount;
-        $gst = max(0.0, (float) ($transaction->gst_amount ?? 0));
+        return $this->netAmountFromParts(
+            (float) $transaction->amount,
+            $transaction->gst_amount !== null ? (float) $transaction->gst_amount : null,
+            $transaction->gst_basis
+        );
+    }
+
+    public function netAmountFromParts(float $amount, ?float $gstAmount, ?string $gstBasis): float
+    {
+        $amt = $amount;
+        $gst = max(0.0, (float) ($gstAmount ?? 0));
 
         if ($gst < 0.000001) {
             return round($amt, 2);
         }
 
-        if ($transaction->gst_basis === 'exclusive') {
+        if ($gstBasis === 'exclusive') {
             return round($amt, 2);
         }
 
@@ -289,6 +333,7 @@ class PropertyReportService
         }
 
         $query = Transaction::query()
+            ->with('lines')
             ->whereIn('asset_id', $ids)
             ->whereNotIn('transaction_type', self::EXCLUDED_TRANSACTION_TYPES);
 

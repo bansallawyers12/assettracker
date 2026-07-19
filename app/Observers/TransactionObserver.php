@@ -13,11 +13,14 @@ class TransactionObserver
 
 	public function created(Transaction $transaction): void
 	{
+		$transaction->loadMissing('lines');
 		$this->postingService->post($transaction);
 	}
 
 	public function updated(Transaction $transaction): void
 	{
+		$transaction->loadMissing('lines');
+
 		// If changed from paid → unpaid, remove any existing journal entry
 		if ($transaction->payment_status === 'unpaid') {
 			$this->postingService->unpost($transaction);

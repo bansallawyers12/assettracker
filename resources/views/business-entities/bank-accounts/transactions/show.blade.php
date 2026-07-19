@@ -58,7 +58,11 @@
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Transaction Type</p>
                     <p class="text-sm text-gray-900 dark:text-gray-100">
-                        {{ \App\Models\Transaction::allTypes()[$transaction->transaction_type] ?? '—' }}
+                        @if ($transaction->transaction_type === \App\Models\Transaction::TYPE_SPLIT)
+                            Split remittance
+                        @else
+                            {{ \App\Models\Transaction::allTypes()[$transaction->transaction_type] ?? '—' }}
+                        @endif
                     </p>
                 </div>
 
@@ -176,6 +180,42 @@
                     </div>
                 @endif
             </div>
+
+            @if ($transaction->lines->isNotEmpty())
+                <div class="px-6 pb-6">
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Allocations</h3>
+                    <div class="overflow-x-auto rounded-lg border border-gray-100 dark:border-gray-700">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-gray-50 dark:bg-gray-800/60 text-left text-xs uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                <tr>
+                                    <th class="px-3 py-2 font-medium">Type</th>
+                                    <th class="px-3 py-2 font-medium">Description</th>
+                                    <th class="px-3 py-2 font-medium text-right">Amount</th>
+                                    <th class="px-3 py-2 font-medium text-right">GST</th>
+                                    <th class="px-3 py-2 font-medium">Vendor</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                @foreach ($transaction->lines as $line)
+                                    <tr class="bg-white dark:bg-gray-900">
+                                        <td class="px-3 py-2 text-gray-900 dark:text-gray-100">
+                                            {{ \App\Models\Transaction::allTypes()[$line->transaction_type] ?? $line->transaction_type }}
+                                        </td>
+                                        <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ $line->description ?? '—' }}</td>
+                                        <td class="px-3 py-2 text-right tabular-nums text-gray-900 dark:text-gray-100">
+                                            {{ $line->direction === 'income' ? '+' : '−' }}${{ number_format((float) $line->amount, 2) }}
+                                        </td>
+                                        <td class="px-3 py-2 text-right tabular-nums text-gray-700 dark:text-gray-300">
+                                            {{ $line->gst_amount ? '$'.number_format((float) $line->gst_amount, 2) : '—' }}
+                                        </td>
+                                        <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ $line->vendor_display ?? '—' }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </x-app-layout>

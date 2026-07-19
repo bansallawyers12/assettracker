@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Support\TransactionCashParts;
 use App\Support\TransactionPayerResolver;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
 class Transaction extends Model
 {
+    public const TYPE_SPLIT = 'split';
+
     protected $fillable = [
         'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description', 'vendor_id', 'vendor_name',
         'transaction_type', 'gst_amount', 'gst_status', 'gst_basis', 'receipt_path', 'document_id',
@@ -184,12 +188,59 @@ class Transaction extends Model
         return array_key_exists($type, static::$incomeTypes) ? 'income' : 'expense';
     }
 
+    public function isSplit(): bool
+    {
+        return $this->transaction_type === self::TYPE_SPLIT
+            || ($this->relationLoaded('lines') && $this->lines->isNotEmpty());
+    }
+
     /**
      * Get the direction of this transaction instance.
+     * Split headers use net of allocation cash (income − expense).
      */
     public function getDirectionAttribute(): string
     {
+        if ($this->transaction_type === self::TYPE_SPLIT || ($this->relationLoaded('lines') && $this->lines->isNotEmpty())) {
+            return $this->splitNetDirection();
+        }
+
         return static::directionFromType((string) $this->transaction_type);
+    }
+
+    /**
+     * Net bank direction for a split: income when income cash ≥ expense cash.
+     */
+    public function splitNetDirection(): string
+    {
+        if (! $this->relationLoaded('lines')) {
+            $this->load('lines');
+        }
+
+        $net = TransactionCashParts::netFromLineCash(
+            $this->lines->map(fn (TransactionLine $line) => [
+                'direction' => $line->direction,
+                'cash' => $line->cashParts()['cash'],
+            ])->all()
+        );
+
+        return $net >= 0 ? 'income' : 'expense';
+    }
+
+    /**
+     * @return array{cash: float, net: float, gst: float}
+     */
+    public function cashParts(): array
+    {
+        return TransactionCashParts::resolve(
+            (float) $this->amount,
+            $this->gst_amount !== null ? (float) $this->gst_amount : null,
+            $this->gst_basis
+        );
+    }
+
+    public function lines(): HasMany
+    {
+        return $this->hasMany(TransactionLine::class)->orderBy('sort_order')->orderBy('id');
     }
 
     public function getPaidByDisplayAttribute(): string

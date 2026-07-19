@@ -22,6 +22,12 @@
                     @csrf
                     @method('PUT')
 
+                    @if ($transaction->isSplit())
+                        <div class="mb-5 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-100">
+                            This is a split remittance ({{ $transaction->lines->count() }} allocations). Header amount and allocation types are fixed here; you can update date, payment, and bank details. Amount stays at ${{ number_format((float) $transaction->amount, 2) }} (net to bank).
+                        </div>
+                    @endif
+
                     @php
                         $dir = $transaction->direction;
                         $oldDir = old('direction', $dir);

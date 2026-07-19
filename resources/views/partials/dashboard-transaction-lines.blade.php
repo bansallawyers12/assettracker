@@ -1,7 +1,6 @@
 {{--
-    Multi-line transaction rows for the Dashboard add-transaction form.
-    Expects Alpine parent with: lines, addLine, removeLine, filteredTypes, showRelatedEntity, recalcGst, totals, canAddLine
-    And config props already on the Alpine component (typeGroups, vendors, relatedEntities, maxLines).
+    Allocation lines for the Dashboard add-transaction form (one bank-facing header + N P&L lines).
+    Expects Alpine parent with: lines, addLine, removeLine, typesFor, showRelatedEntity, recalcGst, totals, canAddLine
 --}}
 @php
     $txnLabel = $txnLabel ?? 'block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5';
@@ -12,10 +11,10 @@
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-1">
         <div class="flex items-center gap-2">
             <x-lucide-receipt class="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Transaction lines</h4>
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Allocations</h4>
         </div>
         <p class="text-xs text-gray-500 dark:text-gray-400">
-            Shared entity, asset, date, and payment apply to every line.
+            Shared entity, asset, date, and payment. Net matches the bank remittance.
         </p>
     </div>
 
@@ -24,7 +23,7 @@
             <div class="rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/50 p-4 space-y-4 relative">
                 <div class="flex items-center justify-between gap-2">
                     <span class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400"
-                          x-text="'Line ' + (index + 1)"></span>
+                          x-text="'Allocation ' + (index + 1)"></span>
                     <button type="button"
                             class="inline-flex items-center justify-center rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 transition-colors disabled:opacity-40 disabled:pointer-events-none"
                             :disabled="lines.length <= 1"
@@ -199,12 +198,12 @@
                 :disabled="!canAddLine"
                 class="inline-flex items-center justify-center gap-2 rounded-xl border border-dashed border-indigo-300 dark:border-indigo-700 bg-indigo-50/50 dark:bg-indigo-900/20 px-4 py-2.5 text-sm font-semibold text-indigo-700 dark:text-indigo-300 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors disabled:opacity-50 disabled:pointer-events-none">
             <x-lucide-plus class="w-4 h-4" />
-            Add line
+            Add allocation
         </button>
         <div class="text-sm text-gray-600 dark:text-gray-300 tabular-nums space-x-3">
             <span>Income <strong class="text-emerald-600 dark:text-emerald-400" x-text="'$' + totals.income.toFixed(2)"></strong></span>
             <span>Expense <strong class="text-red-600 dark:text-red-400" x-text="'$' + totals.expense.toFixed(2)"></strong></span>
-            <span>Net <strong class="text-gray-900 dark:text-white" x-text="'$' + totals.net.toFixed(2)"></strong></span>
+            <span>Net to bank <strong class="text-gray-900 dark:text-white" x-text="'$' + totals.net.toFixed(2)"></strong></span>
         </div>
     </div>
 </section>

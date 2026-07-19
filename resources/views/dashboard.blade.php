@@ -211,18 +211,22 @@
                                 this.lines.forEach((line) => {
                                     const amount = parseFloat(line.amount);
                                     if (Number.isNaN(amount)) return;
-                                    if (line.direction === 'income') income += amount;
-                                    else expense += amount;
+                                    let cash = amount;
+                                    const gst = parseFloat(line.gst_amount);
+                                    if (line.gst_basis === 'exclusive' && !Number.isNaN(gst) && gst > 0) {
+                                        cash = Math.round((amount + gst) * 100) / 100;
+                                    }
+                                    if (line.direction === 'income') income += cash;
+                                    else expense += cash;
                                 });
                                 return {
-                                    income,
-                                    expense,
+                                    income: Math.round(income * 100) / 100,
+                                    expense: Math.round(expense * 100) / 100,
                                     net: Math.round((income - expense) * 100) / 100,
                                 };
                             },
                             get submitLabel() {
-                                const n = this.lines.length;
-                                return n === 1 ? 'Save transaction' : 'Save ' + n + ' transactions';
+                                return 'Save transaction';
                             },
                             typesFor(direction) {
                                 return direction === 'income' ? this.incomeTypes : this.expenseTypes;

@@ -6,6 +6,7 @@ use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\Transaction;
+use App\Models\TransactionLine;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -22,6 +23,7 @@ class TransactionPostingService
         }
 
         return DB::transaction(function () use ($transaction) {
+            $transaction->loadMissing('lines');
             $bookerEntry = $this->postBookingEntityJournal($transaction);
             $this->postPayerEntityBankJournal($transaction);
 
@@ -191,23 +193,21 @@ class TransactionPostingService
 
     private function buildBookingEntityLines(Transaction $transaction): array
     {
-        $parts = $this->cashNetAndGst($transaction);
+        if ($transaction->isSplit()) {
+            return $this->buildSplitBookingEntityLines($transaction);
+        }
+
+        return $this->buildSingleBookingEntityLines($transaction);
+    }
+
+    private function buildSingleBookingEntityLines(Transaction $transaction): array
+    {
+        $parts = $transaction->cashParts();
         $amountGross = $parts['cash'];
         $gstAmount = $parts['gst'];
         $amountNet = $parts['net'];
 
-        $cashAccount = $this->findAccount('1100')
-            ?? $this->findAccount('1000');
-        $directorLoanAccount = $this->findDirectorLoanAccount();
-        $gstPayable = $this->findByName('GST Payable')
-            ?? $this->findByName('GST Clearing')
-            ?? $this->findAccount('2100')
-            ?? $this->findAccount('2200');
-        $gstReceivable = $this->findByName('GST Receivable')
-            ?? $this->findByName('GST Clearing')
-            ?? $this->findAccount('2100')
-            ?? $this->findAccount('1300');
-
+        $accounts = $this->resolveGlAccounts();
         $mapping = $this->counterAccountMapping();
         $counterAccount = $mapping[$transaction->transaction_type] ?? null;
         $unmappedTypes = $this->unmappedDirectorLoanTypes();
@@ -226,33 +226,120 @@ class TransactionPostingService
         }
 
         $payerEntityId = $this->payerEntityIdFromPaidBy($transaction);
-        $useIntercompany = $payerEntityId !== null && $directorLoanAccount !== null;
+        $useIntercompany = $payerEntityId !== null && $accounts['director_loan'] !== null;
         $incomeTypes = array_keys(Transaction::$incomeTypes);
         $lines = [];
 
         if (in_array($transaction->transaction_type, $incomeTypes, true)) {
             if ($useIntercompany) {
-                $lines[] = $this->line($directorLoanAccount->id, $amountGross, 0, 'Intercompany receivable');
-            } elseif ($cashAccount) {
-                $lines[] = $this->line($cashAccount->id, $amountGross, 0, 'Cash received');
+                $lines[] = $this->line($accounts['director_loan']->id, $amountGross, 0, 'Intercompany receivable');
+            } elseif ($accounts['cash']) {
+                $lines[] = $this->line($accounts['cash']->id, $amountGross, 0, 'Cash received');
             } else {
                 return [];
             }
             $lines[] = $this->line($counterAccount->id, 0, $amountNet, 'Income');
-            if ($gstAmount > 0 && $gstPayable) {
-                $lines[] = $this->line($gstPayable->id, 0, $gstAmount, 'GST Payable');
+            if ($gstAmount > 0 && $accounts['gst_payable']) {
+                $lines[] = $this->line($accounts['gst_payable']->id, 0, $gstAmount, 'GST Payable');
             }
         } else {
             if ($useIntercompany) {
-                $lines[] = $this->line($directorLoanAccount->id, 0, $amountGross, 'Intercompany payable');
-            } elseif ($cashAccount) {
-                $lines[] = $this->line($cashAccount->id, 0, $amountGross, 'Cash paid');
+                $lines[] = $this->line($accounts['director_loan']->id, 0, $amountGross, 'Intercompany payable');
+            } elseif ($accounts['cash']) {
+                $lines[] = $this->line($accounts['cash']->id, 0, $amountGross, 'Cash paid');
             } else {
                 return [];
             }
             $lines[] = $this->line($counterAccount->id, $amountNet, 0, 'Expense/Asset');
-            if ($gstAmount > 0 && $gstReceivable) {
-                $lines[] = $this->line($gstReceivable->id, $gstAmount, 0, 'GST Receivable');
+            if ($gstAmount > 0 && $accounts['gst_receivable']) {
+                $lines[] = $this->line($accounts['gst_receivable']->id, $gstAmount, 0, 'GST Receivable');
+            }
+        }
+
+        return $lines;
+    }
+
+    private function buildSplitBookingEntityLines(Transaction $transaction): array
+    {
+        $transaction->loadMissing('lines');
+        $allocationLines = $transaction->lines;
+        if ($allocationLines->isEmpty()) {
+            return [];
+        }
+
+        $accounts = $this->resolveGlAccounts();
+        $mapping = $this->counterAccountMapping();
+        $unmappedTypes = $this->unmappedDirectorLoanTypes();
+        $incomeTypes = array_keys(Transaction::$incomeTypes);
+
+        $payerEntityId = $this->payerEntityIdFromPaidBy($transaction);
+        $useIntercompany = $payerEntityId !== null && $accounts['director_loan'] !== null;
+
+        $headerCash = round(abs((float) $transaction->amount), 2);
+        $netDirection = $transaction->splitNetDirection();
+
+        $lines = [];
+
+        // Cash once from header net remittance.
+        if ($netDirection === 'income') {
+            if ($useIntercompany) {
+                $lines[] = $this->line($accounts['director_loan']->id, $headerCash, 0, 'Intercompany receivable');
+            } elseif ($accounts['cash']) {
+                $lines[] = $this->line($accounts['cash']->id, $headerCash, 0, 'Cash received');
+            } else {
+                return [];
+            }
+        } else {
+            if ($useIntercompany) {
+                $lines[] = $this->line($accounts['director_loan']->id, 0, $headerCash, 'Intercompany payable');
+            } elseif ($accounts['cash']) {
+                $lines[] = $this->line($accounts['cash']->id, 0, $headerCash, 'Cash paid');
+            } else {
+                return [];
+            }
+        }
+
+        foreach ($allocationLines as $allocation) {
+            /** @var TransactionLine $allocation */
+            $type = (string) $allocation->transaction_type;
+            $counterAccount = $mapping[$type] ?? null;
+
+            if (! $counterAccount) {
+                if (! in_array($type, $unmappedTypes, true)) {
+                    Log::warning('TransactionPostingService: required GL accounts not found for split line', [
+                        'transaction_id' => $transaction->id,
+                        'transaction_line_id' => $allocation->id,
+                        'transaction_type' => $type,
+                        'business_entity' => $transaction->business_entity_id,
+                        'missing_counter' => true,
+                    ]);
+                } else {
+                    Log::warning('TransactionPostingService: director-loan type not allowed on split allocations', [
+                        'transaction_id' => $transaction->id,
+                        'transaction_line_id' => $allocation->id,
+                        'transaction_type' => $type,
+                    ]);
+                }
+
+                // Never skip a line after posting header cash — that unbalances the journal.
+                return [];
+            }
+
+            $parts = $allocation->cashParts();
+            $gstAmount = $parts['gst'];
+            $amountNet = $parts['net'];
+            $label = $allocation->description ?: ($type);
+
+            if (in_array($type, $incomeTypes, true)) {
+                $lines[] = $this->line($counterAccount->id, 0, $amountNet, 'Income: '.$label);
+                if ($gstAmount > 0 && $accounts['gst_payable']) {
+                    $lines[] = $this->line($accounts['gst_payable']->id, 0, $gstAmount, 'GST Payable');
+                }
+            } else {
+                $lines[] = $this->line($counterAccount->id, $amountNet, 0, 'Expense: '.$label);
+                if ($gstAmount > 0 && $accounts['gst_receivable']) {
+                    $lines[] = $this->line($accounts['gst_receivable']->id, $gstAmount, 0, 'GST Receivable');
+                }
             }
         }
 
@@ -280,12 +367,15 @@ class TransactionPostingService
             return [];
         }
 
-        $parts = $this->cashNetAndGst($transaction);
-        $amountGross = $parts['cash'];
-        $incomeTypes = array_keys(Transaction::$incomeTypes);
+        $amountGross = round(abs((float) $transaction->amount), 2);
+        if (! $transaction->isSplit()) {
+            $amountGross = $transaction->cashParts()['cash'];
+        }
+        $isIncome = $transaction->direction === 'income';
+
         $lines = [];
 
-        if (in_array($transaction->transaction_type, $incomeTypes, true)) {
+        if ($isIncome) {
             $lines[] = $this->line($cashAccount->id, $amountGross, 0, 'Cash received (cross-entity)');
             $lines[] = $this->line($directorLoanAccount->id, 0, $amountGross, 'Due to related entity');
         } else {
@@ -297,33 +387,21 @@ class TransactionPostingService
     }
 
     /**
-     * @return array{cash: float, net: float, gst: float}
+     * @return array{cash: ?ChartOfAccount, director_loan: ?ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}
      */
-    private function cashNetAndGst(Transaction $transaction): array
+    private function resolveGlAccounts(): array
     {
-        $amt = (float) $transaction->amount;
-        $gst = max(0.0, (float) ($transaction->gst_amount ?? 0));
-
-        if ($gst < 0.000001) {
-            return [
-                'cash' => round($amt, 2),
-                'net' => round($amt, 2),
-                'gst' => 0.0,
-            ];
-        }
-
-        if ($transaction->gst_basis === 'exclusive') {
-            return [
-                'cash' => round($amt + $gst, 2),
-                'net' => round($amt, 2),
-                'gst' => round($gst, 2),
-            ];
-        }
-
         return [
-            'cash' => round($amt, 2),
-            'net' => round($amt - $gst, 2),
-            'gst' => round($gst, 2),
+            'cash' => $this->findAccount('1100') ?? $this->findAccount('1000'),
+            'director_loan' => $this->findDirectorLoanAccount(),
+            'gst_payable' => $this->findByName('GST Payable')
+                ?? $this->findByName('GST Clearing')
+                ?? $this->findAccount('2100')
+                ?? $this->findAccount('2200'),
+            'gst_receivable' => $this->findByName('GST Receivable')
+                ?? $this->findByName('GST Clearing')
+                ?? $this->findAccount('2100')
+                ?? $this->findAccount('1300'),
         ];
     }
 

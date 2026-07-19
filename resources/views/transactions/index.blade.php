@@ -66,8 +66,8 @@
         </form>
 
         @php
-            $incomeSum = $transactions->filter(fn ($t) => \App\Models\Transaction::directionFromType((string) $t->transaction_type) === 'income')->sum(fn ($t) => (float) $t->amount);
-            $expenseSum = $transactions->filter(fn ($t) => \App\Models\Transaction::directionFromType((string) $t->transaction_type) === 'expense')->sum(fn ($t) => (float) $t->amount);
+            $incomeSum = $transactions->filter(fn ($t) => $t->direction === 'income')->sum(fn ($t) => (float) $t->amount);
+            $expenseSum = $transactions->filter(fn ($t) => $t->direction === 'expense')->sum(fn ($t) => (float) $t->amount);
         @endphp
 
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -95,11 +95,14 @@
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                         @forelse ($transactions as $tx)
                             @php
-                                $txDirection = \App\Models\Transaction::directionFromType((string) $tx->transaction_type);
+                                $txDirection = $tx->direction;
                                 $txCounterparty = $tx->paid_by ? $tx->paid_by_display : '—';
                                 $txVendor = $tx->vendor_display ?: '—';
                                 $txPaidBy = $txDirection === 'income' ? $txVendor : $txCounterparty;
                                 $txReceivedBy = $txDirection === 'income' ? $txCounterparty : $txVendor;
+                                $txTypeLabel = $tx->transaction_type === \App\Models\Transaction::TYPE_SPLIT
+                                    ? 'Split remittance'
+                                    : (\App\Models\Transaction::allTypes()[$tx->transaction_type] ?? '—');
                             @endphp
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40">
                                 <td class="px-4 py-3">
@@ -142,7 +145,7 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300">
-                                    {{ \App\Models\Transaction::allTypes()[$tx->transaction_type] ?? '—' }}
+                                    {{ $txTypeLabel }}
                                 </td>
                                 <td class="px-4 py-3 text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                     {{ $tx->invoice_number ?? '—' }}
@@ -170,7 +173,7 @@
                                     {{ $tx->vendor_display ?? '—' }}
                                 </td>
                                 <td class="px-4 py-3 text-right font-medium whitespace-nowrap">
-                                    @if (\App\Models\Transaction::directionFromType((string) $tx->transaction_type) === 'income')
+                                    @if ($txDirection === 'income')
                                         <span class="text-green-700 dark:text-green-400">+${{ number_format((float) $tx->amount, 2) }}</span>
                                     @else
                                         <span class="text-red-700 dark:text-red-400">−${{ number_format((float) $tx->amount, 2) }}</span>
