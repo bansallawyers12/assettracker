@@ -667,13 +667,13 @@ class BusinessEntityController extends Controller
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
             'lines' => 'required|array|min:1|max:20',
-            'lines.*.amount' => 'required|numeric',
+            'lines.*.amount' => 'required|numeric|gt:0',
             'lines.*.description' => 'nullable|string|max:255',
             'lines.*.vendor_id' => ['nullable', 'integer', Rule::exists('vendors', 'id')],
             'lines.*.invoice_number' => 'nullable|string|max:100',
             'lines.*.transaction_type' => $typeRule,
             'lines.*.related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
-            'lines.*.gst_amount' => 'nullable|numeric',
+            'lines.*.gst_amount' => 'nullable|numeric|min:0',
             'lines.*.gst_basis' => 'nullable|in:inclusive,exclusive',
         ], $this->transactionReceiptUploadRules(true)), $this->transactionReceiptValidationMessages());
 
@@ -2663,10 +2663,16 @@ class BusinessEntityController extends Controller
             if (! is_array($line)) {
                 continue;
             }
-            foreach (['vendor_id', 'related_entity_id', 'gst_basis', 'gst_amount', 'invoice_number', 'description'] as $key) {
+            foreach (['vendor_id', 'related_entity_id', 'gst_amount', 'invoice_number', 'description'] as $key) {
                 if (array_key_exists($key, $line) && $line[$key] === '') {
                     $lines[$i][$key] = null;
                 }
+            }
+
+            // UI uses "none" for No GST; empty string from legacy payloads.
+            if (array_key_exists('gst_basis', $line)
+                && ($line['gst_basis'] === '' || $line['gst_basis'] === 'none' || $line['gst_basis'] === null)) {
+                $lines[$i]['gst_basis'] = null;
             }
         }
 

@@ -95,7 +95,7 @@
                                 class="{{ $txnInput }}"
                                 @change="if (!showRelatedEntity(line.transaction_type)) line.related_entity_id = ''">
                             <option value="">Select Type</option>
-                            <template x-for="opt in flatTypes(line.direction)" :key="opt.value">
+                            <template x-for="opt in typesFor(line.direction)" :key="opt.value">
                                 <option :value="opt.value" x-text="opt.label"></option>
                             </template>
                         </select>
@@ -141,12 +141,12 @@
                     <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">GST (10%)</p>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <label class="cursor-pointer">
-                            <input type="radio" class="sr-only" value=""
+                            <input type="radio" class="sr-only" value="none"
                                    :name="'lines[' + index + '][gst_basis]'"
                                    x-model="line.gst_basis"
                                    @change="line.gstTouched = false; recalcGst(index)">
                             <div class="h-full rounded-lg border px-3 py-2.5 text-sm transition-all"
-                                 :class="(line.gst_basis === '' || line.gst_basis === null)
+                                 :class="line.gst_basis === 'none'
                                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500/30'
                                     : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60'">
                                 <span class="font-semibold text-gray-900 dark:text-gray-100">No GST</span>

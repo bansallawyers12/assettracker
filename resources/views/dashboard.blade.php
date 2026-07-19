@@ -109,7 +109,7 @@
                             'transaction_type' => $seedType,
                             'invoice_number' => old('invoice_number', session('transactionData.invoice_number', '')),
                             'related_entity_id' => (string) old('related_entity_id', session('transactionData.related_entity_id', '')),
-                            'gst_basis' => old('gst_basis', session('transactionData.gst_basis', '')) ?? '',
+                            'gst_basis' => old('gst_basis', session('transactionData.gst_basis', 'none')) ?: 'none',
                             'gst_amount' => old('gst_amount', session('transactionData.gst_amount', '')),
                         ]];
                     } else {
@@ -121,6 +121,10 @@
                                     ? 'income'
                                     : 'expense';
                             }
+                            $gstBasis = $line['gst_basis'] ?? 'none';
+                            if ($gstBasis === '' || $gstBasis === null) {
+                                $gstBasis = 'none';
+                            }
 
                             return [
                                 'direction' => $direction,
@@ -130,7 +134,7 @@
                                 'transaction_type' => $type,
                                 'invoice_number' => $line['invoice_number'] ?? '',
                                 'related_entity_id' => isset($line['related_entity_id']) && $line['related_entity_id'] !== null ? (string) $line['related_entity_id'] : '',
-                                'gst_basis' => $line['gst_basis'] ?? '',
+                                'gst_basis' => $gstBasis,
                                 'gst_amount' => $line['gst_amount'] ?? '',
                             ];
                         }, $oldLines));
@@ -154,27 +158,50 @@
                 @endphp
                 <script>
                     window.dashboardTxnBatch = function (config) {
-                        const blankLine = (seed = {}) => ({
-                            _key: 'l_' + Math.random().toString(36).slice(2, 10),
-                            direction: seed.direction || 'expense',
-                            amount: seed.amount ?? '',
-                            description: seed.description ?? '',
-                            vendor_id: seed.vendor_id != null ? String(seed.vendor_id) : '',
-                            transaction_type: seed.transaction_type ?? '',
-                            invoice_number: seed.invoice_number ?? '',
-                            related_entity_id: seed.related_entity_id != null ? String(seed.related_entity_id) : '',
-                            gst_basis: seed.gst_basis ?? '',
-                            gst_amount: seed.gst_amount ?? '',
-                            gstTouched: !!(seed.gst_amount !== null && seed.gst_amount !== undefined && String(seed.gst_amount) !== ''),
-                        });
+                        const buildFlatTypes = (typeGroups, direction) => {
+                            const rows = [];
+                            (typeGroups || []).forEach((group) => {
+                                (group.options || []).forEach((opt) => {
+                                    if (opt.direction !== direction) return;
+                                    rows.push({
+                                        value: opt.value,
+                                        label: group.label + ' — ' + opt.label,
+                                    });
+                                });
+                            });
+                            return rows;
+                        };
+
+                        const blankLine = (seed = {}) => {
+                            let gstBasis = seed.gst_basis ?? 'none';
+                            if (gstBasis === '' || gstBasis === null || gstBasis === undefined) {
+                                gstBasis = 'none';
+                            }
+                            return {
+                                _key: 'l_' + Math.random().toString(36).slice(2, 10),
+                                direction: seed.direction || 'expense',
+                                amount: seed.amount ?? '',
+                                description: seed.description ?? '',
+                                vendor_id: seed.vendor_id != null && seed.vendor_id !== '' ? String(seed.vendor_id) : '',
+                                transaction_type: seed.transaction_type ?? '',
+                                invoice_number: seed.invoice_number ?? '',
+                                related_entity_id: seed.related_entity_id != null && seed.related_entity_id !== '' ? String(seed.related_entity_id) : '',
+                                gst_basis: gstBasis,
+                                gst_amount: seed.gst_amount ?? '',
+                                gstTouched: !!(seed.gst_amount !== null && seed.gst_amount !== undefined && String(seed.gst_amount) !== ''),
+                            };
+                        };
+
+                        const typeGroups = config.typeGroups || [];
 
                         return {
                             lines: (config.initialLines || []).map((line) => blankLine(line)),
-                            typeGroups: config.typeGroups || [],
                             vendors: config.vendors || [],
                             relatedEntities: config.relatedEntities || [],
                             maxLines: config.maxLines || 20,
                             relatedPartyTypes: config.relatedPartyTypes || [],
+                            incomeTypes: buildFlatTypes(typeGroups, 'income'),
+                            expenseTypes: buildFlatTypes(typeGroups, 'expense'),
                             get canAddLine() {
                                 return this.lines.length < this.maxLines;
                             },
@@ -190,32 +217,15 @@
                                 return {
                                     income,
                                     expense,
-                                    net: income - expense,
+                                    net: Math.round((income - expense) * 100) / 100,
                                 };
                             },
                             get submitLabel() {
                                 const n = this.lines.length;
                                 return n === 1 ? 'Save transaction' : 'Save ' + n + ' transactions';
                             },
-                            filteredTypeGroups(direction) {
-                                return this.typeGroups
-                                    .map((group) => ({
-                                        label: group.label,
-                                        options: (group.options || []).filter((opt) => opt.direction === direction),
-                                    }))
-                                    .filter((group) => group.options.length > 0);
-                            },
-                            flatTypes(direction) {
-                                const rows = [];
-                                this.filteredTypeGroups(direction).forEach((group) => {
-                                    group.options.forEach((opt) => {
-                                        rows.push({
-                                            value: opt.value,
-                                            label: group.label + ' — ' + opt.label,
-                                        });
-                                    });
-                                });
-                                return rows;
+                            typesFor(direction) {
+                                return direction === 'income' ? this.incomeTypes : this.expenseTypes;
                             },
                             showRelatedEntity(type) {
                                 return this.relatedPartyTypes.includes(type);
@@ -223,7 +233,7 @@
                             onDirectionChange(index) {
                                 const line = this.lines[index];
                                 if (!line) return;
-                                const allowed = new Set(this.flatTypes(line.direction).map((o) => o.value));
+                                const allowed = new Set(this.typesFor(line.direction).map((o) => o.value));
                                 if (line.transaction_type && !allowed.has(line.transaction_type)) {
                                     line.transaction_type = '';
                                 }
@@ -249,7 +259,7 @@
                                 if (!line || line.gstTouched) return;
                                 const amount = parseFloat(line.amount);
                                 const basis = line.gst_basis;
-                                if (!basis || Number.isNaN(amount)) {
+                                if (!basis || basis === 'none' || Number.isNaN(amount)) {
                                     line.gst_amount = '';
                                     return;
                                 }
@@ -264,7 +274,7 @@
                                 const prev = this.lines[this.lines.length - 1];
                                 this.lines.push(blankLine({
                                     direction: prev?.direction || 'expense',
-                                    gst_basis: prev?.gst_basis ?? '',
+                                    gst_basis: prev?.gst_basis || 'none',
                                 }));
                                 this.updatePaidByLabel();
                             },
@@ -286,7 +296,7 @@
                       data-transaction-paid-by-form
                       enctype="multipart/form-data"
                       class="dashboard-txn-form space-y-6"
-                      x-data="dashboardTxnBatch(@js($dashboardTxnBatchConfig))"
+                      x-data="window.dashboardTxnBatch(@js($dashboardTxnBatchConfig))"
                       x-init="init()">
                     @csrf
 
