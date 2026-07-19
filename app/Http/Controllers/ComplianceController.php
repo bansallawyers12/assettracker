@@ -153,6 +153,25 @@ class ComplianceController extends Controller
             abort(404);
         }
 
+        if (! DocumentStorage::exists($complianceFile->path)) {
+            Log::warning('Compliance preview: file missing from storage', [
+                'compliance_file_id' => $complianceFile->id,
+                'business_entity_id' => $businessEntity->id,
+                'path' => $complianceFile->path,
+                'storage_disk' => DocumentStorage::diskName(),
+            ]);
+
+            return response(
+                '<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;padding:1.5rem;color:#374151">'
+                .'<p><strong>File not found in storage.</strong></p>'
+                .'<p>The checklist record exists but the file is missing from '
+                .htmlspecialchars(DocumentStorage::diskName(), ENT_QUOTES, 'UTF-8')
+                .'. Re-upload the document or contact support.</p></body></html>',
+                404,
+                ['Content-Type' => 'text/html; charset=UTF-8']
+            );
+        }
+
         $name = $this->safeContentDispositionFilename($complianceFile->file_name, $complianceFile->path);
         $mime = $this->resolveMimeType($complianceFile);
         $headers = [
@@ -166,8 +185,23 @@ class ComplianceController extends Controller
             }
 
             return DocumentStorage::disk()->response($complianceFile->path, $name, $headers, 'inline');
-        } catch (\Throwable) {
-            abort(404);
+        } catch (\Throwable $e) {
+            Log::warning('Compliance preview: failed to stream from storage', [
+                'compliance_file_id' => $complianceFile->id,
+                'path' => $complianceFile->path,
+                'storage_disk' => DocumentStorage::diskName(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response(
+                '<!DOCTYPE html><html><body style="font-family:system-ui,sans-serif;padding:1.5rem;color:#374151">'
+                .'<p><strong>Could not load this file.</strong></p>'
+                .'<p>Storage error while reading from '
+                .htmlspecialchars(DocumentStorage::diskName(), ENT_QUOTES, 'UTF-8')
+                .'. Try downloading instead or re-upload the file.</p></body></html>',
+                404,
+                ['Content-Type' => 'text/html; charset=UTF-8']
+            );
         }
     }
 

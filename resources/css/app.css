@@ -1013,7 +1013,6 @@
     @apply absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 px-6 text-center bg-gray-50/95 dark:bg-gray-900/95;
 }
 
-.compliance-workspace .compliance-preview-embed,
 .compliance-workspace .compliance-preview-image,
 .compliance-workspace .compliance-preview-frame {
     @apply relative z-10 block h-full min-h-[320px] w-full border-0 bg-white dark:bg-gray-900;
@@ -1023,7 +1022,6 @@
     @apply object-contain p-2;
 }
 
-.compliance-workspace .compliance-preview-embed.hidden,
 .compliance-workspace .compliance-preview-image.hidden,
 .compliance-workspace .compliance-preview-frame.hidden {
     @apply hidden;

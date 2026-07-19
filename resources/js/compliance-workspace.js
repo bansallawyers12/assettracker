@@ -264,7 +264,6 @@ import { setRowUploading } from './workspace-upload-ui.js';
                             <div class="compliance-preview-spinner" aria-hidden="true"></div>
                             <p class="text-sm text-gray-600 dark:text-gray-300">Loading preview…</p>
                         </div>
-                        <embed class="compliance-preview-embed hidden" type="application/pdf" title="Document preview" />
                         <img class="compliance-preview-image hidden" alt="Document preview" />
                         <iframe class="compliance-preview-frame hidden" title="Document preview"></iframe>
                         <div class="compliance-preview-fallback hidden">
@@ -445,20 +444,44 @@ import { setRowUploading } from './workspace-upload-ui.js';
         }
 
         function hidePreviewMedia(panel) {
-            panel?.querySelector('.compliance-preview-embed')?.classList.add('hidden');
             panel?.querySelector('.compliance-preview-image')?.classList.add('hidden');
             panel?.querySelector('.compliance-preview-frame')?.classList.add('hidden');
+        }
+
+        function clearPreviewLoadTimer(panel) {
+            if (!panel?._previewLoadTimer) {
+                return;
+            }
+            clearTimeout(panel._previewLoadTimer);
+            panel._previewLoadTimer = null;
+        }
+
+        function showPreviewLoading(panel) {
+            panel?.querySelector('.compliance-preview-empty')?.classList.add('hidden');
+            panel?.querySelector('.compliance-preview-fallback')?.classList.add('hidden');
+            panel?.querySelector('.compliance-preview-loading')?.classList.remove('hidden');
+            hidePreviewMedia(panel);
+        }
+
+        function hidePreviewLoading(panel, { showFrame = false, showImage = false } = {}) {
+            panel?.querySelector('.compliance-preview-loading')?.classList.add('hidden');
+            panel?.querySelector('.compliance-preview-frame')?.classList.toggle('hidden', !showFrame);
+            panel?.querySelector('.compliance-preview-image')?.classList.toggle('hidden', !showImage);
+        }
+
+        function showPreviewFallback(panel) {
+            hidePreviewMedia(panel);
+            panel?.querySelector('.compliance-preview-empty')?.classList.add('hidden');
+            panel?.querySelector('.compliance-preview-loading')?.classList.add('hidden');
+            panel?.querySelector('.compliance-preview-fallback')?.classList.remove('hidden');
         }
 
         function resetPreviewPanel(panel) {
             if (!panel) return;
 
-            if (panel._previewLoadTimer) {
-                clearTimeout(panel._previewLoadTimer);
-                panel._previewLoadTimer = null;
-            }
+            panel._previewLoadToken = (panel._previewLoadToken ?? 0) + 1;
+            clearPreviewLoadTimer(panel);
 
-            const previewEmbed = panel.querySelector('.compliance-preview-embed');
             const previewImage = panel.querySelector('.compliance-preview-image');
             const previewFrame = panel.querySelector('.compliance-preview-frame');
             const previewDl = panel.querySelector('.compliance-preview-dl');
@@ -469,15 +492,15 @@ import { setRowUploading } from './workspace-upload-ui.js';
             const fallbackEl = panel.querySelector('.compliance-preview-fallback');
             const nameEl = panel.querySelector('.compliance-preview-filename');
 
-            if (previewEmbed) {
-                previewEmbed.removeAttribute('src');
-            }
             if (previewImage) {
+                previewImage.onload = null;
+                previewImage.onerror = null;
                 previewImage.removeAttribute('src');
             }
             if (previewFrame) {
-                previewFrame.removeAttribute('src');
                 previewFrame.onload = null;
+                previewFrame.onerror = null;
+                previewFrame.removeAttribute('src');
             }
             hidePreviewMedia(panel);
             if (previewDl) {
@@ -496,20 +519,6 @@ import { setRowUploading } from './workspace-upload-ui.js';
             if (nameEl) nameEl.textContent = 'Select a file to preview';
         }
 
-        function revealPreviewMedia(panel, mediaEl) {
-            if (!panel || !mediaEl) return;
-
-            const loadingEl = panel.querySelector('.compliance-preview-loading');
-            const emptyEl = panel.querySelector('.compliance-preview-empty');
-            const fallbackEl = panel.querySelector('.compliance-preview-fallback');
-
-            hidePreviewMedia(panel);
-            loadingEl?.classList.add('hidden');
-            emptyEl?.classList.add('hidden');
-            fallbackEl?.classList.add('hidden');
-            mediaEl.classList.remove('hidden');
-        }
-
         function applyPreviewToPanel(panel, file) {
             const viewUrl = previewSourceUrl(file);
             if (!panel || !viewUrl) return;
@@ -519,23 +528,18 @@ import { setRowUploading } from './workspace-upload-ui.js';
             const previewDl = panel.querySelector('.compliance-preview-dl');
             const previewOpen = panel.querySelector('.compliance-preview-open');
             const previewClear = panel.querySelector('.compliance-preview-clear');
-            const emptyEl = panel.querySelector('.compliance-preview-empty');
-            const loadingEl = panel.querySelector('.compliance-preview-loading');
-            const fallbackEl = panel.querySelector('.compliance-preview-fallback');
             const nameEl = panel.querySelector('.compliance-preview-filename');
 
-            if (panel._previewLoadTimer) {
-                clearTimeout(panel._previewLoadTimer);
-                panel._previewLoadTimer = null;
-            }
+            if (!previewDl) return;
 
+            const loadToken = (panel._previewLoadToken ?? 0) + 1;
+            panel._previewLoadToken = loadToken;
+            const loadStarted = performance.now();
+            const minLoaderMs = 300;
+
+            clearPreviewLoadTimer(panel);
             previewFileId = String(file.id);
             const downloadUrl = complianceContentUrl(file.id, true) || file.download_url;
-
-            emptyEl?.classList.add('hidden');
-            fallbackEl?.classList.add('hidden');
-            loadingEl?.classList.add('hidden');
-            hidePreviewMedia(panel);
 
             if (nameEl) nameEl.textContent = file.file_name || 'Document';
             previewDl.href = downloadUrl || viewUrl;
@@ -547,21 +551,114 @@ import { setRowUploading } from './workspace-upload-ui.js';
             previewClear?.classList.remove('opacity-50', 'pointer-events-none');
             if (previewClear) previewClear.dataset.fileId = String(file.id);
 
-            if (isImageFile(file) && previewImage) {
-                previewImage.onload = null;
-                previewImage.onerror = null;
-                previewImage.src = viewUrl;
-                revealPreviewMedia(panel, previewImage);
-            } else if (previewFrame) {
-                previewFrame.onload = null;
-                previewFrame.removeAttribute('src');
-                window.requestAnimationFrame(() => { previewFrame.src = viewUrl; });
-                revealPreviewMedia(panel, previewFrame);
-            } else {
-                fallbackEl?.classList.remove('hidden');
-            }
+            const finishLoading = ({ showFrame = false, showImage = false } = {}) => {
+                if (loadToken !== panel._previewLoadToken) {
+                    return;
+                }
+
+                const wait = Math.max(0, minLoaderMs - (performance.now() - loadStarted));
+                clearPreviewLoadTimer(panel);
+                panel._previewLoadTimer = window.setTimeout(() => {
+                    panel._previewLoadTimer = null;
+                    if (loadToken !== panel._previewLoadToken) {
+                        return;
+                    }
+                    hidePreviewLoading(panel, { showFrame, showImage });
+                }, wait);
+            };
 
             saveSession();
+
+            if (isImageFile(file) && previewImage) {
+                showPreviewLoading(panel);
+                previewImage.onload = () => {
+                    if (loadToken !== panel._previewLoadToken) {
+                        return;
+                    }
+                    panel.querySelector('.compliance-preview-empty')?.classList.add('hidden');
+                    panel.querySelector('.compliance-preview-fallback')?.classList.add('hidden');
+                    finishLoading({ showImage: true });
+                };
+                previewImage.onerror = () => {
+                    if (loadToken !== panel._previewLoadToken) {
+                        return;
+                    }
+                    showPreviewFallback(panel);
+                };
+                previewImage.src = viewUrl;
+
+                panel._previewLoadTimer = window.setTimeout(() => {
+                    if (loadToken !== panel._previewLoadToken) {
+                        return;
+                    }
+                    finishLoading({ showImage: true });
+                }, 15000);
+
+                return;
+            }
+
+            if (!previewFrame) {
+                showPreviewFallback(panel);
+                return;
+            }
+
+            showPreviewLoading(panel);
+            previewFrame.onload = null;
+            previewFrame.onerror = null;
+
+            previewFrame.onload = () => {
+                if (loadToken !== panel._previewLoadToken) {
+                    return;
+                }
+
+                const currentSrc = previewFrame.getAttribute('src') || previewFrame.src || '';
+                if (!currentSrc || currentSrc === 'about:blank') {
+                    return;
+                }
+
+                panel.querySelector('.compliance-preview-empty')?.classList.add('hidden');
+                panel.querySelector('.compliance-preview-fallback')?.classList.add('hidden');
+                finishLoading({ showFrame: true });
+
+                try {
+                    const title = previewFrame.contentDocument?.title ?? '';
+                    const bodyText = previewFrame.contentDocument?.body?.innerText ?? '';
+                    const looksMissing = /not found|404/i.test(title)
+                        || /file not found in storage|could not load this file/i.test(bodyText);
+                    if (looksMissing) {
+                        showPreviewFallback(panel);
+                    }
+                } catch (_) {
+                    // Cross-origin or PDF viewer — ignore.
+                }
+            };
+
+            previewFrame.onerror = () => {
+                if (loadToken !== panel._previewLoadToken) {
+                    return;
+                }
+                showPreviewFallback(panel);
+            };
+
+            previewFrame.removeAttribute('src');
+            previewFrame.src = 'about:blank';
+            window.requestAnimationFrame(() => {
+                window.requestAnimationFrame(() => {
+                    if (loadToken !== panel._previewLoadToken) {
+                        return;
+                    }
+                    previewFrame.src = viewUrl;
+                });
+            });
+
+            panel._previewLoadTimer = window.setTimeout(() => {
+                if (loadToken !== panel._previewLoadToken) {
+                    return;
+                }
+                panel.querySelector('.compliance-preview-empty')?.classList.add('hidden');
+                panel.querySelector('.compliance-preview-fallback')?.classList.add('hidden');
+                finishLoading({ showFrame: true });
+            }, 15000);
         }
 
         function setPreview(fileOrId, { openInNewTab = false } = {}) {
@@ -578,7 +675,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
             applyPreviewToPanel(getActivePanel(), file);
             root.querySelectorAll('[data-compliance-row]').forEach(row => {
-                row.classList.toggle('compliance-row-preview-active', row.dataset.complianceRow === String(fileId));
+                row.classList.toggle('compliance-row-preview-active', row.dataset.complianceRow === String(file.id));
             });
 
             getActivePanel()?.querySelector('.compliance-preview-card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

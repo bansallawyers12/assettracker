@@ -160,7 +160,7 @@ class BankAccount extends Model
 
         $digits = preg_replace('/\D/', '', $accountNumber);
         if ($digits === '') {
-            return '****';
+            return null;
         }
 
         if (strlen($digits) <= $visibleDigits) {
@@ -378,18 +378,27 @@ class BankAccount extends Model
 
     /**
      * Label shown in pickers and the portfolio index.
-     * "Account Name — Holder (BSB)"
+     * "Account Name — Holder (****1234)"
      */
     public function displayLabel(): string
     {
         $label  = $this->account_name ?: $this->bank_name;
-        $bsb    = self::formatBsb($this->bsb);
         $holder = $this->holderLabel();
+        $suffix = $this->maskedAccountNumber() ?? self::formatBsb($this->bsb);
+
+        if ($suffix === null || $suffix === '') {
+            if ($holder !== '—') {
+                return "{$label} — {$holder}";
+            }
+
+            return $label;
+        }
 
         if ($holder !== '—') {
-            return "{$label} — {$holder} ({$bsb})";
+            return "{$label} — {$holder} ({$suffix})";
         }
-        return "{$label} ({$bsb})";
+
+        return "{$label} ({$suffix})";
     }
 
     /**
