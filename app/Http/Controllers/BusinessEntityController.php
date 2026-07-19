@@ -628,7 +628,7 @@ class BusinessEntityController extends Controller
      */
 
     /**
-     * Store a new transaction for a business entity.
+     * Store one or more transactions for a business entity (Dashboard batch / single create).
      *
      * @return RedirectResponse
      */
@@ -637,10 +637,9 @@ class BusinessEntityController extends Controller
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
 
+        $this->normalizeDashboardTransactionLines($request);
         $this->normalizeOptionalTransactionAssetId($request);
-        $this->normalizeOptionalRelatedEntityId($request);
-        $this->normalizeOptionalVendorId($request);
-        $this->normalizeEmptyGstBasisRequest($request);
+        $this->normalizeBatchTransactionLineFields($request);
         $this->normalizeOptionalBankAccountId($request);
 
         $resolvedEntityId = $request->filled('business_entity_id')
@@ -649,22 +648,16 @@ class BusinessEntityController extends Controller
 
         $this->prepareTransactionUploadValidation($request, ['document', 'payment_document']);
 
+        $typeRule = 'required|in:'.implode(',', array_keys(Transaction::allTypes()));
+
         $request->validate(array_merge([
             'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'date' => 'required|date',
-            'amount' => 'required|numeric',
-            'description' => 'nullable|string|max:255',
-            'vendor_id' => ['nullable', 'integer', Rule::exists('vendors', 'id')],
-            'invoice_number' => 'nullable|string|max:100',
-            'transaction_type' => 'required|in:'.implode(',', array_keys(Transaction::allTypes())),
-            'related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'asset_id' => [
                 'nullable',
                 'integer',
                 Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $resolvedEntityId)),
             ],
-            'gst_amount' => 'nullable|numeric',
-            'gst_basis' => 'nullable|in:inclusive,exclusive',
             'document_name' => 'nullable|string|max:255',
             'payment_status' => 'required|in:unpaid,paid',
             'due_date' => 'nullable|date',
@@ -673,6 +666,15 @@ class BusinessEntityController extends Controller
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
+            'lines' => 'required|array|min:1|max:20',
+            'lines.*.amount' => 'required|numeric',
+            'lines.*.description' => 'nullable|string|max:255',
+            'lines.*.vendor_id' => ['nullable', 'integer', Rule::exists('vendors', 'id')],
+            'lines.*.invoice_number' => 'nullable|string|max:100',
+            'lines.*.transaction_type' => $typeRule,
+            'lines.*.related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
+            'lines.*.gst_amount' => 'nullable|numeric',
+            'lines.*.gst_basis' => 'nullable|in:inclusive,exclusive',
         ], $this->transactionReceiptUploadRules(true)), $this->transactionReceiptValidationMessages());
 
         Log::info('Dashboard add transaction: validation passed, persisting', $this->storeTransactionRequestLogContext($request, $businessEntity));
@@ -683,24 +685,13 @@ class BusinessEntityController extends Controller
                 : $businessEntity;
 
             $this->ensureOperationalForAccounting($targetEntity);
-
             $this->authorize('update', $targetEntity);
 
-            if ($request->filled('related_entity_id')
-                && (int) $request->related_entity_id === (int) $targetEntity->id) {
-                throw ValidationException::withMessages([
-                    'related_entity_id' => 'Related entity must be different from the business entity.',
-                ]);
-            }
+            $lines = array_values($request->input('lines', []));
+            $this->assertDashboardTransactionLinesValid($lines, $targetEntity);
 
-            $this->validateTransactionGstBasis($request);
-
-            $gstResolved = TransactionGstResolver::resolve(
-                (float) $request->amount,
-                $request->input('gst_basis') ?: null,
-                $request->input('gst_amount'),
-                Transaction::directionFromType((string) $request->transaction_type)
-            );
+            $representativeType = $this->representativeTransactionTypeForBatch($lines);
+            $request->merge(['transaction_type' => $representativeType]);
 
             $asset = $request->filled('asset_id')
                 ? Asset::query()->find($request->integer('asset_id'))
@@ -708,12 +699,14 @@ class BusinessEntityController extends Controller
 
             $paidBy = $this->validatedPaidBy($request);
             $bankAccountId = $this->resolveBankAccountIdForTransactionSave($request);
-            $vendorData = $this->resolveTransactionVendorData($request);
 
-            $transaction = DB::transaction(function () use ($request, $targetEntity, $asset, $gstResolved, $paidBy, $bankAccountId, $vendorData) {
+            $created = DB::transaction(function () use ($request, $targetEntity, $asset, $lines, $paidBy, $bankAccountId) {
                 $receiptPath = null;
                 $documentId = null;
                 $prefillPath = $request->input('receipt_path');
+                $batchLabel = count($lines) > 1
+                    ? 'Batch of '.count($lines).' transactions'
+                    : trim((string) ($lines[0]['description'] ?? ''));
 
                 if ($request->hasFile('document')) {
                     $file = $request->file('document');
@@ -722,7 +715,7 @@ class BusinessEntityController extends Controller
                     $labelBase = $request->filled('document_name')
                         ? trim((string) $request->input('document_name'))
                         : pathinfo($originalName, PATHINFO_FILENAME);
-                    $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
+                    $desc = trim('Transaction receipt'.($batchLabel !== '' ? ': '.$batchLabel : ''));
                     $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
                         $targetEntity,
                         $asset,
@@ -740,7 +733,7 @@ class BusinessEntityController extends Controller
                 ) {
                     $displayName = basename(str_replace('\\', '/', $prefillPath));
                     $labelBase = pathinfo($displayName, PATHINFO_FILENAME) ?: 'Receipt';
-                    $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
+                    $desc = trim('Transaction receipt'.($batchLabel !== '' ? ': '.$batchLabel : ''));
                     $document = $this->documentUploadService->createTransactionReceiptFromExistingS3Path(
                         $targetEntity,
                         $asset,
@@ -760,7 +753,7 @@ class BusinessEntityController extends Controller
                     $payLabelBase = $request->filled('payment_document_name')
                         ? trim((string) $request->input('payment_document_name'))
                         : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
-                    $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
+                    $payDesc = trim('Payment receipt'.($batchLabel !== '' ? ': '.$batchLabel : ''));
                     $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
                         $targetEntity,
                         $asset,
@@ -772,39 +765,64 @@ class BusinessEntityController extends Controller
                     $paymentDocumentId = $payDocument->id;
                 }
 
-                return Transaction::create([
-                    'business_entity_id' => $targetEntity->id,
-                    'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
-                    'related_entity_id' => $request->related_entity_id,
-                    'date' => $request->date,
-                    'amount' => $request->amount,
-                    'description' => $request->description,
-                    'vendor_id' => $vendorData['vendor_id'],
-                    'vendor_name' => $vendorData['vendor_name'],
-                    'invoice_number' => $request->invoice_number,
-                    'transaction_type' => $request->transaction_type,
-                    'gst_amount' => $gstResolved['gst_amount'],
-                    'gst_status' => $gstResolved['gst_status'],
-                    'gst_basis' => $gstResolved['gst_basis'],
-                    'receipt_path' => $receiptPath,
-                    'document_id' => $documentId,
-                    'payment_status' => $request->payment_status ?? 'paid',
-                    'due_date' => $request->due_date,
-                    'paid_at' => $request->paid_at,
-                    'payment_method' => $request->payment_method,
-                    'paid_by' => $paidBy,
-                    'bank_account_id' => $bankAccountId,
-                    'payment_document_id' => $paymentDocumentId,
-                ]);
+                $createdRows = [];
+                foreach ($lines as $line) {
+                    $type = (string) $line['transaction_type'];
+                    $direction = Transaction::directionFromType($type);
+                    $gstResolved = TransactionGstResolver::resolve(
+                        (float) $line['amount'],
+                        ! empty($line['gst_basis']) ? (string) $line['gst_basis'] : null,
+                        $line['gst_amount'] ?? null,
+                        $direction
+                    );
+                    $vendorData = $this->resolveVendorDataFromId(
+                        isset($line['vendor_id']) && $line['vendor_id'] !== '' && $line['vendor_id'] !== null
+                            ? (int) $line['vendor_id']
+                            : null
+                    );
+
+                    $createdRows[] = Transaction::create([
+                        'business_entity_id' => $targetEntity->id,
+                        'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
+                        'related_entity_id' => $line['related_entity_id'] ?? null,
+                        'date' => $request->date,
+                        'amount' => $line['amount'],
+                        'description' => $line['description'] ?? null,
+                        'vendor_id' => $vendorData['vendor_id'],
+                        'vendor_name' => $vendorData['vendor_name'],
+                        'invoice_number' => $line['invoice_number'] ?? null,
+                        'transaction_type' => $type,
+                        'gst_amount' => $gstResolved['gst_amount'],
+                        'gst_status' => $gstResolved['gst_status'],
+                        'gst_basis' => $gstResolved['gst_basis'],
+                        'receipt_path' => $receiptPath,
+                        'document_id' => $documentId,
+                        'payment_status' => $request->payment_status ?? 'paid',
+                        'due_date' => $request->due_date,
+                        'paid_at' => $request->paid_at,
+                        'payment_method' => $request->payment_method,
+                        'paid_by' => $paidBy,
+                        'bank_account_id' => $bankAccountId,
+                        'payment_document_id' => $paymentDocumentId,
+                    ]);
+                }
+
+                return $createdRows;
             });
 
+            $count = count($created);
             Log::info('Dashboard add transaction: saved', [
-                'transaction_id' => $transaction->id,
-                'target_business_entity_id' => $transaction->business_entity_id,
+                'transaction_ids' => collect($created)->pluck('id')->all(),
+                'count' => $count,
+                'target_business_entity_id' => $targetEntity->id,
                 'user_id' => auth()->id(),
             ]);
 
-            return redirect()->route('dashboard')->with('success', "Transaction '{$transaction->description}' added successfully!");
+            $success = $count === 1
+                ? ("Transaction '".($created[0]->description ?: 'saved')."' added successfully!")
+                : "{$count} transactions added successfully!";
+
+            return redirect()->route('dashboard')->with('success', $success);
         } catch (ValidationException $e) {
             throw $e;
         } catch (\Throwable $e) {
@@ -824,7 +842,7 @@ class BusinessEntityController extends Controller
             return redirect()
                 ->route('dashboard')
                 ->withInput()
-                ->with('error', 'Could not save this transaction. Please try again.');
+                ->with('error', 'Could not save these transactions. Please try again.');
         }
     }
 
@@ -2583,6 +2601,8 @@ class BusinessEntityController extends Controller
      */
     private function storeTransactionRequestLogContext(Request $request, BusinessEntity $routeBusinessEntity): array
     {
+        $lines = $request->input('lines');
+
         return [
             'route_business_entity_id' => $routeBusinessEntity->id,
             'request_business_entity_id' => $request->input('business_entity_id'),
@@ -2590,6 +2610,7 @@ class BusinessEntityController extends Controller
             'due_date' => $request->input('due_date'),
             'paid_at' => $request->input('paid_at'),
             'transaction_type' => $request->input('transaction_type'),
+            'line_count' => is_array($lines) ? count($lines) : null,
             'date' => $request->input('date'),
             'amount' => $request->input('amount'),
             'description' => $request->input('description'),
@@ -2600,6 +2621,128 @@ class BusinessEntityController extends Controller
             'has_payment_document' => $request->hasFile('payment_document'),
             'has_receipt_path_prefill' => $request->filled('receipt_path'),
             'user_id' => auth()->id(),
+        ];
+    }
+
+    /**
+     * Accept flat single-transaction payloads or an explicit lines[] batch from the Dashboard form.
+     */
+    private function normalizeDashboardTransactionLines(Request $request): void
+    {
+        $lines = $request->input('lines');
+        if (is_array($lines) && count($lines) > 0) {
+            return;
+        }
+
+        if (! $request->has('amount') && ! $request->has('transaction_type')) {
+            return;
+        }
+
+        $request->merge([
+            'lines' => [[
+                'amount' => $request->input('amount'),
+                'description' => $request->input('description'),
+                'vendor_id' => $request->input('vendor_id'),
+                'invoice_number' => $request->input('invoice_number'),
+                'transaction_type' => $request->input('transaction_type'),
+                'related_entity_id' => $request->input('related_entity_id'),
+                'gst_amount' => $request->input('gst_amount'),
+                'gst_basis' => $request->input('gst_basis'),
+            ]],
+        ]);
+    }
+
+    private function normalizeBatchTransactionLineFields(Request $request): void
+    {
+        $lines = $request->input('lines');
+        if (! is_array($lines)) {
+            return;
+        }
+
+        foreach ($lines as $i => $line) {
+            if (! is_array($line)) {
+                continue;
+            }
+            foreach (['vendor_id', 'related_entity_id', 'gst_basis', 'gst_amount', 'invoice_number', 'description'] as $key) {
+                if (array_key_exists($key, $line) && $line[$key] === '') {
+                    $lines[$i][$key] = null;
+                }
+            }
+        }
+
+        $request->merge(['lines' => $lines]);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lines
+     */
+    private function assertDashboardTransactionLinesValid(array $lines, BusinessEntity $targetEntity): void
+    {
+        $relatedPartyTypes = [
+            'director_loan_in',
+            'director_loan_out',
+            'director_loan_repayment',
+            'directors_loans_to_company',
+            'repayment_directors_loans',
+            'company_loans_to_directors',
+        ];
+
+        foreach ($lines as $index => $line) {
+            $type = (string) ($line['transaction_type'] ?? '');
+            $gstAmount = $line['gst_amount'] ?? null;
+            if ($gstAmount !== null && $gstAmount !== '' && is_numeric($gstAmount) && round((float) $gstAmount, 2) > 0) {
+                if (! in_array($line['gst_basis'] ?? null, ['inclusive', 'exclusive'], true)) {
+                    throw ValidationException::withMessages([
+                        "lines.{$index}.gst_basis" => 'Select whether the amount is GST inclusive or GST exclusive when you enter a GST amount.',
+                    ]);
+                }
+            }
+
+            $relatedId = $line['related_entity_id'] ?? null;
+            if ($relatedId !== null && $relatedId !== '' && (int) $relatedId === (int) $targetEntity->id) {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.related_entity_id" => 'Related entity must be different from the business entity.',
+                ]);
+            }
+
+            if (in_array($type, $relatedPartyTypes, true) && ($relatedId === null || $relatedId === '')) {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.related_entity_id" => 'Related entity is required for this transaction type.',
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Prefer an income type when present so paid bank-account rules apply to remittance batches.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     */
+    private function representativeTransactionTypeForBatch(array $lines): string
+    {
+        foreach ($lines as $line) {
+            $type = (string) ($line['transaction_type'] ?? '');
+            if ($type !== '' && Transaction::directionFromType($type) === 'income') {
+                return $type;
+            }
+        }
+
+        return (string) ($lines[0]['transaction_type'] ?? '');
+    }
+
+    /**
+     * @return array{vendor_id: ?int, vendor_name: ?string}
+     */
+    private function resolveVendorDataFromId(?int $vendorId): array
+    {
+        $vendorName = null;
+        if ($vendorId) {
+            $vendorName = Vendor::query()->find($vendorId)?->name;
+        }
+
+        return [
+            'vendor_id' => $vendorId,
+            'vendor_name' => $vendorName,
         ];
     }
 
@@ -2669,10 +2812,14 @@ class BusinessEntityController extends Controller
         if ($request->input('payment_status') === 'paid' && $transactionType !== '') {
             $direction = Transaction::directionFromType($transactionType);
             if ($paidBy === null || trim($paidBy) === '') {
+                $lines = $request->input('lines');
+                $mixedBatch = is_array($lines) && count($lines) > 1;
                 throw ValidationException::withMessages([
-                    'paid_by_select' => $direction === 'income'
-                        ? 'Received by is required.'
-                        : 'Paid by is required.',
+                    'paid_by_select' => $mixedBatch
+                        ? 'Paid / received by is required.'
+                        : ($direction === 'income'
+                            ? 'Received by is required.'
+                            : 'Paid by is required.'),
                 ]);
             }
         }

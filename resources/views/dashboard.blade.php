@@ -38,8 +38,6 @@
 
             {{-- Add Transaction Section (Collapsible) --}}
             @php
-                $oldDirection = old('direction', session('transactionData.direction', 'expense'));
-                $dashGstBasis = old('gst_basis', session('transactionData.gst_basis', ''));
                 $oldStatus = old('payment_status', session('transactionData.payment_status', 'paid'));
                 $txnLabel = 'block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5';
                 $txnInput = 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 shadow-xs placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
@@ -55,9 +53,9 @@
                                 <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/10 dark:bg-blue-500/15 ring-1 ring-blue-600/20 dark:ring-blue-400/30">
                                     <x-lucide-clipboard class="w-4 h-4 text-blue-600 dark:text-blue-400" />
                                 </span>
-                                Add Transaction
+                                Add Transactions
                             </h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Record income or expenses and link them to entities, assets, and vendors.</p>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Record one or more income/expense lines for the same entity, asset, and payment details.</p>
                         </div>
                         <button type="button" id="cancel-transaction-btn" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors" aria-label="Close form">
                             <x-lucide-x class="w-5 h-5" />
@@ -72,35 +70,225 @@
                     if ($errors->any()) {
                         $dashboardTxnErrorToast = $errors->count() === 1
                             ? $errors->first()
-                            : "Could not save this transaction:\n" . implode("\n", $errors->all());
+                            : "Could not save these transactions:\n" . implode("\n", $errors->all());
                     }
+
+                    $dashboardTypeGroups = [];
+                    foreach (\App\Models\Transaction::typeSelectGroups() as $groupLabel => $types) {
+                        $options = [];
+                        foreach ($types as $value => $label) {
+                            $options[] = [
+                                'value' => $value,
+                                'label' => $label,
+                                'direction' => array_key_exists($value, \App\Models\Transaction::$incomeTypes) ? 'income' : 'expense',
+                            ];
+                        }
+                        $dashboardTypeGroups[] = ['label' => $groupLabel, 'options' => $options];
+                    }
+
+                    $dashboardVendorsJson = $vendors->map(fn ($v) => ['id' => $v->id, 'name' => $v->name])->values();
+                    $dashboardRelatedEntitiesJson = $businessEntities->sortBy('legal_name')->map(fn ($e) => [
+                        'id' => $e->id,
+                        'name' => $e->legal_name,
+                    ])->values();
+
+                    $oldLines = old('lines');
+                    if (! is_array($oldLines) || count($oldLines) === 0) {
+                        $seedType = old('transaction_type', session('transactionData.transaction_type', ''));
+                        $seedDirection = old('direction', session('transactionData.direction'));
+                        if (! in_array($seedDirection, ['income', 'expense'], true)) {
+                            $seedDirection = $seedType && array_key_exists($seedType, \App\Models\Transaction::$incomeTypes)
+                                ? 'income'
+                                : 'expense';
+                        }
+                        $oldLines = [[
+                            'direction' => $seedDirection,
+                            'amount' => old('amount', session('transactionData.amount', '')),
+                            'description' => old('description', session('transactionData.description', '')),
+                            'vendor_id' => (string) old('vendor_id', session('transactionData.vendor_id', '')),
+                            'transaction_type' => $seedType,
+                            'invoice_number' => old('invoice_number', session('transactionData.invoice_number', '')),
+                            'related_entity_id' => (string) old('related_entity_id', session('transactionData.related_entity_id', '')),
+                            'gst_basis' => old('gst_basis', session('transactionData.gst_basis', '')) ?? '',
+                            'gst_amount' => old('gst_amount', session('transactionData.gst_amount', '')),
+                        ]];
+                    } else {
+                        $oldLines = array_values(array_map(function ($line) {
+                            $type = (string) ($line['transaction_type'] ?? '');
+                            $direction = $line['direction'] ?? null;
+                            if (! in_array($direction, ['income', 'expense'], true)) {
+                                $direction = $type && array_key_exists($type, \App\Models\Transaction::$incomeTypes)
+                                    ? 'income'
+                                    : 'expense';
+                            }
+
+                            return [
+                                'direction' => $direction,
+                                'amount' => $line['amount'] ?? '',
+                                'description' => $line['description'] ?? '',
+                                'vendor_id' => isset($line['vendor_id']) && $line['vendor_id'] !== null ? (string) $line['vendor_id'] : '',
+                                'transaction_type' => $type,
+                                'invoice_number' => $line['invoice_number'] ?? '',
+                                'related_entity_id' => isset($line['related_entity_id']) && $line['related_entity_id'] !== null ? (string) $line['related_entity_id'] : '',
+                                'gst_basis' => $line['gst_basis'] ?? '',
+                                'gst_amount' => $line['gst_amount'] ?? '',
+                            ];
+                        }, $oldLines));
+                    }
+
+                    $dashboardTxnBatchConfig = [
+                        'initialLines' => $oldLines,
+                        'typeGroups' => $dashboardTypeGroups,
+                        'vendors' => $dashboardVendorsJson->all(),
+                        'relatedEntities' => $dashboardRelatedEntitiesJson->all(),
+                        'maxLines' => 20,
+                        'relatedPartyTypes' => [
+                            'director_loan_in',
+                            'director_loan_out',
+                            'director_loan_repayment',
+                            'directors_loans_to_company',
+                            'repayment_directors_loans',
+                            'company_loans_to_directors',
+                        ],
+                    ];
                 @endphp
+                <script>
+                    window.dashboardTxnBatch = function (config) {
+                        const blankLine = (seed = {}) => ({
+                            _key: 'l_' + Math.random().toString(36).slice(2, 10),
+                            direction: seed.direction || 'expense',
+                            amount: seed.amount ?? '',
+                            description: seed.description ?? '',
+                            vendor_id: seed.vendor_id != null ? String(seed.vendor_id) : '',
+                            transaction_type: seed.transaction_type ?? '',
+                            invoice_number: seed.invoice_number ?? '',
+                            related_entity_id: seed.related_entity_id != null ? String(seed.related_entity_id) : '',
+                            gst_basis: seed.gst_basis ?? '',
+                            gst_amount: seed.gst_amount ?? '',
+                            gstTouched: !!(seed.gst_amount !== null && seed.gst_amount !== undefined && String(seed.gst_amount) !== ''),
+                        });
+
+                        return {
+                            lines: (config.initialLines || []).map((line) => blankLine(line)),
+                            typeGroups: config.typeGroups || [],
+                            vendors: config.vendors || [],
+                            relatedEntities: config.relatedEntities || [],
+                            maxLines: config.maxLines || 20,
+                            relatedPartyTypes: config.relatedPartyTypes || [],
+                            get canAddLine() {
+                                return this.lines.length < this.maxLines;
+                            },
+                            get totals() {
+                                let income = 0;
+                                let expense = 0;
+                                this.lines.forEach((line) => {
+                                    const amount = parseFloat(line.amount);
+                                    if (Number.isNaN(amount)) return;
+                                    if (line.direction === 'income') income += amount;
+                                    else expense += amount;
+                                });
+                                return {
+                                    income,
+                                    expense,
+                                    net: income - expense,
+                                };
+                            },
+                            get submitLabel() {
+                                const n = this.lines.length;
+                                return n === 1 ? 'Save transaction' : 'Save ' + n + ' transactions';
+                            },
+                            filteredTypeGroups(direction) {
+                                return this.typeGroups
+                                    .map((group) => ({
+                                        label: group.label,
+                                        options: (group.options || []).filter((opt) => opt.direction === direction),
+                                    }))
+                                    .filter((group) => group.options.length > 0);
+                            },
+                            flatTypes(direction) {
+                                const rows = [];
+                                this.filteredTypeGroups(direction).forEach((group) => {
+                                    group.options.forEach((opt) => {
+                                        rows.push({
+                                            value: opt.value,
+                                            label: group.label + ' — ' + opt.label,
+                                        });
+                                    });
+                                });
+                                return rows;
+                            },
+                            showRelatedEntity(type) {
+                                return this.relatedPartyTypes.includes(type);
+                            },
+                            onDirectionChange(index) {
+                                const line = this.lines[index];
+                                if (!line) return;
+                                const allowed = new Set(this.flatTypes(line.direction).map((o) => o.value));
+                                if (line.transaction_type && !allowed.has(line.transaction_type)) {
+                                    line.transaction_type = '';
+                                }
+                                if (!this.showRelatedEntity(line.transaction_type)) {
+                                    line.related_entity_id = '';
+                                }
+                                this.updatePaidByLabel();
+                            },
+                            updatePaidByLabel() {
+                                const label = document.getElementById('paid_by_label');
+                                if (!label) return;
+                                const dirs = new Set(this.lines.map((l) => l.direction));
+                                if (dirs.size > 1) {
+                                    label.textContent = 'Paid / received by';
+                                } else if (dirs.has('income')) {
+                                    label.textContent = 'Received By';
+                                } else {
+                                    label.textContent = 'Paid By';
+                                }
+                            },
+                            recalcGst(index) {
+                                const line = this.lines[index];
+                                if (!line || line.gstTouched) return;
+                                const amount = parseFloat(line.amount);
+                                const basis = line.gst_basis;
+                                if (!basis || Number.isNaN(amount)) {
+                                    line.gst_amount = '';
+                                    return;
+                                }
+                                if (basis === 'inclusive') {
+                                    line.gst_amount = (Math.round((amount - amount / 1.1) * 100) / 100).toFixed(2);
+                                } else if (basis === 'exclusive') {
+                                    line.gst_amount = (Math.round(amount * 0.1 * 100) / 100).toFixed(2);
+                                }
+                            },
+                            addLine() {
+                                if (!this.canAddLine) return;
+                                const prev = this.lines[this.lines.length - 1];
+                                this.lines.push(blankLine({
+                                    direction: prev?.direction || 'expense',
+                                    gst_basis: prev?.gst_basis ?? '',
+                                }));
+                                this.updatePaidByLabel();
+                            },
+                            removeLine(index) {
+                                if (this.lines.length <= 1) return;
+                                this.lines.splice(index, 1);
+                                this.updatePaidByLabel();
+                            },
+                            init() {
+                                this.updatePaidByLabel();
+                            },
+                        };
+                    };
+                </script>
                 <form method="POST"
                       action="/business-entities/{{ $dashboardTransactionEntityId }}/transactions"
                       data-store-action-template="/business-entities/__ID__/transactions"
                       id="store-transaction-form"
                       data-transaction-paid-by-form
                       enctype="multipart/form-data"
-                      class="dashboard-txn-form space-y-6">
+                      class="dashboard-txn-form space-y-6"
+                      x-data="dashboardTxnBatch(@js($dashboardTxnBatchConfig))"
+                      x-init="init()">
                     @csrf
-
-                    {{-- Direction toggle --}}
-                    <div class="rounded-xl bg-gray-100/80 dark:bg-gray-900/50 p-1.5 grid grid-cols-2 gap-1.5">
-                        <label class="cursor-pointer">
-                            <input type="radio" name="direction" value="expense" class="sr-only peer" {{ $oldDirection === 'expense' ? 'checked' : '' }}>
-                            <div class="flex items-center justify-center gap-2 rounded-lg py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400 transition-all peer-checked:bg-white dark:peer-checked:bg-gray-800 peer-checked:text-red-600 dark:peer-checked:text-red-400 peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-red-200 dark:peer-checked:ring-red-900/50">
-                                <x-lucide-arrow-down-right class="w-4 h-4" />
-                                Expense
-                            </div>
-                        </label>
-                        <label class="cursor-pointer">
-                            <input type="radio" name="direction" value="income" class="sr-only peer" {{ $oldDirection === 'income' ? 'checked' : '' }}>
-                            <div class="flex items-center justify-center gap-2 rounded-lg py-3 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400 transition-all peer-checked:bg-white dark:peer-checked:bg-gray-800 peer-checked:text-emerald-600 dark:peer-checked:text-emerald-400 peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-emerald-200 dark:peer-checked:ring-emerald-900/50">
-                                <x-lucide-arrow-up-right class="w-4 h-4" />
-                                Income
-                            </div>
-                        </label>
-                    </div>
 
                     {{-- Context --}}
                     <section class="{{ $txnSection }}">
@@ -145,129 +333,19 @@
                         </div>
                     </section>
 
-                    {{-- Details --}}
-                    <section class="{{ $txnSection }}">
-                        <div class="flex items-center gap-2 pb-1">
-                            <x-lucide-receipt class="w-4 h-4 text-indigo-500 dark:text-indigo-400" />
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Transaction details</h4>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
-                        {{-- Amount --}}
-                        <div class="lg:col-span-1">
-                            <label class="{{ $txnLabel }}">Amount</label>
-                            <div class="relative">
-                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-base font-semibold text-gray-400">$</span>
-                                <input type="number" name="amount" id="dashboard_txn_amount" step="0.01" value="{{ old('amount', session('transactionData.amount')) }}"
-                                       class="{{ $txnInput }} pl-8 text-lg font-semibold tabular-nums" required>
-                            </div>
-                            @error('amount') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        {{-- Description --}}
-                        <div class="lg:col-span-2">
-                            <label class="{{ $txnLabel }}">Description</label>
-                            <input type="text" name="description" value="{{ old('description', session('transactionData.description')) }}"
-                                   class="{{ $txnInput }}" placeholder="What was this transaction for?">
-                            @error('description') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        {{-- Vendor --}}
-                        @php
-                            $dashboardVendorId = old('vendor_id', session('transactionData.vendor_id'));
-                            if ($dashboardVendorId === null || $dashboardVendorId === '') {
-                                $sessionVendorName = session('transactionData.vendor_name');
-                                if ($sessionVendorName) {
-                                    $matched = $vendors->firstWhere('name', $sessionVendorName);
-                                    $dashboardVendorId = $matched?->id;
-                                }
-                            }
-                        @endphp
-                        @include('partials.vendor-select', [
-                            'vendors' => $vendors,
-                            'selected' => $dashboardVendorId,
-                            'selectClass' => $txnSelect,
-                            'labelClass' => $txnLabel,
-                        ])
-
-                        {{-- Transaction Type --}}
-                        <div>
-                            <label class="{{ $txnLabel }}">Transaction Type</label>
-                            @include('partials.transaction-type-select', [
-                                'selected' => old('transaction_type', session('transactionData.transaction_type')),
-                                'class' => $txnSelect,
-                            ])
-                            @error('transaction_type') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        {{-- Invoice Number --}}
-                        <div>
-                            <label class="{{ $txnLabel }}">Invoice Number <span class="normal-case font-normal text-gray-400">(optional)</span></label>
-                            <input type="text" name="invoice_number" value="{{ old('invoice_number', session('transactionData.invoice_number')) }}"
-                                   class="{{ $txnInput }}"
-                                   placeholder="e.g., INV-0042">
-                            @error('invoice_number') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        {{-- Related Entity --}}
-                        <div id="related_entity_field" class="md:col-span-2 lg:col-span-3" style="display: none;">
-                            <label class="{{ $txnLabel }}">Related Entity</label>
-                            <x-tom-select name="related_entity_id" class="{{ $txnSelect }}">
-                                <option value="">Select Related Entity</option>
-                                @foreach($businessEntities->sortBy('legal_name') as $entity)
-                                    <option value="{{ $entity->id }}" {{ old('related_entity_id', session('transactionData.related_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
-                                @endforeach
-                            </x-tom-select>
-                            @error('related_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
-                        </div>
-                    </section>
-
-                    {{-- GST --}}
-                    <section class="{{ $txnSection }}">
-                        <div class="flex items-center gap-2 pb-1">
-                            <x-lucide-percent class="w-4 h-4 text-amber-500 dark:text-amber-400" />
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">GST (10%)</h4>
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <label class="cursor-pointer">
-                                <input type="radio" name="gst_basis" value="" class="sr-only peer" {{ $dashGstBasis === '' || $dashGstBasis === null ? 'checked' : '' }}>
-                                <div class="h-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-3 py-3 text-sm transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 peer-checked:ring-1 peer-checked:ring-blue-500/30">
-                                    <span class="font-semibold text-gray-900 dark:text-gray-100">No GST</span>
-                                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Tax not applicable</p>
-                                </div>
-                            </label>
-                            <label class="cursor-pointer">
-                                <input type="radio" name="gst_basis" value="inclusive" class="sr-only peer" {{ $dashGstBasis === 'inclusive' ? 'checked' : '' }}>
-                                <div class="h-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-3 py-3 text-sm transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 peer-checked:ring-1 peer-checked:ring-blue-500/30">
-                                    <span class="font-semibold text-gray-900 dark:text-gray-100">Inclusive</span>
-                                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Amount includes 10% GST</p>
-                                </div>
-                            </label>
-                            <label class="cursor-pointer">
-                                <input type="radio" name="gst_basis" value="exclusive" class="sr-only peer" {{ $dashGstBasis === 'exclusive' ? 'checked' : '' }}>
-                                <div class="h-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60 px-3 py-3 text-sm transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 dark:peer-checked:bg-blue-900/20 peer-checked:ring-1 peer-checked:ring-blue-500/30">
-                                    <span class="font-semibold text-gray-900 dark:text-gray-100">Exclusive</span>
-                                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">10% added on top</p>
-                                </div>
-                            </label>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                            <div>
-                                <label class="{{ $txnLabel }}">GST amount <span class="normal-case font-normal text-gray-400">(optional)</span></label>
-                                <div class="relative">
-                                    <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-sm font-medium text-gray-400">$</span>
-                                    <input type="number" name="gst_amount" id="dashboard_gst_amount" step="0.01" value="{{ old('gst_amount', session('transactionData.gst_amount')) }}"
-                                           class="{{ $txnInput }} pl-8 tabular-nums">
-                                </div>
-                                @error('gst_amount') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="flex items-end">
-                                <p class="text-xs leading-relaxed text-gray-500 dark:text-gray-400 pb-2.5">Leave blank to auto-calculate from the amount. Enter a value to override — if you enter GST, pick inclusive or exclusive above.</p>
-                            </div>
-                        </div>
-                        @error('gst_basis') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    </section>
+                    @include('partials.dashboard-transaction-lines', [
+                        'txnLabel' => $txnLabel,
+                        'txnInput' => $txnInput,
+                        'txnSection' => $txnSection,
+                    ])
+                    @error('lines') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                    @foreach ($errors->getMessages() as $errKey => $errMsgs)
+                        @if (str_starts_with($errKey, 'lines.'))
+                            @foreach ($errMsgs as $errMsg)
+                                <span class="text-red-500 text-xs mt-1 block">{{ $errMsg }}</span>
+                            @endforeach
+                        @endif
+                    @endforeach
 
                     {{-- Documents --}}
                     <section class="{{ $txnSection }}">
@@ -275,6 +353,7 @@
                             <x-lucide-paperclip class="w-4 h-4 text-violet-500 dark:text-violet-400" />
                             <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Attachments</h4>
                         </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2">Attached once and linked to every line in this batch.</p>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {{-- Invoice / Bill upload --}}
                         <div>
@@ -360,6 +439,7 @@
                                     'paidBySelect' => $pbSplit['select'],
                                     'paidByOther' => $pbSplit['other'],
                                     'bankAccountId' => old('bank_account_id', session('transactionData.bank_account_id')),
+                                    'paidByLabelText' => 'Paid / received by',
                                     'labelClass' => $txnLabel,
                                     'selectClass' => $txnSelect . ' px-3 py-2.5',
                                     'errorClass' => 'text-xs mt-1',
@@ -394,7 +474,7 @@
                         <button type="submit"
                                 class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-colors">
                             <x-lucide-check class="w-4 h-4" />
-                            Add Transaction
+                            <span x-text="submitLabel">Save transaction</span>
                         </button>
                     </div>
                 </form>
@@ -861,7 +941,6 @@
             const cancelTransactionBtn = document.getElementById('cancel-transaction-btn');
             const cancelTransactionFooterBtn = document.getElementById('cancel-transaction-footer-btn');
             const entitySelect = document.getElementById('business_entity_id');
-            const relatedEntityField = document.getElementById('related_entity_field');
             const transactionAssetSelect = document.getElementById('transaction_asset_id');
 
             function hideTransactionForm() {
@@ -909,14 +988,6 @@
                     storeForm.action = actionTemplate.replace('__ID__', entityId);
                 }
 
-                const relatedSel = relatedEntityField ? relatedEntityField.querySelector('select') : null;
-                if (relatedSel) {
-                    Array.from(relatedSel.options).forEach(opt => {
-                        if (!opt.value) return;
-                        opt.disabled = String(opt.value) === String(entityId);
-                    });
-                }
-
                 if (transactionAssetSelect) {
                     const keepValue = readDashboardSelectValue(transactionAssetSelect);
 
@@ -948,17 +1019,11 @@
                     window.setSelectDisabled?.(transactionAssetSelect, !entityId);
                     window.refreshTomSelect?.(transactionAssetSelect);
                 }
-
-                window.refreshTomSelect?.(relatedSel);
             }
 
             function afterTransactionFormVisible() {
                 reinitTransactionTomSelects();
                 syncTransactionFormFromEntitySelect();
-
-                if (typeof filterTypesByDirection === 'function') {
-                    filterTypesByDirection(getDirection());
-                }
             }
 
             if (transactionBtn && transactionSection) {
@@ -992,39 +1057,6 @@
                 });
             }
 
-            (function initDashboardGstCalc() {
-                const amtEl = document.getElementById('dashboard_txn_amount');
-                const gstEl = document.getElementById('dashboard_gst_amount');
-                const form = document.getElementById('store-transaction-form');
-                if (!amtEl || !gstEl || !form) return;
-                let gstTouched = @json(old('gst_amount') !== null && old('gst_amount') !== '');
-                gstEl.addEventListener('input', () => { gstTouched = true; });
-                function basis() {
-                    const r = form.querySelector('input[name="gst_basis"]:checked');
-                    return r ? r.value : '';
-                }
-                function recalc() {
-                    if (gstTouched) return;
-                    const a = parseFloat(amtEl.value);
-                    const b = basis();
-                    if (!b || Number.isNaN(a)) {
-                        gstEl.value = '';
-                        return;
-                    }
-                    if (b === 'inclusive') {
-                        gstEl.value = (Math.round((a - a / 1.1) * 100) / 100).toFixed(2);
-                    } else if (b === 'exclusive') {
-                        gstEl.value = (Math.round(a * 0.1 * 100) / 100).toFixed(2);
-                    }
-                }
-                amtEl.addEventListener('input', recalc);
-                form.querySelectorAll('input[name="gst_basis"]').forEach((r) => r.addEventListener('change', () => {
-                    if (!r.checked) return;
-                    gstTouched = false;
-                    recalc();
-                }));
-            })();
-
             @if (session('error') || $errors->any())
                 if (transactionSection) {
                     showTransactionForm();
@@ -1033,18 +1065,18 @@
 
             @if (session('success'))
                 window.showToast?.(@json(session('success')), 'success', {
-                    title: 'Transaction saved',
+                    title: 'Transactions saved',
                     duration: 7000,
                 });
                 hideTransactionForm();
             @elseif (session('error'))
                 window.showToast?.(@json(session('error')), 'error', {
-                    title: 'Could not save transaction',
+                    title: 'Could not save transactions',
                     duration: 9000,
                 });
             @elseif ($dashboardTxnErrorToast)
                 window.showToast?.(@json($dashboardTxnErrorToast), 'error', {
-                    title: 'Could not save transaction',
+                    title: 'Could not save transactions',
                     duration: 9000,
                 });
             @endif
@@ -1102,52 +1134,12 @@
 
             initializeReminderLogic();
 
-            const transactionTypeSelect = document.getElementById('transaction_type');
-
-            // ── Direction toggle (income / expense) ──────────────────────────
-            const directionRadios   = document.querySelectorAll('input[name="direction"]');
+            // ── Payment status toggle ──────────────────────────────────────────
             const unpaidBlock       = document.getElementById('unpaid_block');
             const paidBlock         = document.getElementById('paid_block');
-            const paidByLabel       = document.getElementById('paid_by_label');
             const paymentStatusPaid = document.getElementById('payment_status_paid');
             const paymentStatusUnpaid = document.getElementById('payment_status_unpaid');
 
-            function getDirection() {
-                const checked = document.querySelector('input[name="direction"]:checked');
-                return checked ? checked.value : 'expense';
-            }
-
-            function filterTypesByDirection(direction) {
-                if (!transactionTypeSelect) return;
-                Array.from(transactionTypeSelect.options).forEach(opt => {
-                    if (!opt.value) return;
-                    const match = !opt.dataset.direction || opt.dataset.direction === direction;
-                    opt.hidden   = !match;
-                    opt.disabled = !match;
-                });
-                if (transactionTypeSelect.value && transactionTypeSelect.options[transactionTypeSelect.selectedIndex]?.disabled) {
-                    window.setSelectValue?.(transactionTypeSelect, '');
-                }
-                window.refreshTomSelect?.(transactionTypeSelect);
-            }
-
-            function updatePaidByLabel(direction) {
-                if (paidByLabel) {
-                    paidByLabel.textContent = direction === 'income' ? 'Received By' : 'Paid By';
-                }
-            }
-
-            directionRadios.forEach(radio => {
-                radio.addEventListener('change', function () {
-                    filterTypesByDirection(this.value);
-                    updatePaidByLabel(this.value);
-                });
-            });
-
-            filterTypesByDirection(getDirection());
-            updatePaidByLabel(getDirection());
-
-            // ── Payment status toggle ──────────────────────────────────────────
             function syncPaymentStatusBlocks() {
                 const isPaid = paymentStatusPaid && paymentStatusPaid.checked;
                 if (unpaidBlock) unpaidBlock.classList.toggle('hidden', isPaid);
@@ -1166,35 +1158,6 @@
             }
             if (paidBySelect) paidBySelect.addEventListener('change', syncPaidByOther);
             syncPaidByOther();
-
-            // ── Related Entity visibility ──────────────────────────────────────
-            if (transactionTypeSelect && relatedEntityField) {
-                const relatedPartyTypes = [
-                    'director_loan_in',
-                    'director_loan_out',
-                    'director_loan_repayment',
-                    'directors_loans_to_company',
-                    'repayment_directors_loans',
-                    'company_loans_to_directors',
-                ];
-
-                transactionTypeSelect.addEventListener('change', function() {
-                    if (relatedPartyTypes.includes(this.value)) {
-                        relatedEntityField.style.display = 'block';
-                        relatedEntityField.querySelector('select').required = true;
-                    } else {
-                        relatedEntityField.style.display = 'none';
-                        const relatedSelect = relatedEntityField.querySelector('select');
-                        relatedSelect.required = false;
-                        window.setSelectValue?.(relatedSelect, '');
-                    }
-                });
-
-                if (relatedPartyTypes.includes(transactionTypeSelect.value)) {
-                    relatedEntityField.style.display = 'block';
-                    relatedEntityField.querySelector('select').required = true;
-                }
-            }
         });
     </script>
 </x-app-layout>
