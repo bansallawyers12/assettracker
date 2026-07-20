@@ -107,21 +107,9 @@
                             <!-- Details Tab -->
                             <div id="tab_details" class="tab-content hidden">
                                 <div class="asset-panel">
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">General Details</h3>
-                                    <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div>
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Insurance Company</dt>
-                                            <dd class="text-gray-900 dark:text-gray-200">{{ $asset->insurance_company ?? 'N/A' }}</dd>
-                                        </div>
-                                        <div>
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Insurance Due Date</dt>
-                                            <dd class="text-gray-900 dark:text-gray-200">{{ $asset->insurance_due_date ? $asset->insurance_due_date->format('d/m/Y') : 'N/A' }}</dd>
-                                        </div>
-                                        <div>
-                                            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Insurance Amount</dt>
-                                            <dd class="text-gray-900 dark:text-gray-200">${{ $asset->insurance_amount ? number_format($asset->insurance_amount, 2) : 'N/A' }}</dd>
-                                        </div>
-                                    </dl>
+                                    @if ($asset->isPropertyType())
+                                        @include('assets.partials.loan-banking-show')
+                                    @endif
                                     @include('assets.partials.linked-bank-accounts-show', compact('businessEntity', 'asset'))
                                 </div>
                             </div>
@@ -422,6 +410,22 @@
                                 <!-- Real Estate: Financials Tab -->
                                 <div id="tab_financials" class="tab-content hidden">
                                     <div class="asset-panel">
+                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Insurance</h3>
+                                        <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                                            <div>
+                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Insurance Company</dt>
+                                                <dd class="text-gray-900 dark:text-gray-200">{{ $asset->insurance_company ?? 'N/A' }}</dd>
+                                            </div>
+                                            <div>
+                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Insurance Due Date</dt>
+                                                <dd class="text-gray-900 dark:text-gray-200">{{ $asset->insurance_due_date ? $asset->insurance_due_date->format('d/m/Y') : 'N/A' }}</dd>
+                                            </div>
+                                            <div>
+                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Insurance Amount</dt>
+                                                <dd class="text-gray-900 dark:text-gray-200">${{ $asset->insurance_amount ? number_format($asset->insurance_amount, 2) : 'N/A' }}</dd>
+                                            </div>
+                                        </dl>
+
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Financial Details</h3>
                                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
@@ -469,7 +473,6 @@
                                                 <dd class="text-gray-900 dark:text-gray-200">${{ $asset->rental_income ? number_format($asset->rental_income, 2) : 'N/A' }}</dd>
                                             </div>
                                         </dl>
-                                        @include('assets.partials.loan-banking-show')
                                         @if ($asset->council_rates_due_date || $asset->owners_corp_due_date || $asset->land_tax_due_date)
                                             <div class="mt-4 flex space-x-2 flex-wrap gap-2">
                                                 @if ($asset->council_rates_due_date)
@@ -529,7 +532,7 @@
                                 <!-- Generic: Financials Tab -->
                                 <div id="tab_financials" class="tab-content hidden">
                                     <div class="asset-panel">
-                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Financial Details</h3>
+                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Insurance</h3>
                                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <div>
                                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Insurance Company</dt>
@@ -544,9 +547,6 @@
                                                 <dd class="text-gray-900 dark:text-gray-200">${{ $asset->insurance_amount ? number_format($asset->insurance_amount, 2) : 'N/A' }}</dd>
                                             </div>
                                         </dl>
-                                        @if ($asset->isPropertyType())
-                                            @include('assets.partials.loan-banking-show')
-                                        @endif
                                         @if ($asset->insurance_due_date)
                                             <div class="mt-4 flex space-x-2">
                                                 <form action="{{ route('assets.finalize-due-date', [$businessEntity->id, $asset->id, 'insurance']) }}" method="POST">

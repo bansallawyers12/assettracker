@@ -1,5 +1,5 @@
-<div class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-    <h4 class="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">Loan &amp; Banking</h4>
+<div>
+    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Loan &amp; Banking</h3>
     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
             <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Loan Provider</dt>
