@@ -6,10 +6,24 @@
             <dd class="text-gray-900 dark:text-gray-200">{{ $asset->loan_provider ?: '—' }}</dd>
         </div>
         <div>
-            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Loan Payment (monthly)</dt>
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Interest Rate</dt>
+            <dd class="text-gray-900 dark:text-gray-200">
+                @if($asset->loan_interest_rate !== null)
+                    {{ rtrim(rtrim(number_format((float) $asset->loan_interest_rate, 4, '.', ''), '0'), '.') }}%
+                @else
+                    —
+                @endif
+            </dd>
+        </div>
+        <div>
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Loan Payment</dt>
             <dd class="text-gray-900 dark:text-gray-200">
                 {{ $asset->loan_payment_amount !== null ? '$'.number_format($asset->loan_payment_amount, 2) : '—' }}
             </dd>
+        </div>
+        <div>
+            <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Payment Frequency</dt>
+            <dd class="text-gray-900 dark:text-gray-200">{{ $asset->loan_payment_frequency ?: '—' }}</dd>
         </div>
         <div>
             <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Loan Balance</dt>

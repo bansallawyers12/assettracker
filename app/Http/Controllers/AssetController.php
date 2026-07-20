@@ -817,7 +817,9 @@ class AssetController extends Controller
      */
     private const PROPERTY_ONLY_FINANCE_FIELDS = [
         'loan_provider',
+        'loan_interest_rate',
         'loan_payment_amount',
+        'loan_payment_frequency',
         'loan_balance',
         'equity_required',
         'direct_debit_amount',
@@ -833,6 +835,8 @@ class AssetController extends Controller
         foreach (self::PROPERTY_ONLY_FINANCE_FIELDS as $field) {
             $rules[$field] = match ($field) {
                 'loan_provider', 'rent_paid_by' => 'nullable|string|max:255',
+                'loan_interest_rate' => 'nullable|numeric|min:0|max:100',
+                'loan_payment_frequency' => 'nullable|in:Weekly,Fortnightly,Monthly,Quarterly,Yearly',
                 default => 'nullable|numeric|min:0',
             };
         }

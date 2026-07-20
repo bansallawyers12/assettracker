@@ -1,5 +1,10 @@
 @php
     $assetModel = $asset ?? null;
+    $loanFrequencyOptions = ['Weekly', 'Fortnightly', 'Monthly', 'Quarterly', 'Yearly'];
+    $loanInterestRateValue = old('loan_interest_rate', $assetModel?->loan_interest_rate);
+    if ($loanInterestRateValue !== null && $loanInterestRateValue !== '') {
+        $loanInterestRateValue = rtrim(rtrim(number_format((float) $loanInterestRateValue, 4, '.', ''), '0'), '.');
+    }
 @endphp
 
 <div class="mt-6 pt-4 border-t border-gray-200">
@@ -15,11 +20,34 @@
     </div>
 
     <div class="mb-4">
-        <label for="loan_payment_amount" class="block text-sm font-medium text-gray-700">Loan Payment (monthly)</label>
+        <label for="loan_interest_rate" class="block text-sm font-medium text-gray-700">Interest Rate (%)</label>
+        <input type="number" step="0.0001" min="0" max="100" name="loan_interest_rate" id="loan_interest_rate"
+               value="{{ $loanInterestRateValue }}"
+               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500"
+               placeholder="e.g. 5.89">
+        @error('loan_interest_rate') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+    </div>
+
+    <div class="mb-4">
+        <label for="loan_payment_amount" class="block text-sm font-medium text-gray-700">Loan Payment</label>
         <input type="number" step="0.01" name="loan_payment_amount" id="loan_payment_amount"
                value="{{ old('loan_payment_amount', $assetModel?->loan_payment_amount) }}"
                class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
         @error('loan_payment_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+    </div>
+
+    <div class="mb-4">
+        <label for="loan_payment_frequency" class="block text-sm font-medium text-gray-700">Payment Frequency</label>
+        <select name="loan_payment_frequency" id="loan_payment_frequency"
+                class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="">—</option>
+            @foreach($loanFrequencyOptions as $frequency)
+                <option value="{{ $frequency }}" @selected(old('loan_payment_frequency', $assetModel?->loan_payment_frequency) === $frequency)>
+                    {{ $frequency }}
+                </option>
+            @endforeach
+        </select>
+        @error('loan_payment_frequency') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
     </div>
 
     <div class="mb-4">
