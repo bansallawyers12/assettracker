@@ -58,7 +58,7 @@ class GmailFetcher
         foreach ($messages as $m) {
             $gmailId = (string) ($m['id'] ?? '');
             if ($gmailId === '') continue;
-            if (MailMessage::where('gmail_id', $gmailId)->exists()) {
+            if (MailMessage::where('user_id', $userId)->where('gmail_id', $gmailId)->exists()) {
                 continue;
             }
 

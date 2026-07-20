@@ -282,20 +282,19 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     // Contact List Routes
     Route::resource('business-entities.contact-lists', ContactListController::class);
 
-    // Email Section
+    // Email Section — static paths before /emails/{id}
     Route::get('/emails', [MailMessageController::class, 'index'])->name('emails.index');
     Route::get('/emails/upload', [MailMessageController::class, 'uploadIndex'])->name('emails.upload');
     Route::post('/emails/upload', [MailMessageController::class, 'uploadMsg'])->name('emails.upload.store');
-    Route::get('/emails/{id}', [MailMessageController::class, 'show'])->name('emails.show');
-    Route::get('/emails/{id}/reply', [MailMessageController::class, 'reply'])->name('emails.reply');
-    Route::get('/emails/{id}/reply-data', [MailMessageController::class, 'getReplyData'])->name('emails.reply-data');
-    Route::post('/emails/{id}/allocate-entity', [MailMessageController::class, 'allocateToBusinessEntity'])->name('emails.allocate.entity');
-    Route::post('/emails/{id}/allocate-asset', [MailMessageController::class, 'allocateToAsset'])->name('emails.allocate.asset');
-    Route::get('/emails-sync', [GmailController::class, 'sync'])->name('emails.sync');
-
+    Route::get('/emails/drafts', [MailMessageController::class, 'drafts'])->name('emails.drafts');
     Route::post('/emails/send', [MailMessageController::class, 'sendEmail'])->name('emails.send');
     Route::post('/emails/save-draft', [MailMessageController::class, 'saveDraft'])->name('emails.save-draft');
-    Route::get('/emails/drafts', [MailMessageController::class, 'drafts'])->name('emails.drafts');
+    Route::get('/emails-sync', [GmailController::class, 'sync'])->name('emails.sync');
+    Route::get('/emails/{id}', [MailMessageController::class, 'show'])->whereNumber('id')->name('emails.show');
+    Route::get('/emails/{id}/reply', [MailMessageController::class, 'reply'])->whereNumber('id')->name('emails.reply');
+    Route::get('/emails/{id}/reply-data', [MailMessageController::class, 'getReplyData'])->whereNumber('id')->name('emails.reply-data');
+    Route::post('/emails/{id}/allocate-entity', [MailMessageController::class, 'allocateToBusinessEntity'])->whereNumber('id')->name('emails.allocate.entity');
+    Route::post('/emails/{id}/allocate-asset', [MailMessageController::class, 'allocateToAsset'])->whereNumber('id')->name('emails.allocate.asset');
 
     // Email Template Management Routes
     Route::get('/email-templates/workspace', [EmailTemplatesWorkspaceController::class, 'workspace'])->name('email-templates.workspace');

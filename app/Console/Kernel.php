@@ -12,17 +12,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // Run Gmail sync tick every minute with overlap protection
-        $schedule->command('gmail:sync')
-            ->everyMinute()
-            ->withoutOverlapping()
-            ->onOneServer()
-            ->runInBackground();
-
-        $schedule->command('compliance:sync-reminders')
-            ->dailyAt('06:30')
-            ->withoutOverlapping()
-            ->onOneServer();
+        // Schedules live in routes/console.php (Laravel 11+). Kept empty on purpose.
     }
 
     /**

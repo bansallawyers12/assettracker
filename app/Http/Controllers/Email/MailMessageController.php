@@ -24,7 +24,7 @@ class MailMessageController extends Controller
 
     public function index(Request $request)
     {
-        $query = MailMessage::query();
+        $query = $this->mailMessagesForCurrentUser();
 
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($q) use ($search) {
@@ -55,7 +55,7 @@ class MailMessageController extends Controller
 
         $messages = $query->latest('sent_date')->paginate(20)->withQueryString();
 
-        $labels = MailLabel::orderBy('type')->orderBy('name')->get();
+        $labels = $this->labelsForCurrentUser();
 
         return view('emails.index', [
             'messages' => $messages,
@@ -66,7 +66,7 @@ class MailMessageController extends Controller
 
     public function uploadIndex(Request $request)
     {
-        $query = MailMessage::query();
+        $query = $this->mailMessagesForCurrentUser();
 
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($q) use ($search) {
@@ -93,8 +93,7 @@ class MailMessageController extends Controller
         }
 
         $messages = $query->latest('sent_date')->paginate(20)->withQueryString();
-        $labels = MailLabel::orderBy('type')->orderBy('name')->get();
-
+        $labels = $this->labelsForCurrentUser();
         return view('emails.upload', [
             'messages' => $messages,
             'labels' => $labels,
@@ -124,7 +123,10 @@ class MailMessageController extends Controller
                 $sourceHash = hash_file('sha256', $file->getRealPath()) ?: null;
                 $existing = null;
                 if ($sourceHash) {
-                    $existing = MailMessage::where('source_hash', $sourceHash)->latest('id')->first();
+                    $existing = MailMessage::where('user_id', $userId)
+                        ->where('source_hash', $sourceHash)
+                        ->latest('id')
+                        ->first();
                 }
 
                 if ($existing) {
@@ -201,8 +203,7 @@ class MailMessageController extends Controller
 
     public function show(int $id)
     {
-        $message = MailMessage::with(['attachments', 'labels'])
-            ->findOrFail($id);
+        $message = $this->findOwnedMailMessage($id, ['attachments', 'labels']);
 
         return view('emails.show', [
             'message' => $message,
@@ -211,8 +212,7 @@ class MailMessageController extends Controller
 
     public function reply(int $id)
     {
-        $message = MailMessage::with(['attachments', 'labels'])
-            ->findOrFail($id);
+        $message = $this->findOwnedMailMessage($id, ['attachments', 'labels']);
 
         return view('emails.reply', [
             'message' => $message,
@@ -221,7 +221,7 @@ class MailMessageController extends Controller
 
     public function getReplyData(int $id)
     {
-        $message = MailMessage::findOrFail($id);
+        $message = $this->findOwnedMailMessage($id);
 
         return response()->json([
             'subject' => 'Re: ' . ($message->subject ?: '(No subject)'),
@@ -238,9 +238,8 @@ class MailMessageController extends Controller
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
         ]);
 
-        $message = MailMessage::findOrFail($id);
+        $message = $this->findOwnedMailMessage($id);
         $entity = BusinessEntity::findOrFail($request->integer('business_entity_id'));
-
         // Attach to entity pivot
         $message->businessEntities()->syncWithoutDetaching([$entity->id]);
 
@@ -267,9 +266,8 @@ class MailMessageController extends Controller
             'asset_id' => 'required|exists:assets,id',
         ]);
 
-        $message = MailMessage::findOrFail($id);
+        $message = $this->findOwnedMailMessage($id);
         $asset = Asset::findOrFail($request->integer('asset_id'));
-
         // Attach to asset pivot
         $message->assets()->syncWithoutDetaching([$asset->id]);
 
@@ -415,6 +413,91 @@ class MailMessageController extends Controller
         return trim(str_replace(' ', '-', $name));
     }
 
+    private function mailMessagesForCurrentUser()
+    {
+        return MailMessage::query()->where('user_id', Auth::id());
+    }
+
+    private function findOwnedMailMessage(int $id, array $with = []): MailMessage
+    {
+        $query = $this->mailMessagesForCurrentUser();
+        if ($with !== []) {
+            $query->with($with);
+        }
+
+        return $query->findOrFail($id);
+    }
+
+    /**
+     * Labels owned by the user, shared system labels, or attached to the user's messages.
+     * System/entity labels are often created with firstOrCreate on type+name (not per-user).
+     */
+    private function labelsForCurrentUser()
+    {
+        $userId = Auth::id();
+
+        return MailLabel::query()
+            ->where(function ($q) use ($userId) {
+                $q->where('user_id', $userId)
+                    ->orWhere('type', 'system')
+                    ->orWhereHas('messages', function ($messages) use ($userId) {
+                        $messages->where('user_id', $userId);
+                    });
+            })
+            ->orderBy('type')
+            ->orderBy('name')
+            ->get();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function parseEmailList(?string $value): array
+    {
+        if ($value === null || trim($value) === '') {
+            return [];
+        }
+
+        $emails = array_map('trim', explode(',', $value));
+        $emails = array_values(array_filter($emails, fn (string $email) => $email !== ''));
+
+        return array_values(array_unique($emails));
+    }
+
+    private function commaSeparatedEmailsRule(bool $required): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail) use ($required) {
+            if ($value === null || (is_string($value) && trim($value) === '')) {
+                if ($required) {
+                    $fail('The '.$attribute.' field must contain at least one valid email address.');
+                }
+
+                return;
+            }
+
+            if (! is_string($value)) {
+                $fail('The '.$attribute.' field must be a string of email addresses.');
+
+                return;
+            }
+
+            $emails = $this->parseEmailList($value);
+            if ($required && $emails === []) {
+                $fail('The '.$attribute.' field must contain at least one valid email address.');
+
+                return;
+            }
+
+            foreach ($emails as $email) {
+                if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    $fail('Invalid email address: '.$email);
+
+                    return;
+                }
+            }
+        };
+    }
+
     /**
      * Send a new email
      */
@@ -422,9 +505,9 @@ class MailMessageController extends Controller
     {
         $request->validate([
             'from_email' => 'required|email',
-            'to_email' => 'required|email',
-            'cc_email' => 'nullable|email',
-            'bcc_email' => 'nullable|email',
+            'to_email' => ['required', 'string', $this->commaSeparatedEmailsRule(required: true)],
+            'cc_email' => ['nullable', 'string', $this->commaSeparatedEmailsRule(required: false)],
+            'bcc_email' => ['nullable', 'string', $this->commaSeparatedEmailsRule(required: false)],
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
             'attachments.*' => 'nullable|file|max:10240', // Max 10MB per file
@@ -433,7 +516,10 @@ class MailMessageController extends Controller
 
         try {
             $userId = Auth::id();
-            
+            $toEmails = $this->parseEmailList($request->input('to_email'));
+            $ccEmails = $this->parseEmailList($request->input('cc_email'));
+            $bccEmails = $this->parseEmailList($request->input('bcc_email'));
+
             // Create the email instance
             $email = new \App\Mail\ContactEmail(
                 $request->input('subject'),
@@ -441,17 +527,20 @@ class MailMessageController extends Controller
                 $request->file('attachments', []),
                 $request->input('from_email')
             );
-            
-            // Send the email
-            \Illuminate\Support\Facades\Mail::to($request->input('to_email'))
-                ->cc($request->input('cc_email'))
-                ->bcc($request->input('bcc_email'))
-                ->send($email);
+
+            $pending = \Illuminate\Support\Facades\Mail::to($toEmails);
+            if ($ccEmails !== []) {
+                $pending->cc($ccEmails);
+            }
+            if ($bccEmails !== []) {
+                $pending->bcc($bccEmails);
+            }
+            $pending->send($email);
 
             // Log the sent email
             Log::info('Email sent successfully', [
                 'from' => $request->input('from_email'),
-                'to' => $request->input('to_email'),
+                'to' => $toEmails,
                 'subject' => $request->input('subject'),
                 'user_id' => $userId,
                 'business_entity_id' => $request->input('business_entity_id'),
@@ -471,7 +560,7 @@ class MailMessageController extends Controller
             Log::error('Email sending failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
-                'request_data' => $request->all(),
+                'request_data' => $request->except(['attachments', 'message']),
             ]);
 
             return response()->json([
@@ -488,9 +577,9 @@ class MailMessageController extends Controller
     {
         $request->validate([
             'from_email' => 'required|email',
-            'to_email' => 'required|email',
-            'cc_email' => 'nullable|email',
-            'bcc_email' => 'nullable|email',
+            'to_email' => ['required', 'string', $this->commaSeparatedEmailsRule(required: true)],
+            'cc_email' => ['nullable', 'string', $this->commaSeparatedEmailsRule(required: false)],
+            'bcc_email' => ['nullable', 'string', $this->commaSeparatedEmailsRule(required: false)],
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
             'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
@@ -499,7 +588,7 @@ class MailMessageController extends Controller
 
         try {
             $userId = Auth::id();
-            
+
             // Store draft in database
             $draft = \App\Models\EmailDraft::create([
                 'user_id' => $userId,
@@ -530,7 +619,7 @@ class MailMessageController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to save draft', [
                 'error' => $e->getMessage(),
-                'request_data' => $request->all(),
+                'request_data' => $request->except(['attachments', 'message']),
             ]);
 
             return response()->json([
@@ -546,6 +635,7 @@ class MailMessageController extends Controller
     public function drafts()
     {
         $drafts = \App\Models\EmailDraft::query()
+            ->where('user_id', Auth::id())
             ->with(['businessEntity', 'template'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
