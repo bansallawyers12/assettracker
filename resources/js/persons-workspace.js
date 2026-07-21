@@ -2,6 +2,7 @@
  * Persons workspace — in-tab SPA using shared entity panel.
  */
 import { destroyTomSelect, reinitTomSelect } from './tomselect-init.js';
+import { showWorkspaceConfirm } from './workspace-dialog.js';
 import { notifyFormFailure, notifyFormSuccess } from './workspace-panel.js';
 
 function isSelectInVisibleSection(select, root) {
@@ -153,9 +154,14 @@ export function initPersonsWorkspace(root, deps) {
         setWorkspacePanelContent(payload.html);
     }
 
-    root.addEventListener('click', (event) => {
+    async function handlePersonsClick(event) {
         const actionEl = event.target.closest('[data-persons-action]');
-        if (!actionEl || !root.contains(actionEl)) {
+        if (!actionEl) {
+            return;
+        }
+
+        const panelBody = getWorkspacePanelBody();
+        if (!root.contains(actionEl) && !panelBody?.contains(actionEl)) {
             return;
         }
 
@@ -177,8 +183,58 @@ export function initPersonsWorkspace(root, deps) {
         if (action === 'edit' && entityPersonId) {
             event.preventDefault();
             loadEditForm(entityPersonId);
+            return;
         }
-    });
+
+        if (action === 'delete' && entityPersonId) {
+            event.preventDefault();
+            const ok = await showWorkspaceConfirm({
+                title: 'Remove role?',
+                message: 'This will permanently remove this role from the entity. This cannot be undone.',
+                confirmText: 'Remove',
+                variant: 'danger',
+            });
+            if (!ok) {
+                return;
+            }
+
+            const response = await apiFetch(`/business-entities/${entityId}/persons/${entityPersonId}`, { method: 'DELETE' });
+            const payload = parseJson(await response.text());
+            if (!response.ok) {
+                if (payload?.message) {
+                    showWorkspaceAlert({ message: payload.message });
+                } else {
+                    alertHttpError(response.status);
+                }
+                return;
+            }
+
+            closeWorkspacePanel();
+
+            if (payload?.list_html && listEl) {
+                listEl.innerHTML = payload.list_html;
+                if (addBtn) {
+                    addBtn.classList.toggle('hidden', !(payload.persons?.length > 0));
+                    const labelEl = addBtn.querySelector('[data-persons-add-label]');
+                    if (labelEl && payload.labels?.add) {
+                        labelEl.textContent = payload.labels.add;
+                    }
+                }
+            } else {
+                await refreshList();
+            }
+
+            notifyFormSuccess(payload?.message || 'Role removed successfully.', 'Role removed');
+        }
+    }
+
+    root.addEventListener('click', handlePersonsClick);
+
+    const panel = document.getElementById('entity-workspace-panel');
+    if (panel && panel.dataset.personsActionsBound !== '1') {
+        panel.dataset.personsActionsBound = '1';
+        panel.addEventListener('click', handlePersonsClick);
+    }
 
     const panelBody = getWorkspacePanelBody();
     panelBody?.addEventListener('submit', async (event) => {

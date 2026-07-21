@@ -7,6 +7,7 @@ use App\Models\BusinessEntity;
 use App\Models\EntityPerson;
 use App\Models\Person;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -93,6 +94,39 @@ class PersonsWorkspaceController extends Controller
         }
 
         return view($detailView, compact('businessEntity', 'entityPerson'));
+    }
+
+    public function destroy(BusinessEntity $businessEntity, EntityPerson $entityPerson): JsonResponse|RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+        $this->ensureBelongsToEntity($businessEntity, $entityPerson);
+
+        if ($entityPerson->role === 'Appointor') {
+            if (request()->expectsJson()) {
+                return $this->errorResponse('Appointor roles are managed via the company profile.');
+            }
+
+            return redirect()->route('business-entities.show', $businessEntity)
+                ->withFragment('tab_persons')
+                ->withErrors(['error' => 'Appointor roles are managed via the company profile.']);
+        }
+
+        $entityPerson->delete();
+        $persons = $this->loadPersons($businessEntity);
+
+        if (request()->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Person role removed successfully.',
+                'list_html' => $this->renderList($businessEntity, $persons),
+                'persons' => EntityPersonResource::collection($persons)->resolve(),
+                'labels' => $this->labels($businessEntity),
+            ]);
+        }
+
+        return redirect()->route('business-entities.show', $businessEntity)
+            ->withFragment('tab_persons')
+            ->with('success', 'Person role removed successfully.');
     }
 
     private function loadPersons(BusinessEntity $businessEntity)

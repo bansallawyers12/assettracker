@@ -2,7 +2,7 @@
  * Person show page — SPA for roles without full page reloads (bank accounts use global panel).
  */
 import { initPersonForm, initPersonsToggleLogic } from './persons-workspace.js';
-import { showWorkspaceAlert } from './workspace-dialog.js';
+import { showWorkspaceAlert, showWorkspaceConfirm } from './workspace-dialog.js';
 import {
     apiFetch,
     closeWorkspacePanel,
@@ -171,6 +171,34 @@ export function initPersonShowWorkspace(root) {
                 await loadRoleDetail(entityPersonId, businessEntityId);
             } else if (action === 'edit' && entityPersonId && businessEntityId) {
                 await loadRoleEditForm(entityPersonId, businessEntityId);
+            } else if (action === 'delete' && entityPersonId && businessEntityId) {
+                const ok = await showWorkspaceConfirm({
+                    title: 'Remove role?',
+                    message: 'This will permanently remove this role from the entity. This cannot be undone.',
+                    confirmText: 'Remove',
+                    variant: 'danger',
+                });
+                if (!ok) {
+                    return;
+                }
+
+                const response = await apiFetch(
+                    `/business-entities/${businessEntityId}/persons/${entityPersonId}`,
+                    { method: 'DELETE' }
+                );
+                const payload = parseJson(await response.text());
+                if (!response.ok) {
+                    if (payload?.message) {
+                        showWorkspaceAlert({ message: payload.message });
+                    } else {
+                        alertHttpError(response.status);
+                    }
+                    return;
+                }
+
+                closeWorkspacePanel();
+                await refreshRoles();
+                notifyFormSuccess(payload?.message || 'Role removed successfully.', 'Role removed');
             } else if (action === 'create') {
                 await loadCreateRolePicker();
             }

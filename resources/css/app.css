@@ -948,15 +948,16 @@
 }
 
 .compliance-workspace .compliance-checklist-layout {
-    @apply flex flex-col gap-4;
+    @apply flex flex-col gap-4 xl:flex-row xl:items-start;
 }
 
 .compliance-workspace .compliance-table-wrap {
-    @apply overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900;
+    @apply min-w-0 flex-1 overflow-x-auto rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900;
+    -webkit-overflow-scrolling: touch;
 }
 
 .compliance-workspace .compliance-table {
-    @apply w-full min-w-[920px] table-fixed;
+    @apply w-full min-w-[800px] table-fixed;
 }
 
 .compliance-workspace .compliance-col-type {
@@ -964,7 +965,7 @@
 }
 
 .compliance-workspace .compliance-col-file {
-    @apply w-[28%];
+    @apply w-[30%];
 }
 
 .compliance-workspace .compliance-col-status {
@@ -972,7 +973,7 @@
 }
 
 .compliance-workspace .compliance-col-actions {
-    @apply w-[22%];
+    @apply w-[20%];
 }
 
 .compliance-workspace .compliance-table-wrap thead {
@@ -1000,7 +1001,7 @@
 }
 
 .compliance-workspace .compliance-preview-card {
-    @apply w-full rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 min-h-[360px] flex flex-col;
+    @apply w-full shrink-0 rounded-xl border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 min-h-[360px] flex flex-col xl:w-[min(100%,28rem)];
 }
 
 .compliance-workspace .compliance-preview-body {

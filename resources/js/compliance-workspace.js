@@ -678,7 +678,9 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 row.classList.toggle('compliance-row-preview-active', row.dataset.complianceRow === String(file.id));
             });
 
-            getActivePanel()?.querySelector('.compliance-preview-card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            if (!window.matchMedia('(min-width: 1280px)').matches) {
+                getActivePanel()?.querySelector('.compliance-preview-card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
 
             if (openInNewTab) {
                 window.open(previewSourceUrl(file), '_blank', 'noopener,noreferrer');

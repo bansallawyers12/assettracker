@@ -70,6 +70,17 @@
     </dl>
 
     <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+        @if ($entityPerson->role !== 'Appointor')
+            <button
+                type="button"
+                data-person-role-action="delete"
+                data-entity-person-id="{{ $entityPerson->id }}"
+                data-business-entity-id="{{ $businessEntity?->id }}"
+                class="inline-flex items-center justify-center rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-950/50"
+            >
+                Remove Role
+            </button>
+        @endif
         <button type="button" data-entity-panel-close class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
             Close
         </button>

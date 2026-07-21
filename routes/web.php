@@ -207,6 +207,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/persons/form/create', [PersonsWorkspaceController::class, 'createForm'])->name('entities.persons.form.create');
     Route::get('/business-entities/{businessEntity}/persons/{entityPerson}/form/edit', [PersonsWorkspaceController::class, 'editForm'])->name('entities.persons.form.edit');
     Route::get('/business-entities/{businessEntity}/persons/{entityPerson}/detail', [PersonsWorkspaceController::class, 'showDetail'])->name('entities.persons.detail');
+    Route::delete('/business-entities/{businessEntity}/persons/{entityPerson}', [PersonsWorkspaceController::class, 'destroy'])->name('entities.persons.destroy');
     Route::get('/business-entities/{businessEntity}/assets/workspace', [AssetsWorkspaceController::class, 'index'])->name('entities.assets.workspace');
     Route::get('/business-entities/{businessEntity}/assets/form/create', [AssetsWorkspaceController::class, 'createForm'])->name('entities.assets.form.create');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/form/edit', [AssetsWorkspaceController::class, 'editForm'])->name('entities.assets.form.edit');
