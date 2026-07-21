@@ -89,6 +89,7 @@ function initAssetShowWorkspace(root) {
     async function handleClick(event) {
         const tenantEdit = event.target.closest('[data-tenant-edit]');
         const leaseEdit = event.target.closest('[data-lease-edit]');
+        const loanBankingEdit = event.target.closest('[data-loan-banking-edit]');
 
         if (tenantEdit) {
             event.preventDefault();
@@ -113,6 +114,15 @@ function initAssetShowWorkspace(root) {
                 `/business-entities/${entityId}/assets/${assetId}/leases/${leaseId}/form/edit`,
                 'Edit Lease',
             );
+            return;
+        }
+
+        if (loanBankingEdit) {
+            event.preventDefault();
+            await loadForm(
+                `/business-entities/${entityId}/assets/${assetId}/loan-banking/form/edit`,
+                'Edit Loan & Banking',
+            );
         }
     }
 
@@ -126,6 +136,13 @@ function initAssetShowWorkspace(root) {
     registerPanelFormHandler('.leases-ws-form', async (payload) => {
         closeWorkspacePanel();
         showToast(payload.message || 'Lease updated successfully!', 'success');
+    });
+
+    registerPanelFormHandler('.loan-banking-ws-form', async (payload) => {
+        closeWorkspacePanel();
+        showToast(payload.message || 'Loan & banking details updated successfully!', 'success');
+        window.location.hash = 'tab_details';
+        window.location.reload();
     });
 }
 

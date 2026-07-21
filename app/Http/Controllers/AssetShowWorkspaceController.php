@@ -8,6 +8,7 @@ use App\Models\Lease;
 use App\Models\RealEstateCompany;
 use App\Models\Tenant;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AssetShowWorkspaceController extends Controller
 {
@@ -52,6 +53,47 @@ class AssetShowWorkspaceController extends Controller
         ]);
     }
 
+    public function editLoanBankingForm(BusinessEntity $businessEntity, Asset $asset): JsonResponse
+    {
+        $this->authorize('view', $businessEntity);
+        $this->ensureAssetBelongs($businessEntity, $asset);
+        $this->ensurePropertyAsset($asset);
+
+        return response()->json([
+            'status' => true,
+            'html' => view('assets.partials.loan-banking-form', [
+                'businessEntity' => $businessEntity,
+                'asset' => $asset,
+                'rentPaidBySuggestions' => $this->rentPaidBySuggestions($businessEntity, $asset),
+            ])->render(),
+        ]);
+    }
+
+    public function updateLoanBanking(Request $request, BusinessEntity $businessEntity, Asset $asset): JsonResponse
+    {
+        $this->authorize('view', $businessEntity);
+        $this->ensureAssetBelongs($businessEntity, $asset);
+        $this->ensurePropertyAsset($asset);
+
+        $validated = $request->validate([
+            'loan_provider' => 'nullable|string|max:255',
+            'loan_interest_rate' => 'nullable|numeric|min:0|max:100',
+            'loan_payment_amount' => 'nullable|numeric|min:0',
+            'loan_payment_frequency' => 'nullable|in:Weekly,Fortnightly,Monthly,Quarterly,Yearly',
+            'loan_balance' => 'nullable|numeric|min:0',
+            'equity_required' => 'nullable|numeric|min:0',
+            'direct_debit_amount' => 'nullable|numeric|min:0',
+            'rent_paid_by' => 'nullable|string|max:255',
+        ]);
+
+        $asset->update($validated);
+
+        return response()->json([
+            'status' => true,
+            'message' => 'Loan & banking details updated successfully!',
+        ]);
+    }
+
     private function ensureAssetBelongs(BusinessEntity $businessEntity, Asset $asset): void
     {
         if ((int) $asset->business_entity_id !== (int) $businessEntity->id) {
@@ -71,5 +113,28 @@ class AssetShowWorkspaceController extends Controller
         if ((int) $lease->asset_id !== (int) $asset->id) {
             abort(404);
         }
+    }
+
+    private function ensurePropertyAsset(Asset $asset): void
+    {
+        if (! $asset->isPropertyType()) {
+            abort(404);
+        }
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function rentPaidBySuggestions(BusinessEntity $businessEntity, Asset $asset): array
+    {
+        $asset->loadMissing(['tenants', 'leases.tenant']);
+
+        return collect([$businessEntity->legal_name])
+            ->merge($asset->tenants->pluck('name'))
+            ->merge($asset->leases->map(fn ($lease) => $lease->tenant?->name))
+            ->filter(fn ($name) => is_string($name) && trim($name) !== '')
+            ->unique()
+            ->values()
+            ->all();
     }
 }

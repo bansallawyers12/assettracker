@@ -194,6 +194,8 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/assets/{asset}/leases/{lease}/edit', [AssetController::class, 'editLease'])->name('business-entities.assets.leases.edit');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/leases/{lease}/form/edit', [AssetShowWorkspaceController::class, 'editLeaseForm'])->name('business-entities.assets.leases.form.edit');
     Route::patch('/business-entities/{businessEntity}/assets/{asset}/leases/{lease}', [AssetController::class, 'updateLease'])->name('business-entities.assets.leases.update');
+    Route::get('/business-entities/{businessEntity}/assets/{asset}/loan-banking/form/edit', [AssetShowWorkspaceController::class, 'editLoanBankingForm'])->name('business-entities.assets.loan-banking.form.edit');
+    Route::patch('/business-entities/{businessEntity}/assets/{asset}/loan-banking', [AssetShowWorkspaceController::class, 'updateLoanBanking'])->name('business-entities.assets.loan-banking.update');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/leases/sync-from-tenants', [AssetController::class, 'syncLeasesFromTenants'])->name('business-entities.assets.leases.sync-from-tenants');
     Route::delete('/business-entities/{businessEntity}/assets/{asset}/bank-account-links/{role}', [AssetController::class, 'detachBankAccountLink'])->name('business-entities.assets.bank-account-links.destroy');
     Route::post('business-entities/{businessEntity}/assets/{asset}/invoices/create-for-lease', [AssetInvoiceController::class, 'storeForLease'])->name('assets.invoices.store-for-lease');

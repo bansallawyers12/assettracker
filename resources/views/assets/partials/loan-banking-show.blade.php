@@ -1,5 +1,13 @@
-<div>
-    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Loan &amp; Banking</h3>
+<div id="loan-banking">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Loan &amp; Banking</h3>
+        <button type="button"
+                data-loan-banking-edit
+                class="inline-flex items-center px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm shadow-md transition-all duration-200">
+            <x-lucide-pencil class="h-4 w-4 mr-1" />
+            Edit
+        </button>
+    </div>
     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
             <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Loan Provider</dt>
