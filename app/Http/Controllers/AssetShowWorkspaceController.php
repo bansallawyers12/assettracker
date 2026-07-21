@@ -86,11 +86,24 @@ class AssetShowWorkspaceController extends Controller
             'rent_paid_by' => 'nullable|string|max:255',
         ]);
 
-        $asset->update($validated);
+        // Always write every loan field so cleared inputs become null instead of keeping old values.
+        $asset->update([
+            'loan_provider' => $validated['loan_provider'] ?? null,
+            'loan_interest_rate' => $validated['loan_interest_rate'] ?? null,
+            'loan_payment_amount' => $validated['loan_payment_amount'] ?? null,
+            'loan_payment_frequency' => $validated['loan_payment_frequency'] ?? null,
+            'loan_balance' => $validated['loan_balance'] ?? null,
+            'equity_required' => $validated['equity_required'] ?? null,
+            'direct_debit_amount' => $validated['direct_debit_amount'] ?? null,
+            'rent_paid_by' => $validated['rent_paid_by'] ?? null,
+        ]);
+
+        $message = 'Loan & banking details updated successfully!';
+        session()->flash('success', $message);
 
         return response()->json([
             'status' => true,
-            'message' => 'Loan & banking details updated successfully!',
+            'message' => $message,
         ]);
     }
 

@@ -138,9 +138,9 @@ function initAssetShowWorkspace(root) {
         showToast(payload.message || 'Lease updated successfully!', 'success');
     });
 
-    registerPanelFormHandler('.loan-banking-ws-form', async (payload) => {
+    registerPanelFormHandler('.loan-banking-ws-form', async () => {
         closeWorkspacePanel();
-        showToast(payload.message || 'Loan & banking details updated successfully!', 'success');
+        // Flash is set server-side; reload so Details shows updated values + session success banner.
         window.location.hash = 'tab_details';
         window.location.reload();
     });
