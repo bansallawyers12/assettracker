@@ -754,8 +754,8 @@
                                         </div>
                                     @endforeach
 
-                                    @foreach ($asicRenewalDueDates as $asicEntity)
-                                        @if ($asicEntity->asic_renewal_date)
+                                    @foreach ($asicRenewalDueDates as $asicRow)
+                                        @php $asicEntity = $asicRow->entity; @endphp
                                             <div class="flex items-start gap-4 p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
                                                 <div class="shrink-0 w-2 h-2 mt-2 rounded-full bg-red-400"></div>
                                                 <div class="flex-1 min-w-0">
@@ -763,13 +763,12 @@
                                                         ASIC Renewal Due &mdash; {{ $asicEntity->legal_name }}
                                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200 align-middle">ASIC</span>
                                                     </p>
-                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $asicEntity->asic_renewal_date->format('d/m/Y') }}</p>
+                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $asicRow->due_date->format('d/m/Y') }}</p>
                                                     <div class="mt-2">
                                                         <a href="{{ route('business-entities.show', $asicEntity) }}" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">View entity</a>
                                                     </div>
                                                 </div>
                                             </div>
-                                        @endif
                                     @endforeach
 
                                     @foreach ($entityDueDates as $entityDueDate)

@@ -93,6 +93,7 @@ class BillsTasksController extends Controller
             + $this->transactionOperationalQuery($opIds)->where('payment_status', 'unpaid')->whereNotNull('due_date')->count()
             + $this->assetDueItemsCount($opIds)
             + $this->entityPersonOperationalQuery($opIds)->whereNotNull('asic_due_date')->count()
+            + $this->asicRenewalDueItemsCount($opIds)
             + $this->commitmentOperationalQuery($opIds)->active()->whereNotNull('settlement_date')->count();
     }
 
@@ -175,6 +176,8 @@ class BillsTasksController extends Controller
                     'entityPerson' => $ep,
                 ]);
             });
+
+        $this->appendAsicRenewalDueItems($items, $opIds);
 
         $this->commitmentOperationalQuery($opIds)
             ->active()
@@ -348,6 +351,55 @@ class BillsTasksController extends Controller
         }
 
         return $q->whereIn('business_entity_id', $opIds);
+    }
+
+    /**
+     * @param  list<int>  $opIds
+     */
+    private function asicRenewalDueItemsCount(array $opIds): int
+    {
+        if ($opIds === []) {
+            return 0;
+        }
+
+        return BusinessEntity::query()
+            ->whereIn('id', $opIds)
+            ->whereNotNull('asic_renewal_date')
+            ->count();
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, object>  $items
+     * @param  list<int>  $opIds
+     */
+    private function appendAsicRenewalDueItems(\Illuminate\Support\Collection $items, array $opIds): void
+    {
+        if ($opIds === []) {
+            return;
+        }
+
+        BusinessEntity::query()
+            ->whereIn('id', $opIds)
+            ->whereNotNull('asic_renewal_date')
+            ->orderBy('legal_name')
+            ->get()
+            ->each(function (BusinessEntity $entity) use ($items) {
+                $dueDate = $entity->nextAsicRenewalDueDate();
+                if ($dueDate === null) {
+                    return;
+                }
+
+                $items->push((object) [
+                    'kind' => 'asic_renewal',
+                    'sort_date' => $dueDate,
+                    'reminder' => null,
+                    'note' => null,
+                    'transaction' => null,
+                    'asset' => null,
+                    'entityPerson' => null,
+                    'businessEntity' => $entity,
+                ]);
+            });
     }
 
     /**

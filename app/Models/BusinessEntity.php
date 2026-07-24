@@ -5,7 +5,9 @@ namespace App\Models;
 use App\Support\FinancialYear;
 use App\Traits\EncryptsAttributes;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 
 class BusinessEntity extends Model
@@ -487,6 +489,60 @@ class BusinessEntity extends Model
 
         // Non-companies only when an ASIC renewal anniversary is configured on the entity.
         return $this->asic_renewal_date !== null;
+    }
+
+    /**
+     * Next ASIC annual-review due date from the stored anniversary (month/day).
+     * Rolls forward to the next occurrence on or after $from (defaults to today).
+     */
+    public function nextAsicRenewalDueDate(?CarbonInterface $from = null): ?Carbon
+    {
+        if ($this->asic_renewal_date === null) {
+            return null;
+        }
+
+        $from = Carbon::parse($from ?? now())->startOfDay();
+        $month = (int) $this->asic_renewal_date->month;
+        $day = (int) $this->asic_renewal_date->day;
+
+        foreach ([$from->year, $from->year + 1] as $year) {
+            $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+            $candidate = Carbon::create($year, $month, min($day, $daysInMonth))->startOfDay();
+            if ($candidate->gte($from)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Operational entities whose next ASIC renewal falls on or before today + $withinDays.
+     *
+     * @return Collection<int, object{entity: self, due_date: Carbon}>
+     */
+    public static function upcomingAsicRenewalRows(int $withinDays = 30): Collection
+    {
+        $cutoff = now()->startOfDay()->addDays($withinDays);
+
+        return self::query()
+            ->operationalEntities()
+            ->whereNotNull('asic_renewal_date')
+            ->get()
+            ->map(function (self $entity) use ($cutoff) {
+                $dueDate = $entity->nextAsicRenewalDueDate();
+                if ($dueDate === null || $dueDate->gt($cutoff)) {
+                    return null;
+                }
+
+                return (object) [
+                    'entity' => $entity,
+                    'due_date' => $dueDate,
+                ];
+            })
+            ->filter()
+            ->sortBy(fn (object $row) => $row->due_date->timestamp)
+            ->values();
     }
 
     public function complianceYearRecords()

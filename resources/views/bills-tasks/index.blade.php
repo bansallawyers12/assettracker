@@ -156,7 +156,7 @@
                 @else
                     <div class="p-5 border-b border-gray-100 dark:border-gray-700">
                         <h2 class="text-base font-bold text-gray-900 dark:text-white">Everything with a due date</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Active reminders, note reminders, unpaid bills with a due date, asset due dates (registration, rates, land tax, etc.), ASIC director due dates, and commitments — sorted by date.</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Active reminders, note reminders, unpaid bills with a due date, asset due dates (registration, rates, land tax, etc.), ASIC director and entity renewal due dates, and commitments — sorted by date.</p>
                     </div>
                     <div class="p-5">
                         @if ($duePaginator->isEmpty())
@@ -209,6 +209,14 @@
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $ep->businessEntity?->legal_name }} · {{ $ep->role }}</p>
                                                 <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200">{{ $ep->asic_due_date?->format('d/m/Y') }}</span>
+                                            @elseif ($row->kind === 'asic_renewal')
+                                                @php $be = $row->businessEntity; @endphp
+                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
+                                                    ASIC renewal due — {{ $be->legal_name }}
+                                                    <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">ASIC</span>
+                                                </p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Entity annual review</p>
+                                                <span class="inline-flex mt-2 px-2 py-0.5 rounded-md text-xs font-medium bg-red-50 text-red-800 dark:bg-red-900/30 dark:text-red-200">{{ $row->sort_date?->format('d/m/Y') }}</span>
                                             @elseif ($row->kind === 'commitment')
                                                 @php $c = $row->commitment; @endphp
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
@@ -287,6 +295,9 @@
                                                         </form>
                                                     </div>
                                                 </div>
+                                            @elseif ($row->kind === 'asic_renewal')
+                                                @php $be = $row->businessEntity; @endphp
+                                                <a href="{{ route('business-entities.show', $be) }}" class="p-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-600 text-xs font-medium px-2 dark:bg-indigo-900/20 dark:text-indigo-300">Entity</a>
                                             @elseif ($row->kind === 'commitment')
                                                 @php $c = $row->commitment; @endphp
                                                 <a href="{{ route('business-entities.commitments.show', [$c->business_entity_id, $c->id]) }}" class="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-medium px-2 dark:bg-rose-900/20 dark:text-rose-300">View</a>
