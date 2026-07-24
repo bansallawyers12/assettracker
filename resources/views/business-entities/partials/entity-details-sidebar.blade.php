@@ -142,7 +142,7 @@
                 </div>
             @endunless
 
-            @if ($businessEntity->abn || $businessEntity->acn)
+            @if ($businessEntity->abn || ($businessEntity->isCompany() && $businessEntity->acn))
                 <dl class="grid grid-cols-2 gap-3 border-t border-gray-100 dark:border-gray-800 pt-4">
                     @if ($businessEntity->abn)
                         <div>
@@ -150,7 +150,7 @@
                             <dd class="mt-1 text-sm font-mono text-gray-900 dark:text-gray-100">{{ BusinessEntity::formatAbn($businessEntity->abn) }}</dd>
                         </div>
                     @endif
-                    @if ($businessEntity->acn)
+                    @if ($businessEntity->isCompany() && $businessEntity->acn)
                         <div>
                             <dt class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">ACN</dt>
                             <dd class="mt-1 text-sm font-mono text-gray-900 dark:text-gray-100">{{ BusinessEntity::formatAcn($businessEntity->acn) }}</dd>
@@ -242,6 +242,31 @@
                         </div>
                     @endif
 
+                    @php $corporateTrustees = $businessEntity->corporateTrusteeCompanies(); @endphp
+                    @if ($corporateTrustees->isNotEmpty())
+                        <div>
+                            <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Corporate Trustee</p>
+                            <ul class="mt-1 space-y-2">
+                                @foreach ($corporateTrustees as $trusteeCompany)
+                                    <li class="text-sm text-gray-900 dark:text-gray-100">
+                                        <a href="{{ route('business-entities.show', $trusteeCompany) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
+                                            {{ $trusteeCompany->legal_name }}
+                                        </a>
+                                        @if ($trusteeCompany->nextAsicRenewalDueDate())
+                                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                                                {{ BusinessEntity::asicRenewalDateLabel() }} due {{ $trusteeCompany->nextAsicRenewalDueDate()->format('d/m/Y') }}
+                                            </p>
+                                        @elseif ($trusteeCompany->isCompany())
+                                            <p class="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                                                {{ BusinessEntity::asicRenewalDateLabel() }} not set
+                                            </p>
+                                        @endif
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="inline-flex text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
                         Edit trust details
                     </a>
@@ -250,7 +275,7 @@
 
             @if ($nextAsicRenewal)
                 <div class="border-t border-gray-100 dark:border-gray-800 pt-4">
-                    <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">ASIC Renewal Due</p>
+                    <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">{{ BusinessEntity::asicRenewalDateLabel() }}</p>
                     <p @class([
                         'mt-1 text-sm font-semibold tabular-nums',
                         'text-red-600 dark:text-red-400' => $asicRenewalOverdue,
@@ -263,6 +288,14 @@
                         @elseif ($asicRenewalSoon)
                             <span class="ml-1 text-xs font-normal">(Due soon)</span>
                         @endif
+                    </p>
+                </div>
+            @elseif ($businessEntity->isCompany())
+                <div class="border-t border-gray-100 dark:border-gray-800 pt-4">
+                    <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">{{ BusinessEntity::asicRenewalDateLabel() }}</p>
+                    <p class="mt-1 text-sm text-amber-600 dark:text-amber-400">
+                        Not set
+                        <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline ml-1">Add date</a>
                     </p>
                 </div>
             @endif

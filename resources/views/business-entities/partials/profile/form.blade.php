@@ -42,7 +42,7 @@
         @endunless
         @if ($businessEntity->isCompany())
         <div>
-            <label for="profile_asic_renewal_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ASIC Renewal Date <span class="text-red-500">*</span></label>
+            <label for="profile_asic_renewal_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">{{ \App\Models\BusinessEntity::asicRenewalDateLabel() }} <span class="text-red-500">*</span></label>
             <x-date-input name="asic_renewal_date" id="profile_asic_renewal_date" class="mt-1 block w-full" value="{{ old('asic_renewal_date', $businessEntity->asic_renewal_date?->format('Y-m-d')) }}" required />
             @error('asic_renewal_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
         </div>
@@ -63,10 +63,13 @@
             <label for="profile_abn" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ABN</label>
             <input type="text" name="abn" id="profile_abn" value="{{ old('abn', $businessEntity->abn) }}" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm shadow-xs">
         </div>
+        @if ($businessEntity->isCompany())
         <div>
             <label for="profile_acn" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ACN</label>
             <input type="text" name="acn" id="profile_acn" value="{{ old('acn', $businessEntity->acn) }}" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm shadow-xs">
+            @error('acn') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
         </div>
+        @endif
     </div>
 
     @if ($businessEntity->isTrust())

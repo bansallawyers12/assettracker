@@ -378,6 +378,46 @@ class BusinessEntity extends Model
         return $this->entity_type === 'Company';
     }
 
+    public static function asicRenewalDateLabel(): string
+    {
+        return 'ASIC annual review anniversary';
+    }
+
+    /**
+     * Operational companies without an ASIC annual review anniversary configured.
+     *
+     * @return Collection<int, self>
+     */
+    public static function companiesMissingAsicRenewalDate(): Collection
+    {
+        return self::query()
+            ->operationalEntities()
+            ->where('entity_type', 'Company')
+            ->whereNull('asic_renewal_date')
+            ->orderBy('legal_name')
+            ->get();
+    }
+
+    /**
+     * Company entities acting as corporate trustee for this trust.
+     *
+     * @return Collection<int, self>
+     */
+    public function corporateTrusteeCompanies(): Collection
+    {
+        if (! $this->isTrust()) {
+            return collect();
+        }
+
+        return $this->trustees()
+            ->with('trusteeEntity')
+            ->get()
+            ->pluck('trusteeEntity')
+            ->filter()
+            ->unique('id')
+            ->values();
+    }
+
     /**
      * UI label for registration_date (non-trust entities only).
      */

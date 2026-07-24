@@ -23,7 +23,7 @@
                         <p><strong>Registered Email:</strong> {{ $businessEntity->registered_email }}</p>
                         <p><strong>Phone Number:</strong> {{ $businessEntity->phone_number }}</p>
                         @if ($businessEntity->isCompany())
-                        <p><strong>ASIC Renewal Date:</strong> {{ $businessEntity->asic_renewal_date instanceof \Carbon\Carbon ? $businessEntity->asic_renewal_date->format('d/m/Y') : ($businessEntity->asic_renewal_date ?? 'N/A') }}</p>
+                        <p><strong>{{ \App\Models\BusinessEntity::asicRenewalDateLabel() }}:</strong> {{ $businessEntity->asic_renewal_date instanceof \Carbon\Carbon ? $businessEntity->asic_renewal_date->format('d/m/Y') : ($businessEntity->asic_renewal_date ?? 'N/A') }}</p>
                         @endif
                         <p><strong>Created by:</strong> {{ $businessEntity->user->name ?? 'Unknown' }}</p>
                     </div>

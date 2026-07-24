@@ -153,4 +153,30 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
         );
         $this->assertFalse($trustWithoutDate->fails());
     }
+
+    public function test_acn_prohibited_for_non_companies(): void
+    {
+        $rules = [
+            'entity_type' => 'required|in:Sole Trader,Company,Trust,Partnership',
+            'acn' => ['nullable', 'prohibited_unless:entity_type,Company', 'string', 'max:9'],
+            'corporate_key' => 'nullable|prohibited_unless:entity_type,Company|string|max:255',
+        ];
+
+        $trustWithAcn = \Illuminate\Support\Facades\Validator::make(
+            ['entity_type' => 'Trust', 'acn' => '123456789'],
+            $rules
+        );
+        $this->assertTrue($trustWithAcn->fails());
+
+        $companyWithAcn = \Illuminate\Support\Facades\Validator::make(
+            ['entity_type' => 'Company', 'acn' => '123456789'],
+            $rules
+        );
+        $this->assertFalse($companyWithAcn->fails());
+    }
+
+    public function test_asic_renewal_date_label(): void
+    {
+        $this->assertSame('ASIC annual review anniversary', BusinessEntity::asicRenewalDateLabel());
+    }
 }

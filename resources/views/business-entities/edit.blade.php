@@ -204,10 +204,15 @@
                                 <label for="abn" class="block text-sm font-medium text-gray-700 mb-1">ABN</label>
                                 <input type="text" name="abn" id="abn" value="{{ old('abn', $businessEntity->abn) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="11" placeholder="11 digits">
                             </div>
-                            
-                            <div>
+
+                            @php
+                                $showCompanyFields = old('entity_type', $businessEntity->entity_type) === 'Company';
+                            @endphp
+
+                            <div id="acn_field" @class(['hidden' => ! $showCompanyFields])>
                                 <label for="acn" class="block text-sm font-medium text-gray-700 mb-1">ACN</label>
                                 <input type="text" name="acn" id="acn" value="{{ old('acn', $businessEntity->acn) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="9" placeholder="9 digits">
+                                @error('acn') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                             
                             <div>
@@ -215,9 +220,10 @@
                                 <input type="text" name="tfn" id="tfn" value="{{ old('tfn', $businessEntity->tfn) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="9" placeholder="9 digits">
                             </div>
                             
-                            <div>
+                            <div id="corporate_key_field" @class(['hidden' => ! $showCompanyFields])>
                                 <label for="corporate_key" class="block text-sm font-medium text-gray-700 mb-1">Corporate Key</label>
                                 <input type="text" name="corporate_key" id="corporate_key" value="{{ old('corporate_key', $businessEntity->corporate_key) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition">
+                                @error('corporate_key') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                             
                             <div>
@@ -230,7 +236,7 @@
                                 $showAsicRenewal = old('entity_type', $businessEntity->entity_type) === 'Company';
                             @endphp
                             <div id="asic_renewal_date_field" @class(['hidden' => ! $showAsicRenewal])>
-                                <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">ASIC Renewal Date <span class="text-red-500">*</span></label>
+                                <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">{{ \App\Models\BusinessEntity::asicRenewalDateLabel() }} <span class="text-red-500">*</span></label>
                                 <x-date-input
                                     name="asic_renewal_date"
                                     id="asic_renewal_date"
@@ -331,6 +337,10 @@
             const appointorTypeField = document.getElementById('appointor_type');
             const asicRenewalDateField = document.getElementById('asic_renewal_date_field');
             const asicRenewalDateInput = document.getElementById('asic_renewal_date');
+            const acnField = document.getElementById('acn_field');
+            const acnInput = document.getElementById('acn');
+            const corporateKeyField = document.getElementById('corporate_key_field');
+            const corporateKeyInput = document.getElementById('corporate_key');
 
             const registrationLabels = {
                 'Company': 'Registration date',
@@ -376,11 +386,17 @@
                 asicRenewalDateField?.classList.remove('hidden');
                 window.setDateInputRequired?.(asicRenewalDateInput, true);
                 window.setDateInputDisabled?.(asicRenewalDateInput, false);
+                acnField?.classList.remove('hidden');
+                corporateKeyField?.classList.remove('hidden');
             } else {
                 asicRenewalDateField?.classList.add('hidden');
                 window.setDateInputRequired?.(asicRenewalDateInput, false);
                 window.setDateInputDisabled?.(asicRenewalDateInput, true);
                 clearDateField(asicRenewalDateInput);
+                acnField?.classList.add('hidden');
+                if (acnInput) acnInput.value = '';
+                corporateKeyField?.classList.add('hidden');
+                if (corporateKeyInput) corporateKeyInput.value = '';
             }
         }
 

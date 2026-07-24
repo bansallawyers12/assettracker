@@ -711,7 +711,25 @@
                             <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline">Full list</a>
                         </div>
                         <div class="p-5">
-                            @if ($assetDueDateItems->isNotEmpty() || $entityDueDates->isNotEmpty() || $asicRenewalDueDates->isNotEmpty())
+                            @if ($companiesMissingAsicRenewalDate->isNotEmpty())
+                                <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50/80 dark:border-amber-900/40 dark:bg-amber-900/10 p-4">
+                                    <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                                        {{ $companiesMissingAsicRenewalDate->count() }} {{ Str::plural('company', $companiesMissingAsicRenewalDate->count()) }} missing {{ \App\Models\BusinessEntity::asicRenewalDateLabel() }}
+                                    </p>
+                                    <ul class="mt-2 space-y-1">
+                                        @foreach ($companiesMissingAsicRenewalDate->take(5) as $missingCompany)
+                                            <li class="text-xs text-amber-800 dark:text-amber-300">
+                                                <a href="{{ route('business-entities.edit', $missingCompany) }}" class="font-medium hover:underline">{{ $missingCompany->legal_name }}</a>
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                    @if ($companiesMissingAsicRenewalDate->count() > 5)
+                                        <p class="mt-2 text-xs text-amber-700 dark:text-amber-400">And {{ $companiesMissingAsicRenewalDate->count() - 5 }} more.</p>
+                                    @endif
+                                </div>
+                            @endif
+
+                            @if ($assetDueDateItems->isNotEmpty() || $entityDueDates->isNotEmpty() || $asicRenewalDueDates->isNotEmpty() || $companiesMissingAsicRenewalDate->isNotEmpty())
                                 <div class="space-y-3">
                                     @foreach ($assetDueDateItems as $item)
                                         @php
@@ -754,13 +772,29 @@
                                         </div>
                                     @endforeach
 
+                                    @foreach ($companiesMissingAsicRenewalDate as $missingCompany)
+                                        <div class="flex items-start gap-4 p-4 rounded-xl bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900/30">
+                                            <div class="shrink-0 w-2 h-2 mt-2 rounded-full bg-amber-400"></div>
+                                            <div class="flex-1 min-w-0">
+                                                <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                    Missing {{ \App\Models\BusinessEntity::asicRenewalDateLabel() }} &mdash; {{ $missingCompany->legal_name }}
+                                                    <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200 align-middle">SETUP</span>
+                                                </p>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Required for ASIC annual review tracking</p>
+                                                <div class="mt-2">
+                                                    <a href="{{ route('business-entities.edit', $missingCompany) }}" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Add anniversary</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+
                                     @foreach ($asicRenewalDueDates as $asicRow)
                                         @php $asicEntity = $asicRow->entity; @endphp
                                             <div class="flex items-start gap-4 p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
                                                 <div class="shrink-0 w-2 h-2 mt-2 rounded-full bg-red-400"></div>
                                                 <div class="flex-1 min-w-0">
                                                     <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                                        ASIC Renewal Due &mdash; {{ $asicEntity->legal_name }}
+                                                        {{ \App\Models\BusinessEntity::asicRenewalDateLabel() }} due &mdash; {{ $asicEntity->legal_name }}
                                                         <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200 align-middle">ASIC</span>
                                                     </p>
                                                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $asicRow->due_date->format('d/m/Y') }}</p>

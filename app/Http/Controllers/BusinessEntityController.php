@@ -336,6 +336,24 @@ class BusinessEntityController extends Controller
         return $request->filled('asic_renewal_date') ? $request->input('asic_renewal_date') : null;
     }
 
+    private function acnFromRequest(Request $request): ?string
+    {
+        if ($request->entity_type !== 'Company') {
+            return null;
+        }
+
+        return $request->filled('acn') ? $request->input('acn') : null;
+    }
+
+    private function corporateKeyFromRequest(Request $request): ?string
+    {
+        if ($request->entity_type !== 'Company') {
+            return null;
+        }
+
+        return $request->filled('corporate_key') ? $request->input('corporate_key') : null;
+    }
+
     /**
      * Store a newly created business entity in storage.
      *
@@ -351,9 +369,9 @@ class BusinessEntityController extends Controller
             'trading_name' => 'nullable|string|max:255',
             'entity_type' => 'required|in:Sole Trader,Company,Trust,Partnership',
             'abn' => ['nullable', 'string', 'max:11', new UniqueAbnHash()],
-            'acn' => ['nullable', 'string', 'max:9', new UniqueAcnHash()],
+            'acn' => ['nullable', 'prohibited_unless:entity_type,Company', 'string', 'max:9', new UniqueAcnHash()],
             'tfn' => 'nullable|string|max:9',
-            'corporate_key' => 'nullable|string|max:255',
+            'corporate_key' => 'nullable|prohibited_unless:entity_type,Company|string|max:255',
             'registered_address' => 'required|string',
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
@@ -390,8 +408,10 @@ class BusinessEntityController extends Controller
             'appointor_type.required_if' => 'Appointor type is required when entity type is Trust.',
             'appointor_person_id.required_if' => 'Please select an appointor person.',
             'appointor_entity_id.required_if' => 'Please select an appointor entity.',
-            'asic_renewal_date.required_if' => 'ASIC renewal date is required for companies.',
+            'asic_renewal_date.required_if' => BusinessEntity::asicRenewalDateLabel().' is required for companies.',
             'asic_renewal_date.prohibited_unless' => 'ASIC renewal date can only be set for companies.',
+            'acn.prohibited_unless' => 'ACN can only be set for companies.',
+            'corporate_key.prohibited_unless' => 'Corporate key can only be set for companies.',
         ]);
 
         $isTrust = $request->entity_type === 'Trust';
@@ -403,9 +423,9 @@ class BusinessEntityController extends Controller
                 'entity_type' => $request->entity_type,
                 ...$this->trustAttributesFromRequest($request, $isTrust),
                 'abn' => $request->abn,
-                'acn' => $request->acn,
+                'acn' => $this->acnFromRequest($request),
                 'tfn' => $request->tfn, // Ensure proper encryption/security if stored
-                'corporate_key' => $request->corporate_key,
+                'corporate_key' => $this->corporateKeyFromRequest($request),
                 'registered_address' => $request->registered_address,
                 'registered_email' => $request->registered_email,
                 'phone_number' => $request->phone_number,
@@ -444,7 +464,7 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('view', $businessEntity);
 
-        $businessEntity->load(['appointorPerson', 'appointorEntity']);
+        $businessEntity->load(['appointorPerson', 'appointorEntity', 'trustees.trusteeEntity']);
 
         $assets = $businessEntity->assets;
         $persons = $businessEntity->persons()->with(['person', 'trusteeEntity'])->get();
@@ -634,6 +654,7 @@ class BusinessEntityController extends Controller
 
         // Next ASIC annual review within 15 days (anniversary rolled from asic_renewal_date)
         $asicRenewalDueDates = BusinessEntity::upcomingAsicRenewalRows(15);
+        $companiesMissingAsicRenewalDate = BusinessEntity::companiesMissingAsicRenewalDate();
 
         $payerOptions = TransactionPayerResolver::payerOptions();
         $vendors = Vendor::orderedForSelect();
@@ -651,6 +672,7 @@ class BusinessEntityController extends Controller
             'assetDueDateItems',
             'entityDueDates',
             'asicRenewalDueDates',
+            'companiesMissingAsicRenewalDate',
             'payerOptions',
             'vendors',
             'commitmentSummary'
@@ -1627,9 +1649,9 @@ class BusinessEntityController extends Controller
             'trading_name' => 'nullable|string|max:255',
             'entity_type' => 'required|in:Sole Trader,Company,Trust,Partnership',
             'abn' => ['nullable', 'string', 'max:11', new UniqueAbnHash($businessEntity->id)],
-            'acn' => ['nullable', 'string', 'max:9', new UniqueAcnHash($businessEntity->id)],
+            'acn' => ['nullable', 'prohibited_unless:entity_type,Company', 'string', 'max:9', new UniqueAcnHash($businessEntity->id)],
             'tfn' => 'nullable|string|max:9',
-            'corporate_key' => 'nullable|string|max:255',
+            'corporate_key' => 'nullable|prohibited_unless:entity_type,Company|string|max:255',
             'registered_address' => 'required|string',
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
@@ -1665,8 +1687,10 @@ class BusinessEntityController extends Controller
             'appointor_type.required_if' => 'Appointor type is required when entity type is Trust.',
             'appointor_person_id.required_if' => 'Please select an appointor person.',
             'appointor_entity_id.required_if' => 'Please select an appointor entity.',
-            'asic_renewal_date.required_if' => 'ASIC renewal date is required for companies.',
+            'asic_renewal_date.required_if' => BusinessEntity::asicRenewalDateLabel().' is required for companies.',
             'asic_renewal_date.prohibited_unless' => 'ASIC renewal date can only be set for companies.',
+            'acn.prohibited_unless' => 'ACN can only be set for companies.',
+            'corporate_key.prohibited_unless' => 'Corporate key can only be set for companies.',
         ]);
 
         $isTrust = $request->entity_type === 'Trust';
@@ -1678,9 +1702,9 @@ class BusinessEntityController extends Controller
             'entity_type' => $request->entity_type,
             ...$this->trustAttributesFromRequest($request, $isTrust),
             'abn' => $request->abn,
-            'acn' => $request->acn,
+            'acn' => $this->acnFromRequest($request),
             'tfn' => $request->tfn, // Ensure proper encryption/security
-            'corporate_key' => $request->corporate_key,
+            'corporate_key' => $this->corporateKeyFromRequest($request),
             'registered_address' => $request->registered_address,
             'registered_email' => $request->registered_email,
             'phone_number' => $request->phone_number,
@@ -1727,7 +1751,7 @@ class BusinessEntityController extends Controller
                 'status' => true,
                 'message' => 'Business entity updated successfully.',
                 'sidebar_html' => view('business-entities.partials.entity-details-sidebar', [
-                    'businessEntity' => $businessEntity->fresh(['appointorPerson', 'appointorEntity']),
+                    'businessEntity' => $businessEntity->fresh(['appointorPerson', 'appointorEntity', 'trustees.trusteeEntity']),
                 ])->render(),
                 'entity' => [
                     'legal_name' => $businessEntity->legal_name,

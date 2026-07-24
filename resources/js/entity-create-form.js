@@ -12,11 +12,23 @@ function clearDateField(input) {
     }
 }
 
-function setAsicRenewalDateFieldState({ entityType, asicRenewalDateField, asicRenewalDateInput }) {
-    if (entityType === 'Company') {
+function setCompanyFieldsState({
+    entityType,
+    asicRenewalDateField,
+    asicRenewalDateInput,
+    acnField,
+    acnInput,
+    corporateKeyField,
+    corporateKeyInput,
+}) {
+    const isCompany = entityType === 'Company';
+
+    if (isCompany) {
         asicRenewalDateField?.classList.remove('hidden');
         window.setDateInputRequired?.(asicRenewalDateInput, true);
         window.setDateInputDisabled?.(asicRenewalDateInput, false);
+        acnField?.classList.remove('hidden');
+        corporateKeyField?.classList.remove('hidden');
         return;
     }
 
@@ -24,6 +36,14 @@ function setAsicRenewalDateFieldState({ entityType, asicRenewalDateField, asicRe
     window.setDateInputRequired?.(asicRenewalDateInput, false);
     window.setDateInputDisabled?.(asicRenewalDateInput, true);
     clearDateField(asicRenewalDateInput);
+    acnField?.classList.add('hidden');
+    if (acnInput) {
+        acnInput.value = '';
+    }
+    corporateKeyField?.classList.add('hidden');
+    if (corporateKeyInput) {
+        corporateKeyInput.value = '';
+    }
 }
 
 function setRegistrationDateFieldState({ entityType, registrationDateField, registrationDateInput, registrationDateLabel }) {
@@ -64,6 +84,10 @@ export function toggleTrustFields() {
     const appointorTypeField = document.getElementById('appointor_type');
     const asicRenewalDateField = document.getElementById('asic_renewal_date_field');
     const asicRenewalDateInput = document.getElementById('asic_renewal_date');
+    const acnField = document.getElementById('acn_field');
+    const acnInput = document.getElementById('acn');
+    const corporateKeyField = document.getElementById('corporate_key_field');
+    const corporateKeyInput = document.getElementById('corporate_key');
 
     if (!trustFields && !registrationDateField && !asicRenewalDateField) {
         return;
@@ -76,10 +100,14 @@ export function toggleTrustFields() {
         registrationDateLabel,
     });
 
-    setAsicRenewalDateFieldState({
+    setCompanyFieldsState({
         entityType,
         asicRenewalDateField,
         asicRenewalDateInput,
+        acnField,
+        acnInput,
+        corporateKeyField,
+        corporateKeyInput,
     });
 
     if (!trustFields) {
