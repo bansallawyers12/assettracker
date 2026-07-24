@@ -1,16 +1,17 @@
 @php
     use App\Models\BusinessEntity;
 
-    $asicRenewalOverdue = $businessEntity->isCompany()
-        && $businessEntity->asic_renewal_date
-        && $businessEntity->asic_renewal_date->isPast()
-        && ! $businessEntity->asic_renewal_date->isToday();
-    $asicRenewalSoon = $businessEntity->isCompany()
-        && $businessEntity->asic_renewal_date
+    $nextAsicRenewal = $businessEntity->isCompany()
+        ? $businessEntity->nextAsicRenewalDueDate()
+        : null;
+    $asicRenewalOverdue = $nextAsicRenewal
+        && $nextAsicRenewal->isPast()
+        && ! $nextAsicRenewal->isToday();
+    $asicRenewalSoon = $nextAsicRenewal
         && ! $asicRenewalOverdue
         && (
-            $businessEntity->asic_renewal_date->isToday()
-            || ($businessEntity->asic_renewal_date->isFuture() && $businessEntity->asic_renewal_date->lte(now()->addDays(30)))
+            $nextAsicRenewal->isToday()
+            || ($nextAsicRenewal->isFuture() && $nextAsicRenewal->lte(now()->addDays(30)))
         );
 @endphp
 
@@ -247,7 +248,7 @@
                 </div>
             @endif
 
-            @if ($businessEntity->isCompany() && $businessEntity->asic_renewal_date)
+            @if ($nextAsicRenewal)
                 <div class="border-t border-gray-100 dark:border-gray-800 pt-4">
                     <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">ASIC Renewal Due</p>
                     <p @class([
@@ -256,7 +257,7 @@
                         'text-amber-600 dark:text-amber-400' => $asicRenewalSoon,
                         'text-gray-900 dark:text-gray-100' => ! $asicRenewalOverdue && ! $asicRenewalSoon,
                     ])>
-                        {{ $businessEntity->asic_renewal_date->format('d/m/Y') }}
+                        {{ $nextAsicRenewal->format('d/m/Y') }}
                         @if ($asicRenewalOverdue)
                             <span class="ml-1 text-xs font-normal">(Overdue)</span>
                         @elseif ($asicRenewalSoon)

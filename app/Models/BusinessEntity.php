@@ -497,6 +497,11 @@ class BusinessEntity extends Model
      */
     public function nextAsicRenewalDueDate(?CarbonInterface $from = null): ?Carbon
     {
+        // Anniversary is company-only; ignore stale dates on other entity types.
+        if ($this->entity_type !== null && ! $this->isCompany()) {
+            return null;
+        }
+
         if ($this->asic_renewal_date === null) {
             return null;
         }
@@ -521,7 +526,7 @@ class BusinessEntity extends Model
      *
      * @return Collection<int, object{entity: self, due_date: Carbon}>
      */
-    public static function upcomingAsicRenewalRows(int $withinDays = 30): Collection
+    public static function upcomingAsicRenewalRows(int $withinDays = 15): Collection
     {
         $cutoff = now()->startOfDay()->addDays($withinDays);
 

@@ -226,9 +226,18 @@
                                 @error('phone_number') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                             
-                            <div id="asic_renewal_date_field" class="hidden">
+                            @php
+                                $showAsicRenewal = old('entity_type', $businessEntity->entity_type) === 'Company';
+                            @endphp
+                            <div id="asic_renewal_date_field" @class(['hidden' => ! $showAsicRenewal])>
                                 <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">ASIC Renewal Date <span class="text-red-500">*</span></label>
-                                <x-date-input name="asic_renewal_date" id="asic_renewal_date" value="{{ old('asic_renewal_date', $businessEntity->asic_renewal_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" />
+                                <x-date-input
+                                    name="asic_renewal_date"
+                                    id="asic_renewal_date"
+                                    value="{{ old('asic_renewal_date', $businessEntity->asic_renewal_date?->format('Y-m-d')) }}"
+                                    class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition"
+                                    @required($showAsicRenewal)
+                                />
                                 @error('asic_renewal_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
 

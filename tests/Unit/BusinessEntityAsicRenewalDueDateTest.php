@@ -67,6 +67,16 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
         $this->assertSame('2026-02-28', $entity->nextAsicRenewalDueDate()?->toDateString());
     }
 
+    public function test_next_asic_renewal_due_date_null_for_non_company(): void
+    {
+        $entity = new BusinessEntity([
+            'entity_type' => 'Trust',
+            'asic_renewal_date' => '2025-07-26',
+        ]);
+
+        $this->assertNull($entity->nextAsicRenewalDueDate());
+    }
+
     public function test_is_company_only_for_company_entity_type(): void
     {
         $this->assertTrue((new BusinessEntity(['entity_type' => 'Company']))->isCompany());

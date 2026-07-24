@@ -706,7 +706,7 @@
                             <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <x-lucide-calendar class="w-5 h-5 text-red-500" />
                                 Upcoming Due Dates
-                                <span class="text-xs font-normal text-gray-500 dark:text-gray-400">Assets 15 days · ASIC 30 days</span>
+                                <span class="text-xs font-normal text-gray-500 dark:text-gray-400">Next 15 days</span>
                             </h3>
                             <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline">Full list</a>
                         </div>

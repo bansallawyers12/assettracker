@@ -391,6 +391,7 @@ class BusinessEntityController extends Controller
             'appointor_person_id.required_if' => 'Please select an appointor person.',
             'appointor_entity_id.required_if' => 'Please select an appointor entity.',
             'asic_renewal_date.required_if' => 'ASIC renewal date is required for companies.',
+            'asic_renewal_date.prohibited_unless' => 'ASIC renewal date can only be set for companies.',
         ]);
 
         $isTrust = $request->entity_type === 'Trust';
@@ -624,15 +625,15 @@ class BusinessEntityController extends Controller
         $entityDueDates = collect();
         if ($businessEntities->isNotEmpty()) {
             $entityDueDates = EntityPerson::whereNotNull('asic_due_date')
-                ->whereDate('asic_due_date', '<=', now()->addDays(30))
+                ->whereDate('asic_due_date', '<=', now()->addDays(15))
                 ->whereIn('business_entity_id', $businessEntities->modelKeys())
                 ->with('businessEntity')
                 ->orderBy('asic_due_date')
                 ->get();
         }
 
-        // Next ASIC annual review within 30 days (anniversary rolled from asic_renewal_date)
-        $asicRenewalDueDates = BusinessEntity::upcomingAsicRenewalRows(30);
+        // Next ASIC annual review within 15 days (anniversary rolled from asic_renewal_date)
+        $asicRenewalDueDates = BusinessEntity::upcomingAsicRenewalRows(15);
 
         $payerOptions = TransactionPayerResolver::payerOptions();
         $vendors = Vendor::orderedForSelect();
@@ -1665,6 +1666,7 @@ class BusinessEntityController extends Controller
             'appointor_person_id.required_if' => 'Please select an appointor person.',
             'appointor_entity_id.required_if' => 'Please select an appointor entity.',
             'asic_renewal_date.required_if' => 'ASIC renewal date is required for companies.',
+            'asic_renewal_date.prohibited_unless' => 'ASIC renewal date can only be set for companies.',
         ]);
 
         $isTrust = $request->entity_type === 'Trust';

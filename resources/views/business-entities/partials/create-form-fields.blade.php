@@ -181,9 +181,18 @@
             @error('corporate_key') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
-        <div id="asic_renewal_date_field" class="bank-field hidden">
+        <div
+            id="asic_renewal_date_field"
+            @class(['bank-field', 'hidden' => old('entity_type') !== 'Company'])
+        >
             <label for="asic_renewal_date" class="bank-field-label">{{ __('ASIC renewal date') }} <span class="text-red-500">*</span></label>
-            <x-date-input name="asic_renewal_date" id="asic_renewal_date" value="{{ old('asic_renewal_date') }}" class="bank-field-control" />
+            <x-date-input
+                name="asic_renewal_date"
+                id="asic_renewal_date"
+                value="{{ old('asic_renewal_date') }}"
+                class="bank-field-control"
+                @required(old('entity_type') === 'Company')
+            />
             @error('asic_renewal_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
