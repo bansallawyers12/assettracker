@@ -599,8 +599,18 @@ class BusinessEntityController extends Controller
         $assetDueDateItems = Asset::upcomingDueDateRows();
 
         $entityDueDates = EntityPerson::whereNotNull('asic_due_date')
-            ->whereDate('asic_due_date', '<=', now()->addDays(15))
+            ->whereDate('asic_due_date', '<=', now()->addDays(30))
+            ->whereIn('business_entity_id', $businessEntities->modelKeys())
             ->with('businessEntity')
+            ->orderBy('asic_due_date')
+            ->get();
+
+        // Entity ASIC annual review renewals (overdue or due within 30 days)
+        $asicRenewalDueDates = BusinessEntity::query()
+            ->operationalEntities()
+            ->whereNotNull('asic_renewal_date')
+            ->whereDate('asic_renewal_date', '<=', now()->addDays(30))
+            ->orderBy('asic_renewal_date')
             ->get();
 
         $payerOptions = TransactionPayerResolver::payerOptions();
@@ -618,6 +628,7 @@ class BusinessEntityController extends Controller
             'uniquePersons',
             'assetDueDateItems',
             'entityDueDates',
+            'asicRenewalDueDates',
             'payerOptions',
             'vendors',
             'commitmentSummary'

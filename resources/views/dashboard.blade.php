@@ -539,7 +539,7 @@
                             <x-lucide-clock class="w-5 h-5 text-red-600 dark:text-red-400" />
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assetDueDateItems->count() + $entityDueDates->count() }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assetDueDateItems->count() + $entityDueDates->count() + $asicRenewalDueDates->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Due Soon</div>
                 </div>
                 <a href="{{ route('commitments.index') }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow block">
@@ -706,12 +706,12 @@
                             <h3 class="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
                                 <x-lucide-calendar class="w-5 h-5 text-red-500" />
                                 Upcoming Due Dates
-                                <span class="text-xs font-normal text-gray-500 dark:text-gray-400">Next 15 days</span>
+                                <span class="text-xs font-normal text-gray-500 dark:text-gray-400">Assets 15 days · ASIC 30 days</span>
                             </h3>
                             <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline">Full list</a>
                         </div>
                         <div class="p-5">
-                            @if ($assetDueDateItems->isNotEmpty() || $entityDueDates->isNotEmpty())
+                            @if ($assetDueDateItems->isNotEmpty() || $entityDueDates->isNotEmpty() || $asicRenewalDueDates->isNotEmpty())
                                 <div class="space-y-3">
                                     @foreach ($assetDueDateItems as $item)
                                         @php
@@ -754,12 +754,30 @@
                                         </div>
                                     @endforeach
 
+                                    @foreach ($asicRenewalDueDates as $asicEntity)
+                                        @if ($asicEntity->asic_renewal_date)
+                                            <div class="flex items-start gap-4 p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
+                                                <div class="shrink-0 w-2 h-2 mt-2 rounded-full bg-red-400"></div>
+                                                <div class="flex-1 min-w-0">
+                                                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">
+                                                        ASIC Renewal Due &mdash; {{ $asicEntity->legal_name }}
+                                                        <span class="inline-flex items-center px-1.5 py-0.5 rounded-sm text-[10px] font-semibold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200 align-middle">ASIC</span>
+                                                    </p>
+                                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $asicEntity->asic_renewal_date->format('d/m/Y') }}</p>
+                                                    <div class="mt-2">
+                                                        <a href="{{ route('business-entities.show', $asicEntity) }}" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">View entity</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
+                                    @endforeach
+
                                     @foreach ($entityDueDates as $entityDueDate)
                                         @if ($entityDueDate->asic_due_date)
                                             <div class="flex items-start gap-4 p-4 rounded-xl bg-red-50/50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30">
                                                 <div class="shrink-0 w-2 h-2 mt-2 rounded-full bg-red-400"></div>
                                                 <div class="flex-1 min-w-0">
-                                                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">ASIC Due &mdash; {{ $entityDueDate->businessEntity->legal_name }} ({{ $entityDueDate->role ?? 'Unknown Role' }})</p>
+                                                    <p class="text-sm font-medium text-gray-900 dark:text-gray-100">ASIC Due &mdash; {{ $entityDueDate->businessEntity?->legal_name ?? 'Unknown Entity' }} ({{ $entityDueDate->role ?? 'Unknown Role' }})</p>
                                                     <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $entityDueDate->asic_due_date->format('d/m/Y') }}</p>
                                                     <div class="mt-2 flex gap-2">
                                                         <form action="{{ route('entity-persons.finalize-due-date', $entityDueDate->id) }}" method="POST">
