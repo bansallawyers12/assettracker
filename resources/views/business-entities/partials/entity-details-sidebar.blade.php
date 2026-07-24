@@ -248,13 +248,14 @@
                             <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Corporate Trustee</p>
                             <ul class="mt-1 space-y-2">
                                 @foreach ($corporateTrustees as $trusteeCompany)
+                                    @php $trusteeAsicDue = $trusteeCompany->nextAsicRenewalDueDate(); @endphp
                                     <li class="text-sm text-gray-900 dark:text-gray-100">
                                         <a href="{{ route('business-entities.show', $trusteeCompany) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline">
                                             {{ $trusteeCompany->legal_name }}
                                         </a>
-                                        @if ($trusteeCompany->nextAsicRenewalDueDate())
+                                        @if ($trusteeAsicDue)
                                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                                {{ BusinessEntity::asicRenewalDateLabel() }} due {{ $trusteeCompany->nextAsicRenewalDueDate()->format('d/m/Y') }}
+                                                {{ BusinessEntity::asicRenewalDateLabel() }} due {{ $trusteeAsicDue->format('d/m/Y') }}
                                             </p>
                                         @elseif ($trusteeCompany->isCompany())
                                             <p class="text-xs text-amber-600 dark:text-amber-400 mt-0.5">

@@ -711,26 +711,17 @@
                             <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="text-xs font-semibold text-red-600 dark:text-red-400 hover:underline">Full list</a>
                         </div>
                         <div class="p-5">
-                            @if ($companiesMissingAsicRenewalDate->isNotEmpty())
-                                <div class="mb-4 rounded-xl border border-amber-200 bg-amber-50/80 dark:border-amber-900/40 dark:bg-amber-900/10 p-4">
-                                    <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">
-                                        {{ $companiesMissingAsicRenewalDate->count() }} {{ Str::plural('company', $companiesMissingAsicRenewalDate->count()) }} missing {{ \App\Models\BusinessEntity::asicRenewalDateLabel() }}
-                                    </p>
-                                    <ul class="mt-2 space-y-1">
-                                        @foreach ($companiesMissingAsicRenewalDate->take(5) as $missingCompany)
-                                            <li class="text-xs text-amber-800 dark:text-amber-300">
-                                                <a href="{{ route('business-entities.edit', $missingCompany) }}" class="font-medium hover:underline">{{ $missingCompany->legal_name }}</a>
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                    @if ($companiesMissingAsicRenewalDate->count() > 5)
-                                        <p class="mt-2 text-xs text-amber-700 dark:text-amber-400">And {{ $companiesMissingAsicRenewalDate->count() - 5 }} more.</p>
-                                    @endif
-                                </div>
-                            @endif
-
                             @if ($assetDueDateItems->isNotEmpty() || $entityDueDates->isNotEmpty() || $asicRenewalDueDates->isNotEmpty() || $companiesMissingAsicRenewalDate->isNotEmpty())
                                 <div class="space-y-3">
+                                    @if ($companiesMissingAsicRenewalDate->isNotEmpty())
+                                        <div class="rounded-xl border border-amber-200 bg-amber-50/80 dark:border-amber-900/40 dark:bg-amber-900/10 p-4">
+                                            <p class="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                                                {{ $companiesMissingAsicRenewalDate->count() }} {{ Str::plural('company', $companiesMissingAsicRenewalDate->count()) }} missing {{ \App\Models\BusinessEntity::asicRenewalDateLabel() }}
+                                            </p>
+                                            <p class="mt-1 text-xs text-amber-800 dark:text-amber-300">Add the anniversary so ASIC annual review reminders can track correctly.</p>
+                                        </div>
+                                    @endif
+
                                     @foreach ($assetDueDateItems as $item)
                                         @php
                                             $asset = $item->asset;

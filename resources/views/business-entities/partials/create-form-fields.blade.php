@@ -170,7 +170,7 @@
             @class(['bank-field', 'hidden' => old('entity_type') !== 'Company'])
         >
             <label for="acn" class="bank-field-label">{{ __('ACN') }}</label>
-            <input type="text" name="acn" id="acn" maxlength="9" placeholder="9 digits" inputmode="numeric" class="bank-field-control" value="{{ old('acn') }}">
+            <input type="text" name="acn" id="acn" maxlength="9" placeholder="9 digits" inputmode="numeric" class="bank-field-control" value="{{ old('acn') }}" @disabled(old('entity_type') !== 'Company')>
             @error('acn') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
@@ -185,7 +185,7 @@
             @class(['bank-field', 'hidden' => old('entity_type') !== 'Company'])
         >
             <label for="corporate_key" class="bank-field-label">{{ __('Corporate key') }}</label>
-            <input type="text" name="corporate_key" id="corporate_key" class="bank-field-control" value="{{ old('corporate_key') }}">
+            <input type="text" name="corporate_key" id="corporate_key" class="bank-field-control" value="{{ old('corporate_key') }}" @disabled(old('entity_type') !== 'Company')>
             @error('corporate_key') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 

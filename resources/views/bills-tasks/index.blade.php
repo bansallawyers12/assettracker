@@ -212,7 +212,7 @@
                                             @elseif ($row->kind === 'asic_renewal')
                                                 @php $be = $row->businessEntity; @endphp
                                                 <p class="text-sm font-medium text-gray-900 dark:text-gray-100 flex flex-wrap items-center gap-2">
-                                                    ASIC renewal due — {{ $be->legal_name }}
+                                                    {{ \App\Models\BusinessEntity::asicRenewalDateLabel() }} due — {{ $be->legal_name }}
                                                     <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200">ASIC</span>
                                                 </p>
                                                 <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">Entity annual review</p>

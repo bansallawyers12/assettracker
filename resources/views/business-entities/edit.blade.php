@@ -211,7 +211,7 @@
 
                             <div id="acn_field" @class(['hidden' => ! $showCompanyFields])>
                                 <label for="acn" class="block text-sm font-medium text-gray-700 mb-1">ACN</label>
-                                <input type="text" name="acn" id="acn" value="{{ old('acn', $businessEntity->acn) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="9" placeholder="9 digits">
+                                <input type="text" name="acn" id="acn" value="{{ old('acn', $businessEntity->acn) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" maxlength="9" placeholder="9 digits" @disabled(! $showCompanyFields)>
                                 @error('acn') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                             
@@ -222,7 +222,7 @@
                             
                             <div id="corporate_key_field" @class(['hidden' => ! $showCompanyFields])>
                                 <label for="corporate_key" class="block text-sm font-medium text-gray-700 mb-1">Corporate Key</label>
-                                <input type="text" name="corporate_key" id="corporate_key" value="{{ old('corporate_key', $businessEntity->corporate_key) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition">
+                                <input type="text" name="corporate_key" id="corporate_key" value="{{ old('corporate_key', $businessEntity->corporate_key) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" @disabled(! $showCompanyFields)>
                                 @error('corporate_key') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                             
@@ -387,16 +387,24 @@
                 window.setDateInputRequired?.(asicRenewalDateInput, true);
                 window.setDateInputDisabled?.(asicRenewalDateInput, false);
                 acnField?.classList.remove('hidden');
+                if (acnInput) acnInput.disabled = false;
                 corporateKeyField?.classList.remove('hidden');
+                if (corporateKeyInput) corporateKeyInput.disabled = false;
             } else {
                 asicRenewalDateField?.classList.add('hidden');
                 window.setDateInputRequired?.(asicRenewalDateInput, false);
                 window.setDateInputDisabled?.(asicRenewalDateInput, true);
                 clearDateField(asicRenewalDateInput);
                 acnField?.classList.add('hidden');
-                if (acnInput) acnInput.value = '';
+                if (acnInput) {
+                    acnInput.value = '';
+                    acnInput.disabled = true;
+                }
                 corporateKeyField?.classList.add('hidden');
-                if (corporateKeyInput) corporateKeyInput.value = '';
+                if (corporateKeyInput) {
+                    corporateKeyInput.value = '';
+                    corporateKeyInput.disabled = true;
+                }
             }
         }
 

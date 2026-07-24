@@ -16,9 +16,13 @@
                         <p><strong>Trading Name:</strong> {{ $businessEntity->trading_name ?? 'N/A' }}</p>
                         <p><strong>Entity Type:</strong> {{ $businessEntity->entity_type }}</p>
                         <p><strong>ABN:</strong> {{ $businessEntity->abn ?? 'N/A' }}</p>
+                        @if ($businessEntity->isCompany())
                         <p><strong>ACN:</strong> {{ $businessEntity->acn ?? 'N/A' }}</p>
+                        @endif
                         <p><strong>TFN:</strong> {{ $businessEntity->tfn ?? 'N/A' }}</p>
+                        @if ($businessEntity->isCompany())
                         <p><strong>Corporate Key:</strong> {{ $businessEntity->corporate_key ?? 'N/A' }}</p>
+                        @endif
                         <p><strong>Registered Address:</strong> {{ $businessEntity->registered_address }}</p>
                         <p><strong>Registered Email:</strong> {{ $businessEntity->registered_email }}</p>
                         <p><strong>Phone Number:</strong> {{ $businessEntity->phone_number }}</p>

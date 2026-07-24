@@ -28,7 +28,13 @@ function setCompanyFieldsState({
         window.setDateInputRequired?.(asicRenewalDateInput, true);
         window.setDateInputDisabled?.(asicRenewalDateInput, false);
         acnField?.classList.remove('hidden');
+        if (acnInput) {
+            acnInput.disabled = false;
+        }
         corporateKeyField?.classList.remove('hidden');
+        if (corporateKeyInput) {
+            corporateKeyInput.disabled = false;
+        }
         return;
     }
 
@@ -39,10 +45,12 @@ function setCompanyFieldsState({
     acnField?.classList.add('hidden');
     if (acnInput) {
         acnInput.value = '';
+        acnInput.disabled = true;
     }
     corporateKeyField?.classList.add('hidden');
     if (corporateKeyInput) {
         corporateKeyInput.value = '';
+        corporateKeyInput.disabled = true;
     }
 }
 

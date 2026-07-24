@@ -1702,16 +1702,29 @@ class BusinessEntityController extends Controller
             'entity_type' => $request->entity_type,
             ...$this->trustAttributesFromRequest($request, $isTrust),
             'abn' => $request->abn,
-            'acn' => $this->acnFromRequest($request),
             'tfn' => $request->tfn, // Ensure proper encryption/security
-            'corporate_key' => $this->corporateKeyFromRequest($request),
             'registered_address' => $request->registered_address,
             'registered_email' => $request->registered_email,
             'phone_number' => $request->phone_number,
-            'asic_renewal_date' => $this->asicRenewalDateFromRequest($request),
             'status' => $request->status, // Update status
             'exclude_from_financial_reports' => $request->boolean('exclude_from_financial_reports'),
         ];
+
+        // Company-only fields: clear when not a company. On company updates, only touch
+        // fields present in the request so the profile workspace form does not wipe them.
+        if ($request->entity_type !== 'Company') {
+            $payload['acn'] = null;
+            $payload['corporate_key'] = null;
+            $payload['asic_renewal_date'] = null;
+        } else {
+            $payload['asic_renewal_date'] = $this->asicRenewalDateFromRequest($request);
+            if ($request->has('acn')) {
+                $payload['acn'] = $this->acnFromRequest($request);
+            }
+            if ($request->has('corporate_key')) {
+                $payload['corporate_key'] = $this->corporateKeyFromRequest($request);
+            }
+        }
 
         if ($isTrust) {
             $payload['registration_date'] = null;
