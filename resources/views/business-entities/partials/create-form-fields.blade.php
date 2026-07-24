@@ -181,8 +181,8 @@
             @error('corporate_key') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
-        <div class="bank-field">
-            <label for="asic_renewal_date" class="bank-field-label">{{ __('ASIC renewal date') }}</label>
+        <div id="asic_renewal_date_field" class="bank-field hidden">
+            <label for="asic_renewal_date" class="bank-field-label">{{ __('ASIC renewal date') }} <span class="text-red-500">*</span></label>
             <x-date-input name="asic_renewal_date" id="asic_renewal_date" value="{{ old('asic_renewal_date') }}" class="bank-field-control" />
             @error('asic_renewal_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>

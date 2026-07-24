@@ -364,6 +364,7 @@ class BillsTasksController extends Controller
 
         return BusinessEntity::query()
             ->whereIn('id', $opIds)
+            ->where('entity_type', 'Company')
             ->whereNotNull('asic_renewal_date')
             ->count();
     }
@@ -380,6 +381,7 @@ class BillsTasksController extends Controller
 
         BusinessEntity::query()
             ->whereIn('id', $opIds)
+            ->where('entity_type', 'Company')
             ->whereNotNull('asic_renewal_date')
             ->orderBy('legal_name')
             ->get()

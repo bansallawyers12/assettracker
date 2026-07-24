@@ -12,6 +12,20 @@ function clearDateField(input) {
     }
 }
 
+function setAsicRenewalDateFieldState({ entityType, asicRenewalDateField, asicRenewalDateInput }) {
+    if (entityType === 'Company') {
+        asicRenewalDateField?.classList.remove('hidden');
+        window.setDateInputRequired?.(asicRenewalDateInput, true);
+        window.setDateInputDisabled?.(asicRenewalDateInput, false);
+        return;
+    }
+
+    asicRenewalDateField?.classList.add('hidden');
+    window.setDateInputRequired?.(asicRenewalDateInput, false);
+    window.setDateInputDisabled?.(asicRenewalDateInput, true);
+    clearDateField(asicRenewalDateInput);
+}
+
 function setRegistrationDateFieldState({ entityType, registrationDateField, registrationDateInput, registrationDateLabel }) {
     const registrationLabels = {
         Company: 'Registration date',
@@ -48,8 +62,10 @@ export function toggleTrustFields() {
     const trustDeedReferenceField = document.getElementById('trust_deed_reference');
     const trustVestingDateField = document.getElementById('trust_vesting_date');
     const appointorTypeField = document.getElementById('appointor_type');
+    const asicRenewalDateField = document.getElementById('asic_renewal_date_field');
+    const asicRenewalDateInput = document.getElementById('asic_renewal_date');
 
-    if (!trustFields && !registrationDateField) {
+    if (!trustFields && !registrationDateField && !asicRenewalDateField) {
         return;
     }
 
@@ -58,6 +74,12 @@ export function toggleTrustFields() {
         registrationDateField,
         registrationDateInput,
         registrationDateLabel,
+    });
+
+    setAsicRenewalDateFieldState({
+        entityType,
+        asicRenewalDateField,
+        asicRenewalDateInput,
     });
 
     if (!trustFields) {

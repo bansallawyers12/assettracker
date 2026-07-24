@@ -373,6 +373,11 @@ class BusinessEntity extends Model
         return $this->entity_type === 'Trust';
     }
 
+    public function isCompany(): bool
+    {
+        return $this->entity_type === 'Company';
+    }
+
     /**
      * UI label for registration_date (non-trust entities only).
      */
@@ -483,12 +488,7 @@ class BusinessEntity extends Model
 
     public function requiresAsicStatement(): bool
     {
-        if ($this->entity_type === 'Company') {
-            return true;
-        }
-
-        // Non-companies only when an ASIC renewal anniversary is configured on the entity.
-        return $this->asic_renewal_date !== null;
+        return $this->isCompany();
     }
 
     /**
@@ -527,6 +527,7 @@ class BusinessEntity extends Model
 
         return self::query()
             ->operationalEntities()
+            ->where('entity_type', 'Company')
             ->whereNotNull('asic_renewal_date')
             ->get()
             ->map(function (self $entity) use ($cutoff) {

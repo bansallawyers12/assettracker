@@ -40,10 +40,13 @@
                 @error('registration_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
             </div>
         @endunless
+        @if ($businessEntity->isCompany())
         <div>
-            <label for="profile_asic_renewal_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ASIC Renewal Date</label>
-            <x-date-input name="asic_renewal_date" id="profile_asic_renewal_date" class="mt-1 block w-full" value="{{ old('asic_renewal_date', $businessEntity->asic_renewal_date?->format('Y-m-d')) }}" />
+            <label for="profile_asic_renewal_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">ASIC Renewal Date <span class="text-red-500">*</span></label>
+            <x-date-input name="asic_renewal_date" id="profile_asic_renewal_date" class="mt-1 block w-full" value="{{ old('asic_renewal_date', $businessEntity->asic_renewal_date?->format('Y-m-d')) }}" required />
+            @error('asic_renewal_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
         </div>
+        @endif
         <div class="sm:col-span-2">
             <label for="profile_registered_address" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Registered Address</label>
             <x-google-address-input name="registered_address" id="profile_registered_address" :value="old('registered_address', $businessEntity->registered_address)" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm shadow-xs" required />

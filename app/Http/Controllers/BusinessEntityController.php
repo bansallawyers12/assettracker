@@ -315,6 +315,28 @@ class BusinessEntityController extends Controller
     }
 
     /**
+     * @return list<string|\Illuminate\Contracts\Validation\ValidationRule>
+     */
+    private function asicRenewalDateValidationRules(): array
+    {
+        return [
+            'nullable',
+            'prohibited_unless:entity_type,Company',
+            'required_if:entity_type,Company',
+            'date',
+        ];
+    }
+
+    private function asicRenewalDateFromRequest(Request $request): ?string
+    {
+        if ($request->entity_type !== 'Company') {
+            return null;
+        }
+
+        return $request->filled('asic_renewal_date') ? $request->input('asic_renewal_date') : null;
+    }
+
+    /**
      * Store a newly created business entity in storage.
      *
      * @return RedirectResponse
@@ -336,7 +358,7 @@ class BusinessEntityController extends Controller
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
             'registration_date' => 'nullable|prohibited_if:entity_type,Trust|date|before_or_equal:today',
-            'asic_renewal_date' => 'nullable|date',
+            'asic_renewal_date' => $this->asicRenewalDateValidationRules(),
             'bas_reporting_frequency' => 'nullable|in:annual,quarterly,monthly',
             'uses_tax_agent' => 'nullable|boolean',
             'gst_registered' => 'nullable|boolean',
@@ -368,6 +390,7 @@ class BusinessEntityController extends Controller
             'appointor_type.required_if' => 'Appointor type is required when entity type is Trust.',
             'appointor_person_id.required_if' => 'Please select an appointor person.',
             'appointor_entity_id.required_if' => 'Please select an appointor entity.',
+            'asic_renewal_date.required_if' => 'ASIC renewal date is required for companies.',
         ]);
 
         $isTrust = $request->entity_type === 'Trust';
@@ -386,7 +409,7 @@ class BusinessEntityController extends Controller
                 'registered_email' => $request->registered_email,
                 'phone_number' => $request->phone_number,
                 'registration_date' => $this->registrationDateFromRequest($request, $isTrust),
-                'asic_renewal_date' => $request->asic_renewal_date,
+                'asic_renewal_date' => $this->asicRenewalDateFromRequest($request),
                 'bas_reporting_frequency' => $request->input('bas_reporting_frequency') ?: null,
                 'uses_tax_agent' => $request->boolean('uses_tax_agent'),
                 'gst_registered' => $request->has('gst_registered') ? $request->boolean('gst_registered') : true,
@@ -1610,7 +1633,7 @@ class BusinessEntityController extends Controller
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
             'registration_date' => 'nullable|prohibited_if:entity_type,Trust|date|before_or_equal:today',
-            'asic_renewal_date' => 'nullable|date',
+            'asic_renewal_date' => $this->asicRenewalDateValidationRules(),
             'status' => 'required|in:Active,Inactive,Deregistered',
             'exclude_from_financial_reports' => 'nullable|boolean',
             'bas_reporting_frequency' => 'nullable|in:annual,quarterly,monthly',
@@ -1641,6 +1664,7 @@ class BusinessEntityController extends Controller
             'appointor_type.required_if' => 'Appointor type is required when entity type is Trust.',
             'appointor_person_id.required_if' => 'Please select an appointor person.',
             'appointor_entity_id.required_if' => 'Please select an appointor entity.',
+            'asic_renewal_date.required_if' => 'ASIC renewal date is required for companies.',
         ]);
 
         $isTrust = $request->entity_type === 'Trust';
@@ -1658,7 +1682,7 @@ class BusinessEntityController extends Controller
             'registered_address' => $request->registered_address,
             'registered_email' => $request->registered_email,
             'phone_number' => $request->phone_number,
-            'asic_renewal_date' => $request->asic_renewal_date,
+            'asic_renewal_date' => $this->asicRenewalDateFromRequest($request),
             'status' => $request->status, // Update status
             'exclude_from_financial_reports' => $request->boolean('exclude_from_financial_reports'),
         ];

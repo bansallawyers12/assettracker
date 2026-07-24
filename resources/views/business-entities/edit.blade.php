@@ -226,9 +226,10 @@
                                 @error('phone_number') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                             
-                            <div>
-                                <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">ASIC Renewal Date</label>
+                            <div id="asic_renewal_date_field" class="hidden">
+                                <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">ASIC Renewal Date <span class="text-red-500">*</span></label>
                                 <x-date-input name="asic_renewal_date" id="asic_renewal_date" value="{{ old('asic_renewal_date', $businessEntity->asic_renewal_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" />
+                                @error('asic_renewal_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
 
                             <div>
@@ -319,6 +320,8 @@
             const trustDeedReferenceField = document.getElementById('trust_deed_reference');
             const trustVestingDateField = document.getElementById('trust_vesting_date');
             const appointorTypeField = document.getElementById('appointor_type');
+            const asicRenewalDateField = document.getElementById('asic_renewal_date_field');
+            const asicRenewalDateInput = document.getElementById('asic_renewal_date');
 
             const registrationLabels = {
                 'Company': 'Registration date',
@@ -358,6 +361,17 @@
                 window.setSelectValue?.(document.getElementById('appointor_entity_id'), '');
                 document.getElementById('appointor_person_fields')?.classList.add('hidden');
                 document.getElementById('appointor_entity_fields')?.classList.add('hidden');
+            }
+
+            if (entityType === 'Company') {
+                asicRenewalDateField?.classList.remove('hidden');
+                window.setDateInputRequired?.(asicRenewalDateInput, true);
+                window.setDateInputDisabled?.(asicRenewalDateInput, false);
+            } else {
+                asicRenewalDateField?.classList.add('hidden');
+                window.setDateInputRequired?.(asicRenewalDateInput, false);
+                window.setDateInputDisabled?.(asicRenewalDateInput, true);
+                clearDateField(asicRenewalDateInput);
             }
         }
 

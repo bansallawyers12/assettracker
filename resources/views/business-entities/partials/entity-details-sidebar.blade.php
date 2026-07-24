@@ -1,10 +1,12 @@
 @php
     use App\Models\BusinessEntity;
 
-    $asicRenewalOverdue = $businessEntity->asic_renewal_date
+    $asicRenewalOverdue = $businessEntity->isCompany()
+        && $businessEntity->asic_renewal_date
         && $businessEntity->asic_renewal_date->isPast()
         && ! $businessEntity->asic_renewal_date->isToday();
-    $asicRenewalSoon = $businessEntity->asic_renewal_date
+    $asicRenewalSoon = $businessEntity->isCompany()
+        && $businessEntity->asic_renewal_date
         && ! $asicRenewalOverdue
         && (
             $businessEntity->asic_renewal_date->isToday()
@@ -245,7 +247,7 @@
                 </div>
             @endif
 
-            @if ($businessEntity->asic_renewal_date)
+            @if ($businessEntity->isCompany() && $businessEntity->asic_renewal_date)
                 <div class="border-t border-gray-100 dark:border-gray-800 pt-4">
                     <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">ASIC Renewal Due</p>
                     <p @class([

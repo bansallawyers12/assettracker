@@ -77,8 +77,10 @@ class AtoDueDateServiceTest extends TestCase
 
     public function test_asic_uses_renewal_anniversary_inside_fy(): void
     {
-        $entity = new BusinessEntity;
-        $entity->forceFill(['asic_renewal_date' => '2020-03-15']);
+        $entity = new BusinessEntity([
+            'entity_type' => 'Company',
+            'asic_renewal_date' => '2020-03-15',
+        ]);
 
         $fyStart = Carbon::parse('2024-07-01');
         $fyEnd = FinancialYear::forDate($fyStart)['end']->startOfDay();
