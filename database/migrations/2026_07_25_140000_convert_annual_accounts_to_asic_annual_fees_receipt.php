@@ -34,13 +34,16 @@ return new class extends Migration
                 'sort_order' => 45,
             ]);
 
+        // Refresh so due-date estimation uses the new code, not the stale in-memory model.
+        $type->refresh();
+
         $dueDates = new AtoDueDateService;
 
         ComplianceDocumentFile::query()
             ->where('compliance_document_type_id', $type->id)
-            ->with(['yearRecord.businessEntity', 'type'])
+            ->with(['yearRecord.businessEntity'])
             ->orderBy('id')
-            ->each(function (ComplianceDocumentFile $file) use ($dueDates): void {
+            ->each(function (ComplianceDocumentFile $file) use ($dueDates, $type): void {
                 $record = $file->yearRecord;
                 if ($record === null) {
                     return;
@@ -59,12 +62,12 @@ return new class extends Migration
 
                 $updates = [
                     'compliance_category_id' => $category->id,
-                    'checklist_label' => self::NEW_LABEL,
+                    // Recalculate from ASIC anniversary (clears stale ATO Oct 31 dates when unset).
+                    'due_date' => $dueDates->dueDateForType($type, $record)?->toDateString(),
                 ];
 
-                $estimatedDue = $dueDates->dueDateForType($file->type, $record);
-                if ($estimatedDue !== null) {
-                    $updates['due_date'] = $estimatedDue->toDateString();
+                if (! $file->custom_label) {
+                    $updates['checklist_label'] = self::NEW_LABEL;
                 }
 
                 $file->update($updates);

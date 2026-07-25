@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\BusinessEntity;
+use App\Models\Person;
 use Illuminate\Http\JsonResponse;
 
 class EntityShowWorkspaceController extends Controller
@@ -26,10 +27,21 @@ class EntityShowWorkspaceController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
+        $persons = Person::query()->orderBy('id')->get();
+
+        $businessEntities = BusinessEntity::query()
+            ->operationalEntities()
+            ->where('entity_type', '!=', 'Trust')
+            ->where('id', '!=', $businessEntity->id)
+            ->orderBy('legal_name')
+            ->get();
+
         return response()->json([
             'status' => true,
             'html' => view('business-entities.partials.profile.form', [
                 'businessEntity' => $businessEntity,
+                'persons' => $persons,
+                'businessEntities' => $businessEntities,
             ])->render(),
         ]);
     }

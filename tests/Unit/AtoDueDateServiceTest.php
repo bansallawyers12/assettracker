@@ -218,4 +218,49 @@ class AtoDueDateServiceTest extends TestCase
 
         $this->assertSame(ComplianceReportService::STATUS_COMPLETE, $result['status']);
     }
+
+    public function test_asic_obligation_includes_fees_receipt_code(): void
+    {
+        $reportService = new ComplianceReportService($this->service);
+        $method = new ReflectionMethod(ComplianceReportService::class, 'candidateCodesForKeys');
+        $method->setAccessible(true);
+
+        $codes = $method->invoke($reportService, [ComplianceReportService::OBLIGATION_ASIC]);
+
+        $this->assertContains('asic_statement', $codes);
+        $this->assertContains('asic_annual_fees_receipt', $codes);
+        $this->assertNotContains('itr', $codes);
+    }
+
+    public function test_asic_fees_receipt_filtered_for_companies_only(): void
+    {
+        $reportService = new ComplianceReportService($this->service);
+        $method = new ReflectionMethod(ComplianceReportService::class, 'filterTypesForEntity');
+        $method->setAccessible(true);
+
+        $types = collect([
+            new ComplianceDocumentType(['code' => 'asic_annual_fees_receipt', 'label' => 'ASIC Annual Fees Receipt']),
+            new ComplianceDocumentType(['code' => 'asic_statement', 'label' => 'ASIC Annual Statement']),
+        ]);
+
+        $company = new BusinessEntity(['entity_type' => 'Company']);
+        $trust = new BusinessEntity(['entity_type' => 'Trust']);
+
+        $companyCodes = $method->invoke(
+            $reportService,
+            $types,
+            [ComplianceReportService::OBLIGATION_ASIC],
+            $company
+        )->pluck('code')->all();
+
+        $trustCodes = $method->invoke(
+            $reportService,
+            $types,
+            [ComplianceReportService::OBLIGATION_ASIC],
+            $trust
+        )->pluck('code')->all();
+
+        $this->assertSame(['asic_annual_fees_receipt', 'asic_statement'], $companyCodes);
+        $this->assertSame([], $trustCodes);
+    }
 }

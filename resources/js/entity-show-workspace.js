@@ -15,6 +15,7 @@ import {
     notifyFormSuccess,
 } from './workspace-panel.js';
 import { initPersonsWorkspace } from './persons-workspace.js';
+import { initEntityFormFields } from './entity-create-form.js';
 
 const panelFormHandlers = [];
 
@@ -351,6 +352,7 @@ function initProfileWorkspace(pageRoot) {
 
         setWorkspacePanelContent(payload.html);
         initFormPlugins(getWorkspacePanelBody());
+        initEntityFormFields(getWorkspacePanelBody());
     });
 
     registerPanelFormHandler('.profile-ws-form', async (payload) => {

@@ -383,7 +383,7 @@ class ComplianceReportService
             array_push($codes, 'bas_annual', 'bas_q1', 'bas_q2', 'bas_q3', 'bas_q4');
         }
         if (in_array(self::OBLIGATION_ASIC, $obligationKeys, true)) {
-            $codes[] = 'asic_statement';
+            array_push($codes, 'asic_statement', 'asic_annual_fees_receipt');
         }
 
         return $codes;
@@ -417,7 +417,7 @@ class ComplianceReportService
                     && $basMode === 'quarterly';
             }
 
-            if ($code === 'asic_statement') {
+            if (in_array($code, ['asic_statement', 'asic_annual_fees_receipt'], true)) {
                 return in_array(self::OBLIGATION_ASIC, $obligationKeys, true)
                     && $entity->requiresAsicStatement();
             }

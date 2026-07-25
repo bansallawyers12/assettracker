@@ -198,6 +198,34 @@ export function toggleAppointorFields() {
     }
 }
 
+export function initEntityFormFields(root = document) {
+    const scope = root instanceof Element ? root : document;
+    const entityTypeField = scope.querySelector('#entity_type') ?? document.getElementById('entity_type');
+    const appointorTypeField = scope.querySelector('#appointor_type') ?? document.getElementById('appointor_type');
+
+    if (!entityTypeField && !appointorTypeField) {
+        return;
+    }
+
+    if (entityTypeField && entityTypeField.dataset.toggleBound !== '1') {
+        entityTypeField.dataset.toggleBound = '1';
+        entityTypeField.addEventListener('change', () => {
+            toggleTrustFields();
+            toggleAppointorFields();
+        });
+    }
+
+    if (appointorTypeField && appointorTypeField.dataset.toggleBound !== '1') {
+        appointorTypeField.dataset.toggleBound = '1';
+        appointorTypeField.addEventListener('change', toggleAppointorFields);
+    }
+
+    setTimeout(() => {
+        toggleTrustFields();
+        toggleAppointorFields();
+    }, 0);
+}
+
 export function initEntityCreateForm() {
     const form = document.getElementById('entity-create-form');
     if (!form || form.dataset.initialized === '1') {
@@ -205,21 +233,7 @@ export function initEntityCreateForm() {
     }
 
     form.dataset.initialized = '1';
-
-    document.getElementById('entity_type')?.addEventListener('change', () => {
-        toggleTrustFields();
-        toggleAppointorFields();
-    });
-
-    document.getElementById('appointor_type')?.addEventListener('change', toggleAppointorFields);
-
-    const syncFieldState = () => {
-        toggleTrustFields();
-        toggleAppointorFields();
-    };
-
-    // Run after initFlatpickr on the same DOMContentLoaded tick.
-    setTimeout(syncFieldState, 0);
+    initEntityFormFields(form);
 }
 
 if (document.readyState === 'loading') {

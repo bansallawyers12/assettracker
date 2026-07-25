@@ -1702,13 +1702,19 @@ class BusinessEntityController extends Controller
             'entity_type' => $request->entity_type,
             ...$this->trustAttributesFromRequest($request, $isTrust),
             'abn' => $request->abn,
-            'tfn' => $request->tfn, // Ensure proper encryption/security
             'registered_address' => $request->registered_address,
             'registered_email' => $request->registered_email,
             'phone_number' => $request->phone_number,
             'status' => $request->status, // Update status
-            'exclude_from_financial_reports' => $request->boolean('exclude_from_financial_reports'),
         ];
+
+        if ($request->has('tfn')) {
+            $payload['tfn'] = $request->tfn;
+        }
+
+        if ($request->has('exclude_from_financial_reports')) {
+            $payload['exclude_from_financial_reports'] = $request->boolean('exclude_from_financial_reports');
+        }
 
         // Company-only fields: clear when not a company. On company updates, only touch
         // fields present in the request so the profile workspace form does not wipe them.

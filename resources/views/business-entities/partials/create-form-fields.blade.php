@@ -3,6 +3,56 @@
 
     $persons = $persons ?? collect();
     $businessEntities = $businessEntities ?? collect();
+    $entity = $businessEntity ?? null;
+
+    $fieldValue = function (string $name, $default = '') use ($entity) {
+        if (old($name) !== null) {
+            return old($name);
+        }
+
+        if (! $entity) {
+            return $default;
+        }
+
+        $value = $entity->{$name} ?? $default;
+
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y-m-d');
+        }
+
+        return $value ?? $default;
+    };
+
+    $checkboxChecked = function (string $name, bool $default = false) use ($entity): bool {
+        if (old($name) !== null) {
+            return (string) old($name) === '1';
+        }
+
+        if ($entity) {
+            return (bool) ($entity->{$name} ?? $default);
+        }
+
+        return $default;
+    };
+
+    $currentEntityType = old('entity_type', $entity?->entity_type);
+    $showCompanyFields = $currentEntityType === 'Company';
+    $showTrustFields = $currentEntityType === 'Trust';
+
+    $currentAppointorType = old('appointor_type');
+    if ($currentAppointorType === null && $entity) {
+        if ($entity->appointor_person_id) {
+            $currentAppointorType = 'person';
+        } elseif ($entity->appointor_entity_id) {
+            $currentAppointorType = 'entity';
+        }
+    }
+
+    $allowedStatuses = ['Active', 'Inactive', 'Deregistered'];
+    $currentStatus = old('status', $entity?->status ?? 'Active');
+    if (! in_array($currentStatus, $allowedStatuses, true)) {
+        $currentStatus = 'Active';
+    }
 @endphp
 
 <div id="section-business" class="bank-form-section scroll-mt-6">
@@ -19,48 +69,60 @@
     <div class="bank-form-grid">
         <div class="bank-field bank-form-grid-full">
             <label for="legal_name" class="bank-field-label">{{ __('Legal name') }} <span class="text-red-500">*</span></label>
-            <input type="text" name="legal_name" id="legal_name" required autocomplete="organization" class="bank-field-control" value="{{ old('legal_name') }}">
+            <input type="text" name="legal_name" id="legal_name" required autocomplete="organization" class="bank-field-control" value="{{ $fieldValue('legal_name') }}">
             @error('legal_name') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         <div class="bank-field">
             <label for="trading_name" class="bank-field-label">{{ __('Trading name') }}</label>
-            <input type="text" name="trading_name" id="trading_name" autocomplete="organization" class="bank-field-control" value="{{ old('trading_name') }}">
+            <input type="text" name="trading_name" id="trading_name" autocomplete="organization" class="bank-field-control" value="{{ $fieldValue('trading_name') }}">
             @error('trading_name') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         <div class="bank-field">
             <label for="entity_type" class="bank-field-label">{{ __('Entity type') }} <span class="text-red-500">*</span></label>
             <select name="entity_type" id="entity_type" required class="bank-field-control">
-                <option value="" @selected(old('entity_type') === null || old('entity_type') === '')>{{ __('Select entity type') }}</option>
+                <option value="" @selected($currentEntityType === null || $currentEntityType === '')>{{ __('Select entity type') }}</option>
                 @foreach (['Sole Trader', 'Company', 'Trust', 'Partnership'] as $type)
-                    <option value="{{ $type }}" @selected(old('entity_type') === $type)>{{ $type }}</option>
+                    <option value="{{ $type }}" @selected($currentEntityType === $type)>{{ $type }}</option>
                 @endforeach
             </select>
             @error('entity_type') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
-        <div id="registration_date_field" class="bank-field">
-            <label for="registration_date" id="registration_date_label" class="bank-field-label">{{ \App\Models\BusinessEntity::registrationDateLabelFor(old('entity_type')) }}</label>
-            <x-date-input name="registration_date" id="registration_date" value="{{ old('registration_date') }}" class="bank-field-control" />
+        @if ($entity)
+            <div class="bank-field">
+                <label for="status" class="bank-field-label">{{ __('Status') }} <span class="text-red-500">*</span></label>
+                <select name="status" id="status" required class="bank-field-control">
+                    @foreach ($allowedStatuses as $status)
+                        <option value="{{ $status }}" @selected($currentStatus === $status)>{{ $status }}</option>
+                    @endforeach
+                </select>
+                @error('status') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
+            </div>
+        @endif
+
+        <div id="registration_date_field" @class(['bank-field', 'hidden' => $showTrustFields])>
+            <label for="registration_date" id="registration_date_label" class="bank-field-label">{{ $entity ? $entity->registrationDateLabel() : BusinessEntity::registrationDateLabelFor($currentEntityType) }}</label>
+            <x-date-input name="registration_date" id="registration_date" value="{{ $fieldValue('registration_date') }}" class="bank-field-control" />
             @error('registration_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         <div class="bank-field">
             <label for="registered_email" class="bank-field-label">{{ __('Email address') }} <span class="text-red-500">*</span></label>
-            <input type="email" name="registered_email" id="registered_email" required autocomplete="email" class="bank-field-control" value="{{ old('registered_email') }}">
+            <input type="email" name="registered_email" id="registered_email" required autocomplete="email" class="bank-field-control" value="{{ $fieldValue('registered_email') }}">
             @error('registered_email') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         <div class="bank-field">
             <label for="phone_number" class="bank-field-label">{{ __('Phone number') }} <span class="text-red-500">*</span></label>
-            <input type="text" name="phone_number" id="phone_number" required maxlength="15" autocomplete="tel" class="bank-field-control" value="{{ old('phone_number') }}">
+            <input type="text" name="phone_number" id="phone_number" required maxlength="15" autocomplete="tel" class="bank-field-control" value="{{ $fieldValue('phone_number') }}">
             @error('phone_number') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
     </div>
 </div>
 
-<div id="trust_fields" class="bank-form-section scroll-mt-6 hidden">
+<div id="trust_fields" @class(['bank-form-section', 'scroll-mt-6', 'hidden' => ! $showTrustFields])>
     <div class="flex items-start gap-3 mb-4">
         <div class="profile-section-icon profile-section-icon-emerald">
             <x-lucide-shield class="h-5 w-5" aria-hidden="true" />
@@ -75,9 +137,9 @@
         <div class="bank-field">
             <label for="trust_type" class="bank-field-label">{{ __('Trust type') }} <span class="text-red-500">*</span></label>
             <select name="trust_type" id="trust_type" class="bank-field-control">
-                <option value="" @selected(old('trust_type') === null || old('trust_type') === '')>{{ __('Select trust type') }}</option>
+                <option value="" @selected($fieldValue('trust_type') === '')>{{ __('Select trust type') }}</option>
                 @foreach (['Discretionary' => 'Discretionary Trust', 'Unit' => 'Unit Trust', 'Fixed' => 'Fixed Trust', 'Testamentary' => 'Testamentary Trust', 'Charitable' => 'Charitable Trust'] as $value => $label)
-                    <option value="{{ $value }}" @selected(old('trust_type') === $value)>{{ $label }}</option>
+                    <option value="{{ $value }}" @selected($fieldValue('trust_type') === $value)>{{ $label }}</option>
                 @endforeach
             </select>
             @error('trust_type') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
@@ -85,55 +147,55 @@
 
         <div class="bank-field">
             <label for="trust_establishment_date" class="bank-field-label">{{ __('Establishment date') }} <span class="text-red-500">*</span></label>
-            <x-date-input name="trust_establishment_date" id="trust_establishment_date" value="{{ old('trust_establishment_date') }}" class="bank-field-control" />
+            <x-date-input name="trust_establishment_date" id="trust_establishment_date" value="{{ $fieldValue('trust_establishment_date') }}" class="bank-field-control" />
             @error('trust_establishment_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         <div class="bank-field">
             <label for="trust_deed_date" class="bank-field-label">{{ __('Trust deed date') }} <span class="text-red-500">*</span></label>
-            <x-date-input name="trust_deed_date" id="trust_deed_date" value="{{ old('trust_deed_date') }}" class="bank-field-control" />
+            <x-date-input name="trust_deed_date" id="trust_deed_date" value="{{ $fieldValue('trust_deed_date') }}" class="bank-field-control" />
             @error('trust_deed_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         <div class="bank-field">
             <label for="trust_deed_reference" class="bank-field-label">{{ __('Trust deed reference') }}</label>
-            <input type="text" name="trust_deed_reference" id="trust_deed_reference" placeholder="e.g. TD-2024-001" class="bank-field-control" value="{{ old('trust_deed_reference') }}">
+            <input type="text" name="trust_deed_reference" id="trust_deed_reference" placeholder="e.g. TD-2024-001" class="bank-field-control" value="{{ $fieldValue('trust_deed_reference') }}">
             @error('trust_deed_reference') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         <div class="bank-field">
             <label for="trust_vesting_date" class="bank-field-label">{{ __('Vesting date') }}</label>
-            <x-date-input name="trust_vesting_date" id="trust_vesting_date" value="{{ old('trust_vesting_date') }}" class="bank-field-control" />
+            <x-date-input name="trust_vesting_date" id="trust_vesting_date" value="{{ $fieldValue('trust_vesting_date') }}" class="bank-field-control" />
             @error('trust_vesting_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         <div class="bank-field">
             <label for="appointor_type" class="bank-field-label">{{ __('Appointor type') }} <span class="text-red-500">*</span></label>
             <select name="appointor_type" id="appointor_type" class="bank-field-control">
-                <option value="" @selected(old('appointor_type') === null || old('appointor_type') === '')>{{ __('Select appointor type') }}</option>
-                <option value="person" @selected(old('appointor_type') === 'person')>{{ __('Person') }}</option>
-                <option value="entity" @selected(old('appointor_type') === 'entity')>{{ __('Company / entity') }}</option>
+                <option value="" @selected($currentAppointorType === null || $currentAppointorType === '')>{{ __('Select appointor type') }}</option>
+                <option value="person" @selected($currentAppointorType === 'person')>{{ __('Person') }}</option>
+                <option value="entity" @selected($currentAppointorType === 'entity')>{{ __('Company / entity') }}</option>
             </select>
             @error('appointor_type') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
-        <div id="appointor_person_fields" class="bank-field bank-form-grid-full hidden">
+        <div id="appointor_person_fields" @class(['bank-field', 'bank-form-grid-full', 'hidden' => $currentAppointorType !== 'person'])>
             <label for="appointor_person_id" class="bank-field-label">{{ __('Appointor person') }} <span class="text-red-500">*</span></label>
             <x-tom-select name="appointor_person_id" id="appointor_person_id" class="bank-field-control">
                 <option value="">{{ __('Select a person') }}</option>
                 @foreach ($persons as $person)
-                    <option value="{{ $person->id }}" @selected((string) old('appointor_person_id') === (string) $person->id)>{{ $person->first_name }} {{ $person->last_name }}</option>
+                    <option value="{{ $person->id }}" @selected((string) old('appointor_person_id', $entity?->appointor_person_id) === (string) $person->id)>{{ $person->first_name }} {{ $person->last_name }}</option>
                 @endforeach
             </x-tom-select>
             @error('appointor_person_id') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
-        <div id="appointor_entity_fields" class="bank-field bank-form-grid-full hidden">
+        <div id="appointor_entity_fields" @class(['bank-field', 'bank-form-grid-full', 'hidden' => $currentAppointorType !== 'entity'])>
             <label for="appointor_entity_id" class="bank-field-label">{{ __('Appointor entity') }} <span class="text-red-500">*</span></label>
             <x-tom-select name="appointor_entity_id" id="appointor_entity_id" class="bank-field-control">
                 <option value="">{{ __('Select an entity') }}</option>
-                @foreach ($businessEntities as $entity)
-                    <option value="{{ $entity->id }}" @selected((string) old('appointor_entity_id') === (string) $entity->id)>{{ $entity->legal_name }} ({{ $entity->entity_type }})</option>
+                @foreach ($businessEntities as $appointorEntity)
+                    <option value="{{ $appointorEntity->id }}" @selected((string) old('appointor_entity_id', $entity?->appointor_entity_id) === (string) $appointorEntity->id)>{{ $appointorEntity->legal_name }} ({{ $appointorEntity->entity_type }})</option>
                 @endforeach
             </x-tom-select>
             @error('appointor_entity_id') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
@@ -141,7 +203,7 @@
 
         <div class="bank-field bank-form-grid-full">
             <label for="trust_vesting_conditions" class="bank-field-label">{{ __('Vesting conditions') }}</label>
-            <textarea name="trust_vesting_conditions" id="trust_vesting_conditions" rows="3" placeholder="{{ __('Describe any specific vesting conditions…') }}" class="bank-field-control">{{ old('trust_vesting_conditions') }}</textarea>
+            <textarea name="trust_vesting_conditions" id="trust_vesting_conditions" rows="3" placeholder="{{ __('Describe any specific vesting conditions…') }}" class="bank-field-control">{{ $fieldValue('trust_vesting_conditions') }}</textarea>
             @error('trust_vesting_conditions') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
     </div>
@@ -161,45 +223,36 @@
     <div class="bank-form-grid">
         <div class="bank-field">
             <label for="abn" class="bank-field-label">{{ __('ABN') }}</label>
-            <input type="text" name="abn" id="abn" maxlength="11" placeholder="11 digits" inputmode="numeric" class="bank-field-control" value="{{ old('abn') }}">
+            <input type="text" name="abn" id="abn" maxlength="11" placeholder="11 digits" inputmode="numeric" class="bank-field-control" value="{{ $fieldValue('abn') }}">
             @error('abn') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
-        <div
-            id="acn_field"
-            @class(['bank-field', 'hidden' => old('entity_type') !== 'Company'])
-        >
+        <div id="acn_field" @class(['bank-field', 'hidden' => ! $showCompanyFields])>
             <label for="acn" class="bank-field-label">{{ __('ACN') }}</label>
-            <input type="text" name="acn" id="acn" maxlength="9" placeholder="9 digits" inputmode="numeric" class="bank-field-control" value="{{ old('acn') }}" @disabled(old('entity_type') !== 'Company')>
+            <input type="text" name="acn" id="acn" maxlength="9" placeholder="9 digits" inputmode="numeric" class="bank-field-control" value="{{ $fieldValue('acn') }}" @disabled(! $showCompanyFields)>
             @error('acn') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
         <div class="bank-field">
             <label for="tfn" class="bank-field-label">{{ __('TFN') }}</label>
-            <input type="text" name="tfn" id="tfn" maxlength="9" placeholder="9 digits" inputmode="numeric" class="bank-field-control" value="{{ old('tfn') }}">
+            <input type="text" name="tfn" id="tfn" maxlength="9" placeholder="9 digits" inputmode="numeric" class="bank-field-control" value="{{ $fieldValue('tfn') }}">
             @error('tfn') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
-        <div
-            id="corporate_key_field"
-            @class(['bank-field', 'hidden' => old('entity_type') !== 'Company'])
-        >
+        <div id="corporate_key_field" @class(['bank-field', 'hidden' => ! $showCompanyFields])>
             <label for="corporate_key" class="bank-field-label">{{ __('Corporate key') }}</label>
-            <input type="text" name="corporate_key" id="corporate_key" class="bank-field-control" value="{{ old('corporate_key') }}" @disabled(old('entity_type') !== 'Company')>
+            <input type="text" name="corporate_key" id="corporate_key" class="bank-field-control" value="{{ $fieldValue('corporate_key') }}" @disabled(! $showCompanyFields)>
             @error('corporate_key') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
-        <div
-            id="asic_renewal_date_field"
-            @class(['bank-field', 'hidden' => old('entity_type') !== 'Company'])
-        >
+        <div id="asic_renewal_date_field" @class(['bank-field', 'hidden' => ! $showCompanyFields])>
             <label for="asic_renewal_date" class="bank-field-label">{{ __(BusinessEntity::asicRenewalDateLabel()) }} <span class="text-red-500">*</span></label>
             <x-date-input
                 name="asic_renewal_date"
                 id="asic_renewal_date"
-                value="{{ old('asic_renewal_date') }}"
+                value="{{ $fieldValue('asic_renewal_date') }}"
                 class="bank-field-control"
-                @required(old('entity_type') === 'Company')
+                @required($showCompanyFields)
             />
             @error('asic_renewal_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
@@ -207,10 +260,10 @@
         <div class="bank-field">
             <label for="bas_reporting_frequency" class="bank-field-label">{{ __('BAS reporting') }}</label>
             <select name="bas_reporting_frequency" id="bas_reporting_frequency" class="bank-field-control">
-                <option value="" @selected(old('bas_reporting_frequency', '') === '')>{{ __('App default') }}</option>
-                <option value="annual" @selected(old('bas_reporting_frequency') === 'annual')>{{ __('Annual') }}</option>
-                <option value="quarterly" @selected(old('bas_reporting_frequency') === 'quarterly')>{{ __('Quarterly') }}</option>
-                <option value="monthly" @selected(old('bas_reporting_frequency') === 'monthly')>{{ __('Monthly (uses quarterly slots)') }}</option>
+                <option value="" @selected($fieldValue('bas_reporting_frequency') === null || $fieldValue('bas_reporting_frequency') === '')>{{ __('App default') }}</option>
+                <option value="annual" @selected($fieldValue('bas_reporting_frequency') === 'annual')>{{ __('Annual') }}</option>
+                <option value="quarterly" @selected($fieldValue('bas_reporting_frequency') === 'quarterly')>{{ __('Quarterly') }}</option>
+                <option value="monthly" @selected($fieldValue('bas_reporting_frequency') === 'monthly')>{{ __('Monthly (uses quarterly slots)') }}</option>
             </select>
             @error('bas_reporting_frequency') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
@@ -219,17 +272,17 @@
             <div class="flex flex-col gap-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
                 <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="hidden" name="uses_tax_agent" value="0">
-                    <input type="checkbox" name="uses_tax_agent" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked((string) old('uses_tax_agent', '0') === '1')>
+                    <input type="checkbox" name="uses_tax_agent" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked($checkboxChecked('uses_tax_agent'))>
                     <span>{{ __('Uses a registered tax / BAS agent (extended lodgement dates)') }}</span>
                 </label>
                 <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="hidden" name="gst_registered" value="0">
-                    <input type="checkbox" name="gst_registered" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked((string) old('gst_registered', '1') === '1')>
+                    <input type="checkbox" name="gst_registered" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked($checkboxChecked('gst_registered', ! $entity))>
                     <span>{{ __('GST registered (BAS obligations apply)') }}</span>
                 </label>
                 <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="hidden" name="entity_tax_return_required" value="0">
-                    <input type="checkbox" name="entity_tax_return_required" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked((string) old('entity_tax_return_required', '1') === '1')>
+                    <input type="checkbox" name="entity_tax_return_required" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked($checkboxChecked('entity_tax_return_required', ! $entity))>
                     <span>{{ __('Income tax return required') }}</span>
                 </label>
             </div>
@@ -237,7 +290,7 @@
 
         <div class="bank-field bank-form-grid-full">
             <label for="registered_address" class="bank-field-label">{{ __('Registered address') }} <span class="text-red-500">*</span></label>
-            <x-google-address-input name="registered_address" id="registered_address" :value="old('registered_address')" required class="bank-field-control" />
+            <x-google-address-input name="registered_address" id="registered_address" :value="$fieldValue('registered_address')" required class="bank-field-control" />
             @error('registered_address') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
     </div>
@@ -263,7 +316,7 @@
             name="exclude_from_financial_reports"
             value="1"
             class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900"
-            {{ old('exclude_from_financial_reports') ? 'checked' : '' }}
+            @checked($checkboxChecked('exclude_from_financial_reports'))
         >
         <span>
             <span class="block text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('Tenancy / property manager contact only') }}</span>
