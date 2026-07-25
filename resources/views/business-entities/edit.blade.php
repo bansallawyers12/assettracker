@@ -21,7 +21,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-lg sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('business-entities.update', $businessEntity->id) }}">
+                    <form method="POST" action="{{ route('business-entities.update', $businessEntity->id) }}" data-entity-form="1">
                         @csrf
                         @method('PATCH')
 
@@ -55,7 +55,7 @@
                             
                             <div>
                                 <label for="entity_type" class="block text-sm font-medium text-gray-700 mb-1">Entity Type*</label>
-                                <select name="entity_type" id="entity_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required onchange="toggleTrustFields()">
+                                <select name="entity_type" id="entity_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" required>
                                     <option value="Sole Trader" {{ old('entity_type', $businessEntity->entity_type) == 'Sole Trader' ? 'selected' : '' }}>Sole Trader</option>
                                     <option value="Company" {{ old('entity_type', $businessEntity->entity_type) == 'Company' ? 'selected' : '' }}>Company</option>
                                     <option value="Trust" {{ old('entity_type', $businessEntity->entity_type) == 'Trust' ? 'selected' : '' }}>Trust</option>
@@ -148,7 +148,7 @@
 
                                 <div>
                                     <label for="appointor_type" class="block text-sm font-medium text-gray-700 mb-1">Appointor Type*</label>
-                                    <select name="appointor_type" id="appointor_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition" onchange="toggleAppointorFields()">
+                                    <select name="appointor_type" id="appointor_type" class="w-full rounded-md border-gray-300 shadow-xs focus:border-green-500 focus:ring-3 focus:ring-green-200/50 transition">
                                         <option value="">Select appointor type</option>
                                         <option value="person" @selected($currentAppointorType === 'person')>Person</option>
                                         <option value="entity" @selected($currentAppointorType === 'entity')>Company/Entity</option>
@@ -312,136 +312,4 @@
         </div>
     </div>
 
-    <script>
-        function clearDateField(input) {
-            if (window.clearDateInput) {
-                window.clearDateInput(input);
-                return;
-            }
-            if (input) {
-                input.value = '';
-            }
-        }
-
-        function toggleTrustFields() {
-            const entityType = document.getElementById('entity_type').value;
-            const trustFields = document.getElementById('trust_fields');
-            const registrationDateField = document.getElementById('registration_date_field');
-            const registrationDateInput = document.getElementById('registration_date');
-            const registrationDateLabel = document.getElementById('registration_date_label');
-            const trustTypeField = document.getElementById('trust_type');
-            const trustEstablishmentDateField = document.getElementById('trust_establishment_date');
-            const trustDeedDateField = document.getElementById('trust_deed_date');
-            const trustDeedReferenceField = document.getElementById('trust_deed_reference');
-            const trustVestingDateField = document.getElementById('trust_vesting_date');
-            const appointorTypeField = document.getElementById('appointor_type');
-            const asicRenewalDateField = document.getElementById('asic_renewal_date_field');
-            const asicRenewalDateInput = document.getElementById('asic_renewal_date');
-            const acnField = document.getElementById('acn_field');
-            const acnInput = document.getElementById('acn');
-            const corporateKeyField = document.getElementById('corporate_key_field');
-            const corporateKeyInput = document.getElementById('corporate_key');
-
-            const registrationLabels = {
-                'Company': 'Registration date',
-                'Sole Trader': 'Commencement date',
-                'Partnership': 'Formation date',
-            };
-
-            if (entityType === 'Trust') {
-                trustFields.classList.remove('hidden');
-                registrationDateField?.classList.add('hidden');
-                window.setDateInputRequired?.(registrationDateInput, false);
-                window.setDateInputDisabled?.(registrationDateInput, true);
-                clearDateField(registrationDateInput);
-                trustTypeField.required = true;
-                window.setDateInputRequired?.(trustEstablishmentDateField, true);
-                window.setDateInputRequired?.(trustDeedDateField, true);
-                appointorTypeField.required = true;
-            } else {
-                trustFields.classList.add('hidden');
-                registrationDateField?.classList.remove('hidden');
-                window.setDateInputRequired?.(registrationDateInput, false);
-                window.setDateInputDisabled?.(registrationDateInput, false);
-                if (registrationDateLabel && registrationLabels[entityType]) {
-                    registrationDateLabel.textContent = registrationLabels[entityType];
-                }
-                trustTypeField.required = false;
-                trustTypeField.value = '';
-                window.setDateInputRequired?.(trustEstablishmentDateField, false);
-                clearDateField(trustEstablishmentDateField);
-                window.setDateInputRequired?.(trustDeedDateField, false);
-                clearDateField(trustDeedDateField);
-                if (trustDeedReferenceField) trustDeedReferenceField.value = '';
-                clearDateField(trustVestingDateField);
-                appointorTypeField.required = false;
-                appointorTypeField.value = '';
-                window.setSelectValue?.(document.getElementById('appointor_person_id'), '');
-                window.setSelectValue?.(document.getElementById('appointor_entity_id'), '');
-                document.getElementById('appointor_person_fields')?.classList.add('hidden');
-                document.getElementById('appointor_entity_fields')?.classList.add('hidden');
-            }
-
-            if (entityType === 'Company') {
-                asicRenewalDateField?.classList.remove('hidden');
-                window.setDateInputRequired?.(asicRenewalDateInput, true);
-                window.setDateInputDisabled?.(asicRenewalDateInput, false);
-                acnField?.classList.remove('hidden');
-                if (acnInput) acnInput.disabled = false;
-                corporateKeyField?.classList.remove('hidden');
-                if (corporateKeyInput) corporateKeyInput.disabled = false;
-            } else {
-                asicRenewalDateField?.classList.add('hidden');
-                window.setDateInputRequired?.(asicRenewalDateInput, false);
-                window.setDateInputDisabled?.(asicRenewalDateInput, true);
-                clearDateField(asicRenewalDateInput);
-                acnField?.classList.add('hidden');
-                if (acnInput) {
-                    acnInput.value = '';
-                    acnInput.disabled = true;
-                }
-                corporateKeyField?.classList.add('hidden');
-                if (corporateKeyInput) {
-                    corporateKeyInput.value = '';
-                    corporateKeyInput.disabled = true;
-                }
-            }
-        }
-
-        function toggleAppointorFields() {
-            const appointorType = document.getElementById('appointor_type').value;
-            const personFields = document.getElementById('appointor_person_fields');
-            const entityFields = document.getElementById('appointor_entity_fields');
-            const personSelect = document.getElementById('appointor_person_id');
-            const entitySelect = document.getElementById('appointor_entity_id');
-
-            if (appointorType === 'person') {
-                personFields.classList.remove('hidden');
-                entityFields.classList.add('hidden');
-                personSelect.required = true;
-                entitySelect.required = false;
-                window.setSelectValue?.(entitySelect, '');
-                window.reinitTomSelect?.(personSelect);
-            } else if (appointorType === 'entity') {
-                personFields.classList.add('hidden');
-                entityFields.classList.remove('hidden');
-                personSelect.required = false;
-                entitySelect.required = true;
-                window.setSelectValue?.(personSelect, '');
-                window.reinitTomSelect?.(entitySelect);
-            } else {
-                personFields.classList.add('hidden');
-                entityFields.classList.add('hidden');
-                personSelect.required = false;
-                entitySelect.required = false;
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                toggleTrustFields();
-                toggleAppointorFields();
-            }, 0);
-        });
-    </script>
 </x-app-layout>

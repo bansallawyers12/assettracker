@@ -362,10 +362,8 @@ class BillsTasksController extends Controller
             return 0;
         }
 
-        return BusinessEntity::query()
-            ->whereIn('id', $opIds)
-            ->where('entity_type', 'Company')
-            ->whereNotNull('asic_renewal_date')
+        return BusinessEntity::upcomingAsicRenewalRows(15)
+            ->filter(fn (object $row) => in_array($row->entity->id, $opIds, true))
             ->count();
     }
 
@@ -379,27 +377,18 @@ class BillsTasksController extends Controller
             return;
         }
 
-        BusinessEntity::query()
-            ->whereIn('id', $opIds)
-            ->where('entity_type', 'Company')
-            ->whereNotNull('asic_renewal_date')
-            ->orderBy('legal_name')
-            ->get()
-            ->each(function (BusinessEntity $entity) use ($items) {
-                $dueDate = $entity->nextAsicRenewalDueDate();
-                if ($dueDate === null) {
-                    return;
-                }
-
+        BusinessEntity::upcomingAsicRenewalRows(15)
+            ->filter(fn (object $row) => in_array($row->entity->id, $opIds, true))
+            ->each(function (object $row) use ($items) {
                 $items->push((object) [
                     'kind' => 'asic_renewal',
-                    'sort_date' => $dueDate,
+                    'sort_date' => $row->due_date,
                     'reminder' => null,
                     'note' => null,
                     'transaction' => null,
                     'asset' => null,
                     'entityPerson' => null,
-                    'businessEntity' => $entity,
+                    'businessEntity' => $row->entity,
                 ]);
             });
     }

@@ -257,13 +257,14 @@
             @error('asic_renewal_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
+        @php $basFrequency = $fieldValue('bas_reporting_frequency'); @endphp
         <div class="bank-field">
             <label for="bas_reporting_frequency" class="bank-field-label">{{ __('BAS reporting') }}</label>
             <select name="bas_reporting_frequency" id="bas_reporting_frequency" class="bank-field-control">
-                <option value="" @selected($fieldValue('bas_reporting_frequency') === null || $fieldValue('bas_reporting_frequency') === '')>{{ __('App default') }}</option>
-                <option value="annual" @selected($fieldValue('bas_reporting_frequency') === 'annual')>{{ __('Annual') }}</option>
-                <option value="quarterly" @selected($fieldValue('bas_reporting_frequency') === 'quarterly')>{{ __('Quarterly') }}</option>
-                <option value="monthly" @selected($fieldValue('bas_reporting_frequency') === 'monthly')>{{ __('Monthly (uses quarterly slots)') }}</option>
+                <option value="" @selected($basFrequency === null || $basFrequency === '')>{{ __('App default') }}</option>
+                <option value="annual" @selected($basFrequency === 'annual')>{{ __('Annual') }}</option>
+                <option value="quarterly" @selected($basFrequency === 'quarterly')>{{ __('Quarterly') }}</option>
+                <option value="monthly" @selected($basFrequency === 'monthly')>{{ __('Monthly (uses quarterly slots)') }}</option>
             </select>
             @error('bas_reporting_frequency') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
@@ -277,12 +278,12 @@
                 </label>
                 <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="hidden" name="gst_registered" value="0">
-                    <input type="checkbox" name="gst_registered" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked($checkboxChecked('gst_registered', ! $entity))>
+                    <input type="checkbox" name="gst_registered" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked($checkboxChecked('gst_registered', true))>
                     <span>{{ __('GST registered (BAS obligations apply)') }}</span>
                 </label>
                 <label class="inline-flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                     <input type="hidden" name="entity_tax_return_required" value="0">
-                    <input type="checkbox" name="entity_tax_return_required" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked($checkboxChecked('entity_tax_return_required', ! $entity))>
+                    <input type="checkbox" name="entity_tax_return_required" value="1" class="mt-0.5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" @checked($checkboxChecked('entity_tax_return_required', true))>
                     <span>{{ __('Income tax return required') }}</span>
                 </label>
             </div>

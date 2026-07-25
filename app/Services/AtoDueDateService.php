@@ -109,7 +109,7 @@ class AtoDueDateService
      */
     public function asicDueDate(?BusinessEntity $entity, Carbon $fyStart, Carbon $fyEnd): ?Carbon
     {
-        if ($entity?->asic_renewal_date === null) {
+        if ($entity === null || ! $entity->requiresAsicStatement() || $entity->asic_renewal_date === null) {
             return null;
         }
 

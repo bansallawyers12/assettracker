@@ -1,14 +1,31 @@
 /**
- * Business entity create form — trust and appointor field toggles.
+ * Business entity create/edit form — trust and appointor field toggles.
+ * Visibility/required/disabled only: do not clear values so toggling entity
+ * type back and forth on edit does not wipe ACN, trust deed data, etc.
  */
-function clearDateField(input) {
-    if (window.clearDateInput) {
-        window.clearDateInput(input);
+function setInputDisabled(input, disabled) {
+    if (!input) {
         return;
     }
 
-    if (input) {
-        input.value = '';
+    if (input.matches?.('input.form-date-input, input.flatpickr-input')) {
+        window.setDateInputDisabled?.(input, disabled);
+        return;
+    }
+
+    if (input.tagName === 'SELECT' && typeof window.setSelectDisabled === 'function') {
+        window.setSelectDisabled(input, disabled);
+        return;
+    }
+
+    input.disabled = disabled;
+
+    if (input.tomselect) {
+        if (disabled) {
+            input.tomselect.disable();
+        } else {
+            input.tomselect.enable();
+        }
     }
 }
 
@@ -26,32 +43,21 @@ function setCompanyFieldsState({
     if (isCompany) {
         asicRenewalDateField?.classList.remove('hidden');
         window.setDateInputRequired?.(asicRenewalDateInput, true);
-        window.setDateInputDisabled?.(asicRenewalDateInput, false);
+        setInputDisabled(asicRenewalDateInput, false);
         acnField?.classList.remove('hidden');
-        if (acnInput) {
-            acnInput.disabled = false;
-        }
+        setInputDisabled(acnInput, false);
         corporateKeyField?.classList.remove('hidden');
-        if (corporateKeyInput) {
-            corporateKeyInput.disabled = false;
-        }
+        setInputDisabled(corporateKeyInput, false);
         return;
     }
 
     asicRenewalDateField?.classList.add('hidden');
     window.setDateInputRequired?.(asicRenewalDateInput, false);
-    window.setDateInputDisabled?.(asicRenewalDateInput, true);
-    clearDateField(asicRenewalDateInput);
+    setInputDisabled(asicRenewalDateInput, true);
     acnField?.classList.add('hidden');
-    if (acnInput) {
-        acnInput.value = '';
-        acnInput.disabled = true;
-    }
+    setInputDisabled(acnInput, true);
     corporateKeyField?.classList.add('hidden');
-    if (corporateKeyInput) {
-        corporateKeyInput.value = '';
-        corporateKeyInput.disabled = true;
-    }
+    setInputDisabled(corporateKeyInput, true);
 }
 
 function setRegistrationDateFieldState({ entityType, registrationDateField, registrationDateInput, registrationDateLabel }) {
@@ -64,18 +70,34 @@ function setRegistrationDateFieldState({ entityType, registrationDateField, regi
     if (entityType === 'Trust') {
         registrationDateField?.classList.add('hidden');
         window.setDateInputRequired?.(registrationDateInput, false);
-        window.setDateInputDisabled?.(registrationDateInput, true);
-        clearDateField(registrationDateInput);
+        setInputDisabled(registrationDateInput, true);
         return;
     }
 
     registrationDateField?.classList.remove('hidden');
     window.setDateInputRequired?.(registrationDateInput, false);
-    window.setDateInputDisabled?.(registrationDateInput, false);
+    setInputDisabled(registrationDateInput, false);
 
     if (registrationDateLabel && registrationLabels[entityType]) {
         registrationDateLabel.textContent = registrationLabels[entityType];
     }
+}
+
+function setTrustFieldsEnabled(enabled) {
+    const trustFields = document.getElementById('trust_fields');
+    if (!trustFields) {
+        return;
+    }
+
+    trustFields.querySelectorAll('input, select, textarea').forEach((el) => {
+        // Keep individually-hidden appointor panes disabled until appointor type is chosen.
+        const inHiddenAppointorPane = el.closest('#appointor_person_fields, #appointor_entity_fields')?.classList.contains('hidden');
+        setInputDisabled(el, ! enabled || Boolean(inHiddenAppointorPane));
+        if (! enabled) {
+            el.required = false;
+            window.setDateInputRequired?.(el, false);
+        }
+    });
 }
 
 export function toggleTrustFields() {
@@ -87,8 +109,6 @@ export function toggleTrustFields() {
     const trustTypeField = document.getElementById('trust_type');
     const trustEstablishmentDateField = document.getElementById('trust_establishment_date');
     const trustDeedDateField = document.getElementById('trust_deed_date');
-    const trustDeedReferenceField = document.getElementById('trust_deed_reference');
-    const trustVestingDateField = document.getElementById('trust_vesting_date');
     const appointorTypeField = document.getElementById('appointor_type');
     const asicRenewalDateField = document.getElementById('asic_renewal_date_field');
     const asicRenewalDateInput = document.getElementById('asic_renewal_date');
@@ -124,32 +144,16 @@ export function toggleTrustFields() {
 
     if (entityType === 'Trust') {
         trustFields.classList.remove('hidden');
+        setTrustFieldsEnabled(true);
         if (trustTypeField) trustTypeField.required = true;
         if (trustEstablishmentDateField) window.setDateInputRequired?.(trustEstablishmentDateField, true);
         if (trustDeedDateField) window.setDateInputRequired?.(trustDeedDateField, true);
         if (appointorTypeField) appointorTypeField.required = true;
     } else {
         trustFields.classList.add('hidden');
-        if (trustTypeField) {
-            trustTypeField.required = false;
-            trustTypeField.value = '';
-        }
-        if (trustEstablishmentDateField) {
-            window.setDateInputRequired?.(trustEstablishmentDateField, false);
-            clearDateField(trustEstablishmentDateField);
-        }
-        if (trustDeedDateField) {
-            window.setDateInputRequired?.(trustDeedDateField, false);
-            clearDateField(trustDeedDateField);
-        }
-        if (trustDeedReferenceField) trustDeedReferenceField.value = '';
-        if (trustVestingDateField) clearDateField(trustVestingDateField);
-        if (appointorTypeField) {
-            appointorTypeField.required = false;
-            appointorTypeField.value = '';
-        }
-        window.setSelectValue?.(document.getElementById('appointor_person_id'), '');
-        window.setSelectValue?.(document.getElementById('appointor_entity_id'), '');
+        setTrustFieldsEnabled(false);
+        if (trustTypeField) trustTypeField.required = false;
+        if (appointorTypeField) appointorTypeField.required = false;
         document.getElementById('appointor_person_fields')?.classList.add('hidden');
         document.getElementById('appointor_entity_fields')?.classList.add('hidden');
     }
@@ -161,40 +165,45 @@ export function toggleAppointorFields() {
     const entityFields = document.getElementById('appointor_entity_fields');
     const personSelect = document.getElementById('appointor_person_id');
     const entitySelect = document.getElementById('appointor_entity_id');
+    const isTrust = document.getElementById('entity_type')?.value === 'Trust';
 
     if (!personFields || !entityFields) {
+        return;
+    }
+
+    if (! isTrust) {
+        personFields.classList.add('hidden');
+        entityFields.classList.add('hidden');
+        setInputDisabled(personSelect, true);
+        setInputDisabled(entitySelect, true);
+        if (personSelect) personSelect.required = false;
+        if (entitySelect) entitySelect.required = false;
         return;
     }
 
     if (appointorType === 'person') {
         personFields.classList.remove('hidden');
         entityFields.classList.add('hidden');
+        setInputDisabled(personSelect, false);
+        setInputDisabled(entitySelect, true);
         if (personSelect) personSelect.required = true;
-        if (entitySelect) {
-            entitySelect.required = false;
-            window.setSelectValue?.(entitySelect, '');
-        }
+        if (entitySelect) entitySelect.required = false;
         window.reinitTomSelect?.(personSelect);
     } else if (appointorType === 'entity') {
         personFields.classList.add('hidden');
         entityFields.classList.remove('hidden');
-        if (personSelect) {
-            personSelect.required = false;
-            window.setSelectValue?.(personSelect, '');
-        }
+        setInputDisabled(personSelect, true);
+        setInputDisabled(entitySelect, false);
+        if (personSelect) personSelect.required = false;
         if (entitySelect) entitySelect.required = true;
         window.reinitTomSelect?.(entitySelect);
     } else {
         personFields.classList.add('hidden');
         entityFields.classList.add('hidden');
-        if (personSelect) {
-            personSelect.required = false;
-            window.setSelectValue?.(personSelect, '');
-        }
-        if (entitySelect) {
-            entitySelect.required = false;
-            window.setSelectValue?.(entitySelect, '');
-        }
+        setInputDisabled(personSelect, true);
+        setInputDisabled(entitySelect, true);
+        if (personSelect) personSelect.required = false;
+        if (entitySelect) entitySelect.required = false;
     }
 }
 
@@ -227,7 +236,8 @@ export function initEntityFormFields(root = document) {
 }
 
 export function initEntityCreateForm() {
-    const form = document.getElementById('entity-create-form');
+    const form = document.getElementById('entity-create-form')
+        || document.querySelector('form[data-entity-form]');
     if (!form || form.dataset.initialized === '1') {
         return;
     }

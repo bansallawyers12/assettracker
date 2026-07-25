@@ -539,7 +539,7 @@
                             <x-lucide-clock class="w-5 h-5 text-red-600 dark:text-red-400" />
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assetDueDateItems->count() + $entityDueDates->count() + $asicRenewalDueDates->count() }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assetDueDateItems->count() + $entityDueDates->count() + $asicRenewalDueDates->count() + $companiesMissingAsicRenewalDate->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Due Soon</div>
                 </div>
                 <a href="{{ route('commitments.index') }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow block">

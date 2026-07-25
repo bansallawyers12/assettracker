@@ -92,6 +92,42 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
         ]))->requiresAsicStatement());
     }
 
+    public function test_asic_renewal_due_date_in_window_includes_recent_overdue(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-24'));
+
+        $entity = new BusinessEntity([
+            'entity_type' => 'Company',
+            'asic_renewal_date' => '2020-07-20',
+        ]);
+
+        $this->assertSame('2026-07-20', $entity->asicRenewalDueDateInWindow(15)?->toDateString());
+    }
+
+    public function test_asic_renewal_due_date_in_window_includes_upcoming(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-24'));
+
+        $entity = new BusinessEntity([
+            'entity_type' => 'Company',
+            'asic_renewal_date' => '2020-07-30',
+        ]);
+
+        $this->assertSame('2026-07-30', $entity->asicRenewalDueDateInWindow(15)?->toDateString());
+    }
+
+    public function test_asic_renewal_due_date_in_window_null_outside_window(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-24'));
+
+        $entity = new BusinessEntity([
+            'entity_type' => 'Company',
+            'asic_renewal_date' => '2020-01-30',
+        ]);
+
+        $this->assertNull($entity->asicRenewalDueDateInWindow(15));
+    }
+
     public function test_upcoming_asic_renewal_rows_query_includes_company_filter(): void
     {
         $sql = strtolower(BusinessEntity::query()

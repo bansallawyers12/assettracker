@@ -1,5 +1,5 @@
 <form
-    class="profile-ws-form space-y-4"
+    class="profile-ws-form bank-ws-form space-y-4"
     method="POST"
     action="{{ route('business-entities.update', $businessEntity->id) }}"
     data-mode="edit"

@@ -45,5 +45,10 @@ class ComplianceDocumentTypeSeeder extends Seeder
                 ]
             );
         }
+
+        // Retired: annual_accounts was renamed to asic_annual_fees_receipt.
+        ComplianceDocumentType::query()
+            ->where('code', 'annual_accounts')
+            ->update(['is_active' => false]);
     }
 }

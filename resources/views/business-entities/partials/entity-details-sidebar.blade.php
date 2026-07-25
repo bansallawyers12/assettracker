@@ -1,12 +1,15 @@
 @php
     use App\Models\BusinessEntity;
 
-    $nextAsicRenewal = $businessEntity->isCompany()
-        ? $businessEntity->nextAsicRenewalDueDate()
+    // Window used for overdue/soon styling; prefer in-window date so overdue can show.
+    $asicRenewalInWindow = $businessEntity->isCompany()
+        ? $businessEntity->asicRenewalDueDateInWindow(30)
         : null;
-    $asicRenewalOverdue = $nextAsicRenewal
-        && $nextAsicRenewal->isPast()
-        && ! $nextAsicRenewal->isToday();
+    $nextAsicRenewal = $asicRenewalInWindow
+        ?? ($businessEntity->isCompany() ? $businessEntity->nextAsicRenewalDueDate() : null);
+    $asicRenewalOverdue = $asicRenewalInWindow
+        && $asicRenewalInWindow->isPast()
+        && ! $asicRenewalInWindow->isToday();
     $asicRenewalSoon = $nextAsicRenewal
         && ! $asicRenewalOverdue
         && (

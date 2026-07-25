@@ -532,12 +532,10 @@ class BusinessEntity extends Model
     }
 
     /**
-     * Next ASIC annual-review due date from the stored anniversary (month/day).
-     * Rolls forward to the next occurrence on or after $from (defaults to today).
+     * Anniversary date (month/day of asic_renewal_date) pinned to a calendar year.
      */
-    public function nextAsicRenewalDueDate(?CarbonInterface $from = null): ?Carbon
+    public function asicAnniversaryInYear(int $year): ?Carbon
     {
-        // Anniversary is company-only; ignore stale dates on other entity types.
         if ($this->entity_type !== null && ! $this->isCompany()) {
             return null;
         }
@@ -546,14 +544,24 @@ class BusinessEntity extends Model
             return null;
         }
 
-        $from = Carbon::parse($from ?? now())->startOfDay();
         $month = (int) $this->asic_renewal_date->month;
         $day = (int) $this->asic_renewal_date->day;
+        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+
+        return Carbon::create($year, $month, min($day, $daysInMonth))->startOfDay();
+    }
+
+    /**
+     * Next ASIC annual-review due date from the stored anniversary (month/day).
+     * Rolls forward to the next occurrence on or after $from (defaults to today).
+     */
+    public function nextAsicRenewalDueDate(?CarbonInterface $from = null): ?Carbon
+    {
+        $from = Carbon::parse($from ?? now())->startOfDay();
 
         foreach ([$from->year, $from->year + 1] as $year) {
-            $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
-            $candidate = Carbon::create($year, $month, min($day, $daysInMonth))->startOfDay();
-            if ($candidate->gte($from)) {
+            $candidate = $this->asicAnniversaryInYear($year);
+            if ($candidate !== null && $candidate->gte($from)) {
                 return $candidate;
             }
         }
@@ -562,22 +570,41 @@ class BusinessEntity extends Model
     }
 
     /**
-     * Operational entities whose next ASIC renewal falls on or before today + $withinDays.
+     * Anniversary occurrence for reminder lists: overdue within $withinDays lookback,
+     * or upcoming within $withinDays ahead (defaults to today).
+     */
+    public function asicRenewalDueDateInWindow(int $withinDays = 15, ?CarbonInterface $from = null): ?Carbon
+    {
+        $from = Carbon::parse($from ?? now())->startOfDay();
+        $earliest = $from->copy()->subDays($withinDays);
+        $cutoff = $from->copy()->addDays($withinDays);
+
+        foreach ([$from->year - 1, $from->year, $from->year + 1] as $year) {
+            $candidate = $this->asicAnniversaryInYear($year);
+            if ($candidate !== null && $candidate->betweenIncluded($earliest, $cutoff)) {
+                return $candidate;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Operational companies whose ASIC anniversary is overdue (within lookback)
+     * or due within $withinDays.
      *
      * @return Collection<int, object{entity: self, due_date: Carbon}>
      */
     public static function upcomingAsicRenewalRows(int $withinDays = 15): Collection
     {
-        $cutoff = now()->startOfDay()->addDays($withinDays);
-
         return self::query()
             ->operationalEntities()
             ->where('entity_type', 'Company')
             ->whereNotNull('asic_renewal_date')
             ->get()
-            ->map(function (self $entity) use ($cutoff) {
-                $dueDate = $entity->nextAsicRenewalDueDate();
-                if ($dueDate === null || $dueDate->gt($cutoff)) {
+            ->map(function (self $entity) use ($withinDays) {
+                $dueDate = $entity->asicRenewalDueDateInWindow($withinDays);
+                if ($dueDate === null) {
                     return null;
                 }
 

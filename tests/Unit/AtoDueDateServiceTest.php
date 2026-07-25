@@ -114,6 +114,20 @@ class AtoDueDateServiceTest extends TestCase
         $this->assertNull($this->service->estimate('asic_statement', $fyStart, $fyEnd, null));
     }
 
+    public function test_asic_null_for_non_company_even_with_renewal_date(): void
+    {
+        $entity = new BusinessEntity([
+            'entity_type' => 'Trust',
+            'asic_renewal_date' => '2020-03-15',
+        ]);
+
+        $fyStart = Carbon::parse('2024-07-01');
+        $fyEnd = FinancialYear::forDate($fyStart)['end']->startOfDay();
+
+        $this->assertNull($this->service->estimate('asic_statement', $fyStart, $fyEnd, $entity));
+        $this->assertNull($this->service->estimate('asic_annual_fees_receipt', $fyStart, $fyEnd, $entity));
+    }
+
     public function test_estimate_returns_null_for_pre_formation_financial_year(): void
     {
         $entity = new BusinessEntity([
