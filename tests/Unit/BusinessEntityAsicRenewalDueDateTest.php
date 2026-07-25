@@ -139,27 +139,33 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
         $this->assertStringContainsString('entity_type', $sql);
     }
 
-    public function test_asic_renewal_date_required_for_companies(): void
+    public function test_asic_renewal_date_optional_for_companies_when_defaulting_from_registration(): void
     {
         $rules = [
             'entity_type' => 'required|in:Sole Trader,Company,Trust,Partnership',
+            'registration_date' => 'nullable|prohibited_if:entity_type,Trust|required_if:entity_type,Company|date',
             'asic_renewal_date' => [
                 'nullable',
                 'prohibited_unless:entity_type,Company',
-                'required_if:entity_type,Company',
                 'date',
             ],
         ];
 
-        $missing = \Illuminate\Support\Facades\Validator::make(
-            ['entity_type' => 'Company', 'asic_renewal_date' => null],
+        $companyWithoutAsic = \Illuminate\Support\Facades\Validator::make(
+            ['entity_type' => 'Company', 'registration_date' => '2020-03-15', 'asic_renewal_date' => null],
             $rules
         );
-        $this->assertTrue($missing->fails());
-        $this->assertArrayHasKey('asic_renewal_date', $missing->errors()->toArray());
+        $this->assertFalse($companyWithoutAsic->fails());
+
+        $companyMissingRegistration = \Illuminate\Support\Facades\Validator::make(
+            ['entity_type' => 'Company', 'registration_date' => null, 'asic_renewal_date' => null],
+            $rules
+        );
+        $this->assertTrue($companyMissingRegistration->fails());
+        $this->assertArrayHasKey('registration_date', $companyMissingRegistration->errors()->toArray());
 
         $provided = \Illuminate\Support\Facades\Validator::make(
-            ['entity_type' => 'Company', 'asic_renewal_date' => '2020-03-15'],
+            ['entity_type' => 'Company', 'registration_date' => '2020-03-15', 'asic_renewal_date' => '2020-06-01'],
             $rules
         );
         $this->assertFalse($provided->fails());
@@ -172,7 +178,6 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
             'asic_renewal_date' => [
                 'nullable',
                 'prohibited_unless:entity_type,Company',
-                'required_if:entity_type,Company',
                 'date',
             ],
         ];
@@ -188,6 +193,20 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
             $rules
         );
         $this->assertFalse($trustWithoutDate->fails());
+    }
+
+    public function test_resolve_asic_renewal_date_defaults_to_registration_date(): void
+    {
+        $this->assertSame(
+            '2020-03-15',
+            BusinessEntity::resolveAsicRenewalDate('Company', null, '2020-03-15')
+        );
+        $this->assertSame(
+            '2020-06-01',
+            BusinessEntity::resolveAsicRenewalDate('Company', '2020-06-01', '2020-03-15')
+        );
+        $this->assertNull(BusinessEntity::resolveAsicRenewalDate('Trust', null, '2020-03-15'));
+        $this->assertNull(BusinessEntity::resolveAsicRenewalDate('Company', null, null));
     }
 
     public function test_acn_prohibited_for_non_companies(): void

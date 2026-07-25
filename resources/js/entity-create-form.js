@@ -42,7 +42,7 @@ function setCompanyFieldsState({
 
     if (isCompany) {
         asicRenewalDateField?.classList.remove('hidden');
-        window.setDateInputRequired?.(asicRenewalDateInput, true);
+        window.setDateInputRequired?.(asicRenewalDateInput, false);
         setInputDisabled(asicRenewalDateInput, false);
         acnField?.classList.remove('hidden');
         setInputDisabled(acnInput, false);
@@ -60,7 +60,14 @@ function setCompanyFieldsState({
     setInputDisabled(corporateKeyInput, true);
 }
 
-function setRegistrationDateFieldState({ entityType, registrationDateField, registrationDateInput, registrationDateLabel }) {
+function setRegistrationDateFieldState({
+    entityType,
+    registrationDateField,
+    registrationDateInput,
+    registrationDateLabelText,
+    registrationDateRequiredMark,
+    registrationDateAsicHint,
+}) {
     const registrationLabels = {
         Company: 'Registration date',
         'Sole Trader': 'Commencement date',
@@ -71,16 +78,22 @@ function setRegistrationDateFieldState({ entityType, registrationDateField, regi
         registrationDateField?.classList.add('hidden');
         window.setDateInputRequired?.(registrationDateInput, false);
         setInputDisabled(registrationDateInput, true);
+        registrationDateRequiredMark?.classList.add('hidden');
+        registrationDateAsicHint?.classList.add('hidden');
         return;
     }
 
     registrationDateField?.classList.remove('hidden');
-    window.setDateInputRequired?.(registrationDateInput, false);
+    const requireRegistration = entityType === 'Company';
+    window.setDateInputRequired?.(registrationDateInput, requireRegistration);
     setInputDisabled(registrationDateInput, false);
 
-    if (registrationDateLabel && registrationLabels[entityType]) {
-        registrationDateLabel.textContent = registrationLabels[entityType];
+    if (registrationDateLabelText && registrationLabels[entityType]) {
+        registrationDateLabelText.textContent = registrationLabels[entityType];
     }
+
+    registrationDateRequiredMark?.classList.toggle('hidden', ! requireRegistration);
+    registrationDateAsicHint?.classList.toggle('hidden', ! requireRegistration);
 }
 
 function setTrustFieldsEnabled(enabled) {
@@ -105,7 +118,10 @@ export function toggleTrustFields() {
     const trustFields = document.getElementById('trust_fields');
     const registrationDateField = document.getElementById('registration_date_field');
     const registrationDateInput = document.getElementById('registration_date');
-    const registrationDateLabel = document.getElementById('registration_date_label');
+    const registrationDateLabelText = document.getElementById('registration_date_label_text')
+        || document.getElementById('registration_date_label');
+    const registrationDateRequiredMark = document.getElementById('registration_date_required_mark');
+    const registrationDateAsicHint = document.getElementById('registration_date_asic_hint');
     const trustTypeField = document.getElementById('trust_type');
     const trustEstablishmentDateField = document.getElementById('trust_establishment_date');
     const trustDeedDateField = document.getElementById('trust_deed_date');
@@ -125,7 +141,9 @@ export function toggleTrustFields() {
         entityType,
         registrationDateField,
         registrationDateInput,
-        registrationDateLabel,
+        registrationDateLabelText,
+        registrationDateRequiredMark,
+        registrationDateAsicHint,
     });
 
     setCompanyFieldsState({

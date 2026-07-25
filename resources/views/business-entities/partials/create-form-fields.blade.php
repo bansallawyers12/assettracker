@@ -103,8 +103,20 @@
         @endif
 
         <div id="registration_date_field" @class(['bank-field', 'hidden' => $showTrustFields])>
-            <label for="registration_date" id="registration_date_label" class="bank-field-label">{{ $entity ? $entity->registrationDateLabel() : BusinessEntity::registrationDateLabelFor($currentEntityType) }}</label>
-            <x-date-input name="registration_date" id="registration_date" value="{{ $fieldValue('registration_date') }}" class="bank-field-control" />
+            <label for="registration_date" id="registration_date_label" class="bank-field-label">
+                <span id="registration_date_label_text">{{ $entity ? $entity->registrationDateLabel() : BusinessEntity::registrationDateLabelFor($currentEntityType) }}</span>
+                <span id="registration_date_required_mark" class="text-red-500{{ $showCompanyFields ? '' : ' hidden' }}">*</span>
+            </label>
+            <x-date-input
+                name="registration_date"
+                id="registration_date"
+                value="{{ $fieldValue('registration_date') }}"
+                class="bank-field-control"
+                @required($showCompanyFields)
+            />
+            <p id="registration_date_asic_hint" @class(['text-xs', 'text-gray-500', 'dark:text-gray-400', 'mt-1', 'hidden' => ! $showCompanyFields])>
+                {{ __('Also used as the ASIC annual review anniversary for companies.') }}
+            </p>
             @error('registration_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
@@ -245,17 +257,20 @@
             @error('corporate_key') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
         </div>
 
-        <div id="asic_renewal_date_field" @class(['bank-field', 'hidden' => ! $showCompanyFields])>
-            <label for="asic_renewal_date" class="bank-field-label">{{ __(BusinessEntity::asicRenewalDateLabel()) }} <span class="text-red-500">*</span></label>
-            <x-date-input
-                name="asic_renewal_date"
-                id="asic_renewal_date"
-                value="{{ $fieldValue('asic_renewal_date') }}"
-                class="bank-field-control"
-                @required($showCompanyFields)
-            />
-            @error('asic_renewal_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
-        </div>
+        {{-- On create, ASIC anniversary defaults from registration date. Override only when editing. --}}
+        @if ($entity)
+            <div id="asic_renewal_date_field" @class(['bank-field', 'hidden' => ! $showCompanyFields])>
+                <label for="asic_renewal_date" class="bank-field-label">{{ __(BusinessEntity::asicRenewalDateLabel()) }}</label>
+                <x-date-input
+                    name="asic_renewal_date"
+                    id="asic_renewal_date"
+                    value="{{ $fieldValue('asic_renewal_date') }}"
+                    class="bank-field-control"
+                />
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ __('Defaults to registration date. Change only if ASIC approved a different review date.') }}</p>
+                @error('asic_renewal_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
+            </div>
+        @endif
 
         @php $basFrequency = $fieldValue('bas_reporting_frequency'); @endphp
         <div class="bank-field">

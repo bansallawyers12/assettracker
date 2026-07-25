@@ -384,6 +384,26 @@ class BusinessEntity extends Model
     }
 
     /**
+     * Resolve ASIC annual review anniversary for a company.
+     * Explicit override wins; otherwise defaults to registration date (ASIC's usual anniversary).
+     */
+    public static function resolveAsicRenewalDate(
+        ?string $entityType,
+        ?string $asicRenewalDate,
+        ?string $registrationDate,
+    ): ?string {
+        if ($entityType !== 'Company') {
+            return null;
+        }
+
+        if (filled($asicRenewalDate)) {
+            return $asicRenewalDate;
+        }
+
+        return filled($registrationDate) ? $registrationDate : null;
+    }
+
+    /**
      * Operational companies without an ASIC annual review anniversary configured.
      *
      * @return Collection<int, self>

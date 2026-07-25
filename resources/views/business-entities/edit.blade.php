@@ -82,8 +82,14 @@
                             </div>
 
                             <div id="registration_date_field">
-                                <label for="registration_date" id="registration_date_label" class="block text-sm font-medium text-gray-700 mb-1">{{ $businessEntity->registrationDateLabel() }}</label>
-                                <x-date-input name="registration_date" id="registration_date" value="{{ old('registration_date', $businessEntity->registration_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" />
+                                <label for="registration_date" id="registration_date_label" class="block text-sm font-medium text-gray-700 mb-1">
+                                    <span id="registration_date_label_text">{{ $businessEntity->registrationDateLabel() }}</span>
+                                    <span id="registration_date_required_mark" class="text-red-500{{ old('entity_type', $businessEntity->entity_type) === 'Company' ? '' : ' hidden' }}">*</span>
+                                </label>
+                                <x-date-input name="registration_date" id="registration_date" value="{{ old('registration_date', $businessEntity->registration_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" @required(old('entity_type', $businessEntity->entity_type) === 'Company') />
+                                <p id="registration_date_asic_hint" @class(['text-xs', 'text-gray-500', 'mt-1', 'hidden' => old('entity_type', $businessEntity->entity_type) !== 'Company'])>
+                                    Also used as the ASIC annual review anniversary for companies.
+                                </p>
                                 @error('registration_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
                             
@@ -236,14 +242,14 @@
                                 $showAsicRenewal = old('entity_type', $businessEntity->entity_type) === 'Company';
                             @endphp
                             <div id="asic_renewal_date_field" @class(['hidden' => ! $showAsicRenewal])>
-                                <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">{{ \App\Models\BusinessEntity::asicRenewalDateLabel() }} <span class="text-red-500">*</span></label>
+                                <label for="asic_renewal_date" class="block text-sm font-medium text-gray-700 mb-1">{{ \App\Models\BusinessEntity::asicRenewalDateLabel() }}</label>
                                 <x-date-input
                                     name="asic_renewal_date"
                                     id="asic_renewal_date"
                                     value="{{ old('asic_renewal_date', $businessEntity->asic_renewal_date?->format('Y-m-d')) }}"
                                     class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition"
-                                    @required($showAsicRenewal)
                                 />
+                                <p class="text-xs text-gray-500 mt-1">Defaults to registration date. Change only if ASIC approved a different review date.</p>
                                 @error('asic_renewal_date') <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span> @enderror
                             </div>
 

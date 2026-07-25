@@ -52,6 +52,10 @@
                                 <span>{{ __('Registered business address') }}</span>
                             </li>
                             <li class="flex gap-2 text-gray-600 dark:text-gray-400">
+                                <x-lucide-check class="h-4 w-4 shrink-0 text-emerald-500 mt-0.5" aria-hidden="true" />
+                                <span>{{ __('Registration date for companies (ASIC anniversary)') }}</span>
+                            </li>
+                            <li class="flex gap-2 text-gray-600 dark:text-gray-400">
                                 <x-lucide-shield class="h-4 w-4 shrink-0 text-gray-400 mt-0.5" aria-hidden="true" />
                                 <span>{{ __('Trust deed details if entity type is Trust') }}</span>
                             </li>

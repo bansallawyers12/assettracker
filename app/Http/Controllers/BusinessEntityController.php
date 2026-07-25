@@ -319,21 +319,25 @@ class BusinessEntityController extends Controller
      */
     private function asicRenewalDateValidationRules(): array
     {
+        // Optional override for companies; defaults from registration_date when omitted.
         return [
             'nullable',
             'prohibited_unless:entity_type,Company',
-            'required_if:entity_type,Company',
             'date',
         ];
     }
 
-    private function asicRenewalDateFromRequest(Request $request): ?string
+    private function asicRenewalDateFromRequest(Request $request, ?BusinessEntity $entity = null): ?string
     {
-        if ($request->entity_type !== 'Company') {
-            return null;
-        }
+        $registrationDate = $request->filled('registration_date')
+            ? $request->input('registration_date')
+            : $entity?->registration_date?->format('Y-m-d');
 
-        return $request->filled('asic_renewal_date') ? $request->input('asic_renewal_date') : null;
+        return BusinessEntity::resolveAsicRenewalDate(
+            $request->entity_type,
+            $request->filled('asic_renewal_date') ? $request->input('asic_renewal_date') : null,
+            $registrationDate,
+        );
     }
 
     private function acnFromRequest(Request $request): ?string
@@ -375,7 +379,7 @@ class BusinessEntityController extends Controller
             'registered_address' => 'required|string',
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
-            'registration_date' => 'nullable|prohibited_if:entity_type,Trust|date|before_or_equal:today',
+            'registration_date' => 'nullable|prohibited_if:entity_type,Trust|required_if:entity_type,Company|date|before_or_equal:today',
             'asic_renewal_date' => $this->asicRenewalDateValidationRules(),
             'bas_reporting_frequency' => 'nullable|in:annual,quarterly,monthly',
             'uses_tax_agent' => 'nullable|boolean',
@@ -408,7 +412,7 @@ class BusinessEntityController extends Controller
             'appointor_type.required_if' => 'Appointor type is required when entity type is Trust.',
             'appointor_person_id.required_if' => 'Please select an appointor person.',
             'appointor_entity_id.required_if' => 'Please select an appointor entity.',
-            'asic_renewal_date.required_if' => BusinessEntity::asicRenewalDateLabel().' is required for companies.',
+            'registration_date.required_if' => 'Registration date is required for companies (used as the ASIC annual review anniversary).',
             'asic_renewal_date.prohibited_unless' => 'ASIC renewal date can only be set for companies.',
             'acn.prohibited_unless' => 'ACN can only be set for companies.',
             'corporate_key.prohibited_unless' => 'Corporate key can only be set for companies.',
@@ -1655,7 +1659,7 @@ class BusinessEntityController extends Controller
             'registered_address' => 'required|string',
             'registered_email' => 'required|email|max:255',
             'phone_number' => 'required|string|max:15',
-            'registration_date' => 'nullable|prohibited_if:entity_type,Trust|date|before_or_equal:today',
+            'registration_date' => 'nullable|prohibited_if:entity_type,Trust|required_if:entity_type,Company|date|before_or_equal:today',
             'asic_renewal_date' => $this->asicRenewalDateValidationRules(),
             'status' => 'required|in:Active,Inactive,Deregistered',
             'exclude_from_financial_reports' => 'nullable|boolean',
@@ -1687,7 +1691,7 @@ class BusinessEntityController extends Controller
             'appointor_type.required_if' => 'Appointor type is required when entity type is Trust.',
             'appointor_person_id.required_if' => 'Please select an appointor person.',
             'appointor_entity_id.required_if' => 'Please select an appointor entity.',
-            'asic_renewal_date.required_if' => BusinessEntity::asicRenewalDateLabel().' is required for companies.',
+            'registration_date.required_if' => 'Registration date is required for companies (used as the ASIC annual review anniversary).',
             'asic_renewal_date.prohibited_unless' => 'ASIC renewal date can only be set for companies.',
             'acn.prohibited_unless' => 'ACN can only be set for companies.',
             'corporate_key.prohibited_unless' => 'Corporate key can only be set for companies.',
@@ -1723,7 +1727,7 @@ class BusinessEntityController extends Controller
             $payload['corporate_key'] = null;
             $payload['asic_renewal_date'] = null;
         } else {
-            $payload['asic_renewal_date'] = $this->asicRenewalDateFromRequest($request);
+            $payload['asic_renewal_date'] = $this->asicRenewalDateFromRequest($request, $businessEntity);
             if ($request->has('acn')) {
                 $payload['acn'] = $this->acnFromRequest($request);
             }
