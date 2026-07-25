@@ -114,7 +114,7 @@
                 class="bank-field-control"
                 @required($showCompanyFields)
             />
-            <p id="registration_date_asic_hint" @class(['text-xs', 'text-gray-500', 'dark:text-gray-400', 'mt-1', 'hidden' => ! $showCompanyFields])>
+            <p id="registration_date_asic_hint" @class(['text-xs', 'text-gray-500', 'dark:text-gray-400', 'hidden' => ! $showCompanyFields])>
                 {{ __('Also used as the ASIC annual review anniversary for companies.') }}
             </p>
             @error('registration_date') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror

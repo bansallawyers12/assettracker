@@ -1555,19 +1555,21 @@ input.form-date-input.flatpickr-input::placeholder {
     -webkit-text-fill-color: currentColor;
 }
 
-/* Keep the hidden Flatpickr source input out of layout/focus order */
-input[data-flatpickr-source] {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    padding: 0 !important;
-    margin: -1px !important;
-    overflow: hidden !important;
-    clip: rect(0, 0, 0, 0) !important;
-    white-space: nowrap !important;
-    border: 0 !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
+/* Keep the hidden Flatpickr source input out of layout/focus order.
+   display:none avoids the 1px "ghost line" absolute clipping can leave in CSS grids. */
+input[data-flatpickr-source],
+input.flatpickr-input[type="hidden"] {
+    display: none !important;
+}
+
+/* Bank/workspace date fields — ensure the visible Flatpickr input matches text controls */
+.bank-field input.flatpickr-input:not([type="hidden"]):not([data-flatpickr-source]),
+.bank-ws-form input.flatpickr-input.bank-field-control:not([type="hidden"]),
+.bank-ws-form input.form-date-input.flatpickr-input:not([type="hidden"]) {
+    display: block;
+    width: 100%;
+    min-height: 2.5rem;
+    box-sizing: border-box;
 }
 
 .dark .flatpickr-calendar {

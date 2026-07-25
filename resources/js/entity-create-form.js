@@ -238,6 +238,7 @@ export function initEntityFormFields(root = document) {
         entityTypeField.addEventListener('change', () => {
             toggleTrustFields();
             toggleAppointorFields();
+            window.initFlatpickr?.(scope);
         });
     }
 
@@ -249,6 +250,7 @@ export function initEntityFormFields(root = document) {
     setTimeout(() => {
         toggleTrustFields();
         toggleAppointorFields();
+        window.initFlatpickr?.(scope);
     }, 0);
 }
 

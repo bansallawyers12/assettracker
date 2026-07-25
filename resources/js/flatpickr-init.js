@@ -117,20 +117,57 @@ function applyTypedDate(instance, { triggerChange = false, rewriteVisible = true
     return true;
 }
 
+function resolveDateSourceInput(input) {
+    if (!input) {
+        return null;
+    }
+
+    if (input._flatpickr || input.hasAttribute('data-flatpickr-source')) {
+        return input;
+    }
+
+    // Visible Flatpickr alt input — the bound source is a sibling (or nearby) hidden field.
+    const sibling = input.previousElementSibling || input.nextElementSibling;
+    if (sibling?._flatpickr || sibling?.hasAttribute?.('data-flatpickr-source')) {
+        return sibling;
+    }
+
+    const nearby = input.parentElement?.querySelector('input[data-flatpickr-source], input.flatpickr-input[type="hidden"]');
+    if (nearby?._flatpickr || nearby?.hasAttribute?.('data-flatpickr-source')) {
+        return nearby;
+    }
+
+    return input;
+}
+
 function syncAltInputAttributes(instance) {
     const { input, altInput } = instance;
     if (!altInput) {
         return;
     }
 
-    // Preserve app field styling on the visible input.
-    if (input.className) {
-        altInput.className = `${input.className} ${altInput.className}`.trim();
+    // Force the visible field to keep app control styling (Flatpickr defaults to "form-control input").
+    const classes = new Set(
+        `${input.className} ${altInput.className} form-date-input flatpickr-input`
+            .split(/\s+/)
+            .filter(Boolean),
+    );
+    if (input.classList.contains('bank-field-control') || input.closest('.bank-field, .bank-ws-form')) {
+        classes.add('bank-field-control');
     }
-
+    altInput.className = [...classes].join(' ');
+    altInput.removeAttribute('data-flatpickr-source');
+    altInput.removeAttribute('aria-hidden');
+    altInput.type = 'text';
+    altInput.tabIndex = 0;
     altInput.placeholder = altInput.placeholder || input.placeholder || 'DD/MM/YYYY';
     altInput.classList.add('text-gray-900', 'dark:text-gray-100');
     altInput.style.webkitTextFillColor = 'currentColor';
+    // Undo any accidental hide styles; sizing comes from utility classes (e.g. bank-field-control).
+    altInput.style.display = '';
+    altInput.style.visibility = '';
+    altInput.style.opacity = '';
+    altInput.style.position = '';
 
     for (const attr of input.attributes) {
         const { name, value } = attr;
@@ -210,14 +247,21 @@ export function initFlatpickr(root = document) {
         const min = input.getAttribute('min') || undefined;
         const max = input.getAttribute('max') || undefined;
         const wasRequired = input.required;
+        const altInputClass = [input.className, 'form-date-input', 'flatpickr-input']
+            .filter(Boolean)
+            .join(' ')
+            .trim();
 
         input.type = 'text';
 
         flatpickr(input, {
             dateFormat: 'Y-m-d',
             altInput: true,
+            altInputClass,
             altFormat: 'd/m/Y',
             allowInput: true,
+            // Keep a consistent visible text field; native mobile date inputs were collapsing in grid layouts.
+            disableMobile: true,
             minDate: min,
             maxDate: max,
             parseDate: parseFlexibleDate,
@@ -279,15 +323,16 @@ export function redrawFlatpickr(root = document) {
  * Read the canonical Y-m-d value from a date field.
  */
 export function getDateInputValue(input) {
-    if (!input) {
+    const source = resolveDateSourceInput(input);
+    if (!source) {
         return '';
     }
 
-    if (input._flatpickr) {
-        return input._flatpickr.input.value;
+    if (source._flatpickr) {
+        return source._flatpickr.input.value;
     }
 
-    return input.value ?? '';
+    return source.value ?? '';
 }
 
 /**
@@ -300,64 +345,74 @@ export function queryDateInput(root, selector) {
 
     const matches = root.querySelectorAll(selector);
     for (const candidate of matches) {
-        if (candidate._flatpickr) {
-            return candidate;
+        const source = resolveDateSourceInput(candidate);
+        if (source?._flatpickr) {
+            return source;
         }
     }
 
-    return matches[0] ?? null;
+    return resolveDateSourceInput(matches[0]) ?? null;
 }
 
 /**
  * Set a date field value (Y-m-d) and keep the visible DD/MM/YYYY input in sync.
  */
 export function setDateInputValue(input, value) {
-    if (!input) {
+    const source = resolveDateSourceInput(input);
+    if (!source) {
         return;
     }
 
     if (!value) {
-        clearDateInput(input);
+        clearDateInput(source);
         return;
     }
 
-    if (input._flatpickr) {
-        input._flatpickr.setDate(value, false);
+    if (source._flatpickr) {
+        source._flatpickr.setDate(value, false);
         return;
     }
 
-    input.value = value;
+    source.value = value;
 }
 
 /**
  * Toggle required on the visible date field when Flatpickr uses altInput.
  */
 export function setDateInputRequired(input, required) {
-    if (!input) {
+    const source = resolveDateSourceInput(input);
+    if (!source) {
         return;
     }
 
-    if (input._flatpickr?.altInput) {
-        input._flatpickr.altInput.required = required;
-        input.required = false;
+    if (source._flatpickr?.altInput) {
+        source._flatpickr.altInput.required = required;
+        source.required = false;
         return;
     }
 
-    input.required = required;
+    source.required = required;
 }
 
 /**
  * Disable a date field (and Flatpickr alt input) so it is omitted from form posts.
  */
 export function setDateInputDisabled(input, disabled) {
-    if (!input) {
+    const source = resolveDateSourceInput(input);
+    if (!source) {
         return;
     }
 
-    input.disabled = disabled;
+    source.disabled = disabled;
 
-    if (input._flatpickr?.altInput) {
-        input._flatpickr.altInput.disabled = disabled;
+    if (source._flatpickr?.altInput) {
+        source._flatpickr.altInput.disabled = disabled;
+        return;
+    }
+
+    // Flatpickr skips disabled inputs on first paint — init once the field is enabled.
+    if (! disabled && source.type === 'date') {
+        initFlatpickr(source.parentElement ?? document);
     }
 }
 
@@ -365,16 +420,17 @@ export function setDateInputDisabled(input, disabled) {
  * Clear a date field whether or not Flatpickr has initialized yet.
  */
 export function clearDateInput(input) {
-    if (!input) {
+    const source = resolveDateSourceInput(input);
+    if (!source) {
         return;
     }
 
-    if (input._flatpickr) {
-        input._flatpickr.clear();
+    if (source._flatpickr) {
+        source._flatpickr.clear();
         return;
     }
 
-    input.value = '';
+    source.value = '';
 }
 
 /**
