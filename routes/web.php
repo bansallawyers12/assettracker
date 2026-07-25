@@ -56,6 +56,48 @@ Route::get('/phpinfo', function (Request $request) {
     if ($expected === '' || $token === '' || ! hash_equals($expected, $token)) {
         abort(403, 'Forbidden. Set PHPINFO_ACCESS_TOKEN in .env and open /phpinfo?token= with that value.');
     }
+
+    $toBytes = static function (string $value): int {
+        $value = trim($value);
+        if ($value === '' || $value === '0') {
+            return 0;
+        }
+        $unit = strtolower(substr($value, -1));
+        $number = (float) $value;
+        return (int) match ($unit) {
+            'g' => $number * 1024 * 1024 * 1024,
+            'm' => $number * 1024 * 1024,
+            'k' => $number * 1024,
+            default => $number,
+        };
+    };
+
+    $uploadMax = (string) ini_get('upload_max_filesize');
+    $postMax = (string) ini_get('post_max_size');
+    $minOk = 20 * 1024 * 1024;
+    $better = 64 * 1024 * 1024;
+    $uploadBytes = $toBytes($uploadMax);
+    $postBytes = $toBytes($postMax);
+    $uploadOk = $uploadBytes >= $minOk;
+    $postOk = $postBytes >= $minOk;
+    $bothBetter = $uploadBytes >= $better && $postBytes >= $better;
+    $statusColor = ($uploadOk && $postOk) ? ($bothBetter ? '#166534' : '#854d0e') : '#991b1b';
+    $statusBg = ($uploadOk && $postOk) ? ($bothBetter ? '#dcfce7' : '#fef9c3') : '#fee2e2';
+    $statusText = ! ($uploadOk && $postOk)
+        ? 'Below recommended — increase both to at least 20M (prefer 64M) in php.ini for the web SAPI, then restart the server.'
+        : ($bothBetter
+            ? 'OK — both limits are ≥ 64M.'
+            : 'OK for ≥ 20M — consider raising both to 64M for larger documents.');
+
+    header('Content-Type: text/html; charset=UTF-8');
+    echo '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>PHP upload limits</title></head><body>';
+    echo '<div style="font-family:ui-sans-serif,system-ui,sans-serif;max-width:52rem;margin:1.5rem auto;padding:1rem 1.25rem;border-radius:8px;border:1px solid #e5e7eb;background:'.$statusBg.';color:'.$statusColor.';">';
+    echo '<h1 style="margin:0 0 .5rem;font-size:1.25rem;">PHP upload limits (this web SAPI)</h1>';
+    echo '<p style="margin:.25rem 0;"><strong>upload_max_filesize</strong>: '.e($uploadMax).($uploadOk ? ' ✓' : ' ✗ need ≥ 20M').'</p>';
+    echo '<p style="margin:.25rem 0;"><strong>post_max_size</strong>: '.e($postMax).($postOk ? ' ✓' : ' ✗ need ≥ 20M, usually ≥ upload_max_filesize').'</p>';
+    echo '<p style="margin:.75rem 0 0;font-size:.95rem;">'.e($statusText).'</p>';
+    echo '<p style="margin:.5rem 0 0;font-size:.85rem;opacity:.85;">Full <code>phpinfo()</code> output is below. Remove <code>PHPINFO_ACCESS_TOKEN</code> from <code>.env</code> in production.</p>';
+    echo '</div>';
     phpinfo();
     exit;
 });
