@@ -104,7 +104,6 @@ class ComplianceReportController extends Controller
         $obligationOptions = [
             ComplianceReportService::OBLIGATION_ITR => 'ITR',
             ComplianceReportService::OBLIGATION_BAS => 'BAS',
-            ComplianceReportService::OBLIGATION_ANNUAL_ACCOUNTS => 'Annual accounts',
             ComplianceReportService::OBLIGATION_ASIC => 'ASIC',
         ];
 

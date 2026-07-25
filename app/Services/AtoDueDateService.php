@@ -62,11 +62,11 @@ class AtoDueDateService
             'bas_q4' => $usesTaxAgent
                 ? $this->fixedDate($fyStart->year + 1, 8, 25)
                 : $this->fixedDate($fyStart->year + 1, 7, 28),
-            'itr', 'annual_accounts' => $usesTaxAgent
+            'itr' => $usesTaxAgent
                 ? $this->incomeTaxAgentDueDate($fyEnd)
                 : $this->incomeTaxSelfLodgeDueDate($fyEnd),
             'bas_annual' => $this->annualBasDueDate($fyEnd, $taxReturnRequired, $usesTaxAgent),
-            'asic_statement' => $this->asicDueDate($entity, $fyStart, $fyEnd),
+            'asic_statement', 'asic_annual_fees_receipt' => $this->asicDueDate($entity, $fyStart, $fyEnd),
             default => null,
         };
     }

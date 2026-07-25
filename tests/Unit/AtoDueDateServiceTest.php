@@ -47,8 +47,23 @@ class AtoDueDateServiceTest extends TestCase
         $fyEnd = FinancialYear::forDate($fyStart)['end']->startOfDay();
 
         $this->assertSame('2025-10-31', $this->service->estimate('itr', $fyStart, $fyEnd)?->toDateString());
-        $this->assertSame('2025-10-31', $this->service->estimate('annual_accounts', $fyStart, $fyEnd)?->toDateString());
         $this->assertSame('2025-10-31', $this->service->estimate('bas_annual', $fyStart, $fyEnd)?->toDateString());
+    }
+
+    public function test_asic_annual_fees_receipt_uses_renewal_anniversary_inside_fy(): void
+    {
+        $entity = new BusinessEntity([
+            'entity_type' => 'Company',
+            'asic_renewal_date' => '2020-03-15',
+        ]);
+
+        $fyStart = Carbon::parse('2024-07-01');
+        $fyEnd = FinancialYear::forDate($fyStart)['end']->startOfDay();
+
+        $this->assertSame(
+            '2025-03-15',
+            $this->service->estimate('asic_annual_fees_receipt', $fyStart, $fyEnd, $entity)?->toDateString()
+        );
     }
 
     public function test_tax_agent_uses_extended_itr_and_bas_dates(): void

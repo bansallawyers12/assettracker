@@ -233,6 +233,7 @@ class ComplianceYearService
 
         $this->reconcileUncategorizedFiles($record);
         $this->removeInactiveBasTemplateSlots($record);
+        $this->removeInactiveAsicTemplateSlots($record);
     }
 
     private function reconcileUncategorizedFiles(ComplianceYearRecord $record): void
@@ -328,6 +329,28 @@ class ComplianceYearService
         }
     }
 
+    public function removeInactiveAsicTemplateSlots(ComplianceYearRecord $record): void
+    {
+        $record->loadMissing(['businessEntity', 'categories.files.type']);
+
+        $files = $record->categories->flatMap(fn (ComplianceCategory $category) => $category->files);
+
+        foreach ($files as $file) {
+            if ($file->custom_label || $this->basSlotHasProgress($file)) {
+                continue;
+            }
+
+            $code = $file->type?->code ?? '';
+            if (! in_array($code, ['asic_statement', 'asic_annual_fees_receipt'], true)) {
+                continue;
+            }
+
+            if (! $this->fileApplies($file, $record)) {
+                $file->delete();
+            }
+        }
+    }
+
     private function basSlotHasProgress(ComplianceDocumentFile $file): bool
     {
         return $file->hasFile()
@@ -407,7 +430,8 @@ class ComplianceYearService
                 return false;
             }
 
-            if ($type->code === 'asic_statement' && $entity && ! $entity->requiresAsicStatement()) {
+            if (in_array($type->code, ['asic_statement', 'asic_annual_fees_receipt'], true)
+                && $entity && ! $entity->requiresAsicStatement()) {
                 return false;
             }
 

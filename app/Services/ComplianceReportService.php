@@ -42,15 +42,12 @@ class ComplianceReportService
 
     public const OBLIGATION_BAS = 'bas';
 
-    public const OBLIGATION_ANNUAL_ACCOUNTS = 'annual_accounts';
-
     public const OBLIGATION_ASIC = 'asic';
 
     /** @var list<string> */
     public const DEFAULT_OBLIGATIONS = [
         self::OBLIGATION_ITR,
         self::OBLIGATION_BAS,
-        self::OBLIGATION_ANNUAL_ACCOUNTS,
         self::OBLIGATION_ASIC,
     ];
 
@@ -132,7 +129,7 @@ class ComplianceReportService
      * Does not create compliance year records or provision slots.
      *
      * @param  array<int>|null  $entityIds  null = all reporting entities
-     * @param  list<string>|null  $obligationKeys  itr|bas|annual_accounts|asic
+     * @param  list<string>|null  $obligationKeys  itr|bas|asic
      * @param  string|null  $statusFilter  one of STATUS_* or null for all
      * @return array{
      *     fy_from: string,
@@ -382,9 +379,6 @@ class ComplianceReportService
         if (in_array(self::OBLIGATION_ITR, $obligationKeys, true)) {
             $codes[] = 'itr';
         }
-        if (in_array(self::OBLIGATION_ANNUAL_ACCOUNTS, $obligationKeys, true)) {
-            $codes[] = 'annual_accounts';
-        }
         if (in_array(self::OBLIGATION_BAS, $obligationKeys, true)) {
             array_push($codes, 'bas_annual', 'bas_q1', 'bas_q2', 'bas_q3', 'bas_q4');
         }
@@ -409,10 +403,6 @@ class ComplianceReportService
 
             if ($code === 'itr') {
                 return in_array(self::OBLIGATION_ITR, $obligationKeys, true) && $entity->requiresTaxReturn();
-            }
-
-            if ($code === 'annual_accounts') {
-                return in_array(self::OBLIGATION_ANNUAL_ACCOUNTS, $obligationKeys, true);
             }
 
             if ($code === 'bas_annual') {

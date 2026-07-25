@@ -14,7 +14,7 @@ class ComplianceDocumentTypeSeeder extends Seeder
 
         $types = [
             ['code' => 'itr', 'label' => 'Income Tax Return', 'scope' => 'entity', 'category_group' => 'Tax & ATO', 'frequency' => 'annual', 'sort_order' => 10],
-            ['code' => 'annual_accounts', 'label' => 'Annual Accounts', 'scope' => 'entity', 'category_group' => 'Tax & ATO', 'frequency' => 'annual', 'sort_order' => 20],
+            ['code' => 'asic_annual_fees_receipt', 'label' => 'ASIC Annual Fees Receipt', 'scope' => 'entity', 'category_group' => 'ASIC & Company', 'frequency' => 'annual', 'sort_order' => 45],
             ['code' => 'bas_annual', 'label' => 'BAS (Annual summary)', 'scope' => 'entity', 'category_group' => 'Tax & ATO', 'frequency' => 'annual', 'sort_order' => 30],
             ['code' => 'bas_q1', 'label' => 'BAS Q1 (Jul–Sep)', 'scope' => 'entity', 'category_group' => 'Tax & ATO', 'frequency' => 'quarterly', 'sort_order' => 31],
             ['code' => 'bas_q2', 'label' => 'BAS Q2 (Oct–Dec)', 'scope' => 'entity', 'category_group' => 'Tax & ATO', 'frequency' => 'quarterly', 'sort_order' => 32],

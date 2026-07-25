@@ -7,7 +7,7 @@ class ComplianceFilenameMatcher
     /** @var array<string, list<string>> */
     private array $aliases = [
         'Income Tax Return' => ['itr', 'tax return', 'income tax'],
-        'Annual Accounts' => ['annual accounts', 'financial statements'],
+        'ASIC Annual Fees Receipt' => ['asic annual fees', 'asic fees receipt', 'annual fees receipt'],
         'BAS (Annual summary)' => ['bas annual', 'bas summary', 'bas_annual'],
         'BAS Q1 (Jul–Sep)' => ['bas q1', 'bas_q1', 'jul sep'],
         'BAS Q2 (Oct–Dec)' => ['bas q2', 'bas_q2', 'oct dec'],
