@@ -112,7 +112,7 @@
                 id="registration_date"
                 value="{{ $fieldValue('registration_date') }}"
                 class="bank-field-control"
-                @required($showCompanyFields)
+                :required="$showCompanyFields"
             />
             <p id="registration_date_asic_hint" @class(['text-xs', 'text-gray-500', 'dark:text-gray-400', 'hidden' => ! $showCompanyFields])>
                 {{ __('Also used as the ASIC annual review anniversary for companies.') }}

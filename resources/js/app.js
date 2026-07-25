@@ -97,7 +97,7 @@ Alpine.start();
 sealOverlayPanels();
 window.addEventListener('pageshow', sealOverlayPanels);
 
-document.addEventListener('DOMContentLoaded', function() {
+function bootApp() {
     sealOverlayPanels();
     initAddressFieldSync();
     initGlobalFormSaving();
@@ -148,4 +148,10 @@ document.addEventListener('DOMContentLoaded', function() {
             firstTabContent.classList.remove('hidden');
         }
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootApp);
+} else {
+    bootApp();
+}

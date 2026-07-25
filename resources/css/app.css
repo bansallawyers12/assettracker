@@ -110,7 +110,7 @@
 
   /* Shared date field — use via <x-date-input> or class="form-date-input" on input[type="date"] in JS */
   .form-date-input {
-    @apply border-gray-300 text-gray-900 placeholder:text-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-indigo-500 dark:focus:ring-indigo-500 rounded-xl shadow-xs text-sm w-full;
+    @apply block min-h-10 px-3 py-2 border border-gray-300 bg-white text-gray-900 placeholder:text-gray-400 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 dark:placeholder:text-gray-500 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-indigo-500 dark:focus:ring-indigo-500 rounded-xl shadow-xs text-sm w-full;
     -webkit-text-fill-color: currentColor;
   }
 
@@ -1549,6 +1549,10 @@ input.form-date-input.flatpickr-input::placeholder {
     -webkit-text-fill-color: rgb(156 163 175);
 }
 
+.flatpickr-calendar {
+    z-index: 10060;
+}
+
 .dark input.flatpickr-input.form-date-input,
 .dark input.form-date-input.flatpickr-input {
     color: rgb(229 231 235);
@@ -1564,8 +1568,8 @@ input.flatpickr-input[type="hidden"] {
 
 /* Bank/workspace date fields — ensure the visible Flatpickr input matches text controls */
 .bank-field input.flatpickr-input:not([type="hidden"]):not([data-flatpickr-source]),
-.bank-ws-form input.flatpickr-input.bank-field-control:not([type="hidden"]),
-.bank-ws-form input.form-date-input.flatpickr-input:not([type="hidden"]) {
+.bank-ws-form input.flatpickr-input.bank-field-control:not([type="hidden"]):not([data-flatpickr-source]),
+.bank-ws-form input.form-date-input.flatpickr-input:not([type="hidden"]):not([data-flatpickr-source]) {
     display: block;
     width: 100%;
     min-height: 2.5rem;

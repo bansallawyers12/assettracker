@@ -86,7 +86,7 @@
                                     <span id="registration_date_label_text">{{ $businessEntity->registrationDateLabel() }}</span>
                                     <span id="registration_date_required_mark" class="text-red-500{{ old('entity_type', $businessEntity->entity_type) === 'Company' ? '' : ' hidden' }}">*</span>
                                 </label>
-                                <x-date-input name="registration_date" id="registration_date" value="{{ old('registration_date', $businessEntity->registration_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" @required(old('entity_type', $businessEntity->entity_type) === 'Company') />
+                                <x-date-input name="registration_date" id="registration_date" value="{{ old('registration_date', $businessEntity->registration_date?->format('Y-m-d')) }}" class="w-full rounded-md border-gray-300 shadow-xs focus:border-blue-500 focus:ring-3 focus:ring-blue-200/50 transition" :required="old('entity_type', $businessEntity->entity_type) === 'Company'" />
                                 <p id="registration_date_asic_hint" @class(['text-xs', 'text-gray-500', 'mt-1', 'hidden' => old('entity_type', $businessEntity->entity_type) !== 'Company'])>
                                     Also used as the ASIC annual review anniversary for companies.
                                 </p>

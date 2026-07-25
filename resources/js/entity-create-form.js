@@ -3,6 +3,7 @@
  * Visibility/required/disabled only: do not clear values so toggling entity
  * type back and forth on edit does not wipe ACN, trust deed data, etc.
  */
+import { initFlatpickr, redrawFlatpickr } from './flatpickr-init.js';
 function setInputDisabled(input, disabled) {
     if (!input) {
         return;
@@ -238,7 +239,8 @@ export function initEntityFormFields(root = document) {
         entityTypeField.addEventListener('change', () => {
             toggleTrustFields();
             toggleAppointorFields();
-            window.initFlatpickr?.(scope);
+            initFlatpickr(scope);
+            redrawFlatpickr(scope);
         });
     }
 
@@ -248,9 +250,11 @@ export function initEntityFormFields(root = document) {
     }
 
     setTimeout(() => {
+        initFlatpickr(scope);
         toggleTrustFields();
         toggleAppointorFields();
-        window.initFlatpickr?.(scope);
+        initFlatpickr(scope);
+        redrawFlatpickr(scope);
     }, 0);
 }
 

@@ -234,79 +234,99 @@ function bindTypedDateSync(instance) {
     });
 }
 
+function dateInputCandidates(root) {
+    if (!root?.querySelectorAll) {
+        return [];
+    }
+
+    return [...root.querySelectorAll('input[type="date"]:not([data-no-flatpickr])')];
+}
+
+function bindFlatpickr(input) {
+    if (!input || input.disabled || input._flatpickr || input.hasAttribute('data-no-flatpickr')) {
+        return;
+    }
+
+    // Never re-wrap a field Flatpickr already owns (its visible alt input looks like a plain text field).
+    if (input.hasAttribute('data-flatpickr-source') || input.classList.contains('flatpickr-input')) {
+        return;
+    }
+
+    const min = input.getAttribute('min') || undefined;
+    const max = input.getAttribute('max') || undefined;
+    const wasRequired = input.required;
+    const altInputClass = [input.className, 'form-date-input', 'flatpickr-input']
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+
+    input.type = 'text';
+
+    flatpickr(input, {
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altInputClass,
+        altFormat: 'd/m/Y',
+        allowInput: true,
+        clickOpens: true,
+        // Render outside overflow-hidden cards/panels so the calendar is visible.
+        appendTo: document.body,
+        // Keep a consistent visible text field; native mobile date inputs were collapsing in grid layouts.
+        disableMobile: true,
+        minDate: min,
+        maxDate: max,
+        parseDate: parseFlexibleDate,
+        errorHandler() {
+            // Ignore parse noise from partial typing.
+        },
+        onReady(_selectedDates, _dateStr, instance) {
+            if (!instance.altInput) {
+                return;
+            }
+
+            syncAltInputAttributes(instance);
+            bindTypedDateSync(instance);
+
+            if (wasRequired) {
+                setDateInputRequired(instance.input, true);
+            }
+
+            bindLabelToAltInput(instance);
+        },
+        onClose(_selectedDates, _dateStr, instance) {
+            const visible = instance.altInput || instance.input;
+            const typed = (visible?.value || '').trim();
+
+            if (!typed) {
+                if (instance.selectedDates.length) {
+                    // Keep selected date and refresh the visible format.
+                    instance.setDate(instance.selectedDates[0], false);
+                }
+                return;
+            }
+
+            if (applyTypedDate(instance, { triggerChange: true, rewriteVisible: true })) {
+                return;
+            }
+
+            // Invalid typed value: restore visible text from the last valid selection.
+            if (instance.selectedDates.length) {
+                instance.setDate(instance.selectedDates[0], false);
+                return;
+            }
+
+            instance.clear(false);
+        },
+    });
+}
+
 /**
  * Flatpickr is the only date picker in this app.
  * Users see/type DD/MM/YYYY; the hidden field keeps Y-m-d for Laravel.
  */
 export function initFlatpickr(root = document) {
-    root.querySelectorAll('input[type="date"]:not([data-no-flatpickr])').forEach((input) => {
-        if (input.disabled || input._flatpickr) {
-            return;
-        }
-
-        const min = input.getAttribute('min') || undefined;
-        const max = input.getAttribute('max') || undefined;
-        const wasRequired = input.required;
-        const altInputClass = [input.className, 'form-date-input', 'flatpickr-input']
-            .filter(Boolean)
-            .join(' ')
-            .trim();
-
-        input.type = 'text';
-
-        flatpickr(input, {
-            dateFormat: 'Y-m-d',
-            altInput: true,
-            altInputClass,
-            altFormat: 'd/m/Y',
-            allowInput: true,
-            // Keep a consistent visible text field; native mobile date inputs were collapsing in grid layouts.
-            disableMobile: true,
-            minDate: min,
-            maxDate: max,
-            parseDate: parseFlexibleDate,
-            errorHandler() {
-                // Ignore parse noise from partial typing.
-            },
-            onReady(_selectedDates, _dateStr, instance) {
-                if (!instance.altInput) {
-                    return;
-                }
-
-                syncAltInputAttributes(instance);
-                bindTypedDateSync(instance);
-
-                if (wasRequired) {
-                    setDateInputRequired(instance.input, true);
-                }
-
-                bindLabelToAltInput(instance);
-            },
-            onClose(_selectedDates, _dateStr, instance) {
-                const visible = instance.altInput || instance.input;
-                const typed = (visible?.value || '').trim();
-
-                if (!typed) {
-                    if (instance.selectedDates.length) {
-                        // Keep selected date and refresh the visible format.
-                        instance.setDate(instance.selectedDates[0], false);
-                    }
-                    return;
-                }
-
-                if (applyTypedDate(instance, { triggerChange: true, rewriteVisible: true })) {
-                    return;
-                }
-
-                // Invalid typed value: restore visible text from the last valid selection.
-                if (instance.selectedDates.length) {
-                    instance.setDate(instance.selectedDates[0], false);
-                    return;
-                }
-
-                instance.clear(false);
-            },
-        });
+    dateInputCandidates(root).forEach((input) => {
+        bindFlatpickr(input);
     });
 }
 
@@ -411,8 +431,8 @@ export function setDateInputDisabled(input, disabled) {
     }
 
     // Flatpickr skips disabled inputs on first paint — init once the field is enabled.
-    if (! disabled && source.type === 'date') {
-        initFlatpickr(source.parentElement ?? document);
+    if (! disabled && ! source._flatpickr) {
+        initFlatpickr(source.closest('form, .bank-ws-form, .bank-field') ?? document);
     }
 }
 

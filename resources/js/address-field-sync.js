@@ -2,6 +2,7 @@
  * Keep visible Google address inputs in sync with hidden POST fields.
  * Required for AJAX workspace forms where @push scripts from Blade are not loaded.
  */
+import { commitDateFieldsInForm } from './flatpickr-init.js';
 
 export function syncAddressFieldsInForm(form = document) {
     if (!form?.querySelectorAll) {
@@ -59,6 +60,7 @@ export function initAddressFieldSync() {
         'submit',
         (event) => {
             if (event.target instanceof HTMLFormElement) {
+                commitDateFieldsInForm(event.target);
                 syncAddressFieldsInForm(event.target);
             }
         },
