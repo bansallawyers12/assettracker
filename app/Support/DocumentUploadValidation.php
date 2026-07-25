@@ -30,7 +30,7 @@ class DocumentUploadValidation
     ): array {
         $extensionsKey = $extensionsConfigKey ?? 'documents.mimes';
         $maxKey = $maxKilobytesConfigKey ?? 'documents.max_kilobytes';
-        $max = (int) config($maxKey, 10240);
+        $max = (int) config($maxKey, 20480);
         $extensions = self::allowedExtensions($extensionsKey);
 
         return [

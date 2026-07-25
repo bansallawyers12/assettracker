@@ -14,7 +14,7 @@
         : "/business-entities/{$entityId}/compliance-files";
     $bulkUploadUrl = route('entities.compliance.bulk-upload', $entityId);
     $autoMatchUrl = route('entities.compliance.auto-match', $entityId);
-    $wsDocMaxKb = max(1, (int) config('compliance.max_kilobytes', 10240));
+    $wsDocMaxKb = max(1, (int) config('compliance.max_kilobytes', 20480));
     $wsDocAccept = config('compliance.file_accept');
     $defaultFyStart = FinancialYear::currentStart()->toDateString();
     $defaultFyLabel = FinancialYear::label();

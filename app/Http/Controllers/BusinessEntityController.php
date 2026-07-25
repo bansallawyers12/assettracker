@@ -64,7 +64,7 @@ class BusinessEntityController extends Controller
      */
     private function transactionReceiptUploadRules(bool $includeInvoiceField = true): array
     {
-        $maxKb = max(1, (int) config('documents.max_kilobytes', 10240));
+        $maxKb = max(1, (int) config('documents.max_kilobytes', 20480));
         $mimes = (string) config('documents.mimes', 'pdf,jpeg,png,jpg');
         $rule = "nullable|file|mimes:{$mimes}|max:{$maxKb}";
         $out = ['payment_document' => $rule];
@@ -82,7 +82,7 @@ class BusinessEntityController extends Controller
      */
     private function transactionReceiptValidationMessages(): array
     {
-        $maxKb = max(1, (int) config('documents.max_kilobytes', 10240));
+        $maxKb = max(1, (int) config('documents.max_kilobytes', 20480));
         $maxMb = number_format($maxKb / 1024, 1);
         $uploadMax = ini_get('upload_max_filesize');
         $postMax = ini_get('post_max_size');

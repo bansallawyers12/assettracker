@@ -377,7 +377,7 @@
                                        class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-500 dark:file:bg-blue-600"
                                        accept="{{ config('documents.transaction_file_accept') }}">
                             </div>
-                            @php $dashDocMaxKb = max(1, (int) config('documents.max_kilobytes', 10240)); @endphp
+                            @php $dashDocMaxKb = max(1, (int) config('documents.max_kilobytes', 20480)); @endphp
                             <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Up to {{ number_format($dashDocMaxKb / 1024, 1) }} MB. Check PHP <span class="font-mono">upload_max_filesize</span> if uploads fail.</p>
                             @error('document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>

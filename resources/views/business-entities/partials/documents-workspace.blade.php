@@ -9,7 +9,7 @@
     $bulkUploadUrl = route('entities.documents.bulk-upload', $entityId);
     $autoMatchUrl = route('entities.documents.auto-match', $entityId);
     $prefix = $wsAssetId ? 'asset-doc-'.$wsAssetId : 'entity-doc';
-    $wsDocMaxKb = max(1, (int) config('documents.max_kilobytes', 10240));
+    $wsDocMaxKb = max(1, (int) config('documents.max_kilobytes', 20480));
     $wsDocAccept = config('documents.transaction_file_accept');
 @endphp
 
