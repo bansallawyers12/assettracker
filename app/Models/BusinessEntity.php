@@ -386,17 +386,29 @@ class BusinessEntity extends Model
     /**
      * Resolve ASIC annual review anniversary for a company.
      * Explicit override wins; otherwise defaults to registration date (ASIC's usual anniversary).
+     * When the submitted/existing anniversary still matches the previous registration date and
+     * registration has moved, follow the new registration (still-defaulted, not a Form 488 override).
      */
     public static function resolveAsicRenewalDate(
         ?string $entityType,
         ?string $asicRenewalDate,
         ?string $registrationDate,
+        ?string $previousRegistrationDate = null,
     ): ?string {
         if ($entityType !== 'Company') {
             return null;
         }
 
         if (filled($asicRenewalDate)) {
+            $stillDefaulted = filled($previousRegistrationDate)
+                && $asicRenewalDate === $previousRegistrationDate
+                && filled($registrationDate)
+                && $registrationDate !== $asicRenewalDate;
+
+            if ($stillDefaulted) {
+                return $registrationDate;
+            }
+
             return $asicRenewalDate;
         }
 

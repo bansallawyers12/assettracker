@@ -329,14 +329,33 @@ class BusinessEntityController extends Controller
 
     private function asicRenewalDateFromRequest(Request $request, ?BusinessEntity $entity = null): ?string
     {
+        if ($request->entity_type !== 'Company') {
+            return null;
+        }
+
         $registrationDate = $request->filled('registration_date')
             ? $request->input('registration_date')
             : $entity?->registration_date?->format('Y-m-d');
+
+        $previousRegistrationDate = $entity?->registration_date?->format('Y-m-d');
+
+        // Create omits the field → default from registration.
+        // Update with empty field → reset to registration.
+        // Update with field omitted → keep existing anniversary (with sync if still defaulted).
+        if (! $request->has('asic_renewal_date')) {
+            return BusinessEntity::resolveAsicRenewalDate(
+                $request->entity_type,
+                $entity?->asic_renewal_date?->format('Y-m-d'),
+                $registrationDate,
+                $previousRegistrationDate,
+            );
+        }
 
         return BusinessEntity::resolveAsicRenewalDate(
             $request->entity_type,
             $request->filled('asic_renewal_date') ? $request->input('asic_renewal_date') : null,
             $registrationDate,
+            $previousRegistrationDate,
         );
     }
 

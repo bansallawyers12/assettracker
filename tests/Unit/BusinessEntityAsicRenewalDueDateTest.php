@@ -209,6 +209,27 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
         $this->assertNull(BusinessEntity::resolveAsicRenewalDate('Company', null, null));
     }
 
+    public function test_resolve_asic_renewal_date_syncs_when_still_defaulted_to_old_registration(): void
+    {
+        // Anniversary still equal to previous registration → follow new registration.
+        $this->assertSame(
+            '2021-04-01',
+            BusinessEntity::resolveAsicRenewalDate('Company', '2020-03-15', '2021-04-01', '2020-03-15')
+        );
+
+        // Custom anniversary different from previous registration → keep override.
+        $this->assertSame(
+            '2020-06-01',
+            BusinessEntity::resolveAsicRenewalDate('Company', '2020-06-01', '2021-04-01', '2020-03-15')
+        );
+
+        // Registration unchanged → keep submitted anniversary.
+        $this->assertSame(
+            '2020-03-15',
+            BusinessEntity::resolveAsicRenewalDate('Company', '2020-03-15', '2020-03-15', '2020-03-15')
+        );
+    }
+
     public function test_acn_prohibited_for_non_companies(): void
     {
         $rules = [

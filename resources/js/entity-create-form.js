@@ -118,8 +118,7 @@ export function toggleTrustFields() {
     const trustFields = document.getElementById('trust_fields');
     const registrationDateField = document.getElementById('registration_date_field');
     const registrationDateInput = document.getElementById('registration_date');
-    const registrationDateLabelText = document.getElementById('registration_date_label_text')
-        || document.getElementById('registration_date_label');
+    const registrationDateLabelText = document.getElementById('registration_date_label_text');
     const registrationDateRequiredMark = document.getElementById('registration_date_required_mark');
     const registrationDateAsicHint = document.getElementById('registration_date_asic_hint');
     const trustTypeField = document.getElementById('trust_type');
