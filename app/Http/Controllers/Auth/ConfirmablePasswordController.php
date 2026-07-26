@@ -46,16 +46,20 @@ class ConfirmablePasswordController extends Controller
 
     private function isSafeInternalRedirect(string $redirect): bool
     {
-        if ($redirect === '' || str_starts_with($redirect, '//')) {
+        $redirect = trim($redirect);
+
+        if ($redirect === '' || str_contains($redirect, '\\') || str_contains($redirect, "\0")) {
             return false;
         }
 
-        if (str_starts_with($redirect, '/')) {
-            return ! str_starts_with($redirect, '//');
+        // Protocol-relative and scheme URLs must match this app origin.
+        if (str_starts_with($redirect, '//') || preg_match('#^[a-z][a-z0-9+.-]*:#i', $redirect) === 1) {
+            $appRoot = rtrim(URL::to('/'), '/');
+
+            return str_starts_with($redirect, $appRoot.'/') || $redirect === $appRoot;
         }
 
-        $appRoot = rtrim(URL::to('/'), '/');
-
-        return str_starts_with($redirect, $appRoot.'/') || $redirect === $appRoot;
+        // Same-origin relative path only.
+        return str_starts_with($redirect, '/') && ! str_starts_with($redirect, '//');
     }
 }

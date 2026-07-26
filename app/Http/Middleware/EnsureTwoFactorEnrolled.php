@@ -36,6 +36,8 @@ class EnsureTwoFactorEnrolled
             'logout',
             'profile.edit',
             'profile.update',
+            'password.confirm',
+            'password.confirm.store',
         ];
 
         // Temporary: primary admin may still reach user-management routes from

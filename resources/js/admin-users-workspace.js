@@ -9,7 +9,6 @@ import {
     openWorkspacePanel,
     parseJson,
     setWorkspacePanelContent,
-    showInlineFormErrors,
     submitWorkspaceForm,
     notifyFormFailure,
     notifyFormSuccess,
@@ -23,7 +22,8 @@ function alertHttpError(status, payload, root) {
 
     if (status === 423) {
         const confirmUrl = root?.dataset?.passwordConfirmUrl || '/confirm-password';
-        const redirect = encodeURIComponent(window.location.href);
+        // Prefer path+query so host mismatches between APP_URL and the browser still work.
+        const redirect = encodeURIComponent(`${window.location.pathname}${window.location.search}`);
         showWorkspaceAlert({
             title: 'Password confirmation required',
             message: 'Confirm your password to continue this admin action.',
@@ -104,7 +104,6 @@ export function initAdminUsersWorkspace(root) {
 
         event.preventDefault();
         const action = actionEl.dataset.userAction;
-        const userId = actionEl.dataset.userId;
         const userName = actionEl.dataset.userName || 'this user';
         const actionUrl = actionEl.dataset.userUrl;
 
