@@ -33,7 +33,6 @@ class EnsureTwoFactorEnrolled
         $allowed = [
             'two-factor.setup',
             'two-factor.enable',
-            'two-factor.manage',
             'logout',
             'profile.edit',
             'profile.update',

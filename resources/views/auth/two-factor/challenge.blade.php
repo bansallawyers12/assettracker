@@ -12,36 +12,45 @@
     <form method="POST" action="{{ route('two-factor.totp-verify') }}" id="totp-form">
         @csrf
 
+        {{-- Always visible so throttle / validation errors aren't lost when toggling modes --}}
+        <x-input-error :messages="$errors->get('code')" class="mb-3" />
+
+        @php
+            $oldCode = old('code', '');
+            $preferBackup = is_string($oldCode) && strlen($oldCode) > 6;
+        @endphp
+
         {{-- TOTP code input --}}
-        <div id="totp-section">
+        <div id="totp-section" @class(['hidden' => $preferBackup])>
             <x-input-label for="code" :value="__('Verification Code')" />
             <input
                 id="code"
-                name="code"
-            type="text"
-            inputmode="numeric"
-            autocomplete="one-time-code"
-            maxlength="6"
-            placeholder="000000"
-                autofocus
+                @if(! $preferBackup) name="code" @endif
+                type="text"
+                inputmode="numeric"
+                autocomplete="one-time-code"
+                maxlength="6"
+                placeholder="000000"
+                value="{{ $preferBackup ? '' : $oldCode }}"
+                @if(! $preferBackup) autofocus @endif
                 class="block mt-1.5 w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500 dark:focus:ring-blue-500 shadow-xs text-sm placeholder-gray-400 dark:placeholder-gray-500 text-center tracking-widest text-lg font-mono"
             />
-            <x-input-error :messages="$errors->get('code')" class="mt-1.5" />
         </div>
 
         {{-- Backup code section (hidden by default) --}}
-        <div id="backup-section" class="hidden mt-4">
+        <div id="backup-section" @class(['mt-4' => true, 'hidden' => ! $preferBackup])>
             <x-input-label for="backup_code" :value="__('Backup Code')" />
             <input
                 id="backup_code"
-                name="backup_code"
+                @if($preferBackup) name="code" @endif
                 type="text"
                 autocomplete="off"
                 maxlength="8"
                 placeholder="XXXXXXXX"
+                value="{{ $preferBackup ? $oldCode : '' }}"
+                @if($preferBackup) autofocus @endif
                 class="block mt-1.5 w-full rounded-xl border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 focus:border-blue-500 dark:focus:border-blue-500 focus:ring-blue-500 dark:focus:ring-blue-500 shadow-xs text-sm placeholder-gray-400 dark:placeholder-gray-500 text-center tracking-widest font-mono uppercase"
             />
-            <x-input-error :messages="$errors->get('code')" class="mt-1.5" />
             <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">Enter one of your 8-character backup codes.</p>
         </div>
 
@@ -75,7 +84,11 @@
         const totpInput = document.getElementById('code');
         const backupInput = document.getElementById('backup_code');
 
-        let usingBackup = false;
+        let usingBackup = @json($preferBackup);
+
+        if (usingBackup) {
+            toggleBtn.textContent = 'Use authenticator app instead';
+        }
 
         toggleBtn.addEventListener('click', function () {
             usingBackup = !usingBackup;

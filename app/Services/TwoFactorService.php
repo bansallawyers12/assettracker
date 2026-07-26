@@ -132,7 +132,10 @@ class TwoFactorService
      */
     public function disableTwoFactor(User $user, string $code): bool
     {
-        if (!$this->verifyCode($user, $code) && !$this->verifyBackupCode($user, $code)) {
+        $code = trim(str_replace(' ', '', $code));
+
+        // TOTP is numeric; backup codes are stored uppercase — accept either case.
+        if (!$this->verifyCode($user, $code) && !$this->verifyBackupCode($user, strtoupper($code))) {
             return false;
         }
 

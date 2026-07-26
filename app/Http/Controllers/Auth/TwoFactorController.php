@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\TwoFactorService;
+use Illuminate\Auth\Events\Lockout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class TwoFactorController extends Controller
@@ -25,12 +29,21 @@ class TwoFactorController extends Controller
      * The generated secret is stored in the session (not in the HTML form) to
      * avoid exposing it to potential XSS on the setup page.
      */
-    public function show(Request $request): View
+    public function show(Request $request): View|RedirectResponse
     {
         $user = Auth::user();
 
         if ($user->hasFullyEnabledTwoFactor()) {
+            // Setup stays auth-only; send enrolled users to the verified manage route.
+            if ($request->routeIs('two-factor.setup')) {
+                return redirect()->route('two-factor.manage');
+            }
+
             return view('auth.two-factor.manage', compact('user'));
+        }
+
+        if ($request->routeIs('two-factor.manage')) {
+            return redirect()->route('two-factor.setup');
         }
 
         $secret = $this->twoFactorService->generateSecretKey();
@@ -88,44 +101,75 @@ class TwoFactorController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return back()->withErrors($validator);
+            return back()->withErrors($validator, 'disable')->with('open_disable_form', true);
         }
 
         $user = Auth::user();
+        $code = trim(str_replace(' ', '', $request->input('code', '') ?? ''));
 
-        if ($this->twoFactorService->disableTwoFactor($user, $request->code)) {
+        if ($this->twoFactorService->disableTwoFactor($user, $code)) {
             $request->session()->forget('2fa_verified');
             return redirect()->route('profile.edit')->with('status', 'two-factor-disabled');
         }
 
-        return back()->withErrors(['code' => 'Invalid verification code or backup code.']);
+        return back()->withErrors(['code' => 'Invalid verification code or backup code.'], 'disable')
+            ->with('open_disable_form', true);
     }
 
     /**
      * Regenerate backup codes.
+     * Requires a current TOTP or backup code (same proof bar as disable).
      */
-    public function regenerateBackupCodes(): RedirectResponse
+    public function regenerateBackupCodes(Request $request): RedirectResponse
     {
+        $validator = Validator::make($request->all(), [
+            'code' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return back()->withErrors($validator, 'regenerate')->with('open_regenerate_form', true);
+        }
+
         $user = Auth::user();
 
         if (!$user->two_factor_enabled) {
-            return back()->withErrors(['error' => 'Two-factor authentication is not enabled.']);
+            return back()->withErrors(['error' => 'Two-factor authentication is not enabled.'], 'regenerate')
+                ->with('open_regenerate_form', true);
+        }
+
+        $code = trim(str_replace(' ', '', $request->input('code', '') ?? ''));
+        $codeNormalised = strtoupper($code);
+
+        $valid = $this->twoFactorService->verifyCode($user, $code)
+            || $this->twoFactorService->verifyBackupCode($user, $codeNormalised);
+
+        if (!$valid) {
+            return back()->withErrors(['code' => 'Invalid verification code or backup code.'], 'regenerate')
+                ->with('open_regenerate_form', true);
         }
 
         $backupCodes = $this->twoFactorService->generateBackupCodes();
         $user->update(['two_factor_backup_codes' => json_encode($backupCodes)]);
 
-        return back()->with('status', 'backup-codes-regenerated')
-                    ->with('backup_codes', $backupCodes);
+        return redirect()->route('two-factor.backup-codes')
+            ->with('status', 'backup-codes-regenerated')
+            ->with('backup_codes', $backupCodes);
     }
 
     /**
      * Show backup codes.
      */
-    public function showBackupCodes(): View
+    public function showBackupCodes(Request $request): View
     {
         $user = Auth::user();
-        $backupCodes = json_decode($user->two_factor_backup_codes ?? '[]', true);
+
+        // Prefer freshly regenerated codes from the flash so the user always
+        // sees the set that was just created (not a stale decoded copy).
+        $backupCodes = $request->session()->get('backup_codes');
+        if (! is_array($backupCodes)) {
+            $decoded = json_decode($user->two_factor_backup_codes ?? '[]', true);
+            $backupCodes = is_array($decoded) ? $decoded : [];
+        }
 
         return view('auth.two-factor.backup-codes', compact('user', 'backupCodes'));
     }
@@ -163,10 +207,15 @@ class TwoFactorController extends Controller
             return redirect()->route('login');
         }
 
+        $throttleKey = $this->challengeThrottleKey($request, $userId);
+        $this->ensureChallengeIsNotRateLimited($request, $throttleKey);
+
         $code = trim(str_replace(' ', '', $request->input('code', '') ?? ''));
 
         if (empty($code)) {
-            return back()->withErrors(['code' => 'The code field is required.']);
+            return back()
+                ->withInput($request->only('code'))
+                ->withErrors(['code' => 'The code field is required.']);
         }
 
         $user = User::find($userId);
@@ -183,8 +232,14 @@ class TwoFactorController extends Controller
             || $this->twoFactorService->verifyBackupCode($user, $codeNormalised);
 
         if (!$valid) {
-            return back()->withErrors(['code' => 'The provided code is invalid. Please try again.']);
+            RateLimiter::hit($throttleKey);
+
+            return back()
+                ->withInput($request->only('code'))
+                ->withErrors(['code' => 'The provided code is invalid. Please try again.']);
         }
+
+        RateLimiter::clear($throttleKey);
 
         $request->session()->forget('2fa_pending_user');
         $request->session()->put('2fa_verified', true);
@@ -196,5 +251,35 @@ class TwoFactorController extends Controller
         }
 
         return redirect()->intended(route('dashboard'));
+    }
+
+    /**
+     * Ensure the 2FA challenge is not rate limited (same 5-attempt bar as login).
+     *
+     * @throws \Illuminate\Validation\ValidationException
+     */
+    protected function ensureChallengeIsNotRateLimited(Request $request, string $throttleKey): void
+    {
+        if (! RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            return;
+        }
+
+        event(new Lockout($request));
+
+        $seconds = RateLimiter::availableIn($throttleKey);
+
+        throw ValidationException::withMessages([
+            'code' => __('Too many two-factor attempts. Please try again in :seconds seconds.', [
+                'seconds' => $seconds,
+            ]),
+        ]);
+    }
+
+    /**
+     * Rate-limit key for the TOTP/backup challenge (pending user + IP).
+     */
+    protected function challengeThrottleKey(Request $request, int|string $userId): string
+    {
+        return Str::transliterate('two-factor|'.$userId.'|'.$request->ip());
     }
 }

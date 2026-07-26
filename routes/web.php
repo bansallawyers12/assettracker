@@ -113,21 +113,18 @@ Route::post('/two-factor/challenge', [TwoFactorController::class, 'verifyChallen
     ->name('two-factor.totp-verify');
 
 // -----------------------------------------------------------------------
-// 2FA setup / management routes
-// These are intentionally exempt from 2fa.enrolled and 2fa.verified so
-// that unenrolled users can actually reach the setup page.
-// backup-codes requires 2fa.verified since it shows sensitive recovery data.
+// 2FA setup — auth only so unenrolled users can reach enrollment.
+// Manage / disable / regenerate / view codes require a verified 2FA session.
 // -----------------------------------------------------------------------
 Route::middleware(['auth'])->group(function () {
     Route::get('/two-factor/setup', [TwoFactorController::class, 'show'])->name('two-factor.setup');
     Route::post('/two-factor/enable', [TwoFactorController::class, 'enable'])->name('two-factor.enable');
-    Route::post('/two-factor/disable', [TwoFactorController::class, 'disable'])->name('two-factor.disable');
-    Route::get('/two-factor/manage', [TwoFactorController::class, 'show'])->name('two-factor.manage');
-    Route::post('/two-factor/regenerate-codes', [TwoFactorController::class, 'regenerateBackupCodes'])->name('two-factor.regenerate-codes');
 });
 
-// backup-codes requires full 2FA verification to view sensitive recovery codes
 Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
+    Route::get('/two-factor/manage', [TwoFactorController::class, 'show'])->name('two-factor.manage');
+    Route::post('/two-factor/disable', [TwoFactorController::class, 'disable'])->name('two-factor.disable');
+    Route::post('/two-factor/regenerate-codes', [TwoFactorController::class, 'regenerateBackupCodes'])->name('two-factor.regenerate-codes');
     Route::get('/two-factor/backup-codes', [TwoFactorController::class, 'showBackupCodes'])->name('two-factor.backup-codes');
 });
 

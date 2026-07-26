@@ -40,16 +40,43 @@
                                    class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-xs text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                                     View Backup Codes
                                 </a>
-                                
-                                <form method="POST" action="{{ route('two-factor.regenerate-codes') }}" class="inline">
-                                    @csrf
-                                    <button type="submit" 
-                                            class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-xs text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-                                            onclick="return confirm('Are you sure? This will invalidate all existing backup codes.')">
-                                        Regenerate Codes
-                                    </button>
-                                </form>
+
+                                <button type="button"
+                                        onclick="document.getElementById('regenerate-form').classList.toggle('hidden')"
+                                        class="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-xs text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                                    Regenerate Codes
+                                </button>
                             </div>
+
+                            <form id="regenerate-form" method="POST" action="{{ route('two-factor.regenerate-codes') }}" class="mt-4 {{ session('open_regenerate_form') ? '' : 'hidden' }}">
+                                @csrf
+                                <div>
+                                    <x-input-label for="regenerate_code" :value="__('Enter verification code or backup code')" />
+                                    <x-text-input id="regenerate_code"
+                                                 class="block mt-1 w-full"
+                                                 type="text"
+                                                 name="code"
+                                                 maxlength="8"
+                                                 placeholder="123456 or ABC12345"
+                                                 required
+                                                 @if(session('open_regenerate_form')) autofocus @endif />
+                                    <x-input-error :messages="$errors->regenerate->get('code')" class="mt-2" />
+                                    <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+                                        Regenerating invalidates all existing backup codes.
+                                    </p>
+                                </div>
+
+                                <div class="flex items-center justify-end mt-4">
+                                    <button type="button"
+                                            onclick="document.getElementById('regenerate-form').classList.add('hidden')"
+                                            class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 mr-4">
+                                        Cancel
+                                    </button>
+                                    <x-danger-button>
+                                        {{ __('Regenerate Backup Codes') }}
+                                    </x-danger-button>
+                                </div>
+                            </form>
                         </div>
 
                         <!-- Disable 2FA Section -->
@@ -67,7 +94,7 @@
                                 Disable Two-Factor Authentication
                             </button>
 
-                            <form id="disable-form" method="POST" action="{{ route('two-factor.disable') }}" class="hidden mt-4">
+                            <form id="disable-form" method="POST" action="{{ route('two-factor.disable') }}" class="mt-4 {{ session('open_disable_form') ? '' : 'hidden' }}">
                                 @csrf
                                 <div>
                                     <x-input-label for="disable_code" :value="__('Enter verification code or backup code')" />
@@ -77,8 +104,9 @@
                                                  name="code" 
                                                  maxlength="8"
                                                  placeholder="123456 or ABC12345"
-                                                 required />
-                                    <x-input-error :messages="$errors->get('code')" class="mt-2" />
+                                                 required
+                                                 @if(session('open_disable_form')) autofocus @endif />
+                                    <x-input-error :messages="$errors->disable->get('code')" class="mt-2" />
                                 </div>
                                 
                                 <div class="flex items-center justify-end mt-4">
