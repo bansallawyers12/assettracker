@@ -1,8 +1,22 @@
 # CRM / Asset Tracker — Potential Bugs
 
 **Generated:** 2026-07-26  
-**Scope:** Full application review, area by area. Findings only — no fixes applied.  
+**Last re-verified against codebase:** 2026-07-26  
+**Scope:** Full application review, area by area. Findings only — no fixes applied in this document.  
 **Context:** Laravel app; authenticated users largely share one portfolio. Many policies intentionally return `true` (authentication-only authz). That design is noted where it amplifies impact; items below focus on broken logic, missing guards, data integrity, and security gaps beyond “everyone can see everything by design.”
+
+### Re-verification changelog
+
+| Item | Status |
+|------|--------|
+| Area 1 — backup-code regen without proof | **FIXED** — requires TOTP/backup code + `2fa.enrolled` + `2fa.verified` |
+| Area 1 — 2FA challenge unthrottled | **FIXED** — `RateLimiter` (5 attempts) in `verifyChallenge` |
+| Area 1 — `/phpinfo` always available | **PARTIALLY FIXED** — now requires `APP_ENV=local` + token; prefers header |
+| Area 2 — admin delete with no `canBeDeleted` | **FIXED** — uses `canBeDeleted()` + primary-admin / self guards |
+| Area 2 — no password confirm on destructive admin actions | **PARTIALLY FIXED** — mutations use `password.confirm`; still no 2FA on admin |
+| Area 2 — cascade wipe on user delete | **MITIGATED** — normal path blocked when entities/journals exist; FK cascades remain if guards bypassed |
+| Area 3 — profile email → admin privilege escalation | **FIXED** — email not editable on profile |
+| Remaining High items in Areas 4–16 | Still open unless marked FIXED below |
 
 ---
 
@@ -11,16 +25,14 @@
 ### High
 
 1. **Admin routes skip 2FA**  
-   `/admin/users*` uses only `auth` + `super.admin`, not `2fa.enrolled` / `2fa.verified`. A primary admin who is logged in without a verified TOTP session this request cycle (remember-me restore, lost `2fa_verified` flag, or still in grace period) can manage users without completing 2FA.  
-   **Where:** `routes/web.php` admin group; contrast with main app group that requires both 2FA middlewares.
+   `/admin/users*` uses `auth` + `super.admin` (and `password.confirm` on some mutations), but **not** `2fa.enrolled` / `2fa.verified`. A primary admin who is logged in without a verified TOTP session this request cycle (remember-me restore, lost `2fa_verified` flag, or still in grace period) can open the admin UI and, after password confirm, manage users without completing 2FA.  
+   **Where:** `routes/web.php` admin groups (~439–453); contrast with main app group that requires both 2FA middlewares.
 
-2. **Backup codes can be regenerated with no proof**  
-   `TwoFactorController::regenerateBackupCodes` is only behind `auth`. It does not require a TOTP/backup code or `2fa.verified`. Anyone with an authenticated session can rotate recovery codes.  
-   **Where:** `app/Http/Controllers/Auth/TwoFactorController.php`; `routes/web.php` 2FA management group.
+2. ~~**Backup codes can be regenerated with no proof**~~ — **FIXED**  
+   Now behind `auth` + `2fa.enrolled` + `2fa.verified`, and `regenerateBackupCodes` requires a valid TOTP or backup code.
 
-3. **2FA challenge is unthrottled**  
-   `POST /two-factor/challenge` has no rate limit. Login is throttled (5 attempts); the TOTP step is not, which makes online guessing easier than it should be.  
-   **Where:** `routes/web.php` (`two-factor.totp-verify`).
+3. ~~**2FA challenge is unthrottled**~~ — **FIXED**  
+   `TwoFactorController::verifyChallenge` rate-limits via `RateLimiter` (5 attempts per pending user / IP key).
 
 4. **Default admin credentials in config**  
    `config/admin.php` ships a default `ADMIN_EMAIL` and a bcrypt `ADMIN_PASSWORD_HASH`. If env vars are missing in any environment, that hardcoded bootstrap login still works.
@@ -47,11 +59,12 @@
 9. **`last_login_at` / `last_login_ip` never written**  
    Profile and admin UI show them, but nothing in the login flow updates them — always empty.
 
-10. **Backup-code case handling inconsistent**  
-    Challenge uppercases the code before verify; disable does not. Lowercase backup codes can fail on disable even though they work on login challenge.
+10. **Backup-code case handling inconsistent on disable**  
+    Challenge and regenerate uppercase the code before backup-code verify; `disable` passes the raw trimmed code into `disableTwoFactor` without uppercasing. Lowercase backup codes can fail on disable.  
+    **Where:** `TwoFactorController::disable` vs `verifyChallenge` / `regenerateBackupCodes`.
 
-11. **`/phpinfo?token=...`**  
-    Token-in-query is easy to leak (logs, proxies, browser history). Fine for local debug; risky if enabled anywhere shared.  
+11. **`/phpinfo` still accepts query-string token (local only)** — **PARTIALLY FIXED**  
+    Now gated by `APP_ENV=local` and token; prefers `X-Phpinfo-Token` header. `?token=` still works and can leak via logs/history if used.  
     **Where:** `routes/web.php`.
 
 12. **Dead temporary-2FA token helpers**  
@@ -63,41 +76,39 @@
 
 ### High
 
-1. **Deleting a user can wipe portfolio data**  
-   `business_entities.user_id` is `onDelete('cascade')`. Entities are created with `user_id => auth()->id()`. Deleting that user cascades into entities → assets, banking, documents, etc. Confirm copy understates this.  
-   **Where:** `UserManagementController::destroy`; migration `create_business_entities_table`.
+1. **DB cascades still wipe portfolio/journals if a user is deleted** — **MITIGATED for normal admin UI**  
+   `business_entities.user_id` and `journal_entries.created_by` remain `onDelete('cascade')`. Admin `destroy()` now calls `canBeDeleted()` / `deleteBlockedReason()` (blocks when entities, journals, mail, etc. exist) and also blocks primary admin / self-delete. **Live risk:** schema-level cascade if delete is forced elsewhere (tinker, future code path, incomplete blocker list). Prefer `nullOnDelete` / reassign over cascade.  
+   **Where:** migrations; `User::deleteBlockedReason`; `UserManagementController::destroy`.
 
-2. **Deleting a user can wipe journal entries**  
-   `journal_entries.created_by` is `onDelete('cascade')`. Posting often sets `created_by` from the entity owner. Deleting that user can remove accounting journals.  
-   **Where:** migration `create_journal_entries_table`; `InvoicePostingService` / `TransactionPostingService`.
+2. ~~**(Former) Deleting a user always wiped journals via unguarded destroy**~~ — folded into #1; unguarded path **FIXED**.
 
-3. **No guard before delete**  
-   `destroy()` does not check owned entities, journals, reminders, templates, etc. It always hard-deletes. Profile delete uses `canBeDeleted()`; admin does not — inconsistent and dangerous.
+3. ~~**No guard before delete**~~ — **FIXED**  
+   Admin `destroy()` now uses `canBeDeleted()`, primary-admin check, self-delete check, and catches `QueryException`.
 
 ### Medium
 
 4. **Admin UI still skips 2FA**  
-   Same as Area 1: highest-impact actions (create, reset password, delete) reachable without verified TOTP.
+   Same as Area 1 #1. Mutations additionally require `password.confirm`, but not a verified TOTP session.
 
 5. **Grace-period “admin can create users” exception is stale**  
    `EnsureTwoFactorEnrolled` allows `admin.users.create` / `admin.users.store`, but the live UI uses `admin.users.index`, `admin.users.form.create`, and `admin.users.workspace` — none allowed. After the grace limit, the primary admin cannot use the admin SPA; the exception does not match current routes.
 
 6. **Password reset for primary admin is misleading**  
-   UI can reset the primary admin’s DB password and claims sessions are signed out. The env `ADMIN_PASSWORD_HASH` login path still works, so that “reset” may not lock them out.
+   UI can reset the primary admin’s DB password. The env `ADMIN_PASSWORD_HASH` login path still works, so that “reset” may not lock them out of the bootstrap login.
 
 7. **Session flush only works for `database` sessions**  
-   `flushDatabaseSessionsForUser` no-ops for `file` / `redis`. Deactivate / password reset clear `remember_token`, but other drivers keep live sessions until the next request hits `EnsureAccountActive` (deactivate) — password change may leave sessions valid until expiry.
+   `flushPersistedSessionsForUser` only deletes DB session rows. File/redis drivers rely on `remember_token` clear + next-request checks (`EnsureAccountActive` / `AuthenticateSession`). Documented in controller comments; still means non-DB sessions are not immediately purged server-side.
 
 ### Low
 
 8. **Delete can leave orphan mail rows**  
-   `mail_messages.user_id` has no FK. User delete succeeds and leaves orphaned inbox rows.
+   `mail_messages.user_id` has no FK. If a user with no other blockers but leftover mail is deleted (or mail check is incomplete), orphaned inbox rows can remain. (`deleteBlockedReason` does check `mailMessages` — orphans mainly if mail table unchecked / legacy rows.)
 
-9. **Confirm text vs reality**  
-   Delete confirm implies limited personal data; cascades make it a portfolio-level destroy for anything owned by that user.
+9. **Confirm text vs schema reality**  
+   UI copy is safer now that `canBeDeleted` blocks ownership, but FK cascades remain a latent data-loss hazard.
 
-10. **No re-auth for destructive admin actions**  
-    Create / password reset / delete do not require password confirm or fresh 2FA.
+10. ~~**No re-auth for destructive admin actions**~~ — **PARTIALLY FIXED**  
+    `store` / `deactivate` / `password` / `destroy` require `password.confirm`. Still no 2FA on admin routes; `activate` and read/workspace routes do not use `password.confirm`.
 
 11. **`last_login_at` always empty in the list**  
     Same as Area 1.
@@ -146,8 +157,8 @@
 9. **Heavy unscoped person load on dashboard**  
    `EntityPerson::with(...)->get()` loads every role row only to show three people.
 
-10. **Profile delete is safer than admin delete**  
-    Profile uses `canBeDeleted()`; admin `destroy()` does not (Area 2). Inconsistent.
+10. ~~**Profile delete is safer than admin delete**~~ — **RESOLVED**  
+    Both profile and admin destroy now use `canBeDeleted()`. Remaining gap: profile still does not block `isPrimaryAdministrator()` self-delete (Area 3 #5).
 
 ---
 
@@ -568,17 +579,17 @@
 
 ---
 
-## Suggested fix priority (cross-area)
+## Suggested fix priority (cross-area) — open items only
 
 | Priority | Cluster |
 |----------|---------|
-| 1 | Auth: admin 2FA, unthrottled TOTP, backup-code regen; API bank-accounts auth; account-number reveal/plaintext UI |
-| 2 | Data loss: admin user delete cascades; BusinessEntity encryption shadowing; asset workspace bank-link wipe; rent invoice open transaction |
-| 3 | Accounting integrity: bank import ignores CoA + double-match + balance-as-amount; invoice GST unbalanced post; cash-flow sign; record payment status-only |
+| 1 | Auth: admin routes still skip 2FA; API bank-accounts outside Sanctum; account-number reveal + plaintext list UI |
+| 2 | Data integrity: BusinessEntity encryption shadowing; asset workspace bank-link wipe; rent invoice open transaction; FK cascades if delete guards bypassed |
+| 3 | Accounting: bank import ignores CoA + double-match + balance-as-amount; invoice GST unbalanced post; cash-flow sign; record payment status-only |
 | 4 | Upload security: extension-only validation + SVG inline XSS; path traversal on bank/email attachments |
 | 5 | Closed/operational consistency: mutate closed entities; asset status ignored; tracking `is_active` stuck on |
 | 6 | Compliance: wrong reminder owner fallback; MySQL NULL unique year records |
-| 7 | Email: arbitrary from; template sharing; reminder bulkComplete |
+| 7 | Email / reminders: arbitrary `from_email`; template sharing; `bulkComplete` / unscoped reminder index |
 
 ---
 
@@ -586,5 +597,6 @@
 
 - This document is a **bug inventory**, not a commitment that every item is exploitable in production as configured.
 - Shared-portfolio / allow-all policies may be intentional for a single-family office; they are still listed where they turn local bugs into cross-user issues.
-- Profile email privilege-escalation and encrypted unique-email issues on profile update were **addressed** by making email non-editable (`42d3653`); do not reintroduce editable email without `email_hash` uniqueness and admin-email reservation.
+- Do not reintroduce editable profile email without `email_hash` uniqueness and admin-email reservation.
+- Re-verify before fixing: several Area 1–2 High items were fixed after the first draft of this file; the changelog at the top is the source of truth for those.
 `)
