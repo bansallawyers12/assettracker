@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\User;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use PragmaRX\Google2FAQRCode\Google2FA;
 
@@ -155,34 +154,5 @@ class TwoFactorService
     public function isTwoFactorRequired(User $user): bool
     {
         return $user->two_factor_enabled && $user->two_factor_secret;
-    }
-
-    /**
-     * Store a temporary 2FA verification.
-     */
-    public function storeTemporaryVerification(User $user, int $minutes = 30): string
-    {
-        $token = Str::random(32);
-        $key = "2fa_verified_{$token}";
-        
-        Cache::put($key, $user->id, $minutes * 60);
-        
-        return $token;
-    }
-
-    /**
-     * Verify a temporary 2FA verification.
-     */
-    public function verifyTemporaryVerification(string $token): ?User
-    {
-        $key = "2fa_verified_{$token}";
-        $userId = Cache::get($key);
-        
-        if ($userId) {
-            Cache::forget($key);
-            return User::find($userId);
-        }
-        
-        return null;
     }
 }

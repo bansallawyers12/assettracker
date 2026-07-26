@@ -48,13 +48,21 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Gated phpinfo (dev only) — /phpinfo?token=... matching PHPINFO_ACCESS_TOKEN in .env. Leave token unset in production.
+// Local-only phpinfo — requires APP_ENV=local AND PHPINFO_ACCESS_TOKEN.
+// Prefer header X-Phpinfo-Token over ?token= to avoid leaking via logs/history.
 Route::get('/phpinfo', function (Request $request) {
+    if (! app()->environment('local')) {
+        abort(404);
+    }
+
     $expected = (string) config('app.phpinfo_access_token', '');
-    $token = $request->query('token', '');
-    $token = is_string($token) ? $token : '';
+    $token = $request->header('X-Phpinfo-Token', '');
+    if (! is_string($token) || $token === '') {
+        $token = $request->query('token', '');
+        $token = is_string($token) ? $token : '';
+    }
     if ($expected === '' || $token === '' || ! hash_equals($expected, $token)) {
-        abort(403, 'Forbidden. Set PHPINFO_ACCESS_TOKEN in .env and open /phpinfo?token= with that value.');
+        abort(403, 'Forbidden. Set PHPINFO_ACCESS_TOKEN in .env (local only). Prefer header X-Phpinfo-Token; ?token= also works locally.');
     }
 
     $toBytes = static function (string $value): int {
@@ -96,7 +104,7 @@ Route::get('/phpinfo', function (Request $request) {
     echo '<p style="margin:.25rem 0;"><strong>upload_max_filesize</strong>: '.e($uploadMax).($uploadOk ? ' ✓' : ' ✗ need ≥ 20M').'</p>';
     echo '<p style="margin:.25rem 0;"><strong>post_max_size</strong>: '.e($postMax).($postOk ? ' ✓' : ' ✗ need ≥ 20M, usually ≥ upload_max_filesize').'</p>';
     echo '<p style="margin:.75rem 0 0;font-size:.95rem;">'.e($statusText).'</p>';
-    echo '<p style="margin:.5rem 0 0;font-size:.85rem;opacity:.85;">Full <code>phpinfo()</code> output is below. Remove <code>PHPINFO_ACCESS_TOKEN</code> from <code>.env</code> in production.</p>';
+    echo '<p style="margin:.5rem 0 0;font-size:.85rem;opacity:.85;">Local only. Prefer <code>X-Phpinfo-Token</code> header; leave <code>PHPINFO_ACCESS_TOKEN</code> unset outside local.</p>';
     echo '</div>';
     phpinfo();
     exit;

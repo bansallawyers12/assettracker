@@ -103,6 +103,17 @@ class User extends Authenticatable
     }
 
     /**
+     * Record a successful full login (after password, and after 2FA when enrolled).
+     */
+    public function recordLogin(?string $ip): void
+    {
+        $this->forceFill([
+            'last_login_at' => now(),
+            'last_login_ip' => $ip,
+        ])->save();
+    }
+
+    /**
      * Primary portal administrator (config/admin.php). Used for user creation and grace-period exceptions.
      */
     public function isPrimaryAdministrator(): bool

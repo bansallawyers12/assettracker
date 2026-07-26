@@ -103,8 +103,10 @@ return [
     'key' => env('APP_KEY'),
 
     /*
-    | Optional shared secret for gated phpinfo (/phpinfo route, dev only).
-    | If you use config:cache after changing .env, run php artisan config:cache again.
+    | Optional shared secret for gated phpinfo (/phpinfo, local env only).
+    | Prefer header X-Phpinfo-Token; ?token= works locally but can leak via logs.
+    | Leave unset outside local. If you use config:cache after changing .env,
+    | run php artisan config:cache again.
     */
     'phpinfo_access_token' => env('PHPINFO_ACCESS_TOKEN', ''),
 

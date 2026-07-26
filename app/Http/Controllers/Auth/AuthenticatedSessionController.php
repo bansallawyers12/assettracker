@@ -44,6 +44,10 @@ class AuthenticatedSessionController extends Controller
             $user->refresh();
         }
 
+        if ($user) {
+            $user->recordLogin($request->ip());
+        }
+
         $request->session()->regenerate();
 
         $grace = max(0, (int) config('admin.two_factor_grace_logins', 3));

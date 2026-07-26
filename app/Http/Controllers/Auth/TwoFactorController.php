@@ -250,6 +250,8 @@ class TwoFactorController extends Controller
             $request->session()->regenerate();
         }
 
+        $user->recordLogin($request->ip());
+
         return redirect()->intended(route('dashboard'));
     }
 
