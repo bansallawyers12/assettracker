@@ -86,6 +86,9 @@
                                     <dt class="text-gray-500 dark:text-gray-400">{{ __('Last login') }}</dt>
                                     <dd class="mt-0.5 font-medium text-gray-900 dark:text-gray-100">
                                         {{ $user->last_login_at->timezone(config('app.timezone'))->format('d M Y, H:i') }}
+                                        @if ($user->last_login_ip)
+                                            <span class="block text-xs font-normal text-gray-500 dark:text-gray-400">{{ $user->last_login_ip }}</span>
+                                        @endif
                                     </dd>
                                 </div>
                             @endif

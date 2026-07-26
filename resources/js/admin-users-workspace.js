@@ -145,7 +145,7 @@ export function initAdminUsersWorkspace(root) {
         if (action === 'delete' && userId) {
             const ok = await showWorkspaceConfirm({
                 title: 'Delete user?',
-                message: `Delete ${userName} and their data? This cannot be undone.`,
+                message: `Permanently delete ${userName}'s account? Portfolio entities, journals, notes, and reminders are never removed with the user. If this user still owns any of those records, deletion will be blocked — deactivate instead.`,
                 confirmText: 'Delete',
                 variant: 'danger',
             });

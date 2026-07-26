@@ -161,8 +161,23 @@ class UserManagementController extends Controller
             return $this->actionError($request, __('You cannot delete your own account.'));
         }
 
+        if (! $user->canBeDeleted()) {
+            return $this->actionError(
+                $request,
+                $user->deleteBlockedReason() ?? __('This user cannot be deleted.')
+            );
+        }
+
         $this->flushDatabaseSessionsForUser($user);
-        $user->delete();
+
+        try {
+            $user->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            return $this->actionError(
+                $request,
+                __('This user cannot be deleted because related records still exist. Reassign owned data or deactivate the user instead.')
+            );
+        }
 
         if ($request->expectsJson()) {
             return $this->workspaceJsonResponse($request, __('User deleted.'));

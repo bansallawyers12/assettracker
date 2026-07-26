@@ -104,13 +104,29 @@ class User extends Authenticatable
 
     /**
      * Record a successful full login (after password, and after 2FA when enrolled).
+     *
+     * Uses a targeted query update so unrelated in-memory dirty attributes
+     * (e.g. after consuming a backup code) are not written back.
      */
     public function recordLogin(?string $ip): void
     {
-        $this->forceFill([
-            'last_login_at' => now(),
+        $ip = is_string($ip) ? trim($ip) : null;
+        if ($ip === '') {
+            $ip = null;
+        }
+
+        $timestamp = now();
+
+        static::query()->whereKey($this->getKey())->update([
+            'last_login_at' => $timestamp,
             'last_login_ip' => $ip,
-        ])->save();
+        ]);
+
+        $this->forceFill([
+            'last_login_at' => $timestamp,
+            'last_login_ip' => $ip,
+        ]);
+        $this->syncOriginalAttributes(['last_login_at', 'last_login_ip']);
     }
 
     /**
@@ -163,5 +179,72 @@ class User extends Authenticatable
     public function businessEntities()
     {
         return $this->hasMany(BusinessEntity::class);
+    }
+
+    public function journalEntries()
+    {
+        return $this->hasMany(JournalEntry::class, 'created_by');
+    }
+
+    public function notes()
+    {
+        return $this->hasMany(Note::class);
+    }
+
+    public function reminders()
+    {
+        return $this->hasMany(Reminder::class);
+    }
+
+    public function realEstateCompanies()
+    {
+        return $this->hasMany(RealEstateCompany::class);
+    }
+
+    /**
+     * Hard-delete is only safe when the user owns no shared portfolio or ledger data.
+     * Prefer deactivate when related records exist.
+     */
+    public function canBeDeleted(): bool
+    {
+        return $this->deleteBlockedReason() === null;
+    }
+
+    public function deleteBlockedReason(): ?string
+    {
+        if ($this->hasRelatedDeleteBlocker('business_entities_count', 'businessEntities')) {
+            return __('This user cannot be deleted because they own business entities. Reassign those entities or deactivate the user instead.');
+        }
+
+        if ($this->hasRelatedDeleteBlocker('journal_entries_count', 'journalEntries')) {
+            return __('This user cannot be deleted because they created journal entries. Deactivate the user instead.');
+        }
+
+        if ($this->hasRelatedDeleteBlocker('real_estate_companies_count', 'realEstateCompanies')) {
+            return __('This user cannot be deleted because they own real estate company records. Reassign or remove those records, or deactivate the user instead.');
+        }
+
+        if ($this->hasRelatedDeleteBlocker('notes_count', 'notes')) {
+            return __('This user cannot be deleted because they authored notes. Deactivate the user instead.');
+        }
+
+        if ($this->hasRelatedDeleteBlocker('reminders_count', 'reminders')) {
+            return __('This user cannot be deleted because they own reminders. Deactivate the user instead.');
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  non-empty-string  $countAttribute
+     * @param  non-empty-string  $relation
+     */
+    private function hasRelatedDeleteBlocker(string $countAttribute, string $relation): bool
+    {
+        if (array_key_exists($countAttribute, $this->getAttributes())) {
+            return (int) $this->getAttribute($countAttribute) > 0;
+        }
+
+        return $this->{$relation}()->exists();
     }
 }

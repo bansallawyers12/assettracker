@@ -44,9 +44,26 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        if (! $user->canBeDeleted()) {
+            return Redirect::route('profile.edit')
+                ->withErrors([
+                    'userDeletion' => $user->deleteBlockedReason()
+                        ?? __('This account cannot be deleted.'),
+                ], 'userDeletion');
+        }
+
         Auth::logout();
 
-        $user->delete();
+        try {
+            $user->delete();
+        } catch (\Illuminate\Database\QueryException $e) {
+            Auth::login($user);
+
+            return Redirect::route('profile.edit')
+                ->withErrors([
+                    'userDeletion' => __('This account cannot be deleted because related records still exist. Ask an administrator to reassign data or deactivate the account instead.'),
+                ], 'userDeletion');
+        }
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

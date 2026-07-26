@@ -28,7 +28,10 @@
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                         @if ($u->last_login_at)
-                            {{ $u->last_login_at->timezone(config('app.timezone'))->format('Y-m-d H:i') }}
+                            <div>{{ $u->last_login_at->timezone(config('app.timezone'))->format('Y-m-d H:i') }}</div>
+                            @if ($u->last_login_ip)
+                                <div class="text-xs text-gray-400 dark:text-gray-500">{{ $u->last_login_ip }}</div>
+                            @endif
                         @else
                             —
                         @endif

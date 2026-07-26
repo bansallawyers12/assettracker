@@ -676,7 +676,7 @@
                                                         <div class="grow">
                                                             <p class="text-gray-700 dark:text-gray-200">{{ $note->content }}</p>
                                                             <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                                                                Added by {{ $note->user->name ?? 'Unknown' }} on {{ $note->created_at ? $note->created_at->format('d/m/Y H:i') : 'N/A' }}
+                                                                Added by {{ $note->user?->name ?? 'Unknown' }} on {{ $note->created_at ? $note->created_at->format('d/m/Y H:i') : 'N/A' }}
                                                             </p>
                                                         </div>
                                                         <form action="{{ route('business-entities.assets.notes.destroy', [$businessEntity->id, $asset->id, $note->id]) }}" method="POST" class="ml-4">
@@ -747,7 +747,7 @@
                                                 <div class="bg-white dark:bg-gray-800 p-4 rounded-md shadow-xs border-l-4 border-yellow-400">
                                                     <p class="text-gray-700 dark:text-gray-200">{{ $reminder->content }}</p>
                                                     <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                                                        Added by {{ $reminder->user->name ?? 'Unknown' }} on {{ $reminder->created_at ? $reminder->created_at->format('d/m/Y H:i') : 'N/A' }}
+                                                        Added by {{ $reminder->user?->name ?? 'Unknown' }} on {{ $reminder->created_at ? $reminder->created_at->format('d/m/Y H:i') : 'N/A' }}
                                                     </p>
                                                     <div class="mt-2 flex items-center">
                                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">

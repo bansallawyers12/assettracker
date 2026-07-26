@@ -8,7 +8,7 @@
                     <div class="min-w-0 grow">
                         <p class="text-gray-700 dark:text-gray-200 text-sm">{{ $note->content }}</p>
                         <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">
-                            Added by {{ $note->user->name ?? 'Unknown' }} on {{ $note->created_at?->format('d/m/Y H:i') }}
+                            Added by {{ $note->user?->name ?? 'Unknown' }} on {{ $note->created_at?->format('d/m/Y H:i') }}
                         </p>
                     </div>
                     <button

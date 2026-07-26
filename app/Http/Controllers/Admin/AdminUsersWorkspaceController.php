@@ -40,6 +40,13 @@ class AdminUsersWorkspaceController extends Controller
     public static function paginatedUsers(Request $request)
     {
         return User::query()
+            ->withCount([
+                'businessEntities',
+                'journalEntries',
+                'realEstateCompanies',
+                'notes',
+                'reminders',
+            ])
             ->orderBy('name')
             ->paginate(20)
             ->withQueryString();

@@ -43,7 +43,7 @@
         <span class="sr-only">{{ __('Reset password') }}</span>
     </button>
 
-    @if (! $user->isPrimaryAdministrator() && ! $user->is(auth()->user()))
+    @if (! $user->isPrimaryAdministrator() && ! $user->is(auth()->user()) && $user->canBeDeleted())
         <button
             type="button"
             data-user-action="delete"

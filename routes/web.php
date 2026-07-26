@@ -56,10 +56,11 @@ Route::get('/phpinfo', function (Request $request) {
     }
 
     $expected = (string) config('app.phpinfo_access_token', '');
-    $token = $request->header('X-Phpinfo-Token', '');
-    if (! is_string($token) || $token === '') {
-        $token = $request->query('token', '');
-        $token = is_string($token) ? $token : '';
+    $headerToken = $request->header('X-Phpinfo-Token');
+    $token = is_string($headerToken) ? trim($headerToken) : '';
+    if ($token === '') {
+        $queryToken = $request->query('token', '');
+        $token = is_string($queryToken) ? trim($queryToken) : '';
     }
     if ($expected === '' || $token === '' || ! hash_equals($expected, $token)) {
         abort(403, 'Forbidden. Set PHPINFO_ACCESS_TOKEN in .env (local only). Prefer header X-Phpinfo-Token; ?token= also works locally.');
