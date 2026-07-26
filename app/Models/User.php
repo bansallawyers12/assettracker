@@ -201,6 +201,16 @@ class User extends Authenticatable
         return $this->hasMany(RealEstateCompany::class);
     }
 
+    public function mailMessages()
+    {
+        return $this->hasMany(MailMessage::class);
+    }
+
+    public function mailLabels()
+    {
+        return $this->hasMany(MailLabel::class);
+    }
+
     /**
      * Hard-delete is only safe when the user owns no shared portfolio or ledger data.
      * Prefer deactivate when related records exist.
@@ -230,6 +240,18 @@ class User extends Authenticatable
 
         if ($this->hasRelatedDeleteBlocker('reminders_count', 'reminders')) {
             return __('This user cannot be deleted because they own reminders. Deactivate the user instead.');
+        }
+
+        if ($this->hasRelatedDeleteBlocker('mail_messages_count', 'mailMessages')) {
+            return __('This user cannot be deleted because they have mailbox messages. Remove or reassign that mail, or deactivate the user instead.');
+        }
+
+        if ($this->hasRelatedDeleteBlocker('mail_labels_count', 'mailLabels')) {
+            return __('This user cannot be deleted because they have mail labels. Remove those labels, or deactivate the user instead.');
+        }
+
+        if ($this->hasRelatedDeleteBlocker('emails_count', 'emails')) {
+            return __('This user cannot be deleted because they have connected email accounts. Remove those accounts, or deactivate the user instead.');
         }
 
         return null;

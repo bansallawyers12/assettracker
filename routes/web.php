@@ -442,8 +442,11 @@ Route::middleware(['auth', 'super.admin'])->group(function () {
     Route::get('/admin/users/form/create', [AdminUsersWorkspaceController::class, 'createForm'])->name('admin.users.form.create');
     Route::get('/admin/users/{user}/form/password', [AdminUsersWorkspaceController::class, 'passwordForm'])->name('admin.users.form.password');
     Route::get('/admin/users/create', [UserManagementController::class, 'create'])->name('admin.users.create');
-    Route::post('/admin/users', [UserManagementController::class, 'store'])->name('admin.users.store');
     Route::patch('/admin/users/{user}/activate', [UserManagementController::class, 'activate'])->name('admin.users.activate');
+});
+
+Route::middleware(['auth', 'super.admin', 'password.confirm'])->group(function () {
+    Route::post('/admin/users', [UserManagementController::class, 'store'])->name('admin.users.store');
     Route::patch('/admin/users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('admin.users.deactivate');
     Route::patch('/admin/users/{user}/password', [UserManagementController::class, 'updatePassword'])->name('admin.users.password');
     Route::delete('/admin/users/{user}', [UserManagementController::class, 'destroy'])->name('admin.users.destroy');

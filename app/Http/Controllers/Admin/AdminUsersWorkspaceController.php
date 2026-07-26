@@ -53,6 +53,9 @@ class AdminUsersWorkspaceController extends Controller
                 'realEstateCompanies',
                 'notes',
                 'reminders',
+                'mailMessages',
+                'mailLabels',
+                'emails',
             ])
             ->orderBy('name')
             ->paginate(20)

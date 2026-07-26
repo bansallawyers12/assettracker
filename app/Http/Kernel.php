@@ -30,8 +30,6 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \Illuminate\Foundation\Http\Middleware\PreventRequestForgery::class,
             \App\Http\Middleware\PasswordSecurity::class,
-            \App\Http\Middleware\EnsureAccountActive::class,
-            \Illuminate\Session\Middleware\AuthenticateSession::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
 

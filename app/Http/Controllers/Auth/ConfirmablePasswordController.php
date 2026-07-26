@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -14,8 +15,13 @@ class ConfirmablePasswordController extends Controller
     /**
      * Show the confirm password view.
      */
-    public function show(): View
+    public function show(Request $request): View
     {
+        $redirect = $request->query('redirect');
+        if (is_string($redirect) && $this->isSafeInternalRedirect($redirect)) {
+            $request->session()->put('url.intended', $redirect);
+        }
+
         return view('auth.confirm-password');
     }
 
@@ -36,5 +42,20 @@ class ConfirmablePasswordController extends Controller
         $request->session()->put('auth.password_confirmed_at', time());
 
         return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+    private function isSafeInternalRedirect(string $redirect): bool
+    {
+        if ($redirect === '' || str_starts_with($redirect, '//')) {
+            return false;
+        }
+
+        if (str_starts_with($redirect, '/')) {
+            return ! str_starts_with($redirect, '//');
+        }
+
+        $appRoot = rtrim(URL::to('/'), '/');
+
+        return str_starts_with($redirect, $appRoot.'/') || $redirect === $appRoot;
     }
 }

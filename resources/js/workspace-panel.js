@@ -240,20 +240,20 @@ export async function submitWorkspaceForm(form, { onSuccess, savingLabel } = {})
 
         if (response.status === 422) {
             showInlineFormErrors(form, payload);
-            return { ok: false, payload };
+            return { ok: false, status: response.status, payload };
         }
 
         if (!response.ok || payload?.status === false) {
-            return { ok: false, payload };
+            return { ok: false, status: response.status, payload };
         }
 
         if (typeof onSuccess === 'function') {
             await onSuccess(payload);
         }
 
-        return { ok: true, payload };
+        return { ok: true, status: response.status, payload };
     } catch (_) {
-        return { ok: false, payload: { message: 'Could not save. Please try again.' } };
+        return { ok: false, status: 0, payload: { message: 'Could not save. Please try again.' } };
     } finally {
         hideFormSaving(form);
         delete form.dataset.savingLabel;

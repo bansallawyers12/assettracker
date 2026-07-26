@@ -181,8 +181,6 @@ class UserManagementController extends Controller
             );
         }
 
-        $this->flushPersistedSessionsForUser($user);
-
         try {
             $user->delete();
         } catch (\Illuminate\Database\QueryException $e) {
@@ -191,6 +189,8 @@ class UserManagementController extends Controller
                 __('This user cannot be deleted because related records still exist. Reassign owned data or deactivate the user instead.')
             );
         }
+
+        $this->flushPersistedSessionsForUser($user);
 
         if ($request->expectsJson()) {
             return $this->workspaceJsonResponse($request, __('User deleted.'));

@@ -15,9 +15,22 @@ import {
     notifyFormSuccess,
 } from './workspace-panel.js';
 
-function alertHttpError(status, payload) {
+function alertHttpError(status, payload, root) {
     if (status === 419) {
         showWorkspaceAlert({ title: 'Session expired', message: 'Refresh the page and try again.' });
+        return;
+    }
+
+    if (status === 423) {
+        const confirmUrl = root?.dataset?.passwordConfirmUrl || '/confirm-password';
+        const redirect = encodeURIComponent(window.location.href);
+        showWorkspaceAlert({
+            title: 'Password confirmation required',
+            message: 'Confirm your password to continue this admin action.',
+        });
+        window.setTimeout(() => {
+            window.location.assign(`${confirmUrl}?redirect=${redirect}`);
+        }, 400);
         return;
     }
 
@@ -32,10 +45,19 @@ function pageQuery(root) {
     return page && page !== '1' ? `?page=${encodeURIComponent(page)}` : '';
 }
 
-function workspaceUrl(root) {
-    const base = root.dataset.workspaceUrl;
+function withPageQuery(url, root) {
+    if (!url) {
+        return url;
+    }
     const query = pageQuery(root);
-    return `${base}${query}`;
+    if (!query) {
+        return url;
+    }
+    return url.includes('?') ? `${url}&${query.slice(1)}` : `${url}${query}`;
+}
+
+function workspaceUrl(root) {
+    return withPageQuery(root.dataset.workspaceUrl, root);
 }
 
 export function initAdminUsersWorkspace(root) {
@@ -67,7 +89,7 @@ export function initAdminUsersWorkspace(root) {
 
         if (!response.ok || !payload?.html) {
             closeWorkspacePanel();
-            alertHttpError(response.status, payload);
+            alertHttpError(response.status, payload, root);
             return;
         }
 
@@ -84,23 +106,24 @@ export function initAdminUsersWorkspace(root) {
         const action = actionEl.dataset.userAction;
         const userId = actionEl.dataset.userId;
         const userName = actionEl.dataset.userName || 'this user';
+        const actionUrl = actionEl.dataset.userUrl;
 
         if (action === 'create') {
             await loadForm(createFormUrl, 'Create user');
             return;
         }
 
-        if (action === 'password' && userId) {
-            await loadForm(`/admin/users/${userId}/form/password`, `Reset password — ${userName}`);
+        if (action === 'password' && actionUrl) {
+            await loadForm(actionUrl, `Reset password — ${userName}`);
             return;
         }
 
-        if (action === 'activate' && userId) {
-            const response = await apiFetch(`/admin/users/${userId}/activate${pageQuery(root)}`, { method: 'PATCH' });
+        if (action === 'activate' && actionUrl) {
+            const response = await apiFetch(withPageQuery(actionUrl, root), { method: 'PATCH' });
             const payload = parseJson(await response.text());
 
             if (!response.ok) {
-                alertHttpError(response.status, payload);
+                alertHttpError(response.status, payload, root);
                 return;
             }
 
@@ -113,7 +136,7 @@ export function initAdminUsersWorkspace(root) {
             return;
         }
 
-        if (action === 'deactivate' && userId) {
+        if (action === 'deactivate' && actionUrl) {
             const ok = await showWorkspaceConfirm({
                 title: 'Deactivate user?',
                 message: `${userName} will no longer be able to sign in.`,
@@ -125,11 +148,11 @@ export function initAdminUsersWorkspace(root) {
                 return;
             }
 
-            const response = await apiFetch(`/admin/users/${userId}/deactivate${pageQuery(root)}`, { method: 'PATCH' });
+            const response = await apiFetch(withPageQuery(actionUrl, root), { method: 'PATCH' });
             const payload = parseJson(await response.text());
 
             if (!response.ok) {
-                alertHttpError(response.status, payload);
+                alertHttpError(response.status, payload, root);
                 return;
             }
 
@@ -142,10 +165,10 @@ export function initAdminUsersWorkspace(root) {
             return;
         }
 
-        if (action === 'delete' && userId) {
+        if (action === 'delete' && actionUrl) {
             const ok = await showWorkspaceConfirm({
                 title: 'Delete user?',
-                message: `Permanently delete ${userName}'s account? Portfolio entities, journals, notes, and reminders are never removed with the user. If this user still owns any of those records, deletion will be blocked — deactivate instead.`,
+                message: `Permanently delete ${userName}'s account? Shared portfolio data (entities, journals, notes, reminders, mailbox) is never removed with the user — deletion is blocked while those records exist. Personal email templates and drafts for this account are removed. Prefer deactivate when unsure.`,
                 confirmText: 'Delete',
                 variant: 'danger',
             });
@@ -154,11 +177,11 @@ export function initAdminUsersWorkspace(root) {
                 return;
             }
 
-            const response = await apiFetch(`/admin/users/${userId}${pageQuery(root)}`, { method: 'DELETE' });
+            const response = await apiFetch(withPageQuery(actionUrl, root), { method: 'DELETE' });
             const payload = parseJson(await response.text());
 
             if (!response.ok) {
-                alertHttpError(response.status, payload);
+                alertHttpError(response.status, payload, root);
                 return;
             }
 
@@ -187,7 +210,7 @@ export function initAdminUsersWorkspace(root) {
         const pageSuffix = pageQuery(root);
         const originalAction = form.getAttribute('action');
         if (pageSuffix && originalAction) {
-            form.setAttribute('action', `${originalAction}${pageSuffix}`);
+            form.setAttribute('action', withPageQuery(originalAction, root));
         }
 
         const result = await submitWorkspaceForm(form);
@@ -197,6 +220,10 @@ export function initAdminUsersWorkspace(root) {
         }
 
         if (!result.ok) {
+            if (result.status === 423) {
+                alertHttpError(423, result.payload, root);
+                return;
+            }
             notifyFormFailure(form, result.payload);
             return;
         }

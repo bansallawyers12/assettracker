@@ -3,6 +3,7 @@
         class="admin-users-workspace py-8 lg:py-10"
         data-workspace-url="{{ route('admin.users.workspace') }}"
         data-create-form-url="{{ route('admin.users.form.create') }}"
+        data-password-confirm-url="{{ route('password.confirm') }}"
         data-current-page="{{ $users->currentPage() }}"
     >
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
