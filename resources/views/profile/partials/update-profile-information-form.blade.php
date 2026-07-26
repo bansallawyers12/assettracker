@@ -6,7 +6,7 @@
         <div>
             <h2 class="text-base font-semibold text-gray-900 dark:text-gray-100">{{ __('Profile information') }}</h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {{ __("Update your account's profile information and email address.") }}
+                {{ __("Update your account's display name. Your email address cannot be changed here.") }}
             </p>
         </div>
     </div>
@@ -36,14 +36,15 @@
                     <label for="email" class="bank-field-label">{{ __('Email address') }}</label>
                     <input
                         id="email"
-                        name="email"
                         type="email"
-                        required
+                        disabled
                         autocomplete="username"
                         class="bank-field-control"
-                        value="{{ old('email', $user->email) }}"
+                        value="{{ $user->email }}"
                     />
-                    <x-input-error class="bank-field-error mt-1.5" :messages="$errors->get('email')" />
+                    <p class="mt-1.5 text-sm text-gray-500 dark:text-gray-400">
+                        {{ __('Email is set when your account is created and cannot be changed. Ask an administrator if you need a different address.') }}
+                    </p>
                 </div>
             </div>
         </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -76,14 +77,26 @@ class UserManagementController extends Controller
             return back()->withErrors(['email' => __('This address is reserved for the primary administrator.')])->withInput();
         }
 
-        User::create([
-            'name' => $request->name,
-            'email' => $email,
-            'password' => $request->password,
-            'email_verified_at' => now(),
-            'password_changed_at' => now(),
-            'is_active' => true,
-        ]);
+        try {
+            User::create([
+                'name' => $request->name,
+                'email' => $email,
+                'password' => $request->password,
+                'email_verified_at' => now(),
+                'password_changed_at' => now(),
+                'is_active' => true,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'status' => false,
+                    'message' => __('The email has already been taken.'),
+                    'errors' => ['email' => [__('The email has already been taken.')]],
+                ], 422);
+            }
+
+            return back()->withErrors(['email' => __('The email has already been taken.')])->withInput();
+        }
 
         if ($request->expectsJson()) {
             return $this->workspaceJsonResponse($request, __('User created successfully.'));
