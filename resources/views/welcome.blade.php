@@ -17,7 +17,7 @@
                     <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mx-auto mb-4">
                         <x-lucide-building-2 class="w-6 h-6 text-blue-600 dark:text-blue-400" />
                     </div>
-                    <h3 class="text-base font-bold text-gray-900 dark:text-white mb-2">Business Entities CRM</h3>
+                    <h3 class="text-base font-bold text-gray-900 dark:text-white mb-2">Business Entities</h3>
                     <p class="text-sm text-gray-500 dark:text-gray-400">Track companies, trusts, and partnerships with full compliance details.</p>
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 p-6 text-center">

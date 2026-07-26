@@ -35,7 +35,6 @@ class PersonShowWorkspaceController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
 
         $businessEntities = BusinessEntity::operationalEntities()
-            ->whereNotIn('entity_type', ['Tenancy Contact', 'Property Manager'])
             ->orderBy('legal_name')
             ->get();
 

@@ -35,7 +35,7 @@ This document is the source of truth for what remains and how to apply it.
 |------|-------------------|
 | PHP | 8.3+ |
 | Laravel | 13.x |
-| Node | 22+ recommended (README still says 18+ — update in Phase 0) |
+| Node | 22+ recommended (aligned with README) |
 | Vite | 8.x (`vite.config.js`) |
 | Laravel Vite plugin | 3.1.x |
 | Tailwind CSS | 4.x via `@tailwindcss/vite` |
