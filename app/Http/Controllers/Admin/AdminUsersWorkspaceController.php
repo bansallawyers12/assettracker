@@ -29,6 +29,13 @@ class AdminUsersWorkspaceController extends Controller
 
     public function passwordForm(User $user): JsonResponse
     {
+        if ($user->isPrimaryAdministrator()) {
+            return response()->json([
+                'status' => false,
+                'message' => __('The primary administrator password cannot be reset here. Update the database password via a secure console if needed; ADMIN_PASSWORD_HASH is bootstrap-only.'),
+            ], 422);
+        }
+
         return response()->json([
             'status' => true,
             'html' => view('admin.users.partials.password-form', [

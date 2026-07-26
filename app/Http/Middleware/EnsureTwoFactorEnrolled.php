@@ -38,9 +38,21 @@ class EnsureTwoFactorEnrolled
             'profile.update',
         ];
 
+        // Temporary: primary admin may manage users after grace without 2FA.
+        // Remove this exception when enforcing admin 2FA properly.
         if ($user->isPrimaryAdministrator()) {
-            $allowed[] = 'admin.users.create';
-            $allowed[] = 'admin.users.store';
+            $allowed = array_merge($allowed, [
+                'admin.users.index',
+                'admin.users.workspace',
+                'admin.users.form.create',
+                'admin.users.form.password',
+                'admin.users.create',
+                'admin.users.store',
+                'admin.users.activate',
+                'admin.users.deactivate',
+                'admin.users.password',
+                'admin.users.destroy',
+            ]);
         }
 
         if ($route !== null && in_array($route, $allowed, true)) {

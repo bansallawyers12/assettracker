@@ -48,6 +48,8 @@ class LoginRequest extends FormRequest
         $adminEmail = strtolower(trim((string) config('admin.email')));
         $adminHash = config('admin.password_hash');
 
+        // Bootstrap-only: create the primary admin from env credentials when missing.
+        // Once the user exists, Auth::attempt (DB password) is the only login path.
         if ($adminEmail !== ''
             && is_string($adminHash)
             && $adminHash !== ''
@@ -62,22 +64,23 @@ class LoginRequest extends FormRequest
                     'email' => $email,
                     'password' => $password,
                     'email_verified_at' => now(),
+                    'password_changed_at' => now(),
                     'is_active' => true,
                 ]);
+
+                if (! $user->isAccountActive()) {
+                    RateLimiter::hit($this->throttleKey());
+
+                    throw ValidationException::withMessages([
+                        'email' => __('This account has been deactivated.'),
+                    ]);
+                }
+
+                Auth::login($user, $this->boolean('remember'));
+                RateLimiter::clear($this->throttleKey());
+
+                return;
             }
-
-            if (! $user->isAccountActive()) {
-                RateLimiter::hit($this->throttleKey());
-
-                throw ValidationException::withMessages([
-                    'email' => __('This account has been deactivated.'),
-                ]);
-            }
-
-            Auth::login($user, $this->boolean('remember'));
-            RateLimiter::clear($this->throttleKey());
-
-            return;
         }
 
         if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {

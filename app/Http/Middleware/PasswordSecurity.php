@@ -37,6 +37,7 @@ class PasswordSecurity
     {
         $creationRoutes = [
             'admin.users.store',
+            'admin.users.password',
             'password.update',
             'password.store',
         ];

@@ -12,7 +12,7 @@
     <div class="bank-form-section">
         <p class="bank-form-section-title">{{ __('Reset password') }}</p>
         <p class="bank-form-section-desc">
-            {{ __('Set a new password for :name. Existing sessions for this user will be signed out.', ['name' => $user->name]) }}
+            {{ __('Set a new password for :name. Remember tokens are cleared immediately; other sessions end on their next request (database sessions are also removed now).', ['name' => $user->name]) }}
         </p>
 
         <div class="bank-form-grid mt-4">

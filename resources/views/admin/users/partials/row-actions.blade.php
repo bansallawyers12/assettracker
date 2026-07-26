@@ -31,17 +31,19 @@
         @endif
     @endif
 
-    <button
-        type="button"
-        data-user-action="password"
-        data-user-id="{{ $user->id }}"
-        data-user-name="{{ $user->name }}"
-        title="{{ __('Reset password') }}"
-        class="{{ $btnClass }} border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
-    >
-        <x-lucide-key-round class="h-4 w-4" aria-hidden="true" />
-        <span class="sr-only">{{ __('Reset password') }}</span>
-    </button>
+    @if (! $user->isPrimaryAdministrator())
+        <button
+            type="button"
+            data-user-action="password"
+            data-user-id="{{ $user->id }}"
+            data-user-name="{{ $user->name }}"
+            title="{{ __('Reset password') }}"
+            class="{{ $btnClass }} border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
+        >
+            <x-lucide-key-round class="h-4 w-4" aria-hidden="true" />
+            <span class="sr-only">{{ __('Reset password') }}</span>
+        </button>
+    @endif
 
     @if (! $user->isPrimaryAdministrator() && ! $user->is(auth()->user()) && $user->canBeDeleted())
         <button

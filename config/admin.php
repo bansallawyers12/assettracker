@@ -4,12 +4,14 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Primary administrator (hardcoded portal login)
+    | Primary administrator (bootstrap login)
     |--------------------------------------------------------------------------
     |
-    | Only this email + password_hash pair is accepted outside normal DB
-    | credentials. The password is verified with password_verify() against
-    | the bcrypt hash below (original password is not stored in the repo).
+    | ADMIN_EMAIL + ADMIN_PASSWORD_HASH are used only to create the primary
+    | administrator on first login. After that user exists, the database
+    | password is authoritative — the env hash is not a permanent backdoor.
+    | Rotate the DB password via artisan/tinker if needed; the admin UI does
+    | not reset the primary administrator password.
     |
     */
 
