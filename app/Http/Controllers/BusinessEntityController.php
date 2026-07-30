@@ -222,22 +222,103 @@ class BusinessEntityController extends Controller
      *
      * @return View
      */
-    public function index()
+    public function index(Request $request)
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $businessEntities = BusinessEntity::query()
+        $search = trim((string) $request->input('q', ''));
+        $typeFilter = (string) $request->input('type', '');
+        $sort = (string) $request->input('sort', 'name');
+        if (! in_array($sort, ['name', 'type'], true)) {
+            $sort = 'name';
+        }
+
+        $allowedTypes = ['Sole Trader', 'Company', 'Trust', 'Partnership'];
+        if ($typeFilter !== '' && ! in_array($typeFilter, $allowedTypes, true)) {
+            $typeFilter = '';
+        }
+
+        $businessEntitiesQuery = BusinessEntity::query()
             ->operationalEntities()
-            ->with('persons')
-            ->orderBy('legal_name')
-            ->get();
+            ->with([
+                'directors.person',
+                'trustees.person',
+                'trustees.trusteeEntity',
+            ]);
+
+        if ($typeFilter !== '') {
+            $businessEntitiesQuery->where('entity_type', $typeFilter);
+        }
+
+        if ($sort === 'type') {
+            $businessEntitiesQuery->orderBy('entity_type')->orderBy('legal_name');
+        } else {
+            $businessEntitiesQuery->orderBy('legal_name');
+        }
+
+        $businessEntities = $businessEntitiesQuery->get();
 
         $tenancyContactEntities = BusinessEntity::query()
             ->where('exclude_from_financial_reports', true)
-            ->orderBy('legal_name')
+            ->when($typeFilter !== '', fn ($q) => $q->where('entity_type', $typeFilter))
+            ->orderBy($sort === 'type' ? 'entity_type' : 'legal_name')
+            ->when($sort === 'type', fn ($q) => $q->orderBy('legal_name'))
             ->get();
 
-        return view('business-entities.index', compact('businessEntities', 'tenancyContactEntities'));
+        if ($search !== '') {
+            $businessEntities = $this->filterEntitiesBySearch($businessEntities, $search);
+            $tenancyContactEntities = $this->filterEntitiesBySearch($tenancyContactEntities, $search);
+        }
+
+        $entityTypeOptions = BusinessEntity::query()
+            ->operationalEntities()
+            ->select('entity_type')
+            ->distinct()
+            ->orderBy('entity_type')
+            ->pluck('entity_type')
+            ->merge(
+                BusinessEntity::query()
+                    ->where('exclude_from_financial_reports', true)
+                    ->select('entity_type')
+                    ->distinct()
+                    ->pluck('entity_type')
+            )
+            ->unique()
+            ->sort()
+            ->values();
+
+        return view('business-entities.index', compact(
+            'businessEntities',
+            'tenancyContactEntities',
+            'search',
+            'typeFilter',
+            'sort',
+            'entityTypeOptions',
+        ));
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, BusinessEntity>  $entities
+     * @return \Illuminate\Support\Collection<int, BusinessEntity>
+     */
+    private function filterEntitiesBySearch($entities, string $search)
+    {
+        $needle = mb_strtolower($search);
+
+        return $entities
+            ->filter(function (BusinessEntity $entity) use ($needle) {
+                $haystack = mb_strtolower(implode(' ', array_filter([
+                    $entity->legal_name,
+                    $entity->trading_name,
+                    $entity->entity_type,
+                    $entity->registered_address,
+                    $entity->formattedRegisteredAddress(),
+                    ...$entity->directorOrTrusteeDisplayNames()->all(),
+                ])));
+
+                return str_contains($haystack, $needle);
+            })
+            ->values();
     }
 
     public function closedIndex(): View

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AustralianAddress;
 use App\Support\FinancialYear;
 use App\Traits\EncryptsAttributes;
 use Carbon\Carbon;
@@ -346,6 +347,16 @@ class BusinessEntity extends Model
     }
 
     /**
+     * Get all active directors for this entity.
+     */
+    public function directors()
+    {
+        return $this->hasMany(EntityPerson::class, 'business_entity_id')
+            ->where('role', 'Director')
+            ->where('role_status', 'Active');
+    }
+
+    /**
      * Get all trustees for this trust (both person and entity trustees).
      */
     public function trustees()
@@ -353,6 +364,41 @@ class BusinessEntity extends Model
         return $this->hasMany(EntityPerson::class, 'business_entity_id')
             ->where('role', 'Trustee')
             ->where('role_status', 'Active');
+    }
+
+    /**
+     * Display names for the Director / Trustee list column.
+     * Trusts use active trustees; other entities use active directors.
+     *
+     * @return Collection<int, string>
+     */
+    public function directorOrTrusteeDisplayNames(): Collection
+    {
+        $appointments = $this->isTrust() ? $this->trustees : $this->directors;
+
+        return $appointments
+            ->map(function (EntityPerson $appointment) {
+                if ($appointment->person) {
+                    return $appointment->person->displayName();
+                }
+
+                if ($appointment->trusteeEntity) {
+                    return $appointment->trusteeEntity->legal_name;
+                }
+
+                return null;
+            })
+            ->filter()
+            ->unique()
+            ->values();
+    }
+
+    /**
+     * Registered address normalised for list/detail display (stored value unchanged).
+     */
+    public function formattedRegisteredAddress(): string
+    {
+        return AustralianAddress::formatForDisplay($this->registered_address);
     }
 
     /**
