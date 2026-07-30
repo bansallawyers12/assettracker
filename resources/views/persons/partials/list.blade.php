@@ -1,12 +1,15 @@
 <div class="overflow-x-auto">
+    @php
+        $tableSort ??= \App\Support\TableSort::resolve(request(), ['name', 'email'], 'name', 'asc');
+    @endphp
     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-900/50">
             <tr>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Person</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Contact</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Roles</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Entities</th>
-                <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">Actions</th>
+                <x-sortable-table-header :label="__('Person')" column="name" :sort="$tableSort->column" :order="$tableSort->order" route="persons.index" :query="[]" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400" />
+                <x-sortable-table-header :label="__('Contact')" column="email" :sort="$tableSort->column" :order="$tableSort->order" route="persons.index" :query="[]" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400" />
+                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">{{ __('Roles') }}</th>
+                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">{{ __('Entities') }}</th>
+                <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-400">{{ __('Actions') }}</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-200 dark:divide-gray-700">

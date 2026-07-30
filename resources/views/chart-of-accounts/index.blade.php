@@ -47,13 +47,13 @@
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Code</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Account Name</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Type</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Category</th>
-                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Journal lines</th>
-                            <th scope="col" class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Status</th>
-                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Actions</th>
+                            <x-sortable-table-header :label="__('Code')" column="code" :sort="$tableSort->column" :order="$tableSort->order" route="chart-of-accounts.index" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Account Name')" column="name" :sort="$tableSort->column" :order="$tableSort->order" route="chart-of-accounts.index" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Type')" column="type" :sort="$tableSort->column" :order="$tableSort->order" route="chart-of-accounts.index" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Category')" column="category" :sort="$tableSort->column" :order="$tableSort->order" route="chart-of-accounts.index" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Journal lines')" column="journal_lines" :sort="$tableSort->column" :order="$tableSort->order" route="chart-of-accounts.index" align="right" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Status')" column="status" :sort="$tableSort->column" :order="$tableSort->order" route="chart-of-accounts.index" align="center" class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">

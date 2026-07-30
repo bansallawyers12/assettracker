@@ -14,8 +14,9 @@ class EmailTemplateController extends Controller
     public function index(Request $request): View
     {
         $templates = EmailTemplatesWorkspaceController::paginatedTemplates($request);
+        $tableSort = EmailTemplatesWorkspaceController::tableSort($request);
 
-        return view('email-templates.index', compact('templates'));
+        return view('email-templates.index', compact('templates', 'tableSort'));
     }
 
     public function create(): RedirectResponse
@@ -125,7 +126,7 @@ class EmailTemplateController extends Controller
         return response()->json([
             'status' => true,
             'message' => $message,
-            'list_html' => EmailTemplatesWorkspaceController::listHtml($templates),
+            'list_html' => EmailTemplatesWorkspaceController::listHtml($templates, $request),
         ]);
     }
 

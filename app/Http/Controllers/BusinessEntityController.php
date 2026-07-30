@@ -28,6 +28,7 @@ use App\Services\DocumentUploadService;
 use App\Services\TransactionPostingService;
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Support\SecurityAuditLogger;
+use App\Support\TableSort;
 use App\Support\TransactionCashParts;
 use App\Support\TransactionGstResolver;
 use App\Support\TransactionPayerResolver;
@@ -228,10 +229,7 @@ class BusinessEntityController extends Controller
 
         $search = trim((string) $request->input('q', ''));
         $typeFilter = (string) $request->input('type', '');
-        $sort = (string) $request->input('sort', 'name');
-        if (! in_array($sort, ['name', 'type'], true)) {
-            $sort = 'name';
-        }
+        $tableSort = TableSort::resolve($request, ['name', 'type', 'officer', 'address'], 'name', 'asc');
 
         $allowedTypes = ['Sole Trader', 'Company', 'Trust', 'Partnership'];
         if ($typeFilter !== '' && ! in_array($typeFilter, $allowedTypes, true)) {
@@ -250,25 +248,34 @@ class BusinessEntityController extends Controller
             $businessEntitiesQuery->where('entity_type', $typeFilter);
         }
 
-        if ($sort === 'type') {
-            $businessEntitiesQuery->orderBy('entity_type')->orderBy('legal_name');
-        } else {
-            $businessEntitiesQuery->orderBy('legal_name');
-        }
-
         $businessEntities = $businessEntitiesQuery->get();
 
         $tenancyContactEntities = BusinessEntity::query()
             ->where('exclude_from_financial_reports', true)
             ->when($typeFilter !== '', fn ($q) => $q->where('entity_type', $typeFilter))
-            ->orderBy($sort === 'type' ? 'entity_type' : 'legal_name')
-            ->when($sort === 'type', fn ($q) => $q->orderBy('legal_name'))
             ->get();
 
         if ($search !== '') {
             $businessEntities = $this->filterEntitiesBySearch($businessEntities, $search);
             $tenancyContactEntities = $this->filterEntitiesBySearch($tenancyContactEntities, $search);
         }
+
+        $businessEntities = $tableSort->sortCollection($businessEntities, function (BusinessEntity $entity, string $column) {
+            return match ($column) {
+                'type' => $entity->entity_type,
+                'officer' => $entity->directorOrTrusteeDisplayNames()->first(),
+                'address' => $entity->formattedRegisteredAddress(),
+                default => $entity->legal_name,
+            };
+        });
+
+        $tenancySort = TableSort::resolve($request, ['name', 'type'], in_array($tableSort->column, ['name', 'type'], true) ? $tableSort->column : 'name', $tableSort->order);
+        $tenancyContactEntities = $tenancySort->sortCollection($tenancyContactEntities, function (BusinessEntity $entity, string $column) {
+            return match ($column) {
+                'type' => $entity->entity_type,
+                default => $entity->legal_name,
+            };
+        });
 
         $entityTypeOptions = BusinessEntity::query()
             ->operationalEntities()
@@ -287,14 +294,40 @@ class BusinessEntityController extends Controller
             ->sort()
             ->values();
 
+        $sortQuery = array_filter(['q' => $search, 'type' => $typeFilter]);
+
         return view('business-entities.index', compact(
             'businessEntities',
             'tenancyContactEntities',
             'search',
             'typeFilter',
-            'sort',
+            'tableSort',
+            'tenancySort',
+            'sortQuery',
             'entityTypeOptions',
         ));
+    }
+
+    public function closedIndex(Request $request): View
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $tableSort = TableSort::resolve($request, ['name', 'type', 'closed_date', 'reason'], 'closed_date', 'desc');
+
+        $businessEntities = BusinessEntity::query()
+            ->closedEntities()
+            ->get();
+
+        $businessEntities = $tableSort->sortCollection($businessEntities, function (BusinessEntity $entity, string $column) {
+            return match ($column) {
+                'type' => $entity->entity_type,
+                'closed_date' => $entity->closed_date?->format('Y-m-d') ?? '',
+                'reason' => $entity->closed_reason,
+                default => $entity->legal_name,
+            };
+        });
+
+        return view('business-entities.closed-index', compact('businessEntities', 'tableSort'));
     }
 
     /**
@@ -319,19 +352,6 @@ class BusinessEntityController extends Controller
                 return str_contains($haystack, $needle);
             })
             ->values();
-    }
-
-    public function closedIndex(): View
-    {
-        $this->authorize('viewAny', BusinessEntity::class);
-
-        $businessEntities = BusinessEntity::query()
-            ->closedEntities()
-            ->orderByDesc('closed_date')
-            ->orderBy('legal_name')
-            ->get();
-
-        return view('business-entities.closed-index', compact('businessEntities'));
     }
 
     /**
@@ -2713,21 +2733,31 @@ class BusinessEntityController extends Controller
      *
      * @return View
      */
-    public function bankAccountsIndex()
+    public function bankAccountsIndex(Request $request)
     {
         $this->authorize('viewAny', BusinessEntity::class);
+
+        $tableSort = TableSort::resolve($request, ['account', 'bsb', 'number', 'purpose'], 'account', 'asc');
 
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $bankAccounts = BankAccount::query()
             ->visibleInPortfolio()
             ->withDeleteCounts()
             ->with(['businessEntity', 'holderEntity', 'holderPerson', 'bankStatementEntries.transaction'])
-            ->orderBy('account_name')
             ->get();
+
+        $bankAccounts = $tableSort->sortCollection($bankAccounts, function (BankAccount $account, string $column) {
+            return match ($column) {
+                'bsb' => $account->bsb,
+                'number' => $account->account_number,
+                'purpose' => $account->account_purpose,
+                default => $account->account_name,
+            };
+        });
 
         $holderGroups = BankAccount::groupedByHolder($bankAccounts);
 
-        return view('bank-accounts.index', compact('bankAccounts', 'businessEntities', 'holderGroups'));
+        return view('bank-accounts.index', compact('bankAccounts', 'businessEntities', 'holderGroups', 'tableSort'));
     }
 
     public function createPortfolioBankAccount()
@@ -2839,31 +2869,37 @@ class BusinessEntityController extends Controller
      *
      * @return View
      */
-    public function transactionsIndex()
+    public function transactionsIndex(Request $request)
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
+        $tableSort = TableSort::resolve(
+            $request,
+            ['date', 'entity', 'asset', 'bank', 'type', 'amount', 'vendor', 'payment', 'due', 'description'],
+            'date',
+            'desc'
+        );
+
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
 
-        $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries', 'asset', 'relatedEntity', 'vendor', 'lines'])
-            ->orderBy('date', 'desc');
+        $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries', 'asset', 'relatedEntity', 'vendor', 'lines']);
 
-        if ($entityId = request('entity_id')) {
+        if ($entityId = $request->input('entity_id')) {
             $query->where('business_entity_id', $entityId);
         }
 
-        if ($type = request('type')) {
+        if ($type = $request->input('type')) {
             $query->where(function ($q) use ($type) {
                 $q->where('transaction_type', $type)
                     ->orWhereHas('lines', fn ($lq) => $lq->where('transaction_type', $type));
             });
         }
 
-        if (($ps = request('payment_status')) && in_array($ps, ['paid', 'unpaid'], true)) {
+        if (($ps = $request->input('payment_status')) && in_array($ps, ['paid', 'unpaid'], true)) {
             $query->where('payment_status', $ps);
         }
 
-        if (($dir = request('direction')) && in_array($dir, ['income', 'expense'], true)) {
+        if (($dir = $request->input('direction')) && in_array($dir, ['income', 'expense'], true)) {
             $typeKeys = $dir === 'income'
                 ? array_keys(Transaction::$incomeTypes)
                 : array_keys(Transaction::$expenseTypes);
@@ -2878,7 +2914,29 @@ class BusinessEntityController extends Controller
 
         $transactions = $query->get();
 
-        return view('transactions.index', compact('transactions', 'businessEntities'));
+        $transactions = $tableSort->sortCollection($transactions, function (Transaction $tx, string $column) {
+            return match ($column) {
+                'entity' => $tx->businessEntity?->legal_name,
+                'asset' => $tx->asset?->name,
+                'bank' => $tx->bankAccount?->account_name,
+                'type' => $tx->transaction_type,
+                'amount' => $tx->amount,
+                'vendor' => $tx->vendor_display,
+                'payment' => $tx->payment_status,
+                'due' => $tx->due_date?->format('Y-m-d'),
+                'description' => $tx->description,
+                default => $tx->date?->format('Y-m-d'),
+            };
+        });
+
+        $sortQuery = array_filter([
+            'entity_id' => $request->input('entity_id'),
+            'type' => $request->input('type'),
+            'direction' => $request->input('direction'),
+            'payment_status' => $request->input('payment_status'),
+        ], fn ($value) => $value !== null && $value !== '');
+
+        return view('transactions.index', compact('transactions', 'businessEntities', 'tableSort', 'sortQuery'));
     }
 
     /**

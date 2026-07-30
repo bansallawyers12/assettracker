@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BusinessEntity;
 use App\Models\EntityPerson;
 use App\Models\Person;
+use App\Support\TableSort;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,7 +17,7 @@ class PersonsIndexWorkspaceController extends Controller
 
         return response()->json([
             'status' => true,
-            'list_html' => self::listHtml($persons),
+            'list_html' => self::listHtml($persons, $request),
             'stats_html' => self::statsHtml(),
         ]);
     }
@@ -35,19 +36,34 @@ class PersonsIndexWorkspaceController extends Controller
 
     public static function paginatedPersons(Request $request)
     {
-        return Person::query()
+        $tableSort = TableSort::resolve($request, ['name', 'email'], 'name', 'asc');
+
+        $query = Person::query()
             ->with(['entityPersons.businessEntity'])
-            ->has('entityPersons')
-            ->orderBy('last_name')
-            ->orderBy('first_name')
+            ->has('entityPersons');
+
+        $tableSort->applyToQuery($query, [
+            'name' => ['last_name', 'first_name'],
+            'email' => 'email',
+        ], 'name');
+
+        return $query
             ->paginate(15)
             ->withQueryString();
     }
 
-    public static function listHtml($persons): string
+    public static function tableSort(Request $request): TableSort
     {
+        return TableSort::resolve($request, ['name', 'email'], 'name', 'asc');
+    }
+
+    public static function listHtml($persons, ?Request $request = null): string
+    {
+        $request ??= request();
+
         return view('persons.partials.list', [
             'persons' => $persons,
+            'tableSort' => self::tableSort($request),
         ])->render();
     }
 

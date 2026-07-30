@@ -24,10 +24,11 @@
                         <table class="min-w-full bg-white">
                             <thead>
                                 <tr>
-                                    <th class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
-                                    <th class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
-                                    <th class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Phone</th>
-                                    <th class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
+                                    @php $contactRouteParams = ['business_entity' => $businessEntity->id]; @endphp
+                                    <x-sortable-table-header :label="__('Name')" column="name" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.contact-lists.index" :route-params="$contactRouteParams" class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" />
+                                    <x-sortable-table-header :label="__('Email')" column="email" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.contact-lists.index" :route-params="$contactRouteParams" class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" />
+                                    <x-sortable-table-header :label="__('Phone')" column="phone" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.contact-lists.index" :route-params="$contactRouteParams" class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider" />
+                                    <th class="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">{{ __('Actions') }}</th>
                                 </tr>
                             </thead>
                             <tbody>

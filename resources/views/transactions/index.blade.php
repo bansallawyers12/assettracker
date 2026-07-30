@@ -19,6 +19,8 @@
         @endif
 
         <form method="GET" action="{{ route('transactions.index') }}" class="mb-6 flex flex-wrap gap-3 items-end">
+            <input type="hidden" name="sort" value="{{ $tableSort->column }}">
+            <input type="hidden" name="order" value="{{ $tableSort->order }}">
             <div>
                 <label for="entity_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Filter by Entity</label>
                 <x-tom-select id="entity_filter" name="entity_id" onchange="this.form.submit()" class="rounded-lg focus:ring-purple-500 focus:border-purple-500">
@@ -58,7 +60,7 @@
                     <option value="unpaid" {{ request('payment_status') === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
                 </select>
             </div>
-            @if (request()->hasAny(['entity_id', 'type', 'direction', 'payment_status']))
+            @if (request()->hasAny(['entity_id', 'type', 'direction', 'payment_status', 'sort', 'order']))
                 <a href="{{ route('transactions.index') }}" class="inline-flex items-center px-3 py-2 text-xs text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
                     Clear filters
                 </a>
@@ -75,21 +77,21 @@
                 <table class="min-w-full text-sm">
                     <thead class="bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Actions</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Date</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Entity</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Asset</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Bank Account</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Type</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Invoice #</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Payment</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Paid by</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Received by</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Due</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Description</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Vendor</th>
-                            <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300">Amount</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Matched</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{{ __('Actions') }}</th>
+                            <x-sortable-table-header :label="__('Date')" column="date" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Entity')" column="entity" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Asset')" column="asset" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Bank Account')" column="bank" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Type')" column="type" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{{ __('Invoice #') }}</th>
+                            <x-sortable-table-header :label="__('Payment')" column="payment" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{{ __('Paid by') }}</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{{ __('Received by') }}</th>
+                            <x-sortable-table-header :label="__('Due')" column="due" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Description')" column="description" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Vendor')" column="vendor" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Amount')" column="amount" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" align="right" class="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{{ __('Matched') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">

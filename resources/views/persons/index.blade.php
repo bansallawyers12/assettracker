@@ -37,7 +37,7 @@
 
             <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-700 dark:bg-gray-800">
                 <div data-persons-list>
-                    @include('persons.partials.list', ['persons' => $persons])
+                    @include('persons.partials.list', ['persons' => $persons, 'tableSort' => $tableSort])
                 </div>
             </div>
         </div>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\TableSort;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,7 +16,7 @@ class AdminUsersWorkspaceController extends Controller
 
         return response()->json([
             'status' => true,
-            'list_html' => self::listHtml($users),
+            'list_html' => self::listHtml($users, $request),
         ]);
     }
 
@@ -46,7 +47,9 @@ class AdminUsersWorkspaceController extends Controller
 
     public static function paginatedUsers(Request $request)
     {
-        return User::query()
+        $tableSort = TableSort::resolve($request, ['name', 'email', 'status', 'last_login'], 'name', 'asc');
+
+        $query = User::query()
             ->withCount([
                 'businessEntities',
                 'journalEntries',
@@ -56,16 +59,36 @@ class AdminUsersWorkspaceController extends Controller
                 'mailMessages',
                 'mailLabels',
                 'emails',
-            ])
-            ->orderBy('name')
+            ]);
+
+        if (in_array($tableSort->column, ['name', 'email', 'last_login', 'status'], true)) {
+            $tableSort->applyToQuery($query, [
+                'name' => 'name',
+                'email' => 'email',
+                'last_login' => 'last_login_at',
+                'status' => 'is_active',
+            ], 'name');
+        } else {
+            $query->orderBy('name');
+        }
+
+        return $query
             ->paginate(20)
             ->withQueryString();
     }
 
-    public static function listHtml($users): string
+    public static function tableSort(Request $request): TableSort
     {
+        return TableSort::resolve($request, ['name', 'email', 'status', 'last_login'], 'name', 'asc');
+    }
+
+    public static function listHtml($users, ?Request $request = null): string
+    {
+        $request ??= request();
+
         return view('admin.users.partials.list', [
             'users' => $users,
+            'tableSort' => self::tableSort($request),
         ])->render();
     }
 }

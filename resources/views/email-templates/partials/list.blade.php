@@ -1,11 +1,14 @@
 @if ($templates->count() > 0)
+    @php
+        $tableSort ??= \App\Support\TableSort::resolve(request(), ['name', 'subject', 'updated'], 'name', 'asc');
+    @endphp
     <div class="hidden md:block overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead class="bg-gray-50 dark:bg-gray-900/50">
                 <tr>
-                    <th scope="col" class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Template') }}</th>
-                    <th scope="col" class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Subject') }}</th>
-                    <th scope="col" class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Updated') }}</th>
+                    <x-sortable-table-header :label="__('Template')" column="name" :sort="$tableSort->column" :order="$tableSort->order" route="email-templates.index" class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" />
+                    <x-sortable-table-header :label="__('Subject')" column="subject" :sort="$tableSort->column" :order="$tableSort->order" route="email-templates.index" class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" />
+                    <x-sortable-table-header :label="__('Updated')" column="updated" :sort="$tableSort->column" :order="$tableSort->order" route="email-templates.index" class="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400" />
                     <th scope="col" class="px-5 py-3.5 text-right text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">{{ __('Actions') }}</th>
                 </tr>
             </thead>

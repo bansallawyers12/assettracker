@@ -1,11 +1,14 @@
 <div class="overflow-x-auto">
+    @php
+        $tableSort ??= \App\Support\TableSort::resolve(request(), ['name', 'email', 'status', 'last_login'], 'name', 'asc');
+    @endphp
     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
         <thead class="bg-gray-50 dark:bg-gray-900/50">
             <tr>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ __('Name') }}</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ __('Email') }}</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ __('Status') }}</th>
-                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ __('Last login') }}</th>
+                <x-sortable-table-header :label="__('Name')" column="name" :sort="$tableSort->column" :order="$tableSort->order" route="admin.users.index" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider" />
+                <x-sortable-table-header :label="__('Email')" column="email" :sort="$tableSort->column" :order="$tableSort->order" route="admin.users.index" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider" />
+                <x-sortable-table-header :label="__('Status')" column="status" :sort="$tableSort->column" :order="$tableSort->order" route="admin.users.index" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider" />
+                <x-sortable-table-header :label="__('Last login')" column="last_login" :sort="$tableSort->column" :order="$tableSort->order" route="admin.users.index" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider" />
                 <th scope="col" class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ __('Actions') }}</th>
             </tr>
         </thead>

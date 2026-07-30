@@ -8,6 +8,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\BusinessEntity;
 use App\Services\InvoicePostingService;
+use App\Support\TableSort;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
@@ -16,27 +17,55 @@ class InvoiceController extends Controller
 {
 	use EnsuresOperationalBusinessEntity;
 
-	public function index(?BusinessEntity $businessEntity = null)
+	public function index(Request $request, ?BusinessEntity $businessEntity = null)
 	{
+		$tableSort = TableSort::resolve(
+			$request,
+			['number', 'entity', 'customer', 'issue', 'total', 'status'],
+			'issue',
+			'desc'
+		);
+
 		if ($businessEntity) {
 			$this->authorize('view', $businessEntity);
 			$this->ensureOperationalForAccounting($businessEntity);
 
-			$invoices = Invoice::where('business_entity_id', $businessEntity->id)
-				->with(['asset'])
-				->orderByDesc('issue_date')
-				->paginate(20);
+			$query = Invoice::where('business_entity_id', $businessEntity->id)->with(['asset']);
+			$tableSort->applyToQuery($query, [
+				'number' => 'invoice_number',
+				'customer' => 'customer_name',
+				'issue' => 'issue_date',
+				'total' => 'total_amount',
+				'status' => 'status',
+			], 'issue');
 
-			return view('invoices.index', compact('businessEntity', 'invoices'));
+			$invoices = $query->paginate(20)->withQueryString();
+
+			return view('invoices.index', compact('businessEntity', 'invoices', 'tableSort'));
 		}
 
-		$invoices = Invoice::query()
+		$query = Invoice::query()
 			->whereIn('business_entity_id', BusinessEntity::query()->operationalEntities()->pluck('id'))
-			->with(['asset', 'businessEntity'])
-			->orderByDesc('issue_date')
-			->paginate(30);
+			->with(['asset', 'businessEntity']);
 
-		return view('invoices.index', compact('invoices'));
+		if ($tableSort->column === 'entity') {
+			$query->join('business_entities', 'invoices.business_entity_id', '=', 'business_entities.id')
+				->select('invoices.*')
+				->orderBy('business_entities.legal_name', $tableSort->order)
+				->orderByDesc('invoices.issue_date');
+		} else {
+			$tableSort->applyToQuery($query, [
+				'number' => 'invoice_number',
+				'customer' => 'customer_name',
+				'issue' => 'issue_date',
+				'total' => 'total_amount',
+				'status' => 'status',
+			], 'issue');
+		}
+
+		$invoices = $query->paginate(30)->withQueryString();
+
+		return view('invoices.index', compact('invoices', 'tableSort'));
 	}
 
 	public function create(BusinessEntity $businessEntity)

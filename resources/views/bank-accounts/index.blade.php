@@ -48,6 +48,7 @@
     <div data-bank-accounts-list>
         @include('bank-accounts.partials.portfolio.list', [
             'holderGroups' => $holderGroups ?? [],
+            'tableSort' => $tableSort,
         ])
     </div>
 </div>

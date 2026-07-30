@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Vendor;
 use App\Services\VendorSyncService;
+use App\Support\TableSort;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -13,17 +14,32 @@ class VendorController extends Controller
         private readonly VendorSyncService $vendorSync
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
-        $vendors = Vendor::query()
-            ->withCount('transactions')
-            ->orderBy('name')
-            ->get();
+        $tableSort = TableSort::resolve($request, ['name', 'email', 'phone', 'abn', 'transactions'], 'name', 'asc');
+        $unlinkedSort = TableSort::resolve($request, ['label', 'count'], 'label', 'asc');
+
+        $query = Vendor::query()->withCount('transactions');
+        $tableSort->applyToQuery($query, [
+            'name' => 'name',
+            'email' => 'email',
+            'phone' => 'phone',
+            'abn' => 'abn',
+            'transactions' => 'transactions_count',
+        ], 'name');
+        $vendors = $query->get();
 
         $unlinkedGroups = $this->vendorSync->unlinkedVendorNameGroups();
+        $unlinkedGroups = $unlinkedSort->sortCollection($unlinkedGroups, function ($group, string $column) {
+            return match ($column) {
+                'count' => (int) $group->transaction_count,
+                default => $group->label,
+            };
+        });
+
         $referenceAreas = $this->vendorSync->referenceAreas();
 
-        return view('vendors.index', compact('vendors', 'unlinkedGroups', 'referenceAreas'));
+        return view('vendors.index', compact('vendors', 'unlinkedGroups', 'referenceAreas', 'tableSort', 'unlinkedSort'));
     }
 
     public function create()

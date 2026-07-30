@@ -31,10 +31,10 @@
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-rose-50 dark:bg-rose-950/30">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('Entity') }}</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('Type') }}</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('Closed date') }}</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('Reason') }}</th>
+                                    <x-sortable-table-header :label="__('Entity')" column="name" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.closed.index" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider" />
+                                    <x-sortable-table-header :label="__('Type')" column="type" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.closed.index" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider" />
+                                    <x-sortable-table-header :label="__('Closed date')" column="closed_date" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.closed.index" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider" />
+                                    <x-sortable-table-header :label="__('Reason')" column="reason" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.closed.index" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider" />
                                     <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-28">{{ __('Actions') }}</th>
                                 </tr>
                             </thead>

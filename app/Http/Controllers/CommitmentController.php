@@ -9,6 +9,7 @@ use App\Models\BusinessEntity;
 use App\Models\Commitment;
 use App\Models\CommitmentPayment;
 use App\Services\CommitmentReportService;
+use App\Support\TableSort;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -26,12 +27,11 @@ class CommitmentController extends Controller
     {
         $this->authorize('viewAny', Commitment::class);
 
+        $tableSort = TableSort::resolve($request, ['name', 'entity', 'type', 'price', 'paid', 'balance', 'settlement', 'status'], 'settlement', 'asc');
+
         $query = Commitment::query()
             ->with(['businessEntity', 'payments'])
-            ->forOperationalEntities()
-            ->orderByRaw('CASE WHEN settlement_date IS NULL THEN 1 ELSE 0 END')
-            ->orderBy('settlement_date')
-            ->orderBy('name');
+            ->forOperationalEntities();
 
         $status = $request->query('status', 'Active');
         if ($status !== 'all' && in_array($status, Commitment::STATUSES, true)) {
@@ -49,10 +49,40 @@ class CommitmentController extends Controller
             $query->where('commitment_type', $request->query('type'));
         }
 
-        $commitments = $query->paginate(20)->withQueryString();
+        $commitments = $query->get();
+
+        $commitments = $tableSort->sortCollection($commitments, function (Commitment $commitment, string $column) {
+            return match ($column) {
+                'entity' => $commitment->businessEntity?->legal_name,
+                'type' => $commitment->commitment_type,
+                'price' => $commitment->contract_price,
+                'paid' => $commitment->total_paid,
+                'balance' => $commitment->balance_due,
+                'settlement' => $commitment->settlement_date?->format('Y-m-d') ?? '',
+                'status' => $commitment->status,
+                default => $commitment->name,
+            };
+        });
+
+        $sortQuery = array_filter([
+            'status' => $status !== 'Active' ? $status : null,
+            'entity' => $request->input('entity'),
+            'type' => $request->input('type'),
+        ], fn ($value) => $value !== null && $value !== '');
+
+        $perPage = 20;
+        $page = max(1, (int) $request->input('page', 1));
+        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+            $commitments->forPage($page, $perPage)->values(),
+            $commitments->count(),
+            $perPage,
+            $page,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
 
-        return view('commitments.index', compact('commitments', 'businessEntities', 'status'));
+        return view('commitments.index', compact('commitments', 'paginated', 'businessEntities', 'status', 'tableSort', 'sortQuery'));
     }
 
     public function create(BusinessEntity $businessEntity): View

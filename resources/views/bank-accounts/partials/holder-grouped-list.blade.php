@@ -73,10 +73,17 @@
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-white dark:bg-gray-900">
                             <tr>
-                                <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Account</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">BSB</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Account No.</th>
-                                <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Purpose</th>
+                                @if($tableSort ?? null)
+                                    <x-sortable-table-header :label="__('Account')" column="account" :sort="$tableSort->column" :order="$tableSort->order" route="bank-accounts.index" class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300" />
+                                    <x-sortable-table-header :label="__('BSB')" column="bsb" :sort="$tableSort->column" :order="$tableSort->order" route="bank-accounts.index" class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300" />
+                                    <x-sortable-table-header :label="__('Account No.')" column="number" :sort="$tableSort->column" :order="$tableSort->order" route="bank-accounts.index" class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300" />
+                                    <x-sortable-table-header :label="__('Purpose')" column="purpose" :sort="$tableSort->column" :order="$tableSort->order" route="bank-accounts.index" class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300" />
+                                @else
+                                    <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">{{ __('Account') }}</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">{{ __('BSB') }}</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">{{ __('Account No.') }}</th>
+                                    <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">{{ __('Purpose') }}</th>
+                                @endif
                                 @if($useEntityLinks)
                                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Linked assets</th>
                                 @endif

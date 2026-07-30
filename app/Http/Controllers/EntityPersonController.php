@@ -7,6 +7,7 @@ use App\Models\EntityPerson;
 use App\Models\BusinessEntity;
 use App\Models\BankAccount;
 use App\Models\Person;
+use App\Support\TableSort;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,12 +18,27 @@ class EntityPersonController extends Controller
     /**
      * Display a listing of entity-person relationships.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $tableSort = TableSort::resolve($request, ['entity', 'person', 'role', 'appointment', 'asic_due'], 'entity', 'asc');
+
         $entityPersons = EntityPerson::with(['businessEntity', 'person', 'trusteeEntity'])
             ->where('role_status', 'Active')
             ->get();
-        return view('entity-persons.index', compact('entityPersons'));
+
+        $entityPersons = $tableSort->sortCollection($entityPersons, function (EntityPerson $entityPerson, string $column) {
+            return match ($column) {
+                'person' => $entityPerson->person
+                    ? trim($entityPerson->person->first_name.' '.$entityPerson->person->last_name)
+                    : ($entityPerson->trusteeEntity?->legal_name ?? ''),
+                'role' => $entityPerson->role,
+                'appointment' => $entityPerson->appointment_date?->format('Y-m-d') ?? '',
+                'asic_due' => $entityPerson->asic_due_date?->format('Y-m-d') ?? '',
+                default => $entityPerson->businessEntity?->legal_name ?? '',
+            };
+        });
+
+        return view('entity-persons.index', compact('entityPersons', 'tableSort'));
     }
 
     /**
@@ -331,11 +347,12 @@ class EntityPersonController extends Controller
     public function indexPersons(Request $request)
     {
         $persons = PersonsIndexWorkspaceController::paginatedPersons($request);
+        $tableSort = PersonsIndexWorkspaceController::tableSort($request);
         $totalPersons = Person::has('entityPersons')->count();
         $activeRoles = EntityPerson::where('role_status', 'Active')->count();
         $multiRolePersons = Person::has('entityPersons', '>=', 2)->count();
 
-        return view('persons.index', compact('persons', 'totalPersons', 'activeRoles', 'multiRolePersons'));
+        return view('persons.index', compact('persons', 'tableSort', 'totalPersons', 'activeRoles', 'multiRolePersons'));
     }
 
     /**
@@ -392,7 +409,7 @@ class EntityPersonController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Person created successfully.',
-                'list_html' => PersonsIndexWorkspaceController::listHtml($persons),
+                'list_html' => PersonsIndexWorkspaceController::listHtml($persons, $request),
                 'stats_html' => PersonsIndexWorkspaceController::statsHtml(),
             ]);
         }

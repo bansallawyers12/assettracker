@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ContactList;
 use App\Models\BusinessEntity;
+use App\Support\TableSort;
 use Illuminate\Http\Request;
 
 class ContactListController extends Controller
@@ -11,11 +12,26 @@ class ContactListController extends Controller
     /**
      * Display a listing of the contacts for a specific business entity.
      */
-    public function index(BusinessEntity $businessEntity)
+    public function index(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
-        $contacts = $businessEntity->contactLists()->latest()->paginate(10);
-        return view('contact-lists.index', compact('businessEntity', 'contacts'));
+
+        $tableSort = TableSort::resolve($request, ['name', 'email', 'phone'], 'name', 'asc');
+
+        $query = $businessEntity->contactLists();
+
+        if ($tableSort->column === 'phone') {
+            $query->orderByRaw('COALESCE(mobile_no, phone_no) '.$tableSort->order);
+        } else {
+            $tableSort->applyToQuery($query, [
+                'name' => ['last_name', 'first_name'],
+                'email' => 'email',
+            ], 'name');
+        }
+
+        $contacts = $query->paginate(10)->withQueryString();
+
+        return view('contact-lists.index', compact('businessEntity', 'contacts', 'tableSort'));
     }
 
     /**

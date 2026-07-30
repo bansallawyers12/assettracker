@@ -29,12 +29,12 @@
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                         <thead class="bg-gray-50 dark:bg-gray-700">
                             <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Business Entity</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Person/Trustee</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Appointment Date</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ASIC Due Date</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
+                                <x-sortable-table-header :label="__('Business Entity')" column="entity" :sort="$tableSort->column" :order="$tableSort->order" route="entity-persons.index" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" />
+                                <x-sortable-table-header :label="__('Person/Trustee')" column="person" :sort="$tableSort->column" :order="$tableSort->order" route="entity-persons.index" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" />
+                                <x-sortable-table-header :label="__('Role')" column="role" :sort="$tableSort->column" :order="$tableSort->order" route="entity-persons.index" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" />
+                                <x-sortable-table-header :label="__('Appointment Date')" column="appointment" :sort="$tableSort->column" :order="$tableSort->order" route="entity-persons.index" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" />
+                                <x-sortable-table-header :label="__('ASIC Due Date')" column="asic_due" :sort="$tableSort->column" :order="$tableSort->order" route="entity-persons.index" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider" />
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">{{ __('Actions') }}</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">

@@ -32,8 +32,9 @@ class UserManagementController extends Controller
     public function index(Request $request): View
     {
         $users = AdminUsersWorkspaceController::paginatedUsers($request);
+        $tableSort = AdminUsersWorkspaceController::tableSort($request);
 
-        return view('admin.users.index', compact('users'));
+        return view('admin.users.index', compact('users', 'tableSort'));
     }
 
     public function create(): RedirectResponse
@@ -219,7 +220,7 @@ class UserManagementController extends Controller
         return response()->json([
             'status' => true,
             'message' => $message,
-            'list_html' => AdminUsersWorkspaceController::listHtml($users),
+            'list_html' => AdminUsersWorkspaceController::listHtml($users, $request),
         ]);
     }
 

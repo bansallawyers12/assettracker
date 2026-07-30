@@ -31,7 +31,7 @@
 
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xs border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div data-admin-users-list>
-                    @include('admin.users.partials.list', ['users' => $users])
+                    @include('admin.users.partials.list', ['users' => $users, 'tableSort' => $tableSort])
                 </div>
             </div>
         </div>

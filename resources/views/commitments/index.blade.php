@@ -29,6 +29,8 @@
         @endif
 
         <form method="GET" class="mb-6 flex flex-wrap gap-3 items-end">
+            <input type="hidden" name="sort" value="{{ $tableSort->column }}">
+            <input type="hidden" name="order" value="{{ $tableSort->order }}">
             <div>
                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
                 <select name="status" class="rounded-md border-gray-300 text-sm dark:bg-gray-800 dark:border-gray-600">
@@ -59,7 +61,7 @@
             <button type="submit" class="px-4 py-2 text-sm font-medium rounded-md bg-blue-600 text-white hover:bg-blue-700">Filter</button>
         </form>
 
-        @if($commitments->isEmpty())
+        @if($paginated->isEmpty())
             <div class="text-center py-16 text-gray-400">
                 <p class="text-sm">No commitments found.</p>
             </div>
@@ -69,18 +71,18 @@
                     <table class="min-w-full text-sm">
                         <thead class="bg-gray-50 dark:bg-gray-900/50 text-xs uppercase text-gray-500">
                             <tr>
-                                <th class="px-4 py-3 text-left">Name</th>
-                                <th class="px-4 py-3 text-left">Entity</th>
-                                <th class="px-4 py-3 text-left">Type</th>
-                                <th class="px-4 py-3 text-right">Price</th>
-                                <th class="px-4 py-3 text-right">Paid</th>
-                                <th class="px-4 py-3 text-right">Balance</th>
-                                <th class="px-4 py-3 text-left">Settlement</th>
-                                <th class="px-4 py-3 text-left">Status</th>
+                                <x-sortable-table-header :label="__('Name')" column="name" :sort="$tableSort->column" :order="$tableSort->order" route="commitments.index" :query="$sortQuery" class="px-4 py-3 text-left text-xs uppercase text-gray-500" />
+                                <x-sortable-table-header :label="__('Entity')" column="entity" :sort="$tableSort->column" :order="$tableSort->order" route="commitments.index" :query="$sortQuery" class="px-4 py-3 text-left text-xs uppercase text-gray-500" />
+                                <x-sortable-table-header :label="__('Type')" column="type" :sort="$tableSort->column" :order="$tableSort->order" route="commitments.index" :query="$sortQuery" class="px-4 py-3 text-left text-xs uppercase text-gray-500" />
+                                <x-sortable-table-header :label="__('Price')" column="price" :sort="$tableSort->column" :order="$tableSort->order" route="commitments.index" :query="$sortQuery" align="right" class="px-4 py-3 text-right text-xs uppercase text-gray-500" />
+                                <x-sortable-table-header :label="__('Paid')" column="paid" :sort="$tableSort->column" :order="$tableSort->order" route="commitments.index" :query="$sortQuery" align="right" class="px-4 py-3 text-right text-xs uppercase text-gray-500" />
+                                <x-sortable-table-header :label="__('Balance')" column="balance" :sort="$tableSort->column" :order="$tableSort->order" route="commitments.index" :query="$sortQuery" align="right" class="px-4 py-3 text-right text-xs uppercase text-gray-500" />
+                                <x-sortable-table-header :label="__('Settlement')" column="settlement" :sort="$tableSort->column" :order="$tableSort->order" route="commitments.index" :query="$sortQuery" class="px-4 py-3 text-left text-xs uppercase text-gray-500" />
+                                <x-sortable-table-header :label="__('Status')" column="status" :sort="$tableSort->column" :order="$tableSort->order" route="commitments.index" :query="$sortQuery" class="px-4 py-3 text-left text-xs uppercase text-gray-500" />
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
-                            @foreach($commitments as $commitment)
+                            @foreach($paginated as $commitment)
                                 <tr class="hover:bg-gray-50 dark:hover:bg-gray-900/30">
                                     <td class="px-4 py-3">
                                         <a href="{{ route('business-entities.commitments.show', [$commitment->business_entity_id, $commitment->id]) }}"
@@ -108,7 +110,7 @@
                     </table>
                 </div>
             </div>
-            <div class="mt-6">{{ $commitments->links() }}</div>
+            <div class="mt-6">{{ $paginated->links() }}</div>
         @endif
     </div>
 </x-app-layout>

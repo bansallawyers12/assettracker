@@ -62,9 +62,9 @@
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                     <thead class="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Vendor name on transaction</th>
-                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Count</th>
-                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Link to vendor</th>
+                            <x-sortable-table-header :label="__('Vendor name on transaction')" column="label" :sort="$unlinkedSort->column" :order="$unlinkedSort->order" route="vendors.index" class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Count')" column="count" :sort="$unlinkedSort->column" :order="$unlinkedSort->order" route="vendors.index" align="right" class="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-600 dark:text-gray-300" />
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">{{ __('Link to vendor') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -116,13 +116,13 @@
                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                     <thead class="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Name</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Contact</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Email</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Phone</th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">ABN</th>
-                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Transactions</th>
-                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">Actions</th>
+                            <x-sortable-table-header :label="__('Name')" column="name" :sort="$tableSort->column" :order="$tableSort->order" route="vendors.index" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <th scope="col" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">{{ __('Contact') }}</th>
+                            <x-sortable-table-header :label="__('Email')" column="email" :sort="$tableSort->column" :order="$tableSort->order" route="vendors.index" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Phone')" column="phone" :sort="$tableSort->column" :order="$tableSort->order" route="vendors.index" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('ABN')" column="abn" :sort="$tableSort->column" :order="$tableSort->order" route="vendors.index" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Transactions')" column="transactions" :sort="$tableSort->column" :order="$tableSort->order" route="vendors.index" align="right" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300" />
+                            <th scope="col" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">{{ __('Actions') }}</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">

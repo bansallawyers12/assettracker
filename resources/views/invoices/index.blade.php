@@ -26,15 +26,16 @@
                 <table class="min-w-full text-sm">
                     <thead class="bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
                         <tr>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Number</th>
+                            @php $invoiceRoute = isset($businessEntity) ? 'business-entities.invoices.index' : 'invoices.index'; $invoiceRouteParams = isset($businessEntity) ? ['business_entity' => $businessEntity->id] : []; @endphp
+                            <x-sortable-table-header :label="__('Number')" column="number" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="$invoiceRouteParams" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
                             @unless(isset($businessEntity))
-                                <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Entity</th>
+                                <x-sortable-table-header :label="__('Entity')" column="entity" :sort="$tableSort->column" :order="$tableSort->order" route="invoices.index" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
                             @endunless
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Asset</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Customer</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Issue</th>
-                            <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300">Total</th>
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Status</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{{ __('Asset') }}</th>
+                            <x-sortable-table-header :label="__('Customer')" column="customer" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="$invoiceRouteParams" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Issue')" column="issue" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="$invoiceRouteParams" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Total')" column="total" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="$invoiceRouteParams" align="right" class="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            <x-sortable-table-header :label="__('Status')" column="status" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="$invoiceRouteParams" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
                             <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300"></th>
                         </tr>
                     </thead>

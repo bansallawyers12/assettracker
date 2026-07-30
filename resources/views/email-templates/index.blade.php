@@ -62,7 +62,7 @@
                     </div>
                 </div>
                 <div data-email-templates-list>
-                    @include('email-templates.partials.list', ['templates' => $templates])
+                    @include('email-templates.partials.list', ['templates' => $templates, 'tableSort' => $tableSort])
                 </div>
             </div>
         </div>

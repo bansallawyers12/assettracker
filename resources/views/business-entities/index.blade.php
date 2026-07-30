@@ -34,6 +34,8 @@
                 </div>
             @else
                 <form method="GET" action="{{ route('business-entities.index') }}" class="mb-6 flex flex-col lg:flex-row lg:flex-wrap lg:items-end gap-3">
+                    <input type="hidden" name="sort" value="{{ $tableSort->column }}">
+                    <input type="hidden" name="order" value="{{ $tableSort->order }}">
                     <div class="flex-1 min-w-[12rem]">
                         <label for="entity_search" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ __('Search') }}</label>
                         <input
@@ -59,23 +61,11 @@
                             @endforeach
                         </select>
                     </div>
-                    <div>
-                        <label for="entity_sort" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">{{ __('Sort') }}</label>
-                        <select
-                            id="entity_sort"
-                            name="sort"
-                            onchange="this.form.submit()"
-                            class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-indigo-500 focus:border-indigo-500"
-                        >
-                            <option value="name" @selected($sort === 'name')>{{ __('Name') }}</option>
-                            <option value="type" @selected($sort === 'type')>{{ __('Type, then name') }}</option>
-                        </select>
-                    </div>
                     <div class="flex items-center gap-2">
                         <button type="submit" class="inline-flex items-center px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg text-sm font-medium transition-colors">
                             {{ __('Apply') }}
                         </button>
-                        @if ($search !== '' || $typeFilter !== '' || $sort !== 'name')
+                        @if ($search !== '' || $typeFilter !== '' || $tableSort->column !== 'name' || $tableSort->order !== 'asc')
                             <a href="{{ route('business-entities.index') }}" class="inline-flex items-center px-3 py-2 text-xs text-gray-600 dark:text-gray-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
                                 {{ __('Clear') }}
                             </a>
@@ -101,10 +91,10 @@
                                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                     <thead class="bg-gray-50 dark:bg-gray-900/80">
                                         <tr>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('Entity') }}</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('Type') }}</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('Director / Trustee') }}</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('Registered address') }}</th>
+                                            <x-sortable-table-header :label="__('Entity')" column="name" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.index" :query="$sortQuery" />
+                                            <x-sortable-table-header :label="__('Type')" column="type" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.index" :query="$sortQuery" />
+                                            <x-sortable-table-header :label="__('Director / Trustee')" column="officer" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.index" :query="$sortQuery" />
+                                            <x-sortable-table-header :label="__('Registered address')" column="address" :sort="$tableSort->column" :order="$tableSort->order" route="business-entities.index" :query="$sortQuery" />
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
@@ -151,8 +141,8 @@
                                 <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                                     <thead class="bg-amber-50 dark:bg-amber-950/40">
                                         <tr>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('Name') }}</th>
-                                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{{ __('Type') }}</th>
+                                            <x-sortable-table-header :label="__('Name')" column="name" :sort="$tenancySort->column" :order="$tenancySort->order" route="business-entities.index" :query="$sortQuery" />
+                                            <x-sortable-table-header :label="__('Type')" column="type" :sort="$tenancySort->column" :order="$tenancySort->order" route="business-entities.index" :query="$sortQuery" />
                                             <th scope="col" class="px-6 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider w-28">{{ __('Actions') }}</th>
                                         </tr>
                                     </thead>

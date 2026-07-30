@@ -4,20 +4,30 @@ namespace App\Http\Controllers;
 
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
+use App\Support\TableSort;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class ChartOfAccountController extends Controller
 {
-    public function index(): \Illuminate\View\View
+    public function index(\Illuminate\Http\Request $request): \Illuminate\View\View
     {
-        $accounts = ChartOfAccount::query()
-            ->withCount('journalLines')
-            ->orderBy('account_code')
-            ->get();
+        $tableSort = TableSort::resolve($request, ['code', 'name', 'type', 'category', 'journal_lines', 'status'], 'code', 'asc');
 
-        return view('chart-of-accounts.index', compact('accounts'));
+        $query = ChartOfAccount::query()->withCount('journalLines');
+        $tableSort->applyToQuery($query, [
+            'code' => 'account_code',
+            'name' => 'account_name',
+            'type' => 'account_type',
+            'category' => 'account_category',
+            'journal_lines' => 'journal_lines_count',
+            'status' => 'is_active',
+        ], 'code');
+
+        $accounts = $query->get();
+
+        return view('chart-of-accounts.index', compact('accounts', 'tableSort'));
     }
 
     /**
