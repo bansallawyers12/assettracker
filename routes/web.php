@@ -48,8 +48,7 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-// Local-only phpinfo — requires APP_ENV=local AND PHPINFO_ACCESS_TOKEN.
-// Prefer header X-Phpinfo-Token over ?token= to avoid leaking via logs/history.
+// Local-only phpinfo — requires APP_ENV=local AND PHPINFO_ACCESS_TOKEN via X-Phpinfo-Token header.
 Route::get('/phpinfo', function (Request $request) {
     if (! app()->environment('local')) {
         abort(404);
@@ -58,12 +57,8 @@ Route::get('/phpinfo', function (Request $request) {
     $expected = (string) config('app.phpinfo_access_token', '');
     $headerToken = $request->header('X-Phpinfo-Token');
     $token = is_string($headerToken) ? trim($headerToken) : '';
-    if ($token === '') {
-        $queryToken = $request->query('token', '');
-        $token = is_string($queryToken) ? trim($queryToken) : '';
-    }
     if ($expected === '' || $token === '' || ! hash_equals($expected, $token)) {
-        abort(403, 'Forbidden. Set PHPINFO_ACCESS_TOKEN in .env (local only). Prefer header X-Phpinfo-Token; ?token= also works locally.');
+        abort(403, 'Forbidden. Set PHPINFO_ACCESS_TOKEN in .env (local only) and pass via X-Phpinfo-Token header.');
     }
 
     $toBytes = static function (string $value): int {
@@ -436,17 +431,17 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/assets/{asset}/financials', [PropertyReportController::class, 'show'])->name('assets.financials');
 });
 
-Route::middleware(['auth', 'super.admin'])->group(function () {
+Route::middleware(['auth', '2fa.enrolled', '2fa.verified', 'super.admin'])->group(function () {
     Route::get('/admin/users', [UserManagementController::class, 'index'])->name('admin.users.index');
     Route::get('/admin/users/workspace', [AdminUsersWorkspaceController::class, 'workspace'])->name('admin.users.workspace');
     Route::get('/admin/users/form/create', [AdminUsersWorkspaceController::class, 'createForm'])->name('admin.users.form.create');
     Route::get('/admin/users/{user}/form/password', [AdminUsersWorkspaceController::class, 'passwordForm'])->name('admin.users.form.password');
     Route::get('/admin/users/create', [UserManagementController::class, 'create'])->name('admin.users.create');
-    Route::patch('/admin/users/{user}/activate', [UserManagementController::class, 'activate'])->name('admin.users.activate');
 });
 
-Route::middleware(['auth', 'super.admin', 'password.confirm'])->group(function () {
+Route::middleware(['auth', '2fa.enrolled', '2fa.verified', 'super.admin', 'password.confirm'])->group(function () {
     Route::post('/admin/users', [UserManagementController::class, 'store'])->name('admin.users.store');
+    Route::patch('/admin/users/{user}/activate', [UserManagementController::class, 'activate'])->name('admin.users.activate');
     Route::patch('/admin/users/{user}/deactivate', [UserManagementController::class, 'deactivate'])->name('admin.users.deactivate');
     Route::patch('/admin/users/{user}/password', [UserManagementController::class, 'updatePassword'])->name('admin.users.password');
     Route::delete('/admin/users/{user}', [UserManagementController::class, 'destroy'])->name('admin.users.destroy');

@@ -91,11 +91,9 @@ class PasswordSecurity
             return null;
         }
 
-        if (! $user->password_changed_at) {
-            return null;
-        }
+        $changedAt = $user->password_changed_at ?? $user->created_at ?? now();
 
-        if ($user->password_changed_at->diffInDays(now()) <= $maxAge) {
+        if ($changedAt->diffInDays(now()) <= $maxAge) {
             return null;
         }
 

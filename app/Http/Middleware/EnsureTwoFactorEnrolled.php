@@ -22,7 +22,7 @@ class EnsureTwoFactorEnrolled
         }
 
         $grace = max(0, (int) config('admin.two_factor_grace_logins', 3));
-        $exceeded = ((int) $user->logins_without_two_factor_count) > $grace;
+        $exceeded = ((int) $user->logins_without_two_factor_count) >= $grace;
 
         if (! $exceeded) {
             return $next($request);

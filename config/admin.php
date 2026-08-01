@@ -15,14 +15,11 @@ return [
     |
     */
 
-    'email' => strtolower(trim((string) env('ADMIN_EMAIL', 'ajay.melbourne@gmail.com'))),
+    'email' => env('ADMIN_EMAIL') ? strtolower(trim((string) env('ADMIN_EMAIL'))) : null,
 
-    'password_hash' => (string) env(
-        'ADMIN_PASSWORD_HASH',
-        '$2y$10$M1aF.oMljI8Tc2YN2rxXFu92mH4xwuXnQg9RK0n/Vj.edew1WOu0O'
-    ),
+    'password_hash' => env('ADMIN_PASSWORD_HASH') ? (string) env('ADMIN_PASSWORD_HASH') : null,
 
-    'default_name' => env('ADMIN_DEFAULT_NAME', 'Ajay Melbourne'),
+    'default_name' => env('ADMIN_DEFAULT_NAME', 'Administrator'),
 
     /*
     |--------------------------------------------------------------------------
