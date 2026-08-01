@@ -1,6 +1,3 @@
-@php
-    use App\Models\BankAccount;
-@endphp
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Add Bank Account</h2>
@@ -25,12 +22,4 @@
             </div>
         </div>
     </div>
-    <script>
-        document.getElementById('account_purpose')?.addEventListener('change', function () {
-            const entityField = document.getElementById('entity-picker');
-            if (!entityField) return;
-            entityField.classList.toggle('hidden', this.value === '{{ BankAccount::PURPOSE_LOAN_REPAYMENT }}');
-        });
-        document.getElementById('account_purpose')?.dispatchEvent(new Event('change'));
-    </script>
 </x-app-layout>

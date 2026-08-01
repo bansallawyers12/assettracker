@@ -2,6 +2,7 @@
     use App\Models\BankAccount;
 
     $bankAccountModel = $bankAccount ?? null;
+    $isCreate = ! $bankAccountModel;
     $isPortfolio = $portfolio ?? false;
     $scopedEntity = $businessEntity ?? null;
     $purposes = $isPortfolio ? BankAccount::PURPOSES : BankAccount::ENTITY_PURPOSES;
@@ -123,43 +124,34 @@
             @error('account_number') <p class="bank-field-error">{{ $message }}</p> @enderror
         </div>
 
-        <div class="bank-field @if($isPortfolio) @else bank-form-grid-full @endif">
-            <label class="bank-field-label" for="account_purpose">Purpose</label>
-            <select name="account_purpose" id="account_purpose" class="bank-field-control" required>
-                @foreach($purposes as $purpose)
-                    <option value="{{ $purpose }}" @selected($defaultPurpose === $purpose)>
-                        {{ BankAccount::purposeLabel($purpose) }}
-                    </option>
-                @endforeach
-            </select>
-            @error('account_purpose') <p class="bank-field-error">{{ $message }}</p> @enderror
-        </div>
-
-        @if(! $isPortfolio && $scopedEntity && ! $bankAccountModel)
-            <div class="bank-form-grid-full">
-                @include('bank-accounts.partials.rent-collection-asset-fields', [
-                    'leasableAssets' => $leasableAssets ?? collect(),
-                    'purposeSelectId' => 'account_purpose',
-                    'defaultPurpose' => $defaultPurpose,
-                    'fieldId' => 'create_rent_collection_asset_ids',
-                ])
-            </div>
-        @endif
-
-        @if($isPortfolio)
-            <div class="bank-field" id="entity-picker">
-                <label class="bank-field-label" for="business_entity_id">Business Entity</label>
-                <select name="business_entity_id" id="business_entity_id" class="bank-field-control">
-                    <option value="">Select entity</option>
-                    @foreach($businessEntities ?? [] as $entity)
-                        <option value="{{ $entity->id }}" @selected((string) old('business_entity_id', $bankAccountModel?->business_entity_id) === (string) $entity->id)>
-                            {{ $entity->legal_name }}
+        @if(! $isCreate)
+            <div class="bank-field @if($isPortfolio) @else bank-form-grid-full @endif">
+                <label class="bank-field-label" for="account_purpose">Purpose</label>
+                <select name="account_purpose" id="account_purpose" class="bank-field-control" required>
+                    @foreach($purposes as $purpose)
+                        <option value="{{ $purpose }}" @selected($defaultPurpose === $purpose)>
+                            {{ BankAccount::purposeLabel($purpose) }}
                         </option>
                     @endforeach
                 </select>
-                @error('business_entity_id') <p class="bank-field-error">{{ $message }}</p> @enderror
-                <p class="bank-field-hint">Optional for general and loan repayment accounts. Required for loan, offset, and rent accounts.</p>
+                @error('account_purpose') <p class="bank-field-error">{{ $message }}</p> @enderror
             </div>
+
+            @if($isPortfolio)
+                <div class="bank-field" id="entity-picker">
+                    <label class="bank-field-label" for="business_entity_id">Business Entity</label>
+                    <select name="business_entity_id" id="business_entity_id" class="bank-field-control">
+                        <option value="">Select entity</option>
+                        @foreach($businessEntities ?? [] as $entity)
+                            <option value="{{ $entity->id }}" @selected((string) old('business_entity_id', $bankAccountModel?->business_entity_id) === (string) $entity->id)>
+                                {{ $entity->legal_name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('business_entity_id') <p class="bank-field-error">{{ $message }}</p> @enderror
+                    <p class="bank-field-hint">Optional for general and loan repayment accounts. Required for loan, offset, and rent accounts.</p>
+                </div>
+            @endif
         @endif
     </div>
 

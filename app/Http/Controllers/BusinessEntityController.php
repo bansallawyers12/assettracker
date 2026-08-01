@@ -1972,13 +1972,13 @@ class BusinessEntityController extends Controller
         $this->ensureOperationalForAccounting($businessEntity);
 
         $this->mergeBankNameFromRequest($request);
-        $this->forgetRentCollectionAssetIdsUnlessRentReceiving($request);
+        $this->prepareBankAccountCreateRequest($request);
 
         // Validate bank account details
-        $validated = $request->validate(array_merge(
-            $this->entityBankAccountValidationRules(),
-            $this->bankAccountAssetLinkService->rentCollectionAssetValidationRules()
-        ));
+        $validated = $request->validate(
+            $this->entityBankAccountValidationRules(forCreate: true)
+        );
+        $this->applyCreateBankAccountDefaults($validated);
 
         $bankAccount = $businessEntity->bankAccounts()->create(
             $this->bankAccountAttributesFromRequest($validated, $businessEntity)
@@ -1991,16 +1991,6 @@ class BusinessEntityController extends Controller
         ]);
 
         $message = 'Bank account added successfully!';
-        if ($validated['account_purpose'] === BankAccount::PURPOSE_RENT_RECEIVING) {
-            $linked = $this->bankAccountAssetLinkService->linkRentCollectionToAssets(
-                $bankAccount,
-                $businessEntity,
-                $validated['rent_collection_asset_ids'] ?? []
-            );
-            if ($linked > 0) {
-                $message .= ' Linked as Rent Paid Into on '.$linked.' asset'.($linked === 1 ? '' : 's').'.';
-            }
-        }
 
         if ($request->expectsJson()) {
             return $this->bankAccountWorkspaceJsonResponse(
@@ -2775,8 +2765,10 @@ class BusinessEntityController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
 
         $this->mergeBankNameFromRequest($request);
+        $this->prepareBankAccountCreateRequest($request);
 
-        $validated = $request->validate($this->portfolioBankAccountValidationRules());
+        $validated = $request->validate($this->portfolioBankAccountValidationRules(forCreate: true));
+        $this->applyCreateBankAccountDefaults($validated);
 
         BankAccount::create(
             $this->portfolioBankAccountAttributesFromRequest($validated, null)
@@ -3559,9 +3551,9 @@ class BusinessEntityController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function entityBankAccountValidationRules(): array
+    private function entityBankAccountValidationRules(bool $forCreate = false): array
     {
-        return array_merge([
+        $rules = array_merge([
             'account_name' => 'required|string|max:255',
         ], $this->bankNameFieldValidationRules(), [
             'bsb' => ['required', 'string', 'max:10', function ($attribute, $value, $fail) {
@@ -3571,16 +3563,21 @@ class BusinessEntityController extends Controller
                 }
             }],
             'account_number' => 'required|string|max:255',
-            'account_purpose' => ['required', Rule::in(BankAccount::ENTITY_PURPOSES)],
         ], $this->holderValidationRules());
+
+        if (! $forCreate) {
+            $rules['account_purpose'] = ['required', Rule::in(BankAccount::ENTITY_PURPOSES)];
+        }
+
+        return $rules;
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function portfolioBankAccountValidationRules(?BankAccount $existing = null): array
+    private function portfolioBankAccountValidationRules(?BankAccount $existing = null, bool $forCreate = false): array
     {
-        return array_merge([
+        $rules = array_merge([
             'account_name' => 'required|string|max:255',
         ], $this->bankNameFieldValidationRules(), [
             'bsb' => ['required', 'string', 'max:10', function ($attribute, $value, $fail) {
@@ -3590,16 +3587,43 @@ class BusinessEntityController extends Controller
                 }
             }],
             'account_number' => 'required|string|max:255',
-            'account_purpose' => ['required', Rule::in(BankAccount::PURPOSES)],
-            'business_entity_id' => [
-                Rule::requiredIf(fn () => ! in_array(request('account_purpose'), [
-                    BankAccount::PURPOSE_GENERAL,
-                    BankAccount::PURPOSE_LOAN_REPAYMENT,
-                ], true)),
-                'nullable',
-                BusinessEntity::ruleExistsOperational(),
-            ],
         ], $this->holderValidationRules());
+
+        if ($forCreate) {
+            return $rules;
+        }
+
+        $rules['account_purpose'] = ['required', Rule::in(BankAccount::PURPOSES)];
+        $rules['business_entity_id'] = [
+            Rule::requiredIf(fn () => ! in_array(request('account_purpose'), [
+                BankAccount::PURPOSE_GENERAL,
+                BankAccount::PURPOSE_LOAN_REPAYMENT,
+            ], true)),
+            'nullable',
+            BusinessEntity::ruleExistsOperational(),
+        ];
+
+        return $rules;
+    }
+
+    /**
+     * Strip create-only fields that are assigned later via link/edit flows.
+     */
+    private function prepareBankAccountCreateRequest(Request $request): void
+    {
+        $request->merge([
+            'account_purpose' => null,
+            'business_entity_id' => null,
+            'rent_collection_asset_ids' => null,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function applyCreateBankAccountDefaults(array &$validated): void
+    {
+        $validated['account_purpose'] = BankAccount::PURPOSE_GENERAL;
     }
 
     /**
