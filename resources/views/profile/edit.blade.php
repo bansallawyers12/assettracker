@@ -16,7 +16,11 @@
                 </p>
             </div>
 
-            @if (session('status'))
+            @if (session('status') === 'password-expired')
+                <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
+                    {{ __('Your password has expired. Please update your password below to continue.') }}
+                </div>
+            @elseif (session('status'))
                 <div class="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-200">
                     @switch(session('status'))
                         @case('profile-updated')

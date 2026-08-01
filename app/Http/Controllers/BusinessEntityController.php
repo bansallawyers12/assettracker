@@ -670,16 +670,26 @@ class BusinessEntityController extends Controller
             ->orderBy('id')
             ->get();
 
+        $opIds = $businessEntities->modelKeys();
+
         // Fetch Reminder records (overdue by calendar date, or due in the next 15 days)
         $reminders = Reminder::query()
             ->active()
             ->dueOverdueOrWithinDays(15)
+            ->where(function ($q) use ($opIds) {
+                $q->whereIn('business_entity_id', $opIds)
+                    ->orWhereNull('business_entity_id');
+            })
             ->with(['businessEntity', 'asset', 'user'])
             ->orderBy('next_due_date')
             ->get();
 
         // Fetch Note-based reminders
         $noteReminders = Note::where('is_reminder', true)
+            ->where(function ($q) use ($opIds) {
+                $q->whereIn('business_entity_id', $opIds)
+                    ->orWhereNull('business_entity_id');
+            })
             ->where(function ($q) {
                 $q->whereDate('reminder_date', '<', now()->startOfDay())
                     ->orWhere(function ($q2) {
@@ -710,6 +720,7 @@ class BusinessEntityController extends Controller
             });
 
         $transactionDueReminders = Transaction::query()
+            ->whereIn('business_entity_id', $opIds)
             ->where('payment_status', 'unpaid')
             ->whereNotNull('due_date')
             ->where(function ($q) {
@@ -743,10 +754,14 @@ class BusinessEntityController extends Controller
                 ];
             });
 
-        // Combine reminders, sort by due date
-        $allReminders = $reminders->concat($noteReminders)->concat($transactionDueReminders)->sortByDesc('next_due_date')->values();
+        // Combine reminders, sort by due date ascending
+        $allReminders = $reminders->concat($noteReminders)->concat($transactionDueReminders)->sortBy(function ($r) {
+            return $r->next_due_date ? \Carbon\Carbon::parse($r->next_due_date)->timestamp : PHP_INT_MAX;
+        })->values();
 
-        $persons = EntityPerson::with(['person', 'trusteeEntity', 'businessEntity'])->get();
+        $persons = EntityPerson::whereIn('business_entity_id', $opIds)
+            ->with(['person', 'trusteeEntity', 'businessEntity'])
+            ->get();
 
         // Group persons by their actual Person record to avoid duplicates
         $uniquePersons = $persons->where('person_id', '!=', null)
@@ -764,13 +779,13 @@ class BusinessEntityController extends Controller
             })
             ->values();
 
-        $assetDueDateItems = Asset::upcomingDueDateRows();
+        $assetDueDateItems = Asset::upcomingDueDateRows(15, $opIds);
 
         $entityDueDates = collect();
         if ($businessEntities->isNotEmpty()) {
             $entityDueDates = EntityPerson::whereNotNull('asic_due_date')
                 ->whereDate('asic_due_date', '<=', now()->addDays(15))
-                ->whereIn('business_entity_id', $businessEntities->modelKeys())
+                ->whereIn('business_entity_id', $opIds)
                 ->with('businessEntity')
                 ->orderBy('asic_due_date')
                 ->get();

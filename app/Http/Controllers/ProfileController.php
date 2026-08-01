@@ -44,6 +44,13 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        if ($user->isPrimaryAdministrator()) {
+            return Redirect::route('profile.edit')
+                ->withErrors([
+                    'userDeletion' => __('The primary administrator account cannot be deleted.'),
+                ], 'userDeletion');
+        }
+
         if (! $user->canBeDeleted()) {
             return Redirect::route('profile.edit')
                 ->withErrors([
