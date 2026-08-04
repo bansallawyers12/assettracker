@@ -2,8 +2,12 @@
     use App\Models\Transaction as TransactionModel;
     use Illuminate\Support\Carbon;
 
-    $isOverdue = function (?Carbon $d): bool {
-        return $d && $d->copy()->startOfDay()->lt(now()->startOfDay());
+    $isOverdue = function (\DateTimeInterface|string|null $d): bool {
+        if ($d === null || $d === '') {
+            return false;
+        }
+
+        return Carbon::parse($d)->startOfDay()->lt(now()->startOfDay());
     };
     $txnDirectionLabel = function ($t): string {
         return $t->direction === 'income' ? 'Income' : 'Expense';
