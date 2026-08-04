@@ -53,7 +53,7 @@ class TrackingCategoryController extends Controller
             'business_entity_id' => $businessEntity->id,
             'name' => $request->name,
             'description' => $request->description,
-            'is_active' => $request->boolean('is_active', true),
+            'is_active' => $request->boolean('is_active'),
             'sort_order' => $request->sort_order ?? 0
         ]);
 
@@ -97,7 +97,7 @@ class TrackingCategoryController extends Controller
         $trackingCategory->update([
             'name' => $request->name,
             'description' => $request->description,
-            'is_active' => $request->boolean('is_active', true),
+            'is_active' => $request->boolean('is_active'),
             'sort_order' => $request->sort_order ?? 0
         ]);
 
@@ -111,10 +111,16 @@ class TrackingCategoryController extends Controller
         $this->ensureOperationalForAccounting($businessEntity);
         $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
 
-        // Check if category is being used
-        if ($trackingCategory->transactions()->exists() || $trackingCategory->journalLines()->exists()) {
+        $hasSubCategoryUsage = $trackingCategory->subCategories()
+            ->where(function ($q) {
+                $q->has('transactions')->orHas('journalLines');
+            })
+            ->exists();
+
+        // Check if category or any subcategory is being used
+        if ($trackingCategory->transactions()->exists() || $trackingCategory->journalLines()->exists() || $hasSubCategoryUsage) {
             return redirect()->route('business-entities.tracking-categories.index', $businessEntity)
-                ->with('error', 'Cannot delete tracking category that is being used in transactions.');
+                ->with('error', 'Cannot delete tracking category that is being used in transactions or subcategories.');
         }
 
         $trackingCategory->delete();

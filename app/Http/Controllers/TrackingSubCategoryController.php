@@ -48,7 +48,7 @@ class TrackingSubCategoryController extends Controller
             'tracking_category_id' => $trackingCategory->id,
             'name' => $request->name,
             'description' => $request->description,
-            'is_active' => $request->boolean('is_active', true),
+            'is_active' => $request->boolean('is_active'),
             'sort_order' => $request->sort_order ?? 0
         ]);
 
@@ -83,7 +83,7 @@ class TrackingSubCategoryController extends Controller
         $trackingSubCategory->update([
             'name' => $request->name,
             'description' => $request->description,
-            'is_active' => $request->boolean('is_active', true),
+            'is_active' => $request->boolean('is_active'),
             'sort_order' => $request->sort_order ?? 0
         ]);
 

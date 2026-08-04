@@ -7,19 +7,15 @@ use App\Models\User;
 
 class CommitmentPolicy
 {
-    private function canAccessViaEntity(Commitment $commitment): bool
-    {
-        return $commitment->businessEntity !== null;
-    }
-
     public function viewAny(User $user): bool
     {
         return true;
     }
-
     public function view(User $user, Commitment $commitment): bool
     {
-        return $this->canAccessViaEntity($commitment);
+        $commitment->loadMissing('businessEntity');
+
+        return $commitment->businessEntity !== null && $user->can('view', $commitment->businessEntity);
     }
 
     public function create(User $user): bool
@@ -29,11 +25,15 @@ class CommitmentPolicy
 
     public function update(User $user, Commitment $commitment): bool
     {
-        return $this->canAccessViaEntity($commitment);
+        $commitment->loadMissing('businessEntity');
+
+        return $commitment->businessEntity !== null && $user->can('update', $commitment->businessEntity);
     }
 
     public function delete(User $user, Commitment $commitment): bool
     {
-        return $this->canAccessViaEntity($commitment);
+        $commitment->loadMissing('businessEntity');
+
+        return $commitment->businessEntity !== null && $user->can('update', $commitment->businessEntity);
     }
 }

@@ -179,6 +179,13 @@ class CommitmentController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        $maxAllowed = max(0.0, (float) $commitment->balance_due);
+        if ((float) $validated['amount'] > $maxAllowed + 0.001) {
+            return redirect()
+                ->route('business-entities.commitments.show', [$businessEntity, $commitment])
+                ->with('error', 'Payment amount ($' . number_format((float) $validated['amount'], 2) . ') cannot exceed the remaining balance due ($' . number_format($maxAllowed, 2) . ').');
+        }
+
         $commitment->payments()->create($validated);
 
         return redirect()
@@ -230,6 +237,12 @@ class CommitmentController extends Controller
         $asset = null;
 
         if ($createAsset) {
+            if ((float) $commitment->contract_price <= 0) {
+                return redirect()
+                    ->route('business-entities.commitments.show', [$businessEntity, $commitment])
+                    ->with('error', 'Cannot create an asset from a commitment with a contract price of zero.');
+            }
+
             $this->authorize('create', Asset::class);
 
             $settlementDate = $commitment->settlement_date ?? now();
