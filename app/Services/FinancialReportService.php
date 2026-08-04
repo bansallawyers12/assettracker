@@ -1166,7 +1166,7 @@ class FinancialReportService
             'operating_activities' => [
                 'income' => $operatingIncome,
                 'expenses' => $operatingExpenses,
-                'net_cash_flow' => $operatingIncome['total'] - $operatingExpenses['total'],
+                'net_cash_flow' => -$operatingIncome['total'] - $operatingExpenses['total'],
             ],
             'investing_activities' => [
                 'fixed_assets' => $fixedAssets,

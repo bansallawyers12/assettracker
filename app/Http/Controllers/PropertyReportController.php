@@ -45,7 +45,7 @@ class PropertyReportController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
 
         $entityIds = $this->resolveReportEntityIds($request);
-        if ($entityIds === null) {
+        if ($entityIds === null || ($request->input('scope') === 'selected' && $entityIds === [])) {
             return redirect()
                 ->route('portfolio.index', $request->except('entity_ids'))
                 ->with('error', 'Choose at least one entity, or select “All reporting entities”.');

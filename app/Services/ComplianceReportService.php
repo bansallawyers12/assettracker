@@ -68,7 +68,12 @@ class ComplianceReportService
             $fyStart instanceof Carbon ? $fyStart : ($fyStart ? Carbon::parse($fyStart) : FinancialYear::currentStart())
         )['start'];
 
-        $itrType = ComplianceDocumentType::query()->where('code', 'itr')->first();
+        $itrType = ComplianceDocumentType::query()->where('code', 'itr')->first()
+            ?? ComplianceDocumentType::query()->where('name', 'like', '%Income Tax%')->first()
+            ?? ComplianceDocumentType::firstOrCreate(
+                ['code' => 'itr'],
+                ['name' => 'Income Tax Return', 'is_required_by_default' => true]
+            );
 
         $entitiesQuery = BusinessEntity::query()
             ->forFinancialReports()

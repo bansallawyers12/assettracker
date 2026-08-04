@@ -13,8 +13,14 @@ trait ResolvesReportEntityScope
      */
     protected function resolveReportEntityIds(Request $request): ?array
     {
-        $allowed = BusinessEntity::forFinancialReports()
-            ->orderBy('legal_name')
+        $user = $request->user();
+
+        $query = BusinessEntity::forFinancialReports();
+        if ($user && method_exists($user, 'accessibleBusinessEntityIds')) {
+            $query->whereIn('id', $user->accessibleBusinessEntityIds());
+        }
+
+        $allowed = $query->orderBy('legal_name')
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->values()
