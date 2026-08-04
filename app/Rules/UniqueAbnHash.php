@@ -30,7 +30,8 @@ class UniqueAbnHash implements ValidationRule
             return;
         }
 
-        $hash = hash_hmac('sha256', $digits, config('app.key'));
+        $key = config('app.hash_pepper', config('app.key'));
+        $hash = hash_hmac('sha256', $digits, $key);
 
         $query = DB::table('business_entities')
             ->where('abn_hash', $hash);

@@ -13,7 +13,9 @@ use Illuminate\Validation\Rule;
 
 class BusinessEntity extends Model
 {
-    use EncryptsAttributes;
+    use EncryptsAttributes {
+        EncryptsAttributes::setAttribute as setEncryptedAttribute;
+    }
 
     /**
      * Fields encrypted at rest.
@@ -52,8 +54,6 @@ class BusinessEntity extends Model
         'closed_reason',
         'registration_date',
         'exclude_from_financial_reports',
-        'abn_hash',
-        'acn_hash',
     ];
 
     protected $hidden = ['abn_hash', 'acn_hash'];
@@ -88,21 +88,23 @@ class BusinessEntity extends Model
             $this->attributes['acn_hash'] = $this->computeAcnHash($value);
         }
 
-        return parent::setAttribute($key, $value);
+        return $this->setEncryptedAttribute($key, $value);
     }
 
     private function computeAbnHash(mixed $abn): ?string
     {
         $digits = preg_replace('/\D/', '', (string) $abn);
+        $key = config('app.hash_pepper', config('app.key'));
 
-        return $digits !== '' ? hash_hmac('sha256', $digits, config('app.key')) : null;
+        return $digits !== '' ? hash_hmac('sha256', $digits, $key) : null;
     }
 
     private function computeAcnHash(mixed $acn): ?string
     {
         $digits = preg_replace('/\D/', '', (string) $acn);
+        $key = config('app.hash_pepper', config('app.key'));
 
-        return $digits !== '' ? hash_hmac('sha256', $digits, config('app.key')) : null;
+        return $digits !== '' ? hash_hmac('sha256', $digits, $key) : null;
     }
 
     /**

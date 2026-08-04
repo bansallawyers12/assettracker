@@ -20,7 +20,7 @@ class BusinessEntityPolicy
      */
     public function view(User $user, BusinessEntity $businessEntity)
     {
-        return true;
+        return $businessEntity->user_id === null || $businessEntity->user_id === $user->id;
     }
 
     /**
@@ -37,7 +37,7 @@ class BusinessEntityPolicy
      */
     public function update(User $user, BusinessEntity $businessEntity)
     {
-        return true;
+        return $businessEntity->user_id === null || $businessEntity->user_id === $user->id;
     }
 
     /**
@@ -45,6 +45,6 @@ class BusinessEntityPolicy
      */
     public function delete(User $user, BusinessEntity $businessEntity)
     {
-        return true;
+        return $businessEntity->user_id === null || $businessEntity->user_id === $user->id;
     }
 }

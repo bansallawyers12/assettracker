@@ -252,6 +252,7 @@ class BusinessEntityController extends Controller
 
         $tenancyContactEntities = BusinessEntity::query()
             ->where('exclude_from_financial_reports', true)
+            ->whereNull('closed_date')
             ->when($typeFilter !== '', fn ($q) => $q->where('entity_type', $typeFilter))
             ->get();
 
@@ -492,8 +493,22 @@ class BusinessEntityController extends Controller
             'legal_name' => 'required|string|max:255',
             'trading_name' => 'nullable|string|max:255',
             'entity_type' => 'required|in:Sole Trader,Company,Trust,Partnership',
-            'abn' => ['nullable', 'string', 'max:11', new UniqueAbnHash()],
-            'acn' => ['nullable', 'prohibited_unless:entity_type,Company', 'string', 'max:9', new UniqueAcnHash()],
+            'abn' => ['nullable', 'string', function ($attribute, $value, $fail) {
+                if ($value !== null && $value !== '') {
+                    $digits = preg_replace('/\D/', '', (string) $value);
+                    if (strlen($digits) !== 11) {
+                        $fail('The ABN must contain exactly 11 digits.');
+                    }
+                }
+            }, new UniqueAbnHash()],
+            'acn' => ['nullable', 'prohibited_unless:entity_type,Company', 'string', function ($attribute, $value, $fail) {
+                if ($value !== null && $value !== '') {
+                    $digits = preg_replace('/\D/', '', (string) $value);
+                    if (strlen($digits) !== 9) {
+                        $fail('The ACN must contain exactly 9 digits.');
+                    }
+                }
+            }, new UniqueAcnHash()],
             'tfn' => 'nullable|string|max:9',
             'corporate_key' => 'nullable|prohibited_unless:entity_type,Company|string|max:255',
             'registered_address' => 'required|string',
@@ -1689,6 +1704,7 @@ class BusinessEntityController extends Controller
     public function storeNote(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
         // Validate note content and reminder details
         try {
@@ -1787,8 +1803,22 @@ class BusinessEntityController extends Controller
             'legal_name' => 'required|string|max:255',
             'trading_name' => 'nullable|string|max:255',
             'entity_type' => 'required|in:Sole Trader,Company,Trust,Partnership',
-            'abn' => ['nullable', 'string', 'max:11', new UniqueAbnHash($businessEntity->id)],
-            'acn' => ['nullable', 'prohibited_unless:entity_type,Company', 'string', 'max:9', new UniqueAcnHash($businessEntity->id)],
+            'abn' => ['nullable', 'string', function ($attribute, $value, $fail) {
+                if ($value !== null && $value !== '') {
+                    $digits = preg_replace('/\D/', '', (string) $value);
+                    if (strlen($digits) !== 11) {
+                        $fail('The ABN must contain exactly 11 digits.');
+                    }
+                }
+            }, new UniqueAbnHash($businessEntity->id)],
+            'acn' => ['nullable', 'prohibited_unless:entity_type,Company', 'string', function ($attribute, $value, $fail) {
+                if ($value !== null && $value !== '') {
+                    $digits = preg_replace('/\D/', '', (string) $value);
+                    if (strlen($digits) !== 9) {
+                        $fail('The ACN must contain exactly 9 digits.');
+                    }
+                }
+            }, new UniqueAcnHash($businessEntity->id)],
             'tfn' => 'nullable|string|max:9',
             'corporate_key' => 'nullable|prohibited_unless:entity_type,Company|string|max:255',
             'registered_address' => 'required|string',
@@ -1846,6 +1876,15 @@ class BusinessEntityController extends Controller
             'phone_number' => $request->phone_number,
             'status' => $request->status, // Update status
         ];
+
+        if ($businessEntity->isClosed()) {
+            if ($request->status === 'Active') {
+                $payload['closed_date'] = null;
+                $payload['closed_reason'] = null;
+            } else {
+                $this->ensureNotClosed($businessEntity);
+            }
+        }
 
         if ($request->has('tfn')) {
             $payload['tfn'] = $request->tfn;
@@ -1946,13 +1985,11 @@ class BusinessEntityController extends Controller
                 'closed_date' => $validated['closed_date'],
                 'closed_reason' => $validated['closed_reason'],
             ]);
-
-            $businessEntity->assets()->update(['status' => 'Sold']);
         });
 
         return redirect()
             ->route('business-entities.show', $businessEntity)
-            ->with('success', 'Entity closed successfully. Its assets are now marked as Sold.');
+            ->with('success', 'Entity closed successfully.');
     }
 
     // --- Bank Account Methods ---
@@ -2413,6 +2450,7 @@ class BusinessEntityController extends Controller
     public function destroyNote(BusinessEntity $businessEntity, Note $note)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
         // Verify the note belongs to the business entity
         if ($note->business_entity_id !== $businessEntity->id) {
@@ -2660,8 +2698,44 @@ class BusinessEntityController extends Controller
     public function importPersons(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
-        // Logic to import persons
+        $request->validate([
+            'person_ids' => 'required|array',
+            'person_ids.*' => 'exists:persons,id',
+            'role' => 'nullable|string|in:'.implode(',', EntityPerson::ROLES),
+        ]);
+
+        $role = $request->input('role', 'Director');
+        $personIds = $request->input('person_ids', []);
+        $importedCount = 0;
+
+        foreach ($personIds as $personId) {
+            $exists = EntityPerson::where('business_entity_id', $businessEntity->id)
+                ->where('person_id', $personId)
+                ->where('role', $role)
+                ->exists();
+
+            if (! $exists) {
+                EntityPerson::create([
+                    'business_entity_id' => $businessEntity->id,
+                    'person_id' => $personId,
+                    'role' => $role,
+                    'role_status' => 'Active',
+                    'appointment_date' => now()->toDateString(),
+                ]);
+                $importedCount++;
+            }
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => "Successfully imported {$importedCount} person(s).",
+            ]);
+        }
+
+        return redirect()->back()->with('success', "Successfully imported {$importedCount} person(s).");
     }
 
     // Method to fetch data for compose email modal

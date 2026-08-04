@@ -17,4 +17,16 @@ trait EnsuresOperationalBusinessEntity
             'This action is not available for tenancy or property-manager contacts. Edit the company profile if this should be one of your operating entities.'
         );
     }
+
+    /**
+     * Ensure entity is open (not closed) for mutation operations.
+     */
+    protected function ensureNotClosed(BusinessEntity $businessEntity): void
+    {
+        abort_if(
+            $businessEntity->isClosed(),
+            403,
+            'This action cannot be performed on a closed entity.'
+        );
+    }
 }
