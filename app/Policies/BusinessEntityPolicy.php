@@ -17,10 +17,13 @@ class BusinessEntityPolicy
 
     /**
      * Determine whether the user can view the business entity.
+     *
+     * Portfolio is firm-shared: any authenticated user may open any entity.
+     * user_id is creator metadata, not an ACL boundary (see README access model).
      */
     public function view(User $user, BusinessEntity $businessEntity)
     {
-        return $businessEntity->user_id === null || $businessEntity->user_id === $user->id;
+        return true;
     }
 
     /**
@@ -28,7 +31,6 @@ class BusinessEntityPolicy
      */
     public function create(User $user)
     {
-        // Allow all authenticated users to create business entities
         return true;
     }
 
@@ -37,7 +39,7 @@ class BusinessEntityPolicy
      */
     public function update(User $user, BusinessEntity $businessEntity)
     {
-        return $businessEntity->user_id === null || $businessEntity->user_id === $user->id;
+        return true;
     }
 
     /**
@@ -45,6 +47,6 @@ class BusinessEntityPolicy
      */
     public function delete(User $user, BusinessEntity $businessEntity)
     {
-        return $businessEntity->user_id === null || $businessEntity->user_id === $user->id;
+        return true;
     }
 }
