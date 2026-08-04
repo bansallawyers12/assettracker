@@ -26,7 +26,7 @@ class RateLimitMiddleware
         $key = $this->resolveRequestSignature($request, $key);
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
-            return $this->buildResponse($key, $maxAttempts);
+            return $this->buildResponse($request, $key, $maxAttempts);
         }
 
         RateLimiter::hit($key, $decayMinutes * 60);
@@ -81,14 +81,18 @@ class RateLimitMiddleware
     /**
      * Create a 'too many attempts' response.
      */
-    protected function buildResponse(string $key, int $maxAttempts): Response
+    protected function buildResponse(Request $request, string $key, int $maxAttempts): Response
     {
         $retryAfter = RateLimiter::availableIn($key);
 
-        return response()->json([
-            'message' => 'Too many attempts. Please try again later.',
-            'retry_after' => $retryAfter,
-        ], 429)->header('Retry-After', $retryAfter);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Too many attempts. Please try again later.',
+                'retry_after' => $retryAfter,
+            ], 429)->header('Retry-After', (string) $retryAfter);
+        }
+
+        return back()->with('error', 'Too many attempts. Please try again in ' . $retryAfter . ' seconds.');
     }
 
     /**

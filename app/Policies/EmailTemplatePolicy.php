@@ -20,31 +20,22 @@ class EmailTemplatePolicy
      */
     public function view(User $user, EmailTemplate $emailTemplate): bool
     {
-        return true;
+        return $emailTemplate->is_system || (int) $emailTemplate->user_id === (int) $user->id;
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
-        return true; // Authenticated users can create templates
+        return true;
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, EmailTemplate $emailTemplate): bool
     {
-        return true;
+        return ! $emailTemplate->is_system && (int) $emailTemplate->user_id === (int) $user->id;
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
     public function delete(User $user, EmailTemplate $emailTemplate): bool
     {
-        return true;
+        return ! $emailTemplate->is_system && (int) $emailTemplate->user_id === (int) $user->id;
     }
 
     /**
