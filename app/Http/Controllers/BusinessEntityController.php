@@ -2934,6 +2934,11 @@ class BusinessEntityController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
         $this->ensureBankAccountOwnedByUser($bankAccount);
 
+        if ($bankAccount->businessEntity) {
+            $this->authorize('update', $bankAccount->businessEntity);
+            $this->ensureNotClosed($bankAccount->businessEntity);
+        }
+
         SecurityAuditLogger::bankAccountNumberViewed(
             $request->user(),
             $bankAccount,

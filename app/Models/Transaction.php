@@ -191,7 +191,7 @@ class Transaction extends Model
     public function isSplit(): bool
     {
         return $this->transaction_type === self::TYPE_SPLIT
-            || ($this->relationLoaded('lines') && $this->lines->isNotEmpty());
+            || ($this->relationLoaded('lines') && $this->lines->count() > 1);
     }
 
     /**

@@ -18,7 +18,7 @@ DATE_COLUMNS = ['date', 'transaction date', 'trans date', 'value date', 'posting
 DESCRIPTION_COLUMNS = ['description', 'details', 'particulars', 'narration', 'memo', 'reference', 'payee', 'payer']
 DEBIT_COLUMNS = ['debit', 'withdrawal', 'out', 'dr', 'expense']
 CREDIT_COLUMNS = ['credit', 'deposit', 'in', 'cr', 'income']
-AMOUNT_COLUMNS = ['amount', 'balance', 'value']
+AMOUNT_COLUMNS = ['amount', 'transaction amount', 'net amount', 'value']
 REFERENCE_COLUMNS = ['reference', 'ref', 'transaction id', 'cheque no', 'cheque number']
 
 

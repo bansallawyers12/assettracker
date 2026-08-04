@@ -21,13 +21,23 @@ class TransactionObserver
 	{
 		$transaction->loadMissing('lines');
 
-		// If changed from paid → unpaid, remove any existing journal entry
+		// If changed to unpaid, remove any existing journal entry
 		if ($transaction->payment_status === 'unpaid') {
 			$this->postingService->unpost($transaction);
 
 			return;
 		}
-		$this->postingService->post($transaction);
+
+		$postingFields = [
+			'amount', 'gst_amount', 'gst_status', 'gst_basis',
+			'transaction_type', 'business_entity_id', 'related_entity_id',
+			'asset_id', 'bank_account_id', 'chart_of_account_id',
+			'date', 'payment_status',
+		];
+
+		if ($transaction->wasChanged($postingFields) || $transaction->isSplit()) {
+			$this->postingService->post($transaction);
+		}
 	}
 
 	public function deleted(Transaction $transaction): void

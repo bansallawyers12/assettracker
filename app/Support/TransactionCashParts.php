@@ -13,7 +13,8 @@ class TransactionCashParts
     public static function resolve(float $amount, ?float $gstAmount, ?string $gstBasis): array
     {
         $amt = (float) $amount;
-        $gst = max(0.0, (float) ($gstAmount ?? 0));
+        $rawGst = max(0.0, (float) ($gstAmount ?? 0));
+        $gst = min(abs($amt), $rawGst);
 
         if ($gst < 0.000001) {
             return [
@@ -25,15 +26,15 @@ class TransactionCashParts
 
         if ($gstBasis === 'exclusive') {
             return [
-                'cash' => round($amt + $gst, 2),
+                'cash' => round($amt + $rawGst, 2),
                 'net' => round($amt, 2),
-                'gst' => round($gst, 2),
+                'gst' => round($rawGst, 2),
             ];
         }
 
         return [
             'cash' => round($amt, 2),
-            'net' => round($amt - $gst, 2),
+            'net' => round(max(0.0, $amt - $gst), 2),
             'gst' => round($gst, 2),
         ];
     }

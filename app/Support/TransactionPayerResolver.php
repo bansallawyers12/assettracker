@@ -20,10 +20,14 @@ class TransactionPayerResolver
      */
     public static function payerOptions(): array
     {
+        $user = auth()->user();
+
         $entities = BusinessEntity::query()
             ->operationalEntities()
+            ->open()
             ->orderBy('legal_name')
-            ->get();
+            ->get()
+            ->filter(fn (BusinessEntity $e) => $user === null || $user->can('view', $e));
 
         $companies = $entities
             ->map(fn (BusinessEntity $e) => [
@@ -33,8 +37,11 @@ class TransactionPayerResolver
             ->values()
             ->all();
 
+        $allowedEntityIds = $entities->pluck('id')->all();
+
         $directors = EntityPerson::query()
             ->where('role', 'Director')
+            ->whereIn('business_entity_id', $allowedEntityIds)
             ->with(['person', 'businessEntity', 'trusteeEntity'])
             ->orderBy('id')
             ->get()

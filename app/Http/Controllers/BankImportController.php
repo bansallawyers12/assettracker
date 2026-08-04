@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\BusinessEntity;
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
@@ -9,12 +10,16 @@ use App\Models\ChartOfAccount;
 use App\Models\Transaction;
 use App\Services\TransactionPostingService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Symfony\Component\Process\Process;
 
 class BankImportController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     protected $transactionPostingService;
 
     public function __construct(TransactionPostingService $transactionPostingService)
@@ -24,7 +29,7 @@ class BankImportController extends Controller
     
     public function index()
     {
-        $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
+        $businessEntities = BusinessEntity::operationalEntities()->open()->orderBy('legal_name')->get();
         
         return view('bank-import.index', compact('businessEntities'));
     }
@@ -41,7 +46,10 @@ class BankImportController extends Controller
 
         try {
             $businessEntity = BusinessEntity::findOrFail($businessEntityId);
-            abort_if($businessEntity->isTenancyContactOnly(), 403, 'Bank import is not available for tenancy or property-manager contacts.');
+            $this->authorize('update', $businessEntity);
+            $this->ensureNotClosed($businessEntity);
+            $this->ensureOperationalForAccounting($businessEntity);
+
             $bankAccount = BankAccount::findOrFail($request->bank_account_id);
 
             // Verify bank account belongs to this business entity
@@ -52,9 +60,10 @@ class BankImportController extends Controller
                 ], 400);
             }
 
-            // Store the uploaded file
+            // Store the uploaded file safely using randomized filename
             $file = $request->file('statement_file');
-            $filename = 'bank_statement_' . time() . '_' . $file->getClientOriginalName();
+            $ext = strtolower($file->getClientOriginalExtension() ?: 'csv');
+            $filename = 'bank_statement_' . time() . '_' . Str::random(16) . '.' . $ext;
             $filePath = $file->storeAs('bank_statements', $filename, 'local');
 
             // Call Python parser
@@ -102,10 +111,15 @@ class BankImportController extends Controller
             'bank_account_id' => 'required|exists:bank_accounts,id'
         ]);
 
+        $businessEntity = BusinessEntity::findOrFail($businessEntityId);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
+
         $bankAccount = BankAccount::findOrFail($request->bank_account_id);
         
         // Verify bank account belongs to this business entity
-        if (! $bankAccount->canUseForBankImport(BusinessEntity::findOrFail($businessEntityId))) {
+        if (! $bankAccount->canUseForBankImport($businessEntity)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Bank account does not belong to this business entity.'
@@ -145,34 +159,46 @@ class BankImportController extends Controller
         ]);
 
         try {
+            $businessEntity = BusinessEntity::findOrFail($businessEntityId);
+            $this->authorize('update', $businessEntity);
+            $this->ensureNotClosed($businessEntity);
+            $this->ensureOperationalForAccounting($businessEntity);
+
             $transactionsCreated = 0;
 
             foreach ($request->matches as $match) {
-                $bankEntry = BankStatementEntry::findOrFail($match['bank_entry_id']);
-                $chartAccount = ChartOfAccount::findOrFail($match['chart_account_id']);
+                DB::transaction(function () use ($match, $businessEntity, &$transactionsCreated) {
+                    $bankEntry = BankStatementEntry::where('id', $match['bank_entry_id'])->lockForUpdate()->first();
+                    if (! $bankEntry || $bankEntry->transaction_id !== null) {
+                        return;
+                    }
 
-                // Bank entry must belong to the entity being imported
-                if (! $bankEntry->bankAccount->canUseForBankImport(BusinessEntity::findOrFail($businessEntityId))) {
-                    continue;
-                }
+                    $chartAccount = ChartOfAccount::findOrFail($match['chart_account_id']);
 
-                // Create transaction
-                $transaction = Transaction::create([
-                    'business_entity_id' => $businessEntityId,
-                    'bank_account_id' => $bankEntry->bank_account_id,
-                    'date' => $bankEntry->date,
-                    'amount' => $bankEntry->amount,
-                    'description' => $bankEntry->description,
-                    'transaction_type' => $this->mapTransactionType($chartAccount->account_type, $bankEntry->amount),
-                    'gst_amount' => null,
-                    'gst_status' => 'gst_free',
-                    'gst_basis' => null,
-                ]);
+                    // Bank entry must belong to the entity being imported
+                    if (! $bankEntry->bankAccount->canUseForBankImport($businessEntity)) {
+                        return;
+                    }
 
-                // Link bank entry to transaction
-                $bankEntry->update(['transaction_id' => $transaction->id]);
+                    // Create transaction with chart_of_account_id stored
+                    $transaction = Transaction::create([
+                        'business_entity_id' => $businessEntity->id,
+                        'bank_account_id' => $bankEntry->bank_account_id,
+                        'chart_of_account_id' => $chartAccount->id,
+                        'date' => $bankEntry->date,
+                        'amount' => $bankEntry->amount,
+                        'description' => $bankEntry->description,
+                        'transaction_type' => $this->mapTransactionType($chartAccount->account_type, $bankEntry->amount),
+                        'gst_amount' => null,
+                        'gst_status' => 'gst_free',
+                        'gst_basis' => null,
+                    ]);
 
-                $transactionsCreated++;
+                    // Link bank entry to transaction
+                    $bankEntry->update(['transaction_id' => $transaction->id]);
+
+                    $transactionsCreated++;
+                });
             }
 
             return response()->json([
@@ -208,9 +234,11 @@ class BankImportController extends Controller
                 ];
             }
 
+            $pythonBin = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+
             // Run Python script
             $process = new Process([
-                'python3',
+                $pythonBin,
                 $pythonScript,
                 $fullPath,
                 '--bank-name',

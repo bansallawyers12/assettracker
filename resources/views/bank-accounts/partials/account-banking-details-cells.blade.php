@@ -5,8 +5,8 @@
     $formattedBsb = BankAccount::formatBsb($account->bsb);
 @endphp
 <td class="px-4 py-3 text-sm font-mono text-gray-700 dark:text-gray-300">
-    {{ $formattedBsb ?: '—' }}
+    @include('bank-accounts.partials.bsb-toggle-cell', ['account' => $account, 'revealContext' => 'bank_accounts_index'])
 </td>
 <td class="px-4 py-3 text-sm font-mono text-gray-700 dark:text-gray-300">
-    {{ $account->account_number }}
+    {{ $account->masked_account_number }}
 </td>

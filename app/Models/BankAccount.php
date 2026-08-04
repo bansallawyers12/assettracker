@@ -175,6 +175,11 @@ class BankAccount extends Model
         return self::maskAccountNumber($this->account_number);
     }
 
+    public function getMaskedAccountNumberAttribute(): ?string
+    {
+        return $this->maskedAccountNumber();
+    }
+
     // ── Label helpers ─────────────────────────────────────────────────────────
 
     public static function resolveBankNameFromFormInput(?string $select, ?string $other): string
