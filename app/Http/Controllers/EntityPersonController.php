@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Http\Resources\EntityPersonResource;
-use App\Models\EntityPerson;
-use App\Models\BusinessEntity;
 use App\Models\BankAccount;
+use App\Models\BusinessEntity;
+use App\Models\EntityPerson;
 use App\Models\Person;
 use App\Support\TableSort;
 use Illuminate\Http\JsonResponse;
@@ -15,11 +16,15 @@ use Illuminate\Support\Facades\Log;
 
 class EntityPersonController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     /**
      * Display a listing of entity-person relationships.
      */
     public function index(Request $request)
     {
+        $this->authorize('viewAny', BusinessEntity::class);
+
         $tableSort = TableSort::resolve($request, ['entity', 'person', 'role', 'appointment', 'asic_due'], 'entity', 'asc');
 
         $entityPersons = EntityPerson::with(['businessEntity', 'person', 'trusteeEntity'])
@@ -46,30 +51,27 @@ class EntityPersonController extends Controller
      */
     public function create($business_entity_id)
     {
-        Log::info('Requested business_entity_id from route', ['id' => $business_entity_id]);
-
         $businessEntity = BusinessEntity::find($business_entity_id);
 
-        if (!$businessEntity) {
-            Log::warning('Business entity not found', ['id' => $business_entity_id]);
+        if (! $businessEntity) {
             return redirect()->route('business-entities.index')->withErrors(['error' => 'Business entity not found. Please select a valid entity.']);
         }
 
-        if ($businessEntity->isTenancyContactOnly()) {
-            return redirect()->route('business-entities.show', $businessEntity)
-                ->withErrors(['error' => 'Company roles and officers apply to operating entities only, not tenancy or property manager contacts.']);
-        }
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         $persons = Person::query()
             ->get()
             ->sortBy(fn (Person $person) => mb_strtolower($person->displayName()), SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
+
         $businessEntities = BusinessEntity::query()
             ->operationalEntities()
             ->where('entity_type', '!=', 'Trust')
             ->where('id', '!=', $businessEntity->id)
             ->orderBy('legal_name')
-            ->get(); // Exclude trusts to prevent circular references
+            ->get();
 
         return view('entity-persons.create', compact('businessEntity', 'persons', 'businessEntities'));
     }
@@ -79,22 +81,22 @@ class EntityPersonController extends Controller
      */
     public function store(Request $request)
     {
-        // Log the incoming request data for debugging
-        Log::info('Store Request Data', $request->all());
+        $businessEntity = BusinessEntity::findOrFail($request->input('business_entity_id'));
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
-        // Validate the request - IMPORTANT: No unique validation here to allow multiple roles
         $validated = $request->validate([
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'person_id' => 'nullable|exists:persons,id',
             'entity_trustee_id' => ['nullable', BusinessEntity::ruleExistsNonTrustCompany()],
             'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Owner',
             'appointment_date' => 'required|date',
-            'resignation_date' => 'nullable|date|after:appointment_date',
+            'resignation_date' => 'nullable|required_if:role_status,Resigned|date|after_or_equal:appointment_date',
             'role_status' => 'required|in:Active,Resigned',
             'shares_percentage' => 'nullable|numeric|between:0,100',
             'authority_level' => 'nullable|in:Full,Limited',
-            'asic_due_date' => 'nullable|date|after:today',
-            // New person fields - only validate these if creating a new person
+            'asic_due_date' => 'nullable|date|after_or_equal:today',
             'first_name' => 'required_if:create_new_person,1|string|max:255|nullable',
             'last_name' => 'required_if:create_new_person,1|string|max:255|nullable',
             'email' => 'nullable|email|max:255',
@@ -108,21 +110,37 @@ class EntityPersonController extends Controller
             'role_status.required' => 'The role status is required.',
             'first_name.required_if' => 'The first name is required when creating a new person.',
             'last_name.required_if' => 'The last name is required when creating a new person.',
+            'resignation_date.required_if' => 'The resignation date is required when role status is Resigned.',
+            'asic_due_date.after_or_equal' => 'The ASIC due date must be today or a future date.',
         ]);
 
-        // Handle new person creation if checkbox is checked
+        // Fix #6: Role vs trustee company mismatch
+        if ($request->filled('entity_trustee_id') && $request->role !== 'Trustee') {
+            return $this->personFormError($request, ['role' => 'A corporate trustee can only be assigned to the Trustee role.']);
+        }
+
+        // Fix #9: Share percentage cap check across active shareholders
+        if ($request->role === 'Shareholder' && $request->filled('shares_percentage')) {
+            $existingShares = (float) EntityPerson::where('business_entity_id', $businessEntity->id)
+                ->where('role', 'Shareholder')
+                ->where('role_status', 'Active')
+                ->sum('shares_percentage');
+            if ($existingShares + (float) $request->shares_percentage > 100.0) {
+                return $this->personFormError($request, ['shares_percentage' => 'Total shareholding percentage for this business entity cannot exceed 100%.']);
+            }
+        }
+
         $personId = $request->filled('person_id') ? $request->person_id : null;
         $entityTrusteeId = $request->filled('entity_trustee_id') ? $request->entity_trustee_id : null;
 
         if ($entityTrusteeId) {
             $personId = null;
         } elseif ($request->has('create_new_person') && $request->create_new_person == 1) {
-            // Email is stored encrypted so a raw WHERE clause cannot match; compare
-            // after Eloquent decrypts each row via getAttribute().
-            if ($request->email && Person::all()->contains(fn ($p) => $p->email === $request->email)) {
+            // Fix #4: Use stream helper instead of loading all Person records into memory
+            if ($request->email && Person::findByEmail($request->email)) {
                 return $this->personFormError($request, ['email' => 'A person with this email already exists. Please use the existing person instead.']);
             }
-            
+
             $personData = [
                 'first_name' => $request->first_name,
                 'last_name' => $request->last_name,
@@ -133,21 +151,19 @@ class EntityPersonController extends Controller
             ];
             try {
                 $person = Person::create($personData);
-                Log::info('Created new person', $person->toArray());
+                // Fix #5: Strip PII from log output
+                Log::info('Created new person', ['id' => $person->id]);
                 $personId = $person->id;
             } catch (\Exception $e) {
-                Log::error('Failed to create new person', ['error' => $e->getMessage(), 'data' => $personData]);
-                return $this->personFormError($request, ['error' => 'Failed to create new person: ' . $e->getMessage()]);
+                Log::error('Failed to create new person: '.$e->getMessage());
+                return $this->personFormError($request, ['error' => 'Failed to create new person.']);
             }
         }
 
-        // Ensure either person_id or entity_trustee_id is filled, but not both
         if (($personId && $entityTrusteeId) || (! $personId && ! $entityTrusteeId)) {
-            Log::warning('Validation failed: Either person_id or entity_trustee_id must be filled, but not both.', ['person_id' => $personId, 'entity_trustee_id' => $entityTrusteeId]);
             return $this->personFormError($request, ['error' => 'Either an existing person or a trustee company must be selected, but not both.']);
         }
 
-        // Prepare data for EntityPerson creation
         $entityPersonData = [
             'business_entity_id' => $request->business_entity_id,
             'person_id' => $personId,
@@ -162,28 +178,14 @@ class EntityPersonController extends Controller
             'asic_due_date' => $request->asic_due_date,
         ];
 
-        // Log the data to be inserted
-        Log::info('EntityPerson Data to Insert', $entityPersonData);
-
         try {
-            // Create the relationship without enforcing any uniqueness
             $entityPerson = EntityPerson::create($entityPersonData);
-            Log::info('Created EntityPerson', $entityPerson->toArray());
+            Log::info('Created EntityPerson', ['id' => $entityPerson->id]);
         } catch (\Exception $e) {
-            Log::error('Failed to create EntityPerson', [
-                'error' => $e->getMessage(), 
-                'data' => $entityPersonData, 
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            // Return to the form with a more descriptive error message
-            return $this->personFormError($request, [
-                'error' => 'Failed to create relationship: ' . $e->getMessage() .
-                ' This may be due to a database constraint. We have attempted to remove unique constraints on entity_person table.',
-            ]);
+            Log::error('Failed to create EntityPerson: '.$e->getMessage());
+            return $this->personFormError($request, ['error' => 'Failed to create relationship.']);
         }
 
-        // Redirect back to the business entity page
         if ($request->expectsJson()) {
             $entityPerson->load(['person', 'trusteeEntity']);
 
@@ -204,7 +206,8 @@ class EntityPersonController extends Controller
      */
     public function show(EntityPerson $entityPerson)
     {
-        $businessEntity = $entityPerson->businessEntity; // Load the related business entity
+        $this->authorize('view', $entityPerson->businessEntity);
+        $businessEntity = $entityPerson->businessEntity;
         return view('entity-persons.show', compact('entityPerson', 'businessEntity'));
     }
 
@@ -213,6 +216,9 @@ class EntityPersonController extends Controller
      */
     public function edit(EntityPerson $entityPerson)
     {
+        $this->authorize('update', $entityPerson->businessEntity);
+        $this->ensureNotClosed($entityPerson->businessEntity);
+
         $entityPerson->load(['businessEntity', 'person', 'trusteeEntity', 'appointorEntity']);
         $businessEntity = $entityPerson->businessEntity;
         $businessEntities = BusinessEntity::query()
@@ -240,24 +246,51 @@ class EntityPersonController extends Controller
      */
     public function update(Request $request, EntityPerson $entityPerson)
     {
+        $this->authorize('update', $entityPerson->businessEntity);
+        $this->ensureNotClosed($entityPerson->businessEntity);
+
+        // Fix #2: Exclude Appointor role unless legacy Appointor row
+        $allowedRoles = 'Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Owner';
+        if ($entityPerson->role === 'Appointor') {
+            $allowedRoles .= ',Appointor';
+        }
+
         $validated = $request->validate([
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'person_id' => 'nullable|exists:persons,id',
             'entity_trustee_id' => ['nullable', BusinessEntity::ruleExistsNonTrustCompany()],
-            'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Appointor,Owner',
+            'role' => 'required|in:'.$allowedRoles,
             'appointment_date' => 'required|date',
-            'resignation_date' => 'nullable|date|after:appointment_date',
+            'resignation_date' => 'nullable|required_if:role_status,Resigned|date|after_or_equal:appointment_date',
             'role_status' => 'required|in:Active,Resigned',
             'shares_percentage' => 'nullable|numeric|between:0,100',
             'authority_level' => 'nullable|in:Full,Limited',
-            'asic_due_date' => 'nullable|date',
+            'asic_due_date' => 'nullable|date|after_or_equal:today',
+        ], [
+            'resignation_date.required_if' => 'The resignation date is required when role status is Resigned.',
+            'asic_due_date.after_or_equal' => 'The ASIC due date must be today or a future date.',
         ]);
+
+        // Fix #6: Role vs trustee company mismatch
+        if ($request->filled('entity_trustee_id') && $request->role !== 'Trustee') {
+            return $this->personFormError($request, ['role' => 'A corporate trustee can only be assigned to the Trustee role.']);
+        }
+
+        // Fix #9: Share percentage cap check
+        if ($request->role === 'Shareholder' && $request->filled('shares_percentage')) {
+            $existingShares = (float) EntityPerson::where('business_entity_id', $entityPerson->business_entity_id)
+                ->where('role', 'Shareholder')
+                ->where('role_status', 'Active')
+                ->where('id', '!=', $entityPerson->id)
+                ->sum('shares_percentage');
+            if ($existingShares + (float) $request->shares_percentage > 100.0) {
+                return $this->personFormError($request, ['shares_percentage' => 'Total shareholding percentage for this business entity cannot exceed 100%.']);
+            }
+        }
 
         $personId = $request->filled('person_id') ? $request->person_id : null;
         $entityTrusteeId = $request->filled('entity_trustee_id') ? $request->entity_trustee_id : null;
 
-        // Ensure either person_id or entity_trustee_id is filled, but not both
-        // Exception: legacy Appointor rows preserve hidden link fields
         if ($request->role !== 'Appointor') {
             if (($personId && $entityTrusteeId) || (! $personId && ! $entityTrusteeId)) {
                 return $this->personFormError($request, ['error' => 'Either an existing person or a trustee company must be selected, but not both.']);
@@ -276,7 +309,6 @@ class EntityPersonController extends Controller
         ];
 
         if ($request->role === 'Appointor') {
-            // Legacy appointor rows — preserve existing link fields from the form
             $data['person_id'] = $personId;
             $data['appointor_entity_id'] = $request->filled('appointor_entity_id') ? $request->appointor_entity_id : null;
             $data['entity_trustee_id'] = null;
@@ -307,6 +339,9 @@ class EntityPersonController extends Controller
      */
     public function destroy(EntityPerson $entityPerson)
     {
+        $this->authorize('update', $entityPerson->businessEntity);
+        $this->ensureNotClosed($entityPerson->businessEntity);
+
         $entityPerson->delete();
 
         return redirect()->route('entity-persons.index')->with('success', 'Entity-Person relationship deleted successfully.');
@@ -317,6 +352,9 @@ class EntityPersonController extends Controller
      */
     public function finalizeDueDate(EntityPerson $entityPerson)
     {
+        $this->authorize('update', $entityPerson->businessEntity);
+        $this->ensureNotClosed($entityPerson->businessEntity);
+
         $entityPerson->update([
             'asic_updated' => true,
             'asic_due_date' => null,
@@ -330,6 +368,9 @@ class EntityPersonController extends Controller
      */
     public function extendDueDate(EntityPerson $entityPerson)
     {
+        $this->authorize('update', $entityPerson->businessEntity);
+        $this->ensureNotClosed($entityPerson->businessEntity);
+
         if ($entityPerson->asic_due_date) {
             $newDueDate = \Carbon\Carbon::parse($entityPerson->asic_due_date)->addDays(30);
             $entityPerson->update([
@@ -346,6 +387,8 @@ class EntityPersonController extends Controller
      */
     public function indexPersons(Request $request)
     {
+        $this->authorize('viewAny', BusinessEntity::class);
+
         $persons = PersonsIndexWorkspaceController::paginatedPersons($request);
         $tableSort = PersonsIndexWorkspaceController::tableSort($request);
         $totalPersons = Person::has('entityPersons')->count();
@@ -377,21 +420,32 @@ class EntityPersonController extends Controller
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'role' => 'required|in:'.implode(',', EntityPerson::ROLES),
             'appointment_date' => 'required|date',
+            'resignation_date' => 'nullable|required_if:role_status,Resigned|date|after_or_equal:appointment_date',
             'role_status' => 'required|in:'.implode(',', EntityPerson::ROLE_STATUSES),
-            'asic_due_date' => 'nullable|date',
+            'asic_due_date' => 'nullable|date|after_or_equal:today',
         ], [
             'role.in' => 'Please select a valid role.',
             'role_status.in' => 'Please select a valid role status.',
+            'resignation_date.required_if' => 'The resignation date is required when role status is Resigned.',
+            'asic_due_date.after_or_equal' => 'The ASIC due date must be today or a future date.',
         ]);
 
-        // Create the person
-        $person = Person::create([
-            'first_name' => $validated['first_name'],
-            'last_name' => $validated['last_name'],
-            'email' => $validated['email'],
-            'phone_number' => $validated['phone'],
-            'address' => $validated['address'],
-        ]);
+        $businessEntity = BusinessEntity::findOrFail($validated['business_entity_id']);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+
+        // Fix #4 & #7: Check if person with this email exists; if so, link existing person
+        $person = Person::findByEmail($validated['email']);
+
+        if (! $person) {
+            $person = Person::create([
+                'first_name' => $validated['first_name'],
+                'last_name' => $validated['last_name'],
+                'email' => $validated['email'],
+                'phone_number' => $validated['phone'],
+                'address' => $validated['address'],
+            ]);
+        }
 
         // Create the entity-person relationship
         EntityPerson::create([
@@ -399,8 +453,9 @@ class EntityPersonController extends Controller
             'person_id' => $person->id,
             'role' => $validated['role'],
             'appointment_date' => $validated['appointment_date'],
+            'resignation_date' => $validated['resignation_date'] ?? null,
             'role_status' => $validated['role_status'],
-            'asic_due_date' => $validated['asic_due_date'],
+            'asic_due_date' => $validated['asic_due_date'] ?? null,
         ]);
 
         if ($request->expectsJson()) {
@@ -422,14 +477,14 @@ class EntityPersonController extends Controller
      */
     public function showPerson(Person $person)
     {
-        // Get all entity-person relationships for this person
+        $this->authorize('viewAny', BusinessEntity::class);
+
         $entityPersons = EntityPerson::where('person_id', $person->id)
             ->with(['businessEntity', 'person', 'trusteeEntity'])
             ->orderBy('business_entity_id')
             ->orderBy('role')
             ->get();
 
-        // Group by business entity for better organization
         $groupedRoles = $entityPersons->groupBy('business_entity_id');
 
         $heldBankAccounts = BankAccount::query()

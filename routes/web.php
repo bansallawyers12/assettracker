@@ -245,7 +245,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Entity Persons
     Route::get('entity-persons/create/{business_entity_id}', [EntityPersonController::class, 'create'])->name('entity-persons.create');
-    Route::resource('entity-persons', EntityPersonController::class)->except(['create', 'destroy']);
+    Route::resource('entity-persons', EntityPersonController::class)->except(['create']);
     Route::post('entity-persons/{entityPerson}/finalize-due-date', [EntityPersonController::class, 'finalizeDueDate'])->name('entity-persons.finalize-due-date');
     Route::post('entity-persons/{entityPerson}/extend-due-date', [EntityPersonController::class, 'extendDueDate'])->name('entity-persons.extend-due-date');
     Route::get('/business-entities/{businessEntity}/persons/workspace', [PersonsWorkspaceController::class, 'index'])->name('entities.persons.workspace');

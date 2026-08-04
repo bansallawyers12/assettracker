@@ -78,4 +78,21 @@ class Person extends Model
         return $this->hasMany(BankAccount::class, 'holder_person_id')
             ->where('holder_type', BankAccount::HOLDER_PERSON);
     }
+
+    public static function findByEmail(?string $email): ?Person
+    {
+        if ($email === null || trim($email) === '') {
+            return null;
+        }
+
+        $target = mb_strtolower(trim($email));
+
+        foreach (self::query()->cursor() as $person) {
+            if ($person->email && mb_strtolower(trim($person->email)) === $target) {
+                return $person;
+            }
+        }
+
+        return null;
+    }
 }

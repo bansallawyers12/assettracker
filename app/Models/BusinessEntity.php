@@ -186,12 +186,12 @@ class BusinessEntity extends Model
     }
 
     /**
-     * Corporate trustee / company link: any non-trust business entity.
+     * Corporate trustee / company link: operating non-trust companies that are open.
      */
     public static function ruleExistsNonTrustCompany(): \Illuminate\Validation\Rules\Exists
     {
-        return Rule::exists('business_entities', 'id')->using(
-            fn ($query) => $query->where('entity_type', '!=', 'Trust')
+        return self::ruleExistsOperational()->using(
+            fn ($query) => $query->where('entity_type', '!=', 'Trust')->open()
         );
     }
 
