@@ -231,19 +231,22 @@ class ComplianceWorkspaceController extends Controller
             ], 422);
         }
 
-        if ($complianceFile->checklist_label) {
-            $collision = ComplianceDocumentFile::query()
+        if ($complianceFile->displayLabel() !== '') {
+            $targetFiles = ComplianceDocumentFile::query()
                 ->where('compliance_category_id', $target->id)
-                ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(TRIM(?))', [$complianceFile->checklist_label])
                 ->where('id', '!=', $complianceFile->id)
-                ->exists();
+                ->get();
 
-            if ($collision) {
-                return response()->json([
-                    'status' => false,
-                    'conflict' => true,
-                    'message' => "A row named \"{$complianceFile->checklist_label}\" already exists in \"{$target->title}\". Rename it first.",
-                ], 422);
+            $sourceLabel = strtolower(trim($complianceFile->displayLabel()));
+
+            foreach ($targetFiles as $targetFile) {
+                if (strtolower(trim($targetFile->displayLabel())) === $sourceLabel) {
+                    return response()->json([
+                        'status' => false,
+                        'conflict' => true,
+                        'message' => "A row named \"{$complianceFile->displayLabel()}\" already exists in \"{$target->title}\". Rename it first.",
+                    ], 422);
+                }
             }
         }
 
@@ -271,8 +274,8 @@ class ComplianceWorkspaceController extends Controller
             ], 422);
         }
 
-        if ($complianceFile->path && Storage::disk('s3')->exists($complianceFile->path)) {
-            Storage::disk('s3')->delete($complianceFile->path);
+        if ($complianceFile->path && \App\Support\DocumentStorage::exists($complianceFile->path)) {
+            \App\Support\DocumentStorage::delete($complianceFile->path);
         }
 
         $complianceFile->delete();
@@ -313,6 +316,13 @@ class ComplianceWorkspaceController extends Controller
             'lodged_date' => 'nullable|date',
             'paid_date'   => 'nullable|date',
         ]);
+
+        if (! $complianceFile->hasFile() && in_array($data['status'], ['lodged', 'paid'], true)) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Cannot mark as lodged or paid without an evidence file attached.',
+            ], 422);
+        }
 
         if ($complianceFile->hasFile() && $data['status'] === 'not_started') {
             $data['status'] = 'uploaded';

@@ -64,7 +64,7 @@ class ComplianceReminderService
                     continue;
                 }
 
-                $ownerId = $fallbackUserId ?? $entity->user_id ?? User::query()->value('id');
+                $ownerId = $entity->user_id ?? $fallbackUserId;
                 if ($ownerId === null) {
                     $skipped++;
 

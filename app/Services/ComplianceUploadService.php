@@ -29,9 +29,7 @@ class ComplianceUploadService
             throw new \RuntimeException('This financial year is locked.');
         }
 
-        if ($file->path) {
-            $this->deleteStoredFile($file);
-        }
+        $oldPath = $file->path;
 
         $fyLabel = FinancialYear::label($record->fy_start_date);
         $file->loadMissing(['type', 'category']);
@@ -57,6 +55,10 @@ class ComplianceUploadService
         $file->user_id = auth()->id();
         $file->status = 'uploaded';
         $file->save();
+
+        if ($oldPath && $oldPath !== $path && DocumentStorage::exists($oldPath)) {
+            DocumentStorage::delete($oldPath);
+        }
     }
 
     public function clearFile(ComplianceDocumentFile $file, BusinessEntity $entity, ?Asset $asset): void
@@ -115,19 +117,19 @@ class ComplianceUploadService
         $record = $file->yearRecord()->firstOrFail();
 
         if ((int) $record->business_entity_id !== (int) $entity->id) {
-            throw new \InvalidArgumentException('Compliance file does not belong to this entity.');
+            abort(404);
         }
 
         if ($asset === null) {
             if ($record->asset_id !== null) {
-                throw new \InvalidArgumentException('Compliance file is scoped to an asset.');
+                abort(404);
             }
 
             return;
         }
 
         if ((int) $record->asset_id !== (int) $asset->id) {
-            throw new \InvalidArgumentException('Compliance file does not belong to this asset.');
+            abort(404);
         }
     }
 }

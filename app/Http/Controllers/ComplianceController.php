@@ -180,7 +180,9 @@ class ComplianceController extends Controller
         ];
 
         try {
-            if ($request->boolean('download')) {
+            if ($request->boolean('download') || strtolower($mime) === 'image/svg+xml' || str_ends_with(strtolower($complianceFile->path), '.svg')) {
+                $headers['Content-Security-Policy'] = "default-src 'none'; script-src 'none'";
+
                 return DocumentStorage::disk()->download($complianceFile->path, $name, $headers);
             }
 

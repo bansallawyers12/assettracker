@@ -8,9 +8,11 @@ use App\Models\ComplianceCategory;
 use App\Models\ComplianceDocumentFile;
 use App\Models\ComplianceDocumentType;
 use App\Models\ComplianceYearRecord;
+use App\Support\DocumentStorage;
 use App\Support\FinancialYear;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class ComplianceYearService
 {
@@ -126,26 +128,37 @@ class ComplianceYearService
             $fyStart instanceof Carbon ? $fyStart : Carbon::parse($fyStart)
         );
 
-        $query = ComplianceYearRecord::query()
-            ->where('business_entity_id', $entity->id)
-            ->whereDate('fy_start_date', $period['start']->toDateString());
+        $record = DB::transaction(function () use ($entity, $asset, $period) {
+            $query = ComplianceYearRecord::query()
+                ->where('business_entity_id', $entity->id)
+                ->whereDate('fy_start_date', $period['start']->toDateString());
 
-        if ($asset === null) {
-            $query->whereNull('asset_id');
-        } else {
-            $query->where('asset_id', $asset->id);
-        }
+            if ($asset === null) {
+                $query->whereNull('asset_id');
+            } else {
+                $query->where('asset_id', $asset->id);
+            }
 
-        $record = $query->first();
+            $rec = $query->lockForUpdate()->first();
 
-        if (! $record) {
-            $record = ComplianceYearRecord::query()->create([
-                'business_entity_id' => $entity->id,
-                'asset_id' => $asset?->id,
-                'fy_start_date' => $period['start']->toDateString(),
-                'fy_end_date' => $period['end']->toDateString(),
-            ]);
-        }
+            if (! $rec) {
+                try {
+                    $rec = ComplianceYearRecord::query()->create([
+                        'business_entity_id' => $entity->id,
+                        'asset_id' => $asset?->id,
+                        'fy_start_date' => $period['start']->toDateString(),
+                        'fy_end_date' => $period['end']->toDateString(),
+                    ]);
+                } catch (\Throwable $e) {
+                    $rec = $query->first();
+                    if (! $rec) {
+                        throw $e;
+                    }
+                }
+            }
+
+            return $rec;
+        });
 
         if (config('compliance.auto_provision_on_view', true)) {
             $this->provisionCategoriesAndSlots($record);
@@ -324,6 +337,9 @@ class ComplianceYearService
             }
 
             if (! $this->fileApplies($file, $record)) {
+                if ($file->path && DocumentStorage::exists($file->path)) {
+                    DocumentStorage::delete($file->path);
+                }
                 $file->delete();
             }
         }
