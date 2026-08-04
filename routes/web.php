@@ -191,6 +191,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('business-entities/{businessEntity}/assets/{asset}/notes/create', [AssetController::class, 'createNote'])->name('business-entities.assets.notes.create');
     Route::post('business-entities/{businessEntity}/assets/{asset}/notes', [AssetController::class, 'storeNote'])->name('business-entities.assets.notes.store');
     Route::delete('business-entities/{businessEntity}/assets/{asset}/notes/{note}', [AssetController::class, 'destroyNote'])->name('business-entities.assets.notes.destroy');
+    Route::delete('business-entities/{businessEntity}/assets/{asset}/leases/{lease}', [AssetController::class, 'destroyLease'])->name('business-entities.assets.leases.destroy');
 
     // Document workspace JSON (used by JS for refresh after bulk upload / structural ops)
     Route::get('/business-entities/{businessEntity}/documents/workspace', [DocumentWorkspaceController::class, 'indexWorkspace'])->name('entities.documents.workspace');

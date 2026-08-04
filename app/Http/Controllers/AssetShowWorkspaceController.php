@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\Lease;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 
 class AssetShowWorkspaceController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
     public function editTenantForm(BusinessEntity $businessEntity, Asset $asset, Tenant $tenant): JsonResponse
     {
         $this->authorize('view', $businessEntity);
@@ -71,7 +73,8 @@ class AssetShowWorkspaceController extends Controller
 
     public function updateLoanBanking(Request $request, BusinessEntity $businessEntity, Asset $asset): JsonResponse
     {
-        $this->authorize('view', $businessEntity);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
         $this->ensureAssetBelongs($businessEntity, $asset);
         $this->ensurePropertyAsset($asset);
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BusinessEntity;
@@ -21,6 +22,7 @@ use Illuminate\Validation\ValidationException;
 
 class AssetController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
     public function __construct()
     {
         $this->middleware('auth');
@@ -45,7 +47,7 @@ class AssetController extends Controller
         $this->authorize('viewAny', Asset::class);
 
         $assets = Asset::query()
-            ->whereHas('businessEntity')
+            ->whereHas('businessEntity', fn ($q) => $q->operationalEntities())
             ->with('businessEntity')
             ->orderBy('name')
             ->orderBy('id')
@@ -56,7 +58,9 @@ class AssetController extends Controller
 
     public function create(BusinessEntity $businessEntity)
     {
-        $this->authorize('view', $businessEntity);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         return view('assets.create', $this->workspaceFormContext($businessEntity));
     }
@@ -79,7 +83,9 @@ class AssetController extends Controller
 
     public function store(Request $request, BusinessEntity $businessEntity)
     {
-        $this->authorize('view', $businessEntity);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         $validatedData = $request->validate(array_merge([
             'asset_type' => 'nullable|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
@@ -185,6 +191,7 @@ class AssetController extends Controller
                 'outstanding' => (float) Invoice::query()
                     ->where('asset_id', $asset->id)
                     ->where('status', 'approved')
+                    ->whereNull('paid_at')
                     ->sum('total_amount'),
                 'ytd_paid' => (float) Invoice::query()
                     ->where('asset_id', $asset->id)
@@ -213,6 +220,9 @@ class AssetController extends Controller
     public function update(Request $request, BusinessEntity $businessEntity, Asset $asset)
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         $validatedData = $request->validate(array_merge([
             'asset_type' => 'required|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
@@ -220,6 +230,7 @@ class AssetController extends Controller
             'acquisition_cost' => 'nullable|numeric|min:0',
             'current_value' => 'nullable|numeric|min:0',
             'acquisition_date' => 'nullable|date',
+            'status' => 'nullable|in:Active,Inactive,Sold,Under Maintenance',
             'description' => 'nullable|string',
             'registration_number' => 'nullable|string',
             'registration_due_date' => 'nullable|date',
@@ -245,9 +256,12 @@ class AssetController extends Controller
         ], $this->phaseTwoFinanceRules(), $this->bankAccountLinkRules()));
 
         $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
-        $bankAccountLinks = $this->extractBankAccountLinks($validatedData);
-        $this->validateBankAccountLinks($bankAccountLinks, $businessEntity, $validatedData['asset_type']);
-        $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity, $validatedData['asset_type']);
+
+        if ($request->hasAny(['primary_bank_account_id', 'offset_bank_account_id', 'rental_bank_account_id', 'has_bank_account_fields'])) {
+            $bankAccountLinks = $this->extractBankAccountLinks($validatedData);
+            $this->validateBankAccountLinks($bankAccountLinks, $businessEntity, $validatedData['asset_type']);
+            $this->syncBankAccountLinks($asset, $bankAccountLinks, $businessEntity, $validatedData['asset_type']);
+        }
 
         $asset->update($validatedData);
 
@@ -325,6 +339,12 @@ class AssetController extends Controller
     public function destroy(BusinessEntity $businessEntity, Asset $asset)
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+
+        if ($asset->tenants()->exists() || $asset->leases()->exists() || Invoice::where('asset_id', $asset->id)->exists()) {
+            return redirect()->back()->with('error', 'Cannot delete asset with active tenants, leases, or associated invoices. Remove or detach them first.');
+        }
 
         $asset->delete();
 
@@ -508,6 +528,8 @@ class AssetController extends Controller
     public function createNote(BusinessEntity $businessEntity, Asset $asset)
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
         return view('assets.notes.create', compact('businessEntity', 'asset'));
     }
@@ -515,11 +537,13 @@ class AssetController extends Controller
     public function storeNote(Request $request, BusinessEntity $businessEntity, Asset $asset)
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
         $request->validate([
             'content' => 'required|string',
             'is_reminder' => 'boolean',
-            'reminder_date' => 'nullable|date|after_or_equal:today',
+            'reminder_date' => 'nullable|required_if:is_reminder,1|date|after_or_equal:today',
             'repeat_type' => 'nullable|in:none,monthly,quarterly,annual',
             'repeat_end_date' => 'nullable|date|after_or_equal:reminder_date',
         ]);
@@ -541,6 +565,8 @@ class AssetController extends Controller
     public function destroyNote(BusinessEntity $businessEntity, Asset $asset, Note $note)
     {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
         if ((int) $note->asset_id !== (int) $asset->id) {
             abort(404);
@@ -558,6 +584,12 @@ class AssetController extends Controller
      */
     public function finalizeNote(Note $note)
     {
+        $businessEntity = $note->businessEntity ?: $note->asset?->businessEntity;
+        if ($businessEntity) {
+            $this->authorize('update', $businessEntity);
+            $this->ensureNotClosed($businessEntity);
+        }
+
         $note->update(['reminder_date' => null, 'is_reminder' => false]);
 
         return redirect()->back()->with('success', 'Reminder finalized.');
@@ -570,6 +602,12 @@ class AssetController extends Controller
      */
     public function extendNote(Note $note)
     {
+        $businessEntity = $note->businessEntity ?: $note->asset?->businessEntity;
+        if ($businessEntity) {
+            $this->authorize('update', $businessEntity);
+            $this->ensureNotClosed($businessEntity);
+        }
+
         if ($note->reminder_date) {
             $note->update(['reminder_date' => Carbon::parse($note->reminder_date)->addDays(3)]);
 
@@ -763,9 +801,9 @@ class AssetController extends Controller
             return false;
         }
 
-        $rentAmount = $tenant->rent_amount !== null && $tenant->rent_amount !== ''
+        $rentAmount = $tenant->rent_amount !== null && (float) $tenant->rent_amount > 0
             ? $tenant->rent_amount
-            : 0;
+            : ($asset->rental_income ?: 0);
 
         $paymentFrequency = match ($tenant->rent_frequency ?? '') {
             'Weekly' => 'Weekly',
@@ -1028,5 +1066,20 @@ class AssetController extends Controller
             ->unique()
             ->values()
             ->all();
+    }
+
+    public function destroyLease(BusinessEntity $businessEntity, Asset $asset, Lease $lease): RedirectResponse
+    {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+
+        if ((int) $lease->asset_id !== (int) $asset->id) {
+            abort(404);
+        }
+
+        $lease->delete();
+
+        return redirect()->back()->with('success', 'Lease deleted successfully.');
     }
 }
