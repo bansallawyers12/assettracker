@@ -16,6 +16,8 @@ class VendorController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+
         $tableSort = TableSort::resolve($request, ['name', 'email', 'phone', 'abn', 'transactions'], 'name', 'asc');
         $unlinkedSort = TableSort::resolve($request, ['label', 'count'], 'label', 'asc');
 
@@ -44,12 +46,17 @@ class VendorController extends Controller
 
     public function create()
     {
+        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+
         return view('vendors.create');
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate($this->validationRules());
+        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+
+        $validated = $request->validate($this->validationRules(null, $request));
+        $validated['name'] = trim($validated['name']);
 
         $vendor = Vendor::create($validated);
         $linked = $this->vendorSync->linkTransactionsMatchingName($vendor);
@@ -64,6 +71,8 @@ class VendorController extends Controller
 
     public function edit(Vendor $vendor)
     {
+        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+
         $vendor->loadCount('transactions');
 
         $usage = $this->vendorSync->usageFor($vendor);
@@ -81,7 +90,10 @@ class VendorController extends Controller
 
     public function update(Request $request, Vendor $vendor)
     {
-        $validated = $request->validate($this->validationRules($vendor));
+        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+
+        $validated = $request->validate($this->validationRules($vendor, $request));
+        $validated['name'] = trim($validated['name']);
 
         $vendor->update($validated);
 
@@ -98,6 +110,8 @@ class VendorController extends Controller
 
     public function destroy(Vendor $vendor)
     {
+        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+
         $linkedCount = $vendor->transactions()->count();
         $vendor->delete();
 
@@ -111,6 +125,8 @@ class VendorController extends Controller
 
     public function linkTransactions(Vendor $vendor)
     {
+        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+
         $linked = $this->vendorSync->linkTransactionsMatchingName($vendor);
         $alsoLinkedPrevious = 0;
 
@@ -131,6 +147,8 @@ class VendorController extends Controller
 
     public function resolveUnlinked(Request $request)
     {
+        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+
         $data = $request->validate([
             'vendor_id' => ['required', 'integer', Rule::exists('vendors', 'id')],
             'vendor_name_label' => 'required|string|max:255',
@@ -148,6 +166,8 @@ class VendorController extends Controller
 
     public function autoLinkAll(Request $request)
     {
+        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+
         $result = $this->vendorSync->autoLinkAllExactMatches();
 
         if ($result['linked'] === 0) {
@@ -165,6 +185,8 @@ class VendorController extends Controller
 
     public function syncAllNames()
     {
+        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+
         $result = $this->vendorSync->syncAllLinkedTransactionNames();
 
         if ($result['transactions_updated'] === 0) {
@@ -179,14 +201,18 @@ class VendorController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function validationRules(?Vendor $vendor = null): array
+    private function validationRules(?Vendor $vendor = null, ?Request $request = null): array
     {
+        $inputName = trim((string) ($request?->input('name') ?? ''));
+
         return [
             'name' => [
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('vendors', 'name')->ignore($vendor?->id),
+                Rule::unique('vendors', 'name')
+                    ->where(fn ($query) => $query->whereRaw('LOWER(TRIM(name)) = LOWER(TRIM(?))', [$inputName]))
+                    ->ignore($vendor?->id),
             ],
             'contact_name' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',

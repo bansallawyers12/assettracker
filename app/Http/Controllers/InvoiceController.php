@@ -271,12 +271,28 @@ class InvoiceController extends Controller
 			'payment_reference' => 'nullable|string|max:255',
 		]);
 
-		$invoice->update([
-			'paid_at' => $data['paid_at'],
-			'payment_method' => $data['payment_method'] ?? null,
-			'payment_reference' => $data['payment_reference'] ?? null,
-			'status' => 'paid',
-		]);
+		\Illuminate\Support\Facades\DB::transaction(function () use ($invoice, $data, $businessEntity) {
+			$invoice->update([
+				'paid_at' => $data['paid_at'],
+				'payment_method' => $data['payment_method'] ?? null,
+				'payment_reference' => $data['payment_reference'] ?? null,
+				'status' => 'paid',
+			]);
+
+			$bankAccount = $businessEntity->bankAccounts()->first();
+
+			\App\Models\Transaction::create([
+				'business_entity_id' => $businessEntity->id,
+				'bank_account_id' => $bankAccount?->id,
+				'date' => $data['paid_at'],
+				'amount' => $invoice->total_amount,
+				'description' => 'Payment received for Invoice ' . $invoice->invoice_number,
+				'transaction_type' => 'sales_revenue',
+				'gst_amount' => null,
+				'gst_status' => 'gst_free',
+				'gst_basis' => null,
+			]);
+		});
 
 		return back()->with('success', 'Payment recorded.');
 	}

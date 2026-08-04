@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use App\Support\TableSort;
@@ -11,8 +12,12 @@ use Illuminate\Validation\Rule;
 
 class ChartOfAccountController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     public function index(\Illuminate\Http\Request $request): \Illuminate\View\View
     {
+        $this->authorize('viewAny', BusinessEntity::class);
+
         $tableSort = TableSort::resolve($request, ['code', 'name', 'type', 'category', 'journal_lines', 'status'], 'code', 'asc');
 
         $query = ChartOfAccount::query()->withCount('journalLines');
@@ -35,6 +40,8 @@ class ChartOfAccountController extends Controller
      */
     public function apiIndex(): JsonResponse
     {
+        $this->authorize('viewAny', BusinessEntity::class);
+
         return response()->json([
             'success' => true,
             'accounts' => ChartOfAccount::query()
@@ -51,16 +58,17 @@ class ChartOfAccountController extends Controller
         ]);
     }
 
-    /**
-     * @deprecated Use apiIndex — kept for existing URLs that include a business entity segment.
-     */
     public function getAccountsJson(BusinessEntity $businessEntity): JsonResponse
     {
+        $this->authorize('view', $businessEntity);
+
         return $this->apiIndex();
     }
 
     public function create(): \Illuminate\View\View
     {
+        $this->authorize('viewAny', BusinessEntity::class);
+
         $parentAccounts = ChartOfAccount::query()
             ->where('is_active', true)
             ->orderBy('account_code')
@@ -69,8 +77,14 @@ class ChartOfAccountController extends Controller
         return view('chart-of-accounts.create', compact('parentAccounts'));
     }
 
-    public function store(Request $request): \Illuminate\Http\RedirectResponse
+    public function store(Request $request, ?BusinessEntity $businessEntity = null): \Illuminate\Http\RedirectResponse
     {
+        $this->authorize('viewAny', BusinessEntity::class);
+        if ($businessEntity) {
+            $this->authorize('update', $businessEntity);
+            $this->ensureNotClosed($businessEntity);
+        }
+
         $this->validateNewAccount($request);
 
         ChartOfAccount::create([
@@ -90,6 +104,8 @@ class ChartOfAccountController extends Controller
 
     public function edit(ChartOfAccount $chart_of_account): \Illuminate\View\View
     {
+        $this->authorize('viewAny', BusinessEntity::class);
+
         $parentAccounts = ChartOfAccount::query()
             ->where('is_active', true)
             ->where('id', '!=', $chart_of_account->id)
@@ -101,8 +117,14 @@ class ChartOfAccountController extends Controller
         return view('chart-of-accounts.edit', compact('chartOfAccount', 'parentAccounts'));
     }
 
-    public function update(Request $request, ChartOfAccount $chart_of_account): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): \Illuminate\Http\RedirectResponse
     {
+        $this->authorize('viewAny', BusinessEntity::class);
+        if ($businessEntity) {
+            $this->authorize('update', $businessEntity);
+            $this->ensureNotClosed($businessEntity);
+        }
+
         $request->validate([
             'account_code' => [
                 'required',
@@ -150,8 +172,14 @@ class ChartOfAccountController extends Controller
             ->with('success', 'Chart of account updated successfully.');
     }
 
-    public function destroy(ChartOfAccount $chart_of_account): \Illuminate\Http\RedirectResponse
+    public function destroy(ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): \Illuminate\Http\RedirectResponse
     {
+        $this->authorize('viewAny', BusinessEntity::class);
+        if ($businessEntity) {
+            $this->authorize('update', $businessEntity);
+            $this->ensureNotClosed($businessEntity);
+        }
+
         if ($chart_of_account->journalLines()->exists()) {
             return redirect()->route('chart-of-accounts.index')
                 ->with('error', 'Cannot delete account with existing journal entries. Deactivate instead.');
@@ -185,7 +213,19 @@ class ChartOfAccountController extends Controller
             'account_name' => 'required|string|max:255',
             'account_type' => 'required|in:' . implode(',', array_keys(ChartOfAccount::$accountTypes)),
             'account_category' => ['required', 'string', 'max:50', Rule::in(array_keys(ChartOfAccount::$accountCategories))],
-            'parent_account_id' => 'nullable|exists:chart_of_accounts,id',
+            'parent_account_id' => [
+                'nullable',
+                'exists:chart_of_accounts,id',
+                function ($attribute, $value, $fail) {
+                    if (! $value) {
+                        return;
+                    }
+                    $parent = ChartOfAccount::find($value);
+                    if ($parent && ! $parent->is_active) {
+                        $fail(__('Cannot assign an inactive account as parent.'));
+                    }
+                },
+            ],
             'description' => 'nullable|string',
             'opening_balance' => 'nullable|numeric',
         ]);

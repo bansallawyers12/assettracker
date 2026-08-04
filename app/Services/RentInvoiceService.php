@@ -94,6 +94,8 @@ class RentInvoiceService
             // Check if invoice already exists
             $existingInvoice = $this->getExistingInvoice($lease, $date);
             if ($existingInvoice) {
+                DB::rollBack();
+
                 return [
                     'success' => false,
                     'message' => 'Invoice already exists for this period'
@@ -174,9 +176,10 @@ class RentInvoiceService
             'account_code' => $this->getRentalIncomeAccountCode()
         ]);
 
-        // Update invoice totals
-        $gstAmount = $rentAmount * 0.10;
-        $subtotal = $rentAmount - $gstAmount;
+        // Update invoice totals using Australian inclusive GST formula
+        $net = round($rentAmount / 1.10, 2);
+        $gstAmount = round($rentAmount - $net, 2);
+        $subtotal = $net;
         $total = $rentAmount;
 
         $invoice->update([
@@ -210,6 +213,7 @@ class RentInvoiceService
             ->whereNull('lease_id')
             ->where('customer_name', $lease->tenant ? $lease->tenant->name : 'Unknown Tenant')
             ->where('reference', 'like', "%{$lease->asset->name}%")
+            ->where('reference', 'like', '%Rent%')
             ->whereBetween('issue_date', [$startOfMonth, $endOfMonth])
             ->first();
     }
@@ -223,10 +227,11 @@ class RentInvoiceService
         $year = $date->format('Y');
         $month = $date->format('m');
         
-        // Get the last invoice number for this business entity
+        // Get the last invoice number for this business entity with lock
         $lastInvoice = Invoice::where('business_entity_id', $businessEntity->id)
             ->where('invoice_number', 'like', "{$prefix}{$year}{$month}%")
             ->orderBy('invoice_number', 'desc')
+            ->lockForUpdate()
             ->first();
 
         if ($lastInvoice) {
@@ -244,49 +249,29 @@ class RentInvoiceService
      */
     public function calculateRentAmount(Lease $lease, Carbon $date)
     {
-        $baseAmount = (float) $lease->rental_amount;
+        $rent = (float) $lease->rent_amount;
 
-        switch (strtolower((string) $lease->payment_frequency)) {
+        switch ($lease->rent_frequency) {
             case 'weekly':
-                return round($baseAmount * 4.33, 2);
+                return round(($rent * 52) / 12, 2);
             case 'fortnightly':
-                return round($baseAmount * (26 / 12), 2);
-            case 'monthly':
-                return $baseAmount;
+                return round(($rent * 26) / 12, 2);
             case 'quarterly':
-                return round($baseAmount / 3, 2);
+                return round($rent / 3, 2);
             case 'annually':
-            case 'yearly':
-                return round($baseAmount / 12, 2);
+                return round($rent / 12, 2);
+            case 'monthly':
             default:
-                return $baseAmount;
+                return $rent;
         }
     }
 
     /**
-     * Resolve the rental income account code for the business entity.
-     * Lookup order mirrors the seeded chart (4100 = Rental Income).
+     * Get rental income account code
      */
-    protected function getRentalIncomeAccountCode(): string
+    protected function getRentalIncomeAccountCode()
     {
-        $account = \App\Models\ChartOfAccount::where('account_name', 'Rental Income')
-            ->where('account_type', 'income')
-            ->where('is_active', true)
-            ->first()
-            ?? \App\Models\ChartOfAccount::where('account_code', '4100')->where('is_active', true)->first()
-            ?? \App\Models\ChartOfAccount::where('account_name', 'Rental Income')
-                ->where('account_type', 'income')
-                ->first()
-            ?? \App\Models\ChartOfAccount::where('account_code', '4100')->first()
-            ?? \App\Models\ChartOfAccount::where('account_type', 'income')
-                ->where('is_active', true)
-                ->orderBy('account_code')
-                ->first()
-            ?? \App\Models\ChartOfAccount::where('account_type', 'income')
-                ->orderBy('account_code')
-                ->first();
-
-        return $account ? $account->account_code : '4100';
+        return '4100'; // Default Rental Income account
     }
 
     /**
@@ -294,8 +279,8 @@ class RentInvoiceService
      */
     public function getUpcomingRentInvoices($businessEntityId, $months = 3)
     {
-        $startDate = Carbon::now();
-        $endDate = Carbon::now()->addMonths($months);
+        $startDate = Carbon::now()->startOfMonth();
+        $endDate = Carbon::now()->addMonths($months)->endOfMonth();
 
         $leases = Lease::with(['asset', 'tenant'])
             ->whereHas('asset', function ($q) use ($businessEntityId) {
@@ -304,9 +289,9 @@ class RentInvoiceService
                     ->where('business_entity_id', $businessEntityId);
             })
             ->where('start_date', '<=', $endDate)
-            ->where(function($q) use ($endDate) {
+            ->where(function($q) use ($startDate) {
                 $q->whereNull('end_date')
-                  ->orWhere('end_date', '>=', $endDate);
+                  ->orWhere('end_date', '>=', $startDate);
             })
             ->get();
 
@@ -315,6 +300,14 @@ class RentInvoiceService
         foreach ($leases as $lease) {
             for ($i = 0; $i < $months; $i++) {
                 $invoiceDate = $startDate->copy()->addMonths($i);
+
+                if ($invoiceDate->lt($lease->start_date->copy()->startOfMonth())) {
+                    continue;
+                }
+
+                if ($lease->end_date !== null && $invoiceDate->gt($lease->end_date->copy()->endOfMonth())) {
+                    continue;
+                }
                 
                 // Check if invoice already exists
                 $existingInvoice = $this->getExistingInvoice($lease, $invoiceDate);

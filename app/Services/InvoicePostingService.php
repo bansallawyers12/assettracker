@@ -42,6 +42,17 @@ class InvoicePostingService
 				$totalDebit += $line['debit'];
 				$totalCredit += $line['credit'];
 			}
+
+			$diff = round($totalDebit - $totalCredit, 2);
+			if (abs($diff) > 0.0001) {
+				if (abs($diff) <= 0.05 && count($lines) > 1) {
+					$lines[1]['credit'] = round($lines[1]['credit'] + $diff, 2);
+					$totalCredit = round($totalCredit + $diff, 2);
+				} else {
+					throw new \DomainException("Unbalanced journal posting: Total debits ({$totalDebit}) do not equal total credits ({$totalCredit}).");
+				}
+			}
+
 			$entry->total_debit = $totalDebit;
 			$entry->total_credit = $totalCredit;
 			$entry->save();
@@ -73,7 +84,8 @@ class InvoicePostingService
 		$gstPayable = $this->findByName('GST Payable')
 			?? $this->findByName('GST Clearing')
 			?? $this->findAccount('2100')
-			?? $this->findAccount('2200');
+			?? $this->findAccount('2200')
+			?? $this->ensureDefaultGstAccount();
 
 		$lines = [];
 
@@ -156,6 +168,21 @@ class InvoicePostingService
 				'account_name' => 'Rental Income',
 				'account_type' => 'income',
 				'account_category' => 'operating_income',
+				'is_active' => true,
+				'opening_balance' => 0,
+				'current_balance' => 0,
+			]
+		);
+	}
+
+	private function ensureDefaultGstAccount(): ChartOfAccount
+	{
+		return ChartOfAccount::firstOrCreate(
+			['account_code' => '2100'],
+			[
+				'account_name' => 'GST Clearing',
+				'account_type' => 'liability',
+				'account_category' => 'current_liability',
 				'is_active' => true,
 				'opening_balance' => 0,
 				'current_balance' => 0,
