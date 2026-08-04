@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Http\Resources\DocumentCategoryResource;
 use App\Http\Resources\DocumentSlotResource;
 use App\Models\Asset;
@@ -10,12 +11,14 @@ use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Rules\UniqueChecklistLabelInCategory;
 use App\Services\DocumentUploadService;
+use App\Support\DocumentStorage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class DocumentWorkspaceController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
     public function __construct(
         private DocumentUploadService $uploadService
     ) {}
@@ -167,12 +170,14 @@ class DocumentWorkspaceController extends Controller
     public function destroySlot(BusinessEntity $businessEntity, Document $document)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
         $this->ensureDocumentBelongs($businessEntity, $document);
 
         $this->uploadService->clearTransactionLinksForDocument($document);
 
-        if ($document->path && Storage::disk('s3')->exists($document->path)) {
-            Storage::disk('s3')->delete($document->path);
+        if ($document->path && DocumentStorage::exists($document->path)) {
+            DocumentStorage::delete($document->path);
         }
         $document->delete();
 

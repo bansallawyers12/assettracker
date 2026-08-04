@@ -32,6 +32,10 @@ class DocumentStorage
     {
         static::diskName();
 
+        $options = array_merge([
+            'ServerSideEncryption' => 'AES256',
+        ], $options);
+
         try {
             $ok = static::disk()->put($path, $contents, $options);
         } catch (\Throwable $e) {

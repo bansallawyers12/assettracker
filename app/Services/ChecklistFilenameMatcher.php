@@ -41,12 +41,10 @@ class ChecklistFilenameMatcher
             }
 
             similar_text($fileLower, $cl, $pct);
-            if ($pct > 85) {
-                return ['checklist' => $checklist, 'confidence' => 'high', 'score' => $pct, 'method' => 'fuzzy'];
-            }
             if ($pct > $bestScore && $pct > 55) {
                 $bestScore = $pct;
-                $best = ['checklist' => $checklist, 'confidence' => $pct > 70 ? 'medium' : 'low', 'score' => $pct, 'method' => 'fuzzy'];
+                $confidence = $pct > 85 ? 'high' : ($pct > 70 ? 'medium' : 'low');
+                $best = ['checklist' => $checklist, 'confidence' => $confidence, 'score' => $pct, 'method' => 'fuzzy'];
             }
 
             if (str_contains($fileLower, $cl) || str_contains($cl, $fileLower)) {

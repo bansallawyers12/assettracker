@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Http\Resources\DocumentSlotResource;
 use App\Models\Asset;
 use App\Models\BusinessEntity;
@@ -12,11 +13,13 @@ use App\Services\DocumentUploadService;
 use App\Support\DocumentStorage;
 use App\Support\DocumentUploadValidation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class DocumentController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
     public function __construct(
         private DocumentUploadService $uploadService,
         private ChecklistFilenameMatcher $filenameMatcher
@@ -245,65 +248,67 @@ class DocumentController extends Controller
                 $type          = $mapping['type'] ?? 'existing';
                 $replace       = (bool) ($mapping['replace'] ?? false);
 
-                // Find existing slot — first look for an empty one (path IS NULL)
-                $emptySlot = Document::query()
-                    ->where('business_entity_id', $businessEntity->id)
-                    ->where('document_category_id', $category->id)
-                    ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
-                    ->whereNull('path')
-                    ->when($asset, fn ($q) => $q->where('asset_id', $asset->id))
-                    ->when(! $asset, fn ($q) => $q->whereNull('asset_id'))
-                    ->first();
-
-                $filledSlot = null;
-                if (! $emptySlot) {
-                    $filledSlot = Document::query()
+                $slot = DB::transaction(function () use ($businessEntity, $category, $checklistName, $asset, $type, $replace, $file, &$errors) {
+                    $emptySlot = Document::query()
                         ->where('business_entity_id', $businessEntity->id)
                         ->where('document_category_id', $category->id)
                         ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
-                        ->whereNotNull('path')
+                        ->whereNull('path')
                         ->when($asset, fn ($q) => $q->where('asset_id', $asset->id))
                         ->when(! $asset, fn ($q) => $q->whereNull('asset_id'))
-                        ->latest('id')
+                        ->lockForUpdate()
                         ->first();
-                }
 
-                $slot = $emptySlot;
-
-                if (! $slot && $filledSlot) {
-                    // Slot exists and has a file
-                    if (! $replace) {
-                        $errors[] = "Checklist \"{$checklistName}\" already has a file. Enable the 'Replace existing file' toggle to overwrite it. ({$file->getClientOriginalName()})";
-                        continue;
-                    }
-                    // Replace mode: use the filled slot
-                    $slot = $filledSlot;
-                }
-
-                if (! $slot && $type === 'new') {
-                    // Validate unique label before creating
-                    $labelConflict = Document::query()
-                        ->where('business_entity_id', $businessEntity->id)
-                        ->where('document_category_id', $category->id)
-                        ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
-                        ->when($asset, fn ($q) => $q->where('asset_id', $asset->id))
-                        ->when(! $asset, fn ($q) => $q->whereNull('asset_id'))
-                        ->exists();
-
-                    if ($labelConflict) {
-                        $errors[] = "Checklist \"{$checklistName}\" already exists. ({$file->getClientOriginalName()})";
-                        continue;
+                    $filledSlot = null;
+                    if (! $emptySlot) {
+                        $filledSlot = Document::query()
+                            ->where('business_entity_id', $businessEntity->id)
+                            ->where('document_category_id', $category->id)
+                            ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
+                            ->whereNotNull('path')
+                            ->when($asset, fn ($q) => $q->where('asset_id', $asset->id))
+                            ->when(! $asset, fn ($q) => $q->whereNull('asset_id'))
+                            ->latest('id')
+                            ->lockForUpdate()
+                            ->first();
                     }
 
-                    $slot = Document::query()->create([
-                        'business_entity_id'   => $businessEntity->id,
-                        'asset_id'             => $asset?->id,
-                        'document_category_id' => $category->id,
-                        'checklist_label'      => $checklistName,
-                        'type'                 => 'other',
-                        'user_id'              => auth()->id(),
-                    ]);
-                }
+                    $slot = $emptySlot;
+
+                    if (! $slot && $filledSlot) {
+                        if (! $replace) {
+                            $errors[] = "Checklist \"{$checklistName}\" already has a file. Enable the 'Replace existing file' toggle to overwrite it. ({$file->getClientOriginalName()})";
+                            return null;
+                        }
+                        $slot = $filledSlot;
+                    }
+
+                    if (! $slot && $type === 'new') {
+                        $labelConflict = Document::query()
+                            ->where('business_entity_id', $businessEntity->id)
+                            ->where('document_category_id', $category->id)
+                            ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(?)', [$checklistName])
+                            ->when($asset, fn ($q) => $q->where('asset_id', $asset->id))
+                            ->when(! $asset, fn ($q) => $q->whereNull('asset_id'))
+                            ->exists();
+
+                        if ($labelConflict) {
+                            $errors[] = "Checklist \"{$checklistName}\" already exists. ({$file->getClientOriginalName()})";
+                            return null;
+                        }
+
+                        $slot = Document::query()->create([
+                            'business_entity_id'   => $businessEntity->id,
+                            'asset_id'             => $asset?->id,
+                            'document_category_id' => $category->id,
+                            'checklist_label'      => $checklistName,
+                            'type'                 => 'other',
+                            'user_id'              => auth()->id(),
+                        ]);
+                    }
+
+                    return $slot;
+                });
 
                 if (! $slot) {
                     $errors[] = "No checklist row named \"{$checklistName}\" found. ({$file->getClientOriginalName()})";
@@ -376,7 +381,7 @@ class DocumentController extends Controller
 
         if ($document->asset_id !== null) {
             $requestedAssetId = $request->query('asset_id');
-            if ($requestedAssetId !== null && (int) $requestedAssetId !== (int) $document->asset_id) {
+            if ($requestedAssetId === null || (int) $requestedAssetId !== (int) $document->asset_id) {
                 abort(404);
             }
         }
@@ -413,7 +418,8 @@ class DocumentController extends Controller
         ];
 
         try {
-            if ($request->boolean('download')) {
+            if ($request->boolean('download') || strtolower($mime) === 'image/svg+xml' || str_ends_with(strtolower($document->path), '.svg')) {
+                $headers['Content-Security-Policy'] = "default-src 'none'; script-src 'none'";
                 return DocumentStorage::disk()->download($document->path, $name, $headers);
             }
 

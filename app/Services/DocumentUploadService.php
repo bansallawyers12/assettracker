@@ -71,16 +71,7 @@ class DocumentUploadService
             throw new \InvalidArgumentException('Document has no category.');
         }
 
-        if ($document->path) {
-            if (DocumentStorage::exists($document->path)) {
-                DocumentStorage::delete($document->path);
-            }
-            $document->path = null;
-            $document->file_name = null;
-            $document->filetype = null;
-            $document->file_size = null;
-            $document->save();
-        }
+        $oldPath = $document->path;
 
         $prefix = $this->baseDocsPath($entity, $asset).'/'.$this->categoryPathSegment($categoryId);
         $this->ensureDirectory($prefix);
@@ -108,6 +99,10 @@ class DocumentUploadService
         $document->file_size = $file->getSize();
         $document->user_id = auth()->id();
         $document->save();
+
+        if ($oldPath && $oldPath !== $path && DocumentStorage::exists($oldPath)) {
+            DocumentStorage::delete($oldPath);
+        }
 
         Transaction::query()->where('document_id', $document->id)->update(['receipt_path' => $path]);
     }

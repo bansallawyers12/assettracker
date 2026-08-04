@@ -61,14 +61,14 @@ class DocumentUploadValidation
         $extensions = self::allowedExtensions($extensionsConfigKey);
         $ext = strtolower($file->getClientOriginalExtension() ?: '');
 
-        if ($ext !== '' && in_array($ext, $extensions, true)) {
-            return true;
+        if ($ext === '' || ! in_array($ext, $extensions, true)) {
+            return false;
         }
 
         $mime = strtolower((string) ($file->getMimeType() ?: ''));
 
         if ($mime === '' || $mime === 'application/octet-stream') {
-            return $ext !== '' && in_array($ext, $extensions, true);
+            return true;
         }
 
         return in_array($mime, self::allowedMimeTypes(), true);
