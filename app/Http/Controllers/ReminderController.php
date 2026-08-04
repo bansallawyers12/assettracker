@@ -104,7 +104,18 @@ class ReminderController extends Controller
             'repeat_type' => 'required|in:none,monthly,quarterly,annual',
             'repeat_end_date' => 'nullable|date|after:reminder_date',
             'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
-            'asset_id' => 'nullable|exists:assets,id',
+            'asset_id' => [
+                'nullable',
+                'exists:assets,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($value && $request->filled('business_entity_id')) {
+                        $asset = Asset::find($value);
+                        if ($asset && (int) $asset->business_entity_id !== (int) $request->business_entity_id) {
+                            $fail(__('The selected asset does not belong to the selected business entity.'));
+                        }
+                    }
+                },
+            ],
             'category' => 'nullable|string|max:50',
             'priority' => 'nullable|in:low,medium,high',
             'notes' => 'nullable|string',
@@ -174,7 +185,18 @@ class ReminderController extends Controller
             'repeat_type' => 'required|in:none,monthly,quarterly,annual',
             'repeat_end_date' => 'nullable|date|after:reminder_date',
             'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
-            'asset_id' => 'nullable|exists:assets,id',
+            'asset_id' => [
+                'nullable',
+                'exists:assets,id',
+                function ($attribute, $value, $fail) use ($request) {
+                    if ($value && $request->filled('business_entity_id')) {
+                        $asset = Asset::find($value);
+                        if ($asset && (int) $asset->business_entity_id !== (int) $request->business_entity_id) {
+                            $fail(__('The selected asset does not belong to the selected business entity.'));
+                        }
+                    }
+                },
+            ],
             'category' => 'nullable|string|max:50',
             'priority' => 'nullable|in:low,medium,high',
             'notes' => 'nullable|string',
@@ -246,12 +268,16 @@ class ReminderController extends Controller
 
         $reminders = Reminder::whereIn('id', $validated['reminders'])->get();
 
+        $completedCount = 0;
         foreach ($reminders as $reminder) {
-            $reminder->complete();
+            if ($request->user()?->can('update', $reminder)) {
+                $reminder->complete();
+                $completedCount++;
+            }
         }
 
         return redirect()->back()
-            ->with('success', count($reminders) . ' reminders marked as completed.');
+            ->with('success', $completedCount . ' reminders marked as completed.');
     }
 
     /**

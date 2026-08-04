@@ -142,18 +142,20 @@ class Reminder extends Model
 
     protected function createNextReminder()
     {
-        if ($this->repeat_end_date && $this->next_due_date > $this->repeat_end_date) {
-            return;
-        }
+        $baseDate = $this->next_due_date ? $this->next_due_date->copy() : now();
 
         $nextDueDate = match($this->repeat_type) {
-            'monthly' => $this->next_due_date->addMonth(),
-            'quarterly' => $this->next_due_date->addMonths(3),
-            'annual' => $this->next_due_date->addYear(),
+            'monthly' => $baseDate->copy()->addMonth(),
+            'quarterly' => $baseDate->copy()->addMonths(3),
+            'annual' => $baseDate->copy()->addYear(),
             default => null
         };
 
         if ($nextDueDate) {
+            if ($this->repeat_end_date && $nextDueDate->startOfDay()->gt(\Carbon\Carbon::parse($this->repeat_end_date)->startOfDay())) {
+                return;
+            }
+
             $newReminder = $this->replicate(['is_completed', 'completed_at']);
             $newReminder->reminder_date = $nextDueDate;
             $newReminder->next_due_date = $nextDueDate;

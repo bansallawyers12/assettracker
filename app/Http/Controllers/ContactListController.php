@@ -87,7 +87,7 @@ class ContactListController extends Controller
     {
         $this->authorize('view', $businessEntity);
         // Ensure the contact belongs to the business entity
-        if ($contactList->business_entity_id !== $businessEntity->id) {
+        if ((int) $contactList->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
         }
         return view('contact-lists.show', compact('businessEntity', 'contactList'));
@@ -100,7 +100,7 @@ class ContactListController extends Controller
     {
         $this->authorize('update', $businessEntity);
         // Ensure the contact belongs to the business entity
-        if ($contactList->business_entity_id !== $businessEntity->id) {
+        if ((int) $contactList->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
         }
         return view('contact-lists.edit', compact('businessEntity', 'contactList'));
@@ -113,7 +113,7 @@ class ContactListController extends Controller
     {
         $this->authorize('update', $businessEntity);
         // Ensure the contact belongs to the business entity
-        if ($contactList->business_entity_id !== $businessEntity->id) {
+        if ((int) $contactList->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
         }
 
@@ -154,7 +154,7 @@ class ContactListController extends Controller
     {
         $this->authorize('update', $businessEntity);
         // Ensure the contact belongs to the business entity
-        if ($contactList->business_entity_id !== $businessEntity->id) {
+        if ((int) $contactList->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
         }
         

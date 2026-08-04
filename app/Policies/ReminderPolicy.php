@@ -23,30 +23,41 @@ class ReminderPolicy
      */
     public function view(User $user, Reminder $reminder): bool
     {
+        if ((int) $reminder->user_id === (int) $user->id) {
+            return true;
+        }
+
+        if ($reminder->business_entity_id) {
+            $reminder->loadMissing('businessEntity');
+
+            return $reminder->businessEntity ? $user->can('view', $reminder->businessEntity) : false;
+        }
+
         return true;
     }
 
-    /**
-     * Determine whether the user can create models.
-     */
     public function create(User $user): bool
     {
         return true;
     }
 
-    /**
-     * Determine whether the user can update the model.
-     */
     public function update(User $user, Reminder $reminder): bool
     {
+        if ((int) $reminder->user_id === (int) $user->id) {
+            return true;
+        }
+
+        if ($reminder->business_entity_id) {
+            $reminder->loadMissing('businessEntity');
+
+            return $reminder->businessEntity ? $user->can('update', $reminder->businessEntity) : false;
+        }
+
         return true;
     }
 
-    /**
-     * Determine whether the user can delete the model.
-     */
     public function delete(User $user, Reminder $reminder): bool
     {
-        return true;
+        return $this->update($user, $reminder);
     }
 } 
