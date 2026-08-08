@@ -8,6 +8,7 @@
         'createOnly' => true,
         'panelTitle' => 'Add bank account',
         'panelSubtitle' => 'Create a portfolio bank account and assign it to an entity or person.',
+        'openTransactionsAccountId' => session('open_bank_transactions_account_id'),
     ];
 @endphp
 

@@ -1125,12 +1125,13 @@ class BusinessEntityController extends Controller
      */
     public function storeBankTransaction(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount)
     {
-        $this->authorize('update', $businessEntity);
+        $bookingEntity = $this->resolveBookingEntityForBankAccountTransaction($request, $bankAccount, $businessEntity);
 
-        $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorize('update', $bookingEntity);
 
-        // Authorization check
-        if (! $bankAccount->canUseForTransaction($businessEntity)) {
+        $this->ensureOperationalForAccounting($bookingEntity);
+
+        if (! $bankAccount->canUseForTransaction($bookingEntity)) {
             abort(403, 'Unauthorized');
         }
 
@@ -1143,6 +1144,7 @@ class BusinessEntityController extends Controller
 
         // Validate the transaction data
         $request->validate(array_merge([
+            'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'date' => 'required|date',
             'amount' => 'required|numeric',
             'description' => 'nullable|string|max:255',
@@ -1153,7 +1155,7 @@ class BusinessEntityController extends Controller
             'asset_id' => [
                 'nullable',
                 'integer',
-                Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $businessEntity->id)),
+                Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $bookingEntity->id)),
             ],
             'gst_amount' => 'nullable|numeric',
             'gst_basis' => 'nullable|in:inclusive,exclusive',
@@ -1183,7 +1185,7 @@ class BusinessEntityController extends Controller
         $paidBy = $this->validatedPaidBy($request);
         $vendorData = $this->resolveTransactionVendorData($request);
 
-        $transaction = DB::transaction(function () use ($request, $businessEntity, $bankAccount, $asset, $gstResolved, $paidBy, $vendorData) {
+        $transaction = DB::transaction(function () use ($request, $bookingEntity, $bankAccount, $asset, $gstResolved, $paidBy, $vendorData) {
             $receiptPath = null;
             $documentId = null;
             $prefillPath = $request->input('receipt_path');
@@ -1197,7 +1199,7 @@ class BusinessEntityController extends Controller
                     : pathinfo($originalName, PATHINFO_FILENAME);
                 $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
                 $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                    $businessEntity,
+                    $bookingEntity,
                     $asset,
                     $file,
                     $displayName,
@@ -1208,14 +1210,14 @@ class BusinessEntityController extends Controller
                 $documentId = $document->id;
             } elseif (
                 $prefillPath
-                && $this->prefillReceiptPathAllowedForEntity($prefillPath, $businessEntity)
+                && $this->prefillReceiptPathAllowedForEntity($prefillPath, $bookingEntity)
                 && Storage::disk('s3')->exists($prefillPath)
             ) {
                 $displayName = basename(str_replace('\\', '/', $prefillPath));
                 $labelBase = pathinfo($displayName, PATHINFO_FILENAME) ?: 'Receipt';
                 $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
                 $document = $this->documentUploadService->createTransactionReceiptFromExistingS3Path(
-                    $businessEntity,
+                    $bookingEntity,
                     $asset,
                     $prefillPath,
                     $displayName,
@@ -1235,7 +1237,7 @@ class BusinessEntityController extends Controller
                     : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
                 $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
                 $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                    $businessEntity,
+                    $bookingEntity,
                     $asset,
                     $payFile,
                     $payDisplayName,
@@ -1246,7 +1248,7 @@ class BusinessEntityController extends Controller
             }
 
             return Transaction::create([
-                'business_entity_id' => $businessEntity->id,
+                'business_entity_id' => $bookingEntity->id,
                 'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
                 'related_entity_id' => $request->related_entity_id,
                 'bank_account_id' => $bankAccount->id,
@@ -1271,8 +1273,14 @@ class BusinessEntityController extends Controller
             ]);
         });
 
-        // Redirect to the bank account show page with success message
-        return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
+        if ($request->input('return_to') === 'bank-account') {
+            return redirect()
+                ->route('bank-accounts.index')
+                ->with('success', "Transaction '{$transaction->description}' added successfully!")
+                ->with('open_bank_transactions_account_id', $bankAccount->id);
+        }
+
+        return $this->redirectToBusinessEntityShow($bookingEntity, $bankAccount->id, 'tab_bank_accounts')
             ->with('success', "Transaction '{$transaction->description}' added successfully!");
     }
 
@@ -3535,6 +3543,37 @@ class BusinessEntityController extends Controller
         }
 
         return $bankAccountId;
+    }
+
+    private function resolveBookingEntityForBankAccountTransaction(
+        Request $request,
+        BankAccount $bankAccount,
+        ?BusinessEntity $routeEntity = null
+    ): BusinessEntity {
+        $candidateId = $request->filled('business_entity_id')
+            ? $request->integer('business_entity_id')
+            : ($routeEntity?->id);
+
+        if ($candidateId) {
+            $entity = BusinessEntity::query()->findOrFail($candidateId);
+            $this->ensureOperationalForAccounting($entity);
+            if (! $bankAccount->canUseForTransaction($entity)) {
+                throw ValidationException::withMessages([
+                    'business_entity_id' => 'The selected entity cannot use this bank account.',
+                ]);
+            }
+
+            return $entity;
+        }
+
+        $eligible = $bankAccount->eligibleTransactionEntities();
+        if ($eligible->count() === 1) {
+            return $eligible->first();
+        }
+
+        throw ValidationException::withMessages([
+            'business_entity_id' => 'Select which entity should own this transaction.',
+        ]);
     }
 
     private function resolveBankAccountIdForTransactionSave(Request $request, ?Transaction $existing = null): ?int

@@ -163,6 +163,12 @@
                                                 'statementsUrl' => route('bank-accounts.statements.index', $account),
                                                 'statementsTitle' => 'Bank statements',
                                                 'statementsSubtitle' => $account->displayLabel(),
+                                                'transactionsUrl' => route('bank-accounts.transactions.index', [
+                                                    'bankAccount' => $account,
+                                                    'business_entity_id' => $linkBusinessEntity->id,
+                                                ]),
+                                                'transactionsTitle' => 'Transactions',
+                                                'transactionsSubtitle' => $account->displayLabel(),
                                                 'unlinkUrl' => ($linkBusinessEntity && $link->id)
                                                     ? route('business-entities.bank-account-links.destroy', [$linkBusinessEntity, $link])
                                                     : null,
@@ -213,6 +219,9 @@
                                                 'statementsUrl' => route('bank-accounts.statements.index', $account),
                                                 'statementsTitle' => 'Bank statements',
                                                 'statementsSubtitle' => $account->displayLabel(),
+                                                'transactionsUrl' => route('bank-accounts.transactions.index', $account),
+                                                'transactionsTitle' => 'Transactions',
+                                                'transactionsSubtitle' => $account->displayLabel(),
                                                 'deleteUrl' => $account->destroyRoute(),
                                                 'deleteTitle' => 'Delete bank account',
                                                 'deleteConfirm' => 'Delete this bank account permanently? This cannot be undone.',

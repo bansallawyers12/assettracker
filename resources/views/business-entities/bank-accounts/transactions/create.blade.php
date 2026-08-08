@@ -48,6 +48,9 @@
 
                 <form method="POST" action="{{ route('business-entities.bank-accounts.transactions.store', [$businessEntity->id, $bankAccount->id]) }}" enctype="multipart/form-data" id="bank-store-transaction-form" data-transaction-paid-by-form>
                     @csrf
+                    @if(request('return_to') === 'bank-account')
+                        <input type="hidden" name="return_to" value="bank-account">
+                    @endif
 
                     <div class="flex gap-3 mb-5">
                         <label class="flex-1 cursor-pointer">
@@ -225,7 +228,7 @@
 
                     <div class="flex gap-4 mt-6">
                         <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md shadow-xs transition duration-200 font-medium">Add Transaction</button>
-                        <a href="{{ route('business-entities.show', ['business_entity' => $businessEntity->id, 'bank_account_id' => $bankAccount->id]) }}#tab_bank_accounts" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 text-gray-700 px-4 py-2 rounded-md shadow-xs transition duration-200 font-medium">Cancel</a>
+                        <a href="{{ request('return_to') === 'bank-account' ? route('bank-accounts.index') : route('business-entities.show', ['business_entity' => $businessEntity->id, 'bank_account_id' => $bankAccount->id]) . '#tab_bank_accounts' }}" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 text-gray-700 px-4 py-2 rounded-md shadow-xs transition duration-200 font-medium">Cancel</a>
                     </div>
                 </form>
             </div>

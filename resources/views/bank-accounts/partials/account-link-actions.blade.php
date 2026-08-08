@@ -126,6 +126,21 @@
         </button>
     @endif
 
+    @if(! empty($transactionsUrl))
+        <button
+            type="button"
+            data-bank-action="transactions"
+            data-bank-transactions-url="{{ $transactionsUrl }}"
+            data-bank-transactions-title="{{ $transactionsTitle ?? 'Transactions' }}"
+            data-bank-transactions-subtitle="{{ $transactionsSubtitle ?? '' }}"
+            title="{{ $transactionsTitle ?? 'Transactions' }}"
+            class="{{ $btnClass }} border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50"
+        >
+            <x-lucide-arrow-left-right class="h-4 w-4" aria-hidden="true" />
+            <span class="sr-only">{{ $transactionsTitle ?? 'Transactions' }}</span>
+        </button>
+    @endif
+
     @if(! empty($deleteUrl))
         @if($useSpaActions)
             <button

@@ -734,6 +734,63 @@ export function initBankAccountModal() {
         bindStatementsPanel(createHost, createController.signal, statementsUrl);
     }
 
+    function bindTransactionsPanel(root, signal, transactionsIndexUrl) {
+        const panel = root.querySelector('[data-bank-transactions-panel]');
+        const refreshUrl = transactionsIndexUrl || panel?.dataset.bankTransactionsIndexUrl;
+
+        const addButton = root.querySelector('[data-bank-transactions-add]');
+        const entityPicker = root.querySelector('[data-bank-transactions-entity-picker]');
+
+        addButton?.addEventListener('click', () => {
+            const template = addButton.dataset.createUrlTemplate;
+            if (!template) {
+                return;
+            }
+
+            const entityId = entityPicker?.value || addButton.dataset.defaultEntityId;
+            if (!entityId) {
+                showWorkspaceAlert({
+                    title: 'Select entity',
+                    message: 'Choose which entity should own this transaction before continuing.',
+                    variant: 'info',
+                });
+                return;
+            }
+
+            const createUrl = template.replace('BUSINESS_ENTITY', encodeURIComponent(entityId));
+            window.location.assign(createUrl);
+        }, { signal });
+    }
+
+    async function openTransactionsPanel(transactionsUrl, options = {}) {
+        closeWorkspacePanel();
+        panelMode = 'transactions';
+        showTabs(false);
+        setActiveTab('create');
+        setPanelCopy({
+            title: options.title || 'Transactions',
+            subtitle: options.subtitle || 'View and add transactions booked through this account.',
+            eyebrow: 'Transactions',
+        });
+
+        openBankPanel();
+        createController?.abort();
+        createController = new AbortController();
+        destroyTomSelectsIn(createHost);
+        createHost.innerHTML = '<div class="flex items-center justify-center py-16 text-sm text-gray-500 dark:text-gray-400">Loading transactions…</div>';
+
+        const response = await apiFetch(transactionsUrl);
+        const payload = parseJson(await response.text());
+
+        if (!response.ok || !payload?.html) {
+            createHost.innerHTML = '<p class="text-sm text-red-600 dark:text-red-400">Could not load transactions. Refresh and try again.</p>';
+            return;
+        }
+
+        createHost.innerHTML = payload.html;
+        bindTransactionsPanel(createHost, createController.signal, transactionsUrl);
+    }
+
     tabButtons.forEach((button) => {
         button.addEventListener('click', () => {
             const tab = button.dataset.bankPanelTab;
@@ -785,6 +842,16 @@ export function initBankAccountModal() {
             await openStatementsPanel(statementsBtn.dataset.bankStatementsUrl, {
                 title: statementsBtn.dataset.bankStatementsTitle || undefined,
                 subtitle: statementsBtn.dataset.bankStatementsSubtitle || undefined,
+            });
+            return;
+        }
+
+        const transactionsBtn = event.target.closest('[data-bank-action="transactions"]');
+        if (transactionsBtn?.dataset.bankTransactionsUrl) {
+            event.preventDefault();
+            await openTransactionsPanel(transactionsBtn.dataset.bankTransactionsUrl, {
+                title: transactionsBtn.dataset.bankTransactionsTitle || undefined,
+                subtitle: transactionsBtn.dataset.bankTransactionsSubtitle || undefined,
             });
             return;
         }
@@ -877,5 +944,15 @@ export function initBankAccountModal() {
 
     if (config.autoOpen) {
         openCreatePanel({ tab: 'link' });
+    }
+
+    window.openBankAccountTransactionsPanel = openTransactionsPanel;
+
+    if (config.openTransactionsAccountId) {
+        const txUrl = `/bank-accounts/${config.openTransactionsAccountId}/transactions`;
+        openTransactionsPanel(txUrl, {
+            title: 'Transactions',
+            subtitle: 'View and add transactions booked through this account.',
+        });
     }
 }

@@ -187,6 +187,10 @@ Further frontend notes: [`docs/TECH_UPDATE.md`](docs/TECH_UPDATE.md). ATO lodgem
 
 ### Local / XAMPP notes
 
+### Production deploy
+
+See [docs/PRODUCTION.md](docs/PRODUCTION.md) for server details, Node/npm versions, and post-deploy steps (`npm ci`, `npm run build`).
+
 `.env.example` is production-oriented. For local HTTP (e.g. `http://localhost` or XAMPP):
 
 ```env

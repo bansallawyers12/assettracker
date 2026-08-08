@@ -515,6 +515,21 @@ class BankAccount extends Model
     }
 
     /**
+     * Operational entities that may book transactions against this account.
+     *
+     * @return \Illuminate\Support\Collection<int, BusinessEntity>
+     */
+    public function eligibleTransactionEntities(): \Illuminate\Support\Collection
+    {
+        return BusinessEntity::query()
+            ->operationalEntities()
+            ->orderBy('legal_name')
+            ->get()
+            ->filter(fn (BusinessEntity $entity) => $this->canUseForTransaction($entity))
+            ->values();
+    }
+
+    /**
      * Whether this account has an entity operating-purpose link on the given entity.
      */
     public function hasOperatingPurposeLinkOnEntity(BusinessEntity $entity): bool

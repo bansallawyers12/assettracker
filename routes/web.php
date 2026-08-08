@@ -25,6 +25,7 @@ use App\Http\Controllers\AssetsWorkspaceController;
 use App\Http\Controllers\AssetShowWorkspaceController;
 use App\Http\Controllers\BankAccountPanelController;
 use App\Http\Controllers\BankAccountStatementController;
+use App\Http\Controllers\BankAccountTransactionController;
 use App\Http\Controllers\BankAccountsWorkspaceController;
 use App\Http\Controllers\ContactListsWorkspaceController;
 use App\Http\Controllers\EntityShowWorkspaceController;
@@ -418,6 +419,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('/bank-accounts/{bankAccount}/statements', [BankAccountStatementController::class, 'store'])->name('bank-accounts.statements.store');
     Route::get('/bank-accounts/{bankAccount}/statements/{bankAccountStatement}/download', [BankAccountStatementController::class, 'download'])->name('bank-accounts.statements.download');
     Route::delete('/bank-accounts/{bankAccount}/statements/{bankAccountStatement}', [BankAccountStatementController::class, 'destroy'])->name('bank-accounts.statements.destroy');
+    Route::get('/bank-accounts/{bankAccount}/transactions', [BankAccountTransactionController::class, 'index'])->name('bank-accounts.transactions.index');
     Route::get('/transactions', [BusinessEntityController::class, 'transactionsIndex'])->name('transactions.index');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
