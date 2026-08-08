@@ -6,6 +6,30 @@ function parseEntityIdFromPaidBy(value) {
     return match ? match[1] : null;
 }
 
+function isTransactionPaid(form) {
+    const paidRadio = form.querySelector('input[name="payment_status"][value="paid"]');
+
+    return paidRadio?.checked ?? false;
+}
+
+function bookingEntityId(form) {
+    const bookingSelect = form.querySelector('#business_entity_id')
+        || form.querySelector('[name="business_entity_id"]');
+
+    if (!bookingSelect) {
+        return null;
+    }
+
+    const value = paidBySelectValue(bookingSelect) || bookingSelect.value || '';
+
+    return String(value).trim() || null;
+}
+
+function resolveBankAccountEntityId(form, paidBySelect) {
+    return parseEntityIdFromPaidBy(paidBySelectValue(paidBySelect))
+        || bookingEntityId(form);
+}
+
 function setBankAccountOptions(select, accounts) {
     select.innerHTML = '';
 
@@ -67,6 +91,33 @@ function bindPaidByTomSelectChange(paidBySelect, handler) {
     paidBySelect.tomselect.on('change', handler);
 }
 
+function bindBookingEntityChange(form, handler) {
+    const bookingSelect = form.querySelector('#business_entity_id')
+        || form.querySelector('[name="business_entity_id"]');
+
+    if (!bookingSelect || bookingSelect.dataset.bankAccountEntityBound === 'true') {
+        return;
+    }
+
+    bookingSelect.dataset.bankAccountEntityBound = 'true';
+    bookingSelect.addEventListener('change', handler);
+
+    if (bookingSelect.tomselect) {
+        bookingSelect.tomselect.on('change', handler);
+    }
+}
+
+function bindPaymentStatusChange(form, handler) {
+    if (form.dataset.bankAccountPaymentBound === 'true') {
+        return;
+    }
+
+    form.dataset.bankAccountPaymentBound = 'true';
+    form.querySelectorAll('input[name="payment_status"]').forEach((input) => {
+        input.addEventListener('change', handler);
+    });
+}
+
 function setupTransactionPaidByBankAccount(form) {
     const paidBySelect = form.querySelector('#paid_by_select');
     const wrap = form.querySelector('#paid_by_bank_account_wrap');
@@ -79,9 +130,22 @@ function setupTransactionPaidByBankAccount(form) {
     let loadToken = 0;
 
     async function syncBankAccountField() {
-        const entityId = parseEntityIdFromPaidBy(paidBySelectValue(paidBySelect));
+        const paid = isTransactionPaid(form);
+        const requireWhenPaid = form.dataset.requireBankAccountWhenPaid === 'true';
+        const entityId = resolveBankAccountEntityId(form, paidBySelect);
 
-        if (!entityId) {
+        if (!paid || !entityId) {
+            wrap.classList.add('hidden');
+            window.setSelectValue?.(bankSelect, '');
+            window.setSelectDisabled?.(bankSelect, true);
+            bankSelect.dataset.loadedEntityId = '';
+
+            return;
+        }
+
+        // Legacy forms only show the bank picker when an entity payer is selected,
+        // unless the form opts into requiring a cash account for every paid txn.
+        if (!requireWhenPaid && !parseEntityIdFromPaidBy(paidBySelectValue(paidBySelect))) {
             wrap.classList.add('hidden');
             window.setSelectValue?.(bankSelect, '');
             window.setSelectDisabled?.(bankSelect, true);
@@ -138,6 +202,8 @@ function setupTransactionPaidByBankAccount(form) {
     if (!form.dataset.paidByBankAccountBound) {
         form.dataset.paidByBankAccountBound = 'true';
         bindPaidBySelectChange(paidBySelect, syncBankAccountField);
+        bindBookingEntityChange(form, syncBankAccountField);
+        bindPaymentStatusChange(form, syncBankAccountField);
 
         bankSelect.addEventListener('change', () => {
             bankSelect.dataset.selected = paidBySelectValue(bankSelect);

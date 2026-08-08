@@ -121,18 +121,24 @@ export function validateTransactionPaidBy(form) {
         return false;
     }
 
-    if (isEntityPaidBy(selected) && transactionDirection(form) === 'income') {
-        const bankWrap = form.querySelector('#paid_by_bank_account_wrap');
-        const bankSelect = form.querySelector('#paid_by_bank_account_id');
+    const bankWrap = form.querySelector('#paid_by_bank_account_wrap');
+    const bankSelect = form.querySelector('#paid_by_bank_account_id');
+    const requireBank = form.dataset.requireBankAccountWhenPaid === 'true'
+        || (isEntityPaidBy(selected) && transactionDirection(form) === 'income');
 
-        if (bankWrap && !bankWrap.classList.contains('hidden') && bankSelect) {
-            const bankValue = String(paidBySelectValue(bankSelect)).trim();
+    if (requireBank && bankWrap && !bankWrap.classList.contains('hidden') && bankSelect) {
+        const bankValue = String(paidBySelectValue(bankSelect)).trim();
 
-            if (bankValue === '') {
-                showPaidByClientError(form, 'bank_account', 'Bank account is required when an entity is selected.');
+        if (bankValue === '') {
+            showPaidByClientError(
+                form,
+                'bank_account',
+                form.dataset.requireBankAccountWhenPaid === 'true'
+                    ? 'Bank account is required for paid transactions.'
+                    : 'Bank account is required when an entity is selected.'
+            );
 
-                return false;
-            }
+            return false;
         }
     }
 

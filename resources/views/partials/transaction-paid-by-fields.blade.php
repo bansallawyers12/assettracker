@@ -53,7 +53,7 @@
 @if (! $hideBankAccountField)
     <div id="paid_by_bank_account_wrap" class="mt-2 {{ $showBankAccount ? '' : 'hidden' }}">
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 {{ $labelClass ?? 'mb-1' }}" id="paid_by_bank_account_label">
-            Bank account
+            Bank account <span class="normal-case font-normal text-gray-400">(cash)</span>
         </label>
         <x-tom-select name="bank_account_id" id="paid_by_bank_account_id"
                 data-selected="{{ $bankAccountId }}"

@@ -55,7 +55,7 @@
                                 </span>
                                 Add Transactions
                             </h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Record one or more income/expense lines for the same entity, asset, and payment details.</p>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Record income/expense for an entity. Paid transactions need a bank account and open that account’s transaction list after save.</p>
                         </div>
                         <button type="button" id="cancel-transaction-btn" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors" aria-label="Close form">
                             <x-lucide-x class="w-5 h-5" />
@@ -298,6 +298,7 @@
                       data-store-action-template="/business-entities/__ID__/transactions"
                       id="store-transaction-form"
                       data-transaction-paid-by-form
+                      data-require-bank-account-when-paid="true"
                       enctype="multipart/form-data"
                       class="dashboard-txn-form space-y-6"
                       x-data="window.dashboardTxnBatch(@js($dashboardTxnBatchConfig))"
@@ -1075,6 +1076,10 @@
                     window.setSelectDisabled?.(transactionAssetSelect, !entityId);
                     window.refreshTomSelect?.(transactionAssetSelect);
                 }
+
+                if (storeForm) {
+                    window.refreshTransactionPaidByBankAccount?.(storeForm);
+                }
             }
 
             function afterTransactionFormVisible() {
@@ -1200,6 +1205,9 @@
                 const isPaid = paymentStatusPaid && paymentStatusPaid.checked;
                 if (unpaidBlock) unpaidBlock.classList.toggle('hidden', isPaid);
                 if (paidBlock)   paidBlock.classList.toggle('hidden', !isPaid);
+                window.refreshTransactionPaidByBankAccount?.(
+                    document.getElementById('store-transaction-form')
+                );
             }
 
             if (paymentStatusPaid)   paymentStatusPaid.addEventListener('change', syncPaymentStatusBlocks);

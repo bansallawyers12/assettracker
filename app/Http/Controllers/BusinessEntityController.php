@@ -926,7 +926,12 @@ class BusinessEntityController extends Controller
                 : null;
 
             $paidBy = $this->validatedPaidBy($request);
-            $bankAccountId = $this->resolveBankAccountIdForTransactionSave($request);
+            $bankAccountId = $this->resolveBankAccountIdForTransactionSave(
+                $request,
+                null,
+                $targetEntity,
+                requireWhenPaid: true
+            );
 
             $created = DB::transaction(function () use (
                 $request,
@@ -1096,6 +1101,13 @@ class BusinessEntityController extends Controller
             $success = $isSplit
                 ? ("Split transaction '".($created->description ?: 'saved')."' added with ".count($resolvedLines).' allocations.')
                 : ("Transaction '".($created->description ?: 'saved')."' added successfully!");
+
+            if ($bankAccountId) {
+                return redirect()
+                    ->route('bank-accounts.index')
+                    ->with('success', $success)
+                    ->with('open_bank_transactions_account_id', $bankAccountId);
+            }
 
             return redirect()->route('dashboard')->with('success', $success);
         } catch (ValidationException $e) {
@@ -1446,7 +1458,11 @@ class BusinessEntityController extends Controller
         }
 
         $paidBy = $this->validatedPaidBy($request);
-        $bankAccountId = $this->resolveBankAccountIdForTransactionSave($request, $transaction);
+        $bankAccountId = $this->resolveBankAccountIdForTransactionSave(
+            $request,
+            $transaction,
+            $businessEntity
+        );
 
         $transaction->update(array_merge(
             Arr::only($data, [
@@ -3521,49 +3537,57 @@ class BusinessEntityController extends Controller
 
     private function normalizeOptionalBankAccountId(Request $request): void
     {
-        $raw = $request->input('paid_by_select');
-        $sel = is_string($raw) ? trim($raw) : '';
-
-        if ($sel === '' || ! preg_match('/^be:\d+$/', $sel)) {
-            $request->merge(['bank_account_id' => null]);
-        } elseif (! $request->filled('bank_account_id')) {
+        if (! $request->filled('bank_account_id')) {
             $request->merge(['bank_account_id' => null]);
         }
     }
 
-    private function validatedBankAccountId(Request $request): ?int
-    {
+    private function resolveBankAccountOwnerEntity(
+        Request $request,
+        ?BusinessEntity $bookingEntity = null
+    ): ?BusinessEntity {
         $raw = $request->input('paid_by_select');
         $sel = is_string($raw) ? trim($raw) : '';
 
-        if ($sel === '' || ! preg_match('/^be:(\d+)$/', $sel, $matches)) {
-            return null;
+        if (preg_match('/^be:(\d+)$/', $sel, $matches)) {
+            $entity = BusinessEntity::query()->find((int) $matches[1]);
+            if (! $entity) {
+                throw ValidationException::withMessages([
+                    'paid_by_select' => 'Invalid entity selected.',
+                ]);
+            }
+
+            return $entity;
         }
 
-        $entity = BusinessEntity::query()->find((int) $matches[1]);
-        if (! $entity) {
-            throw ValidationException::withMessages([
-                'paid_by_select' => 'Invalid entity selected.',
-            ]);
+        if ($bookingEntity) {
+            return $bookingEntity;
         }
 
+        if ($request->filled('business_entity_id')) {
+            return BusinessEntity::query()->find($request->integer('business_entity_id'));
+        }
+
+        return null;
+    }
+
+    private function validatedBankAccountId(
+        Request $request,
+        ?BusinessEntity $bookingEntity = null
+    ): ?int {
         $bankAccountId = $request->filled('bank_account_id')
             ? (int) $request->integer('bank_account_id')
             : null;
 
-        $transactionType = trim((string) $request->input('transaction_type', ''));
-        $direction = $transactionType !== '' ? Transaction::directionFromType($transactionType) : null;
-
-        if ($request->input('payment_status') === 'paid'
-            && $direction === 'income'
-            && $bankAccountId === null) {
-            throw ValidationException::withMessages([
-                'bank_account_id' => 'Bank account is required when an entity is selected.',
-            ]);
-        }
-
         if ($bankAccountId === null) {
             return null;
+        }
+
+        $entity = $this->resolveBankAccountOwnerEntity($request, $bookingEntity);
+        if (! $entity) {
+            throw ValidationException::withMessages([
+                'bank_account_id' => 'Select an entity before choosing a bank account.',
+            ]);
         }
 
         $bankAccount = BankAccount::query()->find($bankAccountId);
@@ -3607,40 +3631,39 @@ class BusinessEntityController extends Controller
         ]);
     }
 
-    private function resolveBankAccountIdForTransactionSave(Request $request, ?Transaction $existing = null): ?int
-    {
-        $raw = $request->input('paid_by_select');
-        $sel = is_string($raw) ? trim($raw) : '';
-
-        if ($sel === '' || ! preg_match('/^be:\d+$/', $sel)) {
-            return $existing?->bank_account_id;
+    private function resolveBankAccountIdForTransactionSave(
+        Request $request,
+        ?Transaction $existing = null,
+        ?BusinessEntity $bookingEntity = null,
+        bool $requireWhenPaid = false
+    ): ?int {
+        if ($request->input('payment_status') !== 'paid') {
+            return $this->validatedBankAccountId($request, $bookingEntity);
         }
 
-        $validated = $this->validatedBankAccountId($request);
+        $validated = $this->validatedBankAccountId($request, $bookingEntity);
 
         if ($validated !== null) {
             return $validated;
         }
 
-        if ($existing === null) {
-            return null;
+        if ($existing?->bank_account_id) {
+            $entity = $this->resolveBankAccountOwnerEntity($request, $bookingEntity);
+            $account = BankAccount::query()->find($existing->bank_account_id);
+
+            if ($account && $entity && $account->canUseForTransaction($entity)) {
+                return $existing->bank_account_id;
+            }
+
+            if ($account && ! $entity) {
+                return $existing->bank_account_id;
+            }
         }
 
-        $transactionType = trim((string) $request->input('transaction_type', ''));
-        $direction = $transactionType !== '' ? Transaction::directionFromType($transactionType) : null;
-
-        if ($request->input('payment_status') !== 'paid'
-            || $direction !== 'expense'
-            || $existing->paid_by !== $sel
-            || $existing->bank_account_id === null) {
-            return null;
-        }
-
-        $entity = BusinessEntity::query()->find((int) substr($sel, 3));
-        $account = BankAccount::query()->find($existing->bank_account_id);
-
-        if ($entity && $account && $account->canUseForTransaction($entity)) {
-            return $existing->bank_account_id;
+        if ($requireWhenPaid) {
+            throw ValidationException::withMessages([
+                'bank_account_id' => 'Bank account is required for paid transactions.',
+            ]);
         }
 
         return null;
