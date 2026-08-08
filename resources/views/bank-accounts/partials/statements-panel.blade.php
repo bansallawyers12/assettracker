@@ -26,6 +26,11 @@
         >
             @csrf
 
+            <div
+                data-ws-form-errors
+                class="hidden rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+            ></div>
+
             <div class="grid gap-4 sm:grid-cols-2">
                 <div>
                     <label for="statement_period_start" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Start date <span class="text-red-500">*</span></label>

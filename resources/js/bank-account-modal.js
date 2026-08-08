@@ -627,10 +627,13 @@ export function initBankAccountModal() {
 
         form?.addEventListener('submit', async (event) => {
             event.preventDefault();
+            event.stopPropagation();
 
             const submitBtn = form.querySelector('[data-bank-statements-upload-submit]');
+            const originalLabel = submitBtn?.textContent;
             if (submitBtn) {
                 submitBtn.disabled = true;
+                submitBtn.textContent = 'Uploading…';
             }
 
             try {
@@ -645,20 +648,27 @@ export function initBankAccountModal() {
                     return;
                 }
 
-                form.reset();
                 notifyFormSuccess(payload.message || 'Statement uploaded.', 'Statement uploaded');
 
                 if (payload.warning) {
                     showWorkspaceAlert({
                         title: 'Period overlap',
                         message: payload.warning,
+                        variant: 'info',
                     });
                 }
 
                 await refreshStatementsPanel();
+            } catch (error) {
+                notifyFormFailure(form, {
+                    message: error?.message || 'Upload failed. Check your connection and try again.',
+                }, { title: 'Upload failed' });
             } finally {
                 if (submitBtn) {
                     submitBtn.disabled = false;
+                    if (originalLabel) {
+                        submitBtn.textContent = originalLabel;
+                    }
                 }
             }
         }, { signal });
