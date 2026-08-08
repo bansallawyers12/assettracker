@@ -25,6 +25,7 @@ class Invoice extends Model
 		'paid_at',
 		'payment_method',
 		'payment_reference',
+		'payment_transaction_id',
 		'last_reminder_sent_at',
 		'reminder_count',
 	];
@@ -54,6 +55,11 @@ class Invoice extends Model
 	public function asset()
 	{
 		return $this->belongsTo(Asset::class);
+	}
+
+	public function paymentTransaction()
+	{
+		return $this->belongsTo(Transaction::class, 'payment_transaction_id');
 	}
 
 	public function lines()

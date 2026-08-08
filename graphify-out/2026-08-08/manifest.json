@@ -1695,8 +1695,8 @@
     "semantic_hash": "15e20d5bf76d83ae4c8b34985a9bdc52"
   },
   "resources/js/bank-account-modal.js": {
-    "mtime": 1786184275.975002,
-    "ast_hash": "cc2010633ceda669198c6d9c587a888d",
+    "mtime": 1786185646.3675833,
+    "ast_hash": "4098c3a9631cb1a0a205b219ed11db0f",
     "semantic_hash": ""
   },
   "resources/js/bank-form-fields.js": {
@@ -2085,9 +2085,9 @@
     "semantic_hash": "2a4a121675ca4698580c49f2e916a683"
   },
   "resources/views/bank-import/index.blade.php": {
-    "mtime": 1786173550.1782181,
-    "ast_hash": "d03759621e9993fff71e9b73f9d1be27",
-    "semantic_hash": "d03759621e9993fff71e9b73f9d1be27"
+    "mtime": 1786185294.9230251,
+    "ast_hash": "4d655e7acb48e795120a7b19a7e30815",
+    "semantic_hash": ""
   },
   "resources/views/bills-tasks/index.blade.php": {
     "mtime": 1786173550.1792204,
@@ -2260,8 +2260,8 @@
     "semantic_hash": "7e4f37230093f64ca978fe1ea1a56001"
   },
   "resources/views/business-entities/show.blade.php": {
-    "mtime": 1786184271.4086654,
-    "ast_hash": "d5694185b0cdbdcf7aaa9836728d9771",
+    "mtime": 1786185315.2370963,
+    "ast_hash": "26dacecf0993969afe842906812d7ad5",
     "semantic_hash": ""
   },
   "resources/views/car-reports/car-register.blade.php": {
@@ -2870,8 +2870,8 @@
     "semantic_hash": "97bfbedc07ce09ce557c2deea649ac1f"
   },
   "routes/web.php": {
-    "mtime": 1786183687.8584628,
-    "ast_hash": "5d34f421a261ee8882a1f84cc21a061f",
+    "mtime": 1786185134.1433408,
+    "ast_hash": "0c368bc7c8e0f67266cbef600362ac45",
     "semantic_hash": ""
   },
   "scripts/financial-reports-hub.test.mjs": {
@@ -3120,8 +3120,8 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/BankAccountTransactionController.php": {
-    "mtime": 1786183896.0674858,
-    "ast_hash": "16ac7bd915d31a609920212dec1cd228",
+    "mtime": 1786185185.2001088,
+    "ast_hash": "5cefb15e9f69c51adeb3f5a62c906794",
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/partials/transactions-list.blade.php": {
@@ -3130,8 +3130,8 @@
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/partials/transactions-panel.blade.php": {
-    "mtime": 1786184098.5919983,
-    "ast_hash": "54ebe972fcac7f5b15b6d3ba2f0471f2",
+    "mtime": 1786185171.1150484,
+    "ast_hash": "a35e822e3dfdcea9d095fd90a9f532af",
     "semantic_hash": ""
   },
   "docs/PRODUCTION.md": {
@@ -3147,6 +3147,26 @@
   "tests/Feature/DashboardTransactionBankAccountFormTest.php": {
     "mtime": 1786184544.5226517,
     "ast_hash": "f2dab22544b46ed72f1a540a6966c6c3",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/BankAccountImportController.php": {
+    "mtime": 1786185635.4924724,
+    "ast_hash": "cad890f4ccc0845d7a31bc0b86bc2c4f",
+    "semantic_hash": ""
+  },
+  "resources/views/bank-accounts/partials/import-match-panel.blade.php": {
+    "mtime": 1786185171.3520856,
+    "ast_hash": "093dc555a36615c3e3a7dbaecdf06fd0",
+    "semantic_hash": ""
+  },
+  "resources/views/business-entities/partials/bank-import-summary.blade.php": {
+    "mtime": 1786185225.1211646,
+    "ast_hash": "055135d99b993fa7f63832cf1ff485c7",
+    "semantic_hash": ""
+  },
+  "tests/Feature/BankAccountImportPanelTest.php": {
+    "mtime": 1786185295.3162084,
+    "ast_hash": "5c04d9886a460d05c3b2013233f9e5f1",
     "semantic_hash": ""
   }
 }

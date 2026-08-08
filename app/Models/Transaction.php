@@ -12,6 +12,8 @@ class Transaction extends Model
 {
     public const TYPE_SPLIT = 'split';
 
+    public const TYPE_INVOICE_PAYMENT = 'invoice_payment';
+
     protected $fillable = [
         'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description', 'vendor_id', 'vendor_name',
         'transaction_type', 'gst_amount', 'gst_status', 'gst_basis', 'receipt_path', 'document_id',
@@ -37,6 +39,8 @@ class Transaction extends Model
         'other_income' => 'Other Income',
         'asset_sales' => 'Asset Sales',
         'director_loan_in' => 'Director Loan In',
+        // Programmatic / import — not shown in normal type pickers
+        'invoice_payment' => 'Invoice payment (AR receipt)',
         // Legacy / import aliases
         'grants_subsidies' => 'Grants & Subsidies',
         'sales_to_related_party' => 'Sales to Related Party',

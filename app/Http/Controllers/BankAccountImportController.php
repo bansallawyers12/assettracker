@@ -133,15 +133,22 @@ class BankAccountImportController extends Controller
                     &$matchedExisting,
                     &$created
                 ) {
+                    $entryId = (int) $match['bank_entry_id'];
                     $bankEntry = BankStatementEntry::query()
-                        ->where('id', (int) $match['bank_entry_id'])
+                        ->where('id', $entryId)
                         ->lockForUpdate()
                         ->first();
 
-                    if (! $bankEntry
-                        || (int) $bankEntry->bank_account_id !== (int) $bankAccount->id
-                        || $bankEntry->transaction_id !== null) {
-                        return;
+                    if (! $bankEntry || (int) $bankEntry->bank_account_id !== (int) $bankAccount->id) {
+                        throw ValidationException::withMessages([
+                            'matches' => "Statement line #{$entryId} is not available on this account.",
+                        ]);
+                    }
+
+                    if ($bankEntry->transaction_id !== null) {
+                        throw ValidationException::withMessages([
+                            'matches' => "Statement line #{$entryId} is already matched.",
+                        ]);
                     }
 
                     if ($transactionId !== null) {
@@ -166,8 +173,19 @@ class BankAccountImportController extends Controller
                             ]);
                         }
 
+                        $this->assertEntryMatchesTransaction($bankEntry, $transaction);
+
+                        $updates = [];
                         if ($transaction->bank_account_id === null) {
-                            $transaction->update(['bank_account_id' => $bankAccount->id]);
+                            $updates['bank_account_id'] = $bankAccount->id;
+                        }
+                        if (($transaction->payment_status ?? 'paid') === 'unpaid') {
+                            $updates['payment_status'] = 'paid';
+                            $updates['paid_at'] = $bankEntry->date;
+                        }
+
+                        if ($updates !== []) {
+                            $transaction->update($updates);
                         }
 
                         $bankEntry->update(['transaction_id' => $transaction->id]);
@@ -199,6 +217,12 @@ class BankAccountImportController extends Controller
                 });
             }
 
+            if ($matchedExisting === 0 && $created === 0) {
+                throw ValidationException::withMessages([
+                    'matches' => 'No matches were applied. Choose an existing transaction or chart account for at least one line.',
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Matches applied successfully',
@@ -214,6 +238,27 @@ class BankAccountImportController extends Controller
                 'success' => false,
                 'message' => 'An error occurred while applying matches.',
             ], 500);
+        }
+    }
+
+    private function assertEntryMatchesTransaction(BankStatementEntry $bankEntry, Transaction $transaction): void
+    {
+        $entryAmount = abs((float) $bankEntry->amount);
+        $transactionAmount = abs((float) $transaction->amount);
+
+        if (abs($entryAmount - $transactionAmount) > 0.005) {
+            throw ValidationException::withMessages([
+                'matches' => 'Statement line amount does not match the selected transaction.',
+            ]);
+        }
+
+        $entryIsIncome = (float) $bankEntry->amount >= 0;
+        $transactionIsIncome = Transaction::directionFromType((string) $transaction->transaction_type) === 'income';
+
+        if ($entryIsIncome !== $transactionIsIncome) {
+            throw ValidationException::withMessages([
+                'matches' => 'Statement line direction does not match the selected transaction.',
+            ]);
         }
     }
 

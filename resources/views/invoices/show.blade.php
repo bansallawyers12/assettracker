@@ -78,6 +78,32 @@
                         @if ($invoice->payment_method) — {{ $invoice->payment_method }} @endif
                         @if ($invoice->payment_reference) ({{ $invoice->payment_reference }}) @endif
                     </p>
+                    @if ($invoice->paymentTransaction)
+                        @php $payTx = $invoice->paymentTransaction; @endphp
+                        <p class="mt-2 text-green-800 dark:text-green-300">
+                            Accounting receipt #{{ $payTx->id }}
+                            @if ($payTx->bankAccount)
+                                on {{ $payTx->bankAccount->account_name ?: $payTx->bankAccount->bank_name }}
+                            @endif
+                            —
+                            @if ($payTx->bankStatementEntries->isNotEmpty())
+                                matched to bank statement
+                            @else
+                                unmatched (statement line can be linked later)
+                            @endif
+                        </p>
+                        @if ($payTx->bank_account_id)
+                            <a
+                                href="{{ route('business-entities.show', [
+                                    'business_entity' => $businessEntity->id,
+                                    'open_bank_transactions' => $payTx->bank_account_id,
+                                ]) }}#tab_bank_accounts"
+                                class="inline-flex mt-2 text-sm font-medium text-indigo-700 hover:text-indigo-900 dark:text-indigo-300 dark:hover:text-indigo-200"
+                            >
+                                Open bank account transactions
+                            </a>
+                        @endif
+                    @endif
                 </div>
             @endif
 
@@ -119,23 +145,108 @@
             @if ($invoice->status === 'approved' && !$invoice->paid_at)
                 <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6 bg-gray-50 dark:bg-gray-800/50">
                     <div>
-                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Record payment</h3>
-                        <form method="POST" action="{{ route('business-entities.invoices.record-payment', [$businessEntity, $invoice]) }}" class="space-y-3">
-                            @csrf
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Paid date</label>
-                                <x-date-input  name="paid_at" value="{{ now()->format('Y-m-d') }}" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Payment method</label>
-                                <input type="text" name="payment_method" placeholder="e.g. Bank transfer" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm" />
-                            </div>
-                            <div>
-                                <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Reference</label>
-                                <input type="text" name="payment_reference" placeholder="Receipt / transaction ID" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm" />
-                            </div>
-                            <button type="submit" class="w-full sm:w-auto inline-flex justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">Mark as paid</button>
-                        </form>
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-1">Record payment</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                            Clears Accounts Receivable (does not re-book revenue). Optionally match a bank statement line now, or leave unmatched until the statement arrives.
+                        </p>
+                        @if (($paymentBankAccounts ?? collect())->isEmpty())
+                            <p class="text-sm text-amber-700 dark:text-amber-300">
+                                Link an operating bank account to this entity before recording payment.
+                            </p>
+                        @else
+                            <form method="POST" action="{{ route('business-entities.invoices.record-payment', [$businessEntity, $invoice]) }}" class="space-y-3" enctype="multipart/form-data" id="invoice-record-payment-form">
+                                @csrf
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Paid date <span class="text-red-500">*</span></label>
+                                    <x-date-input name="paid_at" value="{{ old('paid_at', now()->format('Y-m-d')) }}" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs focus:ring-indigo-500 focus:border-indigo-500 text-sm" />
+                                    @error('paid_at') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Bank account <span class="text-red-500">*</span></label>
+                                    <select name="bank_account_id" id="invoice_payment_bank_account_id" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm">
+                                        <option value="">Select account…</option>
+                                        @foreach ($paymentBankAccounts as $account)
+                                            <option value="{{ $account->id }}" @selected((string) old('bank_account_id') === (string) $account->id)>
+                                                {{ $account->transactionAccountLabel() }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('bank_account_id') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Match statement line <span class="font-normal text-gray-400">(optional)</span></label>
+                                    <select name="bank_statement_entry_id" id="invoice_payment_statement_entry_id" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm">
+                                        <option value="">— Leave unmatched —</option>
+                                        @foreach (($unmatchedStatementEntries ?? collect()) as $entry)
+                                            <option
+                                                value="{{ $entry->id }}"
+                                                data-bank-account-id="{{ $entry->bank_account_id }}"
+                                                data-amount="{{ $entry->amount }}"
+                                                @selected((string) old('bank_statement_entry_id') === (string) $entry->id)
+                                            >
+                                                {{ $entry->date?->format('d/m/Y') }} · ${{ number_format((float) $entry->amount, 2) }} · {{ \Illuminate\Support\Str::limit($entry->description ?: 'No description', 48) }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    @error('bank_statement_entry_id') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Payment method</label>
+                                    <select name="payment_method" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm">
+                                        <option value="">Select method…</option>
+                                        @foreach (\App\Models\Transaction::$paymentMethods as $val => $lbl)
+                                            <option value="{{ $val }}" @selected(old('payment_method') === $val)>{{ $lbl }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('payment_method') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Reference</label>
+                                    <input type="text" name="payment_reference" value="{{ old('payment_reference') }}" placeholder="Receipt / transaction ID" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm" />
+                                    @error('payment_reference') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Payment receipt <span class="font-normal text-gray-400">(optional)</span></label>
+                                    <input type="file" name="payment_document" accept="{{ config('documents.transaction_file_accept') }}" class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-emerald-700 dark:file:bg-gray-700 dark:file:text-emerald-300" />
+                                    @error('payment_document') <p class="text-xs text-red-600 mt-1">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Receipt name</label>
+                                    <input type="text" name="payment_document_name" value="{{ old('payment_document_name') }}" placeholder="e.g. Bank transfer confirmation" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm" />
+                                </div>
+                                <button type="submit" class="w-full sm:w-auto inline-flex justify-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg transition-colors">Record payment</button>
+                            </form>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function () {
+                                    const accountSelect = document.getElementById('invoice_payment_bank_account_id');
+                                    const entrySelect = document.getElementById('invoice_payment_statement_entry_id');
+                                    if (!accountSelect || !entrySelect) return;
+
+                                    const invoiceTotal = {{ json_encode((float) $invoice->total_amount) }};
+
+                                    function syncStatementOptions() {
+                                        const accountId = accountSelect.value;
+                                        Array.from(entrySelect.options).forEach((opt) => {
+                                            if (!opt.value) {
+                                                opt.hidden = false;
+                                                return;
+                                            }
+                                            const matchesAccount = !accountId || String(opt.dataset.bankAccountId) === String(accountId);
+                                            const amount = Math.abs(parseFloat(opt.dataset.amount || '0'));
+                                            const matchesAmount = Math.abs(amount - invoiceTotal) <= 0.005;
+                                            const amountPositive = parseFloat(opt.dataset.amount || '0') >= 0;
+                                            opt.hidden = !(matchesAccount && matchesAmount && amountPositive);
+                                            if (opt.hidden && opt.selected) {
+                                                entrySelect.value = '';
+                                            }
+                                        });
+                                    }
+
+                                    accountSelect.addEventListener('change', syncStatementOptions);
+                                    syncStatementOptions();
+                                });
+                            </script>
+                        @endif
                     </div>
                     <div>
                         <h3 class="text-sm font-semibold text-gray-900 dark:text-white mb-3">Follow up</h3>

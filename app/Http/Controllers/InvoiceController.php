@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Mail\InvoiceReminderMail;
+use App\Models\BankAccount;
+use App\Models\BankStatementEntry;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\BusinessEntity;
+use App\Services\InvoicePaymentService;
 use App\Services\InvoicePostingService;
 use App\Support\TableSort;
 use Illuminate\Http\Request;
@@ -143,8 +146,35 @@ class InvoiceController extends Controller
 	{
 		$this->authorize('view', $businessEntity);
 		$this->authorizeInvoice($businessEntity, $invoice);
-		$invoice->load(['lines', 'lease.tenant', 'asset']);
-		return view('invoices.show', compact('businessEntity', 'invoice'));
+		$invoice->load(['lines', 'lease.tenant', 'asset', 'paymentTransaction.bankAccount', 'paymentTransaction.bankStatementEntries']);
+
+		$paymentBankAccounts = collect();
+		$unmatchedStatementEntries = collect();
+		if ($invoice->status === 'approved' && ! $invoice->paid_at) {
+			$paymentBankAccounts = $businessEntity->bankAccountLinksForDisplay()
+				->map(fn ($link) => $link->bankAccount)
+				->filter()
+				->unique('id')
+				->filter(fn (BankAccount $account) => $account->canUseForTransaction($businessEntity))
+				->sortBy('account_name')
+				->values();
+
+			if ($paymentBankAccounts->isNotEmpty()) {
+				$unmatchedStatementEntries = BankStatementEntry::query()
+					->whereIn('bank_account_id', $paymentBankAccounts->pluck('id'))
+					->whereNull('transaction_id')
+					->orderByDesc('date')
+					->orderByDesc('id')
+					->get();
+			}
+		}
+
+		return view('invoices.show', compact(
+			'businessEntity',
+			'invoice',
+			'paymentBankAccounts',
+			'unmatchedStatementEntries'
+		));
 	}
 
 	public function edit(BusinessEntity $businessEntity, Invoice $invoice)
@@ -253,48 +283,25 @@ class InvoiceController extends Controller
 			->with('success', 'Invoice posted to ledger');
 	}
 
-	public function recordPayment(Request $request, BusinessEntity $businessEntity, Invoice $invoice)
-	{
+	public function recordPayment(
+		Request $request,
+		BusinessEntity $businessEntity,
+		Invoice $invoice,
+		InvoicePaymentService $paymentService
+	) {
 		$this->authorize('update', $businessEntity);
 		$this->authorizeInvoice($businessEntity, $invoice);
 
-		if ($invoice->status !== 'approved') {
-			return back()->with('error', 'Only approved (posted) invoices can be marked paid.');
+		$transaction = $paymentService->record($request, $businessEntity, $invoice);
+
+		$message = 'Payment recorded and AR cleared.';
+		if ($transaction->bankStatementEntries()->exists()) {
+			$message = 'Payment recorded, AR cleared, and matched to the bank statement line.';
+		} else {
+			$message .= ' Match a statement line later from the bank account panel if needed.';
 		}
-		if ($invoice->paid_at) {
-			return back()->with('error', 'This invoice is already recorded as paid.');
-		}
 
-		$data = $request->validate([
-			'paid_at' => 'required|date',
-			'payment_method' => 'nullable|string|max:100',
-			'payment_reference' => 'nullable|string|max:255',
-		]);
-
-		\Illuminate\Support\Facades\DB::transaction(function () use ($invoice, $data, $businessEntity) {
-			$invoice->update([
-				'paid_at' => $data['paid_at'],
-				'payment_method' => $data['payment_method'] ?? null,
-				'payment_reference' => $data['payment_reference'] ?? null,
-				'status' => 'paid',
-			]);
-
-			$bankAccount = $businessEntity->bankAccounts()->first();
-
-			\App\Models\Transaction::create([
-				'business_entity_id' => $businessEntity->id,
-				'bank_account_id' => $bankAccount?->id,
-				'date' => $data['paid_at'],
-				'amount' => $invoice->total_amount,
-				'description' => 'Payment received for Invoice ' . $invoice->invoice_number,
-				'transaction_type' => 'sales_revenue',
-				'gst_amount' => null,
-				'gst_status' => 'gst_free',
-				'gst_basis' => null,
-			]);
-		});
-
-		return back()->with('success', 'Payment recorded.');
+		return back()->with('success', $message);
 	}
 
 	public function remind(BusinessEntity $businessEntity, Invoice $invoice)

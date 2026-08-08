@@ -432,6 +432,21 @@ class TransactionPostingService
             ?? ChartOfAccount::where('account_name', $name)->first();
     }
 
+    private function ensureAccountsReceivable(): ChartOfAccount
+    {
+        return ChartOfAccount::firstOrCreate(
+            ['account_code' => '1130'],
+            [
+                'account_name' => 'Accounts Receivable',
+                'account_type' => 'asset',
+                'account_category' => 'current_asset',
+                'is_active' => true,
+                'opening_balance' => 0,
+                'current_balance' => 0,
+            ]
+        );
+    }
+
     /**
      * @return array<string, ?ChartOfAccount>
      */
@@ -440,6 +455,9 @@ class TransactionPostingService
         return [
             'sales_revenue' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
             'rental_income' => $this->findByName('Rental Income') ?? $this->findAccount('4100'),
+            'invoice_payment' => $this->findByName('Accounts Receivable')
+                ?? $this->findAccount('1130')
+                ?? $this->ensureAccountsReceivable(),
             'reimbursement_of_expenses' => $this->findByName('Reimbursement of Expenses') ?? $this->findByName('Other Income') ?? $this->findAccount('4900'),
             'interest_income' => $this->findByName('Interest Income') ?? $this->findAccount('4200'),
             'other_income' => $this->findByName('Other Income') ?? $this->findAccount('4900'),

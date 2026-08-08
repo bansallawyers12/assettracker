@@ -810,6 +810,86 @@ export function initBankAccountModal() {
             return (entityField?.value || '').trim();
         }
 
+        function populateCandidateSelects(candidates) {
+            importPanel.querySelectorAll('[data-bank-import-transaction]').forEach((select) => {
+                const keep = select.value;
+                select.innerHTML = '';
+                const empty = document.createElement('option');
+                empty.value = '';
+                empty.textContent = '— None —';
+                select.appendChild(empty);
+
+                candidates.forEach((candidate) => {
+                    const option = document.createElement('option');
+                    option.value = String(candidate.id);
+                    option.dataset.amount = String(candidate.amount ?? '');
+                    option.dataset.date = String(candidate.date ?? '');
+                    const dateLabel = candidate.date
+                        ? candidate.date.split('-').reverse().join('/')
+                        : '—';
+                    const amountLabel = Number(candidate.amount || 0).toFixed(2);
+                    const desc = String(candidate.description || 'No description').slice(0, 40);
+                    const entity = candidate.entity_name ? ` (${candidate.entity_name})` : '';
+                    option.textContent = `${dateLabel} · $${amountLabel} · ${desc}${entity}`;
+                    select.appendChild(option);
+                });
+
+                if (keep && candidates.some((candidate) => String(candidate.id) === String(keep))) {
+                    select.value = String(keep);
+                }
+            });
+        }
+
+        async function reloadCandidatesForEntity() {
+            const unmatchedUrl = panel.dataset.bankImportUnmatchedUrl;
+            if (!unmatchedUrl) {
+                return;
+            }
+
+            try {
+                const url = new URL(unmatchedUrl, window.location.origin);
+                const entityId = getImportEntityId();
+                if (entityId) {
+                    url.searchParams.set('business_entity_id', entityId);
+                }
+
+                const response = await apiFetch(`${url.pathname}${url.search}`);
+                const payload = parseJson(await response.text());
+                if (!response.ok || !payload?.success) {
+                    return;
+                }
+
+                populateCandidateSelects(Array.isArray(payload.candidates) ? payload.candidates : []);
+
+                const countEl = importPanel.querySelector('[data-bank-import-unmatched-count]');
+                if (countEl && Array.isArray(payload.entries)) {
+                    const count = payload.entries.length;
+                    countEl.textContent = `${count} unmatched`;
+                }
+            } catch {
+                // Keep existing candidates if refresh fails.
+            }
+        }
+
+        function bindEntrySelectGuards(scope = importPanel) {
+            scope.querySelectorAll('[data-bank-import-entry]').forEach((entryEl) => {
+                const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
+                const chartSelect = entryEl.querySelector('[data-bank-import-chart-account]');
+
+                txSelect?.addEventListener('change', () => {
+                    if (txSelect.value && chartSelect) {
+                        chartSelect.value = '';
+                    }
+                }, { signal });
+
+                chartSelect?.addEventListener('change', () => {
+                    if (chartSelect.value && txSelect) {
+                        txSelect.value = '';
+                    }
+                }, { signal });
+            });
+        }
+
         function populateChartAccountSelects(accounts) {
             chartAccounts = accounts;
             importPanel.querySelectorAll('[data-bank-import-chart-account]').forEach((select) => {
@@ -849,22 +929,13 @@ export function initBankAccountModal() {
             }
         }
 
-        importPanel.querySelectorAll('[data-bank-import-entry]').forEach((entryEl) => {
-            const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
-            const chartSelect = entryEl.querySelector('[data-bank-import-chart-account]');
+        bindEntrySelectGuards();
 
-            txSelect?.addEventListener('change', () => {
-                if (txSelect.value && chartSelect) {
-                    chartSelect.value = '';
-                }
-            }, { signal });
-
-            chartSelect?.addEventListener('change', () => {
-                if (chartSelect.value && txSelect) {
-                    txSelect.value = '';
-                }
-            }, { signal });
-        });
+        const entityField = importPanel.querySelector('[data-bank-import-entity]');
+        entityField?.addEventListener('change', () => {
+            clearImportError();
+            reloadCandidatesForEntity();
+        }, { signal });
 
         uploadForm?.addEventListener('submit', async (event) => {
             event.preventDefault();
