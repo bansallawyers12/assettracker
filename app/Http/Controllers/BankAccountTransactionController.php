@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\BankAccount;
+use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
+use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -36,6 +38,7 @@ class BankAccountTransactionController extends Controller
 
         $transactions = $query->get();
         $eligibleEntities = $this->bookableEntities($bankAccount);
+        $importEntities = $this->importableEntities($bankAccount);
         $defaultEntityId = null;
         if ($contextEntityId !== null && $eligibleEntities->contains('id', $contextEntityId)) {
             $defaultEntityId = $contextEntityId;
@@ -43,22 +46,33 @@ class BankAccountTransactionController extends Controller
             $defaultEntityId = $eligibleEntities->first()->id;
         }
 
+        $unmatchedEntries = BankStatementEntry::query()
+            ->where('bank_account_id', $bankAccount->id)
+            ->whereNull('transaction_id')
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get();
+
+        $matchCandidates = $this->matchCandidates($bankAccount, $contextEntityId ?? $defaultEntityId);
+
         return response()->json([
             'status' => true,
             'html' => view('bank-accounts.partials.transactions-panel', [
                 'bankAccount' => $bankAccount,
                 'transactions' => $transactions,
                 'eligibleEntities' => $eligibleEntities,
+                'importEntities' => $importEntities,
                 'contextEntityId' => $contextEntityId,
                 'defaultEntityId' => $defaultEntityId,
                 'canManageTransactions' => $eligibleEntities->isNotEmpty(),
+                'canImport' => $importEntities->isNotEmpty(),
+                'unmatchedEntries' => $unmatchedEntries,
+                'matchCandidates' => $matchCandidates,
             ])->render(),
         ]);
     }
 
     /**
-     * Entities that can book on this account and that the current user may update.
-     *
      * @return Collection<int, BusinessEntity>
      */
     private function bookableEntities(BankAccount $bankAccount): Collection
@@ -71,6 +85,58 @@ class BankAccountTransactionController extends Controller
         return $bankAccount->eligibleTransactionEntities()
             ->filter(fn (BusinessEntity $entity) => $user->can('update', $entity))
             ->values();
+    }
+
+    /**
+     * @return Collection<int, BusinessEntity>
+     */
+    private function importableEntities(BankAccount $bankAccount): Collection
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return collect();
+        }
+
+        return $bankAccount->eligibleTransactionEntities()
+            ->filter(function (BusinessEntity $entity) use ($user, $bankAccount) {
+                return $user->can('update', $entity)
+                    && ($bankAccount->canUseForBankImport($entity) || $bankAccount->canUseForTransaction($entity));
+            })
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, Transaction>
+     */
+    private function matchCandidates(BankAccount $bankAccount, ?int $businessEntityId): Collection
+    {
+        $query = Transaction::query()
+            ->where(function ($q) use ($bankAccount) {
+                $q->where('bank_account_id', $bankAccount->id)
+                    ->orWhereNull('bank_account_id');
+            })
+            ->whereDoesntHave('bankStatementEntries')
+            ->with('businessEntity')
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->limit(200);
+
+        if ($businessEntityId) {
+            $query->where('business_entity_id', $businessEntityId);
+        } else {
+            $entityIds = $bankAccount->eligibleTransactionEntities()->pluck('id');
+            $query->whereIn('business_entity_id', $entityIds);
+        }
+
+        return $query->get()->filter(function (Transaction $transaction) use ($bankAccount) {
+            if ($transaction->bank_account_id === null) {
+                $entity = $transaction->businessEntity;
+
+                return $entity && $bankAccount->canUseForTransaction($entity);
+            }
+
+            return (int) $transaction->bank_account_id === (int) $bankAccount->id;
+        })->values();
     }
 
     private function ensureAccessible(BankAccount $bankAccount): void

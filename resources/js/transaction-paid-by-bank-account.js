@@ -13,6 +13,11 @@ function isTransactionPaid(form) {
 }
 
 function bookingEntityId(form) {
+    const fromDataset = String(form.dataset.bookingEntityId || '').trim();
+    if (fromDataset) {
+        return fromDataset;
+    }
+
     const bookingSelect = form.querySelector('#business_entity_id')
         || form.querySelector('[name="business_entity_id"]');
 

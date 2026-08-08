@@ -8,6 +8,16 @@
         'businessEntity' => 'BUSINESS_ENTITY',
         'bankAccount' => $bankAccount,
     ]).'?return_to='.$returnTo;
+    $importProcessUrl = route('bank-accounts.import.process', $bankAccount);
+    $importUnmatchedUrl = route('bank-accounts.import.unmatched', $bankAccount);
+    $importApplyUrl = route('bank-accounts.import.apply', $bankAccount);
+    $chartAccountsUrl = route('chart-of-accounts.api');
+    $canImport = $canImport ?? false;
+    $importEntities = $importEntities ?? collect();
+    $unmatchedEntries = $unmatchedEntries ?? collect();
+    $matchCandidates = $matchCandidates ?? collect();
+    $defaultImportEntityId = $defaultEntityId
+        ?? ($importEntities->count() === 1 ? $importEntities->first()->id : null);
 @endphp
 
 <div
@@ -15,6 +25,10 @@
     data-bank-transactions-panel
     data-bank-account-id="{{ $bankAccount->id }}"
     data-bank-transactions-index-url="{{ $indexUrl }}"
+    data-bank-import-process-url="{{ $importProcessUrl }}"
+    data-bank-import-unmatched-url="{{ $importUnmatchedUrl }}"
+    data-bank-import-apply-url="{{ $importApplyUrl }}"
+    data-chart-accounts-url="{{ $chartAccountsUrl }}"
 >
     @if($canManageTransactions)
         <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
@@ -68,6 +82,16 @@
                 </button>
             </div>
         </div>
+    @endif
+
+    @if($canImport)
+        @include('bank-accounts.partials.import-match-panel', [
+            'bankAccount' => $bankAccount,
+            'importEntities' => $importEntities,
+            'defaultImportEntityId' => $defaultImportEntityId,
+            'unmatchedEntries' => $unmatchedEntries,
+            'matchCandidates' => $matchCandidates,
+        ])
     @endif
 
     <div>

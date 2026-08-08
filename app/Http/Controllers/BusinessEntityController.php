@@ -1461,7 +1461,8 @@ class BusinessEntityController extends Controller
         $bankAccountId = $this->resolveBankAccountIdForTransactionSave(
             $request,
             $transaction,
-            $businessEntity
+            $businessEntity,
+            requireWhenPaid: true
         );
 
         $transaction->update(array_merge(
@@ -1482,9 +1483,9 @@ class BusinessEntityController extends Controller
 
         return redirect()->route('business-entities.show', array_filter([
             'business_entity' => $businessEntity->id,
-            'open_bank_transactions' => $transaction->bank_account_id,
+            'open_bank_transactions' => $bankAccountId,
         ]))
-            ->withFragment($transaction->bank_account_id ? 'tab_bank_accounts' : 'tab_transactions')
+            ->withFragment($bankAccountId ? 'tab_bank_accounts' : 'tab_transactions')
             ->with('success', 'Transaction updated successfully!');
     }
 
@@ -3662,7 +3663,9 @@ class BusinessEntityController extends Controller
 
         if ($requireWhenPaid) {
             throw ValidationException::withMessages([
-                'bank_account_id' => 'Bank account is required for paid transactions.',
+                'bank_account_id' => $existing?->bank_account_id
+                    ? 'Select a bank account linked to the payer or booking entity.'
+                    : 'Bank account is required for paid transactions.',
             ]);
         }
 

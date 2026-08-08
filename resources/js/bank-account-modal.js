@@ -734,9 +734,26 @@ export function initBankAccountModal() {
         bindStatementsPanel(createHost, createController.signal, statementsUrl);
     }
 
-    function bindTransactionsPanel(root, signal) {
+    function bindTransactionsPanel(root, signal, refreshUrl) {
+        const panel = root.querySelector('[data-bank-transactions-panel]') || root;
         const addButton = root.querySelector('[data-bank-transactions-add]');
         const entityPicker = root.querySelector('[data-bank-transactions-entity-picker]');
+
+        async function refreshTransactionsPanel() {
+            const url = panel.dataset.bankTransactionsIndexUrl || refreshUrl;
+            if (!url) {
+                return;
+            }
+
+            const refreshResponse = await apiFetch(url);
+            const refreshPayload = parseJson(await refreshResponse.text());
+
+            if (refreshResponse.ok && refreshPayload?.html) {
+                createHost.innerHTML = refreshPayload.html;
+                const nextUrl = createHost.querySelector('[data-bank-transactions-panel]')?.dataset.bankTransactionsIndexUrl || url;
+                bindTransactionsPanel(createHost, createController?.signal, nextUrl);
+            }
+        }
 
         addButton?.addEventListener('click', () => {
             const template = addButton.dataset.createUrlTemplate;
@@ -757,6 +774,233 @@ export function initBankAccountModal() {
             const createUrl = template.replaceAll('BUSINESS_ENTITY', encodeURIComponent(entityId));
             window.location.assign(createUrl);
         }, { signal });
+
+        bindImportMatchPanel(panel, signal, refreshTransactionsPanel);
+    }
+
+    function bindImportMatchPanel(panel, signal, refreshTransactionsPanel) {
+        const importPanel = panel.querySelector('[data-bank-import-panel]');
+        if (!importPanel) {
+            return;
+        }
+
+        const uploadForm = importPanel.querySelector('[data-bank-import-upload-form]');
+        const applyBtn = importPanel.querySelector('[data-bank-import-apply]');
+        const errorBox = importPanel.querySelector('[data-bank-import-errors]');
+        let chartAccounts = [];
+
+        function showImportError(message) {
+            if (!errorBox) {
+                return;
+            }
+            errorBox.textContent = message;
+            errorBox.classList.remove('hidden');
+        }
+
+        function clearImportError() {
+            if (!errorBox) {
+                return;
+            }
+            errorBox.textContent = '';
+            errorBox.classList.add('hidden');
+        }
+
+        function getImportEntityId() {
+            const entityField = importPanel.querySelector('[data-bank-import-entity]');
+            return (entityField?.value || '').trim();
+        }
+
+        function populateChartAccountSelects(accounts) {
+            chartAccounts = accounts;
+            importPanel.querySelectorAll('[data-bank-import-chart-account]').forEach((select) => {
+                const keep = select.value;
+                select.innerHTML = '';
+                const empty = document.createElement('option');
+                empty.value = '';
+                empty.textContent = '— None —';
+                select.appendChild(empty);
+                accounts.forEach((account) => {
+                    const option = document.createElement('option');
+                    option.value = String(account.id);
+                    option.textContent = `${account.account_code} - ${account.account_name}`;
+                    select.appendChild(option);
+                });
+                if (keep && accounts.some((account) => String(account.id) === String(keep))) {
+                    select.value = String(keep);
+                }
+            });
+        }
+
+        async function loadChartAccounts() {
+            const url = panel.dataset.chartAccountsUrl;
+            if (!url) {
+                return;
+            }
+
+            try {
+                const response = await apiFetch(url);
+                const payload = parseJson(await response.text());
+                const accounts = payload?.accounts || payload?.data || (Array.isArray(payload) ? payload : []);
+                if (Array.isArray(accounts)) {
+                    populateChartAccountSelects(accounts);
+                }
+            } catch {
+                // Chart accounts are optional until create-from-account is used.
+            }
+        }
+
+        importPanel.querySelectorAll('[data-bank-import-entry]').forEach((entryEl) => {
+            const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
+            const chartSelect = entryEl.querySelector('[data-bank-import-chart-account]');
+
+            txSelect?.addEventListener('change', () => {
+                if (txSelect.value && chartSelect) {
+                    chartSelect.value = '';
+                }
+            }, { signal });
+
+            chartSelect?.addEventListener('change', () => {
+                if (chartSelect.value && txSelect) {
+                    txSelect.value = '';
+                }
+            }, { signal });
+        });
+
+        uploadForm?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            clearImportError();
+
+            const processUrl = panel.dataset.bankImportProcessUrl;
+            if (!processUrl) {
+                return;
+            }
+
+            const entityId = getImportEntityId();
+            if (!entityId) {
+                showImportError('Select a booking entity before uploading.');
+                return;
+            }
+
+            const submitBtn = uploadForm.querySelector('[data-bank-import-upload-submit]');
+            const originalLabel = submitBtn?.textContent;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Processing…';
+            }
+
+            try {
+                const formData = new FormData(uploadForm);
+                formData.set('business_entity_id', entityId);
+
+                const response = await apiFetch(processUrl, {
+                    method: 'POST',
+                    body: formData,
+                });
+                const payload = parseJson(await response.text());
+
+                if (!response.ok || !payload?.success) {
+                    showImportError(payload?.message || 'Upload failed.');
+                    notifyFormFailure(uploadForm, payload, { title: 'Import failed' });
+                    return;
+                }
+
+                notifyFormSuccess(
+                    payload.message || `Imported ${payload.entriesCount ?? 0} lines.`,
+                    'Statement imported'
+                );
+                await refreshTransactionsPanel();
+            } catch (error) {
+                showImportError(error?.message || 'Upload failed. Check your connection and try again.');
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    if (originalLabel) {
+                        submitBtn.textContent = originalLabel;
+                    }
+                }
+            }
+        }, { signal });
+
+        applyBtn?.addEventListener('click', async () => {
+            clearImportError();
+
+            const applyUrl = panel.dataset.bankImportApplyUrl;
+            if (!applyUrl) {
+                return;
+            }
+
+            const entityId = getImportEntityId();
+            if (!entityId) {
+                showImportError('Select a booking entity before applying matches.');
+                return;
+            }
+
+            const matches = [];
+            importPanel.querySelectorAll('[data-bank-import-entry]').forEach((entryEl) => {
+                const entryId = entryEl.dataset.entryId;
+                const transactionId = entryEl.querySelector('[data-bank-import-transaction]')?.value || '';
+                const chartAccountId = entryEl.querySelector('[data-bank-import-chart-account]')?.value || '';
+
+                if (!entryId || (!transactionId && !chartAccountId)) {
+                    return;
+                }
+
+                matches.push({
+                    bank_entry_id: Number(entryId),
+                    transaction_id: transactionId ? Number(transactionId) : null,
+                    chart_account_id: chartAccountId ? Number(chartAccountId) : null,
+                });
+            });
+
+            if (!matches.length) {
+                showImportError('Choose an existing transaction or chart account for at least one line.');
+                return;
+            }
+
+            applyBtn.disabled = true;
+            const originalLabel = applyBtn.textContent;
+            applyBtn.textContent = 'Saving…';
+
+            try {
+                const response = await apiFetch(applyUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        business_entity_id: Number(entityId),
+                        matches,
+                    }),
+                });
+                const payload = parseJson(await response.text());
+
+                if (!response.ok || !payload?.success) {
+                    const message = payload?.message
+                        || payload?.errors?.matches?.[0]
+                        || 'Could not apply matches.';
+                    showImportError(message);
+                    notifyFormFailure(null, payload, { title: 'Match failed' });
+                    return;
+                }
+
+                const created = payload.transactionsCreated ?? 0;
+                const matched = payload.matchedExisting ?? 0;
+                notifyFormSuccess(
+                    `Matched ${matched} existing and created ${created} transaction(s).`,
+                    'Matches applied'
+                );
+                await refreshTransactionsPanel();
+            } catch (error) {
+                showImportError(error?.message || 'Could not apply matches.');
+            } finally {
+                applyBtn.disabled = false;
+                applyBtn.textContent = originalLabel;
+            }
+        }, { signal });
+
+        loadChartAccounts();
     }
 
     async function openTransactionsPanel(transactionsUrl, options = {}) {
@@ -766,7 +1010,7 @@ export function initBankAccountModal() {
         setActiveTab('create');
         setPanelCopy({
             title: options.title || 'Transactions',
-            subtitle: options.subtitle || 'View and add transactions booked through this account.',
+            subtitle: options.subtitle || 'View, import, match, and add transactions for this account.',
             eyebrow: 'Transactions',
         });
 
@@ -785,7 +1029,7 @@ export function initBankAccountModal() {
         }
 
         createHost.innerHTML = payload.html;
-        bindTransactionsPanel(createHost, createController.signal);
+        bindTransactionsPanel(createHost, createController.signal, transactionsUrl);
     }
 
     tabButtons.forEach((button) => {

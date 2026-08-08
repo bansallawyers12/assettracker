@@ -91,6 +91,10 @@
                                             <x-lucide-credit-card class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" aria-hidden="true" />
                                             Bank Accounts
                                         </a>
+                                        <a href="#tab_bank_import" class="tab-link entity-tab-link inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                            <x-lucide-cloud-upload class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
+                                            Bank Import
+                                        </a>
                                         <a href="#tab_transactions" class="tab-link entity-tab-link inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                             <x-lucide-clipboard class="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" aria-hidden="true" />
                                             Transactions
@@ -503,100 +507,10 @@
 
                             <!-- Bank Import Tab -->
                             <div id="tab_bank_import" class="tab-content hidden">
-                                <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                                    <div class="flex justify-between items-center mb-6">
-                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Bank Statement Import</h3>
-                                        <button id="upload-statement-btn" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
-                                            <x-lucide-cloud-upload class="h-5 w-5 mr-2" />
-                                            Upload Statement
-                                        </button>
-                                    </div>
-
-                                    <!-- Upload Form (Hidden by default) -->
-                                    <div id="bank-import-upload-panel" class="hidden mb-6 bg-white dark:bg-gray-900 p-6 rounded-lg shadow-md">
-                                        <form id="bank-import-form" enctype="multipart/form-data">
-                                            @csrf
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label for="bank_account_id" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Bank Account *</label>
-                                                    <div class="flex gap-2 items-start">
-                                                        <x-tom-select id="bank_account_id" name="bank_account_id" class="flex-1 mt-1 rounded-md focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
-                                                            <option value="">Choose a bank account...</option>
-                                                            @foreach(($entityBankAccountLinks ?? collect())->filter(fn ($link) => in_array($link->purpose, BankAccount::ENTITY_OPERATING_PURPOSES, true)) as $link)
-                                                                <option value="{{ $link->bank_account_id }}">
-                                                                    {{ $link->bankAccount->account_name }} — {{ BankAccount::purposeLabel($link->purpose) }} ({{ BankAccount::formatBsb($link->bankAccount->bsb) }})
-                                                                </option>
-                                                            @endforeach
-                                                        </x-tom-select>
-                                                        @include('bank-accounts.partials.account-link-actions', [
-                                                            'associateModal' => true,
-                                                            'associateTitle' => 'Add bank account',
-                                                        ])
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label for="statement_file" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Statement File *</label>
-                                                    <input type="file" id="statement_file" name="statement_file" accept=".xlsx,.xls,.csv" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500" required>
-                                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Supported formats: Excel (.xlsx, .xls) or CSV files</p>
-                                                </div>
-                                            </div>
-                                            <div class="flex justify-end space-x-3">
-                                                <button type="button" id="cancel-upload" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg transition-colors">
-                                                    Cancel
-                                                </button>
-                                                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                                                    Process File
-                                                </button>
-                                            </div>
-                                        </form>
-                                    </div>
-
-                                    <!-- Imported Statements List -->
-                                    <div id="imported-statements" class="space-y-4">
-                                        <h4 class="text-md font-medium text-gray-900 dark:text-gray-100 mb-3">Recent Imports</h4>
-                                        <div id="statements-list" class="space-y-2">
-                                            <!-- Statements will be loaded here via AJAX -->
-                                        </div>
-                                    </div>
-
-                                    <!-- Statement Entries Matching Interface -->
-                                    <div id="matching-interface" class="hidden mt-6">
-                                        <div class="bg-white dark:bg-gray-900 rounded-lg shadow-md p-6">
-                                            <div class="flex justify-between items-center mb-4">
-                                                <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Match Bank Entries</h4>
-                                                <div class="flex space-x-2">
-                                                    <button id="auto-match-btn" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-sm text-sm transition-colors">
-                                                        Auto Match
-                                                    </button>
-                                                    <button id="save-matches-btn" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-sm text-sm transition-colors">
-                                                        Save Matches
-                                                    </button>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                                <!-- Bank Entries Column -->
-                                                <div>
-                                                    <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Bank Statement Entries</h5>
-                                                    <div id="bank-entries-list" class="space-y-2 max-h-96 overflow-y-auto">
-                                                        <!-- Bank entries will be loaded here -->
-                                                    </div>
-                                                </div>
-                                                
-                                                <!-- Chart of Accounts Column -->
-                                                <div>
-                                                    <h5 class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Chart of Accounts</h5>
-                                                    <div class="mb-3">
-                                                        <input type="text" id="account-search" placeholder="Search accounts..." class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
-                                                    </div>
-                                                    <div id="chart-accounts-list" class="space-y-1 max-h-96 overflow-y-auto">
-                                                        <!-- Chart of accounts will be loaded here -->
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                @include('business-entities.partials.bank-import-summary', [
+                                    'businessEntity' => $businessEntity,
+                                    'bankAccounts' => $bankAccounts ?? collect(),
+                                ])
                             </div>
 
                         </div> {{-- End of tab-content-container --}}
@@ -700,17 +614,20 @@
             switchTab(initialTab, { fixInvalidHash: true });
 
             const urlParams = new URLSearchParams(window.location.search);
-            const preselectedBankAccountId = urlParams.get('bank_account_id');
-            if (preselectedBankAccountId) {
-                const bankSelect = document.getElementById('bank_account_id');
-                if (bankSelect) {
-                    window.setSelectValue?.(bankSelect, preselectedBankAccountId);
-                }
+            // Legacy bank-import deep link: ?bank_account_id=#tab_bank_import
+            const legacyImportAccountId = urlParams.get('bank_account_id');
+            if (legacyImportAccountId && window.openBankAccountTransactionsPanel) {
+                const transactionsUrl = @json(url('/bank-accounts')) + '/' + encodeURIComponent(legacyImportAccountId)
+                    + '/transactions?business_entity_id=' + encodeURIComponent(@json($businessEntity->id));
+                window.openBankAccountTransactionsPanel(transactionsUrl, {
+                    title: 'Import & match',
+                    subtitle: 'Reconcile statement lines on this account.',
+                });
                 urlParams.delete('bank_account_id');
                 const cleanedSearch = urlParams.toString();
                 const cleanedUrl = window.location.pathname
                     + (cleanedSearch ? '?' + cleanedSearch : '')
-                    + window.location.hash;
+                    + (window.location.hash || '#tab_bank_import');
                 history.replaceState(null, '', cleanedUrl);
             }
 
@@ -765,268 +682,6 @@
                         alert('Error sending email.');
                     });
                 });
-            }
-
-            // Bank Import functionality (skip wiring if panel markup is absent)
-            const uploadStatementBtn = document.getElementById('upload-statement-btn');
-            const uploadForm = document.getElementById('bank-import-upload-panel');
-            const cancelUploadBtn = document.getElementById('cancel-upload');
-            const bankImportForm = document.getElementById('bank-import-form');
-            const matchingInterface = document.getElementById('matching-interface');
-            const autoMatchBtn = document.getElementById('auto-match-btn');
-            const saveMatchesBtn = document.getElementById('save-matches-btn');
-            let cachedChartAccounts = [];
-
-            if (uploadStatementBtn && uploadForm && cancelUploadBtn && bankImportForm && matchingInterface && autoMatchBtn && saveMatchesBtn) {
-
-            uploadStatementBtn.addEventListener('click', function() {
-                uploadForm.classList.remove('hidden');
-                uploadStatementBtn.classList.add('hidden');
-                window.reinitTomSelect?.(document.getElementById('bank_account_id'));
-            });
-
-            cancelUploadBtn.addEventListener('click', function() {
-                uploadForm.classList.add('hidden');
-                uploadStatementBtn.classList.remove('hidden');
-                bankImportForm.reset();
-            });
-
-            // Handle bank import form submission
-            bankImportForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                const formData = new FormData(this);
-                const submitBtn = this.querySelector('button[type="submit"]');
-                const originalText = submitBtn.textContent;
-                
-                submitBtn.textContent = 'Processing...';
-                submitBtn.disabled = true;
-
-                fetch('{{ route("business-entities.bank-import.process", $businessEntity->id) }}', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        uploadForm.classList.add('hidden');
-                        uploadStatementBtn.classList.remove('hidden');
-                        bankImportForm.reset();
-                        
-                        // Show matching interface
-                        matchingInterface.classList.remove('hidden');
-                        loadBankEntries(data.bankAccountId);
-                        loadChartOfAccounts();
-                        
-                        alert('File processed successfully! ' + data.entriesCount + ' entries found.');
-                    } else {
-                        alert('Error processing file: ' + (data.message || 'Unknown error'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error processing file. Please try again.');
-                })
-                .finally(() => {
-                    submitBtn.textContent = originalText;
-                    submitBtn.disabled = false;
-                });
-            });
-
-            // Load bank entries for matching
-            function loadBankEntries(bankAccountId) {
-                fetch(`{{ route("business-entities.bank-import.entries", $businessEntity->id) }}?bank_account_id=${bankAccountId}`)
-                .then(response => response.json())
-                .then(data => {
-                    const bankEntriesList = document.getElementById('bank-entries-list');
-                    bankEntriesList.innerHTML = '';
-                    
-                    data.entries.forEach(entry => {
-                        const entryDiv = document.createElement('div');
-                        entryDiv.className = 'p-3 border border-gray-200 dark:border-gray-600 rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 bank-entry';
-                        entryDiv.dataset.entryId = entry.id;
-                        entryDiv.innerHTML = `
-                            <div class="flex justify-between items-start">
-                                <div class="flex-1">
-                                    <div class="text-sm font-medium text-gray-900 dark:text-gray-100">${entry.description}</div>
-                                    <div class="text-xs text-gray-500 dark:text-gray-400">${entry.date} • ${entry.transaction_type}</div>
-                                </div>
-                                <div class="text-sm font-semibold ${entry.amount >= 0 ? 'text-green-600' : 'text-red-600'}">
-                                    ${entry.amount >= 0 ? '+' : ''}$${Math.abs(entry.amount).toFixed(2)}
-                                </div>
-                            </div>
-                            <div class="mt-2">
-                                <select class="w-full text-xs border border-gray-300 dark:border-gray-600 rounded-sm px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 account-select" data-tomselect>
-                                    <option value="">Select account...</option>
-                                </select>
-                            </div>
-                        `;
-                        bankEntriesList.appendChild(entryDiv);
-                    });
-
-                    if (cachedChartAccounts.length) {
-                        populateAccountSelects(cachedChartAccounts);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error loading bank entries:', error);
-                });
-            }
-
-            // Load chart of accounts
-            function loadChartOfAccounts() {
-                fetch(`{{ route('chart-of-accounts.api') }}`)
-                .then(response => response.json())
-                .then(data => {
-                    const chartAccountsList = document.getElementById('chart-accounts-list');
-                    chartAccountsList.innerHTML = '';
-                    
-                    data.accounts.forEach(account => {
-                        const accountDiv = document.createElement('div');
-                        accountDiv.className = 'p-2 border border-gray-200 dark:border-gray-600 rounded-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 chart-account';
-                        accountDiv.dataset.accountId = account.id;
-                        accountDiv.innerHTML = `
-                            <div class="text-sm font-medium text-gray-900 dark:text-gray-100">${account.account_name}</div>
-                            <div class="text-xs text-gray-500 dark:text-gray-400">${account.account_code} • ${account.account_type}</div>
-                        `;
-                        chartAccountsList.appendChild(accountDiv);
-                    });
-
-                    // Populate account selects in bank entries
-                    populateAccountSelects(data.accounts);
-                })
-                .catch(error => {
-                    console.error('Error loading chart of accounts:', error);
-                });
-            }
-
-            // Populate account select dropdowns
-            function populateAccountSelects(accounts) {
-                cachedChartAccounts = accounts;
-                const accountSelects = document.querySelectorAll('.account-select');
-                accountSelects.forEach(select => {
-                    if (select.tomselect) {
-                        select.tomselect.destroy();
-                    }
-                    const keepFirst = select.querySelector('option[value=""]');
-                    select.innerHTML = '';
-                    if (keepFirst) {
-                        select.appendChild(keepFirst);
-                    } else {
-                        const placeholder = document.createElement('option');
-                        placeholder.value = '';
-                        placeholder.textContent = 'Select account...';
-                        select.appendChild(placeholder);
-                    }
-                    accounts.forEach(account => {
-                        const option = document.createElement('option');
-                        option.value = account.id;
-                        option.textContent = `${account.account_code} - ${account.account_name}`;
-                        select.appendChild(option);
-                    });
-                    window.reinitTomSelect?.(select);
-                });
-            }
-
-            // Auto match functionality
-            autoMatchBtn.addEventListener('click', function() {
-                // Simple auto-matching logic based on amount and description keywords
-                const bankEntries = document.querySelectorAll('.bank-entry');
-                const chartAccounts = document.querySelectorAll('.chart-account');
-                
-                bankEntries.forEach(entry => {
-                    const amount = parseFloat(entry.querySelector('.text-green-600, .text-red-600').textContent.replace(/[+$]/g, ''));
-                    const description = entry.querySelector('.text-sm.font-medium').textContent.toLowerCase();
-                    const select = entry.querySelector('.account-select');
-                    
-                    // Simple matching logic - can be enhanced
-                    let matchedAccount = null;
-                    
-                    if (amount > 0) {
-                        // Income accounts for positive amounts
-                        matchedAccount = Array.from(chartAccounts).find(acc => 
-                            acc.textContent.toLowerCase().includes('income') || 
-                            acc.textContent.toLowerCase().includes('revenue')
-                        );
-                    } else {
-                        // Expense accounts for negative amounts
-                        matchedAccount = Array.from(chartAccounts).find(acc => 
-                            acc.textContent.toLowerCase().includes('expense') || 
-                            acc.textContent.toLowerCase().includes('cost')
-                        );
-                    }
-                    
-                    if (matchedAccount) {
-                        window.setSelectValue?.(select, matchedAccount.dataset.accountId);
-                    }
-                });
-            });
-
-            // Save matches functionality
-            saveMatchesBtn.addEventListener('click', function() {
-                const matches = [];
-                const bankEntries = document.querySelectorAll('.bank-entry');
-                
-                bankEntries.forEach(entry => {
-                    const select = entry.querySelector('.account-select');
-                    if (select.value) {
-                        matches.push({
-                            bank_entry_id: entry.dataset.entryId,
-                            chart_account_id: select.value
-                        });
-                    }
-                });
-
-                if (matches.length === 0) {
-                    alert('Please select accounts for at least one bank entry.');
-                    return;
-                }
-
-                fetch('{{ route("business-entities.bank-import.save-matches", $businessEntity->id) }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({ matches: matches })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Matches saved successfully! ' + data.transactionsCreated + ' transactions created.');
-                        matchingInterface.classList.add('hidden');
-                        // Refresh the page or update UI as needed
-                        location.reload();
-                    } else {
-                        alert('Error saving matches: ' + (data.message || 'Unknown error'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Error saving matches. Please try again.');
-                });
-            });
-
-            const accountSearch = document.getElementById('account-search');
-            if (accountSearch) {
-                accountSearch.addEventListener('input', function(e) {
-                    const searchTerm = e.target.value.toLowerCase();
-                    const chartAccounts = document.querySelectorAll('.chart-account');
-
-                    chartAccounts.forEach(account => {
-                        const text = account.textContent.toLowerCase();
-                        if (text.includes(searchTerm)) {
-                            account.style.display = 'block';
-                        } else {
-                            account.style.display = 'none';
-                        }
-                    });
-                });
-            }
-
             }
 
         });

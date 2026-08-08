@@ -126,10 +126,11 @@ export function validateTransactionPaidBy(form) {
     const requireBank = form.dataset.requireBankAccountWhenPaid === 'true'
         || (isEntityPaidBy(selected) && transactionDirection(form) === 'income');
 
-    if (requireBank && bankWrap && !bankWrap.classList.contains('hidden') && bankSelect) {
+    if (requireBank && bankSelect) {
+        const wrapVisible = bankWrap && !bankWrap.classList.contains('hidden');
         const bankValue = String(paidBySelectValue(bankSelect)).trim();
 
-        if (bankValue === '') {
+        if (wrapVisible && bankValue === '') {
             showPaidByClientError(
                 form,
                 'bank_account',
@@ -137,6 +138,12 @@ export function validateTransactionPaidBy(form) {
                     ? 'Bank account is required for paid transactions.'
                     : 'Bank account is required when an entity is selected.'
             );
+
+            return false;
+        }
+
+        if (form.dataset.requireBankAccountWhenPaid === 'true' && bankValue === '') {
+            showPaidByClientError(form, 'bank_account', 'Bank account is required for paid transactions.');
 
             return false;
         }

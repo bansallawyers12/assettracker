@@ -18,9 +18,10 @@
                         </ul>
                     </div>
                 @endif
-                <form method="POST" id="bank-edit-transaction-form" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data" data-transaction-paid-by-form>
+                <form method="POST" id="bank-edit-transaction-form" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data" data-transaction-paid-by-form data-require-bank-account-when-paid="true" data-booking-entity-id="{{ $businessEntity->id }}">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="business_entity_id" id="business_entity_id" value="{{ $businessEntity->id }}">
 
                     @if ($transaction->isSplit())
                         <div class="mb-5 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-100">
