@@ -32,7 +32,7 @@ class TransactionObserver
 			'amount', 'gst_amount', 'gst_status', 'gst_basis',
 			'transaction_type', 'business_entity_id', 'related_entity_id',
 			'asset_id', 'bank_account_id', 'chart_of_account_id',
-			'date', 'payment_status',
+			'date', 'payment_status', 'paid_by', 'paid_at',
 		];
 
 		if ($transaction->wasChanged($postingFields) || $transaction->isSplit()) {

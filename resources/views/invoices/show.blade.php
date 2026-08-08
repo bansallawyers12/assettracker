@@ -75,7 +75,9 @@
                 <div class="px-6 py-4 bg-green-50 dark:bg-green-900/20 border-b border-green-100 dark:border-green-900/40 text-sm">
                     <h3 class="font-semibold text-green-900 dark:text-green-200 mb-2">Payment recorded</h3>
                     <p class="text-green-800 dark:text-green-300">Paid on {{ $invoice->paid_at->format('d/m/Y') }}
-                        @if ($invoice->payment_method) — {{ $invoice->payment_method }} @endif
+                        @if ($invoice->payment_method)
+                            — {{ \App\Models\Transaction::$paymentMethods[$invoice->payment_method] ?? $invoice->payment_method }}
+                        @endif
                         @if ($invoice->payment_reference) ({{ $invoice->payment_reference }}) @endif
                     </p>
                     @if ($invoice->paymentTransaction)

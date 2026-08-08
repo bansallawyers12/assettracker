@@ -11,6 +11,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
+/**
+ * Posts transaction journals for entity P&L/BS.
+ *
+ * Same-entity pay (or person paid_by): one booking journal on the booker
+ * (TXN-########) using cash ↔ income/expense.
+ *
+ * Cross-entity pay (paid_by = be:{other}): two journals —
+ *   1) Booking entity: income/expense ↔ director/entity loan (2500), not cash
+ *   2) Payer entity: cash ↔ director/entity loan (TXN-########-PAY)
+ *
+ * Unpaid transactions are unposted (obligation only; no cash movement yet).
+ * Property reports still filter transactions by asset_id separately.
+ */
 class TransactionPostingService
 {
     public function post(Transaction $transaction): ?JournalEntry
@@ -238,7 +251,10 @@ class TransactionPostingService
             } else {
                 return [];
             }
-            $lines[] = $this->line($counterAccount->id, 0, $amountNet, 'Income');
+            $counterLabel = $transaction->transaction_type === Transaction::TYPE_INVOICE_PAYMENT
+                ? 'Clear accounts receivable'
+                : 'Income';
+            $lines[] = $this->line($counterAccount->id, 0, $amountNet, $counterLabel);
             if ($gstAmount > 0 && $accounts['gst_payable']) {
                 $lines[] = $this->line($accounts['gst_payable']->id, 0, $gstAmount, 'GST Payable');
             }
@@ -353,19 +369,8 @@ class TransactionPostingService
             return [];
         }
 
-        $cashAccount = $this->findAccount('1100')
-            ?? $this->findAccount('1000');
-        $directorLoanAccount = $this->findDirectorLoanAccount();
-        if (! $cashAccount || ! $directorLoanAccount) {
-            Log::warning('TransactionPostingService: cannot post payer-side bank journal', [
-                'transaction_id' => $transaction->id,
-                'payer_entity_id' => $payerEntityId,
-                'missing_cash' => ! $cashAccount,
-                'missing_director_loan' => ! $directorLoanAccount,
-            ]);
-
-            return [];
-        }
+        $cashAccount = $this->ensureCashAccount();
+        $directorLoanAccount = $this->ensureDirectorLoanAccount();
 
         $amountGross = round(abs((float) $transaction->amount), 2);
         if (! $transaction->isSplit()) {
@@ -387,13 +392,13 @@ class TransactionPostingService
     }
 
     /**
-     * @return array{cash: ?ChartOfAccount, director_loan: ?ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}
+     * @return array{cash: ChartOfAccount, director_loan: ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}
      */
     private function resolveGlAccounts(): array
     {
         return [
-            'cash' => $this->findAccount('1100') ?? $this->findAccount('1000'),
-            'director_loan' => $this->findDirectorLoanAccount(),
+            'cash' => $this->ensureCashAccount(),
+            'director_loan' => $this->ensureDirectorLoanAccount(),
             'gst_payable' => $this->findByName('GST Payable')
                 ?? $this->findByName('GST Clearing')
                 ?? $this->findAccount('2100')
@@ -430,6 +435,41 @@ class TransactionPostingService
     {
         return ChartOfAccount::where('account_name', $name)->where('is_active', true)->first()
             ?? ChartOfAccount::where('account_name', $name)->first();
+    }
+
+    private function ensureCashAccount(): ChartOfAccount
+    {
+        return $this->findAccount('1100')
+            ?? $this->findAccount('1000')
+            ?? ChartOfAccount::firstOrCreate(
+                ['account_code' => '1100'],
+                [
+                    'account_name' => 'Bank / Cash Account',
+                    'account_type' => 'asset',
+                    'account_category' => 'current_asset',
+                    'is_active' => true,
+                    'description' => 'Operating bank and cash accounts',
+                    'opening_balance' => 0,
+                    'current_balance' => 0,
+                ]
+            );
+    }
+
+    private function ensureDirectorLoanAccount(): ChartOfAccount
+    {
+        return $this->findDirectorLoanAccount()
+            ?? ChartOfAccount::firstOrCreate(
+                ['account_code' => '2500'],
+                [
+                    'account_name' => 'Director / Entity Loan',
+                    'account_type' => 'liability',
+                    'account_category' => 'long_term_liability',
+                    'is_active' => true,
+                    'description' => 'Loans from directors or related entities',
+                    'opening_balance' => 0,
+                    'current_balance' => 0,
+                ]
+            );
     }
 
     private function ensureAccountsReceivable(): ChartOfAccount

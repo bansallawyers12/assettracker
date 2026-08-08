@@ -275,9 +275,9 @@
     "semantic_hash": "593614da7542e81a4113bccb9010cc79"
   },
   "app/Http/Controllers/InvoiceController.php": {
-    "mtime": 1786173550.1488535,
-    "ast_hash": "6d2b5eaf50474f407820db0276441c9b",
-    "semantic_hash": "6d2b5eaf50474f407820db0276441c9b"
+    "mtime": 1786185788.3664992,
+    "ast_hash": "e992b58e82986aada3eb49b18496efb9",
+    "semantic_hash": ""
   },
   "app/Http/Controllers/PersonShowWorkspaceController.php": {
     "mtime": 1785397962.977449,
@@ -540,9 +540,9 @@
     "semantic_hash": "39923e0827f6f8fb88266244daf433d3"
   },
   "app/Models/Invoice.php": {
-    "mtime": 1774067019.5547526,
-    "ast_hash": "22257a696e85928eaab02e031dae77c6",
-    "semantic_hash": "22257a696e85928eaab02e031dae77c6"
+    "mtime": 1786185762.9231143,
+    "ast_hash": "1d43dcd99d369f0315d356408a9dbd19",
+    "semantic_hash": ""
   },
   "app/Models/InvoiceLine.php": {
     "mtime": 1756974948.6474268,
@@ -620,9 +620,9 @@
     "semantic_hash": "3cd1fa7a11617d52eda6ad95176600e5"
   },
   "app/Models/Transaction.php": {
-    "mtime": 1786173550.157855,
-    "ast_hash": "795a81d94f4652d3a7c1891c0caf43f2",
-    "semantic_hash": "795a81d94f4652d3a7c1891c0caf43f2"
+    "mtime": 1786185758.5844557,
+    "ast_hash": "58a3633f4f7c70217fe5195a17ab7d06",
+    "semantic_hash": ""
   },
   "app/Models/TransactionLine.php": {
     "mtime": 1784538823.4113448,
@@ -825,9 +825,9 @@
     "semantic_hash": "0e055c6f633fddcf63b89de2ec111e9c"
   },
   "app/Services/TransactionPostingService.php": {
-    "mtime": 1784538823.4143443,
-    "ast_hash": "42ff8eaf751454af14eca59483c79c4f",
-    "semantic_hash": "42ff8eaf751454af14eca59483c79c4f"
+    "mtime": 1786186232.0513332,
+    "ast_hash": "aaa11a35eefee864da2189915d78ee33",
+    "semantic_hash": ""
   },
   "app/Services/TwoFactorService.php": {
     "mtime": 1785397962.9800234,
@@ -2595,9 +2595,9 @@
     "semantic_hash": "ddac0e61ff129958c7f2b6920dd3757d"
   },
   "resources/views/invoices/show.blade.php": {
-    "mtime": 1782708941.8082855,
-    "ast_hash": "7f06f6bb26a35950c5dadda7d91c0a25",
-    "semantic_hash": "7f06f6bb26a35950c5dadda7d91c0a25"
+    "mtime": 1786186232.4999113,
+    "ast_hash": "42b4abec5e901cc9fc6b64f655be4cd1",
+    "semantic_hash": ""
   },
   "resources/views/layouts/app.blade.php": {
     "mtime": 1783919009.3785167,
@@ -3167,6 +3167,21 @@
   "tests/Feature/BankAccountImportPanelTest.php": {
     "mtime": 1786185295.3162084,
     "ast_hash": "5c04d9886a460d05c3b2013233f9e5f1",
+    "semantic_hash": ""
+  },
+  "app/Services/InvoicePaymentService.php": {
+    "mtime": 1786186230.582858,
+    "ast_hash": "12ee7d1b083e89fcdabc4d124819b017",
+    "semantic_hash": ""
+  },
+  "database/migrations/2026_08_08_000001_add_payment_transaction_id_to_invoices_table.php": {
+    "mtime": 1786185745.5211406,
+    "ast_hash": "f73e8c0367fe5e6490a4924fea6b9d98",
+    "semantic_hash": ""
+  },
+  "tests/Unit/InvoicePaymentPostingTest.php": {
+    "mtime": 1786186035.739189,
+    "ast_hash": "bb88755b336c2cb90feacd85bb95b41e",
     "semantic_hash": ""
   }
 }
