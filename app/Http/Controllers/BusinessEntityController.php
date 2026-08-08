@@ -2192,12 +2192,116 @@ class BusinessEntityController extends Controller
     }
 
     /**
+     * Update an entity purpose link (purpose and optional rent asset links).
+     *
+     * @return RedirectResponse|\Illuminate\Http\JsonResponse
+     */
+    public function updateBankAccountLink(
+        Request $request,
+        BusinessEntity $businessEntity,
+        BusinessEntityBankAccount $bankAccountLink
+    ) {
+        $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
+
+        if ((int) $bankAccountLink->business_entity_id !== (int) $businessEntity->id) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $bankAccount = $bankAccountLink->bankAccount;
+        if ($bankAccount === null) {
+            abort(404);
+        }
+
+        $this->forgetRentCollectionAssetIdsUnlessRentReceiving($request);
+
+        $validated = $request->validate(array_merge([
+            'account_purpose' => ['required', Rule::in(BankAccount::ENTITY_PURPOSES)],
+        ], $this->bankAccountAssetLinkService->rentCollectionAssetValidationRules()));
+
+        $newPurpose = $validated['account_purpose'];
+        $oldPurpose = $bankAccountLink->purpose;
+        $clearedRentAssets = 0;
+
+        if ($newPurpose !== $oldPurpose) {
+            if (! $bankAccount->canAttachPurposeToEntity($businessEntity, $newPurpose)) {
+                $message = ! $bankAccount->canReceiveEntityPurposeLinks()
+                    ? 'Portfolio lender accounts cannot be attached to an entity.'
+                    : 'This account already has purpose '.BankAccount::purposeLabel($newPurpose).' on this entity.';
+
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'status' => false,
+                        'message' => $message,
+                    ], 422);
+                }
+
+                return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
+                    ->with('error', $message);
+            }
+
+            if ($oldPurpose === BankAccount::PURPOSE_RENT_RECEIVING) {
+                $clearedRentAssets = $this->bankAccountAssetLinkService->unlinkAllRentCollectionAssetsForAccount(
+                    $bankAccount,
+                    $businessEntity
+                );
+            }
+
+            $bankAccountLink->update(['purpose' => $newPurpose]);
+
+            // Keep the account's primary purpose aligned when it still mirrored this link.
+            if ($bankAccount->account_purpose === $oldPurpose
+                && in_array($newPurpose, BankAccount::ENTITY_PURPOSES, true)) {
+                $bankAccount->update(['account_purpose' => $newPurpose]);
+            }
+        }
+
+        $message = $newPurpose !== $oldPurpose
+            ? 'Link updated to '.BankAccount::purposeLabel($newPurpose).'.'
+            : 'Link updated.';
+
+        if ($clearedRentAssets > 0) {
+            $message .= ' Also cleared Rent Paid Into on '.$clearedRentAssets.' asset'
+                .($clearedRentAssets === 1 ? '' : 's').'.';
+        }
+
+        if ($newPurpose === BankAccount::PURPOSE_RENT_RECEIVING) {
+            $result = $this->bankAccountAssetLinkService->syncRentCollectionAssets(
+                $bankAccount,
+                $businessEntity,
+                $validated['rent_collection_asset_ids'] ?? []
+            );
+
+            $parts = [];
+            if ($result['linked'] > 0) {
+                $parts[] = 'linked '.$result['linked'].' asset'.($result['linked'] === 1 ? '' : 's');
+            }
+            if ($result['unlinked'] > 0) {
+                $parts[] = 'unlinked '.$result['unlinked'];
+            }
+            if ($parts !== []) {
+                $message .= ' Rent assets updated ('.implode(', ', $parts).').';
+            }
+        }
+
+        if ($request->expectsJson()) {
+            return $this->bankAccountWorkspaceJsonResponse($businessEntity, $message, $bankAccount, $newPurpose);
+        }
+
+        return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
+            ->with('success', $message);
+    }
+
+    /**
      * Remove one entity purpose link (does not delete the underlying bank account).
      *
-     * @return RedirectResponse
+     * @return RedirectResponse|\Illuminate\Http\JsonResponse
      */
-    public function detachBankAccountLink(BusinessEntity $businessEntity, BusinessEntityBankAccount $bankAccountLink)
-    {
+    public function detachBankAccountLink(
+        Request $request,
+        BusinessEntity $businessEntity,
+        BusinessEntityBankAccount $bankAccountLink
+    ) {
         $this->authorize('update', $businessEntity);
 
         $this->ensureOperationalForAccounting($businessEntity);
@@ -2220,7 +2324,7 @@ class BusinessEntityController extends Controller
 
         $bankAccountLink->delete();
 
-        if (request()->expectsJson()) {
+        if ($request->expectsJson()) {
             return $this->bankAccountWorkspaceJsonResponse($businessEntity, $message);
         }
 

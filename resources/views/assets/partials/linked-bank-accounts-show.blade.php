@@ -80,6 +80,7 @@
                         'unlinkUrl' => $account ? $unlinkUrl($slot['role']) : null,
                         'unlinkTitle' => 'Remove link',
                         'unlinkConfirm' => 'Remove the ' . strtolower($slot['label']) . ' link from this asset?',
+                        'useSpaActions' => false,
                     ])
                 </dd>
             </div>

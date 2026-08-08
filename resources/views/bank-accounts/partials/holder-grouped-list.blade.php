@@ -145,10 +145,17 @@
                                                 'editUrl' => $linkBusinessEntity
                                                     ? route('business-entities.bank-accounts.edit', [$linkBusinessEntity, $account])
                                                     : $account->editRoute(),
-                                                'editFormUrl' => $linkBusinessEntity
-                                                    ? route('entities.bank-accounts.form.edit', [$linkBusinessEntity, $account])
-                                                    : route('bank-accounts.form.edit', $account),
-                                                'editTitle' => 'Edit account',
+                                                'editFormUrl' => ($linkBusinessEntity && $link->id)
+                                                    ? route('entities.bank-account-links.form.edit', [$linkBusinessEntity, $link])
+                                                    : ($linkBusinessEntity
+                                                        ? route('entities.bank-accounts.form.edit', [$linkBusinessEntity, $account])
+                                                        : route('bank-accounts.form.edit', $account)),
+                                                'editTitle' => ($linkBusinessEntity && $link->id) ? 'Edit link' : 'Edit account',
+                                                'editPanelTitle' => ($linkBusinessEntity && $link->id) ? 'Edit link' : null,
+                                                'editPanelSubtitle' => ($linkBusinessEntity && $link->id)
+                                                    ? 'Change purpose or linked assets for this entity.'
+                                                    : null,
+                                                'editPanelEyebrow' => ($linkBusinessEntity && $link->id) ? 'Entity link' : null,
                                                 'manageRentAssetsUrl' => ($linkBusinessEntity && $link->id && $purpose === BankAccount::PURPOSE_RENT_RECEIVING)
                                                     ? route('entities.bank-account-links.rent-assets-form', [$linkBusinessEntity, $link])
                                                     : null,

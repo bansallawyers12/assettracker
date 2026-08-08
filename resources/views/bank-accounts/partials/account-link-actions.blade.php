@@ -48,6 +48,9 @@
                 type="button"
                 data-bank-action="edit"
                 data-bank-edit-url="{{ $editFormUrl }}"
+                @if(! empty($editPanelTitle)) data-bank-edit-panel-title="{{ $editPanelTitle }}" @endif
+                @if(! empty($editPanelSubtitle)) data-bank-edit-panel-subtitle="{{ $editPanelSubtitle }}" @endif
+                @if(! empty($editPanelEyebrow)) data-bank-edit-panel-eyebrow="{{ $editPanelEyebrow }}" @endif
                 title="{{ $editTitle ?? 'Edit bank account' }}"
                 class="{{ $btnClass }} border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
             >
@@ -80,18 +83,32 @@
     @endif
 
     @if(! empty($unlinkUrl))
-        <form method="POST" action="{{ $unlinkUrl }}" class="inline" onsubmit="return confirm({{ json_encode($unlinkConfirm ?? 'Remove this account link?') }});">
-            @csrf
-            @method('DELETE')
+        @if($useSpaActions)
             <button
-                type="submit"
+                type="button"
+                data-bank-action="unlink"
+                data-unlink-url="{{ $unlinkUrl }}"
+                data-unlink-confirm="{{ $unlinkConfirm ?? 'Remove this account link?' }}"
                 title="{{ $unlinkTitle ?? 'Remove link' }}"
-                class="{{ $btnClass }} border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100"
+                class="{{ $btnClass }} border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
             >
                 <x-lucide-x class="h-4 w-4" aria-hidden="true" />
                 <span class="sr-only">{{ $unlinkTitle ?? 'Remove link' }}</span>
             </button>
-        </form>
+        @else
+            <form method="POST" action="{{ $unlinkUrl }}" class="inline" onsubmit="return confirm({{ json_encode($unlinkConfirm ?? 'Remove this account link?') }});">
+                @csrf
+                @method('DELETE')
+                <button
+                    type="submit"
+                    title="{{ $unlinkTitle ?? 'Remove link' }}"
+                    class="{{ $btnClass }} border-gray-300 bg-gray-50 text-gray-600 hover:bg-gray-100"
+                >
+                    <x-lucide-x class="h-4 w-4" aria-hidden="true" />
+                    <span class="sr-only">{{ $unlinkTitle ?? 'Remove link' }}</span>
+                </button>
+            </form>
+        @endif
     @endif
 
     @if(! empty($deleteUrl))

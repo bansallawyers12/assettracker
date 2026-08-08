@@ -487,6 +487,7 @@ export function initBankAccountModal() {
         }
 
         const isRentAssetsManage = form.hasAttribute('data-rent-assets-manage-form');
+        const isEditLink = form.hasAttribute('data-edit-link-form');
 
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
@@ -498,10 +499,14 @@ export function initBankAccountModal() {
                     handleBankAccountSaved(payload, {
                         title: isRentAssetsManage
                             ? 'Asset links updated'
-                            : (panelMode === 'edit' ? 'Account updated' : 'Account saved'),
+                            : (isEditLink
+                                ? 'Link updated'
+                                : (panelMode === 'edit' ? 'Account updated' : 'Account saved')),
                         message: payload.message || (isRentAssetsManage
                             ? 'Rent asset links updated.'
-                            : 'Bank account saved successfully.'),
+                            : (isEditLink
+                                ? 'Entity link updated successfully.'
+                                : 'Bank account saved successfully.')),
                     });
                 },
             });
@@ -585,15 +590,15 @@ export function initBankAccountModal() {
         await loadFormIntoCreateHost(formUrl);
     }
 
-    async function openEditPanel(editUrl) {
+    async function openEditPanel(editUrl, options = {}) {
         closeWorkspacePanel();
         panelMode = 'edit';
         showTabs(false);
         setActiveTab('create');
         setPanelCopy({
-            title: 'Edit bank account',
-            subtitle: 'Update account details below.',
-            eyebrow: 'Bank account',
+            title: options.title || 'Edit bank account',
+            subtitle: options.subtitle || 'Update account details below.',
+            eyebrow: options.eyebrow || 'Bank account',
         });
 
         openBankPanel();
@@ -630,7 +635,11 @@ export function initBankAccountModal() {
         const editBtn = event.target.closest('[data-bank-action="edit"]');
         if (editBtn?.dataset.bankEditUrl) {
             event.preventDefault();
-            await openEditPanel(editBtn.dataset.bankEditUrl);
+            await openEditPanel(editBtn.dataset.bankEditUrl, {
+                title: editBtn.dataset.bankEditPanelTitle || undefined,
+                subtitle: editBtn.dataset.bankEditPanelSubtitle || undefined,
+                eyebrow: editBtn.dataset.bankEditPanelEyebrow || undefined,
+            });
             return;
         }
 
@@ -638,6 +647,34 @@ export function initBankAccountModal() {
         if (rentAssetsBtn?.dataset.bankRentAssetsUrl) {
             event.preventDefault();
             await openRentAssetsPanel(rentAssetsBtn.dataset.bankRentAssetsUrl);
+            return;
+        }
+
+        const unlinkBtn = event.target.closest('[data-bank-action="unlink"]');
+        if (unlinkBtn?.dataset.unlinkUrl) {
+            event.preventDefault();
+
+            const ok = await showWorkspaceConfirm({
+                title: 'Remove link?',
+                message: unlinkBtn.dataset.unlinkConfirm || 'Remove this account link?',
+                confirmText: 'Remove',
+                variant: 'danger',
+            });
+
+            if (!ok) {
+                return;
+            }
+
+            const response = await apiFetch(unlinkBtn.dataset.unlinkUrl, { method: 'DELETE' });
+            const payload = parseJson(await response.text());
+
+            if (!response.ok) {
+                notifyFormFailure(null, payload, { title: 'Could not remove link' });
+                return;
+            }
+
+            await refreshBankList(payload.list_html);
+            notifyFormSuccess(payload.message || 'Link removed.', 'Link removed');
             return;
         }
 

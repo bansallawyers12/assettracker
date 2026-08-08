@@ -153,4 +153,38 @@ class BankAccountsWorkspaceController extends Controller
             ])->render(),
         ]);
     }
+
+    public function editLinkForm(BusinessEntity $businessEntity, BusinessEntityBankAccount $bankAccountLink): JsonResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        if ((int) $bankAccountLink->business_entity_id !== (int) $businessEntity->id) {
+            abort(403);
+        }
+
+        $bankAccount = $bankAccountLink->bankAccount;
+        if ($bankAccount === null) {
+            abort(404);
+        }
+
+        $bankAccount->loadMissing([
+            'entityPurposeLinks' => fn ($q) => $q->where('business_entity_id', $businessEntity->id),
+        ]);
+
+        $selectedIds = $this->bankAccountAssetLinkService
+            ->rentCollectionAssetsForAccount($businessEntity, $bankAccount)
+            ->pluck('id')
+            ->all();
+
+        return response()->json([
+            'status' => true,
+            'html' => view('business-entities.partials.bank-accounts.edit-link-form', [
+                'businessEntity' => $businessEntity,
+                'bankAccountLink' => $bankAccountLink,
+                'bankAccount' => $bankAccount,
+                'leasableAssets' => $this->bankAccountAssetLinkService->leasableAssetsForEntity($businessEntity),
+                'selectedAssetIds' => $selectedIds,
+            ])->render(),
+        ]);
+    }
 }
