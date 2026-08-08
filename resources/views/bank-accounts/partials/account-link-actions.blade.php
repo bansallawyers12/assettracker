@@ -111,6 +111,21 @@
         @endif
     @endif
 
+    @if(! empty($statementsUrl))
+        <button
+            type="button"
+            data-bank-action="statements"
+            data-bank-statements-url="{{ $statementsUrl }}"
+            data-bank-statements-title="{{ $statementsTitle ?? 'Bank statements' }}"
+            data-bank-statements-subtitle="{{ $statementsSubtitle ?? '' }}"
+            title="{{ $statementsTitle ?? 'Bank statements' }}"
+            class="{{ $btnClass }} border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50"
+        >
+            <x-lucide-file-text class="h-4 w-4" aria-hidden="true" />
+            <span class="sr-only">{{ $statementsTitle ?? 'Bank statements' }}</span>
+        </button>
+    @endif
+
     @if(! empty($deleteUrl))
         @if($useSpaActions)
             <button

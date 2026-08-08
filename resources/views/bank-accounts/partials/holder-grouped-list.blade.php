@@ -160,6 +160,9 @@
                                                     ? route('entities.bank-account-links.rent-assets-form', [$linkBusinessEntity, $link])
                                                     : null,
                                                 'manageRentAssetsTitle' => 'Manage linked assets',
+                                                'statementsUrl' => route('bank-accounts.statements.index', $account),
+                                                'statementsTitle' => 'Bank statements',
+                                                'statementsSubtitle' => $account->displayLabel(),
                                                 'unlinkUrl' => ($linkBusinessEntity && $link->id)
                                                     ? route('business-entities.bank-account-links.destroy', [$linkBusinessEntity, $link])
                                                     : null,
@@ -207,6 +210,9 @@
                                                 'editUrl' => $account->editRoute(),
                                                 'editFormUrl' => $editFormUrl,
                                                 'editTitle' => 'Edit account',
+                                                'statementsUrl' => route('bank-accounts.statements.index', $account),
+                                                'statementsTitle' => 'Bank statements',
+                                                'statementsSubtitle' => $account->displayLabel(),
                                                 'deleteUrl' => $account->destroyRoute(),
                                                 'deleteTitle' => 'Delete bank account',
                                                 'deleteConfirm' => 'Delete this bank account permanently? This cannot be undone.',

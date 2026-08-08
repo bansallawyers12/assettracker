@@ -852,6 +852,18 @@ class BankAccount extends Model
         return $this->hasMany(BankStatementEntry::class);
     }
 
+    public function statements(): HasMany
+    {
+        return $this->hasMany(BankAccountStatement::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (BankAccount $account): void {
+            app(\App\Services\BankAccountStatementUploadService::class)->deleteAllForAccount($account);
+        });
+    }
+
     public function entityPurposeLinks(): HasMany
     {
         return $this->hasMany(BusinessEntityBankAccount::class);
@@ -927,6 +939,62 @@ class BankAccount extends Model
         return $this->isAccessibleBy(
             (int) $user->id,
             fn (BusinessEntity $entity): bool => $user->can('view', $entity)
+        );
+    }
+
+    /**
+     * Whether the given user may change bank account data (including statements).
+     *
+     * @param  callable(BusinessEntity): bool|null  $canUpdateEntity
+     */
+    public function isEditableBy(int $userId, ?callable $canUpdateEntity = null): bool
+    {
+        if ((int) $this->user_id === $userId) {
+            return true;
+        }
+
+        $canUpdateEntity ??= static fn (BusinessEntity $entity): bool => auth()->user()?->can('update', $entity) ?? false;
+
+        if ($this->business_entity_id !== null) {
+            $entity = $this->relationLoaded('businessEntity')
+                ? $this->businessEntity
+                : $this->businessEntity()->first();
+
+            if ($entity !== null) {
+                if ((int) $entity->user_id === $userId) {
+                    return true;
+                }
+
+                if ($canUpdateEntity($entity)) {
+                    return true;
+                }
+            }
+        }
+
+        if ($this->holder_type === self::HOLDER_ENTITY && $this->holder_entity_id) {
+            $holder = $this->relationLoaded('holderEntity')
+                ? $this->holderEntity
+                : $this->holderEntity()->first();
+
+            if ($holder !== null && $canUpdateEntity($holder)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function isEditableByCurrentUser(): bool
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return false;
+        }
+
+        return $this->isEditableBy(
+            (int) $user->id,
+            fn (BusinessEntity $entity): bool => $user->can('update', $entity)
         );
     }
 }

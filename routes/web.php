@@ -24,6 +24,7 @@ use App\Http\Controllers\EmailTemplatesWorkspaceController;
 use App\Http\Controllers\AssetsWorkspaceController;
 use App\Http\Controllers\AssetShowWorkspaceController;
 use App\Http\Controllers\BankAccountPanelController;
+use App\Http\Controllers\BankAccountStatementController;
 use App\Http\Controllers\BankAccountsWorkspaceController;
 use App\Http\Controllers\ContactListsWorkspaceController;
 use App\Http\Controllers\EntityShowWorkspaceController;
@@ -413,6 +414,10 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::put('/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'updatePortfolioBankAccount'])->name('bank-accounts.update');
     Route::delete('/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'destroyPortfolioBankAccount'])->name('bank-accounts.destroy');
     Route::get('/bank-accounts/{bankAccount}/reveal-account-number', [BusinessEntityController::class, 'revealBankAccountNumber'])->name('bank-accounts.reveal-account-number');
+    Route::get('/bank-accounts/{bankAccount}/statements', [BankAccountStatementController::class, 'index'])->name('bank-accounts.statements.index');
+    Route::post('/bank-accounts/{bankAccount}/statements', [BankAccountStatementController::class, 'store'])->name('bank-accounts.statements.store');
+    Route::get('/bank-accounts/{bankAccount}/statements/{bankAccountStatement}/download', [BankAccountStatementController::class, 'download'])->name('bank-accounts.statements.download');
+    Route::delete('/bank-accounts/{bankAccount}/statements/{bankAccountStatement}', [BankAccountStatementController::class, 'destroy'])->name('bank-accounts.statements.destroy');
     Route::get('/transactions', [BusinessEntityController::class, 'transactionsIndex'])->name('transactions.index');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');

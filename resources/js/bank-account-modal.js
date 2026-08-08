@@ -605,6 +605,125 @@ export function initBankAccountModal() {
         await loadFormIntoCreateHost(editUrl);
     }
 
+    function bindStatementsPanel(root, signal, statementsIndexUrl) {
+        const panel = root.querySelector('[data-bank-statements-panel]');
+        const form = root.querySelector('[data-bank-statements-upload-form]');
+        const refreshUrl = statementsIndexUrl || panel?.dataset.bankStatementsIndexUrl;
+
+        async function refreshStatementsPanel() {
+            if (!refreshUrl) {
+                return;
+            }
+
+            const refreshResponse = await apiFetch(refreshUrl);
+            const refreshPayload = parseJson(await refreshResponse.text());
+
+            if (refreshResponse.ok && refreshPayload?.html) {
+                createHost.innerHTML = refreshPayload.html;
+                const nextUrl = createHost.querySelector('[data-bank-statements-panel]')?.dataset.bankStatementsIndexUrl || refreshUrl;
+                bindStatementsPanel(createHost, createController?.signal, nextUrl);
+            }
+        }
+
+        form?.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const submitBtn = form.querySelector('[data-bank-statements-upload-submit]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+            }
+
+            try {
+                const response = await apiFetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                });
+                const payload = parseJson(await response.text());
+
+                if (!response.ok) {
+                    notifyFormFailure(form, payload, { title: 'Upload failed' });
+                    return;
+                }
+
+                form.reset();
+                notifyFormSuccess(payload.message || 'Statement uploaded.', 'Statement uploaded');
+
+                if (payload.warning) {
+                    showWorkspaceAlert({
+                        title: 'Period overlap',
+                        message: payload.warning,
+                    });
+                }
+
+                await refreshStatementsPanel();
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                }
+            }
+        }, { signal });
+
+        root.querySelectorAll('[data-bank-statement-delete]').forEach((button) => {
+            button.addEventListener('click', async () => {
+                const deleteUrl = button.dataset.deleteUrl;
+                if (!deleteUrl) {
+                    return;
+                }
+
+                const ok = await showWorkspaceConfirm({
+                    title: 'Delete statement?',
+                    message: 'This will permanently remove the PDF from storage.',
+                    confirmText: 'Delete',
+                    variant: 'danger',
+                });
+
+                if (!ok) {
+                    return;
+                }
+
+                const response = await apiFetch(deleteUrl, { method: 'DELETE' });
+                const payload = parseJson(await response.text());
+
+                if (!response.ok) {
+                    notifyFormFailure(null, payload, { title: 'Could not delete' });
+                    return;
+                }
+
+                await refreshStatementsPanel();
+                notifyFormSuccess(payload.message || 'Statement deleted.', 'Deleted');
+            }, { signal });
+        });
+    }
+
+    async function openStatementsPanel(statementsUrl, options = {}) {
+        closeWorkspacePanel();
+        panelMode = 'statements';
+        showTabs(false);
+        setActiveTab('create');
+        setPanelCopy({
+            title: options.title || 'Bank statements',
+            subtitle: options.subtitle || 'Upload and manage PDF statements for this account.',
+            eyebrow: 'Statements',
+        });
+
+        openBankPanel();
+        createController?.abort();
+        createController = new AbortController();
+        destroyTomSelectsIn(createHost);
+        createHost.innerHTML = '<div class="flex items-center justify-center py-16 text-sm text-gray-500 dark:text-gray-400">Loading statements…</div>';
+
+        const response = await apiFetch(statementsUrl);
+        const payload = parseJson(await response.text());
+
+        if (!response.ok || !payload?.html) {
+            createHost.innerHTML = '<p class="text-sm text-red-600 dark:text-red-400">Could not load statements. Refresh and try again.</p>';
+            return;
+        }
+
+        createHost.innerHTML = payload.html;
+        bindStatementsPanel(createHost, createController.signal, statementsUrl);
+    }
+
     tabButtons.forEach((button) => {
         button.addEventListener('click', () => {
             const tab = button.dataset.bankPanelTab;
@@ -647,6 +766,16 @@ export function initBankAccountModal() {
         if (rentAssetsBtn?.dataset.bankRentAssetsUrl) {
             event.preventDefault();
             await openRentAssetsPanel(rentAssetsBtn.dataset.bankRentAssetsUrl);
+            return;
+        }
+
+        const statementsBtn = event.target.closest('[data-bank-action="statements"]');
+        if (statementsBtn?.dataset.bankStatementsUrl) {
+            event.preventDefault();
+            await openStatementsPanel(statementsBtn.dataset.bankStatementsUrl, {
+                title: statementsBtn.dataset.bankStatementsTitle || undefined,
+                subtitle: statementsBtn.dataset.bankStatementsSubtitle || undefined,
+            });
             return;
         }
 

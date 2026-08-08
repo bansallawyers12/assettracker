@@ -445,9 +445,9 @@
     "semantic_hash": "792adf06479871c0a0f7bc05f88f56f2"
   },
   "app/Models/BankAccount.php": {
-    "mtime": 1785829116.6419814,
-    "ast_hash": "75f5bde49580196c96da8516211ff650",
-    "semantic_hash": "75f5bde49580196c96da8516211ff650"
+    "mtime": 1786173353.5335715,
+    "ast_hash": "cba96c42cdd7e7d7a37860b0c11bf5fd",
+    "semantic_hash": ""
   },
   "app/Models/BankStatementEntry.php": {
     "mtime": 1756545604.728698,
@@ -1695,8 +1695,8 @@
     "semantic_hash": "15e20d5bf76d83ae4c8b34985a9bdc52"
   },
   "resources/js/bank-account-modal.js": {
-    "mtime": 1786172555.582739,
-    "ast_hash": "7de39202467d4ee0841c957b7fac62c7",
+    "mtime": 1786173376.7586231,
+    "ast_hash": "b25ffc65086454c78e9cfd1f4aa13e5a",
     "semantic_hash": ""
   },
   "resources/js/bank-form-fields.js": {
@@ -2010,8 +2010,8 @@
     "semantic_hash": "e8f429ac0d92b8f585a747f7a268a800"
   },
   "resources/views/bank-accounts/partials/account-link-actions.blade.php": {
-    "mtime": 1786172549.5993836,
-    "ast_hash": "007c734527d1b33f57a7da5c4d6ce125",
+    "mtime": 1786173107.2456646,
+    "ast_hash": "8c5d6bc8bd858b65640a3f52d457914d",
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/partials/account-picker-row.blade.php": {
@@ -2060,8 +2060,8 @@
     "semantic_hash": "fface6765c18b4ed131ef84fc3dcb60c"
   },
   "resources/views/bank-accounts/partials/holder-grouped-list.blade.php": {
-    "mtime": 1786172074.0434883,
-    "ast_hash": "aaca42cefee066adaa0cd0613ff4956f",
+    "mtime": 1786173109.3647115,
+    "ast_hash": "e8ac44c4a731fab41ab4ea00169ff402",
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/partials/portfolio/create-form.blade.php": {
@@ -2870,8 +2870,8 @@
     "semantic_hash": "97bfbedc07ce09ce557c2deea649ac1f"
   },
   "routes/web.php": {
-    "mtime": 1786172053.9126594,
-    "ast_hash": "65787356d532746e7ed30502d27f8ef9",
+    "mtime": 1786173128.5998416,
+    "ast_hash": "69fdbe11835f9d0aca4d0546edda2062",
     "semantic_hash": ""
   },
   "scripts/financial-reports-hub.test.mjs": {
@@ -2935,9 +2935,9 @@
     "semantic_hash": "432cd711191bfecd9f6dc9cd008ed9a8"
   },
   "tests/Unit/BankAccountAccessTest.php": {
-    "mtime": 1782726750.7816553,
-    "ast_hash": "62b8bf83b16b14328171f756184cc0df",
-    "semantic_hash": "62b8bf83b16b14328171f756184cc0df"
+    "mtime": 1786173382.1836598,
+    "ast_hash": "8a550e141c3712d5cd958b93a9fc3982",
+    "semantic_hash": ""
   },
   "tests/Unit/BankAccountAssetLinkServiceTest.php": {
     "mtime": 1783917640.8824742,
@@ -3077,6 +3077,46 @@
   "python/requirements.txt": {
     "mtime": 1774662221.5614378,
     "ast_hash": "e86aa512368b84544758f63a5b8ce23a",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/BankAccountStatementController.php": {
+    "mtime": 1786173356.7596908,
+    "ast_hash": "fab551961f5bd283a1a80a8714d7f37d",
+    "semantic_hash": ""
+  },
+  "app/Models/BankAccountStatement.php": {
+    "mtime": 1786173062.3921225,
+    "ast_hash": "10b047b865efb0a4ceab86422a50219a",
+    "semantic_hash": ""
+  },
+  "app/Services/BankAccountStatementUploadService.php": {
+    "mtime": 1786173361.0190449,
+    "ast_hash": "1729954b1652169cd7a5ef8acf5fa691",
+    "semantic_hash": ""
+  },
+  "config/bank_statements.php": {
+    "mtime": 1786173057.9358945,
+    "ast_hash": "0f2c20c0151d954ea54978ade1988b36",
+    "semantic_hash": ""
+  },
+  "database/migrations/2026_08_08_100000_create_bank_account_statements_table.php": {
+    "mtime": 1786173059.3873763,
+    "ast_hash": "1b03698cd042c0ad9ca3ad15974d2d1b",
+    "semantic_hash": ""
+  },
+  "resources/views/bank-accounts/partials/statements-list.blade.php": {
+    "mtime": 1786173367.5936248,
+    "ast_hash": "54d555c85c7b1454ddd4151d62156cc0",
+    "semantic_hash": ""
+  },
+  "resources/views/bank-accounts/partials/statements-panel.blade.php": {
+    "mtime": 1786173365.2087915,
+    "ast_hash": "8a531b830a3a4cc64039a7812bfc8baa",
+    "semantic_hash": ""
+  },
+  "tests/Unit/BankAccountStatementTest.php": {
+    "mtime": 1786173285.5733948,
+    "ast_hash": "5ed627577789b51bc815313190f797c0",
     "semantic_hash": ""
   }
 }
