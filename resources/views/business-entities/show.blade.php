@@ -129,188 +129,11 @@
 
                             <!-- Transactions Tab -->
                             <div id="tab_transactions" class="tab-content hidden">
-                                <div class="space-y-3">
-                                    <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Transactions</h3>
-                                    @if ($transactions->isEmpty())
-                                        <p class="text-gray-500 dark:text-gray-400 text-center py-4">No transactions yet.</p>
-                                    @else
-                                        <div class="overflow-x-auto">
-                                            <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-900 rounded-lg">
-                                                <thead class="bg-indigo-50 dark:bg-indigo-900/50">
-                                                    <tr>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Date</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Amount</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Description</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Vendor</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Invoice #</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Asset</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Type</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Payment</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Bank</th>
-                                                        <th class="px-6 py-3 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase tracking-wider">Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                                                    @foreach ($transactions as $transaction)
-                                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800">
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 whitespace-nowrap">{{ $transaction->date->format('d/m/Y') }}</td>
-                                                            <td class="px-6 py-4 text-sm font-medium whitespace-nowrap">
-                                                                @if (Transaction::directionFromType((string) $transaction->transaction_type) === 'income')
-                                                                    <span class="text-green-700 dark:text-green-400">+${{ number_format($transaction->amount, 2) }}</span>
-                                                                @else
-                                                                    <span class="text-red-700 dark:text-red-400">−${{ number_format($transaction->amount, 2) }}</span>
-                                                                @endif
-                                                            </td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-xs truncate">{{ $transaction->description }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300 max-w-40 truncate">{{ $transaction->vendor_display ?? '—' }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ $transaction->invoice_number ?? '—' }}</td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                                                @if ($transaction->asset)
-                                                                    <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $transaction->asset_id]) }}#tab_transactions" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">{{ $transaction->asset->name }}</a>
-                                                                @else
-                                                                    <span class="text-gray-400">—</span>
-                                                                @endif
-                                                            </td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">{{ Transaction::allTypes()[$transaction->transaction_type] ?? 'Unknown' }}</td>
-                                                            <td class="px-6 py-4">
-                                                                @if (($transaction->payment_status ?? 'paid') === 'unpaid')
-                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Unpaid</span>
-                                                                    @if ($transaction->due_date)
-                                                                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Due {{ $transaction->due_date->format('d/m/Y') }}</div>
-                                                                    @endif
-                                                                @else
-                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Paid</span>
-                                                                    @if ($transaction->paid_at)
-                                                                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{{ $transaction->paid_at->format('d/m/Y') }}</div>
-                                                                    @endif
-                                                                @endif
-                                                            </td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                                                @if ($transaction->bankStatementEntries()->exists())
-                                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                                                                        Matched
-                                                                    </span>
-                                                                @else
-                                                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200">
-                                                                        Unmatched
-                                                                    </span>
-                                                                @endif
-                                                            </td>
-                                                            <td class="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                                                                <div class="flex flex-wrap gap-2">
-                                                                    <a href="{{ route('business-entities.transactions.edit', [$businessEntity->id, $transaction->id]) }}" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs">
-                                                                        <x-lucide-pencil class="h-3 w-3 mr-1" />
-                                                                        Edit
-                                                                    </a>
-                                                                    <a href="{{ route('business-entities.show', [$businessEntity->id, 'transaction_id' => $transaction->id]) }}#tab_transactions" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs">
-                                                                        <x-lucide-eye class="h-3 w-3 mr-1" />
-                                                                        View
-                                                                    </a>
-                                                                    @if (!$transaction->bankStatementEntries()->exists())
-                                                                        <form action="{{ route('business-entities.transactions.match', [$businessEntity->id, $transaction->id]) }}" method="POST" class="inline-flex items-center">
-                                                                            @csrf
-                                                                            <select name="bank_statement_entry_id" class="border-gray-300 dark:border-gray-600 rounded-md shadow-xs text-xs mr-1 focus:ring-indigo-500 focus:border-indigo-500">
-                                                                                <option value="">Match to Entry</option>
-                                                                                @foreach ($bankAccounts->whereIn('account_purpose', BankAccount::ENTITY_OPERATING_PURPOSES) as $bankAccount)
-                                                                                    @foreach ($bankAccount->bankStatementEntries()->whereNull('transaction_id')->get() as $entry)
-                                                                                        <option value="{{ $entry->id }}">{{ $entry->description }} ({{ $entry->amount }}) - {{ $bankAccount->bank_name }}</option>
-                                                                                    @endforeach
-                                                                                @endforeach
-                                                                            </select>
-                                                                            <button type="submit" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs">
-                                                                                Match
-                                                                            </button>
-                                                                        </form>
-                                                                    @endif
-                                                                    @if ($transaction->receipt_path)
-                                                                        <a href="{{ $transaction->receiptUrl }}" target="_blank" class="inline-flex items-center px-2 py-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-700 dark:bg-indigo-900 dark:hover:bg-indigo-800 dark:text-indigo-200 rounded-sm text-xs">
-                                                                            <x-lucide-file-text class="h-3 w-3 mr-1" />
-                                                                            Receipt
-                                                                        </a>
-                                                                    @endif
-                                                                    <form action="{{ route('business-entities.transactions.destroy', [$businessEntity->id, $transaction->id]) }}" method="POST" class="inline-flex items-center" onsubmit="return confirmDeleteTransaction(this, @json((bool) $transaction->document_id));">
-                                                                        @csrf
-                                                                        @method('DELETE')
-                                                                        <input type="hidden" name="delete_linked_document" value="0" />
-                                                                        <button type="submit" class="inline-flex items-center px-2 py-1 bg-red-100 hover:bg-red-200 text-red-800 dark:bg-red-900/40 dark:hover:bg-red-900/60 dark:text-red-200 rounded-sm text-xs">
-                                                                            <x-lucide-trash-2 class="h-3 w-3 mr-1" />
-                                                                            Delete
-                                                                        </button>
-                                                                    </form>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    @endforeach
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        @if (request()->has('transaction_id'))
-                                            @php $selectedTransaction = $transactions->firstWhere('id', request('transaction_id')); @endphp
-                                            @if ($selectedTransaction)
-                                                <div class="mt-4 p-4 bg-white dark:bg-gray-900 rounded-lg shadow-md">
-                                                    <h4 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3">Transaction Details</h4>
-                                                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                        <div>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Date:</span> {{ $selectedTransaction->date->format('d/m/Y') }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Amount:</span> ${{ number_format($selectedTransaction->amount, 2) }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Description:</span> {{ $selectedTransaction->description ?? '—' }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Vendor:</span> {{ $selectedTransaction->vendor_display ?? '—' }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Invoice #:</span> {{ $selectedTransaction->invoice_number ?? '—' }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Type:</span> {{ Transaction::allTypes()[$selectedTransaction->transaction_type] ?? 'N/A' }}</p>
-                                                            @if ($selectedTransaction->relatedEntity)
-                                                                <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Director / Related Entity:</span> {{ $selectedTransaction->relatedEntity->legal_name }}</p>
-                                                            @endif
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">Asset:</span>
-                                                                @if ($selectedTransaction->asset)
-                                                                    <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $selectedTransaction->asset_id]) }}#tab_transactions" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">{{ $selectedTransaction->asset->name }}</a>
-                                                                @else
-                                                                    <span class="text-gray-500 dark:text-gray-400">Entity only</span>
-                                                                @endif
-                                                            </p>
-                                                        </div>
-                                                        <div>
-                                                            <p class="mb-2">
-                                                                <span class="font-medium text-gray-700 dark:text-gray-300">Payment:</span>
-                                                                @if (($selectedTransaction->payment_status ?? 'paid') === 'unpaid')
-                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ml-1">Unpaid</span>
-                                                                    @if ($selectedTransaction->due_date)
-                                                                        — Due {{ $selectedTransaction->due_date->format('d/m/Y') }}
-                                                                    @endif
-                                                                @else
-                                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 ml-1">Paid</span>
-                                                                    @if ($selectedTransaction->paid_at)
-                                                                        on {{ $selectedTransaction->paid_at->format('d/m/Y') }}
-                                                                    @endif
-                                                                    @if ($selectedTransaction->payment_method)
-                                                                        via {{ Transaction::$paymentMethods[$selectedTransaction->payment_method] ?? ucfirst($selectedTransaction->payment_method) }}
-                                                                    @endif
-                                                                    @if ($selectedTransaction->paid_by)
-                                                                        by {{ $selectedTransaction->paid_by_display }}
-                                                                    @endif
-                                                                @endif
-                                                            </p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST Amount:</span> {{ $selectedTransaction->gst_amount ? '$'.number_format($selectedTransaction->gst_amount, 2) : '—' }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST basis:</span> {{ $selectedTransaction->gst_basis ? (Transaction::$gstBasisLabels[$selectedTransaction->gst_basis] ?? $selectedTransaction->gst_basis) : '—' }}</p>
-                                                            <p class="mb-2"><span class="font-medium text-gray-700 dark:text-gray-300">GST Status:</span> {{ Transaction::$gstStatusLabels[$selectedTransaction->gst_status] ?? ($selectedTransaction->gst_status ? ucfirst($selectedTransaction->gst_status) : '—') }}</p>
-                                                            @if ($selectedTransaction->receipt_path)
-                                                                <p class="mb-2">
-                                                                    <span class="font-medium text-gray-700 dark:text-gray-300">Invoice / Bill:</span>
-                                                                    <a href="{{ $selectedTransaction->receiptUrl }}" target="_blank" class="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300">View Document</a>
-                                                                </p>
-                                                            @endif
-                                                            @if ($selectedTransaction->paymentDocument && $selectedTransaction->paymentDocument->path)
-                                                                <p class="mb-2">
-                                                                    <span class="font-medium text-gray-700 dark:text-gray-300">Payment Receipt:</span>
-                                                                    <a href="{{ \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($selectedTransaction->paymentDocument->path, now()->addMinutes(30)) }}" target="_blank" class="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300">View Payment Receipt</a>
-                                                                </p>
-                                                            @endif
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            @endif
-                                        @endif
-                                    @endif
-                                </div>
+                                @include('business-entities.partials.transactions-summary', [
+                                    'businessEntity' => $businessEntity,
+                                    'transactions' => $transactions,
+                                    'bankAccounts' => $bankAccounts ?? collect(),
+                                ])
                             </div>
 
                             <!-- Invoices Tab -->
@@ -847,6 +670,15 @@
 
             tabs.forEach(tab => {
                 tab.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const targetId = this.getAttribute('href').substring(1);
+                    switchTab(targetId);
+                    history.pushState(null, '', '#' + targetId);
+                });
+            });
+
+            document.querySelectorAll('a.js-entity-tab-jump[href^="#"]').forEach((link) => {
+                link.addEventListener('click', function (e) {
                     e.preventDefault();
                     const targetId = this.getAttribute('href').substring(1);
                     switchTab(targetId);

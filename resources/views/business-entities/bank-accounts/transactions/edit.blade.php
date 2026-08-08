@@ -238,7 +238,9 @@
 
                     <div class="flex gap-4 mt-5">
                         <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-xs transition duration-200">Update Transaction</button>
-                        <a href="{{ route('business-entities.show', $businessEntity->id) }}#tab_transactions" class="bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 font-semibold py-2 px-4 rounded-md shadow-xs transition duration-200">Cancel</a>
+                        <a href="{{ $transaction->bank_account_id
+                            ? route('business-entities.show', ['business_entity' => $businessEntity->id, 'open_bank_transactions' => $transaction->bank_account_id]).'#tab_bank_accounts'
+                            : route('business-entities.show', $businessEntity->id).'#tab_transactions' }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 font-semibold py-2 px-4 rounded-md shadow-xs transition duration-200">Cancel</a>
                     </div>
                 </form>
             </div>

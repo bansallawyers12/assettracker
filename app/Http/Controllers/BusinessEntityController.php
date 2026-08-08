@@ -628,7 +628,10 @@ class BusinessEntityController extends Controller
             ])
             ->orderBy('account_name')
             ->get();
-        $transactions = $businessEntity->transactions()->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument', 'vendor', 'lines'])->orderBy('date', 'desc')->get();
+        $transactions = $businessEntity->transactions()
+            ->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument', 'vendor', 'lines', 'bankAccount'])
+            ->orderBy('date', 'desc')
+            ->get();
         $invoices = Invoice::where('business_entity_id', $businessEntity->id)
             ->with(['asset'])
             ->orderByDesc('issue_date')
@@ -1280,7 +1283,22 @@ class BusinessEntityController extends Controller
                 ->with('open_bank_transactions_account_id', $bankAccount->id);
         }
 
-        return $this->redirectToBusinessEntityShow($bookingEntity, $bankAccount->id, 'tab_bank_accounts')
+        if ($request->input('return_to') === 'entity') {
+            return redirect()
+                ->route('business-entities.show', [
+                    'business_entity' => $bookingEntity->id,
+                    'open_bank_transactions' => $bankAccount->id,
+                ])
+                ->withFragment('tab_bank_accounts')
+                ->with('success', "Transaction '{$transaction->description}' added successfully!");
+        }
+
+        return redirect()
+            ->route('business-entities.show', [
+                'business_entity' => $bookingEntity->id,
+                'open_bank_transactions' => $bankAccount->id,
+            ])
+            ->withFragment('tab_bank_accounts')
             ->with('success', "Transaction '{$transaction->description}' added successfully!");
     }
 
@@ -1446,7 +1464,12 @@ class BusinessEntityController extends Controller
             ]
         ));
 
-        return redirect()->route('business-entities.show', $businessEntity->id)->with('success', 'Transaction updated successfully!');
+        return redirect()->route('business-entities.show', array_filter([
+            'business_entity' => $businessEntity->id,
+            'open_bank_transactions' => $transaction->bank_account_id,
+        ]))
+            ->withFragment($transaction->bank_account_id ? 'tab_bank_accounts' : 'tab_transactions')
+            ->with('success', 'Transaction updated successfully!');
     }
 
     /**
@@ -1590,7 +1613,12 @@ class BusinessEntityController extends Controller
             ]
         ));
 
-        return $this->redirectToBusinessEntityShow($businessEntity, $bankAccount->id, 'tab_bank_accounts')
+        return redirect()
+            ->route('business-entities.show', [
+                'business_entity' => $businessEntity->id,
+                'open_bank_transactions' => $bankAccount->id,
+            ])
+            ->withFragment('tab_bank_accounts')
             ->with('success', 'Transaction updated successfully!');
     }
 
@@ -2464,10 +2492,13 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        $businessEntities = BusinessEntity::query()
-            ->operationalEntities()
-            ->orderBy('legal_name')
-            ->get();
+        $businessEntities = $bankAccount->eligibleTransactionEntities()
+            ->filter(fn (BusinessEntity $entity) => auth()->user()?->can('update', $entity))
+            ->values();
+
+        if ($businessEntities->isEmpty() || ! $businessEntities->contains('id', $businessEntity->id)) {
+            abort(403, 'Unauthorized');
+        }
 
         // Retrieve pre-filled data from session if redirected from receipt extraction
         $transactionData = session('transactionData', [

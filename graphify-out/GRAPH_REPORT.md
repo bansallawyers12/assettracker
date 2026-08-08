@@ -1,16 +1,16 @@
 # Graph Report - assettracker  (2026-08-08)
 
 ## Corpus Check
-- 626 files · ~243,186 words
+- 626 files · ~243,225 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3386 nodes · 7539 edges · 506 communities (387 shown, 119 thin omitted)
-- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 475 edges (avg confidence: 0.78)
+- 3385 nodes · 7536 edges · 499 communities (383 shown, 116 thin omitted)
+- Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 476 edges (avg confidence: 0.78)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `07ed9dbf`
+- Built from commit: `16b079c2`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -18,8 +18,8 @@
 - BusinessEntity
 - BankAccountFormTest
 - BankAccount
-- ContactEmail.php
-- ComplianceDocumentFile
+- MailMessageController
+- ComplianceCategory
 - CreateEncryptedBackup
 - workspace-panel.js
 - Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -27,16 +27,16 @@
 - Illuminate\Http\RedirectResponse
 - FinancialYear
 - showWorkspaceAlert
-- BusinessEntityController.php
-- Person
+- TransactionCashParts
+- PersonsWorkspaceController
 - app.js
 - dependencies
 - tomselect-init.js
 - TrackingCategory
+- AssetShowWorkspaceController
 - Asset
-- AssetController
 - EncryptionHelper
-- TableSort
+- Illuminate\Http\Request
 - PHPUnit\Framework\TestCase
 - bank-account-modal.js
 - EntityPerson
@@ -46,87 +46,82 @@
 - Vendor
 - User
 - FinancialReportService
-- Illuminate\Database\Eloquent\Relations\HasMany
+- Invoice
 - Lease
 - Commitment
 - DocumentStorage
 - BankAccountStatement
-- LoginRequest
-- DocumentCategory
+- BankAccountPanelController
 - Illuminate\View\View
-- .storeTransaction
+- TransactionPayerResolver
 - Closure
-- Illuminate\Database\Eloquent\Model
+- ComplianceDocumentType
 - Illuminate\Database\Migrations\Migration
 - BusinessEntityAsicRenewalDueDateTest
 - EmailTemplate
 - Asset Tracker
-- EnsuresOperationalBusinessEntity.php
-- .buildDirectorEntityLoanAccountBlock
+- ContactEmail.php
+- .update
 - transaction-paid-by-bank-account.js
 - ChartOfAccount
 - BankAccountAssetLinkService
-- Document
-- Illuminate\Http\Resources\Json\JsonResource
+- DocumentCategory
+- FinancialYear.php
 - tiptap-init.js
-- MailMessageController
+- MailMessage
 - FinancialReportController
-- PersonsWorkspaceController
-- Illuminate\Contracts\Validation\ValidationRule
-- Illuminate\Support\Collection
-- TransactionPostingService
+- LoginRequest
 - Illuminate\Http\JsonResponse
+- Illuminate\Support\Collection
+- Document
 - PropertyReportService
 - scripts
 - Illuminate\Console\Command
 - BankStatementEntry
-- BusinessEntity.php
-- ComplianceDocumentType
+- Illuminate\Database\Eloquent\Relations\HasMany
 - TwoFactorService
-- AppServiceProvider.php
+- AssetPolicy
 - DocumentUploadValidation
 - BusinessEntityRegistrationDateTest
-- ComplianceReportController
-- Illuminate\Http\Request
+- TransactionPostingService
+- BusinessEntityController
 - AustralianAddress
 - EncryptsAttributes.php
 - business-entities/show.blade.php
 - python_bank_parser.py
 - form-saving-ui.js
-- ContactList
-- ChartOfAccountController
+- BusinessEntityPolicy
+- DocumentUploadService
 - ATO Lodgement Tracking — Findings & Proposal
 - JournalEntry
 - ChecklistFilenameMatcher
 - composer.json
 - require
 - Illuminate\Database\Seeder
-- ComplianceYearServiceTest
+- ComplianceUploadService
 - Part 1 — ATO Filing Timelines (Reference)
 - require-dev
 - TestCase
 - main
-- TransactionPayerResolver
-- ComplianceReminderService
+- SyncGmailForUser.php
 - Tech Update — Asset Tracker Frontend & UX Plan
 - EncryptedFilesystemAdapter
-- .handle
+- EmailDraft
 - ReminderPolicy
 - ReportEntityScopeResolver
 - parse_msg_simple.py
-- MailMessage
-- AssetSummaryReportService
+- CommitmentReportService
+- ComplianceYearRecordPolicy.php
 - TableSortTest
-- DocumentUploadService
+- entity-create-form.js
 - SecurityAudit
-- Tenant
+- Illuminate\Database\Eloquent\Model
 - SetupSecurity
 - Part 4 — Proposed Report: ATO / ASIC Lodgement Status
-- CommitmentPolicy
 - assets/show.blade.php
 - config
 - 2026_06_22_000001_add_compliance_categories.php
-- Transaction.php
+- BusinessEntityController.php
 - Part 2 — Current State in Asset Tracker
 - RestoreEncryptedBackup
 - .canAccessEntity
@@ -152,14 +147,14 @@
 - holder-grouped-list.blade.php
 - extra
 - GmailFetcher
-- SyncGmailForUser.php
-- BankAccountMaskingTest
-- ComplianceDocumentFilePolicy.php
-- UserManagementController
+- Note
+- AssetSummaryReportService
+- AssetLoanAccountLinkTest
+- JournalLine
 - Command
 - CRM / Asset Tracker — Potential Bugs
 - Plan
-- ComplianceYearRecordPolicy.php
+- keywords
 - Plan
 - Production server
 - Plan
@@ -236,26 +231,19 @@
 - Area 8 — Compliance
 - Area 9 — Banking & transactions
 - graphify
-- ComplianceUploadService
+- ComplianceDocumentFile
 - ReportEntityScopeLabel
 - PropertyReportServiceTest
 - Charts of Accounts_b2649706.md
 - edit-link-form.blade.php
 - bank-accounts.partials.statements-list
-- DocumentWorkspaceController.php
-- financial-reports-hub.js
-- showToast
 - BankAccountAccessTest
-- .handle
-- BankAccountAssetLinkServiceTest
 - Architecture
-- autoload-dev
-- BankAccountTransactionEligibilityTest
 - bank-accounts.partials.transactions-list
 
 ## God Nodes (most connected - your core abstractions)
 1. `BusinessEntity` - 457 edges
-2. `BankAccount` - 166 edges
+2. `BankAccount` - 167 edges
 3. `Asset` - 153 edges
 4. `BusinessEntityController` - 110 edges
 5. `User` - 98 edges
@@ -280,51 +268,47 @@
 ## Import Cycles
 - None detected.
 
-## Communities (506 total, 119 thin omitted)
+## Communities (499 total, 116 thin omitted)
+
+### Community 0 - "BusinessEntity"
+Cohesion: 0.03
+Nodes (9): ensureNotClosed(), ensureOperationalForAccounting(), ContactListController, ContactListsWorkspaceController, RentInvoiceController, BusinessEntity, ContactList, ContactListPolicy (+1 more)
 
 ### Community 2 - "BankAccount"
-Cohesion: 0.07
-Nodes (3): BankAccountTransactionController, BankAccount, BusinessEntityBankAccount
+Cohesion: 0.06
+Nodes (3): BankAccountTransactionController, BankAccount, BankAccountMaskingTest
 
-### Community 3 - "ContactEmail.php"
-Cohesion: 0.24
-Nodes (7): ContactEmail, InvoiceReminderMail, Illuminate\Bus\Queueable, Illuminate\Mail\Mailable, Illuminate\Mail\Mailables\Content, Illuminate\Mail\Mailables\Envelope, Illuminate\Queue\SerializesModels
-
-### Community 4 - "ComplianceDocumentFile"
-Cohesion: 0.13
-Nodes (4): ComplianceController, ComplianceWorkspaceController, ComplianceCategory, ComplianceDocumentFile
+### Community 3 - "MailMessageController"
+Cohesion: 0.19
+Nodes (3): MailMessageController, Closure, MailLabel
 
 ### Community 6 - "workspace-panel.js"
-Cohesion: 0.14
-Nodes (46): alertHttpError(), boot(), initAdminUsersWorkspace(), pageQuery(), withPageQuery(), workspaceUrl(), boot(), ensurePanelFormHandlers() (+38 more)
+Cohesion: 0.12
+Nodes (53): alertHttpError(), boot(), initAdminUsersWorkspace(), pageQuery(), withPageQuery(), workspaceUrl(), boot(), ensurePanelFormHandlers() (+45 more)
 
 ### Community 7 - "Illuminate\Database\Eloquent\Relations\BelongsTo"
-Cohesion: 0.07
-Nodes (3): EmailDraft, TransactionLine, Illuminate\Database\Eloquent\Relations\BelongsTo
+Cohesion: 0.10
+Nodes (4): TransactionLine, AuthServiceProvider, Illuminate\Database\Eloquent\Relations\BelongsTo, Illuminate\Foundation\Support\Providers\AuthServiceProvider
 
 ### Community 8 - "Reminder"
 Cohesion: 0.07
 Nodes (5): BillsTasksController, Collection, ReminderController, Reminder, Illuminate\Database\Eloquent\Builder
 
 ### Community 9 - "Illuminate\Http\RedirectResponse"
-Cohesion: 0.07
-Nodes (18): AuthenticatedSessionController, ConfirmablePasswordController, EmailVerificationNotificationController, EmailVerificationPromptController, NewPasswordController, PasswordController, PasswordResetLinkController, TwoFactorController (+10 more)
+Cohesion: 0.08
+Nodes (18): UserManagementController, AuthenticatedSessionController, ConfirmablePasswordController, EmailVerificationNotificationController, EmailVerificationPromptController, NewPasswordController, PasswordController, PasswordResetLinkController (+10 more)
 
 ### Community 10 - "FinancialYear"
-Cohesion: 0.05
+Cohesion: 0.07
 Nodes (5): FinancialYear, Carbon, self, AtoDueDateServiceTest, FinancialYearTest
 
 ### Community 11 - "showWorkspaceAlert"
-Cohesion: 0.10
-Nodes (44): alertHttpError(), alertHttpError(), alertValidationErrors(), api(), bindTabActivation(), bootWorkspaces(), buildCategoryPanel(), buildFileRow() (+36 more)
-
-### Community 13 - "Person"
-Cohesion: 0.12
-Nodes (3): BankAccountPanelController, PersonShowWorkspaceController, Person
+Cohesion: 0.09
+Nodes (47): alertHttpError(), alertHttpError(), alertValidationErrors(), api(), bindTabActivation(), bootWorkspaces(), buildCategoryPanel(), buildFileRow() (+39 more)
 
 ### Community 14 - "app.js"
 Cohesion: 0.11
-Nodes (35): initAddressFieldSync(), syncAddressFieldsInForm(), bootApp(), exposeRichTextHelpers(), loadRichTextModule(), initFormPlugins(), initEntityCreateForm(), initEntityFormFields() (+27 more)
+Nodes (29): initAddressFieldSync(), syncAddressFieldsInForm(), bootApp(), exposeRichTextHelpers(), loadRichTextModule(), initFormPlugins(), buildReportNavigationUrl(), initFinancialReportsHub() (+21 more)
 
 ### Community 15 - "dependencies"
 Cohesion: 0.05
@@ -335,36 +319,40 @@ Cohesion: 0.12
 Nodes (37): tom-select, initPersonForm(), initPersonsToggleLogic(), isSelectInVisibleSection(), refreshPersonFormSelects(), scheduleRefreshPersonFormSelects(), activateTomSelectsIn(), addNativeOptionToTomSelect() (+29 more)
 
 ### Community 17 - "TrackingCategory"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (4): TrackingCategoryController, TrackingSubCategoryController, TrackingCategory, TrackingSubCategory
 
-### Community 18 - "Asset"
-Cohesion: 0.09
-Nodes (4): AssetShowWorkspaceController, Asset, down(), up()
+### Community 19 - "Asset"
+Cohesion: 0.07
+Nodes (5): AssetController, Asset, Tenant, down(), up()
 
 ### Community 20 - "EncryptionHelper"
 Cohesion: 0.20
 Nodes (3): BackfillPersonsEncryption, ReencryptModelAttributes, EncryptionHelper
 
+### Community 21 - "Illuminate\Http\Request"
+Cohesion: 0.10
+Nodes (5): AdminUsersWorkspaceController, TwoFactorController, PasswordSecurity, TableSort, Illuminate\Http\Request
+
 ### Community 22 - "PHPUnit\Framework\TestCase"
 Cohesion: 0.13
-Nodes (4): PHPUnit\Framework\TestCase, AssetDueDateRemindersTest, AssetLoanAccountLinkTest, TwoFactorServiceTest
+Nodes (4): PHPUnit\Framework\TestCase, AssetDueDateRemindersTest, BankAccountAssetLinkServiceTest, TwoFactorServiceTest
 
 ### Community 23 - "bank-account-modal.js"
-Cohesion: 0.10
-Nodes (26): availablePurposes(), buildCreateFormUrl(), getSelectedAccountOption(), getSelectValue(), initBankAccountModal(), parseConfig(), purposesOnEntity(), bindBankFormFields() (+18 more)
+Cohesion: 0.12
+Nodes (22): availablePurposes(), buildCreateFormUrl(), getSelectedAccountOption(), getSelectValue(), initBankAccountModal(), parseConfig(), purposesOnEntity(), bindBankFormFields() (+14 more)
 
 ### Community 24 - "EntityPerson"
-Cohesion: 0.10
-Nodes (3): EntityPersonController, PersonsIndexWorkspaceController, EntityPerson
+Cohesion: 0.07
+Nodes (5): EntityPersonController, PersonShowWorkspaceController, PersonsIndexWorkspaceController, EntityPerson, Person
 
 ### Community 25 - "ComplianceYearRecord"
-Cohesion: 0.20
-Nodes (3): ComplianceYearRecord, ComplianceYearService, Carbon
+Cohesion: 0.09
+Nodes (5): EnsureComplianceYears, ComplianceYearRecord, ComplianceYearService, Carbon, ComplianceYearServiceTest
 
 ### Community 26 - "Carbon\Carbon"
-Cohesion: 0.16
-Nodes (6): BackfillComplianceDueDates, Carbon, AtoDueDateService, Carbon, Carbon\Carbon, Carbon\CarbonInterface
+Cohesion: 0.21
+Nodes (5): Carbon, AtoDueDateService, Carbon, Carbon\Carbon, Carbon\CarbonInterface
 
 ### Community 28 - "Vendor"
 Cohesion: 0.15
@@ -372,119 +360,111 @@ Nodes (3): VendorController, Vendor, VendorSyncService
 
 ### Community 29 - "User"
 Cohesion: 0.08
-Nodes (4): User, AssetPolicy, BusinessEntityPolicy, Illuminate\Foundation\Auth\User
+Nodes (5): User, CommitmentPolicy, ComplianceDocumentFilePolicy, Illuminate\Foundation\Auth\User, Illuminate\Notifications\Notifiable
 
-### Community 31 - "Illuminate\Database\Eloquent\Relations\HasMany"
-Cohesion: 0.11
-Nodes (4): AuthServiceProvider, Illuminate\Database\Eloquent\Factories\HasFactory, Illuminate\Database\Eloquent\Relations\HasMany, Illuminate\Foundation\Support\Providers\AuthServiceProvider
+### Community 30 - "FinancialReportService"
+Cohesion: 0.12
+Nodes (3): FinancialReportService, Carbon, Illuminate\Database\Eloquent\Collection
+
+### Community 31 - "Invoice"
+Cohesion: 0.19
+Nodes (3): InvoiceController, Invoice, InvoiceLine
 
 ### Community 32 - "Lease"
-Cohesion: 0.13
-Nodes (5): AssetInvoiceController, RentInvoiceController, Lease, Carbon, RentInvoiceService
-
-### Community 33 - "Commitment"
-Cohesion: 0.14
-Nodes (5): CommitmentController, Commitment, CommitmentPayment, CommitmentReportService, Carbon
+Cohesion: 0.22
+Nodes (4): AssetInvoiceController, Lease, Carbon, RentInvoiceService
 
 ### Community 34 - "DocumentStorage"
-Cohesion: 0.11
+Cohesion: 0.12
 Nodes (5): DocumentStorage, UserFactory, Illuminate\Contracts\Filesystem\Filesystem, Illuminate\Database\Eloquent\Factories\Factory, static
 
 ### Community 35 - "BankAccountStatement"
-Cohesion: 0.13
+Cohesion: 0.12
 Nodes (3): BankAccountStatementController, BankAccountStatement, BankAccountStatementUploadService
 
-### Community 36 - "LoginRequest"
-Cohesion: 0.17
-Nodes (4): ProfileController, LoginRequest, ProfileUpdateRequest, Illuminate\Foundation\Http\FormRequest
+### Community 37 - "BankAccountPanelController"
+Cohesion: 0.10
+Nodes (3): BankAccountPanelController, Collection, SecurityAuditLogger
 
 ### Community 38 - "Illuminate\View\View"
-Cohesion: 0.18
-Nodes (5): PropertyReportController, AppLayout, GuestLayout, Illuminate\View\Component, Illuminate\View\View
+Cohesion: 0.09
+Nodes (13): CarReportController, ComplianceReportController, Carbon, mergeReportFormScope(), resolveReportEntityIds(), ProfileController, PropertyReportController, AppLayout (+5 more)
 
 ### Community 40 - "Closure"
-Cohesion: 0.18
-Nodes (9): EnsureAccountActive, EnsureSuperAdmin, Response, EnsureTwoFactorEnrolled, SecurityHeaders, TwoFactorVerified, Closure, Illuminate\Notifications\Notifiable (+1 more)
+Cohesion: 0.08
+Nodes (14): EnsureAccountActive, EnsureSuperAdmin, Response, EnsureTwoFactorEnrolled, RateLimitMiddleware, SecurityHeaders, TwoFactorVerified, UniqueAbnHash (+6 more)
 
-### Community 41 - "Illuminate\Database\Eloquent\Model"
-Cohesion: 0.18
-Nodes (3): DepreciationSchedule, Email, Illuminate\Database\Eloquent\Model
+### Community 41 - "ComplianceDocumentType"
+Cohesion: 0.17
+Nodes (4): ComplianceDocumentType, down(), up(), up()
 
 ### Community 45 - "Asset Tracker"
 Cohesion: 0.10
 Nodes (20): Accounting, API, Asset Tracker, Bank statements, Communication, Core, Creating users, Database (key tables) (+12 more)
 
-### Community 46 - "EnsuresOperationalBusinessEntity.php"
-Cohesion: 0.16
-Nodes (5): ensureNotClosed(), ensureOperationalForAccounting(), InvoiceController, Invoice, InvoiceLine
+### Community 46 - "ContactEmail.php"
+Cohesion: 0.24
+Nodes (7): ContactEmail, InvoiceReminderMail, Illuminate\Bus\Queueable, Illuminate\Mail\Mailable, Illuminate\Mail\Mailables\Content, Illuminate\Mail\Mailables\Envelope, Illuminate\Queue\SerializesModels
 
 ### Community 48 - "transaction-paid-by-bank-account.js"
 Cohesion: 0.21
 Nodes (14): bindPaidBySelectChange(), bindPaidByTomSelectChange(), initTransactionPaidByBankAccount(), refreshTransactionPaidByBankAccount(), setupTransactionPaidByBankAccount(), clearPaidByClientErrors(), initTransactionPaidByValidation(), isEntityPaidBy() (+6 more)
 
-### Community 51 - "Document"
-Cohesion: 0.11
-Nodes (8): DocumentController, Document, backfillCategoriesAndLabels(), up(), backfillNullLabels(), deduplicateLabels(), reassignOrphans(), up()
+### Community 49 - "ChartOfAccount"
+Cohesion: 0.14
+Nodes (5): ChartOfAccountController, RedirectResponse, View, ChartOfAccount, InvoicePostingService
 
-### Community 52 - "Illuminate\Http\Resources\Json\JsonResource"
-Cohesion: 0.22
-Nodes (5): ComplianceCategoryResource, ComplianceDocumentFileResource, ComplianceDocumentTypeResource, ComplianceYearWorkspaceResource, Illuminate\Http\Resources\Json\JsonResource
+### Community 51 - "DocumentCategory"
+Cohesion: 0.14
+Nodes (3): DocumentWorkspaceController, DocumentCategoryResource, DocumentCategory
+
+### Community 52 - "FinancialYear.php"
+Cohesion: 0.10
+Nodes (8): AssetResource, ComplianceCategoryResource, ComplianceDocumentFileResource, ComplianceDocumentTypeResource, ComplianceYearWorkspaceResource, ContactListResource, DocumentSlotResource, Illuminate\Http\Resources\Json\JsonResource
 
 ### Community 53 - "tiptap-init.js"
 Cohesion: 0.26
 Nodes (16): buildToolbar(), cleanupEditorShell(), createDivider(), createEditorShell(), createToolbarButton(), destroyRichTextEditor(), escapeSelectorId(), fieldValue() (+8 more)
 
-### Community 54 - "MailMessageController"
-Cohesion: 0.19
-Nodes (3): MailMessageController, Closure, MailLabel
+### Community 54 - "MailMessage"
+Cohesion: 0.17
+Nodes (3): MailMessage, MsgParserService, Illuminate\Database\Eloquent\Relations\BelongsToMany
 
-### Community 57 - "Illuminate\Contracts\Validation\ValidationRule"
-Cohesion: 0.19
-Nodes (4): UniqueAbnHash, UniqueAcnHash, UniqueChecklistLabelInCategory, Illuminate\Contracts\Validation\ValidationRule
+### Community 56 - "LoginRequest"
+Cohesion: 0.27
+Nodes (3): LoginRequest, ProfileUpdateRequest, Illuminate\Foundation\Http\FormRequest
+
+### Community 57 - "Illuminate\Http\JsonResponse"
+Cohesion: 0.12
+Nodes (4): EmailTemplateController, EmailTemplatesWorkspaceController, EntityShowWorkspaceController, Illuminate\Http\JsonResponse
 
 ### Community 58 - "Illuminate\Support\Collection"
-Cohesion: 0.19
-Nodes (3): ComplianceReportService, Carbon, Illuminate\Support\Collection
+Cohesion: 0.12
+Nodes (5): CarReportService, Carbon, ComplianceReportService, Carbon, Illuminate\Support\Collection
 
-### Community 60 - "Illuminate\Http\JsonResponse"
-Cohesion: 0.09
-Nodes (5): EmailTemplateController, EmailTemplatesWorkspaceController, EntityShowWorkspaceController, AssetResource, Illuminate\Http\JsonResponse
+### Community 60 - "Document"
+Cohesion: 0.14
+Nodes (6): DocumentController, Document, backfillNullLabels(), deduplicateLabels(), reassignOrphans(), up()
 
 ### Community 62 - "scripts"
 Cohesion: 0.13
 Nodes (15): scripts, dev, post-autoload-dump, post-create-project-cmd, post-root-package-install, post-update-cmd, Composer\\Config::disableProcessTimeout, Illuminate\\Foundation\\ComposerScripts::postAutoloadDump (+7 more)
 
 ### Community 63 - "Illuminate\Console\Command"
-Cohesion: 0.19
-Nodes (4): AddXeroChartOfAccounts, ScheduleBackup, Illuminate\Console\Command, Illuminate\Support\Facades\Schedule
+Cohesion: 0.14
+Nodes (7): AddXeroChartOfAccounts, BackfillComplianceDueDates, ScheduleBackup, SyncComplianceReminders, ComplianceReminderService, Illuminate\Console\Command, Illuminate\Support\Facades\Schedule
 
-### Community 65 - "BusinessEntity.php"
+### Community 66 - "Illuminate\Database\Eloquent\Relations\HasMany"
 Cohesion: 0.11
-Nodes (5): EnsureComplianceYears, CarReportController, CarReportService, Carbon, Illuminate\Pagination\LengthAwarePaginator
-
-### Community 66 - "ComplianceDocumentType"
-Cohesion: 0.11
-Nodes (6): ComplianceDocumentType, UniqueComplianceLabelInCategory, down(), up(), up(), ComplianceDocumentTypeSeeder
-
-### Community 68 - "AppServiceProvider.php"
-Cohesion: 0.16
-Nodes (6): AppServiceProvider, EncryptedFilesystemServiceProvider, HeaderSearchIndex, PasswordPolicy, Illuminate\Support\ServiceProvider, Illuminate\Validation\Rules\Password
-
-### Community 71 - "ComplianceReportController"
-Cohesion: 0.36
-Nodes (3): ComplianceReportController, Carbon, Symfony\Component\HttpFoundation\StreamedResponse
-
-### Community 72 - "Illuminate\Http\Request"
-Cohesion: 0.08
-Nodes (4): BusinessEntityController, Collection, SecurityAuditLogger, Illuminate\Http\Request
+Nodes (4): RealEstateCompany, backfillCategoriesAndLabels(), up(), Illuminate\Database\Eloquent\Relations\HasMany
 
 ### Community 74 - "EncryptsAttributes.php"
 Cohesion: 0.38
 Nodes (11): addEncryptedAttribute(), attributesToArray(), decrypt(), decryptAttributes(), encrypt(), encryptAttributes(), getAttribute(), getEncryptedAttributes() (+3 more)
 
 ### Community 75 - "business-entities/show.blade.php"
-Cohesion: 0.17
-Nodes (11): business-entities.partials.assets-workspace, business-entities.partials.bank-accounts.list, business-entities.partials.close-entity-modal, business-entities.partials.contact-lists-workspace, business-entities.partials.entity-details-sidebar, business-entities.partials.notes-workspace, business-entities.partials.persons-workspace, bank-accounts.partials.account-link-actions (+3 more)
+Cohesion: 0.15
+Nodes (12): business-entities.partials.assets-workspace, business-entities.partials.bank-accounts.list, business-entities.partials.close-entity-modal, business-entities.partials.contact-lists-workspace, business-entities.partials.entity-details-sidebar, business-entities.partials.notes-workspace, business-entities.partials.persons-workspace, business-entities.partials.transactions-summary (+4 more)
 
 ### Community 76 - "python_bank_parser.py"
 Cohesion: 0.24
@@ -494,33 +474,21 @@ Nodes (11): extract_entries(), find_column(), main(), parse_amount(), parse_date
 Cohesion: 0.30
 Nodes (11): disableSubmitter(), ensureOverlay(), hideFormSaving(), initGlobalFormSaving(), isFormSaving(), isWorkspaceFormSaving(), lockFormFields(), restoreSubmitter() (+3 more)
 
-### Community 78 - "ContactList"
-Cohesion: 0.11
-Nodes (5): ContactListController, ContactListsWorkspaceController, ContactListResource, ContactList, ContactListPolicy
-
-### Community 79 - "ChartOfAccountController"
-Cohesion: 0.24
-Nodes (3): ChartOfAccountController, RedirectResponse, View
-
 ### Community 80 - "ATO Lodgement Tracking — Findings & Proposal"
 Cohesion: 0.14
 Nodes (14): ATO Lodgement Tracking — Findings & Proposal, Current compliance config (`config/compliance.php`), Disclaimer, Executive Summary, Part 3 — Gaps, Part 5 — Implementation Plan, Part 6 — Configuration Reference, Part 7 — Recommendation (+6 more)
 
-### Community 81 - "JournalEntry"
-Cohesion: 0.17
-Nodes (3): JournalEntry, JournalLine, DateTimeInterface
-
 ### Community 83 - "composer.json"
 Cohesion: 0.18
-Nodes (10): description, keywords, license, minimum-stability, name, prefer-stable, $schema, type (+2 more)
+Nodes (10): autoload-dev, psr-4, description, license, minimum-stability, name, prefer-stable, Tests\\ (+2 more)
 
 ### Community 84 - "require"
 Cohesion: 0.18
 Nodes (11): require, bacon/bacon-qr-code, fakerphp/faker, laravel/framework, laravel/tinker, league/flysystem, league/flysystem-aws-s3-v3, php (+3 more)
 
 ### Community 85 - "Illuminate\Database\Seeder"
-Cohesion: 0.36
-Nodes (3): ChartOfAccountSeeder, DatabaseSeeder, Illuminate\Database\Seeder
+Cohesion: 0.25
+Nodes (4): ChartOfAccountSeeder, ComplianceDocumentTypeSeeder, DatabaseSeeder, Illuminate\Database\Seeder
 
 ### Community 87 - "Part 1 — ATO Filing Timelines (Reference)"
 Cohesion: 0.12
@@ -538,29 +506,29 @@ Nodes (5): CreatesApplication, Illuminate\Foundation\Testing\TestCase, TestCase,
 Cohesion: 0.29
 Nodes (9): check_python(), install_dependencies(), main(), Ensure Python 3 is available., Install requirements.txt., Verify all required packages can be imported., Verify both parser scripts exist., verify_imports() (+1 more)
 
+### Community 92 - "SyncGmailForUser.php"
+Cohesion: 0.27
+Nodes (5): GmailSyncCommand, SyncGmailForUser, Illuminate\Contracts\Queue\ShouldQueue, Illuminate\Foundation\Bus\Dispatchable, Illuminate\Queue\InteractsWithQueue
+
 ### Community 93 - "Tech Update — Asset Tracker Frontend & UX Plan"
 Cohesion: 0.14
 Nodes (14): Comparison with Migration Manager CRM, Current stack (as of audit), Done, Executive summary, Out of scope (this plan), Plan, PR sizing guide, Pre-deploy checklist (each phase) (+6 more)
 
 ### Community 94 - "EncryptedFilesystemAdapter"
-Cohesion: 0.26
-Nodes (3): EncryptedFilesystemAdapter, Illuminate\Filesystem\FilesystemAdapter, League\Flysystem\Filesystem
-
-### Community 97 - "ReportEntityScopeResolver"
-Cohesion: 0.22
-Nodes (4): mergeReportFormScope(), resolveReportEntityIds(), ReportEntityScopeResolver, ReportEntityScopeResolverTest
+Cohesion: 0.11
+Nodes (9): EncryptedFilesystemAdapter, AppServiceProvider, EncryptedFilesystemServiceProvider, HeaderSearchIndex, PasswordPolicy, Illuminate\Filesystem\FilesystemAdapter, Illuminate\Support\ServiceProvider, Illuminate\Validation\Rules\Password (+1 more)
 
 ### Community 98 - "parse_msg_simple.py"
 Cohesion: 0.36
 Nodes (7): format_date(), main(), parse_recipients(), parse_sender(), Extract name and email from sender (string or object)., Extract recipients as list of strings., Format datetime to ISO string.
 
-### Community 99 - "MailMessage"
-Cohesion: 0.18
-Nodes (4): MailAttachment, MailMessage, MsgParserService, Illuminate\Database\Eloquent\Relations\BelongsToMany
+### Community 102 - "entity-create-form.js"
+Cohesion: 0.44
+Nodes (9): initEntityCreateForm(), initEntityFormFields(), setCompanyFieldsState(), setInputDisabled(), setRegistrationDateFieldState(), setTrustFieldsEnabled(), toggleAppointorFields(), toggleTrustFields() (+1 more)
 
-### Community 104 - "Tenant"
-Cohesion: 0.14
-Nodes (4): RealEstateCompany, RealEstateCompanyContact, Tenant, up()
+### Community 104 - "Illuminate\Database\Eloquent\Model"
+Cohesion: 0.12
+Nodes (8): CommitmentPayment, DepreciationSchedule, Email, MailAttachment, RealEstateCompanyContact, up(), Illuminate\Database\Eloquent\Factories\HasFactory, Illuminate\Database\Eloquent\Model
 
 ### Community 106 - "Part 4 — Proposed Report: ATO / ASIC Lodgement Status"
 Cohesion: 0.20
@@ -577,10 +545,6 @@ Nodes (7): pestphp/pest-plugin, php-http/discovery, config, allow-plugins, optim
 ### Community 110 - "2026_06_22_000001_add_compliance_categories.php"
 Cohesion: 0.48
 Nodes (6): addLabelUniqueIndex(), backfillCategoriesAndFiles(), down(), dropLabelUniqueIndex(), seedCategoryGroups(), up()
-
-### Community 111 - "Transaction.php"
-Cohesion: 0.19
-Nodes (3): up(), up(), Illuminate\Http\UploadedFile
 
 ### Community 112 - "Part 2 — Current State in Asset Tracker"
 Cohesion: 0.22
@@ -646,10 +610,6 @@ Nodes (3): partials.transaction-paid-by-fields, partials.transaction-type-select
 Cohesion: 0.67
 Nodes (3): extra, laravel, dont-discover
 
-### Community 150 - "SyncGmailForUser.php"
-Cohesion: 0.27
-Nodes (5): GmailSyncCommand, SyncGmailForUser, Illuminate\Contracts\Queue\ShouldQueue, Illuminate\Foundation\Bus\Dispatchable, Illuminate\Queue\InteractsWithQueue
-
 ### Community 163 - "Command"
 Cohesion: 0.29
 Nodes (4): Kernel, Command, Illuminate\Console\Scheduling\Schedule, Illuminate\Foundation\Console\Kernel
@@ -661,6 +621,10 @@ Nodes (7): Area 10 — Chart of accounts & vendors, CRM / Asset Tracker — Pote
 ### Community 192 - "Plan"
 Cohesion: 0.25
 Nodes (8): Current pain points, Phase 1a — Split workspace bundles, Phase 1b — Dashboard entry, Phase 1c — Entity & asset show entries, Phase 1d — Remaining inline scripts (incremental), Phase 1e — Optional lazy Tiptap tightening, Plan, Track 1: Vite page splitting & script extraction
+
+### Community 206 - "keywords"
+Cohesion: 0.67
+Nodes (3): keywords, framework, laravel
 
 ### Community 212 - "Plan"
 Cohesion: 0.29
@@ -738,36 +702,24 @@ Nodes (4): Area 8 — Compliance, High, Low, Medium
 Cohesion: 0.50
 Nodes (4): Area 9 — Banking & transactions, High, Low, Medium
 
-### Community 496 - "financial-reports-hub.js"
-Cohesion: 0.43
-Nodes (3): buildReportNavigationUrl(), initFinancialReportsHub(), navigateToReport()
-
-### Community 497 - "showToast"
-Cohesion: 0.48
-Nodes (6): dismissToast(), escapeHtml(), iconSvg(), showToast(), toastRoot(), TYPE_STYLES
-
 ### Community 501 - "Architecture"
 Cohesion: 0.50
 Nodes (4): Architecture, Key models, Notable services, Stack
 
-### Community 502 - "autoload-dev"
-Cohesion: 0.67
-Nodes (3): autoload-dev, psr-4, Tests\\
-
 ## Knowledge Gaps
-- **332 isolated node(s):** `py`, `$schema`, `name`, `type`, `description` (+327 more)
+- **333 isolated node(s):** `py`, `$schema`, `name`, `type`, `description` (+328 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **119 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **116 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `BusinessEntity` connect `BusinessEntity` to `BankAccount`, `ComplianceDocumentFile`, `Reminder`, `FinancialYear`, `BusinessEntityController.php`, `Person`, `TrackingCategory`, `Asset`, `AssetController`, `TableSort`, `EntityPerson`, `ComplianceYearRecord`, `Carbon\Carbon`, `User`, `FinancialReportService`, `Lease`, `Commitment`, `DocumentCategory`, `Illuminate\View\View`, `.storeTransaction`, `Illuminate\Database\Eloquent\Model`, `BusinessEntityAsicRenewalDueDateTest`, `EnsuresOperationalBusinessEntity.php`, `.buildDirectorEntityLoanAccountBlock`, `BankAccountAssetLinkService`, `Document`, `Illuminate\Http\Resources\Json\JsonResource`, `MailMessageController`, `FinancialReportController`, `PersonsWorkspaceController`, `Illuminate\Support\Collection`, `Illuminate\Http\JsonResponse`, `BankStatementEntry`, `BusinessEntity.php`, `ComplianceDocumentType`, `AppServiceProvider.php`, `BusinessEntityRegistrationDateTest`, `ComplianceReportController`, `Illuminate\Http\Request`, `AustralianAddress`, `AssetsWorkspaceController`, `EncryptsAttributes.php`, `ContactList`, `ChartOfAccountController`, `JournalEntry`, `TransactionPayerResolver`, `ComplianceUploadService`, `ReportEntityScopeResolver`, `MailMessage`, `DocumentUploadService`, `Tenant`, `DocumentWorkspaceController.php`, `Transaction.php`, `.canAccessEntity`?**
-  _High betweenness centrality (0.163) - this node is a cross-community bridge._
-- **Why does `BankAccount` connect `BankAccount` to `BankAccountFormTest`, `Illuminate\Database\Eloquent\Relations\BelongsTo`, `Reminder`, `FinancialYear`, `BusinessEntityController.php`, `Person`, `Asset`, `AssetController`, `EntityPerson`, `BankAccountMaskingTest`, `Illuminate\Database\Eloquent\Relations\HasMany`, `DocumentStorage`, `BankAccountStatement`, `.storeTransaction`, `Illuminate\Database\Eloquent\Model`, `BankAccountAssetLinkService`, `PersonsWorkspaceController`, `BankStatementEntry`, `BusinessEntity.php`, `Illuminate\Http\Request`, `EncryptsAttributes.php`, `AssetSummaryReportService`, `Transaction.php`?**
-  _High betweenness centrality (0.047) - this node is a cross-community bridge._
-- **Why does `Asset` connect `Asset` to `BusinessEntity`, `ComplianceDocumentFile`, `Reminder`, `AssetController`, `PHPUnit\Framework\TestCase`, `ComplianceYearRecord`, `User`, `Lease`, `Commitment`, `DocumentCategory`, `Illuminate\View\View`, `.storeTransaction`, `Illuminate\Database\Eloquent\Model`, `BankAccountAssetLinkService`, `Document`, `Illuminate\Http\Resources\Json\JsonResource`, `MailMessageController`, `Illuminate\Support\Collection`, `Illuminate\Http\JsonResponse`, `PropertyReportService`, `BusinessEntity.php`, `AppServiceProvider.php`, `AssetsWorkspaceController`, `ComplianceUploadService`, `MailMessage`, `AssetSummaryReportService`, `DocumentUploadService`, `Tenant`, `DocumentWorkspaceController.php`, `Transaction.php`?**
-  _High betweenness centrality (0.035) - this node is a cross-community bridge._
+- **Why does `BusinessEntity` connect `BusinessEntity` to `BankAccount`, `MailMessageController`, `ComplianceCategory`, `Reminder`, `Illuminate\Http\RedirectResponse`, `FinancialYear`, `PersonsWorkspaceController`, `TrackingCategory`, `AssetShowWorkspaceController`, `Asset`, `Illuminate\Http\Request`, `Note`, `EntityPerson`, `ComplianceYearRecord`, `Carbon\Carbon`, `FinancialReportService`, `Invoice`, `Lease`, `Commitment`, `.rule`, `BankAccountPanelController`, `Illuminate\View\View`, `TransactionPayerResolver`, `BusinessEntityAsicRenewalDueDateTest`, `.update`, `ChartOfAccount`, `BankAccountAssetLinkService`, `DocumentCategory`, `FinancialYear.php`, `MailMessage`, `FinancialReportController`, `Illuminate\Http\JsonResponse`, `Illuminate\Support\Collection`, `Document`, `BankStatementEntry`, `web.php`, `BusinessEntityRegistrationDateTest`, `BusinessEntityController`, `AustralianAddress`, `AssetsWorkspaceController`, `EncryptsAttributes.php`, `BusinessEntityPolicy`, `DocumentUploadService`, `ComplianceUploadService`, `ComplianceDocumentFile`, `EncryptedFilesystemAdapter`, `Illuminate\Database\Eloquent\Model`, `BusinessEntityController.php`, `.canAccessEntity`?**
+  _High betweenness centrality (0.170) - this node is a cross-community bridge._
+- **Why does `BankAccount` connect `BankAccount` to `BankAccountFormTest`, `Illuminate\Database\Eloquent\Relations\BelongsTo`, `Reminder`, `FinancialYear`, `PersonsWorkspaceController`, `Asset`, `EntityPerson`, `AssetSummaryReportService`, `DocumentStorage`, `BankAccountStatement`, `.rule`, `BankAccountPanelController`, `.update`, `BankAccountAssetLinkService`, `Illuminate\Http\JsonResponse`, `.businessEntity`, `BankStatementEntry`, `web.php`, `Illuminate\Database\Eloquent\Relations\HasMany`, `BusinessEntityController`, `EncryptsAttributes.php`, `ComplianceUploadService`, `Illuminate\Database\Eloquent\Model`, `BusinessEntityController.php`?**
+  _High betweenness centrality (0.060) - this node is a cross-community bridge._
+- **Why does `Transaction` connect `Transaction` to `Illuminate\Database\Eloquent\Relations\BelongsTo`, `Reminder`, `Illuminate\Http\RedirectResponse`, `Illuminate\Http\Request`, `Note`, `Vendor`, `FinancialReportService`, `JournalLine`, `DocumentStorage`, `TransactionPayerResolver`, `.update`, `Document`, `PropertyReportService`, `BankStatementEntry`, `Illuminate\Database\Eloquent\Relations\HasMany`, `TransactionPostingService`, `BusinessEntityController`, `DocumentUploadService`, `.crossEntityPayerBankSyntheticLinesForPeriod`, `EncryptedFilesystemAdapter`, `Illuminate\Database\Eloquent\Model`, `BusinessEntityController.php`?**
+  _High betweenness centrality (0.029) - this node is a cross-community bridge._
 - **Are the 43 inferred relationships involving `BusinessEntity` (e.g. with `.handle()` and `.listHtmlForContext()`) actually correct?**
   _`BusinessEntity` has 43 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 23 inferred relationships involving `BankAccount` (e.g. with `.bankAccountPickerData()` and `.syncBankAccountLinks()`) actually correct?**
@@ -775,4 +727,4 @@ _Questions this graph is uniquely positioned to answer:_
 - **Are the 24 inferred relationships involving `Asset` (e.g. with `.assetOperationalQuery()` and `.dashboard()`) actually correct?**
   _`Asset` has 24 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `py`, `$schema`, `name` to the rest of the system?**
-  _332 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _333 weakly-connected nodes found - possible documentation gaps or missing edges._

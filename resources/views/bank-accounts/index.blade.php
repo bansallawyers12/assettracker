@@ -8,7 +8,9 @@
         'createOnly' => true,
         'panelTitle' => 'Add bank account',
         'panelSubtitle' => 'Create a portfolio bank account and assign it to an entity or person.',
-        'openTransactionsAccountId' => session('open_bank_transactions_account_id'),
+        'openTransactionsUrl' => session('open_bank_transactions_account_id')
+            ? route('bank-accounts.transactions.index', session('open_bank_transactions_account_id'))
+            : null,
     ];
 @endphp
 

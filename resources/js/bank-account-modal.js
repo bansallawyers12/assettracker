@@ -734,10 +734,7 @@ export function initBankAccountModal() {
         bindStatementsPanel(createHost, createController.signal, statementsUrl);
     }
 
-    function bindTransactionsPanel(root, signal, transactionsIndexUrl) {
-        const panel = root.querySelector('[data-bank-transactions-panel]');
-        const refreshUrl = transactionsIndexUrl || panel?.dataset.bankTransactionsIndexUrl;
-
+    function bindTransactionsPanel(root, signal) {
         const addButton = root.querySelector('[data-bank-transactions-add]');
         const entityPicker = root.querySelector('[data-bank-transactions-entity-picker]');
 
@@ -747,7 +744,7 @@ export function initBankAccountModal() {
                 return;
             }
 
-            const entityId = entityPicker?.value || addButton.dataset.defaultEntityId;
+            const entityId = (entityPicker?.value || addButton.dataset.defaultEntityId || '').trim();
             if (!entityId) {
                 showWorkspaceAlert({
                     title: 'Select entity',
@@ -757,7 +754,7 @@ export function initBankAccountModal() {
                 return;
             }
 
-            const createUrl = template.replace('BUSINESS_ENTITY', encodeURIComponent(entityId));
+            const createUrl = template.replaceAll('BUSINESS_ENTITY', encodeURIComponent(entityId));
             window.location.assign(createUrl);
         }, { signal });
     }
@@ -788,7 +785,7 @@ export function initBankAccountModal() {
         }
 
         createHost.innerHTML = payload.html;
-        bindTransactionsPanel(createHost, createController.signal, transactionsUrl);
+        bindTransactionsPanel(createHost, createController.signal);
     }
 
     tabButtons.forEach((button) => {
@@ -942,15 +939,14 @@ export function initBankAccountModal() {
         }));
     });
 
-    if (config.autoOpen) {
+    if (config.autoOpen && ! config.openTransactionsUrl) {
         openCreatePanel({ tab: 'link' });
     }
 
     window.openBankAccountTransactionsPanel = openTransactionsPanel;
 
-    if (config.openTransactionsAccountId) {
-        const txUrl = `/bank-accounts/${config.openTransactionsAccountId}/transactions`;
-        openTransactionsPanel(txUrl, {
+    if (config.openTransactionsUrl) {
+        openTransactionsPanel(config.openTransactionsUrl, {
             title: 'Transactions',
             subtitle: 'View and add transactions booked through this account.',
         });

@@ -48,8 +48,8 @@
 
                 <form method="POST" action="{{ route('business-entities.bank-accounts.transactions.store', [$businessEntity->id, $bankAccount->id]) }}" enctype="multipart/form-data" id="bank-store-transaction-form" data-transaction-paid-by-form>
                     @csrf
-                    @if(request('return_to') === 'bank-account')
-                        <input type="hidden" name="return_to" value="bank-account">
+                    @if(in_array(request('return_to'), ['bank-account', 'entity'], true))
+                        <input type="hidden" name="return_to" value="{{ request('return_to') }}">
                     @endif
 
                     <div class="flex gap-3 mb-5">
@@ -145,11 +145,18 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Business Entity</label>
-                            <x-tom-select name="business_entity_id" class="mt-1 rounded-md shadow-xs" required>
-                                @foreach ($businessEntities as $entity)
-                                    <option value="{{ $entity->id }}" {{ old('business_entity_id', $businessEntity->id) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
-                                @endforeach
-                            </x-tom-select>
+                            @if(in_array(request('return_to'), ['bank-account', 'entity'], true))
+                                <input type="hidden" name="business_entity_id" value="{{ $businessEntity->id }}">
+                                <p class="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
+                                    {{ $businessEntity->legal_name }}
+                                </p>
+                            @else
+                                <x-tom-select name="business_entity_id" class="mt-1 rounded-md shadow-xs" required>
+                                    @foreach ($businessEntities as $entity)
+                                        <option value="{{ $entity->id }}" {{ old('business_entity_id', $businessEntity->id) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
+                                    @endforeach
+                                </x-tom-select>
+                            @endif
                             @error('business_entity_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
@@ -228,7 +235,20 @@
 
                     <div class="flex gap-4 mt-6">
                         <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md shadow-xs transition duration-200 font-medium">Add Transaction</button>
-                        <a href="{{ request('return_to') === 'bank-account' ? route('bank-accounts.index') : route('business-entities.show', ['business_entity' => $businessEntity->id, 'bank_account_id' => $bankAccount->id]) . '#tab_bank_accounts' }}" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 text-gray-700 px-4 py-2 rounded-md shadow-xs transition duration-200 font-medium">Cancel</a>
+                        @php
+                            $cancelHref = match (request('return_to')) {
+                                'bank-account' => route('bank-accounts.index'),
+                                'entity' => route('business-entities.show', [
+                                    'business_entity' => $businessEntity->id,
+                                    'open_bank_transactions' => $bankAccount->id,
+                                ]).'#tab_bank_accounts',
+                                default => route('business-entities.show', [
+                                    'business_entity' => $businessEntity->id,
+                                    'bank_account_id' => $bankAccount->id,
+                                ]).'#tab_bank_accounts',
+                            };
+                        @endphp
+                        <a href="{{ $cancelHref }}" class="bg-gray-200 hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 text-gray-700 px-4 py-2 rounded-md shadow-xs transition duration-200 font-medium">Cancel</a>
                     </div>
                 </form>
             </div>

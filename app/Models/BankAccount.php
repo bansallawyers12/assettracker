@@ -519,14 +519,44 @@ class BankAccount extends Model
      *
      * @return \Illuminate\Support\Collection<int, BusinessEntity>
      */
-    public function eligibleTransactionEntities(): \Illuminate\Support\Collection
+    public function eligibleTransactionEntities(?int $userId = null): \Illuminate\Support\Collection
     {
+        $userId ??= auth()->id();
+
+        // Portfolio loan-repayment accounts owned by the user can book for any operational entity.
+        if ($this->isPortfolioWide()
+            && (int) $this->user_id === (int) $userId
+            && $this->account_purpose === self::PURPOSE_LOAN_REPAYMENT) {
+            return BusinessEntity::query()
+                ->operationalEntities()
+                ->orderBy('legal_name')
+                ->get();
+        }
+
+        $ids = collect();
+
+        if ($this->id !== null) {
+            $ids = BusinessEntityBankAccount::query()
+                ->where('bank_account_id', $this->id)
+                ->whereIn('purpose', self::ENTITY_OPERATING_PURPOSES)
+                ->pluck('business_entity_id');
+        }
+
+        if ($this->business_entity_id !== null
+            && in_array($this->account_purpose, self::ENTITY_OPERATING_PURPOSES, true)) {
+            $ids->push($this->business_entity_id);
+        }
+
+        $ids = $ids->filter()->unique()->values();
+        if ($ids->isEmpty()) {
+            return collect();
+        }
+
         return BusinessEntity::query()
             ->operationalEntities()
+            ->whereIn('id', $ids->all())
             ->orderBy('legal_name')
-            ->get()
-            ->filter(fn (BusinessEntity $entity) => $this->canUseForTransaction($entity))
-            ->values();
+            ->get();
     }
 
     /**

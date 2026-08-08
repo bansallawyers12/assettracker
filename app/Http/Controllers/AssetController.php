@@ -162,7 +162,7 @@ class AssetController extends Controller
             'bankAccounts.holderEntity',
             'bankAccounts.holderPerson',
             'bankAccounts.businessEntity',
-            'transactions' => fn ($q) => $q->orderBy('date', 'desc'),
+            'transactions' => fn ($q) => $q->with('bankAccount')->orderBy('date', 'desc'),
         ]);
 
         $assetInvoices = collect();

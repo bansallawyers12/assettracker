@@ -3,6 +3,11 @@
         'bankAccount' => $bankAccount,
         'business_entity_id' => $contextEntityId ?? null,
     ]));
+    $returnTo = ($contextEntityId ?? null) ? 'entity' : 'bank-account';
+    $createUrlTemplate = route('business-entities.bank-accounts.transactions.create', [
+        'businessEntity' => 'BUSINESS_ENTITY',
+        'bankAccount' => $bankAccount,
+    ]).'?return_to='.$returnTo;
 @endphp
 
 <div
@@ -51,8 +56,10 @@
                 <button
                     type="button"
                     data-bank-transactions-add
-                    data-create-url-template="{{ route('business-entities.bank-accounts.transactions.create', ['BUSINESS_ENTITY', $bankAccount]) }}?return_to=bank-account"
-                    @if($eligibleEntities->count() === 1)
+                    data-create-url-template="{{ $createUrlTemplate }}"
+                    @if($defaultEntityId)
+                        data-default-entity-id="{{ $defaultEntityId }}"
+                    @elseif($eligibleEntities->count() === 1)
                         data-default-entity-id="{{ $eligibleEntities->first()->id }}"
                     @endif
                     class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"

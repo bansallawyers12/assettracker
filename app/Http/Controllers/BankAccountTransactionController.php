@@ -6,6 +6,7 @@ use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 class BankAccountTransactionController extends Controller
 {
@@ -34,9 +35,13 @@ class BankAccountTransactionController extends Controller
         }
 
         $transactions = $query->get();
-        $eligibleEntities = $bankAccount->eligibleTransactionEntities();
-        $defaultEntityId = $contextEntityId
-            ?? ($eligibleEntities->count() === 1 ? $eligibleEntities->first()->id : null);
+        $eligibleEntities = $this->bookableEntities($bankAccount);
+        $defaultEntityId = null;
+        if ($contextEntityId !== null && $eligibleEntities->contains('id', $contextEntityId)) {
+            $defaultEntityId = $contextEntityId;
+        } elseif ($eligibleEntities->count() === 1) {
+            $defaultEntityId = $eligibleEntities->first()->id;
+        }
 
         return response()->json([
             'status' => true,
@@ -46,10 +51,26 @@ class BankAccountTransactionController extends Controller
                 'eligibleEntities' => $eligibleEntities,
                 'contextEntityId' => $contextEntityId,
                 'defaultEntityId' => $defaultEntityId,
-                'canManageTransactions' => $bankAccount->isEditableByCurrentUser()
-                    && $eligibleEntities->isNotEmpty(),
+                'canManageTransactions' => $eligibleEntities->isNotEmpty(),
             ])->render(),
         ]);
+    }
+
+    /**
+     * Entities that can book on this account and that the current user may update.
+     *
+     * @return Collection<int, BusinessEntity>
+     */
+    private function bookableEntities(BankAccount $bankAccount): Collection
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return collect();
+        }
+
+        return $bankAccount->eligibleTransactionEntities()
+            ->filter(fn (BusinessEntity $entity) => $user->can('update', $entity))
+            ->values();
     }
 
     private function ensureAccessible(BankAccount $bankAccount): void

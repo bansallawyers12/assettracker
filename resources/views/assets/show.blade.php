@@ -569,9 +569,15 @@
 
                             <!-- Transactions (entity-level tx linked to this asset) -->
                             <div id="tab_transactions" class="tab-content hidden">
-                                <div class="asset-panel">
-                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Transactions</h3>
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Book transactions tagged to this asset also appear on the business entity. Leave asset blank when adding a transaction to keep it entity-wide only.</p>
+                                <div class="asset-panel space-y-4">
+                                    <div>
+                                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Transactions</h3>
+                                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                            Read-only list of transactions tagged to this asset. Manage them from the
+                                            <a href="{{ route('business-entities.show', $businessEntity) }}#tab_bank_accounts" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">entity bank accounts</a>
+                                            workspace.
+                                        </p>
+                                    </div>
                                     @if ($asset->transactions->isEmpty())
                                         <p class="text-gray-500 dark:text-gray-400 text-center py-6">No transactions linked to this asset yet.</p>
                                     @else
@@ -582,29 +588,51 @@
                                                         <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase">Date</th>
                                                         <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase">Amount</th>
                                                         <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase">Description</th>
+                                                        <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase">Account</th>
                                                         <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase">Type</th>
-                                                        <th class="px-4 py-2 text-left text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase"></th>
+                                                        <th class="px-4 py-2 text-right text-xs font-medium text-indigo-800 dark:text-indigo-200 uppercase">Actions</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
                                                     @foreach ($asset->transactions as $tx)
                                                         <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/80">
-                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ $tx->date->format('d/m/Y') }}</td>
-                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">${{ number_format($tx->amount, 2) }}</td>
-                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ $tx->description }}</td>
+                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">{{ $tx->date->format('d/m/Y') }}</td>
+                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 tabular-nums">
+                                                                @if (Transaction::directionFromType((string) $tx->transaction_type) === 'income')
+                                                                    <span class="text-green-700 dark:text-green-400">+${{ number_format($tx->amount, 2) }}</span>
+                                                                @else
+                                                                    <span class="text-red-700 dark:text-red-400">−${{ number_format($tx->amount, 2) }}</span>
+                                                                @endif
+                                                            </td>
+                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate">{{ $tx->description ?: '—' }}</td>
+                                                            <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">
+                                                                @if ($tx->bankAccount)
+                                                                    <a
+                                                                        href="{{ route('business-entities.show', [
+                                                                            $businessEntity,
+                                                                            'open_bank_transactions' => $tx->bank_account_id,
+                                                                        ]) }}#tab_bank_accounts"
+                                                                        class="text-violet-700 hover:text-violet-900 dark:text-violet-300 dark:hover:text-violet-200"
+                                                                    >
+                                                                        {{ $tx->bankAccount->transactionAccountLabel() }}
+                                                                    </a>
+                                                                @else
+                                                                    <span class="text-gray-400">Unassigned</span>
+                                                                @endif
+                                                            </td>
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ Transaction::allTypes()[$tx->transaction_type] ?? $tx->transaction_type }}</td>
-                                                            <td class="px-4 py-2 text-sm">
-                                                                <div class="flex flex-wrap gap-2 items-center">
+                                                            <td class="px-4 py-2 text-sm text-right">
+                                                                <div class="inline-flex flex-wrap justify-end gap-2 items-center">
+                                                                    @if ($tx->bank_account_id)
+                                                                        <a
+                                                                            href="{{ route('business-entities.bank-accounts.transactions.show', [$businessEntity->id, $tx->bank_account_id, $tx->id]) }}"
+                                                                            class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium"
+                                                                        >View</a>
+                                                                    @endif
                                                                     <a href="{{ route('business-entities.transactions.edit', [$businessEntity->id, $tx->id]) }}" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium">Edit</a>
                                                                     @if ($tx->receipt_path)
                                                                         <a href="{{ $tx->receiptUrl }}" target="_blank" class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 text-xs font-medium">Receipt</a>
                                                                     @endif
-                                                                    <form action="{{ route('business-entities.transactions.destroy', [$businessEntity->id, $tx->id]) }}" method="POST" class="inline-flex items-center" onsubmit="return confirmDeleteTransaction(this, @json((bool) $tx->document_id));">
-                                                                        @csrf
-                                                                        @method('DELETE')
-                                                                        <input type="hidden" name="delete_linked_document" value="0" />
-                                                                        <button type="submit" class="text-red-700 hover:text-red-900 dark:text-red-400 text-xs font-medium">Delete</button>
-                                                                    </form>
                                                                 </div>
                                                             </td>
                                                         </tr>
