@@ -18,8 +18,8 @@ use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 class FinancialReportService
 {
     /**
-     * Start date for cumulative director / entity loan activity on the balance sheet
-     * (opening balance = GL as of the prior day in buildDirectorEntityLoanAccountBlock).
+     * Start date for cumulative director / entity loan activity on the balance sheet.
+     * Opening = non-transaction GL as of the prior day + synthetic pre-period lines.
      */
     private const DIRECTOR_LOAN_BALANCE_SHEET_START_DATE = '1970-01-01';
 
@@ -868,8 +868,10 @@ class FinancialReportService
             }
         }
 
+        // Synthetic lines already represent auto-posted Transaction journals on 2500
+        // (booker + payer). Only fold in non-transaction GL so opening is not doubled.
         $openingBalance = $this->liabilityOwedFromGl(
-            $this->getAccountBalanceAsOf($account->id, $asOfBefore, $ids)
+            $this->getDirectorLoanManualGlBalanceAsOf($account->id, $asOfBefore, $ids)
         ) + $syntheticBeforeStart;
 
         $running = $openingBalance;
@@ -917,6 +919,41 @@ class FinancialReportService
     private function liabilityOwedFromGl(float $debitLessCredit): float
     {
         return 0.0 - $debitLessCredit;
+    }
+
+    /**
+     * Director/entity loan GL excluding auto-posted Transaction journals (those are
+     * reported via synthetic intercompany lines in buildDirectorEntityLoanAccountBlock).
+     *
+     * @param  array<int>  $entityIds
+     */
+    private function getDirectorLoanManualGlBalanceAsOf($accountId, string $asOfDate, array $entityIds): float
+    {
+        $debits = JournalLine::where('chart_of_account_id', $accountId)
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
+                $query->whereIn('business_entity_id', $entityIds)
+                    ->where('entry_date', '<=', $asOfDate)
+                    ->where(function ($q) {
+                        $q->whereNull('source_type')
+                            ->orWhere('source_type', '!=', Transaction::class);
+                    });
+                $this->applyBalancedPostedJournalConstraints($query);
+            })
+            ->sum('debit_amount');
+
+        $credits = JournalLine::where('chart_of_account_id', $accountId)
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
+                $query->whereIn('business_entity_id', $entityIds)
+                    ->where('entry_date', '<=', $asOfDate)
+                    ->where(function ($q) {
+                        $q->whereNull('source_type')
+                            ->orWhere('source_type', '!=', Transaction::class);
+                    });
+                $this->applyBalancedPostedJournalConstraints($query);
+            })
+            ->sum('credit_amount');
+
+        return (float) $debits - (float) $credits;
     }
 
     private function lenderEntityIdFromPaidBy(Transaction $t): ?int

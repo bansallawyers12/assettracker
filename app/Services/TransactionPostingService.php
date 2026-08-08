@@ -38,6 +38,14 @@ class TransactionPostingService
         return DB::transaction(function () use ($transaction) {
             $transaction->loadMissing('lines');
             $bookerEntry = $this->postBookingEntityJournal($transaction);
+
+            // Never leave a payer cash journal without a matching booking entry.
+            if ($bookerEntry === null) {
+                $this->deletePayerJournalIfExists($transaction);
+
+                return null;
+            }
+
             $this->postPayerEntityBankJournal($transaction);
 
             return $bookerEntry;
@@ -57,15 +65,20 @@ class TransactionPostingService
                 $existing->delete();
             }
 
-            $payerRef = $this->payerJournalReference($transaction);
-            $orphan = JournalEntry::query()
-                ->where('reference_number', $payerRef)
-                ->first();
-            if ($orphan) {
-                $orphan->journalLines()->delete();
-                $orphan->delete();
-            }
+            $this->deletePayerJournalIfExists($transaction);
         });
+    }
+
+    private function deletePayerJournalIfExists(Transaction $transaction): void
+    {
+        $orphan = JournalEntry::query()
+            ->where('reference_number', $this->payerJournalReference($transaction))
+            ->first();
+
+        if ($orphan) {
+            $orphan->journalLines()->delete();
+            $orphan->delete();
+        }
     }
 
     private function postBookingEntityJournal(Transaction $transaction): ?JournalEntry
@@ -113,11 +126,7 @@ class TransactionPostingService
         $ref = $this->payerJournalReference($transaction);
 
         if ($payerEntityId === null) {
-            $orphan = JournalEntry::query()->where('reference_number', $ref)->first();
-            if ($orphan) {
-                $orphan->journalLines()->delete();
-                $orphan->delete();
-            }
+            $this->deletePayerJournalIfExists($transaction);
 
             return null;
         }

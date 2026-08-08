@@ -42,10 +42,19 @@ it('documents unpaid skip and two-journal posting flow', function () {
     expect($source)->toContain("payment_status === 'unpaid'")
         ->and($source)->toContain('postBookingEntityJournal')
         ->and($source)->toContain('postPayerEntityBankJournal')
+        ->and($source)->toContain('deletePayerJournalIfExists')
         ->and($source)->toContain('ensureCashAccount')
         ->and($source)->toContain('ensureDirectorLoanAccount')
         ->and($source)->toContain('Intercompany payable')
         ->and($source)->toContain('Cash paid (cross-entity)');
+});
+
+it('avoids double-counting director loan GL that was auto-posted from transactions', function () {
+    $source = file_get_contents(app_path('Services/FinancialReportService.php'));
+
+    expect($source)->toContain('getDirectorLoanManualGlBalanceAsOf')
+        ->and($source)->toContain("source_type', '!=', Transaction::class")
+        ->and($source)->toContain('buildDirectorEntityLoanAccountBlock');
 });
 
 it('reposts when paid_by or paid_at changes and unposts unpaid updates', function () {
