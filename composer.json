@@ -18,6 +18,7 @@
         "technikermathe/blade-lucide-icons": "^3.156"
     },
     "require-dev": {
+        "laravel/boost": "^2.5",
         "laravel/breeze": "^2.3",
         "laravel/pail": "^1.2.2",
         "laravel/pint": "^1.13",

@@ -178,6 +178,8 @@ return [
         'x_content_type_options' => 'nosniff',
         'x_xss_protection' => '1; mode=block',
         'referrer_policy' => 'strict-origin-when-cross-origin',
+        // Private app — block all search/social crawlers and prevent cached snippets.
+        'robots_tag' => 'noindex, nofollow, noarchive, nosnippet, noimageindex',
     ],
 
     /*

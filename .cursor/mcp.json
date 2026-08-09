@@ -1,19 +1,31 @@
 {
-  "mcpServers": {
-    "graphify": {
-      "command": "py",
-      "args": [
-        "-m",
-        "graphify.serve",
-        "graphify-out/graph.json"
-      ]
-    },
-    "context7": {
-      "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"],
-      "env": {
-        "CONTEXT7_API_KEY": "${env:CONTEXT7_API_KEY}"
-      }
+    "mcpServers": {
+        "graphify": {
+            "command": "py",
+            "args": [
+                "-m",
+                "graphify.serve",
+                "c:/xampp/htdocs/assettracker/graphify-out/graph.json"
+            ],
+            "cwd": "c:/xampp/htdocs/assettracker"
+        },
+        "context7": {
+            "command": "npx",
+            "args": [
+                "-y",
+                "@upstash/context7-mcp"
+            ],
+            "env": {
+                "CONTEXT7_API_KEY": "${env:CONTEXT7_API_KEY}"
+            }
+        },
+        "laravel-boost": {
+            "command": "php",
+            "args": [
+                "artisan",
+                "boost:mcp"
+            ],
+            "cwd": "c:/xampp/htdocs/assettracker"
+        }
     }
-  }
 }

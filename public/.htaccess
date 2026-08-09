@@ -1,3 +1,8 @@
+<IfModule mod_headers.c>
+    # Belt-and-suspenders: block search/social crawlers even for static files.
+    Header set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex"
+</IfModule>
+
 <IfModule mod_rewrite.c>
     <IfModule mod_negotiation.c>
         Options -MultiViews -Indexes

@@ -49,8 +49,11 @@ class SecurityHeaders
         );
         $response->headers->set('X-XSS-Protection', config('security.headers.x_xss_protection', '1; mode=block'));
         $response->headers->set('Referrer-Policy', config('security.headers.referrer_policy', 'strict-origin-when-cross-origin'));
-        // Private app — keep pages out of public search indexes.
-        $response->headers->set('X-Robots-Tag', 'noindex, nofollow');
+        // Private app — keep pages out of public search indexes and cached snippets.
+        $response->headers->set(
+            'X-Robots-Tag',
+            config('security.headers.robots_tag', 'noindex, nofollow, noarchive, nosnippet, noimageindex')
+        );
 
         // Content Security Policy — skip on proxied document streams (see $isEmbeddedDocumentStream).
         if (! $isEmbeddedDocumentStream) {
