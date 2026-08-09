@@ -23,7 +23,14 @@ DATE_DAY_MONTH_RE = re.compile(r"^(\d{1,2})\s+([A-Za-z]{3})$")
 DATE_SLASH_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{2,4})$")
 DATE_ISO_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 
-# Summary / non-transaction lines. Interest credits are real transactions and are kept.
+# Canonical statement row columns. Every parsed entry fills these fields.
+FIXED_COLUMNS = (
+    "date",
+    "description",
+    "amount_debit",
+    "amount_credit",
+    "balance",
+)
 SKIP_DESCRIPTION_PATTERNS = [
     re.compile(r"OPENING\s+BALANCE", re.I),
     re.compile(r"CLOSING\s+BALANCE", re.I),
@@ -215,6 +222,22 @@ def extract_year_hint_from_text(text: str) -> int | None:
     return None
 
 
+def money_or_none(value: Decimal | None) -> float | None:
+    """Format a money amount for output; blank/zero becomes null."""
+    if value is None:
+        return None
+    quantized = abs(value).quantize(Decimal("0.01"))
+    if quantized == 0:
+        return None
+    return float(quantized)
+
+
+def balance_or_none(value: Decimal | None) -> float | None:
+    if value is None:
+        return None
+    return float(abs(value).quantize(Decimal("0.01")))
+
+
 def build_entry(
     date_iso: str,
     description: str,
@@ -222,6 +245,13 @@ def build_entry(
     credit: Decimal | None,
     balance: Decimal | None,
 ) -> dict[str, Any] | None:
+    """
+    Build one statement row using fixed columns:
+    date | description | amount_debit | amount_credit | balance
+
+    Also includes derived `amount` (credit positive / debit negative) and
+    `transaction_type` for Laravel consumers.
+    """
     if should_skip_description(description):
         return None
 
@@ -243,13 +273,14 @@ def build_entry(
     transaction_type = "credit" if amount >= 0 else "debit"
     entry: dict[str, Any] = {
         "date": date_iso,
-        "amount": float(amount.quantize(Decimal("0.01"))),
         "description": description or "Transaction",
+        "amount_debit": money_or_none(debit_val),
+        "amount_credit": money_or_none(credit_val),
+        "balance": balance_or_none(balance),
+        # Derived helpers kept for existing Laravel import paths.
+        "amount": float(amount.quantize(Decimal("0.01"))),
         "transaction_type": transaction_type,
     }
-
-    if balance is not None:
-        entry["balance"] = float(balance.quantize(Decimal("0.01")))
 
     return entry
 
@@ -280,6 +311,15 @@ def split_leading_date(cells: list[str]) -> tuple[str | None, list[str]]:
     if embedded:
         rest = [embedded.group(2)] + cells[1:]
         return embedded.group(1), rest
+
+    # Westpac often keeps "31/03/26 Loan Service Fee..." in one cell.
+    embedded_slash = re.match(
+        r"^(\d{1,2}/\d{1,2}/\d{2,4})\s+(.+)$",
+        first,
+    )
+    if embedded_slash:
+        rest = [embedded_slash.group(2)] + cells[1:]
+        return embedded_slash.group(1), rest
 
     return None, cells
 
@@ -386,12 +426,20 @@ def is_westpac_continuation_row(cells: list[str]) -> bool:
     return is_westpac_continuation_text(joined)
 
 
+def ensure_westpac_row_width(cells: list[str]) -> list[str]:
+    """Pad/truncate to date, description, debit, credit, balance."""
+    row = list(cells[:5])
+    while len(row) < 5:
+        row.append("")
+    return row
+
+
 def normalize_westpac_row_width(cells: list[str]) -> list[str]:
     """Expand a Westpac row to date, description, debit, credit, balance."""
     cells = normalize_row(cells)
     date_token, remainder = split_leading_date(cells)
     if not date_token:
-        return cells
+        return ensure_westpac_row_width(cells)
 
     row = ["", "", "", "", ""]
     row[0] = date_token
@@ -424,7 +472,7 @@ def normalize_westpac_row_width(cells: list[str]) -> list[str]:
 
 def merge_westpac_continuation(prev: list[str], cont: list[str]) -> list[str]:
     """Merge a wrapped Westpac description continuation into the previous row."""
-    prev = normalize_westpac_row_width(prev)
+    prev = ensure_westpac_row_width(normalize_westpac_row_width(prev))
     cont = normalize_row(cont)
 
     while cont and not cont[0]:
@@ -477,6 +525,9 @@ def merge_westpac_table_rows(rows: list[list[Any]]) -> list[list[str]]:
 def cells_from_text_line(line: str) -> list[str]:
     cells = [part.strip() for part in re.split(r"\s{2,}|\t", line) if part.strip()]
     if len(cells) >= 2:
+        date_token, remainder = split_leading_date(cells)
+        if date_token:
+            return [date_token, *remainder]
         return cells
 
     parts = line.split()
@@ -831,22 +882,31 @@ def extract_entries(path: Path, bank_name: str) -> dict[str, Any]:
 
             for page in pdf.pages:
                 for table in page.extract_tables() or []:
-                    table_rows = merge_westpac_table_rows(table) if use_westpac else table
+                    try:
+                        table_rows = merge_westpac_table_rows(table) if use_westpac else table
+                    except (IndexError, ValueError, TypeError):
+                        table_rows = table
                     for row in table_rows:
                         cells = normalize_row(row) if not use_westpac else row
-                        entry, year_hint, prev_date_iso, last_balance = parse_row_cells(
-                            cells, year_hint, prev_date_iso, last_balance
-                        )
+                        try:
+                            entry, year_hint, prev_date_iso, last_balance = parse_row_cells(
+                                cells, year_hint, prev_date_iso, last_balance
+                            )
+                        except (IndexError, ValueError, TypeError):
+                            continue
                         if entry:
                             entries.append(entry)
 
-            text_entries, year_hint, prev_date_iso, last_balance = parse_text_block(
-                combined_text,
-                year_hint,
-                prev_date_iso,
-                last_balance=None if entries else last_balance,
-                use_westpac=use_westpac,
-            )
+            try:
+                text_entries, year_hint, prev_date_iso, last_balance = parse_text_block(
+                    combined_text,
+                    year_hint,
+                    prev_date_iso,
+                    last_balance=None if entries else last_balance,
+                    use_westpac=use_westpac,
+                )
+            except (IndexError, ValueError, TypeError):
+                text_entries = []
 
             # Westpac text parsing recovers wrapped fee rows that table extract often drops.
             if use_westpac and text_entries and (
@@ -879,6 +939,7 @@ def extract_entries(path: Path, bank_name: str) -> dict[str, Any]:
             "pages": pages,
             "entry_count": len(unique_entries),
             "parser": "python_bank_pdf_parser",
+            "columns": list(FIXED_COLUMNS),
         },
     }
 
@@ -920,8 +981,15 @@ def main() -> None:
         result = extract_entries(path, args.bank_name.lower().strip())
         emit(result, exit_code=0 if result.get("success") else 1)
     except Exception as exc:  # noqa: BLE001 - return structured error to Laravel
+        import traceback
+
         emit(
-            {"success": False, "error": str(exc), "entries": []},
+            {
+                "success": False,
+                "error": f"{exc}",
+                "entries": [],
+                "metadata": {"traceback": traceback.format_exc()},
+            },
             exit_code=1,
         )
 

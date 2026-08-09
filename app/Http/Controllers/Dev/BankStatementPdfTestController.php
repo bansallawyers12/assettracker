@@ -66,10 +66,16 @@ class BankStatementPdfTestController extends Controller
             $fullPath = Storage::disk('local')->path($storedPath);
             $result = $parser->parse($fullPath, $bankName);
 
+            $metadata = is_array($result['metadata'] ?? null) ? $result['metadata'] : null;
+            $error = ($result['success'] ?? false) ? null : (string) ($result['error'] ?? 'Parsing failed');
+            if ($error && is_array($metadata) && ! empty($metadata['traceback'])) {
+                $error .= "\n\n".$metadata['traceback'];
+            }
+
             return view('dev.bank-statement-pdf-test', [
                 'entries' => is_array($result['entries'] ?? null) ? $result['entries'] : [],
-                'metadata' => is_array($result['metadata'] ?? null) ? $result['metadata'] : null,
-                'error' => ($result['success'] ?? false) ? null : (string) ($result['error'] ?? 'Parsing failed'),
+                'metadata' => $metadata,
+                'error' => $error,
                 'bankName' => $bankName,
                 'bankHints' => BankStatementPdfParseService::BANK_HINTS,
                 'parsed' => true,

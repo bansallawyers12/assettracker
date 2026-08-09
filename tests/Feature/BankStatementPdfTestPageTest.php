@@ -28,6 +28,8 @@ it('includes bank hint and pdf upload on the dev test page', function () {
         ->and($html)->toContain('name="bank_name"')
         ->and($html)->toContain('$bankHints')
         ->and($html)->toContain('Parse PDF')
+        ->and($html)->toContain('amount_debit')
+        ->and($html)->toContain('amount_credit')
         ->and($html)->toContain('$parsed');
 
     foreach (array_keys(BankStatementPdfParseService::BANK_HINTS) as $hint) {
@@ -68,20 +70,55 @@ it('returns structured parser errors from python stdout on failure', function ()
     }
 });
 
-it('parses westpac wrapped rows via python unit tests', function () {
-    $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-    $testFile = base_path('python/tests/test_westpac_pdf_parser.py');
+it('normalizes every bank into fixed test-page columns', function () {
+    $service = new BankStatementPdfParseService;
 
-    if (! is_file($testFile)) {
-        expect(true)->toBeTrue();
+    $fromDebitCredit = $service->normalizeEntry([
+        'date' => '2026-04-02',
+        'description' => 'Deposit',
+        'amount_debit' => null,
+        'amount_credit' => 100,
+        'balance' => 500,
+    ]);
 
-        return;
+    $fromSignedOnly = $service->normalizeEntry([
+        'date' => '2026-04-03',
+        'description' => 'Fee',
+        'amount' => -42.5,
+        'balance' => 457.5,
+    ]);
+
+    foreach (BankStatementPdfParseService::FIXED_COLUMNS as $column) {
+        expect($fromDebitCredit)->toHaveKey($column)
+            ->and($fromSignedOnly)->toHaveKey($column);
     }
 
-    $process = new Process([$python, $testFile]);
-    $process->run();
+    expect($fromDebitCredit['amount_credit'])->toBe(100.0)
+        ->and($fromDebitCredit['amount_debit'])->toBeNull()
+        ->and($fromSignedOnly['amount_debit'])->toBe(42.5)
+        ->and($fromSignedOnly['amount_credit'])->toBeNull()
+        ->and($fromSignedOnly['transaction_type'])->toBe('debit');
+});
 
-    expect($process->isSuccessful())->toBeTrue("Python Westpac parser tests failed:\n".$process->getErrorOutput().$process->getOutput());
+it('parses westpac wrapped rows via python unit tests', function () {
+    $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+    $testFiles = [
+        base_path('python/tests/test_westpac_pdf_parser.py'),
+        base_path('python/tests/test_fixed_columns_all_banks.py'),
+    ];
+
+    foreach ($testFiles as $testFile) {
+        if (! is_file($testFile)) {
+            continue;
+        }
+
+        $process = new Process([$python, $testFile]);
+        $process->run();
+
+        expect($process->isSuccessful())->toBeTrue(
+            "Python PDF parser tests failed ({$testFile}):\n".$process->getErrorOutput().$process->getOutput()
+        );
+    }
 });
 
 it('rejects non-pdf uploads on the parse route when local', function () {

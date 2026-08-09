@@ -20,6 +20,19 @@ class BankStatementPdfParseService
     ];
 
     /**
+     * Fixed columns used by the PDF test page for every bank.
+     *
+     * @var list<string>
+     */
+    public const FIXED_COLUMNS = [
+        'date',
+        'description',
+        'amount_debit',
+        'amount_credit',
+        'balance',
+    ];
+
+    /**
      * @return array{
      *     success: bool,
      *     error?: string,
@@ -74,6 +87,15 @@ class BankStatementPdfParseService
                 $decoded['success'] = false;
             }
 
+            $decoded['entries'] = array_map(
+                fn (mixed $entry): array => $this->normalizeEntry(is_array($entry) ? $entry : []),
+                $decoded['entries']
+            );
+
+            $metadata = is_array($decoded['metadata'] ?? null) ? $decoded['metadata'] : [];
+            $metadata['columns'] = self::FIXED_COLUMNS;
+            $decoded['metadata'] = $metadata;
+
             return $decoded;
         }
 
@@ -92,6 +114,55 @@ class BankStatementPdfParseService
             'error' => 'Invalid JSON response from Python PDF parser',
             'entries' => [],
         ];
+    }
+
+    /**
+     * Ensure every bank maps into the same fixed test-page columns.
+     *
+     * @param  array<string, mixed>  $entry
+     * @return array<string, mixed>
+     */
+    public function normalizeEntry(array $entry): array
+    {
+        $debit = $this->nullableMoney($entry['amount_debit'] ?? null);
+        $credit = $this->nullableMoney($entry['amount_credit'] ?? null);
+        $signed = array_key_exists('amount', $entry) ? (float) $entry['amount'] : null;
+
+        if ($debit === null && $credit === null && $signed !== null && $signed != 0.0) {
+            if ($signed < 0) {
+                $debit = abs($signed);
+            } else {
+                $credit = abs($signed);
+            }
+        }
+
+        if ($signed === null) {
+            $signed = round(($credit ?? 0.0) - ($debit ?? 0.0), 2);
+        }
+
+        return [
+            'date' => (string) ($entry['date'] ?? ''),
+            'description' => (string) ($entry['description'] ?? 'Transaction'),
+            'amount_debit' => $debit,
+            'amount_credit' => $credit,
+            'balance' => $this->nullableMoney($entry['balance'] ?? null, allowZero: true),
+            'amount' => round((float) $signed, 2),
+            'transaction_type' => $signed >= 0 ? 'credit' : 'debit',
+        ];
+    }
+
+    private function nullableMoney(mixed $value, bool $allowZero = false): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $amount = round(abs((float) $value), 2);
+        if (! $allowZero && $amount == 0.0) {
+            return null;
+        }
+
+        return $amount;
     }
 
     /**

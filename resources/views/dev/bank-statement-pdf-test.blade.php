@@ -10,7 +10,13 @@
             <div class="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30 p-4 text-sm text-amber-900 dark:text-amber-100">
                 <p class="font-semibold">Local dev tool</p>
                 <p class="mt-1 text-amber-800 dark:text-amber-200/90">
-                    Upload a CBA, NAB, Macquarie, or Westpac PDF statement. Python extracts transaction rows and skips opening/closing balance and summary lines where possible.
+                    Dev-only PDF parser. Every bank (CBA, NAB, Macquarie, Westpac, auto) maps into the same fixed columns:
+                    <span class="font-medium">Date</span>,
+                    <span class="font-medium">Description</span>,
+                    <span class="font-medium">Debit</span>,
+                    <span class="font-medium">Credit</span>,
+                    <span class="font-medium">Balance</span>.
+                    This page does not write to the main CRM import flow.
                     Requires <code class="font-mono text-xs">pip install pdfplumber pypdf</code> in your Python environment.
                 </p>
             </div>
@@ -62,7 +68,7 @@
             @if ($error)
                 <div class="rounded-xl border border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/30 p-4 text-sm text-red-800 dark:text-red-200">
                     <p class="font-semibold">Parser error</p>
-                    <p class="mt-1">{{ $error }}</p>
+                    <pre class="mt-1 whitespace-pre-wrap break-words font-mono text-xs">{{ $error }}</pre>
                 </div>
             @endif
 
@@ -77,6 +83,11 @@
                         <span class="mx-2">·</span>
                         <span class="font-semibold">Transactions:</span>
                         {{ $metadata['entry_count'] ?? count($entries) }}
+                        @if (! empty($metadata['columns']))
+                            <span class="mx-2">·</span>
+                            <span class="font-semibold">Columns:</span>
+                            {{ implode(', ', $metadata['columns']) }}
+                        @endif
                     </p>
                 </div>
             @endif
@@ -94,9 +105,9 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Date</th>
                                     <th class="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Description</th>
-                                    <th class="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300">Amount</th>
+                                    <th class="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300">Debit</th>
+                                    <th class="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300">Credit</th>
                                     <th class="px-4 py-3 text-right font-semibold text-gray-600 dark:text-gray-300">Balance</th>
-                                    <th class="px-4 py-3 text-left font-semibold text-gray-600 dark:text-gray-300">Type</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
@@ -108,8 +119,19 @@
                                         <td class="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-md">
                                             {{ $entry['description'] ?? '—' }}
                                         </td>
-                                        <td class="px-4 py-3 text-right tabular-nums whitespace-nowrap {{ ($entry['amount'] ?? 0) >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">
-                                            {{ number_format((float) ($entry['amount'] ?? 0), 2) }}
+                                        <td class="px-4 py-3 text-right tabular-nums whitespace-nowrap text-red-600 dark:text-red-400">
+                                            @if (! empty($entry['amount_debit']))
+                                                {{ number_format((float) $entry['amount_debit'], 2) }}
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 text-right tabular-nums whitespace-nowrap text-emerald-600 dark:text-emerald-400">
+                                            @if (! empty($entry['amount_credit']))
+                                                {{ number_format((float) $entry['amount_credit'], 2) }}
+                                            @else
+                                                —
+                                            @endif
                                         </td>
                                         <td class="px-4 py-3 text-right tabular-nums whitespace-nowrap text-gray-600 dark:text-gray-400">
                                             @if (array_key_exists('balance', $entry) && $entry['balance'] !== null)
@@ -117,9 +139,6 @@
                                             @else
                                                 —
                                             @endif
-                                        </td>
-                                        <td class="px-4 py-3 text-gray-600 dark:text-gray-400">
-                                            {{ $entry['transaction_type'] ?? '—' }}
                                         </td>
                                     </tr>
                                 @endforeach
