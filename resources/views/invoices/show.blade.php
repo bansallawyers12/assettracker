@@ -168,7 +168,12 @@
                                     <select name="bank_account_id" id="invoice_payment_bank_account_id" required class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm">
                                         <option value="">Select account…</option>
                                         @foreach ($paymentBankAccounts as $account)
-                                            <option value="{{ $account->id }}" @selected((string) old('bank_account_id') === (string) $account->id)>
+                                            @php
+                                                $accountSelected = old('bank_account_id') !== null
+                                                    ? (string) old('bank_account_id') === (string) $account->id
+                                                    : (int) ($suggestedPaymentBankAccountId ?? 0) === (int) $account->id;
+                                            @endphp
+                                            <option value="{{ $account->id }}" @selected($accountSelected)>
                                                 {{ $account->transactionAccountLabel() }}
                                             </option>
                                         @endforeach
@@ -251,7 +256,18 @@
                                     }
 
                                     accountSelect.addEventListener('change', syncStatementOptions);
+
+                                    // Keep suggested statement + its bank account aligned on first paint.
+                                    const suggestedOpt = entrySelect.querySelector('option[selected]');
+                                    if (suggestedOpt?.dataset?.bankAccountId && !accountSelect.value) {
+                                        accountSelect.value = String(suggestedOpt.dataset.bankAccountId);
+                                    }
+
                                     syncStatementOptions();
+
+                                    if (suggestedOpt?.value && !suggestedOpt.hidden) {
+                                        entrySelect.value = suggestedOpt.value;
+                                    }
                                 });
                             </script>
                         @endif

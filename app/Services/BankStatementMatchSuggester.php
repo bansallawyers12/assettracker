@@ -73,6 +73,8 @@ class BankStatementMatchSuggester
     }
 
     /**
+     * Suggest for many entries, claiming each matched transaction at most once.
+     *
      * @param  Collection<int, BankStatementEntry>  $entries
      * @param  Collection<int, Transaction>  $candidates
      * @return array<int, array<string, mixed>>
@@ -84,8 +86,19 @@ class BankStatementMatchSuggester
         ?int $defaultAssetId = null
     ): array {
         $out = [];
+        $available = $candidates->values();
+
         foreach ($entries as $entry) {
-            $out[(int) $entry->id] = $this->suggest($entry, $bankAccount, $candidates, $defaultAssetId);
+            $suggestion = $this->suggest($entry, $bankAccount, $available, $defaultAssetId);
+            $out[(int) $entry->id] = $suggestion;
+
+            if (($suggestion['action'] ?? null) === 'match_transaction'
+                && ! empty($suggestion['transaction_id'])) {
+                $claimedId = (int) $suggestion['transaction_id'];
+                $available = $available
+                    ->reject(fn (Transaction $transaction) => (int) $transaction->id === $claimedId)
+                    ->values();
+            }
         }
 
         return $out;
@@ -117,7 +130,10 @@ class BankStatementMatchSuggester
             $days = null;
             $txDate = $this->asDate($transaction->date);
             if ($entryDate && $txDate) {
-                $days = (int) abs($entryDate->diffInDays($txDate));
+                $days = (int) abs(
+                    $entryDate->copy()->startOfDay()
+                        ->diffInDays($txDate->copy()->startOfDay())
+                );
             }
 
             if ($days !== null && $days > self::MEDIUM_DATE_DAYS) {

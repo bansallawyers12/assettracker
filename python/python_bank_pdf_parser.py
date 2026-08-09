@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Parse Australian bank statement PDFs (CBA, NAB, generic) into transaction JSON for Laravel.
-Usage: python_bank_pdf_parser.py <file_path> [--bank-name auto|cba|nab]
+Parse Australian bank statement PDFs (CBA, NAB, Macquarie, Westpac, generic) into transaction JSON for Laravel.
+Usage: python_bank_pdf_parser.py <file_path> [--bank-name auto|cba|nab|macquarie|westpac]
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ DATE_FULL_TEXT_RE = re.compile(
 )
 DATE_DAY_MONTH_RE = re.compile(r"^(\d{1,2})\s+([A-Za-z]{3})$")
 DATE_SLASH_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{2,4})$")
+DATE_ISO_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
 
 # Summary / non-transaction lines. Interest credits are real transactions and are kept.
 SKIP_DESCRIPTION_PATTERNS = [
@@ -36,13 +37,30 @@ HEADER_HINTS = {"date", "transaction", "description", "debit", "credit", "balanc
 BANK_MARKERS = {
     "cba": ("COMMONWEALTH BANK", "COMMBANK", "NETBANK"),
     "nab": ("NATIONAL AUSTRALIA BANK", "NAB LIMITED", "NAB BUSINESS"),
+    "macquarie": ("MACQUARIE BANK", "MACQUARIE", "MACQUARIE GROUP"),
+    "westpac": ("WESTPAC", "WESTPAC BANKING CORPORATION"),
 }
 
-MONEY_RE = re.compile(r"^-?\$?\d[\d,]*\.\d{2}$")
+# Macquarie PDFs often append CR/DR to money cells, e.g. 45,894.56CR
+MONEY_RE = re.compile(r"^-?\$?\d[\d,]*\.\d{2}(?:CR|DR)?$", re.I)
+TRAILING_MONEY_CHUNK_RE = re.compile(
+    r"(?:\s+\$?-?\d[\d,]*\.\d{2}(?:CR|DR)?)+$",
+    re.I,
+)
+DEBIT_HINT_RE = re.compile(
+    r"\b(direct\s+debit|withdrawal|payment\s+to|transfer\s+to|purchase|pos\b|eftpos|debit"
+    r"|interest\s+payable|loan\s+service\s+fee|line\s+fee|redirected\s+from\s+account)\b",
+    re.I,
+)
+CREDIT_HINT_RE = re.compile(
+    r"\b(deposit|salary|transfer\s+from|refund|credit\s+to|direct\s+credit"
+    r"|interest\s+(?:earned|paid|credited))\b",
+    re.I,
+)
 
 
 def detect_bank(text: str, requested: str) -> str:
-    if requested in ("cba", "nab"):
+    if requested in ("cba", "nab", "macquarie", "westpac"):
         return requested
 
     upper = text.upper()
@@ -71,7 +89,11 @@ def parse_amount(value: Any) -> Decimal | None:
         return None
 
     negative = text.startswith("(") and text.endswith(")")
-    cleaned = text.replace("$", "").replace(",", "").replace(" ", "")
+    upper = text.upper()
+    # DR on a money token means debit/outflow; CR on balances is Macquarie credit-balance notation.
+    force_debit = upper.endswith("DR")
+    cleaned = re.sub(r"(CR|DR)$", "", upper, flags=re.I)
+    cleaned = cleaned.replace("$", "").replace(",", "").replace(" ", "")
     cleaned = cleaned.replace("(", "").replace(")", "")
 
     if not cleaned:
@@ -82,7 +104,10 @@ def parse_amount(value: Any) -> Decimal | None:
     except InvalidOperation:
         return None
 
-    return -abs(amount) if negative else amount
+    if negative or force_debit:
+        return -abs(amount)
+
+    return amount
 
 
 def normalize_year(year_part: str | int) -> int:
@@ -124,6 +149,15 @@ def parse_date_token(token: str, year_hint: int | None) -> tuple[str | None, int
         try:
             parsed = datetime.strptime(f"{int(day)}/{int(month)}/{year}", "%d/%m/%Y")
             return parsed.strftime("%Y-%m-%d"), year
+        except ValueError:
+            return None, year_hint
+
+    match = DATE_ISO_RE.match(token)
+    if match:
+        year, month, day = match.groups()
+        try:
+            parsed = datetime(int(year), int(month), int(day))
+            return parsed.strftime("%Y-%m-%d"), int(year)
         except ValueError:
             return None, year_hint
 
@@ -250,6 +284,11 @@ def look_like_money(value: str) -> bool:
     return bool(MONEY_RE.match(cleaned))
 
 
+def strip_trailing_money(description: str) -> str:
+    """Remove trailing amount/balance tokens from a description (Macquarie compact lines)."""
+    return TRAILING_MONEY_CHUNK_RE.sub("", description).strip()
+
+
 def money_values_from_cells(cells: list[str]) -> list[Decimal]:
     values: list[Decimal] = []
     for cell in cells:
@@ -257,28 +296,254 @@ def money_values_from_cells(cells: list[str]) -> list[Decimal]:
             continue
         amount = parse_amount(cell)
         if amount is not None:
-            values.append(amount)
+            values.append(abs(amount))
+        # Keep absolute values here; sign is resolved later from layout/hints.
+    # Also pull CR/DR money glued inside a longer description cell.
+    if not values:
+        for cell in cells:
+            for match in re.finditer(r"\$?-?\d[\d,]*\.\d{2}(?:CR|DR)?", cell, flags=re.I):
+                amount = parse_amount(match.group(0))
+                if amount is not None:
+                    values.append(abs(amount))
     return values
+
+
+def money_values_from_text(text: str) -> list[Decimal]:
+    values: list[Decimal] = []
+    for match in re.finditer(r"\$?-?\d[\d,]*\.\d{2}(?:CR|DR)?", text, flags=re.I):
+        amount = parse_amount(match.group(0))
+        if amount is not None:
+            values.append(abs(amount))
+    return values
+
+
+def infer_sign_from_description(description: str) -> str | None:
+    if DEBIT_HINT_RE.search(description):
+        return "debit"
+    if CREDIT_HINT_RE.search(description):
+        return "credit"
+    return None
+
+
+def row_has_leading_date(cells: list[str]) -> bool:
+    date_token, _ = split_leading_date(cells)
+    return date_token is not None
+
+
+def line_starts_with_date(line: str) -> bool:
+    line = line.strip()
+    if not line:
+        return False
+
+    first = line.split()[0]
+    if DATE_SLASH_RE.match(first):
+        return True
+    if DATE_DAY_MONTH_RE.match(first):
+        return True
+    if DATE_FULL_TEXT_RE.match(first):
+        return True
+
+    return bool(DATE_SLASH_RE.match(line) or DATE_DAY_MONTH_RE.match(" ".join(line.split()[:2])))
+
+
+def is_westpac_continuation_row(cells: list[str]) -> bool:
+    """Westpac wraps long descriptions onto a second row without a leading date."""
+    if not cells or row_has_leading_date(cells):
+        return False
+    if is_header_row(cells):
+        return False
+
+    joined = " ".join(cell for cell in cells if cell).strip()
+    if not joined or should_skip_description(joined):
+        return False
+
+    has_description = any(cell and not look_like_money(cell) for cell in cells)
+    has_money = bool(money_values_from_cells(cells))
+
+    return has_description or has_money
+
+
+def normalize_westpac_row_width(cells: list[str]) -> list[str]:
+    """Expand a Westpac row to date, description, debit, credit, balance."""
+    cells = normalize_row(cells)
+    date_token, remainder = split_leading_date(cells)
+    if not date_token:
+        return cells
+
+    row = ["", "", "", "", ""]
+    row[0] = date_token
+
+    if len(remainder) >= 4 and not look_like_money(remainder[0]):
+        row[1] = remainder[0]
+        row[2] = remainder[1] if look_like_money(remainder[1]) else ""
+        row[3] = remainder[2] if len(remainder) > 2 and look_like_money(remainder[2]) else ""
+        row[4] = remainder[3] if len(remainder) > 3 and look_like_money(remainder[3]) else ""
+        return row
+
+    desc_parts = [cell for cell in remainder if cell and not look_like_money(cell)]
+    money_parts = [cell for cell in remainder if look_like_money(cell)]
+    row[1] = " ".join(desc_parts)
+
+    if len(money_parts) >= 3:
+        row[2], row[3], row[4] = money_parts[0], money_parts[1], money_parts[2]
+    elif len(money_parts) == 2:
+        amount, balance = money_parts[0], money_parts[1]
+        if infer_sign_from_description(row[1]) == "credit":
+            row[3] = amount
+        else:
+            row[2] = amount
+        row[4] = balance
+    elif len(money_parts) == 1:
+        row[4] = money_parts[0]
+
+    return row
+
+
+def merge_westpac_continuation(prev: list[str], cont: list[str]) -> list[str]:
+    """Merge a wrapped Westpac description continuation into the previous row."""
+    prev = normalize_westpac_row_width(prev)
+    cont = normalize_row(cont)
+
+    while cont and not cont[0]:
+        cont = cont[1:]
+
+    if len(cont) == 1 and not row_has_leading_date(cont):
+        expanded = cells_from_text_line(cont[0])
+        if expanded and not row_has_leading_date(expanded):
+            cont = expanded
+
+    desc_parts = [cell for cell in cont if cell and not look_like_money(cell)]
+    if desc_parts:
+        extra = " ".join(desc_parts).strip()
+        prev[1] = f"{prev[1]} {extra}".strip() if prev[1] else extra
+
+    money_parts = [cell for cell in cont if look_like_money(cell)]
+    if len(money_parts) >= 2:
+        amount, balance = money_parts[0], money_parts[-1]
+        if not prev[2] and not prev[3]:
+            if infer_sign_from_description(prev[1]) == "credit":
+                prev[3] = amount
+            else:
+                prev[2] = amount
+        if not prev[4]:
+            prev[4] = balance
+    elif len(money_parts) == 1:
+        if not prev[4]:
+            prev[4] = money_parts[0]
+
+    return prev
+
+
+def merge_westpac_table_rows(rows: list[list[Any]]) -> list[list[str]]:
+    merged: list[list[str]] = []
+    for row in rows:
+        cells = normalize_row(row)
+        if not any(cells):
+            continue
+        if is_header_row(cells):
+            continue
+        if row_has_leading_date(cells):
+            merged.append(normalize_westpac_row_width(cells))
+            continue
+        if merged and is_westpac_continuation_row(cells):
+            merged[-1] = merge_westpac_continuation(merged[-1], cells)
+
+    return merged
+
+
+def cells_from_text_line(line: str) -> list[str]:
+    cells = [part.strip() for part in re.split(r"\s{2,}|\t", line) if part.strip()]
+    if len(cells) >= 2:
+        return cells
+
+    parts = line.split()
+    if len(parts) < 2:
+        return [line] if line else []
+
+    money_idxs = [index for index, part in enumerate(parts) if look_like_money(part)]
+    if not money_idxs:
+        if line_starts_with_date(line):
+            return [parts[0], " ".join(parts[1:])]
+        return [line]
+
+    first_money = money_idxs[0]
+    date_token = parts[0]
+    description = " ".join(parts[1:first_money]).strip()
+    money_parts = parts[first_money:]
+
+    return [date_token, description, *money_parts]
+
+
+def group_westpac_text_blocks(lines: list[str]) -> list[str]:
+    blocks: list[str] = []
+    current: list[str] = []
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line_starts_with_date(line):
+            if current:
+                blocks.append("\n".join(current))
+            current = [line]
+        elif current:
+            current.append(line)
+
+    if current:
+        blocks.append("\n".join(current))
+
+    return blocks
+
+
+def parse_westpac_text_block(
+    block: str,
+    year_hint: int | None,
+    prev_date_iso: str | None,
+    last_balance: Decimal | None = None,
+) -> tuple[dict[str, Any] | None, int | None, str | None, Decimal | None]:
+    lines = [line.strip() for line in block.split("\n") if line.strip()]
+    if not lines:
+        return None, year_hint, prev_date_iso, last_balance
+
+    row = normalize_westpac_row_width(cells_from_text_line(lines[0]))
+    for line in lines[1:]:
+        row = merge_westpac_continuation(row, cells_from_text_line(line))
+
+    return parse_row_cells(row, year_hint, prev_date_iso, last_balance)
+
+
+def should_use_westpac_layout(bank_hint: str, text: str) -> bool:
+    if bank_hint == "westpac":
+        return True
+
+    return detect_bank(text, "auto") == "westpac"
 
 
 def disambiguate_amount_balance(
     amount: Decimal,
     balance: Decimal,
     last_balance: Decimal | None,
+    description: str = "",
 ) -> tuple[Decimal | None, Decimal | None, Decimal]:
     """
     Compact PDF text often collapses blank debit/credit cells into:
     Date | Description | Amount | Balance
-    Use the previous balance to recover the sign.
+    Use the previous balance / narration hints to recover the sign.
     """
     amount = abs(amount)
+    balance = abs(balance)
     if last_balance is not None:
         if abs((last_balance - amount) - balance) <= Decimal("0.01"):
             return amount, None, balance
         if abs((last_balance + amount) - balance) <= Decimal("0.01"):
             return None, amount, balance
 
-    # Fallback without continuity: treat as debit (common for card spend lines).
+    hint = infer_sign_from_description(description)
+    if hint == "debit":
+        return amount, None, balance
+    if hint == "credit":
+        return None, amount, balance
+    # Default: treat as outflow (Macquarie loan direct debits, card spend).
     return amount, None, balance
 
 
@@ -306,6 +571,9 @@ def parse_row_cells(
 
     joined_desc = " ".join(remainder).strip()
     money_vals = money_values_from_cells(remainder)
+    if len(money_vals) < 2:
+        # Macquarie often keeps amount+balanceCR inside the description cell.
+        money_vals = money_values_from_text(joined_desc)
 
     # Capture year/balance from opening-balance rows, but do not emit them.
     if should_skip_description(joined_desc):
@@ -313,22 +581,28 @@ def parse_row_cells(
         next_date = date_iso if "OPENING BALANCE" in joined_desc.upper() else prev_date_iso
         return None, year_hint, next_date, next_balance
 
-    description = joined_desc
+    description = strip_trailing_money(joined_desc)
     debit: Decimal | None = None
     credit: Decimal | None = None
     balance: Decimal | None = None
 
     # Prefer explicit 5-column shaped rows when non-money description is first.
     if len(remainder) >= 4 and not look_like_money(remainder[0]):
-        description = remainder[0]
+        description = strip_trailing_money(remainder[0])
         debit = parse_amount(remainder[1])
         credit = parse_amount(remainder[2])
         balance = parse_amount(remainder[3])
+        if debit is not None:
+            debit = abs(debit)
+        if credit is not None:
+            credit = abs(credit)
+        if balance is not None:
+            balance = abs(balance)
         # If credit/debit cells were blank and collapsed, remainder may actually be
         # desc + amount + balance with an extra trailing token — handled below.
         if debit is None and credit is None and len(money_vals) >= 2:
             debit, credit, balance = disambiguate_amount_balance(
-                money_vals[0], money_vals[1], last_balance
+                money_vals[0], money_vals[1], last_balance, description
             )
         elif (
             debit is not None
@@ -338,38 +612,37 @@ def parse_row_cells(
         ):
             # Misread amount/balance as debit/credit.
             debit, credit, balance = disambiguate_amount_balance(
-                money_vals[0], money_vals[1], last_balance
+                money_vals[0], money_vals[1], last_balance, description
             )
+    elif (
+        len(remainder) == 3
+        and not look_like_money(remainder[0])
+        and look_like_money(remainder[1])
+        and look_like_money(remainder[2])
+    ):
+        description = strip_trailing_money(remainder[0])
+        debit, credit, balance = disambiguate_amount_balance(
+            money_vals[0], money_vals[1], last_balance, description
+        )
     elif len(money_vals) >= 3:
         # desc ... debit credit balance
-        description = re.sub(
-            r"(\$?\d[\d,]*\.\d{2}\s*)+$",
-            "",
-            joined_desc,
-        ).strip()
         debit, credit, balance = money_vals[0], money_vals[1], money_vals[2]
         if debit == 0:
             debit = None
         if credit == 0:
             credit = None
     elif len(money_vals) == 2:
-        description = re.sub(
-            r"(\$?\d[\d,]*\.\d{2}\s*)+$",
-            "",
-            joined_desc,
-        ).strip()
         debit, credit, balance = disambiguate_amount_balance(
-            money_vals[0], money_vals[1], last_balance
+            money_vals[0], money_vals[1], last_balance, description
         )
     elif len(money_vals) == 1:
-        description = re.sub(
-            r"(\$?\d[\d,]*\.\d{2}\s*)+$",
-            "",
-            joined_desc,
-        ).strip()
-        amount_cell = money_vals[0]
-        debit = abs(amount_cell) if amount_cell < 0 else None
-        credit = abs(amount_cell) if amount_cell > 0 else None
+        amount_cell = abs(money_vals[0])
+        hint = infer_sign_from_description(description)
+        if hint == "credit":
+            debit, credit = None, amount_cell
+        else:
+            # Debit hint or unknown → outflow (Macquarie loan direct debits).
+            debit, credit = amount_cell, None
     else:
         return None, year_hint, prev_date_iso, last_balance
 
@@ -387,13 +660,20 @@ def parse_text_block(
     year_hint: int | None,
     prev_date_iso: str | None,
     last_balance: Decimal | None = None,
+    *,
+    use_westpac: bool = False,
 ) -> tuple[list[dict[str, Any]], int | None, str | None, Decimal | None]:
     entries: list[dict[str, Any]] = []
     markers = [
+        "Date\nTransaction Description\nDebit\nCredit\nBalance\n",
+        "DATE\nTRANSACTION DESCRIPTION\nDEBIT\nCREDIT\nBALANCE\n",
         "Date\nTransaction\nDebit\nCredit\nBalance\n",
         "Date\nTransaction details\nDebit\nCredit\nBalance\n",
+        "Date\nTransaction details\nAmount\nBalance\n",
+        "Date Transaction Description Debit Credit Balance",
         "Date Transaction Debit Credit Balance",
         "Date Transaction details Debit Credit Balance",
+        "Date Transaction details Amount Balance",
     ]
 
     blocks: list[str] = [text]
@@ -403,11 +683,18 @@ def parse_text_block(
             break
 
     for block in blocks:
-        for raw_line in block.split("\n"):
-            line = raw_line.strip()
-            if not line:
-                continue
+        lines = [raw_line.strip() for raw_line in block.split("\n") if raw_line.strip()]
 
+        if use_westpac:
+            for westpac_block in group_westpac_text_blocks(lines):
+                entry, year_hint, prev_date_iso, last_balance = parse_westpac_text_block(
+                    westpac_block, year_hint, prev_date_iso, last_balance
+                )
+                if entry:
+                    entries.append(entry)
+            continue
+
+        for line in lines:
             cells = [part.strip() for part in re.split(r"\s{2,}|\t", line) if part.strip()]
             if len(cells) < 2:
                 # Fall back to single-space split for compact PDF text extractors.
@@ -501,6 +788,7 @@ def extract_entries(path: Path, bank_name: str) -> dict[str, Any]:
     last_balance: Decimal | None = None
     full_text_parts: list[str] = []
     pages = 0
+    use_westpac = bank_name == "westpac"
 
     try:
         with pdfplumber.open(str(decrypted_path)) as pdf:
@@ -509,9 +797,13 @@ def extract_entries(path: Path, bank_name: str) -> dict[str, Any]:
                 page_text = page.extract_text() or ""
                 full_text_parts.append(page_text)
 
+                if not use_westpac:
+                    use_westpac = should_use_westpac_layout(bank_name, page_text)
+
                 for table in page.extract_tables() or []:
-                    for row in table:
-                        cells = normalize_row(row)
+                    table_rows = merge_westpac_table_rows(table) if use_westpac else table
+                    for row in table_rows:
+                        cells = normalize_row(row) if not use_westpac else row
                         entry, year_hint, prev_date_iso, last_balance = parse_row_cells(
                             cells, year_hint, prev_date_iso, last_balance
                         )
@@ -519,6 +811,8 @@ def extract_entries(path: Path, bank_name: str) -> dict[str, Any]:
                             entries.append(entry)
 
             combined_text = "\n".join(full_text_parts)
+            if not use_westpac:
+                use_westpac = should_use_westpac_layout(bank_name, combined_text)
             if year_hint is None:
                 year_hint = extract_year_hint_from_text(combined_text)
 
@@ -527,6 +821,7 @@ def extract_entries(path: Path, bank_name: str) -> dict[str, Any]:
                 year_hint,
                 prev_date_iso,
                 last_balance=None if entries else last_balance,
+                use_westpac=use_westpac,
             )
 
             if not entries:
@@ -571,7 +866,7 @@ def main() -> None:
     parser.add_argument(
         "--bank-name",
         default="auto",
-        help="Bank hint: auto, cba, nab",
+        help="Bank hint: auto, cba, nab, macquarie, westpac",
     )
     args = parser.parse_args()
 

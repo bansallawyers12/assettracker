@@ -10,7 +10,7 @@
             <div class="rounded-xl border border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/30 p-4 text-sm text-amber-900 dark:text-amber-100">
                 <p class="font-semibold">Local dev tool</p>
                 <p class="mt-1 text-amber-800 dark:text-amber-200/90">
-                    Upload a CBA or NAB PDF statement. Python extracts transaction rows and skips opening/closing balance and summary lines where possible.
+                    Upload a CBA, NAB, Macquarie, or Westpac PDF statement. Python extracts transaction rows and skips opening/closing balance and summary lines where possible.
                     Requires <code class="font-mono text-xs">pip install pdfplumber pypdf</code> in your Python environment.
                 </p>
             </div>
@@ -26,9 +26,9 @@
                             name="bank_name"
                             class="block w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-gray-100"
                         >
-                            <option value="auto" @selected(old('bank_name', $bankName) === 'auto')>Auto-detect</option>
-                            <option value="cba" @selected(old('bank_name', $bankName) === 'cba')>Commonwealth Bank (CBA)</option>
-                            <option value="nab" @selected(old('bank_name', $bankName) === 'nab')>NAB</option>
+                            @foreach ($bankHints ?? [] as $hintValue => $hintLabel)
+                                <option value="{{ $hintValue }}" @selected(old('bank_name', $bankName) === $hintValue)>{{ $hintLabel }}</option>
+                            @endforeach
                         </select>
                         @error('bank_name')
                             <p class="mt-1 text-sm text-red-600 dark:text-red-400">{{ $message }}</p>

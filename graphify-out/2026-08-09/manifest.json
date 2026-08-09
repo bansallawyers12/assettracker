@@ -275,8 +275,8 @@
     "semantic_hash": "593614da7542e81a4113bccb9010cc79"
   },
   "app/Http/Controllers/InvoiceController.php": {
-    "mtime": 1786251700.5073879,
-    "ast_hash": "e992b58e82986aada3eb49b18496efb9",
+    "mtime": 1786273001.2373004,
+    "ast_hash": "5bf2281b2fa57f780601879ed6984e92",
     "semantic_hash": ""
   },
   "app/Http/Controllers/PersonShowWorkspaceController.php": {
@@ -2595,8 +2595,8 @@
     "semantic_hash": "ddac0e61ff129958c7f2b6920dd3757d"
   },
   "resources/views/invoices/show.blade.php": {
-    "mtime": 1786251701.2985919,
-    "ast_hash": "42b4abec5e901cc9fc6b64f655be4cd1",
+    "mtime": 1786272991.0759664,
+    "ast_hash": "62111cbd5f0d8ae79a87e4e404aeefa3",
     "semantic_hash": ""
   },
   "resources/views/layouts/app.blade.php": {
@@ -2945,8 +2945,8 @@
     "semantic_hash": "97b8dc733f86a34cb38c93ab9c48d954"
   },
   "tests/Unit/BankAccountFormTest.php": {
-    "mtime": 1786265068.8211117,
-    "ast_hash": "90456ad4dd15b32c198c8e2e98ad2f0b",
+    "mtime": 1786272915.3504808,
+    "ast_hash": "4211a73136d70360a7d7d8d2735107e7",
     "semantic_hash": ""
   },
   "tests/Unit/BankAccountMaskingTest.php": {
@@ -3160,8 +3160,8 @@
     "semantic_hash": ""
   },
   "tests/Feature/BankAccountImportPanelTest.php": {
-    "mtime": 1786265062.0790565,
-    "ast_hash": "8339f58f3eb505f0fcbb9c043b785a62",
+    "mtime": 1786273002.848334,
+    "ast_hash": "1c928f41ef2c39f33a88f1d902bb1177",
     "semantic_hash": ""
   },
   "app/Services/InvoicePaymentService.php": {
@@ -3360,8 +3360,8 @@
     "semantic_hash": ""
   },
   "resources/js/bank-reconciliation.js": {
-    "mtime": 1786265028.432066,
-    "ast_hash": "83cfcb464eda4ec1ef1193e60774df24",
+    "mtime": 1786272942.5549273,
+    "ast_hash": "535a0863a861147ea54978b943edcaf2",
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/partials/reconciliation-panel.blade.php": {
@@ -3370,12 +3370,12 @@
     "semantic_hash": ""
   },
   "tests/Feature/BankStatementReconciliationTest.php": {
-    "mtime": 1786265061.4918356,
-    "ast_hash": "17a8d2a2b59c38d28f94c31a97d1943a",
+    "mtime": 1786273002.901698,
+    "ast_hash": "2e4805d24fc2ebe2473ea1c011c15095",
     "semantic_hash": ""
   },
   "tests/Unit/BankStatementMatchSuggesterTest.php": {
-    "mtime": 1786265061.5813694,
+    "mtime": 1786273003.0680423,
     "ast_hash": "74ef5c6f1d404a65e5bdf855b9013bb5",
     "semantic_hash": ""
   }

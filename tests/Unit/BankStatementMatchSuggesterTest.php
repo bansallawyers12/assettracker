@@ -1,12 +1,14 @@
 <?php
 
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\Transaction;
 use App\Services\BankStatementMatchSuggester;
+use App\Services\BankStatementParseService;
 use Illuminate\Support\Collection;
+use Tests\TestCase;
 
 function makeEntry(array $attrs = []): BankStatementEntry
 {
@@ -166,4 +168,67 @@ it('exposes loan types and interest expense posting map', function () {
         ->and($source)->toContain('Interest Expense')
         ->and($source)->toContain("'loan_fees'")
         ->and($source)->toContain('Long Term Loans');
+});
+
+it('claims each candidate transaction at most once across suggestMany', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
+
+    $entries = collect([
+        makeEntry(['id' => 1, 'amount' => -100, 'date' => '2026-08-01', 'description' => 'Fee A']),
+        makeEntry(['id' => 2, 'amount' => -100, 'date' => '2026-08-01', 'description' => 'Fee B']),
+    ]);
+
+    $candidates = collect([
+        makeTransaction(['id' => 50, 'amount' => 100, 'date' => '2026-08-01', 'transaction_type' => 'management_fees']),
+    ]);
+
+    $suggestions = $suggester->suggestMany($entries, $account, $candidates);
+
+    expect($suggestions[1]['action'])->toBe('match_transaction')
+        ->and($suggestions[1]['transaction_id'])->toBe(50)
+        ->and($suggestions[2]['action'])->not->toBe('match_transaction');
+});
+
+it('applies matches inside a single database transaction', function () {
+    $source = file_get_contents(app_path('Services/BankStatementApplyService.php'));
+
+    expect($source)->toContain('return DB::transaction(function () use ($bankAccount, $businessEntity, $matches)')
+        ->and($source)->toContain('claimedTransactionIds')
+        ->and($source)->toContain('is selected for more than one statement line');
+});
+
+it('fingerprints statement lines with reference and balance for duplicate detection', function () {
+    $service = new BankStatementParseService;
+
+    $base = [
+        'date' => '2026-08-01',
+        'amount' => -50.0,
+        'description' => 'Package fee',
+        'meta' => ['balance_after' => 1000.0, 'reference' => 'REF-1'],
+    ];
+    $same = $service->entryFingerprint($base);
+    $differentBalance = $service->entryFingerprint([
+        ...$base,
+        'meta' => ['balance_after' => 950.0, 'reference' => 'REF-1'],
+    ]);
+    $differentRef = $service->entryFingerprint([
+        ...$base,
+        'meta' => ['balance_after' => 1000.0, 'reference' => 'REF-2'],
+    ]);
+
+    expect($same)->toBe($service->entryFingerprint($base))
+        ->and($same)->not->toBe($differentBalance)
+        ->and($same)->not->toBe($differentRef);
+});
+
+it('documents create-vs-match duplicate transaction handling in services', function () {
+    $parse = file_get_contents(app_path('Services/BankStatementParseService.php'));
+    $suggester = file_get_contents(app_path('Services/BankStatementMatchSuggester.php'));
+    $apply = file_get_contents(app_path('Services/BankStatementApplyService.php'));
+
+    expect($parse)->toContain('skippedDuplicates')
+        ->and($parse)->toContain('batchOccurrence')
+        ->and($suggester)->toContain('claiming each matched transaction at most once')
+        ->and($apply)->toContain('Selected transaction is already matched to a statement line');
 });

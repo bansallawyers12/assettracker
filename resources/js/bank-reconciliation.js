@@ -17,7 +17,6 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     const uploadForm = importPanel.querySelector('[data-bank-import-upload-form]');
     const acceptBtn = importPanel.querySelector('[data-bank-import-accept-selected]');
     const errorBox = importPanel.querySelector('[data-bank-import-errors]');
-    let chartAccounts = [];
 
     function showImportError(message) {
         if (!errorBox) {
@@ -208,7 +207,6 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     }
 
     function populateChartAccountSelects(accounts) {
-        chartAccounts = accounts;
         importPanel.querySelectorAll('[data-bank-import-chart-account]').forEach((select) => {
             const keep = select.value;
             select.innerHTML = '';
@@ -260,7 +258,8 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 return;
             }
 
-            const changeOpen = !entryEl.querySelector('[data-bank-import-change]')?.classList.contains('hidden');
+            const changePanel = entryEl.querySelector('[data-bank-import-change]');
+            const changeOpen = Boolean(changePanel && !changePanel.classList.contains('hidden'));
             const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
             const typeSelect = entryEl.querySelector('[data-bank-import-create-type]');
             const chartSelect = entryEl.querySelector('[data-bank-import-chart-account]');
@@ -268,22 +267,24 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             let transactionId = '';
             let transactionType = '';
             let chartAccountId = '';
-            let action = '';
             let assetId = entryEl.querySelector('[data-bank-import-suggested-asset]')?.value || '';
+
+            const suggestedTransactionId = entryEl.querySelector('[data-bank-import-suggested-transaction]')?.value || '';
+            const suggestedType = entryEl.querySelector('[data-bank-import-suggested-type]')?.value || '';
 
             if (changeOpen) {
                 transactionId = txSelect?.value || '';
                 transactionType = typeSelect?.value || '';
                 chartAccountId = chartSelect?.value || '';
-                if (transactionId) {
-                    action = 'match_transaction';
-                } else if (transactionType || chartAccountId) {
-                    action = 'create_transaction';
+
+                // Opening Change with empty overrides should not discard a valid suggestion.
+                if (!transactionId && !transactionType && !chartAccountId) {
+                    transactionId = suggestedTransactionId;
+                    transactionType = suggestedType;
                 }
             } else {
-                action = entryEl.querySelector('[data-bank-import-suggested-action]')?.value || 'none';
-                transactionId = entryEl.querySelector('[data-bank-import-suggested-transaction]')?.value || '';
-                transactionType = entryEl.querySelector('[data-bank-import-suggested-type]')?.value || '';
+                transactionId = suggestedTransactionId;
+                transactionType = suggestedType;
             }
 
             if (!transactionId && !transactionType && !chartAccountId) {
@@ -395,8 +396,14 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 return;
             }
 
+            const created = payload.entriesCount ?? 0;
+            const skipped = payload.skippedDuplicates ?? 0;
             notifyFormSuccess(
-                payload.message || `Imported ${payload.entriesCount ?? 0} lines.`,
+                payload.message || (
+                    skipped > 0
+                        ? `Imported ${created} line(s); skipped ${skipped} duplicate(s).`
+                        : `Imported ${created} lines.`
+                ),
                 'Statement imported'
             );
             await refreshTransactionsPanel();

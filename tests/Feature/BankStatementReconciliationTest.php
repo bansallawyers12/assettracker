@@ -1,11 +1,12 @@
 <?php
 
-uses(Tests\TestCase::class);
+uses(TestCase::class);
 
 use App\Models\BankAccount;
 use App\Services\BankStatementApplyService;
 use App\Services\BankStatementMatchSuggester;
 use App\Services\BankStatementParseService;
+use Tests\TestCase;
 
 it('registers reconciliation services and meta migration', function () {
     expect(class_exists(BankStatementMatchSuggester::class))->toBeTrue()
@@ -56,4 +57,13 @@ it('parser detects macquarie profile and jul-26 dates', function () {
         ->and($parser)->toContain('original description')
         ->and($parser)->toContain('subcategory')
         ->and($parser)->toContain('balance_after');
+});
+
+it('preselects invoice payment bank account with suggested statement line', function () {
+    $controller = file_get_contents(app_path('Http/Controllers/InvoiceController.php'));
+    $view = file_get_contents(resource_path('views/invoices/show.blade.php'));
+
+    expect($controller)->toContain('suggestedPaymentBankAccountId')
+        ->and($view)->toContain('suggestedPaymentBankAccountId')
+        ->and($view)->toContain('suggestedOpt?.dataset?.bankAccountId');
 });

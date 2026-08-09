@@ -58,15 +58,12 @@ class BankAccountTransactionController extends Controller
 
         $matchCandidates = $this->matchCandidates($bankAccount, $contextEntityId ?? $defaultEntityId);
         $defaultAssetId = $this->defaultLoanAssetId($bankAccount);
-        $suggestions = [];
-        foreach ($unmatchedEntries as $entry) {
-            $suggestions[(int) $entry->id] = $this->suggester->suggest(
-                $entry,
-                $bankAccount,
-                $matchCandidates,
-                $defaultAssetId
-            );
-        }
+        $suggestions = $this->suggester->suggestMany(
+            $unmatchedEntries,
+            $bankAccount,
+            $matchCandidates,
+            $defaultAssetId
+        );
 
         return response()->json([
             'status' => true,

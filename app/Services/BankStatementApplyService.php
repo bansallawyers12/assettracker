@@ -18,47 +18,49 @@ class BankStatementApplyService
      */
     public function apply(BankAccount $bankAccount, BusinessEntity $businessEntity, array $matches): array
     {
-        $matchedExisting = 0;
-        $created = 0;
-        $skipped = 0;
+        return DB::transaction(function () use ($bankAccount, $businessEntity, $matches) {
+            $matchedExisting = 0;
+            $created = 0;
+            $skipped = 0;
+            $claimedTransactionIds = [];
 
-        foreach ($matches as $match) {
-            $transactionId = ! empty($match['transaction_id']) ? (int) $match['transaction_id'] : null;
-            $chartAccountId = ! empty($match['chart_account_id']) ? (int) $match['chart_account_id'] : null;
-            $transactionType = ! empty($match['transaction_type']) ? (string) $match['transaction_type'] : null;
-            $assetId = ! empty($match['asset_id']) ? (int) $match['asset_id'] : null;
-            $action = ! empty($match['action']) ? (string) $match['action'] : null;
+            foreach ($matches as $match) {
+                $transactionId = ! empty($match['transaction_id']) ? (int) $match['transaction_id'] : null;
+                $chartAccountId = ! empty($match['chart_account_id']) ? (int) $match['chart_account_id'] : null;
+                $transactionType = ! empty($match['transaction_type']) ? (string) $match['transaction_type'] : null;
+                $assetId = ! empty($match['asset_id']) ? (int) $match['asset_id'] : null;
+                $action = ! empty($match['action']) ? (string) $match['action'] : null;
 
-            if ($transactionId === null && $chartAccountId === null && $transactionType === null) {
-                $skipped++;
+                if ($transactionId === null && $chartAccountId === null && $transactionType === null) {
+                    $skipped++;
 
-                continue;
-            }
+                    continue;
+                }
 
-            if ($transactionId !== null && ($chartAccountId !== null || $transactionType !== null)) {
-                throw ValidationException::withMessages([
-                    'matches' => 'Choose either an existing transaction or a create action for each line, not both.',
-                ]);
-            }
+                if ($transactionId !== null && ($chartAccountId !== null || $transactionType !== null)) {
+                    throw ValidationException::withMessages([
+                        'matches' => 'Choose either an existing transaction or a create action for each line, not both.',
+                    ]);
+                }
 
-            if ($transactionType !== null && ! array_key_exists($transactionType, Transaction::allTypes())) {
-                throw ValidationException::withMessages([
-                    'matches' => "Unknown transaction type [{$transactionType}].",
-                ]);
-            }
+                if ($action === 'match_transaction' && $transactionId === null) {
+                    throw ValidationException::withMessages([
+                        'matches' => 'Match action requires a transaction id.',
+                    ]);
+                }
 
-            DB::transaction(function () use (
-                $match,
-                $bankAccount,
-                $businessEntity,
-                $transactionId,
-                $chartAccountId,
-                $transactionType,
-                $assetId,
-                $action,
-                &$matchedExisting,
-                &$created
-            ) {
+                if ($transactionType !== null && ! array_key_exists($transactionType, Transaction::allTypes())) {
+                    throw ValidationException::withMessages([
+                        'matches' => "Unknown transaction type [{$transactionType}].",
+                    ]);
+                }
+
+                if ($transactionId !== null && isset($claimedTransactionIds[$transactionId])) {
+                    throw ValidationException::withMessages([
+                        'matches' => "Transaction #{$transactionId} is selected for more than one statement line.",
+                    ]);
+                }
+
                 $entryId = (int) $match['bank_entry_id'];
                 $bankEntry = BankStatementEntry::query()
                     ->where('id', $entryId)
@@ -77,16 +79,17 @@ class BankStatementApplyService
                     ]);
                 }
 
-                if ($transactionId !== null || $action === 'match_transaction') {
+                if ($transactionId !== null) {
                     $this->matchExisting(
                         $bankEntry,
                         $bankAccount,
                         $businessEntity,
-                        (int) $transactionId
+                        $transactionId
                     );
+                    $claimedTransactionIds[$transactionId] = true;
                     $matchedExisting++;
 
-                    return;
+                    continue;
                 }
 
                 $resolvedType = $transactionType;
@@ -121,20 +124,20 @@ class BankStatementApplyService
 
                 $bankEntry->update(['transaction_id' => $transaction->id]);
                 $created++;
-            });
-        }
+            }
 
-        if ($matchedExisting === 0 && $created === 0) {
-            throw ValidationException::withMessages([
-                'matches' => 'No matches were applied. Choose an existing transaction or create type for at least one line.',
-            ]);
-        }
+            if ($matchedExisting === 0 && $created === 0) {
+                throw ValidationException::withMessages([
+                    'matches' => 'No matches were applied. Choose an existing transaction or create type for at least one line.',
+                ]);
+            }
 
-        return [
-            'matchedExisting' => $matchedExisting,
-            'transactionsCreated' => $created,
-            'skipped' => $skipped,
-        ];
+            return [
+                'matchedExisting' => $matchedExisting,
+                'transactionsCreated' => $created,
+                'skipped' => $skipped,
+            ];
+        });
     }
 
     private function matchExisting(
@@ -143,7 +146,11 @@ class BankStatementApplyService
         BusinessEntity $businessEntity,
         int $transactionId
     ): void {
-        $transaction = Transaction::query()->find($transactionId);
+        $transaction = Transaction::query()
+            ->whereKey($transactionId)
+            ->lockForUpdate()
+            ->first();
+
         if (! $transaction || (int) $transaction->business_entity_id !== (int) $businessEntity->id) {
             throw ValidationException::withMessages([
                 'matches' => 'Selected transaction does not belong to the booking entity.',

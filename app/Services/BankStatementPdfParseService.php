@@ -7,6 +7,19 @@ use Symfony\Component\Process\Process;
 class BankStatementPdfParseService
 {
     /**
+     * Supported PDF parser bank hints (slug => label).
+     *
+     * @var array<string, string>
+     */
+    public const BANK_HINTS = [
+        'auto' => 'Auto-detect',
+        'cba' => 'Commonwealth Bank (CBA)',
+        'nab' => 'NAB',
+        'macquarie' => 'Macquarie',
+        'westpac' => 'Westpac',
+    ];
+
+    /**
      * @return array{
      *     success: bool,
      *     error?: string,

@@ -156,6 +156,7 @@ class InvoiceController extends Controller
         $paymentBankAccounts = collect();
         $unmatchedStatementEntries = collect();
         $suggestedStatementEntryId = null;
+        $suggestedPaymentBankAccountId = null;
         if ($invoice->status === 'approved' && ! $invoice->paid_at) {
             $paymentBankAccounts = $businessEntity->bankAccountLinksForDisplay()
                 ->map(fn ($link) => $link->bankAccount)
@@ -185,13 +186,16 @@ class InvoiceController extends Controller
                     })
                     ->values();
 
-                $suggestedStatementEntryId = $unmatchedStatementEntries
+                $suggestedEntry = $unmatchedStatementEntries
                     ->first(function (BankStatementEntry $entry) use ($invoiceTotal) {
                         $amount = (float) $entry->amount;
 
                         return $amount > 0
                             && abs($amount - $invoiceTotal) <= BankStatementMatchSuggester::AMOUNT_TOLERANCE;
-                    })?->id;
+                    });
+
+                $suggestedStatementEntryId = $suggestedEntry?->id;
+                $suggestedPaymentBankAccountId = $suggestedEntry?->bank_account_id;
             }
         }
 
@@ -200,7 +204,8 @@ class InvoiceController extends Controller
             'invoice',
             'paymentBankAccounts',
             'unmatchedStatementEntries',
-            'suggestedStatementEntryId'
+            'suggestedStatementEntryId',
+            'suggestedPaymentBankAccountId'
         ));
     }
 

@@ -58,13 +58,21 @@ class BankAccountImportController extends Controller
                 ], 400);
             }
 
-            $entriesCount = $this->parseService->storeEntries($result['entries'] ?? [], $bankAccount->id);
+            $storeResult = $this->parseService->storeEntries($result['entries'] ?? [], $bankAccount->id);
             Storage::disk('local')->delete($filePath);
+
+            $created = $storeResult['created'];
+            $skipped = $storeResult['skippedDuplicates'];
+            $message = $created === 0 && $skipped > 0
+                ? "No new lines imported ({$skipped} duplicate".($skipped === 1 ? '' : 's').' skipped).'
+                : 'File processed successfully'
+                    .($skipped > 0 ? " ({$skipped} duplicate".($skipped === 1 ? '' : 's').' skipped)' : '');
 
             return response()->json([
                 'success' => true,
-                'message' => 'File processed successfully',
-                'entriesCount' => $entriesCount,
+                'message' => $message,
+                'entriesCount' => $created,
+                'skippedDuplicates' => $skipped,
                 'bankAccountId' => $bankAccount->id,
                 'profile' => $result['profile'] ?? null,
             ]);
@@ -92,15 +100,21 @@ class BankAccountImportController extends Controller
 
         $candidates = $this->matchCandidates($bankAccount, $businessEntityId);
         $defaultAssetId = $this->defaultLoanAssetId($bankAccount);
+        $suggestions = $this->suggester->suggestMany($entries, $bankAccount, $candidates, $defaultAssetId);
 
-        $entryPayloads = $entries->map(function (BankStatementEntry $entry) use ($bankAccount, $candidates, $defaultAssetId) {
+        $entryPayloads = $entries->map(function (BankStatementEntry $entry) use ($suggestions) {
             $payload = $this->entryPayload($entry);
-            $payload['suggestion'] = $this->suggester->suggest(
-                $entry,
-                $bankAccount,
-                $candidates,
-                $defaultAssetId
-            );
+            $payload['suggestion'] = $suggestions[(int) $entry->id] ?? [
+                'action' => 'none',
+                'confidence' => 'low',
+                'reason' => null,
+                'transaction_id' => null,
+                'transaction_type' => null,
+                'chart_account_id' => null,
+                'asset_id' => null,
+                'invoice_id' => null,
+                'alternates' => [],
+            ];
 
             return $payload;
         });

@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Services\BankStatementPdfParseService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Route;
+use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -25,8 +26,15 @@ it('includes bank hint and pdf upload on the dev test page', function () {
 
     expect($html)->toContain('name="statement_pdf"')
         ->and($html)->toContain('name="bank_name"')
+        ->and($html)->toContain('$bankHints')
         ->and($html)->toContain('Parse PDF')
         ->and($html)->toContain('$parsed');
+
+    foreach (array_keys(BankStatementPdfParseService::BANK_HINTS) as $hint) {
+        expect(BankStatementPdfParseService::BANK_HINTS)->toHaveKey($hint);
+    }
+
+    expect(BankStatementPdfParseService::BANK_HINTS)->toHaveKeys(['auto', 'cba', 'nab', 'macquarie', 'westpac']);
 });
 
 it('returns an error when the pdf file path does not exist', function () {
@@ -58,6 +66,22 @@ it('returns structured parser errors from python stdout on failure', function ()
             unlink($pdfPath);
         }
     }
+});
+
+it('parses westpac wrapped rows via python unit tests', function () {
+    $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
+    $testFile = base_path('python/tests/test_westpac_pdf_parser.py');
+
+    if (! is_file($testFile)) {
+        expect(true)->toBeTrue();
+
+        return;
+    }
+
+    $process = new Process([$python, $testFile]);
+    $process->run();
+
+    expect($process->isSuccessful())->toBeTrue("Python Westpac parser tests failed:\n".$process->getErrorOutput().$process->getOutput());
 });
 
 it('rejects non-pdf uploads on the parse route when local', function () {

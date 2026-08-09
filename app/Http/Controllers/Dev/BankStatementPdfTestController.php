@@ -18,6 +18,7 @@ class BankStatementPdfTestController extends Controller
             'metadata' => null,
             'error' => null,
             'bankName' => old('bank_name', 'auto'),
+            'bankHints' => BankStatementPdfParseService::BANK_HINTS,
             'parsed' => false,
         ]);
     }
@@ -27,7 +28,7 @@ class BankStatementPdfTestController extends Controller
         $validated = $request->validate([
             // extensions is more reliable than mimes alone on Windows MIME sniffing
             'statement_pdf' => ['required', 'file', 'mimes:pdf', 'extensions:pdf', 'max:20480'],
-            'bank_name' => ['required', 'string', 'in:auto,cba,nab'],
+            'bank_name' => ['required', 'string', 'in:'.implode(',', array_keys(BankStatementPdfParseService::BANK_HINTS))],
         ]);
 
         $file = $request->file('statement_pdf');
@@ -39,6 +40,7 @@ class BankStatementPdfTestController extends Controller
                 'metadata' => null,
                 'error' => 'No PDF file was uploaded.',
                 'bankName' => $bankName,
+                'bankHints' => BankStatementPdfParseService::BANK_HINTS,
                 'parsed' => true,
             ]);
         }
@@ -55,6 +57,7 @@ class BankStatementPdfTestController extends Controller
                 'metadata' => null,
                 'error' => 'Failed to store the uploaded PDF.',
                 'bankName' => $bankName,
+                'bankHints' => BankStatementPdfParseService::BANK_HINTS,
                 'parsed' => true,
             ]);
         }
@@ -68,6 +71,7 @@ class BankStatementPdfTestController extends Controller
                 'metadata' => is_array($result['metadata'] ?? null) ? $result['metadata'] : null,
                 'error' => ($result['success'] ?? false) ? null : (string) ($result['error'] ?? 'Parsing failed'),
                 'bankName' => $bankName,
+                'bankHints' => BankStatementPdfParseService::BANK_HINTS,
                 'parsed' => true,
             ]);
         } finally {
