@@ -114,7 +114,11 @@
                                 @foreach ($entries as $entry)
                                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-900/40">
                                         <td class="px-4 py-3 whitespace-nowrap text-gray-900 dark:text-gray-100">
-                                            {{ $entry['date'] ?? '—' }}
+                                            @if (! empty($entry['date']))
+                                                {{ \Illuminate\Support\Carbon::parse($entry['date'])->format('d-m-Y') }}
+                                            @else
+                                                —
+                                            @endif
                                         </td>
                                         <td class="px-4 py-3 text-gray-700 dark:text-gray-300 max-w-md">
                                             {{ $entry['description'] ?? '—' }}

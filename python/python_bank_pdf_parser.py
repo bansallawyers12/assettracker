@@ -22,6 +22,16 @@ DATE_FULL_TEXT_RE = re.compile(
 DATE_DAY_MONTH_RE = re.compile(r"^(\d{1,2})\s+([A-Za-z]{3})$")
 DATE_SLASH_RE = re.compile(r"^(\d{1,2})/(\d{1,2})/(\d{2,4})$")
 DATE_ISO_RE = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
+# CBA PDFs often collapse spaces: "15Mar", "04Mar 2026OPENINGBALANCE", "03Jun2026CLOSING"
+DATE_DDMMM_RE = re.compile(r"^(\d{1,2})([A-Za-z]{3})(\d{4})?$")
+DATE_DDMMM_SPACE_YEAR_RE = re.compile(
+    r"^(\d{1,2})([A-Za-z]{3})\s+(\d{4})(.*)$"
+)
+# Macquarie section headers: "Jan 2026", "Feb 2026"
+MONTH_YEAR_HEADER_RE = re.compile(
+    r"^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})$",
+    re.I,
+)
 
 # Canonical statement row columns. Every parsed entry fills these fields.
 FIXED_COLUMNS = (
@@ -32,11 +42,20 @@ FIXED_COLUMNS = (
     "balance",
 )
 SKIP_DESCRIPTION_PATTERNS = [
-    re.compile(r"OPENING\s+BALANCE", re.I),
-    re.compile(r"CLOSING\s+BALANCE", re.I),
+    re.compile(r"OPENING\s*BALANCE", re.I),
+    re.compile(r"CLOSING\s*BALANCE", re.I),
     re.compile(r"BALANCE\s+CARRIED\s+FORWARD", re.I),
     re.compile(r"^TOTAL\s+(DEBITS?|CREDITS?)", re.I),
     re.compile(r"^Page\s+\d+", re.I),
+    re.compile(r"^BROUGHT\s+FORWARD\b", re.I),
+    re.compile(r"PLEASE\s+NOTE\s+YOUR\s+CURRENT\s+DEBIT\s+INTEREST", re.I),
+    re.compile(r"^OPENING\s+INTEREST\s+RATE\b", re.I),
+    re.compile(r"^CLOSING\s+INTEREST\s+RATE\b", re.I),
+    re.compile(r"^TRANSACTION\s+SUMMARY\b", re.I),
+    re.compile(r"^TRANSACTIONTYPE\b", re.I),
+    re.compile(r"\bUNIT\s+ELECTRONIC\s+(?:CREDITS?|DEBITS?)\b", re.I),
+    re.compile(r"\bFEE\s*CHARGED\b", re.I),
+    re.compile(r"\bACCOUNTE?FEE\b", re.I),
 ]
 
 HEADER_HINTS = {"date", "transaction", "description", "debit", "credit", "balance", "details"}
@@ -49,9 +68,9 @@ BANK_MARKERS = {
 }
 
 # Macquarie PDFs often append CR/DR to money cells, e.g. 45,894.56CR
-MONEY_RE = re.compile(r"^-?\$?\d[\d,]*\.\d{2}(?:CR|DR)?$", re.I)
+MONEY_RE = re.compile(r"^-?\$?\d[\d,]*\.\d{2}(?:\s*(?:CR|DR))?$", re.I)
 TRAILING_MONEY_CHUNK_RE = re.compile(
-    r"(?:\s+\$?-?\d[\d,]*\.\d{2}(?:CR|DR)?)+$",
+    r"(?:\s+\$?-?\d[\d,]*\.\d{2}(?:\s*(?:CR|DR))?)+$",
     re.I,
 )
 DEBIT_HINT_RE = re.compile(
@@ -60,7 +79,7 @@ DEBIT_HINT_RE = re.compile(
     re.I,
 )
 CREDIT_HINT_RE = re.compile(
-    r"\b(deposit|salary|transfer\s+from|refund|credit\s+to|direct\s+credit"
+    r"\b(deposit|salary|transfer\s+from|refund|credit\s+to|direct\s+credit|return"
     r"|interest\s+(?:earned|paid|credited))\b",
     re.I,
 )
@@ -103,8 +122,8 @@ def parse_amount(value: Any) -> Decimal | None:
     negative = text.startswith("(") and text.endswith(")")
     upper = text.upper()
     # DR on a money token means debit/outflow; CR on balances is Macquarie credit-balance notation.
-    force_debit = upper.endswith("DR")
-    cleaned = re.sub(r"(CR|DR)$", "", upper, flags=re.I)
+    force_debit = bool(re.search(r"\s*DR$", upper))
+    cleaned = re.sub(r"\s*(CR|DR)$", "", upper, flags=re.I)
     cleaned = cleaned.replace("$", "").replace(",", "").replace(" ", "")
     cleaned = cleaned.replace("(", "").replace(")", "")
 
@@ -129,10 +148,17 @@ def normalize_year(year_part: str | int) -> int:
     return year
 
 
-def parse_date_token(token: str, year_hint: int | None) -> tuple[str | None, int | None]:
+def is_plausible_statement_year(year: int) -> bool:
+    current = datetime.now().year
+    return 1990 <= year <= current + 1
+
+
+def parse_date_token(
+    token: str, year_hint: int | None
+) -> tuple[str | None, int | None, bool]:
     token = token.strip()
     if not token:
-        return None, year_hint
+        return None, year_hint, False
 
     match = DATE_FULL_TEXT_RE.match(token)
     if match:
@@ -140,9 +166,9 @@ def parse_date_token(token: str, year_hint: int | None) -> tuple[str | None, int
         year = normalize_year(year_part)
         try:
             parsed = datetime.strptime(f"{int(day)} {month.title()} {year}", "%d %b %Y")
-            return parsed.strftime("%Y-%m-%d"), year
+            return parsed.strftime("%Y-%m-%d"), year, True
         except ValueError:
-            return None, year_hint
+            return None, year_hint, False
 
     match = DATE_DAY_MONTH_RE.match(token)
     if match:
@@ -150,9 +176,29 @@ def parse_date_token(token: str, year_hint: int | None) -> tuple[str | None, int
         year = year_hint or datetime.now().year
         try:
             parsed = datetime.strptime(f"{int(day)} {month.title()} {year}", "%d %b %Y")
-            return parsed.strftime("%Y-%m-%d"), year
+            return parsed.strftime("%Y-%m-%d"), year, False
         except ValueError:
-            return None, year_hint
+            return None, year_hint, False
+
+    match = DATE_DDMMM_SPACE_YEAR_RE.match(token)
+    if match:
+        day, month, year_part, _rest = match.groups()
+        year = int(year_part)
+        try:
+            parsed = datetime.strptime(f"{int(day)} {month.title()} {year}", "%d %b %Y")
+            return parsed.strftime("%Y-%m-%d"), year, True
+        except ValueError:
+            return None, year_hint, False
+
+    match = DATE_DDMMM_RE.match(token)
+    if match:
+        day, month, year_part = match.groups()
+        year = int(year_part) if year_part else (year_hint or datetime.now().year)
+        try:
+            parsed = datetime.strptime(f"{int(day)} {month.title()} {year}", "%d %b %Y")
+            return parsed.strftime("%Y-%m-%d"), year, bool(year_part)
+        except ValueError:
+            return None, year_hint, False
 
     match = DATE_SLASH_RE.match(token)
     if match:
@@ -160,28 +206,37 @@ def parse_date_token(token: str, year_hint: int | None) -> tuple[str | None, int
         year = normalize_year(year_part)
         try:
             parsed = datetime.strptime(f"{int(day)}/{int(month)}/{year}", "%d/%m/%Y")
-            return parsed.strftime("%Y-%m-%d"), year
+            return parsed.strftime("%Y-%m-%d"), year, True
         except ValueError:
-            return None, year_hint
+            return None, year_hint, False
 
     match = DATE_ISO_RE.match(token)
     if match:
         year, month, day = match.groups()
         try:
             parsed = datetime(int(year), int(month), int(day))
-            return parsed.strftime("%Y-%m-%d"), int(year)
+            return parsed.strftime("%Y-%m-%d"), int(year), True
         except ValueError:
-            return None, year_hint
+            return None, year_hint, False
 
-    return None, year_hint
+    return None, year_hint, False
 
 
-def adjust_year(date_iso: str, prev_iso: str | None, year_hint: int | None) -> tuple[str, int]:
+def adjust_year(
+    date_iso: str,
+    prev_iso: str | None,
+    year_hint: int | None,
+    *,
+    explicit_year: bool = False,
+) -> tuple[str, int]:
     if not date_iso:
         return date_iso, year_hint or datetime.now().year
 
     current = datetime.strptime(date_iso, "%Y-%m-%d")
-    year = year_hint or current.year
+    if explicit_year:
+        return date_iso, current.year
+
+    year = year_hint if year_hint and is_plausible_statement_year(year_hint) else current.year
     candidate = current.replace(year=year)
 
     # Statement dates can wrap Dec -> Jan within one PDF.
@@ -199,16 +254,24 @@ def normalize_row(cells: list[Any]) -> list[str]:
 
 
 def is_header_row(cells: list[str]) -> bool:
+    if row_has_leading_date(cells):
+        return False
     joined = " ".join(cells).lower()
-    hits = sum(1 for hint in HEADER_HINTS if hint in joined)
+    hits = sum(
+        1 for hint in HEADER_HINTS if re.search(rf"\b{re.escape(hint)}\b", joined)
+    )
     return hits >= 2
 
 
 def extract_year_hint_from_text(text: str) -> int | None:
-    """Pull a year from opening-balance / statement-period style lines."""
+    """Pull a year from statement-period headers (avoid FY / amount false positives)."""
     patterns = [
+        re.compile(r"From\s+\d{1,2}\s+\w+\s+(\d{4})\s+to\b", re.I),
+        re.compile(r"Statement\s+Period\s+\d{1,2}\s+\w+\s+(\d{4})\b", re.I | re.S),
+        re.compile(r"Statement\s+starts\s+\d{1,2}\s+\w+\s+(\d{4})\b", re.I),
+        re.compile(r"Statement\s*\n?\s*Period\s+\d{1,2}\w{3}(\d{4})\b", re.I),
+        re.compile(r"\bPeriod\s+\d{1,2}\w{3}(\d{4})\b", re.I),
         re.compile(r"OPENING\s+BALANCE.*?(\d{4})", re.I | re.S),
-        re.compile(r"Statement\s+period.*?(\d{4})", re.I | re.S),
         re.compile(r"\b\d{1,2}\s+[A-Za-z]{3}\s+(\d{4})\b"),
     ]
     for pattern in patterns:
@@ -216,9 +279,11 @@ def extract_year_hint_from_text(text: str) -> int | None:
         if not match:
             continue
         try:
-            return int(match.group(1))
+            year = int(match.group(1))
         except (TypeError, ValueError):
             continue
+        if is_plausible_statement_year(year):
+            return year
     return None
 
 
@@ -267,6 +332,8 @@ def build_entry(
         amount = credit_val - debit_val
 
     description = description.strip()
+    if amount == 0 and debit_val == 0 and credit_val == 0 and balance is None:
+        return None
     if amount == 0 and not description:
         return None
 
@@ -299,6 +366,10 @@ def split_leading_date(cells: list[str]) -> tuple[str | None, list[str]]:
     if day_month and len(first) == len(day_month.group(0)):
         return first, cells[1:]
 
+    ddmmm = DATE_DDMMM_RE.match(first)
+    if ddmmm and len(first) == len(ddmmm.group(0)):
+        return first, cells[1:]
+
     slash = DATE_SLASH_RE.match(first)
     if slash and len(first) == len(slash.group(0)):
         return first, cells[1:]
@@ -311,6 +382,15 @@ def split_leading_date(cells: list[str]) -> tuple[str | None, list[str]]:
     if embedded:
         rest = [embedded.group(2)] + cells[1:]
         return embedded.group(1), rest
+
+    # CBA: "15Mar TransferToAjayBansal" or "04Mar 2026OPENINGBALANCE"
+    embedded_ddmmm = re.match(
+        r"^(\d{1,2}[A-Za-z]{3}(?:\s+\d{4})?)\s+(.+)$",
+        first,
+    )
+    if embedded_ddmmm:
+        rest = [embedded_ddmmm.group(2)] + cells[1:]
+        return embedded_ddmmm.group(1), rest
 
     # Westpac often keeps "31/03/26 Loan Service Fee..." in one cell.
     embedded_slash = re.match(
@@ -326,6 +406,7 @@ def split_leading_date(cells: list[str]) -> tuple[str | None, list[str]]:
 
 def look_like_money(value: str) -> bool:
     cleaned = value.strip().replace("(", "").replace(")", "")
+    cleaned = re.sub(r"\s+(CR|DR)$", r"\1", cleaned, flags=re.I)
     return bool(MONEY_RE.match(cleaned))
 
 
@@ -363,6 +444,8 @@ def money_values_from_text(text: str) -> list[Decimal]:
 
 
 def infer_sign_from_description(description: str) -> str | None:
+    if description.strip().lower().startswith("return"):
+        return "credit"
     if DEBIT_HINT_RE.search(description):
         return "debit"
     if CREDIT_HINT_RE.search(description):
@@ -387,8 +470,18 @@ def line_starts_with_date(line: str) -> bool:
         return True
     if DATE_FULL_TEXT_RE.match(first):
         return True
+    if DATE_DDMMM_RE.match(first):
+        return True
 
-    return bool(DATE_SLASH_RE.match(line) or DATE_DAY_MONTH_RE.match(" ".join(line.split()[:2])))
+    if DATE_SLASH_RE.match(line):
+        return True
+    if DATE_DAY_MONTH_RE.match(" ".join(line.split()[:2])):
+        return True
+    if DATE_DDMMM_RE.match(line.split()[0]):
+        return True
+
+    # CBA: "04Mar 2026OPENINGBALANCE" — date token is first word
+    return bool(re.match(r"^\d{1,2}[A-Za-z]{3}", line))
 
 
 def is_westpac_continuation_text(line: str) -> bool:
@@ -530,6 +623,21 @@ def cells_from_text_line(line: str) -> list[str]:
             return [date_token, *remainder]
         return cells
 
+    if line_starts_with_date(line):
+        date_token = extract_leading_date_from_line(line)
+        if date_token:
+            rest = line[len(date_token) :].strip()
+            if not rest:
+                return [date_token]
+            money_idxs = [index for index, part in enumerate(rest.split()) if look_like_money(part)]
+            if money_idxs:
+                parts = rest.split()
+                first_money = money_idxs[0]
+                description = " ".join(parts[:first_money]).strip()
+                money_parts = parts[first_money:]
+                return [date_token, description, *money_parts]
+            return [date_token, rest]
+
     parts = line.split()
     if len(parts) < 2:
         return [line] if line else []
@@ -537,7 +645,9 @@ def cells_from_text_line(line: str) -> list[str]:
     money_idxs = [index for index, part in enumerate(parts) if look_like_money(part)]
     if not money_idxs:
         if line_starts_with_date(line):
-            return [parts[0], " ".join(parts[1:])]
+            date_token = extract_leading_date_from_line(line) or parts[0]
+            remainder = line[len(date_token) :].strip() if date_token else " ".join(parts[1:])
+            return [date_token, remainder] if remainder else [date_token]
         return [line]
 
     first_money = money_idxs[0]
@@ -548,9 +658,184 @@ def cells_from_text_line(line: str) -> list[str]:
         description = " ".join(parts[:first_money]).strip()
         return [description, *money_parts] if description else money_parts
 
-    date_token = parts[0]
+    date_token = extract_leading_date_from_line(line) or parts[0]
     description = " ".join(parts[1:first_money]).strip()
+    if date_token in description:
+        description = description.replace(date_token, "", 1).strip()
     return [date_token, description, *money_parts]
+
+
+def extract_leading_date_from_line(line: str) -> str | None:
+    line = line.strip()
+    if not line:
+        return None
+
+    glued = re.match(r"^(\d{1,2})([A-Za-z]{3})(\d{4})", line)
+    if glued:
+        return f"{glued.group(1)}{glued.group(2)}{glued.group(3)}"
+
+    parts = line.split()
+    if not parts:
+        return None
+
+    first = parts[0]
+    if DATE_SLASH_RE.match(first):
+        return first
+    if DATE_FULL_TEXT_RE.match(" ".join(parts[:3])):
+        return " ".join(parts[:3])
+    if DATE_DAY_MONTH_RE.match(" ".join(parts[:2])):
+        return " ".join(parts[:2])
+
+    match = DATE_DDMMM_SPACE_YEAR_RE.match(line)
+    if match:
+        return f"{match.group(1)}{match.group(2)} {match.group(3)}"
+
+    if DATE_DDMMM_RE.match(first):
+        return first
+
+    return None
+
+
+def is_month_year_header(line: str) -> tuple[int | None, int | None]:
+    match = MONTH_YEAR_HEADER_RE.match(line.strip())
+    if not match:
+        return None, None
+    month_name, year_part = match.groups()
+    try:
+        month_num = datetime.strptime(month_name.title(), "%b").month
+        return int(year_part), month_num
+    except ValueError:
+        return None, None
+
+
+def is_continuation_text_line(line: str) -> bool:
+    """True when a non-dated line continues the previous transaction row."""
+    line = line.strip()
+    if not line or line_starts_with_date(line):
+        return False
+    if is_header_row([line]) or should_skip_description(line):
+        return False
+    if is_month_year_header(line)[0] is not None:
+        return False
+    if re.search(r"^(Statement|AccountNumber|Transaction Summary|TransactionType)\b", line, re.I):
+        return False
+
+    if money_values_from_text(line):
+        return True
+
+    if is_westpac_continuation_text(line):
+        return True
+
+    # CBA/NAB wrapped narration before amounts on the next physical line.
+    if len(line) <= 80 and not re.search(r"\bPage\s+\d+\b", line, flags=re.I):
+        return True
+
+    return False
+
+
+def merge_continuation_row(prev: list[str], cont: list[str]) -> list[str]:
+    """Merge a wrapped description/amount continuation into the previous row."""
+    prev = normalize_row(prev)
+    cont = normalize_row(cont)
+
+    while cont and not cont[0]:
+        cont = cont[1:]
+
+    if len(cont) == 1 and not row_has_leading_date(cont):
+        expanded = cells_from_text_line(cont[0])
+        if expanded and not row_has_leading_date(expanded):
+            cont = expanded
+
+    desc_parts = [cell for cell in cont if cell and not look_like_money(cell)]
+    if desc_parts:
+        extra = " ".join(desc_parts).strip()
+        if not prev:
+            prev = ["", extra]
+        else:
+            while len(prev) < 2:
+                prev.append("")
+            prev[1] = f"{prev[1]} {extra}".strip() if prev[1] else extra
+
+    money_parts = [cell for cell in cont if look_like_money(cell)]
+    if money_parts:
+        if len(prev) < 5:
+            while len(prev) < 5:
+                prev.append("")
+        if len(money_parts) >= 3:
+            prev[2], prev[3], prev[4] = money_parts[0], money_parts[1], money_parts[2]
+        elif len(money_parts) == 2:
+            amount, balance = money_parts[0], money_parts[1]
+            if not prev[2] and not prev[3]:
+                if infer_sign_from_description(prev[1]) == "credit":
+                    prev[3] = amount
+                else:
+                    prev[2] = amount
+            if not prev[4]:
+                prev[4] = balance
+        elif len(money_parts) == 1 and not prev[4]:
+            prev[4] = money_parts[0]
+
+    return prev
+
+
+def group_transaction_text_blocks(lines: list[str]) -> list[str]:
+    blocks: list[str] = []
+    current: list[str] = []
+
+    for raw_line in lines:
+        line = raw_line.strip()
+        if not line:
+            continue
+        if is_month_year_header(line)[0] is not None:
+            if current:
+                blocks.append("\n".join(current))
+            current = [line]
+            continue
+        if line_starts_with_date(line):
+            if current:
+                blocks.append("\n".join(current))
+            current = [line]
+        elif current and is_continuation_text_line(line):
+            current.append(line)
+
+    if current:
+        blocks.append("\n".join(current))
+
+    return blocks
+
+
+def parse_generic_text_block(
+    block: str,
+    year_hint: int | None,
+    prev_date_iso: str | None,
+    last_balance: Decimal | None = None,
+) -> tuple[dict[str, Any] | None, int | None, str | None, Decimal | None]:
+    lines = [line.strip() for line in block.split("\n") if line.strip()]
+    if not lines:
+        return None, year_hint, prev_date_iso, last_balance
+
+    start_idx = 0
+    for index, line in enumerate(lines):
+        header_year, _ = is_month_year_header(line)
+        if header_year is not None:
+            year_hint = header_year
+            continue
+        if line_starts_with_date(line):
+            start_idx = index
+            break
+    else:
+        return None, year_hint, prev_date_iso, last_balance
+
+    row_cells = cells_from_text_line(lines[start_idx])
+    row = list(row_cells)
+    for line in lines[start_idx + 1 :]:
+        header_year, _ = is_month_year_header(line)
+        if header_year is not None:
+            year_hint = header_year
+            continue
+        row = merge_continuation_row(row, cells_from_text_line(line))
+
+    return parse_row_cells(row, year_hint, prev_date_iso, last_balance)
 
 
 def group_westpac_text_blocks(lines: list[str]) -> list[str]:
@@ -642,11 +927,13 @@ def parse_row_cells(
     if not date_token:
         return None, year_hint, prev_date_iso, last_balance
 
-    date_iso, year_hint = parse_date_token(date_token, year_hint)
+    date_iso, year_hint, explicit_year = parse_date_token(date_token, year_hint)
     if not date_iso:
         return None, year_hint, prev_date_iso, last_balance
 
-    date_iso, year_hint = adjust_year(date_iso, prev_date_iso, year_hint)
+    date_iso, year_hint = adjust_year(
+        date_iso, prev_date_iso, year_hint, explicit_year=explicit_year
+    )
 
     joined_desc = " ".join(remainder).strip()
     money_vals = money_values_from_cells(remainder)
@@ -657,7 +944,14 @@ def parse_row_cells(
     # Capture year/balance from opening-balance rows, but do not emit them.
     if should_skip_description(joined_desc):
         next_balance = money_vals[-1] if money_vals else last_balance
-        next_date = date_iso if "OPENING BALANCE" in joined_desc.upper() else prev_date_iso
+        upper = joined_desc.upper()
+        next_date = date_iso if "OPENING" in upper and "BALANCE" in upper else prev_date_iso
+        if "BROUGHT" in upper and "FORWARD" in upper and money_vals:
+            next_balance = money_vals[0]
+            if re.search(r"\bDr\b", upper, flags=re.I):
+                next_balance = -abs(next_balance)
+            elif re.search(r"\bCr\b", upper, flags=re.I):
+                next_balance = abs(next_balance)
         return None, year_hint, next_date, next_balance
 
     description = strip_trailing_money(joined_desc)
@@ -668,31 +962,41 @@ def parse_row_cells(
     # Prefer explicit 5-column shaped rows when non-money description is first.
     if len(remainder) >= 4 and not look_like_money(remainder[0]):
         description = strip_trailing_money(remainder[0])
-        debit = parse_amount(remainder[1])
-        credit = parse_amount(remainder[2])
-        balance = parse_amount(remainder[3])
-        if debit is not None:
-            debit = abs(debit)
-        if credit is not None:
-            credit = abs(credit)
-        if balance is not None:
-            balance = abs(balance)
-        # If credit/debit cells were blank and collapsed, remainder may actually be
-        # desc + amount + balance with an extra trailing token — handled below.
-        if debit is None and credit is None and len(money_vals) >= 2:
-            debit, credit, balance = disambiguate_amount_balance(
-                money_vals[0], money_vals[1], last_balance, description
-            )
-        elif (
-            debit is not None
-            and credit is not None
-            and balance is None
-            and len(money_vals) == 2
+        if (
+            not remainder[2].strip()
+            and look_like_money(remainder[1])
+            and look_like_money(remainder[3])
+            and len(money_vals) >= 2
         ):
-            # Misread amount/balance as debit/credit.
             debit, credit, balance = disambiguate_amount_balance(
                 money_vals[0], money_vals[1], last_balance, description
             )
+        else:
+            debit = parse_amount(remainder[1])
+            credit = parse_amount(remainder[2])
+            balance = parse_amount(remainder[3])
+            if debit is not None:
+                debit = abs(debit)
+            if credit is not None:
+                credit = abs(credit)
+            if balance is not None:
+                balance = abs(balance)
+            # If credit/debit cells were blank and collapsed, remainder may actually be
+            # desc + amount + balance with an extra trailing token — handled below.
+            if debit is None and credit is None and len(money_vals) >= 2:
+                debit, credit, balance = disambiguate_amount_balance(
+                    money_vals[0], money_vals[1], last_balance, description
+                )
+            elif (
+                debit is not None
+                and credit is not None
+                and balance is None
+                and len(money_vals) == 2
+            ):
+                # Misread amount/balance as debit/credit.
+                debit, credit, balance = disambiguate_amount_balance(
+                    money_vals[0], money_vals[1], last_balance, description
+                )
     elif (
         len(remainder) == 3
         and not look_like_money(remainder[0])
@@ -754,6 +1058,8 @@ def parse_text_block(
         "Date Transaction Debit Credit Balance",
         "Date Transaction details Debit Credit Balance",
         "Date Transaction details Amount Balance",
+        "Date Particulars Debits Credits Balance",
+        "Date Transaction Debit Credit Balance\n",
     ]
 
     blocks: list[str] = [text]
@@ -774,32 +1080,9 @@ def parse_text_block(
                     entries.append(entry)
             continue
 
-        for line in lines:
-            cells = [part.strip() for part in re.split(r"\s{2,}|\t", line) if part.strip()]
-            if len(cells) < 2:
-                # Fall back to single-space split for compact PDF text extractors.
-                cells = line.split()
-                if len(cells) < 3:
-                    continue
-                money_idxs = [i for i, part in enumerate(cells) if look_like_money(part)]
-                if not money_idxs:
-                    continue
-                first_money = money_idxs[0]
-                if DATE_FULL_TEXT_RE.match(" ".join(cells[:3])):
-                    date_token = " ".join(cells[:3])
-                    desc_start = 3
-                elif DATE_DAY_MONTH_RE.match(" ".join(cells[:2])):
-                    date_token = " ".join(cells[:2])
-                    desc_start = 2
-                else:
-                    date_token = cells[0]
-                    desc_start = 1
-                description = " ".join(cells[desc_start:first_money]).strip()
-                money_parts = cells[first_money:]
-                cells = [date_token, description, *money_parts]
-
-            entry, year_hint, prev_date_iso, last_balance = parse_row_cells(
-                cells, year_hint, prev_date_iso, last_balance
+        for generic_block in group_transaction_text_blocks(lines):
+            entry, year_hint, prev_date_iso, last_balance = parse_generic_text_block(
+                generic_block, year_hint, prev_date_iso, last_balance
             )
             if entry:
                 entries.append(entry)

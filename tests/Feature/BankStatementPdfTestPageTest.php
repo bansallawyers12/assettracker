@@ -100,11 +100,18 @@ it('normalizes every bank into fixed test-page columns', function () {
         ->and($fromSignedOnly['transaction_type'])->toBe('debit');
 });
 
+it('formats parsed dates as dd-mm-yyyy on the dev test page', function () {
+    $html = file_get_contents(resource_path('views/dev/bank-statement-pdf-test.blade.php'));
+
+    expect($html)->toContain("->format('d-m-Y')");
+});
+
 it('parses westpac wrapped rows via python unit tests', function () {
     $python = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
     $testFiles = [
         base_path('python/tests/test_westpac_pdf_parser.py'),
         base_path('python/tests/test_fixed_columns_all_banks.py'),
+        base_path('python/tests/test_statement_dates.py'),
     ];
 
     foreach ($testFiles as $testFile) {
