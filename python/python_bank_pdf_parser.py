@@ -57,6 +57,11 @@ CREDIT_HINT_RE = re.compile(
     r"|interest\s+(?:earned|paid|credited))\b",
     re.I,
 )
+# Westpac wraps long narrations onto a second line (often just "Number 123" / account digits).
+WESTPAC_CONTINUATION_DESC_RE = re.compile(
+    r"^(?:Number\s+)?\d{3,}(?:\s+\d+)*$",
+    re.I,
+)
 
 
 def detect_bank(text: str, requested: str) -> str:
@@ -346,6 +351,24 @@ def line_starts_with_date(line: str) -> bool:
     return bool(DATE_SLASH_RE.match(line) or DATE_DAY_MONTH_RE.match(" ".join(line.split()[:2])))
 
 
+def is_westpac_continuation_text(line: str) -> bool:
+    """True when a non-dated line is a Westpac wrap fragment, not footer/boilerplate."""
+    line = line.strip()
+    if not line or line_starts_with_date(line):
+        return False
+    if is_header_row([line]) or should_skip_description(line):
+        return False
+
+    if money_values_from_text(line):
+        return True
+
+    # Keep short account/reference wraps; reject prose footers ("Please check...").
+    if len(line) > 48:
+        return False
+
+    return bool(WESTPAC_CONTINUATION_DESC_RE.match(line))
+
+
 def is_westpac_continuation_row(cells: list[str]) -> bool:
     """Westpac wraps long descriptions onto a second row without a leading date."""
     if not cells or row_has_leading_date(cells):
@@ -357,10 +380,10 @@ def is_westpac_continuation_row(cells: list[str]) -> bool:
     if not joined or should_skip_description(joined):
         return False
 
-    has_description = any(cell and not look_like_money(cell) for cell in cells)
-    has_money = bool(money_values_from_cells(cells))
+    if money_values_from_cells(cells) or money_values_from_text(joined):
+        return True
 
-    return has_description or has_money
+    return is_westpac_continuation_text(joined)
 
 
 def normalize_westpac_row_width(cells: list[str]) -> list[str]:
@@ -467,10 +490,15 @@ def cells_from_text_line(line: str) -> list[str]:
         return [line]
 
     first_money = money_idxs[0]
-    date_token = parts[0]
-    description = " ".join(parts[1:first_money]).strip()
     money_parts = parts[first_money:]
 
+    # Continuation lines (no leading date) keep description tokens before amounts.
+    if not line_starts_with_date(line):
+        description = " ".join(parts[:first_money]).strip()
+        return [description, *money_parts] if description else money_parts
+
+    date_token = parts[0]
+    description = " ".join(parts[1:first_money]).strip()
     return [date_token, description, *money_parts]
 
 
@@ -486,7 +514,7 @@ def group_westpac_text_blocks(lines: list[str]) -> list[str]:
             if current:
                 blocks.append("\n".join(current))
             current = [line]
-        elif current:
+        elif current and is_westpac_continuation_text(line):
             current.append(line)
 
     if current:
@@ -619,6 +647,7 @@ def parse_row_cells(
         and not look_like_money(remainder[0])
         and look_like_money(remainder[1])
         and look_like_money(remainder[2])
+        and len(money_vals) >= 2
     ):
         description = strip_trailing_money(remainder[0])
         debit, credit, balance = disambiguate_amount_balance(
@@ -788,18 +817,19 @@ def extract_entries(path: Path, bank_name: str) -> dict[str, Any]:
     last_balance: Decimal | None = None
     full_text_parts: list[str] = []
     pages = 0
-    use_westpac = bank_name == "westpac"
 
     try:
         with pdfplumber.open(str(decrypted_path)) as pdf:
             pages = len(pdf.pages)
+            # Detect bank from full text first so Westpac wrap-merge applies on page 1 tables.
             for page in pdf.pages:
-                page_text = page.extract_text() or ""
-                full_text_parts.append(page_text)
+                full_text_parts.append(page.extract_text() or "")
 
-                if not use_westpac:
-                    use_westpac = should_use_westpac_layout(bank_name, page_text)
+            combined_text = "\n".join(full_text_parts)
+            use_westpac = should_use_westpac_layout(bank_name, combined_text)
+            year_hint = extract_year_hint_from_text(combined_text)
 
+            for page in pdf.pages:
                 for table in page.extract_tables() or []:
                     table_rows = merge_westpac_table_rows(table) if use_westpac else table
                     for row in table_rows:
@@ -810,12 +840,6 @@ def extract_entries(path: Path, bank_name: str) -> dict[str, Any]:
                         if entry:
                             entries.append(entry)
 
-            combined_text = "\n".join(full_text_parts)
-            if not use_westpac:
-                use_westpac = should_use_westpac_layout(bank_name, combined_text)
-            if year_hint is None:
-                year_hint = extract_year_hint_from_text(combined_text)
-
             text_entries, year_hint, prev_date_iso, last_balance = parse_text_block(
                 combined_text,
                 year_hint,
@@ -824,7 +848,12 @@ def extract_entries(path: Path, bank_name: str) -> dict[str, Any]:
                 use_westpac=use_westpac,
             )
 
-            if not entries:
+            # Westpac text parsing recovers wrapped fee rows that table extract often drops.
+            if use_westpac and text_entries and (
+                not entries or len(text_entries) >= len(entries)
+            ):
+                entries = text_entries
+            elif not entries:
                 entries = text_entries
     finally:
         if decrypted_path != path and decrypted_path.exists():

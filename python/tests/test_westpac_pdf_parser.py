@@ -11,9 +11,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from python_bank_pdf_parser import (  # noqa: E402
+    cells_from_text_line,
+    group_westpac_text_blocks,
     infer_sign_from_description,
     merge_westpac_table_rows,
     parse_row_cells,
+    parse_text_block,
     parse_westpac_text_block,
 )
 
@@ -116,6 +119,57 @@ class WestpacPdfParserTest(unittest.TestCase):
         self.assertEqual(entry["amount"], -42.0)
         self.assertIn("Loan Service Fee", entry["description"])
         self.assertIn("587796", entry["description"])
+
+    def test_continuation_line_does_not_treat_first_token_as_date(self) -> None:
+        cells = cells_from_text_line("Number 587796 42.00 210,473.77")
+        self.assertEqual(cells[0], "Number 587796")
+        self.assertEqual(cells[1:], ["42.00", "210,473.77"])
+
+    def test_footer_text_is_not_merged_into_transaction(self) -> None:
+        lines = [
+            "31/03/26 Loan Service Fee Redirected From Account",
+            "Number 587796 42.00 210,473.77",
+            "Please check all entries on this statement and promptly inform Westpac",
+        ]
+        blocks = group_westpac_text_blocks(lines)
+        self.assertEqual(len(blocks), 1)
+        self.assertNotIn("Please check", blocks[0])
+
+    def test_sample_statement_text_recovers_fees_and_interest_signs(self) -> None:
+        sample = "\n".join(
+            [
+                "WESTPAC BANKING CORPORATION",
+                "DATE",
+                "TRANSACTION DESCRIPTION",
+                "DEBIT",
+                "CREDIT",
+                "BALANCE",
+                "19/03/26 STATEMENT OPENING BALANCE 210,515.77",
+                "31/03/26 Loan Service Fee Redirected From Account",
+                "Number 587796 42.00 210,473.77",
+                "31/03/26 Interest Payable On Account 587796 9,234.15 201,239.62",
+                "01/04/26 Line Fee Redirected From Account Number",
+                "587796 1,623.28 199,616.34",
+                "02/04/26 Deposit Goldtrack Proper 3 Faulkiner St Cla 2,488.30 202,104.64",
+                "30/04/26 Interest Payable On Account 587796 9,062.30 214,944.67",
+            ]
+        )
+
+        entries, _, _, _ = parse_text_block(sample, 2026, None, None, use_westpac=True)
+        amounts = {(entry["date"], entry["amount"]) for entry in entries}
+
+        self.assertIn(("2026-03-31", -42.0), amounts)
+        self.assertIn(("2026-03-31", -9234.15), amounts)
+        self.assertIn(("2026-04-01", -1623.28), amounts)
+        self.assertIn(("2026-04-02", 2488.30), amounts)
+        self.assertIn(("2026-04-30", -9062.30), amounts)
+
+        interest = next(
+            entry
+            for entry in entries
+            if entry["date"] == "2026-03-31" and abs(entry["amount"]) == 9234.15
+        )
+        self.assertEqual(interest["transaction_type"], "debit")
 
 
 if __name__ == "__main__":
