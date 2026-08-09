@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Models\BankAccount;
+use App\Models\BusinessEntity;
 use PHPUnit\Framework\TestCase;
 
 class BankAccountFormTest extends TestCase
@@ -71,6 +72,7 @@ class BankAccountFormTest extends TestCase
     {
         $this->assertContains(BankAccount::PURPOSE_LOAN_REPAYMENT_PAYING, BankAccount::ENTITY_PURPOSES);
         $this->assertContains(BankAccount::PURPOSE_LOAN_REPAYMENT_PAYING, BankAccount::ENTITY_OPERATING_PURPOSES);
+        $this->assertContains(BankAccount::PURPOSE_LOAN, BankAccount::ENTITY_OPERATING_PURPOSES);
         $this->assertNotContains(BankAccount::PURPOSE_LOAN_REPAYMENT, BankAccount::ENTITY_PURPOSES);
     }
 
@@ -92,12 +94,12 @@ class BankAccountFormTest extends TestCase
             'holder_person_id' => 7,
         ]))->holderGroupKey());
 
-        $this->assertSame('unassigned', (new BankAccount())->holderGroupKey());
+        $this->assertSame('unassigned', (new BankAccount)->holderGroupKey());
     }
 
     public function test_can_be_linked_to_entity_when_unassigned(): void
     {
-        $entity = new \App\Models\BusinessEntity;
+        $entity = new BusinessEntity;
         $entity->id = 3;
         $account = new BankAccount([
             'business_entity_id' => null,
@@ -109,7 +111,7 @@ class BankAccountFormTest extends TestCase
 
     public function test_can_attach_different_purpose_on_same_entity_when_not_yet_linked(): void
     {
-        $entity = new \App\Models\BusinessEntity;
+        $entity = new BusinessEntity;
         $entity->id = 3;
         $account = new BankAccount(['id' => 1]);
         $account->setRelation('entityPurposeLinks', collect());
@@ -119,7 +121,7 @@ class BankAccountFormTest extends TestCase
 
     public function test_cannot_attach_portfolio_loan_repayment_lender_account(): void
     {
-        $entity = new \App\Models\BusinessEntity;
+        $entity = new BusinessEntity;
         $entity->id = 3;
         $account = new BankAccount([
             'business_entity_id' => null,
@@ -131,7 +133,7 @@ class BankAccountFormTest extends TestCase
 
     public function test_can_attach_account_from_another_entity_with_move(): void
     {
-        $entity = new \App\Models\BusinessEntity;
+        $entity = new BusinessEntity;
         $entity->id = 3;
         $account = new BankAccount([
             'business_entity_id' => 9,
@@ -143,7 +145,7 @@ class BankAccountFormTest extends TestCase
 
     public function test_assign_picker_scope_label_for_unassigned_account(): void
     {
-        $entity = new \App\Models\BusinessEntity;
+        $entity = new BusinessEntity;
         $entity->id = 3;
         $account = new BankAccount([
             'business_entity_id' => null,

@@ -6,20 +6,28 @@ use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
-use App\Models\ChartOfAccount;
 use App\Models\Transaction;
+use App\Services\BankStatementApplyService;
+use App\Services\BankStatementMatchSuggester;
+use App\Services\BankStatementParseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use Symfony\Component\Process\Process;
 
 class BankAccountImportController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
+
+    public function __construct(
+        private BankStatementParseService $parseService,
+        private BankStatementApplyService $applyService,
+        private BankStatementMatchSuggester $suggester
+    ) {}
 
     public function process(Request $request, BankAccount $bankAccount): JsonResponse
     {
@@ -39,7 +47,7 @@ class BankAccountImportController extends Controller
             $filename = 'bank_statement_'.time().'_'.Str::random(16).'.'.$ext;
             $filePath = $file->storeAs('bank_statements', $filename, 'local');
 
-            $result = $this->parseBankStatement($filePath, (string) $bankAccount->bank_name);
+            $result = $this->parseService->parseStoredFile($filePath, (string) $bankAccount->bank_name);
 
             if (! ($result['success'] ?? false)) {
                 Storage::disk('local')->delete($filePath);
@@ -50,7 +58,7 @@ class BankAccountImportController extends Controller
                 ], 400);
             }
 
-            $entriesCount = $this->storeBankStatementEntries($result['entries'] ?? [], $bankAccount->id);
+            $entriesCount = $this->parseService->storeEntries($result['entries'] ?? [], $bankAccount->id);
             Storage::disk('local')->delete($filePath);
 
             return response()->json([
@@ -58,6 +66,7 @@ class BankAccountImportController extends Controller
                 'message' => 'File processed successfully',
                 'entriesCount' => $entriesCount,
                 'bankAccountId' => $bankAccount->id,
+                'profile' => $result['profile'] ?? null,
             ]);
         } catch (\Throwable $e) {
             Log::error('Bank account import error: '.$e->getMessage());
@@ -73,21 +82,34 @@ class BankAccountImportController extends Controller
     {
         $this->ensureAccessible($bankAccount);
 
+        $businessEntityId = $request->integer('business_entity_id') ?: null;
         $entries = BankStatementEntry::query()
             ->where('bank_account_id', $bankAccount->id)
             ->whereNull('transaction_id')
             ->orderByDesc('date')
             ->orderByDesc('id')
-            ->get()
-            ->map(fn (BankStatementEntry $entry) => $this->entryPayload($entry));
+            ->get();
 
-        $candidates = $this->matchCandidates($bankAccount, $request->integer('business_entity_id') ?: null)
-            ->map(fn (Transaction $transaction) => $this->candidatePayload($transaction));
+        $candidates = $this->matchCandidates($bankAccount, $businessEntityId);
+        $defaultAssetId = $this->defaultLoanAssetId($bankAccount);
+
+        $entryPayloads = $entries->map(function (BankStatementEntry $entry) use ($bankAccount, $candidates, $defaultAssetId) {
+            $payload = $this->entryPayload($entry);
+            $payload['suggestion'] = $this->suggester->suggest(
+                $entry,
+                $bankAccount,
+                $candidates,
+                $defaultAssetId
+            );
+
+            return $payload;
+        });
 
         return response()->json([
             'success' => true,
-            'entries' => $entries,
-            'candidates' => $candidates,
+            'entries' => $entryPayloads,
+            'candidates' => $candidates->map(fn (Transaction $transaction) => $this->candidatePayload($transaction)),
+            'transaction_types' => Transaction::typeSelectGroups(),
         ]);
     }
 
@@ -99,135 +121,25 @@ class BankAccountImportController extends Controller
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'matches' => 'required|array|min:1',
             'matches.*.bank_entry_id' => 'required|integer|exists:bank_statement_entries,id',
+            'matches.*.action' => ['nullable', 'string', Rule::in(['match_transaction', 'create_transaction', 'none'])],
             'matches.*.transaction_id' => 'nullable|integer|exists:transactions,id',
             'matches.*.chart_account_id' => 'nullable|integer|exists:chart_of_accounts,id',
+            'matches.*.transaction_type' => 'nullable|string|max:100',
+            'matches.*.asset_id' => 'nullable|integer|exists:assets,id',
         ]);
 
         $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
         $this->authorizeImportEntity($bankAccount, $businessEntity);
 
-        $matchedExisting = 0;
-        $created = 0;
-
         try {
-            foreach ($validated['matches'] as $match) {
-                $transactionId = ! empty($match['transaction_id']) ? (int) $match['transaction_id'] : null;
-                $chartAccountId = ! empty($match['chart_account_id']) ? (int) $match['chart_account_id'] : null;
-
-                if ($transactionId === null && $chartAccountId === null) {
-                    continue;
-                }
-
-                if ($transactionId !== null && $chartAccountId !== null) {
-                    throw ValidationException::withMessages([
-                        'matches' => 'Choose either an existing transaction or a chart account for each line, not both.',
-                    ]);
-                }
-
-                DB::transaction(function () use (
-                    $match,
-                    $bankAccount,
-                    $businessEntity,
-                    $transactionId,
-                    $chartAccountId,
-                    &$matchedExisting,
-                    &$created
-                ) {
-                    $entryId = (int) $match['bank_entry_id'];
-                    $bankEntry = BankStatementEntry::query()
-                        ->where('id', $entryId)
-                        ->lockForUpdate()
-                        ->first();
-
-                    if (! $bankEntry || (int) $bankEntry->bank_account_id !== (int) $bankAccount->id) {
-                        throw ValidationException::withMessages([
-                            'matches' => "Statement line #{$entryId} is not available on this account.",
-                        ]);
-                    }
-
-                    if ($bankEntry->transaction_id !== null) {
-                        throw ValidationException::withMessages([
-                            'matches' => "Statement line #{$entryId} is already matched.",
-                        ]);
-                    }
-
-                    if ($transactionId !== null) {
-                        $transaction = Transaction::query()->find($transactionId);
-                        if (! $transaction
-                            || (int) $transaction->business_entity_id !== (int) $businessEntity->id) {
-                            throw ValidationException::withMessages([
-                                'matches' => 'Selected transaction does not belong to the booking entity.',
-                            ]);
-                        }
-
-                        if ($transaction->bank_account_id !== null
-                            && (int) $transaction->bank_account_id !== (int) $bankAccount->id) {
-                            throw ValidationException::withMessages([
-                                'matches' => 'Selected transaction belongs to a different bank account.',
-                            ]);
-                        }
-
-                        if ($transaction->bankStatementEntries()->exists()) {
-                            throw ValidationException::withMessages([
-                                'matches' => 'Selected transaction is already matched to a statement line.',
-                            ]);
-                        }
-
-                        $this->assertEntryMatchesTransaction($bankEntry, $transaction);
-
-                        $updates = [];
-                        if ($transaction->bank_account_id === null) {
-                            $updates['bank_account_id'] = $bankAccount->id;
-                        }
-                        if (($transaction->payment_status ?? 'paid') === 'unpaid') {
-                            $updates['payment_status'] = 'paid';
-                            $updates['paid_at'] = $bankEntry->date;
-                        }
-
-                        if ($updates !== []) {
-                            $transaction->update($updates);
-                        }
-
-                        $bankEntry->update(['transaction_id' => $transaction->id]);
-                        $matchedExisting++;
-
-                        return;
-                    }
-
-                    $chartAccount = ChartOfAccount::query()->findOrFail($chartAccountId);
-                    $transaction = Transaction::create([
-                        'business_entity_id' => $businessEntity->id,
-                        'bank_account_id' => $bankAccount->id,
-                        'date' => $bankEntry->date,
-                        'amount' => abs((float) $bankEntry->amount),
-                        'description' => $bankEntry->description,
-                        'transaction_type' => $this->mapTransactionType(
-                            (string) $chartAccount->account_type,
-                            (float) $bankEntry->amount
-                        ),
-                        'payment_status' => 'paid',
-                        'paid_at' => $bankEntry->date,
-                        'gst_amount' => null,
-                        'gst_status' => 'gst_free',
-                        'gst_basis' => null,
-                    ]);
-
-                    $bankEntry->update(['transaction_id' => $transaction->id]);
-                    $created++;
-                });
-            }
-
-            if ($matchedExisting === 0 && $created === 0) {
-                throw ValidationException::withMessages([
-                    'matches' => 'No matches were applied. Choose an existing transaction or chart account for at least one line.',
-                ]);
-            }
+            $result = $this->applyService->apply($bankAccount, $businessEntity, $validated['matches']);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Matches applied successfully',
-                'matchedExisting' => $matchedExisting,
-                'transactionsCreated' => $created,
+                'matchedExisting' => $result['matchedExisting'],
+                'transactionsCreated' => $result['transactionsCreated'],
+                'skipped' => $result['skipped'],
             ]);
         } catch (ValidationException $e) {
             throw $e;
@@ -238,27 +150,6 @@ class BankAccountImportController extends Controller
                 'success' => false,
                 'message' => 'An error occurred while applying matches.',
             ], 500);
-        }
-    }
-
-    private function assertEntryMatchesTransaction(BankStatementEntry $bankEntry, Transaction $transaction): void
-    {
-        $entryAmount = abs((float) $bankEntry->amount);
-        $transactionAmount = abs((float) $transaction->amount);
-
-        if (abs($entryAmount - $transactionAmount) > 0.005) {
-            throw ValidationException::withMessages([
-                'matches' => 'Statement line amount does not match the selected transaction.',
-            ]);
-        }
-
-        $entryIsIncome = (float) $bankEntry->amount >= 0;
-        $transactionIsIncome = Transaction::directionFromType((string) $transaction->transaction_type) === 'income';
-
-        if ($entryIsIncome !== $transactionIsIncome) {
-            throw ValidationException::withMessages([
-                'matches' => 'Statement line direction does not match the selected transaction.',
-            ]);
         }
     }
 
@@ -282,7 +173,7 @@ class BankAccountImportController extends Controller
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, Transaction>
+     * @return Collection<int, Transaction>
      */
     private function matchCandidates(BankAccount $bankAccount, ?int $businessEntityId)
     {
@@ -307,6 +198,7 @@ class BankAccountImportController extends Controller
         return $query->get()->filter(function (Transaction $transaction) use ($bankAccount) {
             if ($transaction->bank_account_id === null) {
                 $entity = $transaction->businessEntity;
+
                 return $entity && $bankAccount->canUseForTransaction($entity);
             }
 
@@ -314,17 +206,41 @@ class BankAccountImportController extends Controller
         })->values();
     }
 
+    private function defaultLoanAssetId(BankAccount $bankAccount): ?int
+    {
+        if ($bankAccount->account_purpose !== BankAccount::PURPOSE_LOAN) {
+            return null;
+        }
+
+        $asset = $bankAccount->assets()
+            ->wherePivot('role', BankAccount::ROLE_LOAN)
+            ->orderBy('assets.id')
+            ->first();
+
+        return $asset?->id ? (int) $asset->id : null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
     private function entryPayload(BankStatementEntry $entry): array
     {
+        $meta = is_array($entry->meta) ? $entry->meta : [];
+
         return [
             'id' => $entry->id,
             'date' => $entry->date?->format('Y-m-d'),
             'amount' => (float) $entry->amount,
             'description' => $entry->description,
             'transaction_type' => $entry->transaction_type,
+            'meta' => $meta,
+            'balance_after' => $meta['balance_after'] ?? null,
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function candidatePayload(Transaction $transaction): array
     {
         return [
@@ -337,101 +253,5 @@ class BankAccountImportController extends Controller
             'transaction_type' => $transaction->transaction_type,
             'payment_status' => $transaction->payment_status,
         ];
-    }
-
-    private function parseBankStatement(string $filePath, string $bankName): array
-    {
-        try {
-            $fullPath = Storage::disk('local')->path($filePath);
-            $pythonScript = base_path('python/python_bank_parser.py');
-
-            if (! file_exists($pythonScript)) {
-                return [
-                    'success' => false,
-                    'error' => 'Python parser script not found',
-                ];
-            }
-
-            $pythonBin = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-            $process = new Process([
-                $pythonBin,
-                $pythonScript,
-                $fullPath,
-                '--bank-name',
-                $bankName,
-            ]);
-            $process->run();
-
-            if (! $process->isSuccessful()) {
-                return [
-                    'success' => false,
-                    'error' => 'Python script failed: '.$process->getErrorOutput(),
-                ];
-            }
-
-            $result = json_decode($process->getOutput(), true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                return [
-                    'success' => false,
-                    'error' => 'Invalid JSON response from Python script',
-                ];
-            }
-
-            return is_array($result) ? $result : [
-                'success' => false,
-                'error' => 'Invalid parser response',
-            ];
-        } catch (\Throwable $e) {
-            return [
-                'success' => false,
-                'error' => 'Failed to run Python parser: '.$e->getMessage(),
-            ];
-        }
-    }
-
-    /**
-     * @param  array<int, array<string, mixed>>  $entries
-     */
-    private function storeBankStatementEntries(array $entries, int $bankAccountId): int
-    {
-        $count = 0;
-
-        foreach ($entries as $entryData) {
-            $existing = BankStatementEntry::query()
-                ->where('bank_account_id', $bankAccountId)
-                ->where('date', $entryData['date'] ?? null)
-                ->where('amount', $entryData['amount'] ?? null)
-                ->where('description', $entryData['description'] ?? null)
-                ->first();
-
-            if ($existing) {
-                continue;
-            }
-
-            BankStatementEntry::create([
-                'bank_account_id' => $bankAccountId,
-                'date' => $entryData['date'],
-                'amount' => $entryData['amount'],
-                'description' => $entryData['description'],
-                'transaction_type' => $entryData['transaction_type'] ?? null,
-            ]);
-            $count++;
-        }
-
-        return $count;
-    }
-
-    private function mapTransactionType(string $accountType, float $amount): string
-    {
-        $isIncome = $amount >= 0;
-
-        return match ($accountType) {
-            'income' => $isIncome ? 'sales_revenue' : 'cogs',
-            'expense' => $isIncome ? 'sales_revenue' : 'cogs',
-            'asset' => $isIncome ? 'capital_expenditure' : 'asset_purchase',
-            'liability' => $isIncome ? 'directors_loans_to_company' : 'loan_repayments',
-            'equity' => $isIncome ? 'directors_loans_to_company' : 'directors_fees',
-            default => $isIncome ? 'sales_revenue' : 'cogs',
-        };
     }
 }

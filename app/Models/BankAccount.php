@@ -2,24 +2,31 @@
 
 namespace App\Models;
 
+use App\Services\BankAccountStatementUploadService;
+use App\Traits\EncryptsAttributes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
-use App\Traits\EncryptsAttributes;
 
 class BankAccount extends Model
 {
     use EncryptsAttributes;
 
     public const PURPOSE_GENERAL = 'general';
+
     public const PURPOSE_LOAN = 'loan';
+
     public const PURPOSE_LOAN_REPAYMENT = 'loan_repayment';
+
     public const PURPOSE_LOAN_REPAYMENT_PAYING = 'loan_repayment_paying';
+
     public const PURPOSE_OFFSET = 'offset';
+
     public const PURPOSE_RENT_RECEIVING = 'rent_receiving';
+
     public const PURPOSE_RENT_PAYING = 'rent_paying';
 
     public const PURPOSES = [
@@ -50,6 +57,7 @@ class BankAccount extends Model
     /** Entity-scoped purposes usable for bank import and statement matching. */
     public const ENTITY_OPERATING_PURPOSES = [
         self::PURPOSE_GENERAL,
+        self::PURPOSE_LOAN,
         self::PURPOSE_LOAN_REPAYMENT_PAYING,
         self::PURPOSE_RENT_RECEIVING,
         self::PURPOSE_RENT_PAYING,
@@ -57,8 +65,11 @@ class BankAccount extends Model
 
     // Roles on the asset_bank_account pivot
     public const ROLE_LOAN = 'loan';
+
     public const ROLE_LOAN_REPAYMENT = 'loan_repayment';
+
     public const ROLE_OFFSET = 'offset';
+
     public const ROLE_RENT_COLLECTION = 'rent_collection';
 
     public const ASSET_ROLES = [
@@ -74,8 +85,10 @@ class BankAccount extends Model
 
     // Account holder types
     public const HOLDER_ENTITY = 'entity';
+
     public const HOLDER_PERSON = 'person';
-    public const HOLDER_OTHER  = 'other';
+
+    public const HOLDER_OTHER = 'other';
 
     public const HOLDER_TYPES = [
         self::HOLDER_ENTITY,
@@ -137,6 +150,7 @@ class BankAccount extends Model
             return null;
         }
         $digits = preg_replace('/\D/', '', $bsb);
+
         return $digits !== '' ? $digits : null;
     }
 
@@ -146,6 +160,7 @@ class BankAccount extends Model
         if ($digits === null || strlen($digits) !== 6) {
             return $bsb;
         }
+
         return substr($digits, 0, 3).'-'.substr($digits, 3);
     }
 
@@ -205,13 +220,13 @@ class BankAccount extends Model
     public static function purposeLabel(string $purpose): string
     {
         return match ($purpose) {
-            self::PURPOSE_GENERAL        => 'General',
-            self::PURPOSE_LOAN           => 'Loan',
-            self::PURPOSE_LOAN_REPAYMENT        => 'Loan repayment',
+            self::PURPOSE_GENERAL => 'General',
+            self::PURPOSE_LOAN => 'Loan',
+            self::PURPOSE_LOAN_REPAYMENT => 'Loan repayment',
             self::PURPOSE_LOAN_REPAYMENT_PAYING => 'Loan repayment paying',
-            self::PURPOSE_OFFSET                => 'Offset',
+            self::PURPOSE_OFFSET => 'Offset',
             self::PURPOSE_RENT_RECEIVING => 'Rent receiving',
-            self::PURPOSE_RENT_PAYING    => 'Rent paying',
+            self::PURPOSE_RENT_PAYING => 'Rent paying',
             default => ucfirst(str_replace('_', ' ', $purpose)),
         };
     }
@@ -221,7 +236,7 @@ class BankAccount extends Model
         return match ($type) {
             self::HOLDER_ENTITY => 'Entity',
             self::HOLDER_PERSON => 'Person',
-            self::HOLDER_OTHER  => 'Other',
+            self::HOLDER_OTHER => 'Other',
             default => ucfirst($type),
         };
     }
@@ -234,8 +249,8 @@ class BankAccount extends Model
         return match ($this->holder_type) {
             self::HOLDER_ENTITY => $this->holderEntity?->legal_name ?? '—',
             self::HOLDER_PERSON => $this->holderPersonFullName(),
-            self::HOLDER_OTHER  => $this->holder_other ?? '—',
-            default             => '—',
+            self::HOLDER_OTHER => $this->holder_other ?? '—',
+            default => '—',
         };
     }
 
@@ -244,6 +259,7 @@ class BankAccount extends Model
         if (! $this->holderPerson) {
             return '—';
         }
+
         return trim(($this->holderPerson->first_name ?? '').' '.($this->holderPerson->last_name ?? ''));
     }
 
@@ -255,8 +271,8 @@ class BankAccount extends Model
         return match ($this->holder_type) {
             self::HOLDER_ENTITY => 'entity:'.$this->holder_entity_id,
             self::HOLDER_PERSON => 'person:'.$this->holder_person_id,
-            self::HOLDER_OTHER  => 'other:'.md5((string) $this->holder_other),
-            default             => 'unassigned',
+            self::HOLDER_OTHER => 'other:'.md5((string) $this->holder_other),
+            default => 'unassigned',
         };
     }
 
@@ -387,7 +403,7 @@ class BankAccount extends Model
      */
     public function displayLabel(): string
     {
-        $label  = $this->account_name ?: $this->bank_name;
+        $label = $this->account_name ?: $this->bank_name;
         $holder = $this->holderLabel();
         $suffix = $this->maskedAccountNumber() ?? self::formatBsb($this->bsb);
 
@@ -517,9 +533,9 @@ class BankAccount extends Model
     /**
      * Operational entities that may book transactions against this account.
      *
-     * @return \Illuminate\Support\Collection<int, BusinessEntity>
+     * @return Collection<int, BusinessEntity>
      */
-    public function eligibleTransactionEntities(?int $userId = null): \Illuminate\Support\Collection
+    public function eligibleTransactionEntities(?int $userId = null): Collection
     {
         $userId ??= auth()->id();
 
@@ -660,7 +676,7 @@ class BankAccount extends Model
     {
         return $query->where(function (Builder $q) use ($userId) {
             $q->where('user_id', $userId)
-              ->orWhereHas('businessEntity', fn (Builder $eq) => $eq->where('user_id', $userId));
+                ->orWhereHas('businessEntity', fn (Builder $eq) => $eq->where('user_id', $userId));
         });
     }
 
@@ -905,7 +921,7 @@ class BankAccount extends Model
     protected static function booted(): void
     {
         static::deleting(function (BankAccount $account): void {
-            app(\App\Services\BankAccountStatementUploadService::class)->deleteAllForAccount($account);
+            app(BankAccountStatementUploadService::class)->deleteAllForAccount($account);
         });
     }
 

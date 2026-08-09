@@ -11,10 +11,10 @@ it('registers bank-account import routes', function () {
         ->toContain('/bank-accounts/1/import/apply');
 });
 
-it('includes import markup in the bank transactions panel partial', function () {
+it('includes reconciliation markup in the bank transactions panel partial', function () {
     $html = file_get_contents(resource_path('views/bank-accounts/partials/transactions-panel.blade.php'));
 
-    expect($html)->toContain('bank-accounts.partials.import-match-panel')
+    expect($html)->toContain('bank-accounts.partials.reconciliation-panel')
         ->and($html)->toContain('data-bank-import-process-url');
 });
 

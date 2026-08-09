@@ -6,12 +6,15 @@ use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\Transaction;
+use App\Services\BankStatementMatchSuggester;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 
 class BankAccountTransactionController extends Controller
 {
+    public function __construct(private BankStatementMatchSuggester $suggester) {}
+
     public function index(Request $request, BankAccount $bankAccount): JsonResponse
     {
         $this->ensureAccessible($bankAccount);
@@ -54,6 +57,16 @@ class BankAccountTransactionController extends Controller
             ->get();
 
         $matchCandidates = $this->matchCandidates($bankAccount, $contextEntityId ?? $defaultEntityId);
+        $defaultAssetId = $this->defaultLoanAssetId($bankAccount);
+        $suggestions = [];
+        foreach ($unmatchedEntries as $entry) {
+            $suggestions[(int) $entry->id] = $this->suggester->suggest(
+                $entry,
+                $bankAccount,
+                $matchCandidates,
+                $defaultAssetId
+            );
+        }
 
         return response()->json([
             'status' => true,
@@ -68,6 +81,8 @@ class BankAccountTransactionController extends Controller
                 'canImport' => $importEntities->isNotEmpty(),
                 'unmatchedEntries' => $unmatchedEntries,
                 'matchCandidates' => $matchCandidates,
+                'suggestions' => $suggestions,
+                'transactionTypeGroups' => Transaction::typeSelectGroups(),
             ])->render(),
         ]);
     }
@@ -137,6 +152,20 @@ class BankAccountTransactionController extends Controller
 
             return (int) $transaction->bank_account_id === (int) $bankAccount->id;
         })->values();
+    }
+
+    private function defaultLoanAssetId(BankAccount $bankAccount): ?int
+    {
+        if ($bankAccount->account_purpose !== BankAccount::PURPOSE_LOAN) {
+            return null;
+        }
+
+        $asset = $bankAccount->assets()
+            ->wherePivot('role', BankAccount::ROLE_LOAN)
+            ->orderBy('assets.id')
+            ->first();
+
+        return $asset?->id ? (int) $asset->id : null;
     }
 
     private function ensureAccessible(BankAccount $bankAccount): void

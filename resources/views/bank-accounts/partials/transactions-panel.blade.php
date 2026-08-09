@@ -85,12 +85,14 @@
     @endif
 
     @if($canImport)
-        @include('bank-accounts.partials.import-match-panel', [
+        @include('bank-accounts.partials.reconciliation-panel', [
             'bankAccount' => $bankAccount,
             'importEntities' => $importEntities,
             'defaultImportEntityId' => $defaultImportEntityId,
             'unmatchedEntries' => $unmatchedEntries,
             'matchCandidates' => $matchCandidates,
+            'suggestions' => $suggestions ?? [],
+            'transactionTypeGroups' => $transactionTypeGroups ?? \App\Models\Transaction::typeSelectGroups(),
         ])
     @endif
 

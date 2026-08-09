@@ -6,9 +6,10 @@ use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Mail\InvoiceReminderMail;
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
+use App\Models\BusinessEntity;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
-use App\Models\BusinessEntity;
+use App\Services\BankStatementMatchSuggester;
 use App\Services\InvoicePaymentService;
 use App\Services\InvoicePostingService;
 use App\Support\TableSort;
@@ -18,329 +19,362 @@ use Illuminate\Validation\Rule;
 
 class InvoiceController extends Controller
 {
-	use EnsuresOperationalBusinessEntity;
+    use EnsuresOperationalBusinessEntity;
 
-	public function index(Request $request, ?BusinessEntity $businessEntity = null)
-	{
-		$tableSort = TableSort::resolve(
-			$request,
-			['number', 'entity', 'customer', 'issue', 'total', 'status'],
-			'issue',
-			'desc'
-		);
+    public function index(Request $request, ?BusinessEntity $businessEntity = null)
+    {
+        $tableSort = TableSort::resolve(
+            $request,
+            ['number', 'entity', 'customer', 'issue', 'total', 'status'],
+            'issue',
+            'desc'
+        );
 
-		if ($businessEntity) {
-			$this->authorize('view', $businessEntity);
-			$this->ensureOperationalForAccounting($businessEntity);
+        if ($businessEntity) {
+            $this->authorize('view', $businessEntity);
+            $this->ensureOperationalForAccounting($businessEntity);
 
-			$query = Invoice::where('business_entity_id', $businessEntity->id)->with(['asset']);
-			$tableSort->applyToQuery($query, [
-				'number' => 'invoice_number',
-				'customer' => 'customer_name',
-				'issue' => 'issue_date',
-				'total' => 'total_amount',
-				'status' => 'status',
-			], 'issue');
+            $query = Invoice::where('business_entity_id', $businessEntity->id)->with(['asset']);
+            $tableSort->applyToQuery($query, [
+                'number' => 'invoice_number',
+                'customer' => 'customer_name',
+                'issue' => 'issue_date',
+                'total' => 'total_amount',
+                'status' => 'status',
+            ], 'issue');
 
-			$invoices = $query->paginate(20)->withQueryString();
+            $invoices = $query->paginate(20)->withQueryString();
 
-			return view('invoices.index', compact('businessEntity', 'invoices', 'tableSort'));
-		}
+            return view('invoices.index', compact('businessEntity', 'invoices', 'tableSort'));
+        }
 
-		$query = Invoice::query()
-			->whereIn('business_entity_id', BusinessEntity::query()->operationalEntities()->pluck('id'))
-			->with(['asset', 'businessEntity']);
+        $query = Invoice::query()
+            ->whereIn('business_entity_id', BusinessEntity::query()->operationalEntities()->pluck('id'))
+            ->with(['asset', 'businessEntity']);
 
-		if ($tableSort->column === 'entity') {
-			$query->join('business_entities', 'invoices.business_entity_id', '=', 'business_entities.id')
-				->select('invoices.*')
-				->orderBy('business_entities.legal_name', $tableSort->order)
-				->orderByDesc('invoices.issue_date');
-		} else {
-			$tableSort->applyToQuery($query, [
-				'number' => 'invoice_number',
-				'customer' => 'customer_name',
-				'issue' => 'issue_date',
-				'total' => 'total_amount',
-				'status' => 'status',
-			], 'issue');
-		}
+        if ($tableSort->column === 'entity') {
+            $query->join('business_entities', 'invoices.business_entity_id', '=', 'business_entities.id')
+                ->select('invoices.*')
+                ->orderBy('business_entities.legal_name', $tableSort->order)
+                ->orderByDesc('invoices.issue_date');
+        } else {
+            $tableSort->applyToQuery($query, [
+                'number' => 'invoice_number',
+                'customer' => 'customer_name',
+                'issue' => 'issue_date',
+                'total' => 'total_amount',
+                'status' => 'status',
+            ], 'issue');
+        }
 
-		$invoices = $query->paginate(30)->withQueryString();
+        $invoices = $query->paginate(30)->withQueryString();
 
-		return view('invoices.index', compact('invoices', 'tableSort'));
-	}
+        return view('invoices.index', compact('invoices', 'tableSort'));
+    }
 
-	public function create(BusinessEntity $businessEntity)
-	{
-		$this->authorize('view', $businessEntity);
-		$this->ensureOperationalForAccounting($businessEntity);
+    public function create(BusinessEntity $businessEntity)
+    {
+        $this->authorize('view', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
-		return view('invoices.create', compact('businessEntity'));
-	}
+        return view('invoices.create', compact('businessEntity'));
+    }
 
-	public function store(Request $request, BusinessEntity $businessEntity)
-	{
-		$this->authorize('update', $businessEntity);
-		$this->ensureOperationalForAccounting($businessEntity);
+    public function store(Request $request, BusinessEntity $businessEntity)
+    {
+        $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
-		$data = $request->validate([
-			'invoice_number' => [
-				'required',
-				'max:50',
-				Rule::unique('invoices', 'invoice_number')->where('business_entity_id', $businessEntity->id),
-			],
-			'issue_date' => 'required|date',
-			'due_date' => 'nullable|date',
-			'customer_name' => 'required|string|max:255',
-			'reference' => 'nullable|string|max:255',
-			'currency' => 'nullable|string|size:3',
-			'notes' => 'nullable|string',
-			'lines' => 'required|array|min:1',
-			'lines.*.description' => 'required|string',
-			'lines.*.quantity' => 'required|numeric|min:0.0001',
-			'lines.*.unit_price' => 'required|numeric|min:0',
-			'lines.*.gst_rate' => 'nullable|numeric|min:0',
-			'lines.*.account_code' => 'nullable|string|max:20',
-		]);
+        $data = $request->validate([
+            'invoice_number' => [
+                'required',
+                'max:50',
+                Rule::unique('invoices', 'invoice_number')->where('business_entity_id', $businessEntity->id),
+            ],
+            'issue_date' => 'required|date',
+            'due_date' => 'nullable|date',
+            'customer_name' => 'required|string|max:255',
+            'reference' => 'nullable|string|max:255',
+            'currency' => 'nullable|string|size:3',
+            'notes' => 'nullable|string',
+            'lines' => 'required|array|min:1',
+            'lines.*.description' => 'required|string',
+            'lines.*.quantity' => 'required|numeric|min:0.0001',
+            'lines.*.unit_price' => 'required|numeric|min:0',
+            'lines.*.gst_rate' => 'nullable|numeric|min:0',
+            'lines.*.account_code' => 'nullable|string|max:20',
+        ]);
 
-		$invoice = new Invoice();
-		$invoice->fill($data);
-		$invoice->business_entity_id = $businessEntity->id;
-		$invoice->status = 'draft';
-		$invoice->subtotal = 0;
-		$invoice->gst_amount = 0;
-		$invoice->total_amount = 0;
-		$invoice->currency = $data['currency'] ?? 'AUD';
-		$invoice->save();
+        $invoice = new Invoice;
+        $invoice->fill($data);
+        $invoice->business_entity_id = $businessEntity->id;
+        $invoice->status = 'draft';
+        $invoice->subtotal = 0;
+        $invoice->gst_amount = 0;
+        $invoice->total_amount = 0;
+        $invoice->currency = $data['currency'] ?? 'AUD';
+        $invoice->save();
 
-		$subtotal = 0; $gstTotal = 0; $grand = 0;
-		foreach ($data['lines'] as $line) {
-			$qty = (float) $line['quantity'];
-			$price = (float) $line['unit_price'];
-			$gstRate = isset($line['gst_rate']) ? (float) $line['gst_rate'] : 0.1;
-			$lineTotal = round($qty * $price * (1 + $gstRate), 2);
-			InvoiceLine::create([
-				'invoice_id' => $invoice->id,
-				'description' => $line['description'],
-				'quantity' => $qty,
-				'unit_price' => $price,
-				'line_total' => $lineTotal,
-				'gst_rate' => $gstRate,
-				'account_code' => $line['account_code'] ?? null,
-			]);
-			$net = round($qty * $price, 2);
-			$gst = round($net * $gstRate, 2);
-			$subtotal += $net; $gstTotal += $gst; $grand += $net + $gst;
-		}
-		$invoice->subtotal = $subtotal;
-		$invoice->gst_amount = $gstTotal;
-		$invoice->total_amount = $grand;
-		$invoice->save();
+        $subtotal = 0;
+        $gstTotal = 0;
+        $grand = 0;
+        foreach ($data['lines'] as $line) {
+            $qty = (float) $line['quantity'];
+            $price = (float) $line['unit_price'];
+            $gstRate = isset($line['gst_rate']) ? (float) $line['gst_rate'] : 0.1;
+            $lineTotal = round($qty * $price * (1 + $gstRate), 2);
+            InvoiceLine::create([
+                'invoice_id' => $invoice->id,
+                'description' => $line['description'],
+                'quantity' => $qty,
+                'unit_price' => $price,
+                'line_total' => $lineTotal,
+                'gst_rate' => $gstRate,
+                'account_code' => $line['account_code'] ?? null,
+            ]);
+            $net = round($qty * $price, 2);
+            $gst = round($net * $gstRate, 2);
+            $subtotal += $net;
+            $gstTotal += $gst;
+            $grand += $net + $gst;
+        }
+        $invoice->subtotal = $subtotal;
+        $invoice->gst_amount = $gstTotal;
+        $invoice->total_amount = $grand;
+        $invoice->save();
 
-		return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
-			->with('success', 'Invoice created');
-	}
+        return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
+            ->with('success', 'Invoice created');
+    }
 
-	public function show(BusinessEntity $businessEntity, Invoice $invoice)
-	{
-		$this->authorize('view', $businessEntity);
-		$this->authorizeInvoice($businessEntity, $invoice);
-		$invoice->load(['lines', 'lease.tenant', 'asset', 'paymentTransaction.bankAccount', 'paymentTransaction.bankStatementEntries']);
+    public function show(BusinessEntity $businessEntity, Invoice $invoice)
+    {
+        $this->authorize('view', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
+        $invoice->load(['lines', 'lease.tenant', 'asset', 'paymentTransaction.bankAccount', 'paymentTransaction.bankStatementEntries']);
 
-		$paymentBankAccounts = collect();
-		$unmatchedStatementEntries = collect();
-		if ($invoice->status === 'approved' && ! $invoice->paid_at) {
-			$paymentBankAccounts = $businessEntity->bankAccountLinksForDisplay()
-				->map(fn ($link) => $link->bankAccount)
-				->filter()
-				->unique('id')
-				->filter(fn (BankAccount $account) => $account->canUseForTransaction($businessEntity))
-				->sortBy('account_name')
-				->values();
+        $paymentBankAccounts = collect();
+        $unmatchedStatementEntries = collect();
+        $suggestedStatementEntryId = null;
+        if ($invoice->status === 'approved' && ! $invoice->paid_at) {
+            $paymentBankAccounts = $businessEntity->bankAccountLinksForDisplay()
+                ->map(fn ($link) => $link->bankAccount)
+                ->filter()
+                ->unique('id')
+                ->filter(fn (BankAccount $account) => $account->canUseForTransaction($businessEntity))
+                ->sortBy('account_name')
+                ->values();
 
-			if ($paymentBankAccounts->isNotEmpty()) {
-				$unmatchedStatementEntries = BankStatementEntry::query()
-					->whereIn('bank_account_id', $paymentBankAccounts->pluck('id'))
-					->whereNull('transaction_id')
-					->orderByDesc('date')
-					->orderByDesc('id')
-					->get();
-			}
-		}
+            if ($paymentBankAccounts->isNotEmpty()) {
+                $invoiceTotal = round((float) $invoice->total_amount, 2);
+                $unmatchedStatementEntries = BankStatementEntry::query()
+                    ->whereIn('bank_account_id', $paymentBankAccounts->pluck('id'))
+                    ->whereNull('transaction_id')
+                    ->orderByDesc('date')
+                    ->orderByDesc('id')
+                    ->get()
+                    ->sortByDesc(function (BankStatementEntry $entry) use ($invoiceTotal) {
+                        $amount = (float) $entry->amount;
+                        if ($amount <= 0) {
+                            return -1;
+                        }
 
-		return view('invoices.show', compact(
-			'businessEntity',
-			'invoice',
-			'paymentBankAccounts',
-			'unmatchedStatementEntries'
-		));
-	}
+                        return abs($amount - $invoiceTotal) <= BankStatementMatchSuggester::AMOUNT_TOLERANCE
+                            ? 2
+                            : 0;
+                    })
+                    ->values();
 
-	public function edit(BusinessEntity $businessEntity, Invoice $invoice)
-	{
-		$this->authorize('update', $businessEntity);
-		$this->authorizeInvoice($businessEntity, $invoice);
-		$invoice->load('lines');
-		return view('invoices.edit', compact('businessEntity', 'invoice'));
-	}
+                $suggestedStatementEntryId = $unmatchedStatementEntries
+                    ->first(function (BankStatementEntry $entry) use ($invoiceTotal) {
+                        $amount = (float) $entry->amount;
 
-	public function update(Request $request, BusinessEntity $businessEntity, Invoice $invoice)
-	{
-		$this->authorize('update', $businessEntity);
-		$this->authorizeInvoice($businessEntity, $invoice);
-		if ($invoice->is_posted) {
-			return back()->with('error', 'Posted invoices cannot be edited.');
-		}
+                        return $amount > 0
+                            && abs($amount - $invoiceTotal) <= BankStatementMatchSuggester::AMOUNT_TOLERANCE;
+                    })?->id;
+            }
+        }
 
-		$data = $request->validate([
-			'invoice_number' => [
-				'required',
-				'max:50',
-				Rule::unique('invoices', 'invoice_number')->where('business_entity_id', $businessEntity->id)->ignore($invoice->id),
-			],
-			'issue_date' => 'required|date',
-			'due_date' => 'nullable|date',
-			'customer_name' => 'required|string|max:255',
-			'reference' => 'nullable|string|max:255',
-			'currency' => 'nullable|string|size:3',
-			'notes' => 'nullable|string',
-			'lines' => 'required|array|min:1',
-			'lines.*.description' => 'required|string',
-			'lines.*.quantity' => 'required|numeric|min:0.0001',
-			'lines.*.unit_price' => 'required|numeric|min:0',
-			'lines.*.gst_rate' => 'nullable|numeric|min:0',
-			'lines.*.account_code' => 'nullable|string|max:20',
-		]);
+        return view('invoices.show', compact(
+            'businessEntity',
+            'invoice',
+            'paymentBankAccounts',
+            'unmatchedStatementEntries',
+            'suggestedStatementEntryId'
+        ));
+    }
 
-		$invoice->fill($data);
-		$invoice->currency = $data['currency'] ?? $invoice->currency;
-		$invoice->save();
+    public function edit(BusinessEntity $businessEntity, Invoice $invoice)
+    {
+        $this->authorize('update', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
+        $invoice->load('lines');
 
-		$invoice->lines()->delete();
-		$subtotal = 0; $gstTotal = 0; $grand = 0;
-		foreach ($data['lines'] as $line) {
-			$qty = (float) $line['quantity'];
-			$price = (float) $line['unit_price'];
-			$gstRate = isset($line['gst_rate']) ? (float) $line['gst_rate'] : 0.1;
-			$lineTotal = round($qty * $price * (1 + $gstRate), 2);
-			InvoiceLine::create([
-				'invoice_id' => $invoice->id,
-				'description' => $line['description'],
-				'quantity' => $qty,
-				'unit_price' => $price,
-				'line_total' => $lineTotal,
-				'gst_rate' => $gstRate,
-				'account_code' => $line['account_code'] ?? null,
-			]);
-			$net = round($qty * $price, 2);
-			$gst = round($net * $gstRate, 2);
-			$subtotal += $net; $gstTotal += $gst; $grand += $net + $gst;
-		}
-		$invoice->subtotal = $subtotal;
-		$invoice->gst_amount = $gstTotal;
-		$invoice->total_amount = $grand;
-		$invoice->save();
+        return view('invoices.edit', compact('businessEntity', 'invoice'));
+    }
 
-		return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
-			->with('success', 'Invoice updated');
-	}
+    public function update(Request $request, BusinessEntity $businessEntity, Invoice $invoice)
+    {
+        $this->authorize('update', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
+        if ($invoice->is_posted) {
+            return back()->with('error', 'Posted invoices cannot be edited.');
+        }
 
-	public function destroy(BusinessEntity $businessEntity, Invoice $invoice)
-	{
-		$this->authorize('update', $businessEntity);
-		$this->authorizeInvoice($businessEntity, $invoice);
-		if ($invoice->is_posted) {
-			return back()->with('error', 'Posted invoices cannot be deleted.');
-		}
-		$invoice->delete();
-		return redirect()->route('business-entities.invoices.index', $businessEntity)
-			->with('success', 'Invoice deleted');
-	}
+        $data = $request->validate([
+            'invoice_number' => [
+                'required',
+                'max:50',
+                Rule::unique('invoices', 'invoice_number')->where('business_entity_id', $businessEntity->id)->ignore($invoice->id),
+            ],
+            'issue_date' => 'required|date',
+            'due_date' => 'nullable|date',
+            'customer_name' => 'required|string|max:255',
+            'reference' => 'nullable|string|max:255',
+            'currency' => 'nullable|string|size:3',
+            'notes' => 'nullable|string',
+            'lines' => 'required|array|min:1',
+            'lines.*.description' => 'required|string',
+            'lines.*.quantity' => 'required|numeric|min:0.0001',
+            'lines.*.unit_price' => 'required|numeric|min:0',
+            'lines.*.gst_rate' => 'nullable|numeric|min:0',
+            'lines.*.account_code' => 'nullable|string|max:20',
+        ]);
 
-	/**
-	 * Browsers issue GET when this URL is opened directly; posting requires POST from the invoice page.
-	 */
-	public function postRedirect(BusinessEntity $businessEntity, Invoice $invoice)
-	{
-		$this->authorize('view', $businessEntity);
-		$this->authorizeInvoice($businessEntity, $invoice);
+        $invoice->fill($data);
+        $invoice->currency = $data['currency'] ?? $invoice->currency;
+        $invoice->save();
 
-		return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
-			->with('info', 'Use the Post to ledger button on this page to post the invoice.');
-	}
+        $invoice->lines()->delete();
+        $subtotal = 0;
+        $gstTotal = 0;
+        $grand = 0;
+        foreach ($data['lines'] as $line) {
+            $qty = (float) $line['quantity'];
+            $price = (float) $line['unit_price'];
+            $gstRate = isset($line['gst_rate']) ? (float) $line['gst_rate'] : 0.1;
+            $lineTotal = round($qty * $price * (1 + $gstRate), 2);
+            InvoiceLine::create([
+                'invoice_id' => $invoice->id,
+                'description' => $line['description'],
+                'quantity' => $qty,
+                'unit_price' => $price,
+                'line_total' => $lineTotal,
+                'gst_rate' => $gstRate,
+                'account_code' => $line['account_code'] ?? null,
+            ]);
+            $net = round($qty * $price, 2);
+            $gst = round($net * $gstRate, 2);
+            $subtotal += $net;
+            $gstTotal += $gst;
+            $grand += $net + $gst;
+        }
+        $invoice->subtotal = $subtotal;
+        $invoice->gst_amount = $gstTotal;
+        $invoice->total_amount = $grand;
+        $invoice->save();
 
-	public function post(BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
-	{
-		$this->authorize('update', $businessEntity);
-		$this->authorizeInvoice($businessEntity, $invoice);
-		if ($invoice->is_posted) {
-			return back()->with('info', 'Invoice already posted.');
-		}
-		$invoice->load('lines');
-		$postingService->post($invoice);
-		return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
-			->with('success', 'Invoice posted to ledger');
-	}
+        return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
+            ->with('success', 'Invoice updated');
+    }
 
-	public function recordPayment(
-		Request $request,
-		BusinessEntity $businessEntity,
-		Invoice $invoice,
-		InvoicePaymentService $paymentService
-	) {
-		$this->authorize('update', $businessEntity);
-		$this->authorizeInvoice($businessEntity, $invoice);
+    public function destroy(BusinessEntity $businessEntity, Invoice $invoice)
+    {
+        $this->authorize('update', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
+        if ($invoice->is_posted) {
+            return back()->with('error', 'Posted invoices cannot be deleted.');
+        }
+        $invoice->delete();
 
-		$transaction = $paymentService->record($request, $businessEntity, $invoice);
+        return redirect()->route('business-entities.invoices.index', $businessEntity)
+            ->with('success', 'Invoice deleted');
+    }
 
-		$message = 'Payment recorded and AR cleared.';
-		if ($transaction->bankStatementEntries()->exists()) {
-			$message = 'Payment recorded, AR cleared, and matched to the bank statement line.';
-		} else {
-			$message .= ' Match a statement line later from the bank account panel if needed.';
-		}
+    /**
+     * Browsers issue GET when this URL is opened directly; posting requires POST from the invoice page.
+     */
+    public function postRedirect(BusinessEntity $businessEntity, Invoice $invoice)
+    {
+        $this->authorize('view', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
 
-		return back()->with('success', $message);
-	}
+        return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
+            ->with('info', 'Use the Post to ledger button on this page to post the invoice.');
+    }
 
-	public function remind(BusinessEntity $businessEntity, Invoice $invoice)
-	{
-		$this->authorize('update', $businessEntity);
-		$this->authorizeInvoice($businessEntity, $invoice);
+    public function post(BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
+    {
+        $this->authorize('update', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
+        if ($invoice->is_posted) {
+            return back()->with('info', 'Invoice already posted.');
+        }
+        $invoice->load('lines');
+        $postingService->post($invoice);
 
-		if ($invoice->status !== 'approved') {
-			return back()->with('error', 'Reminders can only be sent for approved (posted) invoices.');
-		}
+        return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
+            ->with('success', 'Invoice posted to ledger');
+    }
 
-		$invoice->loadMissing(['lease.tenant']);
-		$tenant = $invoice->lease?->tenant;
-		$email = $tenant?->email;
-		if (!$email) {
-			return back()->with('error', 'No tenant email on file for this invoice.');
-		}
+    public function recordPayment(
+        Request $request,
+        BusinessEntity $businessEntity,
+        Invoice $invoice,
+        InvoicePaymentService $paymentService
+    ) {
+        $this->authorize('update', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
 
-		$customerName = $tenant->name ?? $invoice->customer_name;
+        $transaction = $paymentService->record($request, $businessEntity, $invoice);
 
-		try {
-			Mail::to($email)->send(new InvoiceReminderMail($invoice, $customerName));
-		} catch (\Throwable $e) {
-			report($e);
+        $message = 'Payment recorded and AR cleared.';
+        if ($transaction->bankStatementEntries()->exists()) {
+            $message = 'Payment recorded, AR cleared, and matched to the bank statement line.';
+        } else {
+            $message .= ' Match a statement line later from the bank account panel if needed.';
+        }
 
-			return back()->with('error', 'Could not send email. Check your mail configuration.');
-		}
+        return back()->with('success', $message);
+    }
 
-		$invoice->update([
-			'last_reminder_sent_at' => now(),
-			'reminder_count' => (int) $invoice->reminder_count + 1,
-		]);
+    public function remind(BusinessEntity $businessEntity, Invoice $invoice)
+    {
+        $this->authorize('update', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
 
-		return back()->with('success', 'Reminder sent to '.$email);
-	}
+        if ($invoice->status !== 'approved') {
+            return back()->with('error', 'Reminders can only be sent for approved (posted) invoices.');
+        }
 
-	private function authorizeInvoice(BusinessEntity $businessEntity, Invoice $invoice): void
-	{
-		abort_unless((int) $invoice->business_entity_id === (int) $businessEntity->id, 404);
-		$this->ensureOperationalForAccounting($businessEntity);
-	}
+        $invoice->loadMissing(['lease.tenant']);
+        $tenant = $invoice->lease?->tenant;
+        $email = $tenant?->email;
+        if (! $email) {
+            return back()->with('error', 'No tenant email on file for this invoice.');
+        }
+
+        $customerName = $tenant->name ?? $invoice->customer_name;
+
+        try {
+            Mail::to($email)->send(new InvoiceReminderMail($invoice, $customerName));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', 'Could not send email. Check your mail configuration.');
+        }
+
+        $invoice->update([
+            'last_reminder_sent_at' => now(),
+            'reminder_count' => (int) $invoice->reminder_count + 1,
+        ]);
+
+        return back()->with('success', 'Reminder sent to '.$email);
+    }
+
+    private function authorizeInvoice(BusinessEntity $businessEntity, Invoice $invoice): void
+    {
+        abort_unless((int) $invoice->business_entity_id === (int) $businessEntity->id, 404);
+        $this->ensureOperationalForAccounting($businessEntity);
+    }
 }

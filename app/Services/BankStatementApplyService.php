@@ -1,0 +1,218 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\BankAccount;
+use App\Models\BankStatementEntry;
+use App\Models\BusinessEntity;
+use App\Models\ChartOfAccount;
+use App\Models\Transaction;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+
+class BankStatementApplyService
+{
+    /**
+     * @param  list<array<string, mixed>>  $matches
+     * @return array{matchedExisting: int, transactionsCreated: int, skipped: int}
+     */
+    public function apply(BankAccount $bankAccount, BusinessEntity $businessEntity, array $matches): array
+    {
+        $matchedExisting = 0;
+        $created = 0;
+        $skipped = 0;
+
+        foreach ($matches as $match) {
+            $transactionId = ! empty($match['transaction_id']) ? (int) $match['transaction_id'] : null;
+            $chartAccountId = ! empty($match['chart_account_id']) ? (int) $match['chart_account_id'] : null;
+            $transactionType = ! empty($match['transaction_type']) ? (string) $match['transaction_type'] : null;
+            $assetId = ! empty($match['asset_id']) ? (int) $match['asset_id'] : null;
+            $action = ! empty($match['action']) ? (string) $match['action'] : null;
+
+            if ($transactionId === null && $chartAccountId === null && $transactionType === null) {
+                $skipped++;
+
+                continue;
+            }
+
+            if ($transactionId !== null && ($chartAccountId !== null || $transactionType !== null)) {
+                throw ValidationException::withMessages([
+                    'matches' => 'Choose either an existing transaction or a create action for each line, not both.',
+                ]);
+            }
+
+            if ($transactionType !== null && ! array_key_exists($transactionType, Transaction::allTypes())) {
+                throw ValidationException::withMessages([
+                    'matches' => "Unknown transaction type [{$transactionType}].",
+                ]);
+            }
+
+            DB::transaction(function () use (
+                $match,
+                $bankAccount,
+                $businessEntity,
+                $transactionId,
+                $chartAccountId,
+                $transactionType,
+                $assetId,
+                $action,
+                &$matchedExisting,
+                &$created
+            ) {
+                $entryId = (int) $match['bank_entry_id'];
+                $bankEntry = BankStatementEntry::query()
+                    ->where('id', $entryId)
+                    ->lockForUpdate()
+                    ->first();
+
+                if (! $bankEntry || (int) $bankEntry->bank_account_id !== (int) $bankAccount->id) {
+                    throw ValidationException::withMessages([
+                        'matches' => "Statement line #{$entryId} is not available on this account.",
+                    ]);
+                }
+
+                if ($bankEntry->transaction_id !== null) {
+                    throw ValidationException::withMessages([
+                        'matches' => "Statement line #{$entryId} is already matched.",
+                    ]);
+                }
+
+                if ($transactionId !== null || $action === 'match_transaction') {
+                    $this->matchExisting(
+                        $bankEntry,
+                        $bankAccount,
+                        $businessEntity,
+                        (int) $transactionId
+                    );
+                    $matchedExisting++;
+
+                    return;
+                }
+
+                $resolvedType = $transactionType;
+                if ($resolvedType === null && $chartAccountId !== null) {
+                    $chartAccount = ChartOfAccount::query()->findOrFail($chartAccountId);
+                    $resolvedType = $this->mapTransactionType(
+                        (string) $chartAccount->account_type,
+                        (float) $bankEntry->amount
+                    );
+                }
+
+                if ($resolvedType === null) {
+                    throw ValidationException::withMessages([
+                        'matches' => "Statement line #{$entryId} has no create type.",
+                    ]);
+                }
+
+                $transaction = Transaction::create([
+                    'business_entity_id' => $businessEntity->id,
+                    'bank_account_id' => $bankAccount->id,
+                    'asset_id' => $assetId,
+                    'date' => $bankEntry->date,
+                    'amount' => abs((float) $bankEntry->amount),
+                    'description' => $bankEntry->description,
+                    'transaction_type' => $resolvedType,
+                    'payment_status' => 'paid',
+                    'paid_at' => $bankEntry->date,
+                    'gst_amount' => null,
+                    'gst_status' => 'gst_free',
+                    'gst_basis' => null,
+                ]);
+
+                $bankEntry->update(['transaction_id' => $transaction->id]);
+                $created++;
+            });
+        }
+
+        if ($matchedExisting === 0 && $created === 0) {
+            throw ValidationException::withMessages([
+                'matches' => 'No matches were applied. Choose an existing transaction or create type for at least one line.',
+            ]);
+        }
+
+        return [
+            'matchedExisting' => $matchedExisting,
+            'transactionsCreated' => $created,
+            'skipped' => $skipped,
+        ];
+    }
+
+    private function matchExisting(
+        BankStatementEntry $bankEntry,
+        BankAccount $bankAccount,
+        BusinessEntity $businessEntity,
+        int $transactionId
+    ): void {
+        $transaction = Transaction::query()->find($transactionId);
+        if (! $transaction || (int) $transaction->business_entity_id !== (int) $businessEntity->id) {
+            throw ValidationException::withMessages([
+                'matches' => 'Selected transaction does not belong to the booking entity.',
+            ]);
+        }
+
+        if ($transaction->bank_account_id !== null
+            && (int) $transaction->bank_account_id !== (int) $bankAccount->id) {
+            throw ValidationException::withMessages([
+                'matches' => 'Selected transaction belongs to a different bank account.',
+            ]);
+        }
+
+        if ($transaction->bankStatementEntries()->exists()) {
+            throw ValidationException::withMessages([
+                'matches' => 'Selected transaction is already matched to a statement line.',
+            ]);
+        }
+
+        $this->assertEntryMatchesTransaction($bankEntry, $transaction);
+
+        $updates = [];
+        if ($transaction->bank_account_id === null) {
+            $updates['bank_account_id'] = $bankAccount->id;
+        }
+        if (($transaction->payment_status ?? 'paid') === 'unpaid') {
+            $updates['payment_status'] = 'paid';
+            $updates['paid_at'] = $bankEntry->date;
+        }
+
+        if ($updates !== []) {
+            $transaction->update($updates);
+        }
+
+        $bankEntry->update(['transaction_id' => $transaction->id]);
+    }
+
+    public function assertEntryMatchesTransaction(BankStatementEntry $bankEntry, Transaction $transaction): void
+    {
+        $entryAmount = abs((float) $bankEntry->amount);
+        $transactionAmount = abs((float) $transaction->amount);
+
+        if (abs($entryAmount - $transactionAmount) > BankStatementMatchSuggester::AMOUNT_TOLERANCE) {
+            throw ValidationException::withMessages([
+                'matches' => 'Statement line amount does not match the selected transaction.',
+            ]);
+        }
+
+        $entryIsIncome = (float) $bankEntry->amount >= 0;
+        $transactionIsIncome = Transaction::directionFromType((string) $transaction->transaction_type) === 'income';
+
+        if ($entryIsIncome !== $transactionIsIncome) {
+            throw ValidationException::withMessages([
+                'matches' => 'Statement line direction does not match the selected transaction.',
+            ]);
+        }
+    }
+
+    public function mapTransactionType(string $accountType, float $amount): string
+    {
+        $isIncome = $amount >= 0;
+
+        return match ($accountType) {
+            'income' => $isIncome ? 'sales_revenue' : 'cogs',
+            'expense' => $isIncome ? 'sales_revenue' : 'cogs',
+            'asset' => $isIncome ? 'capital_expenditure' : 'asset_purchase',
+            'liability' => $isIncome ? 'directors_loans_to_company' : 'loan_repayments',
+            'equity' => $isIncome ? 'directors_loans_to_company' : 'directors_fees',
+            default => $isIncome ? 'sales_revenue' : 'cogs',
+        };
+    }
+}

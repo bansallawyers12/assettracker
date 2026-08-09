@@ -73,6 +73,8 @@ class Transaction extends Model
         'marketing_advertising' => 'Marketing & Advertising',
         'travel_expenses' => 'Travel Expenses',
         'loan_repayments' => 'Loan Repayment',
+        'loan_interest' => 'Loan Interest',
+        'loan_fees' => 'Loan Fees',
         'directors_fees' => 'Directors Fees',
         'rent_to_related_party' => 'Rent to Related Party',
         'purchases_from_related_party' => 'Purchase from Related Party',
@@ -144,6 +146,8 @@ class Transaction extends Model
                 'capital_expenditure' => self::$expenseTypes['capital_expenditure'],
                 'cogs' => self::$expenseTypes['cogs'],
                 'loan_repayments' => self::$expenseTypes['loan_repayments'],
+                'loan_interest' => self::$expenseTypes['loan_interest'],
+                'loan_fees' => self::$expenseTypes['loan_fees'],
             ],
         ];
     }

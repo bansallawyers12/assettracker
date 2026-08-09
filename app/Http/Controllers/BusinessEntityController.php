@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 // Import necessary models and classes
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Mail\ContactEmail;
 use App\Models\Asset;
 use App\Models\BankAccount;
@@ -13,34 +14,36 @@ use App\Models\Document;
 use App\Models\EmailTemplate;
 use App\Models\EntityPerson;
 use App\Models\Invoice;
-use App\Models\Note;
-use App\Models\Person; // Added for date manipulation
-use App\Models\Reminder; // Added for logging
-use App\Models\Transaction; // Added for file storage
+use App\Models\Note; // Added for date manipulation
+use App\Models\Person; // Added for logging
+use App\Models\Reminder; // Added for file storage
+use App\Models\Transaction;
 use App\Models\TransactionLine;
 use App\Models\Vendor;
 use App\Rules\UniqueAbnHash;
 use App\Rules\UniqueAcnHash;
 use App\Services\BankAccountAssetLinkService;
+use App\Services\BankStatementMatchSuggester;
 use App\Services\CommitmentReportService;
 use App\Services\ComplianceYearService;
 use App\Services\DocumentUploadService;
 use App\Services\TransactionPostingService;
-use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Support\SecurityAuditLogger;
 use App\Support\TableSort;
 use App\Support\TransactionCashParts;
 use App\Support\TransactionGstResolver;
-use App\Support\TransactionPayerResolver;
-use Carbon\Carbon; // Added for handling validation exceptions
-use Illuminate\Database\QueryException;
+use App\Support\TransactionPayerResolver; // Added for handling validation exceptions
+use Carbon\Carbon;
 // Add this at the top with other use statements
 
+use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -332,8 +335,8 @@ class BusinessEntityController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, BusinessEntity>  $entities
-     * @return \Illuminate\Support\Collection<int, BusinessEntity>
+     * @param  Collection<int, BusinessEntity>  $entities
+     * @return Collection<int, BusinessEntity>
      */
     private function filterEntitiesBySearch($entities, string $search)
     {
@@ -417,7 +420,7 @@ class BusinessEntityController extends Controller
     }
 
     /**
-     * @return list<string|\Illuminate\Contracts\Validation\ValidationRule>
+     * @return list<string|ValidationRule>
      */
     private function asicRenewalDateValidationRules(): array
     {
@@ -500,7 +503,7 @@ class BusinessEntityController extends Controller
                         $fail('The ABN must contain exactly 11 digits.');
                     }
                 }
-            }, new UniqueAbnHash()],
+            }, new UniqueAbnHash],
             'acn' => ['nullable', 'prohibited_unless:entity_type,Company', 'string', function ($attribute, $value, $fail) {
                 if ($value !== null && $value !== '') {
                     $digits = preg_replace('/\D/', '', (string) $value);
@@ -508,7 +511,7 @@ class BusinessEntityController extends Controller
                         $fail('The ACN must contain exactly 9 digits.');
                     }
                 }
-            }, new UniqueAcnHash()],
+            }, new UniqueAcnHash],
             'tfn' => 'nullable|string|max:9',
             'corporate_key' => 'nullable|prohibited_unless:entity_type,Company|string|max:255',
             'registered_address' => 'required|string',
@@ -774,7 +777,7 @@ class BusinessEntityController extends Controller
 
         // Combine reminders, sort by due date ascending
         $allReminders = $reminders->concat($noteReminders)->concat($transactionDueReminders)->sortBy(function ($r) {
-            return $r->next_due_date ? \Carbon\Carbon::parse($r->next_due_date)->timestamp : PHP_INT_MAX;
+            return $r->next_due_date ? Carbon::parse($r->next_due_date)->timestamp : PHP_INT_MAX;
         })->values();
 
         $persons = EntityPerson::whereIn('business_entity_id', $opIds)
@@ -2247,7 +2250,7 @@ class BusinessEntityController extends Controller
     /**
      * Update an entity purpose link (purpose and optional rent asset links).
      *
-     * @return RedirectResponse|\Illuminate\Http\JsonResponse
+     * @return RedirectResponse|JsonResponse
      */
     public function updateBankAccountLink(
         Request $request,
@@ -2348,7 +2351,7 @@ class BusinessEntityController extends Controller
     /**
      * Remove one entity purpose link (does not delete the underlying bank account).
      *
-     * @return RedirectResponse|\Illuminate\Http\JsonResponse
+     * @return RedirectResponse|JsonResponse
      */
     public function detachBankAccountLink(
         Request $request,
@@ -2704,77 +2707,8 @@ class BusinessEntityController extends Controller
      */
     protected function determineTransactionType($description, $amount)
     {
-        $description = strtolower($description);
-        $amount = floatval($amount);
-
-        // --- Income Rules (Amount > 0) ---
-        if ($amount > 0) {
-            if (preg_match('/sale|invoice|revenue|payment received/i', $description)) {
-                return 'sales_revenue';
-            }
-            if (preg_match('/interest/i', $description)) {
-                return 'interest_income';
-            }
-            if (preg_match('/rent received|rental income/i', $description)) {
-                return 'rental_income';
-            }
-            if (preg_match('/grant|subsidy/i', $description)) {
-                return 'grants_subsidies';
-            }
-            if (preg_match('/director loan|loan from director/i', $description)) {
-                return 'directors_loans_to_company';
-            }
-            if (preg_match('/related party sale/i', $description)) {
-                return 'sales_to_related_party';
-            }
-            // Add more income rules as needed
-        }
-        // --- Expense Rules (Amount < 0) ---
-        elseif ($amount < 0) {
-            if (preg_match('/cogs|cost of goods|inventory purchase/i', $description)) {
-                return 'cogs';
-            }
-            if (preg_match('/wages|salary|payroll|superannuation|super fund/i', $description)) {
-                return 'wages_superannuation';
-            }
-            if (preg_match('/rent payment|lease|electricity|water|gas|internet|phone bill|utilities/i', $description)) {
-                return 'rent_utilities';
-            }
-            if (preg_match('/marketing|advertising|google ads|facebook ads|seo/i', $description)) {
-                return 'marketing_advertising';
-            }
-            if (preg_match('/travel|flight|hotel|accommodation|uber|taxi/i', $description)) {
-                return 'travel_expenses';
-            }
-            if (preg_match('/loan repayment|mortgage payment/i', $description)) {
-                return 'loan_repayments';
-            }
-            if (preg_match('/capital purchase|asset purchase|vehicle|equipment|computer/i', $description)) {
-                return 'capital_expenditure';
-            }
-            if (preg_match('/bas payment|gst payment|payg payment|tax office|ato/i', $description)) {
-                return 'bas_payments';
-            }
-            if (preg_match('/director loan repayment|repay director/i', $description)) {
-                return 'repayment_directors_loans';
-            }
-            if (preg_match('/loan to director|advance to director/i', $description)) {
-                return 'company_loans_to_directors';
-            } // Division 7A implication
-            if (preg_match('/director fee|directors fee/i', $description)) {
-                return 'directors_fees';
-            }
-            if (preg_match('/related party rent/i', $description)) {
-                return 'rent_to_related_party';
-            }
-            if (preg_match('/related party purchase/i', $description)) {
-                return 'purchases_from_related_party';
-            }
-            // Add more expense rules as needed
-        }
-
-        // Default if no rules match
-        return 'unknown';
+        return app(BankStatementMatchSuggester::class)
+            ->determineTransactionType((string) $description, (float) $amount);
     }
 
     /**
@@ -2816,6 +2750,8 @@ class BusinessEntityController extends Controller
             'directors_loans_to_company', // Financial supply
             'wages_superannuation',     // Outside scope of GST
             'loan_repayments',          // Principal is financial supply, interest might be
+            'loan_interest',            // Financial supply / input taxed
+            'loan_fees',                // Often treated as financial / bank fee
             'bas_payments',             // Tax payment, outside scope
             'repayment_directors_loans', // Financial supply
             'company_loans_to_directors', // Financial supply
@@ -3704,7 +3640,7 @@ class BusinessEntityController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, BusinessEntityBankAccount>  $links
+     * @param  Collection<int, BusinessEntityBankAccount>  $links
      * @return array<int, array<string, mixed>>
      */
     private function entityBankAccountHolderGroups(BusinessEntity $businessEntity, $links): array
@@ -3828,7 +3764,7 @@ class BusinessEntityController extends Controller
     {
         return [
             'bank_name_select' => ['nullable', 'string', 'max:255'],
-            'bank_name_other'  => ['nullable', 'string', 'max:255'],
+            'bank_name_other' => ['nullable', 'string', 'max:255'],
             'bank_name' => [
                 'required',
                 'string',
@@ -3928,7 +3864,7 @@ class BusinessEntityController extends Controller
     private function holderValidationRules(): array
     {
         return [
-            'holder_type'      => ['required', Rule::in(BankAccount::HOLDER_TYPES)],
+            'holder_type' => ['required', Rule::in(BankAccount::HOLDER_TYPES)],
             'holder_entity_id' => [
                 'nullable',
                 Rule::requiredIf(fn () => request('holder_type') === BankAccount::HOLDER_ENTITY),
@@ -3947,7 +3883,7 @@ class BusinessEntityController extends Controller
                     });
                 }),
             ],
-            'holder_other'     => [
+            'holder_other' => [
                 'nullable',
                 Rule::requiredIf(fn () => request('holder_type') === BankAccount::HOLDER_OTHER),
                 'string',
@@ -3964,12 +3900,12 @@ class BusinessEntityController extends Controller
     {
         return array_merge([
             'business_entity_id' => $businessEntity->id,
-            'user_id'            => $businessEntity->user_id ?? auth()->id(),
-            'account_name'       => $validated['account_name'],
-            'bank_name'          => $validated['bank_name'],
-            'bsb'                => BankAccount::normalizeBsb($validated['bsb']),
-            'account_number'     => $validated['account_number'],
-            'account_purpose'    => $validated['account_purpose'],
+            'user_id' => $businessEntity->user_id ?? auth()->id(),
+            'account_name' => $validated['account_name'],
+            'bank_name' => $validated['bank_name'],
+            'bsb' => BankAccount::normalizeBsb($validated['bsb']),
+            'account_number' => $validated['account_number'],
+            'account_purpose' => $validated['account_purpose'],
         ], $this->holderAttributesFromValidated($validated));
     }
 
@@ -3979,7 +3915,7 @@ class BusinessEntityController extends Controller
      */
     private function portfolioBankAccountAttributesFromRequest(array $validated, ?BankAccount $existing = null): array
     {
-        $purpose  = $validated['account_purpose'];
+        $purpose = $validated['account_purpose'];
         $entityId = $purpose === BankAccount::PURPOSE_LOAN_REPAYMENT
             ? null
             : (isset($validated['business_entity_id']) ? (int) $validated['business_entity_id'] : null);
@@ -3994,12 +3930,12 @@ class BusinessEntityController extends Controller
         return array_merge([
             'business_entity_id' => $entityId,
             // Portfolio accounts are created by the logged-in user; entity ownership may differ.
-            'user_id'            => $existing?->user_id ?? (int) auth()->id(),
-            'account_name'       => $validated['account_name'],
-            'bank_name'          => $validated['bank_name'],
-            'bsb'                => BankAccount::normalizeBsb($validated['bsb']),
-            'account_number'     => $validated['account_number'],
-            'account_purpose'    => $purpose,
+            'user_id' => $existing?->user_id ?? (int) auth()->id(),
+            'account_name' => $validated['account_name'],
+            'bank_name' => $validated['bank_name'],
+            'bsb' => BankAccount::normalizeBsb($validated['bsb']),
+            'account_number' => $validated['account_number'],
+            'account_purpose' => $purpose,
         ], $this->holderAttributesFromValidated($validated));
     }
 
@@ -4015,14 +3951,14 @@ class BusinessEntityController extends Controller
         $type = $validated['holder_type'] ?? null;
 
         return [
-            'holder_type'      => $type,
+            'holder_type' => $type,
             'holder_entity_id' => $type === BankAccount::HOLDER_ENTITY
                 ? (isset($validated['holder_entity_id']) ? (int) $validated['holder_entity_id'] : null)
                 : null,
             'holder_person_id' => $type === BankAccount::HOLDER_PERSON
                 ? (isset($validated['holder_person_id']) ? (int) $validated['holder_person_id'] : null)
                 : null,
-            'holder_other'     => $type === BankAccount::HOLDER_OTHER
+            'holder_other' => $type === BankAccount::HOLDER_OTHER
                 ? ($validated['holder_other'] ?? null)
                 : null,
         ];
@@ -4031,9 +3967,9 @@ class BusinessEntityController extends Controller
     /**
      * Persons linked to any of the authenticated user's entities, suitable for the holder picker.
      *
-     * @return \Illuminate\Support\Collection<int, \App\Models\Person>
+     * @return Collection<int, Person>
      */
-    private function personOptionsForHolder(): \Illuminate\Support\Collection
+    private function personOptionsForHolder(): Collection
     {
         return Person::query()
             ->linkedToOperationalEntities()
@@ -4099,4 +4035,3 @@ class BusinessEntityController extends Controller
         abort(403, 'Unauthorized action.');
     }
 }
-

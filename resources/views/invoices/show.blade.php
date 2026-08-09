@@ -180,13 +180,19 @@
                                     <select name="bank_statement_entry_id" id="invoice_payment_statement_entry_id" class="w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-900 dark:text-white shadow-xs text-sm">
                                         <option value="">— Leave unmatched —</option>
                                         @foreach (($unmatchedStatementEntries ?? collect()) as $entry)
+                                            @php
+                                                $isSuggested = (int) ($suggestedStatementEntryId ?? 0) === (int) $entry->id;
+                                                $selected = old('bank_statement_entry_id') !== null
+                                                    ? (string) old('bank_statement_entry_id') === (string) $entry->id
+                                                    : $isSuggested;
+                                            @endphp
                                             <option
                                                 value="{{ $entry->id }}"
                                                 data-bank-account-id="{{ $entry->bank_account_id }}"
                                                 data-amount="{{ $entry->amount }}"
-                                                @selected((string) old('bank_statement_entry_id') === (string) $entry->id)
+                                                @selected($selected)
                                             >
-                                                {{ $entry->date?->format('d/m/Y') }} · ${{ number_format((float) $entry->amount, 2) }} · {{ \Illuminate\Support\Str::limit($entry->description ?: 'No description', 48) }}
+                                                @if($isSuggested)★ @endif{{ $entry->date?->format('d/m/Y') }} · ${{ number_format((float) $entry->amount, 2) }} · {{ \Illuminate\Support\Str::limit($entry->description ?: 'No description', 48) }}
                                             </option>
                                         @endforeach
                                     </select>

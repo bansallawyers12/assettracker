@@ -4,7 +4,14 @@ use App\Http\Controllers\Admin\AdminUsersWorkspaceController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\AssetInvoiceController;
+use App\Http\Controllers\AssetShowWorkspaceController;
+use App\Http\Controllers\AssetsWorkspaceController;
 use App\Http\Controllers\Auth\TwoFactorController;
+use App\Http\Controllers\BankAccountImportController;
+use App\Http\Controllers\BankAccountPanelController;
+use App\Http\Controllers\BankAccountStatementController;
+use App\Http\Controllers\BankAccountsWorkspaceController;
+use App\Http\Controllers\BankAccountTransactionController;
 use App\Http\Controllers\BankImportController;
 use App\Http\Controllers\BillsTasksController;
 use App\Http\Controllers\BusinessEntityController;
@@ -15,27 +22,21 @@ use App\Http\Controllers\ComplianceController;
 use App\Http\Controllers\ComplianceReportController;
 use App\Http\Controllers\ComplianceWorkspaceController;
 use App\Http\Controllers\ContactListController;
+use App\Http\Controllers\ContactListsWorkspaceController;
+use App\Http\Controllers\Dev\BankStatementPdfTestController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\DocumentWorkspaceController;
 use App\Http\Controllers\Email\GmailController;
 use App\Http\Controllers\Email\MailMessageController;
 use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\EmailTemplatesWorkspaceController;
-use App\Http\Controllers\AssetsWorkspaceController;
-use App\Http\Controllers\AssetShowWorkspaceController;
-use App\Http\Controllers\BankAccountPanelController;
-use App\Http\Controllers\BankAccountStatementController;
-use App\Http\Controllers\BankAccountImportController;
-use App\Http\Controllers\BankAccountTransactionController;
-use App\Http\Controllers\BankAccountsWorkspaceController;
-use App\Http\Controllers\ContactListsWorkspaceController;
-use App\Http\Controllers\EntityShowWorkspaceController;
 use App\Http\Controllers\EntityPersonController;
-use App\Http\Controllers\PersonsWorkspaceController;
-use App\Http\Controllers\PersonsIndexWorkspaceController;
-use App\Http\Controllers\PersonShowWorkspaceController;
+use App\Http\Controllers\EntityShowWorkspaceController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PersonShowWorkspaceController;
+use App\Http\Controllers\PersonsIndexWorkspaceController;
+use App\Http\Controllers\PersonsWorkspaceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PropertyReportController;
 use App\Http\Controllers\ReminderController;
@@ -71,6 +72,7 @@ Route::get('/phpinfo', function (Request $request) {
         }
         $unit = strtolower(substr($value, -1));
         $number = (float) $value;
+
         return (int) match ($unit) {
             'g' => $number * 1024 * 1024 * 1024,
             'm' => $number * 1024 * 1024,
@@ -108,6 +110,15 @@ Route::get('/phpinfo', function (Request $request) {
     phpinfo();
     exit;
 });
+
+if (app()->environment('local')) {
+    Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
+        Route::get('/dev/bank-statement-pdf-test', [BankStatementPdfTestController::class, 'show'])
+            ->name('dev.bank-statement-pdf-test.show');
+        Route::post('/dev/bank-statement-pdf-test', [BankStatementPdfTestController::class, 'parse'])
+            ->name('dev.bank-statement-pdf-test.parse');
+    });
+}
 
 // -----------------------------------------------------------------------
 // TOTP login challenge — no guest restriction because TwoFactorVerified

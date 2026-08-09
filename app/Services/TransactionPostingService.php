@@ -533,7 +533,17 @@ class TransactionPostingService
             'rent_utilities' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'marketing_advertising' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'travel_expenses' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
-            'loan_repayments' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'loan_repayments' => $this->findByName('Long Term Loans')
+                ?? $this->findAccount('4000')
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findAccount('5900'),
+            'loan_interest' => $this->findByName('Interest Expense')
+                ?? $this->findAccount('7500')
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findAccount('5900'),
+            'loan_fees' => $this->findByName('Other Expenses')
+                ?? $this->findByName('Other Expense')
+                ?? $this->findAccount('5900'),
             'directors_fees' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'rent_to_related_party' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'purchases_from_related_party' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
