@@ -79,7 +79,7 @@ DEBIT_HINT_RE = re.compile(
     re.I,
 )
 CREDIT_HINT_RE = re.compile(
-    r"\b(deposit|salary|transfer\s+from|refund|credit\s+to|direct\s+credit|return"
+    r"\b(deposit|salary|transfer\s+from|refund|credit\s+to|direct\s+credit"
     r"|interest\s+(?:earned|paid|credited))\b",
     re.I,
 )
@@ -298,9 +298,10 @@ def money_or_none(value: Decimal | None) -> float | None:
 
 
 def balance_or_none(value: Decimal | None) -> float | None:
+    """Keep the balance sign: DR/overdrawn balances are negative."""
     if value is None:
         return None
-    return float(abs(value).quantize(Decimal("0.01")))
+    return float(value.quantize(Decimal("0.01")))
 
 
 def build_entry(
@@ -416,30 +417,36 @@ def strip_trailing_money(description: str) -> str:
 
 
 def money_values_from_cells(cells: list[str]) -> list[Decimal]:
+    """Extract money values keeping their sign (DR suffix and parentheses are negative)."""
     values: list[Decimal] = []
     for cell in cells:
         if not look_like_money(cell):
             continue
         amount = parse_amount(cell)
         if amount is not None:
-            values.append(abs(amount))
-        # Keep absolute values here; sign is resolved later from layout/hints.
+            values.append(amount)
     # Also pull CR/DR money glued inside a longer description cell.
     if not values:
         for cell in cells:
             for match in re.finditer(r"\$?-?\d[\d,]*\.\d{2}(?:CR|DR)?", cell, flags=re.I):
                 amount = parse_amount(match.group(0))
                 if amount is not None:
-                    values.append(abs(amount))
+                    values.append(amount)
     return values
 
 
+def glue_money_suffix(text: str) -> str:
+    """Attach detached CR/DR markers to their amount: '607.06 Dr' -> '607.06Dr'."""
+    return re.sub(r"(\.\d{2})\s+(CR|DR)\b", r"\1\2", text, flags=re.I)
+
+
 def money_values_from_text(text: str) -> list[Decimal]:
+    text = glue_money_suffix(text)
     values: list[Decimal] = []
     for match in re.finditer(r"\$?-?\d[\d,]*\.\d{2}(?:CR|DR)?", text, flags=re.I):
         amount = parse_amount(match.group(0))
         if amount is not None:
-            values.append(abs(amount))
+            values.append(amount)
     return values
 
 
@@ -616,6 +623,7 @@ def merge_westpac_table_rows(rows: list[list[Any]]) -> list[list[str]]:
 
 
 def cells_from_text_line(line: str) -> list[str]:
+    line = glue_money_suffix(line)
     cells = [part.strip() for part in re.split(r"\s{2,}|\t", line) if part.strip()]
     if len(cells) >= 2:
         date_token, remainder = split_leading_date(cells)
@@ -758,9 +766,8 @@ def merge_continuation_row(prev: list[str], cont: list[str]) -> list[str]:
 
     money_parts = [cell for cell in cont if look_like_money(cell)]
     if money_parts:
-        if len(prev) < 5:
-            while len(prev) < 5:
-                prev.append("")
+        while len(prev) < 5:
+            prev.append("")
         if len(money_parts) >= 3:
             prev[2], prev[3], prev[4] = money_parts[0], money_parts[1], money_parts[2]
         elif len(money_parts) == 2:
@@ -770,6 +777,14 @@ def merge_continuation_row(prev: list[str], cont: list[str]) -> list[str]:
                     prev[3] = amount
                 else:
                     prev[2] = amount
+            else:
+                # NAB prints two sub-charges in one dated row; the balance moves
+                # by their sum, so accumulate into the existing amount cell.
+                slot = 2 if prev[2] else 3
+                existing = parse_amount(prev[slot])
+                extra_amount = parse_amount(amount)
+                if existing is not None and extra_amount is not None:
+                    prev[slot] = str(abs(existing) + abs(extra_amount))
             if not prev[4]:
                 prev[4] = balance
         elif len(money_parts) == 1 and not prev[4]:
@@ -893,9 +908,9 @@ def disambiguate_amount_balance(
     Compact PDF text often collapses blank debit/credit cells into:
     Date | Description | Amount | Balance
     Use the previous balance / narration hints to recover the sign.
+    Balances stay signed so DR/overdrawn arithmetic works (e.g. 280.25 -> -3,368.35).
     """
     amount = abs(amount)
-    balance = abs(balance)
     if last_balance is not None:
         if abs((last_balance - amount) - balance) <= Decimal("0.01"):
             return amount, None, balance
@@ -947,11 +962,8 @@ def parse_row_cells(
         upper = joined_desc.upper()
         next_date = date_iso if "OPENING" in upper and "BALANCE" in upper else prev_date_iso
         if "BROUGHT" in upper and "FORWARD" in upper and money_vals:
+            # Brought-forward rows put the balance first; signs come from CR/DR suffixes.
             next_balance = money_vals[0]
-            if re.search(r"\bDr\b", upper, flags=re.I):
-                next_balance = -abs(next_balance)
-            elif re.search(r"\bCr\b", upper, flags=re.I):
-                next_balance = abs(next_balance)
         return None, year_hint, next_date, next_balance
 
     description = strip_trailing_money(joined_desc)
@@ -974,13 +986,12 @@ def parse_row_cells(
         else:
             debit = parse_amount(remainder[1])
             credit = parse_amount(remainder[2])
+            # Balance keeps its sign (DR/overdrawn is negative).
             balance = parse_amount(remainder[3])
             if debit is not None:
                 debit = abs(debit)
             if credit is not None:
                 credit = abs(credit)
-            if balance is not None:
-                balance = abs(balance)
             # If credit/debit cells were blank and collapsed, remainder may actually be
             # desc + amount + balance with an extra trailing token — handled below.
             if debit is None and credit is None and len(money_vals) >= 2:
@@ -1009,8 +1020,8 @@ def parse_row_cells(
             money_vals[0], money_vals[1], last_balance, description
         )
     elif len(money_vals) >= 3:
-        # desc ... debit credit balance
-        debit, credit, balance = money_vals[0], money_vals[1], money_vals[2]
+        # desc ... debit credit balance (balance keeps its sign)
+        debit, credit, balance = abs(money_vals[0]), abs(money_vals[1]), money_vals[2]
         if debit == 0:
             debit = None
         if credit == 0:
@@ -1059,7 +1070,6 @@ def parse_text_block(
         "Date Transaction details Debit Credit Balance",
         "Date Transaction details Amount Balance",
         "Date Particulars Debits Credits Balance",
-        "Date Transaction Debit Credit Balance\n",
     ]
 
     blocks: list[str] = [text]

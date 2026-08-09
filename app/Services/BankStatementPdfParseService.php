@@ -145,24 +145,36 @@ class BankStatementPdfParseService
             'description' => (string) ($entry['description'] ?? 'Transaction'),
             'amount_debit' => $debit,
             'amount_credit' => $credit,
-            'balance' => $this->nullableMoney($entry['balance'] ?? null, allowZero: true),
+            'balance' => $this->nullableBalance($entry['balance'] ?? null),
             'amount' => round((float) $signed, 2),
             'transaction_type' => $signed >= 0 ? 'credit' : 'debit',
         ];
     }
 
-    private function nullableMoney(mixed $value, bool $allowZero = false): ?float
+    private function nullableMoney(mixed $value): ?float
     {
         if ($value === null || $value === '') {
             return null;
         }
 
         $amount = round(abs((float) $value), 2);
-        if (! $allowZero && $amount == 0.0) {
+        if ($amount == 0.0) {
             return null;
         }
 
         return $amount;
+    }
+
+    /**
+     * Balances keep their sign: DR/overdrawn balances are negative.
+     */
+    private function nullableBalance(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return round((float) $value, 2);
     }
 
     /**

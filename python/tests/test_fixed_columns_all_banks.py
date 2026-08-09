@@ -51,6 +51,19 @@ class FixedColumnsAllBanksTest(unittest.TestCase):
         self.assertEqual(entry["amount_debit"], 45.5)
         self.assertIsNone(entry["amount_credit"])
 
+    def test_cba_overdrawn_dr_balance_keeps_debit_sign(self) -> None:
+        """Balance moving 3,368.35DR -> 3,517.35DR is a debit, not a credit."""
+        cells = ["01Jun", "DirectDebit RAMSFRANCHI", "149.00", "3,517.35DR"]
+        entry, _, _, last_balance = parse_row_cells(
+            cells, 2026, "2026-06-01", Decimal("-3368.35")
+        )
+        self.assertIsNotNone(entry)
+        assert entry is not None
+        self.assertEqual(entry["amount_debit"], 149.0)
+        self.assertIsNone(entry["amount_credit"])
+        self.assertEqual(entry["balance"], -3517.35)
+        self.assertEqual(last_balance, Decimal("-3517.35"))
+
     def test_macquarie_collapsed_amount_balance(self) -> None:
         cells = ["01 Jul 26", "Direct Debit Loan Payment", "850.00", "44,150.00CR"]
         entry, _, _, _ = parse_row_cells(cells, 2026, None, Decimal("45000.00"))

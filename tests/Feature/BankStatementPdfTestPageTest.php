@@ -100,6 +100,22 @@ it('normalizes every bank into fixed test-page columns', function () {
         ->and($fromSignedOnly['transaction_type'])->toBe('debit');
 });
 
+it('keeps the negative sign on overdrawn balances', function () {
+    $service = new BankStatementPdfParseService;
+
+    $overdrawn = $service->normalizeEntry([
+        'date' => '2026-06-01',
+        'description' => 'Direct Debit RAMS',
+        'amount_debit' => 3648.60,
+        'amount_credit' => null,
+        'balance' => -3368.35,
+    ]);
+
+    expect($overdrawn['balance'])->toBe(-3368.35)
+        ->and($overdrawn['amount_debit'])->toBe(3648.6)
+        ->and($overdrawn['transaction_type'])->toBe('debit');
+});
+
 it('formats parsed dates as dd-mm-yyyy on the dev test page', function () {
     $html = file_get_contents(resource_path('views/dev/bank-statement-pdf-test.blade.php'));
 
