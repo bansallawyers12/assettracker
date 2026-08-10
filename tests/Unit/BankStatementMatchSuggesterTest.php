@@ -1,7 +1,5 @@
 <?php
 
-uses(TestCase::class);
-
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\Transaction;
@@ -9,6 +7,8 @@ use App\Services\BankStatementMatchSuggester;
 use App\Services\BankStatementParseService;
 use Illuminate\Support\Collection;
 use Tests\TestCase;
+
+uses(TestCase::class);
 
 function makeEntry(array $attrs = []): BankStatementEntry
 {

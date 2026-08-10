@@ -825,8 +825,8 @@
     "semantic_hash": "0e055c6f633fddcf63b89de2ec111e9c"
   },
   "app/Services/TransactionPostingService.php": {
-    "mtime": 1786356417.6396823,
-    "ast_hash": "f34cda33237869e83f29cbacb6844612",
+    "mtime": 1786356863.4699905,
+    "ast_hash": "590aa94228b88ecfdb76e2f916b9ff0e",
     "semantic_hash": ""
   },
   "app/Services/TwoFactorService.php": {
@@ -2150,9 +2150,9 @@
     "semantic_hash": "ec7ac17a39d8e916843f41d37e6aa42d"
   },
   "resources/views/business-entities/partials/assets/form.blade.php": {
-    "mtime": 1783760904.5603611,
-    "ast_hash": "14131dceff7d4361620eb5ebde4fefd9",
-    "semantic_hash": "14131dceff7d4361620eb5ebde4fefd9"
+    "mtime": 1786356715.2786758,
+    "ast_hash": "79cea075fc326dc6b7785ac5130c8843",
+    "semantic_hash": ""
   },
   "resources/views/business-entities/partials/assets/list.blade.php": {
     "mtime": 1783760904.5603611,
@@ -2865,9 +2865,9 @@
     "semantic_hash": "2c140145c50f5c94acb04728d4b0cafa"
   },
   "routes/console.php": {
-    "mtime": 1784627253.8003023,
-    "ast_hash": "97bfbedc07ce09ce557c2deea649ac1f",
-    "semantic_hash": "97bfbedc07ce09ce557c2deea649ac1f"
+    "mtime": 1786356718.003579,
+    "ast_hash": "db104e461c562345e88bd285fbe0151a",
+    "semantic_hash": ""
   },
   "routes/web.php": {
     "mtime": 1786356639.8282104,
@@ -3345,8 +3345,8 @@
     "semantic_hash": ""
   },
   "app/Services/BankStatementMatchSuggester.php": {
-    "mtime": 1786348665.1985936,
-    "ast_hash": "28bdf185067e3fe665f130b8c0a62036",
+    "mtime": 1786356717.466745,
+    "ast_hash": "1b0c0d5e01610a09f74277d81847c4f3",
     "semantic_hash": ""
   },
   "app/Services/BankStatementParseService.php": {
@@ -3430,8 +3430,8 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/ManualJournalEntryController.php": {
-    "mtime": 1786356481.5150385,
-    "ast_hash": "6d16c1e966dce0a3053d9aa3194da5de",
+    "mtime": 1786356877.9081209,
+    "ast_hash": "23be8a472c6a92186c6566c7961db358",
     "semantic_hash": ""
   },
   "app/Services/DepreciationPostingService.php": {
@@ -3440,8 +3440,8 @@
     "semantic_hash": ""
   },
   "app/Services/ManualJournalEntryService.php": {
-    "mtime": 1786356380.2895827,
-    "ast_hash": "b8307c76d523699daf7006a9ecb0fbc2",
+    "mtime": 1786356865.7725725,
+    "ast_hash": "028e070851a0690f0feaa75366267154",
     "semantic_hash": ""
   },
   "database/migrations/2026_08_10_120000_add_chart_of_account_id_to_transactions_table.php": {
@@ -3455,8 +3455,8 @@
     "semantic_hash": ""
   },
   "tests/Unit/BalanceSheetDataFlowTest.php": {
-    "mtime": 1786356650.9662757,
-    "ast_hash": "834a1dddcc40e80fdfefae3486d7c780",
+    "mtime": 1786356894.2190597,
+    "ast_hash": "87330d1c130c9e08f16498572b66cc6c",
     "semantic_hash": ""
   }
 }

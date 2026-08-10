@@ -89,12 +89,20 @@ class ManualJournalEntryService
             ];
         }
 
+        $reference = 'OPEN-'.$account->account_code.'-'.$businessEntity->id;
+
+        if (JournalEntry::query()->where('reference_number', $reference)->exists()) {
+            throw new \DomainException(
+                "Opening balance journal {$reference} already exists for this entity and account."
+            );
+        }
+
         return $this->post(
             $businessEntity,
             $asOfDate,
             'Opening balance for '.$account->account_code.' '.$account->account_name,
             $lines,
-            'OPEN-'.$account->account_code.'-'.$businessEntity->id
+            $reference
         );
     }
 

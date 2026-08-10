@@ -231,7 +231,7 @@ class TransactionPostingService
 
         $accounts = $this->resolveGlAccounts();
 
-        if ($this->isDirectorLoanTransactionType($transaction->transaction_type)) {
+        if ($this->shouldUseDirectorLoanBookingLines($transaction)) {
             return $this->buildDirectorLoanBookingLines($transaction, $accounts, $amountGross);
         }
 
@@ -634,5 +634,29 @@ class TransactionPostingService
     private function isDirectorLoanTransactionType(string $type): bool
     {
         return in_array($type, $this->directorLoanTransactionTypes(), true);
+    }
+
+    /**
+     * Bank import may map liability inflows to director_loan_in while chart_of_account_id
+     * points at a different account (e.g. 4000 Long Term Loans). Respect that override.
+     */
+    private function shouldUseDirectorLoanBookingLines(Transaction $transaction): bool
+    {
+        if (! $this->isDirectorLoanTransactionType($transaction->transaction_type)) {
+            return false;
+        }
+
+        if (! $transaction->chart_of_account_id) {
+            return true;
+        }
+
+        $override = ChartOfAccount::query()->find($transaction->chart_of_account_id);
+        if (! $override) {
+            return true;
+        }
+
+        $directorLoan = $this->ensureDirectorLoanAccount();
+
+        return (int) $override->id === (int) $directorLoan->id;
     }
 }

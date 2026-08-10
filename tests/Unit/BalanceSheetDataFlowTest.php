@@ -80,3 +80,10 @@ it('stores chart_of_account_id on bank statement created transactions', function
     $apply = file_get_contents(app_path('Services/BankStatementApplyService.php'));
     expect($apply)->toContain("'chart_of_account_id' => \$chartAccountId");
 });
+
+it('respects chart_of_account_id override when bank import maps to non-2500 accounts', function () {
+    $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
+
+    expect($source)->toContain('function shouldUseDirectorLoanBookingLines')
+        ->and($source)->toContain('chart_of_account_id');
+});

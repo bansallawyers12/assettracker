@@ -84,6 +84,10 @@ class ManualJournalEntryController extends Controller
             ];
         }
 
+        if (count($lines) < 2) {
+            return back()->withInput()->with('error', 'Enter at least two lines with debits or credits.');
+        }
+
         try {
             $entry = $this->manualJournalService->post(
                 $businessEntity,
@@ -123,6 +127,7 @@ class ManualJournalEntryController extends Controller
 
         $asOfDate = Carbon::parse($validated['as_of_date'])->toDateString();
         $posted = 0;
+        $errors = [];
 
         foreach ($validated['balances'] as $row) {
             $amount = (float) ($row['amount'] ?? 0);
@@ -131,12 +136,26 @@ class ManualJournalEntryController extends Controller
             }
 
             $account = ChartOfAccount::query()->findOrFail((int) $row['chart_of_account_id']);
-            $this->manualJournalService->postOpeningBalance($businessEntity, $account, $amount, $asOfDate);
-            $posted++;
+
+            try {
+                $this->manualJournalService->postOpeningBalance($businessEntity, $account, $amount, $asOfDate);
+                $posted++;
+            } catch (\Throwable $e) {
+                $errors[] = $account->account_code.': '.$e->getMessage();
+            }
         }
 
         if ($posted === 0) {
-            return back()->with('error', 'Enter at least one non-zero opening balance.');
+            $message = $errors !== []
+                ? implode(' ', $errors)
+                : 'Enter at least one non-zero opening balance.';
+
+            return back()->with('error', $message);
+        }
+
+        $success = "Posted {$posted} opening balance journal(s).";
+        if ($errors !== []) {
+            $success .= ' Some rows were skipped: '.implode(' ', $errors);
         }
 
         return redirect()
@@ -145,6 +164,6 @@ class ManualJournalEntryController extends Controller
                 'entity_ids' => [$businessEntity->id],
                 'as_of_date' => $asOfDate,
             ])
-            ->with('success', "Posted {$posted} opening balance journal(s).");
+            ->with('success', $success);
     }
 }
