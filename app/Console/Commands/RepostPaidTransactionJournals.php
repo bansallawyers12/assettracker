@@ -24,7 +24,7 @@ class RepostPaidTransactionJournals extends Command
         $chunk = max(1, (int) $this->option('chunk'));
 
         $query = Transaction::query()
-            ->where('payment_status', '!=', 'unpaid')
+            ->where('payment_status', 'paid')
             ->orderBy('id');
 
         $total = (clone $query)->count();

@@ -97,7 +97,7 @@ class TransactionPostingService
 
         $entry = $existing;
         $entry->business_entity_id = $transaction->business_entity_id;
-        $entry->entry_date = $transaction->paid_at ?? $transaction->date;
+        $entry->entry_date = $this->journalEntryDateFor($transaction);
         $entry->reference_number = $entry->reference_number ?: $this->bookingJournalReference($transaction);
         $entry->description = $transaction->description ?? 'Auto-posted from Transaction #'.$transaction->id;
         $entry->is_posted = true;
@@ -149,7 +149,7 @@ class TransactionPostingService
 
         $entry = $existing;
         $entry->business_entity_id = $payerEntityId;
-        $entry->entry_date = $transaction->paid_at ?? $transaction->date;
+        $entry->entry_date = $this->journalEntryDateFor($transaction);
         $entry->reference_number = $ref;
         $entry->description = ($transaction->description ?? 'Cross-entity cash movement')
             .' (Transaction #'.$transaction->id.')';
@@ -191,6 +191,11 @@ class TransactionPostingService
                 'tracking_sub_category_id' => $transaction->tracking_sub_category_id,
             ]);
         }
+    }
+
+    private function journalEntryDateFor(Transaction $transaction): \DateTimeInterface|string|null
+    {
+        return $transaction->paid_at ?? $transaction->date;
     }
 
     private function bookingJournalReference(Transaction $transaction): string

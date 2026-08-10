@@ -11,7 +11,12 @@
     $endDate = \Carbon\Carbon::parse($report['period']['end_date']);
     $subtitle = $startDate->format('j M Y') . ' – ' . $endDate->format('j M Y');
     $formRoute = route('financial-reports.profit-loss');
-    $reportQuery = function (array $merge = []) use ($report) {
+    $showZeros = request()->boolean('show_zeros');
+    $reportQuery = function (array $merge = []) use ($report, $showZeros) {
+        if ($showZeros) {
+            $merge['show_zeros'] = 1;
+        }
+
         return ReportScopeQuery::build(
             $report['forms_scope'] ?? 'all',
             $report['forms_entity_ids'] ?? [],

@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesReportEntityScope;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use App\Models\TrackingCategory;
+use App\Models\TrackingSubCategory;
 use App\Services\ManualJournalEntryService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -70,7 +71,7 @@ class ManualJournalEntryController extends Controller
             'description' => 'required|string|max:255',
             'reference_number' => 'nullable|string|max:50',
             'lines' => 'required|array|min:2|max:40',
-            'lines.*.chart_of_account_id' => 'required|integer|exists:chart_of_accounts,id',
+            'lines.*.chart_of_account_id' => 'nullable|integer|exists:chart_of_accounts,id',
             'lines.*.debit' => 'nullable|numeric|min:0',
             'lines.*.credit' => 'nullable|numeric|min:0',
             'lines.*.description' => 'nullable|string|max:255',
@@ -83,23 +84,41 @@ class ManualJournalEntryController extends Controller
 
         $lines = [];
         foreach ($validated['lines'] as $line) {
+            $accountId = (int) ($line['chart_of_account_id'] ?? 0);
             $debit = round((float) ($line['debit'] ?? 0), 2);
             $credit = round((float) ($line['credit'] ?? 0), 2);
-            if ($debit === 0.0 && $credit === 0.0) {
+            if ($accountId <= 0 || ($debit === 0.0 && $credit === 0.0)) {
                 continue;
             }
+
+            $trackingCategoryId = isset($line['tracking_category_id']) && $line['tracking_category_id'] !== ''
+                ? (int) $line['tracking_category_id']
+                : null;
+            $trackingSubCategoryId = isset($line['tracking_sub_category_id']) && $line['tracking_sub_category_id'] !== ''
+                ? (int) $line['tracking_sub_category_id']
+                : null;
+
+            if ($trackingSubCategoryId && ! $trackingCategoryId) {
+                $subCategory = TrackingSubCategory::query()->find($trackingSubCategoryId);
+                $trackingCategoryId = $subCategory?->tracking_category_id;
+            }
+
             $lines[] = [
-                'chart_of_account_id' => (int) $line['chart_of_account_id'],
+                'chart_of_account_id' => $accountId,
                 'debit' => $debit,
                 'credit' => $credit,
                 'description' => $line['description'] ?? null,
-                'tracking_category_id' => $line['tracking_category_id'] ?? null,
-                'tracking_sub_category_id' => $line['tracking_sub_category_id'] ?? null,
+                'tracking_category_id' => $trackingCategoryId,
+                'tracking_sub_category_id' => $trackingSubCategoryId,
             ];
         }
 
         if (count($lines) < 2) {
             return back()->withInput()->with('error', 'Enter at least two lines with debits or credits.');
+        }
+
+        if ($error = $this->validateManualJournalTracking($businessEntity, $lines)) {
+            return back()->withInput()->with('error', $error);
         }
 
         try {
@@ -179,5 +198,40 @@ class ManualJournalEntryController extends Controller
                 'as_of_date' => $asOfDate,
             ])
             ->with('success', $success);
+    }
+
+    /**
+     * @param  list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string, tracking_category_id?: ?int, tracking_sub_category_id?: ?int}>  $lines
+     */
+    private function validateManualJournalTracking(BusinessEntity $businessEntity, array $lines): ?string
+    {
+        foreach ($lines as $index => $line) {
+            $lineNum = $index + 1;
+            $categoryId = $line['tracking_category_id'] ?? null;
+            $subCategoryId = $line['tracking_sub_category_id'] ?? null;
+
+            if ($categoryId) {
+                $category = TrackingCategory::query()->find((int) $categoryId);
+                if (! $category || (int) $category->business_entity_id !== (int) $businessEntity->id) {
+                    return "Line {$lineNum}: tracking category does not belong to this entity.";
+                }
+            }
+
+            if ($subCategoryId) {
+                $subCategory = TrackingSubCategory::query()
+                    ->with('trackingCategory')
+                    ->find((int) $subCategoryId);
+
+                if (! $subCategory || (int) $subCategory->trackingCategory?->business_entity_id !== (int) $businessEntity->id) {
+                    return "Line {$lineNum}: tracking sub-category does not belong to this entity.";
+                }
+
+                if ($categoryId && (int) $subCategory->tracking_category_id !== (int) $categoryId) {
+                    return "Line {$lineNum}: tracking sub-category does not match the selected category.";
+                }
+            }
+        }
+
+        return null;
     }
 }

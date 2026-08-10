@@ -8,7 +8,9 @@ uses(TestCase::class);
 it('uses paid_at for booking entity journal entry_date when paid', function () {
     $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
 
-    expect($source)->toContain('$entry->entry_date = $transaction->paid_at ?? $transaction->date;');
+    expect($source)->toContain('function journalEntryDateFor')
+        ->and($source)->toContain('return $transaction->paid_at ?? $transaction->date;')
+        ->and($source)->toContain('$entry->entry_date = $this->journalEntryDateFor($transaction);');
 });
 
 it('copies transaction tracking categories onto auto-posted journal lines', function () {
@@ -63,11 +65,18 @@ it('persists optional tracking on manual journal lines', function () {
         ->and($controller)->toContain('lines.*.tracking_category_id');
 });
 
+it('validates manual journal tracking belongs to the selected entity', function () {
+    $controller = file_get_contents(app_path('Http/Controllers/ManualJournalEntryController.php'));
+
+    expect($controller)->toContain('function validateManualJournalTracking')
+        ->and($controller)->toContain('tracking category does not belong to this entity');
+});
+
 it('registers a command to re-post paid transaction journals', function () {
     expect(class_exists(RepostPaidTransactionJournals::class))->toBeTrue();
 
     $source = file_get_contents(app_path('Console/Commands/RepostPaidTransactionJournals.php'));
 
     expect($source)->toContain('journals:repost-paid-transactions')
-        ->and($source)->toContain("where('payment_status', '!=', 'unpaid')");
+        ->and($source)->toContain("where('payment_status', 'paid')");
 });
