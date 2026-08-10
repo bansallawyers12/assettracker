@@ -230,19 +230,28 @@ class TransactionPostingService
         $amountNet = $parts['net'];
 
         $accounts = $this->resolveGlAccounts();
+
+        if ($this->isDirectorLoanTransactionType($transaction->transaction_type)) {
+            return $this->buildDirectorLoanBookingLines($transaction, $accounts, $amountGross);
+        }
+
         $mapping = $this->counterAccountMapping();
         $counterAccount = $mapping[$transaction->transaction_type] ?? null;
-        $unmappedTypes = $this->unmappedDirectorLoanTypes();
+
+        if ($transaction->chart_of_account_id) {
+            $override = ChartOfAccount::query()->find($transaction->chart_of_account_id);
+            if ($override) {
+                $counterAccount = $override;
+            }
+        }
 
         if (! $counterAccount) {
-            if (! in_array($transaction->transaction_type, $unmappedTypes, true)) {
-                Log::warning('TransactionPostingService: required GL accounts not found for transaction', [
-                    'transaction_id' => $transaction->id,
-                    'transaction_type' => $transaction->transaction_type,
-                    'business_entity' => $transaction->business_entity_id,
-                    'missing_counter' => true,
-                ]);
-            }
+            Log::warning('TransactionPostingService: required GL accounts not found for transaction', [
+                'transaction_id' => $transaction->id,
+                'transaction_type' => $transaction->transaction_type,
+                'business_entity' => $transaction->business_entity_id,
+                'missing_counter' => true,
+            ]);
 
             return [];
         }
@@ -294,7 +303,6 @@ class TransactionPostingService
 
         $accounts = $this->resolveGlAccounts();
         $mapping = $this->counterAccountMapping();
-        $unmappedTypes = $this->unmappedDirectorLoanTypes();
         $incomeTypes = array_keys(Transaction::$incomeTypes);
 
         $payerEntityId = $this->payerEntityIdFromPaidBy($transaction);
@@ -327,33 +335,39 @@ class TransactionPostingService
         foreach ($allocationLines as $allocation) {
             /** @var TransactionLine $allocation */
             $type = (string) $allocation->transaction_type;
-            $counterAccount = $mapping[$type] ?? null;
-
-            if (! $counterAccount) {
-                if (! in_array($type, $unmappedTypes, true)) {
-                    Log::warning('TransactionPostingService: required GL accounts not found for split line', [
-                        'transaction_id' => $transaction->id,
-                        'transaction_line_id' => $allocation->id,
-                        'transaction_type' => $type,
-                        'business_entity' => $transaction->business_entity_id,
-                        'missing_counter' => true,
-                    ]);
-                } else {
-                    Log::warning('TransactionPostingService: director-loan type not allowed on split allocations', [
-                        'transaction_id' => $transaction->id,
-                        'transaction_line_id' => $allocation->id,
-                        'transaction_type' => $type,
-                    ]);
-                }
-
-                // Never skip a line after posting header cash — that unbalances the journal.
-                return [];
-            }
-
             $parts = $allocation->cashParts();
             $gstAmount = $parts['gst'];
             $amountNet = $parts['net'];
             $label = $allocation->description ?: ($type);
+
+            if ($this->isDirectorLoanTransactionType($type)) {
+                $directorLoan = $accounts['director_loan'];
+                if (! $directorLoan) {
+                    return [];
+                }
+                if (in_array($type, $incomeTypes, true)) {
+                    $lines[] = $this->line($directorLoan->id, 0, $amountNet, 'Director / entity loan: '.$label);
+                } else {
+                    $lines[] = $this->line($directorLoan->id, $amountNet, 0, 'Director / entity loan: '.$label);
+                }
+
+                continue;
+            }
+
+            $counterAccount = $mapping[$type] ?? null;
+
+            if (! $counterAccount) {
+                Log::warning('TransactionPostingService: required GL accounts not found for split line', [
+                    'transaction_id' => $transaction->id,
+                    'transaction_line_id' => $allocation->id,
+                    'transaction_type' => $type,
+                    'business_entity' => $transaction->business_entity_id,
+                    'missing_counter' => true,
+                ]);
+
+                // Never skip a line after posting header cash — that unbalances the journal.
+                return [];
+            }
 
             if (in_array($type, $incomeTypes, true)) {
                 $lines[] = $this->line($counterAccount->id, 0, $amountNet, 'Income: '.$label);
@@ -365,6 +379,50 @@ class TransactionPostingService
                 if ($gstAmount > 0 && $accounts['gst_receivable']) {
                     $lines[] = $this->line($accounts['gst_receivable']->id, $gstAmount, 0, 'GST Receivable');
                 }
+            }
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Director / entity loan movements: cash (or AR for cross-entity) ↔ account 2500.
+     *
+     * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}  $accounts
+     * @return list<array{account_id: int, debit: float, credit: float, description: ?string}>
+     */
+    private function buildDirectorLoanBookingLines(Transaction $transaction, array $accounts, float $amountGross): array
+    {
+        $directorLoan = $accounts['director_loan'];
+        if (! $directorLoan) {
+            return [];
+        }
+
+        $receivable = $this->ensureAccountsReceivable();
+        $payerEntityId = $this->payerEntityIdFromPaidBy($transaction);
+        $useIntercompany = $payerEntityId !== null;
+        $incomeTypes = array_keys(Transaction::$incomeTypes);
+        $isIncome = in_array($transaction->transaction_type, $incomeTypes, true);
+        $lines = [];
+
+        if ($isIncome) {
+            if ($useIntercompany) {
+                $lines[] = $this->line($receivable->id, $amountGross, 0, 'Receivable from related entity');
+            } elseif ($accounts['cash']) {
+                $lines[] = $this->line($accounts['cash']->id, $amountGross, 0, 'Cash received');
+            } else {
+                return [];
+            }
+            $lines[] = $this->line($directorLoan->id, 0, $amountGross, 'Director / entity loan');
+        } else {
+            if ($useIntercompany) {
+                $lines[] = $this->line($directorLoan->id, $amountGross, 0, 'Director / entity loan');
+                $lines[] = $this->line($receivable->id, 0, $amountGross, 'Receivable from related entity');
+            } elseif ($accounts['cash']) {
+                $lines[] = $this->line($directorLoan->id, $amountGross, 0, 'Director / entity loan');
+                $lines[] = $this->line($accounts['cash']->id, 0, $amountGross, 'Cash paid');
+            } else {
+                return [];
             }
         }
 
@@ -413,9 +471,7 @@ class TransactionPostingService
                 ?? $this->findAccount('2100')
                 ?? $this->findAccount('2200'),
             'gst_receivable' => $this->findByName('GST Receivable')
-                ?? $this->findByName('GST Clearing')
-                ?? $this->findAccount('2100')
-                ?? $this->findAccount('1300'),
+                ?? $this->findAccount((string) config('financial.report_accounts.gst_receivable', '1140')),
         ];
     }
 
@@ -513,7 +569,12 @@ class TransactionPostingService
             'asset_sales' => $this->findByName('Asset Sales') ?? $this->findAccount('4900'),
             'grants_subsidies' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
             'sales_to_related_party' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
-            'directors_loans_to_company' => null,
+            'directors_loans_to_company' => $this->ensureDirectorLoanAccount(),
+            'director_loan_in' => $this->ensureDirectorLoanAccount(),
+            'director_loan_out' => $this->ensureDirectorLoanAccount(),
+            'director_loan_repayment' => $this->ensureDirectorLoanAccount(),
+            'repayment_directors_loans' => $this->ensureDirectorLoanAccount(),
+            'company_loans_to_directors' => $this->ensureDirectorLoanAccount(),
             'water_service_expenses' => $this->findByName('Water Service Expenses') ?? $this->findByName('Utilities Expense') ?? $this->findAccount('5100'),
             'management_fees' => $this->findByName('Management Fees') ?? $this->findByName('Other Expenses') ?? $this->findByName('Other Expense') ?? $this->findAccount('5110'),
             'legal_expenses' => $this->findByName('Legal Expenses') ?? $this->findByName('Legal & Professional') ?? $this->findAccount('5120') ?? $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
@@ -534,9 +595,7 @@ class TransactionPostingService
             'marketing_advertising' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'travel_expenses' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'loan_repayments' => $this->findByName('Long Term Loans')
-                ?? $this->findAccount('4000')
-                ?? $this->findByName('Other Expenses')
-                ?? $this->findAccount('5900'),
+                ?? $this->findAccount((string) config('financial.report_accounts.long_term_loans', '4000')),
             'loan_interest' => $this->findByName('Interest Expense')
                 ?? $this->findAccount('7500')
                 ?? $this->findByName('Other Expenses')
@@ -544,22 +603,23 @@ class TransactionPostingService
             'loan_fees' => $this->findByName('Other Expenses')
                 ?? $this->findByName('Other Expense')
                 ?? $this->findAccount('5900'),
-            'directors_fees' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'directors_fees' => $this->findByName('Owner Drawings (Personal)')
+                ?? $this->findAccount((string) config('financial.report_accounts.owner_drawings', '3100'))
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findAccount('5900'),
             'rent_to_related_party' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'purchases_from_related_party' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
-            'other_personal_expenses' => $this->findByName('Other Expenses') ?? $this->findByName('Other Expense') ?? $this->findAccount('5900'),
-            'director_loan_in' => null,
-            'director_loan_out' => null,
-            'director_loan_repayment' => null,
-            'repayment_directors_loans' => null,
-            'company_loans_to_directors' => null,
+            'other_personal_expenses' => $this->findByName('Owner Drawings (Personal)')
+                ?? $this->findAccount((string) config('financial.report_accounts.owner_drawings', '3100'))
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findAccount('5900'),
         ];
     }
 
     /**
      * @return list<string>
      */
-    private function unmappedDirectorLoanTypes(): array
+    public function directorLoanTransactionTypes(): array
     {
         return [
             'director_loan_in',
@@ -569,5 +629,10 @@ class TransactionPostingService
             'repayment_directors_loans',
             'company_loans_to_directors',
         ];
+    }
+
+    private function isDirectorLoanTransactionType(string $type): bool
+    {
+        return in_array($type, $this->directorLoanTransactionTypes(), true);
     }
 }

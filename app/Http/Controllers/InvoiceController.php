@@ -322,6 +322,25 @@ class InvoiceController extends Controller
             ->with('success', 'Invoice posted to ledger');
     }
 
+    public function unpost(BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
+    {
+        $this->authorize('update', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
+
+        if (! $invoice->is_posted) {
+            return back()->with('info', 'Invoice is not posted.');
+        }
+
+        try {
+            $postingService->unpost($invoice);
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
+            ->with('success', 'Invoice unposted from ledger.');
+    }
+
     public function recordPayment(
         Request $request,
         BusinessEntity $businessEntity,

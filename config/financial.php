@@ -29,10 +29,17 @@ return [
     'report_accounts' => [
         'bank_cash' => '1100',
         'gst_clearing' => '2100',
+        'gst_receivable' => '1140',
         'payg_payable' => '2120',
         'super_payable' => '2130',
+        'long_term_loans' => '4000',
+        'accumulated_depreciation' => '1590',
+        'opening_balance_equity' => '3190',
+        'share_capital' => '3200',
+        'owner_drawings' => '3100',
         'wages_salaries' => '5170',
         'superannuation_expense' => '5180',
+        'depreciation_expense' => '5195',
     ],
 
 ];

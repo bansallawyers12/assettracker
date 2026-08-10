@@ -50,6 +50,7 @@
         <div>
             <label for="assets_acquisition_cost" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Buying Price</label>
             <input type="number" step="0.01" name="acquisition_cost" id="assets_acquisition_cost" required value="{{ old('acquisition_cost', $asset?->acquisition_cost) }}" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm shadow-xs">
+            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">For portfolio yield and reports. To show on the balance sheet, also record a paid <strong>Asset Purchase</strong> bank transaction.</p>
         </div>
     </div>
 

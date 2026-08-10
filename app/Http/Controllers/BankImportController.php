@@ -195,9 +195,11 @@ class BankImportController extends Controller
                         'bank_account_id' => $bankEntry->bank_account_id,
                         'chart_of_account_id' => $chartAccount->id,
                         'date' => $bankEntry->date,
-                        'amount' => $bankEntry->amount,
+                        'amount' => abs((float) $bankEntry->amount),
                         'description' => $bankEntry->description,
-                        'transaction_type' => $this->mapTransactionType($chartAccount->account_type, $bankEntry->amount),
+                        'transaction_type' => $this->mapTransactionType($chartAccount->account_type, (float) $bankEntry->amount),
+                        'payment_status' => 'paid',
+                        'paid_at' => $bankEntry->date,
                         'gst_amount' => null,
                         'gst_status' => 'gst_free',
                         'gst_basis' => null,
@@ -298,9 +300,9 @@ class BankImportController extends Controller
             case 'asset':
                 return $isIncome ? 'capital_expenditure' : 'asset_purchase';
             case 'liability':
-                return $isIncome ? 'directors_loans_to_company' : 'loan_repayments';
+                return $isIncome ? 'director_loan_in' : 'loan_repayments';
             case 'equity':
-                return $isIncome ? 'directors_loans_to_company' : 'directors_fees';
+                return $isIncome ? 'director_loan_in' : 'directors_fees';
             default:
                 return $isIncome ? 'sales_revenue' : 'cogs';
         }

@@ -50,6 +50,15 @@
                     'hoverBorder' => 'hover:border-purple-300 dark:hover:border-purple-600',
                 ],
                 [
+                    'route' => 'financial-reports.journal-entries.create',
+                    'title' => 'Journal entries',
+                    'description' => 'Manual journals and entity opening balances',
+                    'icon' => 'lucide-book-open',
+                    'iconBg' => 'bg-slate-100 dark:bg-slate-900/50',
+                    'iconColor' => 'text-slate-600 dark:text-slate-400',
+                    'hoverBorder' => 'hover:border-slate-300 dark:hover:border-slate-600',
+                ],
+                [
                     'route' => 'financial-reports.tracking-categories',
                     'title' => 'Tracking categories',
                     'description' => 'Owner and property breakdowns',

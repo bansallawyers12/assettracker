@@ -34,6 +34,7 @@ use App\Http\Controllers\EntityPersonController;
 use App\Http\Controllers\EntityShowWorkspaceController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\ManualJournalEntryController;
 use App\Http\Controllers\PersonShowWorkspaceController;
 use App\Http\Controllers\PersonsIndexWorkspaceController;
 use App\Http\Controllers\PersonsWorkspaceController;
@@ -395,6 +396,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::resource('business-entities.invoices', InvoiceController::class);
     Route::get('business-entities/{businessEntity}/invoices/{invoice}/post', [InvoiceController::class, 'postRedirect'])->name('business-entities.invoices.post.get');
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/post', [InvoiceController::class, 'post'])->name('business-entities.invoices.post');
+    Route::post('business-entities/{businessEntity}/invoices/{invoice}/unpost', [InvoiceController::class, 'unpost'])->name('business-entities.invoices.unpost');
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/record-payment', [InvoiceController::class, 'recordPayment'])->name('business-entities.invoices.record-payment');
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/remind', [InvoiceController::class, 'remind'])->name('business-entities.invoices.remind');
 
@@ -444,6 +446,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/financial-reports/cash-flow', [FinancialReportController::class, 'cashFlowHub'])->name('financial-reports.cash-flow');
     Route::get('/financial-reports/account-transactions', [FinancialReportController::class, 'accountTransactionsHub'])->name('financial-reports.account-transactions');
     Route::get('/financial-reports/tracking-categories', [FinancialReportController::class, 'trackingCategoriesHub'])->name('financial-reports.tracking-categories');
+    Route::get('/financial-reports/journal-entries/create', [ManualJournalEntryController::class, 'create'])->name('financial-reports.journal-entries.create');
+    Route::post('/financial-reports/journal-entries', [ManualJournalEntryController::class, 'store'])->name('financial-reports.journal-entries.store');
+    Route::post('/financial-reports/opening-balances', [ManualJournalEntryController::class, 'storeOpeningBalances'])->name('financial-reports.opening-balances.store');
     Route::get('/financial-reports/commitments', [CommitmentController::class, 'report'])->name('financial-reports.commitments');
     Route::get('/bank-import', [BankImportController::class, 'index'])->name('bank-import.index');
 

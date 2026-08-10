@@ -2,191 +2,214 @@
 
 namespace App\Services;
 
+use App\Models\ChartOfAccount;
 use App\Models\Invoice;
 use App\Models\JournalEntry;
 use App\Models\JournalLine;
-use App\Models\ChartOfAccount;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class InvoicePostingService
 {
-	public function post(Invoice $invoice): JournalEntry
-	{
-		return DB::transaction(function () use ($invoice) {
-			$existing = JournalEntry::where('source_type', Invoice::class)
-				->where('source_id', $invoice->id)
-				->first();
+    public function post(Invoice $invoice): JournalEntry
+    {
+        return DB::transaction(function () use ($invoice) {
+            $existing = JournalEntry::where('source_type', Invoice::class)
+                ->where('source_id', $invoice->id)
+                ->first();
 
-			if ($existing) {
-				$existing->journalLines()->delete();
-			} else {
-				$existing = new JournalEntry();
-			}
+            if ($existing) {
+                $existing->journalLines()->delete();
+            } else {
+                $existing = new JournalEntry;
+            }
 
-			$entry = $existing;
-			$entry->business_entity_id = $invoice->business_entity_id;
-			$entry->entry_date = $invoice->issue_date;
-			$entry->reference_number = $entry->reference_number ?: 'INV-'.Str::padLeft((string)$invoice->id, 8, '0');
-			$entry->description = 'Invoice '.$invoice->invoice_number.' for '.$invoice->customer_name;
-			$entry->is_posted = true;
-			$entry->created_by = $invoice->businessEntity?->user_id ?? auth()->id();
-			$entry->source_type = Invoice::class;
-			$entry->source_id = $invoice->id;
+            $entry = $existing;
+            $entry->business_entity_id = $invoice->business_entity_id;
+            $entry->entry_date = $invoice->issue_date;
+            $entry->reference_number = $entry->reference_number ?: 'INV-'.Str::padLeft((string) $invoice->id, 8, '0');
+            $entry->description = 'Invoice '.$invoice->invoice_number.' for '.$invoice->customer_name;
+            $entry->is_posted = true;
+            $entry->created_by = $invoice->businessEntity?->user_id ?? auth()->id();
+            $entry->source_type = Invoice::class;
+            $entry->source_id = $invoice->id;
 
-			$lines = $this->buildLines($invoice);
+            $lines = $this->buildLines($invoice);
 
-			$totalDebit = 0;
-			$totalCredit = 0;
-			foreach ($lines as $line) {
-				$totalDebit += $line['debit'];
-				$totalCredit += $line['credit'];
-			}
+            $totalDebit = 0;
+            $totalCredit = 0;
+            foreach ($lines as $line) {
+                $totalDebit += $line['debit'];
+                $totalCredit += $line['credit'];
+            }
 
-			$diff = round($totalDebit - $totalCredit, 2);
-			if (abs($diff) > 0.0001) {
-				if (abs($diff) <= 0.05 && count($lines) > 1) {
-					$lines[1]['credit'] = round($lines[1]['credit'] + $diff, 2);
-					$totalCredit = round($totalCredit + $diff, 2);
-				} else {
-					throw new \DomainException("Unbalanced journal posting: Total debits ({$totalDebit}) do not equal total credits ({$totalCredit}).");
-				}
-			}
+            $diff = round($totalDebit - $totalCredit, 2);
+            if (abs($diff) > 0.0001) {
+                if (abs($diff) <= 0.05 && count($lines) > 1) {
+                    $lines[1]['credit'] = round($lines[1]['credit'] + $diff, 2);
+                    $totalCredit = round($totalCredit + $diff, 2);
+                } else {
+                    throw new \DomainException("Unbalanced journal posting: Total debits ({$totalDebit}) do not equal total credits ({$totalCredit}).");
+                }
+            }
 
-			$entry->total_debit = $totalDebit;
-			$entry->total_credit = $totalCredit;
-			$entry->save();
+            $entry->total_debit = $totalDebit;
+            $entry->total_credit = $totalCredit;
+            $entry->save();
 
-			foreach ($lines as $line) {
-				JournalLine::create([
-					'journal_entry_id' => $entry->id,
-					'chart_of_account_id' => $line['account_id'],
-					'debit_amount' => $line['debit'],
-					'credit_amount' => $line['credit'],
-					'description' => $line['description'] ?? null,
-					'reference' => 'INV:'.$invoice->id,
-				]);
-			}
+            foreach ($lines as $line) {
+                JournalLine::create([
+                    'journal_entry_id' => $entry->id,
+                    'chart_of_account_id' => $line['account_id'],
+                    'debit_amount' => $line['debit'],
+                    'credit_amount' => $line['credit'],
+                    'description' => $line['description'] ?? null,
+                    'reference' => 'INV:'.$invoice->id,
+                ]);
+            }
 
-			$invoice->is_posted = true;
-			$invoice->status = 'approved';
-			$invoice->save();
+            $invoice->is_posted = true;
+            $invoice->status = 'approved';
+            $invoice->save();
 
-			return $entry;
-		});
-	}
+            return $entry;
+        });
+    }
 
-	private function buildLines(Invoice $invoice): array
-	{
-		$receivables = $this->findByName('Accounts Receivable')
-			?? $this->findAccount('1130')
-			?? $this->ensureAccountsReceivable();
-		$gstPayable = $this->findByName('GST Payable')
-			?? $this->findByName('GST Clearing')
-			?? $this->findAccount('2100')
-			?? $this->findAccount('2200')
-			?? $this->ensureDefaultGstAccount();
+    public function unpost(Invoice $invoice): void
+    {
+        if ($invoice->payment_transaction_id) {
+            throw new \DomainException('Cannot unpost an invoice that has a recorded payment. Reverse the payment first.');
+        }
 
-		$lines = [];
+        DB::transaction(function () use ($invoice) {
+            $entries = JournalEntry::query()
+                ->where('source_type', Invoice::class)
+                ->where('source_id', $invoice->id)
+                ->get();
 
-		// Debit AR for total
-		$lines[] = $this->line($receivables->id, (float) $invoice->total_amount, 0, 'Invoice total');
+            foreach ($entries as $entry) {
+                $entry->journalLines()->delete();
+                $entry->delete();
+            }
 
-		// For each line: credit income by net, credit GST by gst
-		foreach ($invoice->lines as $line) {
-			$account = null;
-			if ($line->account_code) {
-				$account = ChartOfAccount::where('account_code', $line->account_code)->where('is_active', true)->first()
-					?? ChartOfAccount::where('account_code', $line->account_code)->first();
-			}
-			if (!$account) {
-				$account = $this->findAccount('4100')
-					?? $this->findAccount('4900')
-					?? $this->findAccount('4000')
-					?? $this->findAccount('6000')
-					?? $this->findByName('Rental Income')
-					?? $this->findByName('Sales')
-					?? $this->ensureDefaultSalesAccount();
-			}
-			$net = (float) $line->line_total / (1 + (float) $line->gst_rate);
-			$gst = (float) $line->line_total - $net;
-			$lines[] = $this->line($account->id, 0, round($net, 2), 'Revenue');
-			if ($gst > 0 && $gstPayable) {
-				$lines[] = $this->line($gstPayable->id, 0, round($gst, 2), 'GST Payable');
-			}
-		}
+            $invoice->is_posted = false;
+            $invoice->status = 'draft';
+            $invoice->save();
+        });
+    }
 
-		return $lines;
-	}
+    private function buildLines(Invoice $invoice): array
+    {
+        $receivables = $this->findByName('Accounts Receivable')
+            ?? $this->findAccount('1130')
+            ?? $this->ensureAccountsReceivable();
+        $gstPayable = $this->findByName('GST Payable')
+            ?? $this->findByName('GST Clearing')
+            ?? $this->findAccount('2100')
+            ?? $this->findAccount('2200')
+            ?? $this->ensureDefaultGstAccount();
 
-	private function line(int $accountId, float $debit, float $credit, ?string $description = null): array
-	{
-		return [
-			'account_id' => $accountId,
-			'debit' => round($debit, 2),
-			'credit' => round($credit, 2),
-			'description' => $description,
-		];
-	}
+        $lines = [];
 
-	private function findAccount(string $code): ?ChartOfAccount
-	{
-		return ChartOfAccount::where('account_code', $code)->where('is_active', true)->first()
-			?? ChartOfAccount::where('account_code', $code)->first();
-	}
+        // Debit AR for total
+        $lines[] = $this->line($receivables->id, (float) $invoice->total_amount, 0, 'Invoice total');
 
-	private function findByName(string $name): ?ChartOfAccount
-	{
-		return ChartOfAccount::where('account_name', $name)->where('is_active', true)->first()
-			?? ChartOfAccount::where('account_name', $name)->first();
-	}
+        // For each line: credit income by net, credit GST by gst
+        foreach ($invoice->lines as $line) {
+            $account = null;
+            if ($line->account_code) {
+                $account = ChartOfAccount::where('account_code', $line->account_code)->where('is_active', true)->first()
+                    ?? ChartOfAccount::where('account_code', $line->account_code)->first();
+            }
+            if (! $account) {
+                $account = $this->findAccount('4100')
+                    ?? $this->findAccount('4900')
+                    ?? $this->findAccount('4000')
+                    ?? $this->findAccount('6000')
+                    ?? $this->findByName('Rental Income')
+                    ?? $this->findByName('Sales')
+                    ?? $this->ensureDefaultSalesAccount();
+            }
+            $net = (float) $line->line_total / (1 + (float) $line->gst_rate);
+            $gst = (float) $line->line_total - $net;
+            $lines[] = $this->line($account->id, 0, round($net, 2), 'Revenue');
+            if ($gst > 0 && $gstPayable) {
+                $lines[] = $this->line($gstPayable->id, 0, round($gst, 2), 'GST Payable');
+            }
+        }
 
-	/**
-	 * Default chart is not always seeded; create the standard AR account used by ChartOfAccountSeeder.
-	 */
-	private function ensureAccountsReceivable(): ChartOfAccount
-	{
-		return ChartOfAccount::firstOrCreate(
-			['account_code' => '1130'],
-			[
-				'account_name' => 'Accounts Receivable',
-				'account_type' => 'asset',
-				'account_category' => 'current_asset',
-				'is_active' => true,
-				'opening_balance' => 0,
-				'current_balance' => 0,
-			]
-		);
-	}
+        return $lines;
+    }
 
-	/** Default income account when an invoice line has no account_code (aligns with seeded Rental Income 4100). */
-	private function ensureDefaultSalesAccount(): ChartOfAccount
-	{
-		return ChartOfAccount::firstOrCreate(
-			['account_code' => '4100'],
-			[
-				'account_name' => 'Rental Income',
-				'account_type' => 'income',
-				'account_category' => 'operating_income',
-				'is_active' => true,
-				'opening_balance' => 0,
-				'current_balance' => 0,
-			]
-		);
-	}
+    private function line(int $accountId, float $debit, float $credit, ?string $description = null): array
+    {
+        return [
+            'account_id' => $accountId,
+            'debit' => round($debit, 2),
+            'credit' => round($credit, 2),
+            'description' => $description,
+        ];
+    }
 
-	private function ensureDefaultGstAccount(): ChartOfAccount
-	{
-		return ChartOfAccount::firstOrCreate(
-			['account_code' => '2100'],
-			[
-				'account_name' => 'GST Clearing',
-				'account_type' => 'liability',
-				'account_category' => 'current_liability',
-				'is_active' => true,
-				'opening_balance' => 0,
-				'current_balance' => 0,
-			]
-		);
-	}
+    private function findAccount(string $code): ?ChartOfAccount
+    {
+        return ChartOfAccount::where('account_code', $code)->where('is_active', true)->first()
+            ?? ChartOfAccount::where('account_code', $code)->first();
+    }
+
+    private function findByName(string $name): ?ChartOfAccount
+    {
+        return ChartOfAccount::where('account_name', $name)->where('is_active', true)->first()
+            ?? ChartOfAccount::where('account_name', $name)->first();
+    }
+
+    /**
+     * Default chart is not always seeded; create the standard AR account used by ChartOfAccountSeeder.
+     */
+    private function ensureAccountsReceivable(): ChartOfAccount
+    {
+        return ChartOfAccount::firstOrCreate(
+            ['account_code' => '1130'],
+            [
+                'account_name' => 'Accounts Receivable',
+                'account_type' => 'asset',
+                'account_category' => 'current_asset',
+                'is_active' => true,
+                'opening_balance' => 0,
+                'current_balance' => 0,
+            ]
+        );
+    }
+
+    /** Default income account when an invoice line has no account_code (aligns with seeded Rental Income 4100). */
+    private function ensureDefaultSalesAccount(): ChartOfAccount
+    {
+        return ChartOfAccount::firstOrCreate(
+            ['account_code' => '4100'],
+            [
+                'account_name' => 'Rental Income',
+                'account_type' => 'income',
+                'account_category' => 'operating_income',
+                'is_active' => true,
+                'opening_balance' => 0,
+                'current_balance' => 0,
+            ]
+        );
+    }
+
+    private function ensureDefaultGstAccount(): ChartOfAccount
+    {
+        return ChartOfAccount::firstOrCreate(
+            ['account_code' => '2100'],
+            [
+                'account_name' => 'GST Clearing',
+                'account_type' => 'liability',
+                'account_category' => 'current_liability',
+                'is_active' => true,
+                'opening_balance' => 0,
+                'current_balance' => 0,
+            ]
+        );
+    }
 }

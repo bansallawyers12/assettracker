@@ -84,24 +84,19 @@
                 </div>
 
                 <div>
-                    <label for="opening_balance" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Opening balance</label>
-                    <input type="number" id="opening_balance" name="opening_balance" step="0.01"
-                           class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                           value="{{ old('opening_balance', 0) }}">
-                    @error('opening_balance')
+                    <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
+                    <textarea id="description" name="description" rows="3"
+                              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500">{{ old('description') }}</textarea>
+                    @error('description')
                         <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
 
-            <div class="mt-6">
-                <label for="description" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description</label>
-                <textarea id="description" name="description" rows="3"
-                          class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-hidden focus:ring-2 focus:ring-indigo-500">{{ old('description') }}</textarea>
-                @error('description')
-                    <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
-                @enderror
-            </div>
+            <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                Per-entity opening balances are posted via
+                <a href="{{ route('financial-reports.journal-entries.create') }}" class="text-indigo-600 hover:underline">Journal entries</a>.
+            </p>
 
             <div class="flex items-center justify-end mt-6 space-x-4">
                 <a href="{{ route('chart-of-accounts.index') }}"

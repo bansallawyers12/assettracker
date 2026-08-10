@@ -18,6 +18,12 @@
                         @csrf
                         <button type="submit" class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">Post to ledger</button>
                     </form>
+                @elseif (!$invoice->payment_transaction_id)
+                    <form method="POST" action="{{ route('business-entities.invoices.unpost', [$businessEntity, $invoice]) }}" class="inline"
+                          onsubmit="return confirm('Unpost this invoice and remove its ledger entry?');">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-sm font-medium transition-colors">Unpost</button>
+                    </form>
                 @endif
             </div>
         </div>

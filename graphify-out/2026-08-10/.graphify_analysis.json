@@ -920,7 +920,6 @@
       "app_services_complianceyearservice_php_carbon"
     ],
     "26": [
-      "app_services_atoduedateservice",
       "app_services_atoduedateservice_atoduedateservice",
       "app_services_atoduedateservice_atoduedateservice_annualbasduedate",
       "app_services_atoduedateservice_atoduedateservice_asicduedate",
@@ -931,8 +930,7 @@
       "app_services_atoduedateservice_atoduedateservice_incometaxagentduedate",
       "app_services_atoduedateservice_atoduedateservice_incometaxselflodgeduedate",
       "app_services_atoduedateservice_php_carbon",
-      "app_services_complianceyearservice_complianceyearservice_construct",
-      "carbon_carbon"
+      "app_services_complianceyearservice_complianceyearservice_construct"
     ],
     "27": [
       "app_models_transaction_transaction",
@@ -1113,13 +1111,14 @@
       "app_support_financialyear_financialyear_currentstart",
       "app_support_financialyear_financialyear_fordate",
       "app_support_financialyear_financialyear_label",
+      "app_support_financialyear_financialyear_monthshortcuts",
       "app_support_financialyear_financialyear_periodshortcuts",
       "app_support_financialyear_financialyear_previousend",
       "app_support_financialyear_financialyear_previousstart",
       "app_support_financialyear_financialyear_startday",
-      "app_support_financialyear_financialyear_startmonth",
       "app_support_financialyear_php_carbon",
       "app_support_transactiongstresolver_transactiongstresolver_resolve",
+      "carbon_carbon",
       "exists",
       "self"
     ],
@@ -2303,7 +2302,7 @@
       "app_services_complianceyearservice_complianceyearservice_yearentry",
       "app_support_financialyear_financialyear",
       "app_support_financialyear_financialyear_configint",
-      "app_support_financialyear_financialyear_monthshortcuts",
+      "app_support_financialyear_financialyear_startmonth",
       "tests_unit_atoduedateservicetest_atoduedateservicetest",
       "tests_unit_atoduedateservicetest_atoduedateservicetest_setup",
       "tests_unit_atoduedateservicetest_atoduedateservicetest_teardown",
@@ -3016,6 +3015,7 @@
       "app_models_businessentity",
       "app_models_entityperson",
       "app_services_assetsummaryreportservice",
+      "app_services_atoduedateservice",
       "app_services_compliancereportservice",
       "app_support_financialyear",
       "app_support_reportentityscopelabel",
@@ -4964,12 +4964,12 @@
     "23": 0.21978021978021978,
     "24": 0.0824524312896406,
     "25": 0.22380952380952382,
-    "26": 0.4230769230769231,
+    "26": 0.41818181818181815,
     "27": 0.08831908831908832,
     "28": 0.150997150997151,
     "29": 0.07557354925775979,
     "30": 0.09618874773139746,
-    "31": 0.0873015873015873,
+    "31": 0.09852216748768473,
     "32": 0.1349206349206349,
     "33": 0.14193548387096774,
     "34": 0.07142857142857142,
@@ -5095,7 +5095,7 @@
     "154": 0.6666666666666666,
     "155": 0.6666666666666666,
     "156": 0.6666666666666666,
-    "157": 0.15789473684210525,
+    "157": 0.14736842105263157,
     "158": 0.09246088193456614,
     "159": 0.2857142857142857,
     "160": 0.18181818181818182,
@@ -5597,17 +5597,17 @@
   "questions": [
     {
       "type": "bridge_node",
-      "question": "Why does `BusinessEntity` connect `BusinessEntity` to `BankAccount.php`, `BankAccount`, `Illuminate\\Http\\Resources\\Json\\JsonResource`, `ComplianceCategory`, `Illuminate\\Database\\Eloquent\\Builder`, `EmailTemplate`, `Document`, `Invoice`, `TransactionPayerResolver`, `BankAccountAssetLinkService.php`, `TrackingCategory`, `AssetsWorkspaceController`, `Asset`, `FinancialReportService`, `EntityPerson`, `ComplianceYearRecord`, `Carbon\\Carbon`, `ComplianceUploadService`, `BusinessEntity.php`, `Illuminate\\View\\View`, `self`, `Lease`, `Commitment`, `User`, `Reminder`, `ContactList`, `DocumentStorage.php`, `ComplianceReportController.php`, `BusinessEntityController`, `FinancialReportController`, `BusinessEntityAsicRenewalDueDateTest`, `EnsuresOperationalBusinessEntity.php`, `BankAccountAssetLinkService`, `Transaction.php`, `MailMessageController`, `BusinessEntityBankAccount`, `Illuminate\\Support\\Collection`, `DocumentUploadValidation`, `Illuminate\\Console\\Command`, `BankStatementEntry`, `BusinessEntityRegistrationDateTest`, `Note`, `Illuminate\\Database\\Eloquent\\Model`, `AustralianAddress`, `BusinessEntityController.php`, `ChartOfAccount`, `DocumentUploadService`, `FinancialYear`, `Illuminate\\Http\\Request`, `ComplianceDocumentFile`, `DocumentWorkspaceController`, `ReportEntityScopeResolver`, `Illuminate\\Http\\JsonResponse`, `2026_03_22_000001_create_real_estate_companies_and_migrate_tenant_links.php`, `AppServiceProvider.php`?",
+      "question": "Why does `BusinessEntity` connect `Business Entity Management` to `Data Encryption Utilities`, `Bank Account Import`, `Compliance Resources`, `Compliance Workspace Management`, `Bills and Tasks Dashboard`, `Email and Document Policies`, `Document Management`, `Invoice Lifecycle Management`, `Transaction Payer Resolver`, `Bank Account Linking Service`, `Tracking Category Management`, `Asset Workspace Controller`, `Asset and Lease Management`, `Financial Reporting Service`, `Entity Person Controller`, `Compliance Year Tracking`, `Tax Due Date Service`, `Compliance Document Uploads`, `Entity and Compliance Services`, `Admin and Financial Controllers`, `Bank Account Formatting`, `Invoice Generation`, `Commitment and Payment Tracking`, `User Model Logic`, `Reminder Management`, `Contact List Management`, `Document Upload Services`, `Compliance Report Controller`, `Business Entity Validation`, `Financial Report Hub`, `ASIC Renewal Tests`, `Asset Workspace Management`, `Rent Collection Linking`, `Transaction Processing Services`, `Mail Message Management`, `Bank Account Linking`, `Compliance Reporting Service`, `Invoice and Upload Validation`, `System Maintenance Tasks`, `Bank Statement Processing`, `Entity Registration Tests`, `Asset Note Management`, `Email and Document Models`, `Address Formatting Utility`, `Entity Validation Rules`, `Chart of Accounts Management`, `Document Upload Service`, `Financial Year Logic`, `Admin User Management`, `Compliance Document Handling`, `Document Workspace Management`, `Report Scope Resolver`, `User and Workspace Access`, `Real Estate Tenant Migrations`, `Application Service Providers`?",
       "why": "High betweenness centrality (0.127) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `BankAccount` connect `BankAccount` to `BankAccount.php`, `Illuminate\\Http\\Resources\\Json\\JsonResource`, `Illuminate\\Database\\Eloquent\\Relations\\HasMany`, `Illuminate\\Database\\Eloquent\\Builder`, `DocumentStorage`, `BankAccountAssetLinkService.php`, `Asset`, `EntityPerson`, `DocumentStorage.php`, `self`, `BankAccountMaskingTest`, `BusinessEntityController`, `Illuminate\\Database\\Eloquent\\Relations\\BelongsTo`, `BankAccountAssetLinkService`, `BusinessEntityBankAccount`, `BankAccountStatement`, `DocumentUploadValidation`, `BankStatementEntry`, `BankAccountFormTest`, `AssetSummaryReportService`, `Illuminate\\Database\\Eloquent\\Model`, `BusinessEntityController.php`, `Illuminate\\Http\\Request`, `Illuminate\\Http\\JsonResponse`?",
+      "question": "Why does `BankAccount` connect `Bank Account Import` to `Data Encryption Utilities`, `Compliance Resources`, `Compliance and Document Types`, `Bills and Tasks Dashboard`, `File Storage Service`, `Bank Account Linking Service`, `Asset and Lease Management`, `Entity Person Controller`, `Document Upload Services`, `Bank Account Formatting`, `Bank Account Masking Tests`, `Business Entity Validation`, `Entity Relationships and Drafts`, `Rent Collection Linking`, `Bank Account Linking`, `Bank Statement Controller`, `Invoice and Upload Validation`, `Bank Statement Processing`, `Bank Account Tests`, `Asset Summary Reporting`, `Email and Document Models`, `Entity Validation Rules`, `Admin User Management`, `User and Workspace Access`?",
       "why": "High betweenness centrality (0.039) - this node is a cross-community bridge."
     },
     {
       "type": "bridge_node",
-      "question": "Why does `Asset` connect `Asset` to `BusinessEntity`, `Illuminate\\Http\\Resources\\Json\\JsonResource`, `Illuminate\\Database\\Eloquent\\Builder`, `Document`, `AssetsWorkspaceController`, `PHPUnit\\Framework\\TestCase`, `ComplianceYearRecord`, `ComplianceUploadService`, `CarReportService`, `BusinessEntity.php`, `User`, `Illuminate\\View\\View`, `Lease`, `Commitment`, `DocumentStorage.php`, `Reminder`, `BusinessEntityController`, `EnsuresOperationalBusinessEntity.php`, `BankAccountAssetLinkService`, `Transaction.php`, `MailMessageController`, `Illuminate\\Support\\Collection`, `PropertyReportService`, `AssetSummaryReportService`, `Note`, `Illuminate\\Database\\Eloquent\\Model`, `DocumentUploadService`, `ComplianceDocumentFile`, `DocumentWorkspaceController`, `AppServiceProvider.php`?",
+      "question": "Why does `Asset` connect `Asset and Lease Management` to `Business Entity Management`, `Compliance Resources`, `Bills and Tasks Dashboard`, `Document Management`, `Asset Workspace Controller`, `Security and Reminder Tests`, `Compliance Year Tracking`, `Compliance Document Uploads`, `Car Report Service`, `Entity and Compliance Services`, `User Model Logic`, `Admin and Financial Controllers`, `Invoice Generation`, `Commitment and Payment Tracking`, `Document Upload Services`, `Reminder Management`, `Business Entity Validation`, `Asset Workspace Management`, `Rent Collection Linking`, `Transaction Processing Services`, `Mail Message Management`, `Compliance Reporting Service`, `Property Portfolio Service`, `Asset Summary Reporting`, `Asset Note Management`, `Email and Document Models`, `Document Upload Service`, `Compliance Document Handling`, `Document Workspace Management`, `Application Service Providers`?",
       "why": "High betweenness centrality (0.030) - this node is a cross-community bridge."
     },
     {

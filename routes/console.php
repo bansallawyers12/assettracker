@@ -16,3 +16,8 @@ Schedule::command('compliance:sync-reminders')
     ->dailyAt('06:30')
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::command('depreciation:post-monthly')
+    ->monthlyOn(1, '02:00')
+    ->withoutOverlapping()
+    ->onOneServer();

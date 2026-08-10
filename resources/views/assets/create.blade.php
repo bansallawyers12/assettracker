@@ -80,6 +80,7 @@
                                     <div class="bank-field">
                                         <label for="acquisition_cost" class="bank-field-label">{{ __('Buying Price') }} <span class="text-red-500">*</span></label>
                                         <input type="number" step="0.01" name="acquisition_cost" id="acquisition_cost" value="{{ old('acquisition_cost') }}" class="bank-field-control" required>
+                                        <p class="mt-1 text-xs text-gray-500">For portfolio yield and reports. To show on the balance sheet, also record a paid <strong>Asset Purchase</strong> bank transaction.</p>
                                         @error('acquisition_cost') <p class="bank-field-error">{{ $message }}</p> @enderror
                                     </div>
 

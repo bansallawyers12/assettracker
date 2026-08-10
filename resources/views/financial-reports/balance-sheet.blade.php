@@ -18,8 +18,6 @@
         );
     };
     $balanced = abs($report['total_assets'] - $report['total_liabilities_equity']) < 0.01;
-
-    /** Debit − credit: + net debit, − net credit */
     $formatSignedGl = function (float $v): string {
         if (abs($v) < 0.00001) {
             return '0.00';
@@ -95,6 +93,12 @@
     </x-slot:filters>
 
     {{-- ── Report statement ────────────────────────────────────────── --}}
+    <div class="px-6 pt-4 text-xs text-gray-600 leading-relaxed border-b border-gray-100">
+        Amounts come from <strong>posted journal entries</strong> (paid bank transactions, posted invoices, manual journals).
+        Property <strong>Buying Price</strong> on assets is for portfolio reports unless you also record an
+        <strong>Asset Purchase</strong> transaction or an opening balance journal.
+        <a href="{{ route('financial-reports.journal-entries.create') }}" class="text-blue-600 hover:underline">Journal entries</a>
+    </div>
     <div class="pb-6">
         <table class="w-full text-sm">
             <tbody>

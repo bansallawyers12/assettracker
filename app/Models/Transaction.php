@@ -18,6 +18,7 @@ class Transaction extends Model
         'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description', 'vendor_id', 'vendor_name',
         'transaction_type', 'gst_amount', 'gst_status', 'gst_basis', 'receipt_path', 'document_id',
         'bank_account_id', 'tracking_category_id', 'tracking_sub_category_id',
+        'chart_of_account_id',
         'invoice_number', 'payment_status', 'due_date', 'paid_at', 'payment_method',
         'paid_by', 'payment_document_id',
     ];

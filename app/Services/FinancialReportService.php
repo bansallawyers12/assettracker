@@ -14,6 +14,7 @@ use App\Support\FinancialYear;
 use App\Support\TransactionPayerResolver;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 
 class FinancialReportService
 {
@@ -929,27 +930,48 @@ class FinancialReportService
      */
     private function getDirectorLoanManualGlBalanceAsOf($accountId, string $asOfDate, array $entityIds): float
     {
+        $directorLoanTypes = [
+            'director_loan_in',
+            'director_loan_out',
+            'director_loan_repayment',
+            'directors_loans_to_company',
+            'repayment_directors_loans',
+            'company_loans_to_directors',
+        ];
+
         $debits = JournalLine::where('chart_of_account_id', $accountId)
-            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds, $directorLoanTypes) {
                 $query->whereIn('business_entity_id', $entityIds)
-                    ->where('entry_date', '<=', $asOfDate)
-                    ->where(function ($q) {
-                        $q->whereNull('source_type')
-                            ->orWhere('source_type', '!=', Transaction::class);
-                    });
+                    ->where('entry_date', '<=', $asOfDate);
                 $this->applyBalancedPostedJournalConstraints($query);
+                $query->where(function ($q) use ($directorLoanTypes) {
+                    $q->whereNull('source_type')
+                        ->orWhere('source_type', '!=', Transaction::class)
+                        ->orWhere(function ($q2) use ($directorLoanTypes) {
+                            $q2->where('source_type', Transaction::class)
+                                ->whereHasMorph('source', [Transaction::class], function ($tq) use ($directorLoanTypes) {
+                                    $tq->whereIn('transaction_type', $directorLoanTypes);
+                                });
+                        });
+                });
             })
             ->sum('debit_amount');
 
         $credits = JournalLine::where('chart_of_account_id', $accountId)
-            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds) {
+            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds, $directorLoanTypes) {
                 $query->whereIn('business_entity_id', $entityIds)
-                    ->where('entry_date', '<=', $asOfDate)
-                    ->where(function ($q) {
-                        $q->whereNull('source_type')
-                            ->orWhere('source_type', '!=', Transaction::class);
-                    });
+                    ->where('entry_date', '<=', $asOfDate);
                 $this->applyBalancedPostedJournalConstraints($query);
+                $query->where(function ($q) use ($directorLoanTypes) {
+                    $q->whereNull('source_type')
+                        ->orWhere('source_type', '!=', Transaction::class)
+                        ->orWhere(function ($q2) use ($directorLoanTypes) {
+                            $q2->where('source_type', Transaction::class)
+                                ->whereHasMorph('source', [Transaction::class], function ($tq) use ($directorLoanTypes) {
+                                    $tq->whereIn('transaction_type', $directorLoanTypes);
+                                });
+                        });
+                });
             })
             ->sum('credit_amount');
 
@@ -1066,7 +1088,7 @@ class FinancialReportService
      * Paid / received-by entity flows where cash moved through another entity's bank.
      *
      * @param  array<int>  $entityIds
-     * @return \Illuminate\Support\Collection<int, Transaction>
+     * @return Collection<int, Transaction>
      */
     private function crossEntityPaidByTransactionsForScope(array $entityIds)
     {
@@ -1789,7 +1811,7 @@ class FinancialReportService
         ];
     }
 
-  /**
+    /**
      * @return array<string, float|null>
      */
     private function entitySummaryMetrics(

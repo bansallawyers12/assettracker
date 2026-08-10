@@ -7,14 +7,16 @@ use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use App\Support\TableSort;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class ChartOfAccountController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
 
-    public function index(\Illuminate\Http\Request $request): \Illuminate\View\View
+    public function index(Request $request): View
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
@@ -65,7 +67,7 @@ class ChartOfAccountController extends Controller
         return $this->apiIndex();
     }
 
-    public function create(): \Illuminate\View\View
+    public function create(): View
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
@@ -77,7 +79,7 @@ class ChartOfAccountController extends Controller
         return view('chart-of-accounts.create', compact('parentAccounts'));
     }
 
-    public function store(Request $request, ?BusinessEntity $businessEntity = null): \Illuminate\Http\RedirectResponse
+    public function store(Request $request, ?BusinessEntity $businessEntity = null): RedirectResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
         if ($businessEntity) {
@@ -94,15 +96,15 @@ class ChartOfAccountController extends Controller
             'account_category' => $request->account_category,
             'parent_account_id' => $request->parent_account_id,
             'description' => $request->description,
-            'opening_balance' => $request->opening_balance ?? 0,
-            'current_balance' => $request->opening_balance ?? 0,
+            'opening_balance' => 0,
+            'current_balance' => 0,
         ]);
 
         return redirect()->route('chart-of-accounts.index')
             ->with('success', 'Chart of account created successfully.');
     }
 
-    public function edit(ChartOfAccount $chart_of_account): \Illuminate\View\View
+    public function edit(ChartOfAccount $chart_of_account): View
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
@@ -117,7 +119,7 @@ class ChartOfAccountController extends Controller
         return view('chart-of-accounts.edit', compact('chartOfAccount', 'parentAccounts'));
     }
 
-    public function update(Request $request, ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): RedirectResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
         if ($businessEntity) {
@@ -133,7 +135,7 @@ class ChartOfAccountController extends Controller
                 Rule::unique('chart_of_accounts', 'account_code')->ignore($chart_of_account->id),
             ],
             'account_name' => 'required|string|max:255',
-            'account_type' => 'required|in:' . implode(',', array_keys(ChartOfAccount::$accountTypes)),
+            'account_type' => 'required|in:'.implode(',', array_keys(ChartOfAccount::$accountTypes)),
             'account_category' => ['required', 'string', 'max:50', Rule::in(array_keys(ChartOfAccount::$accountCategories))],
             'parent_account_id' => [
                 'nullable',
@@ -172,7 +174,7 @@ class ChartOfAccountController extends Controller
             ->with('success', 'Chart of account updated successfully.');
     }
 
-    public function destroy(ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): \Illuminate\Http\RedirectResponse
+    public function destroy(ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): RedirectResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
         if ($businessEntity) {
@@ -211,7 +213,7 @@ class ChartOfAccountController extends Controller
                 Rule::unique('chart_of_accounts', 'account_code'),
             ],
             'account_name' => 'required|string|max:255',
-            'account_type' => 'required|in:' . implode(',', array_keys(ChartOfAccount::$accountTypes)),
+            'account_type' => 'required|in:'.implode(',', array_keys(ChartOfAccount::$accountTypes)),
             'account_category' => ['required', 'string', 'max:50', Rule::in(array_keys(ChartOfAccount::$accountCategories))],
             'parent_account_id' => [
                 'nullable',

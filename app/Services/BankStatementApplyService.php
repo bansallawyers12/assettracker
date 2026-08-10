@@ -110,6 +110,7 @@ class BankStatementApplyService
                 $transaction = Transaction::create([
                     'business_entity_id' => $businessEntity->id,
                     'bank_account_id' => $bankAccount->id,
+                    'chart_of_account_id' => $chartAccountId,
                     'asset_id' => $assetId,
                     'date' => $bankEntry->date,
                     'amount' => abs((float) $bankEntry->amount),
@@ -217,8 +218,8 @@ class BankStatementApplyService
             'income' => $isIncome ? 'sales_revenue' : 'cogs',
             'expense' => $isIncome ? 'sales_revenue' : 'cogs',
             'asset' => $isIncome ? 'capital_expenditure' : 'asset_purchase',
-            'liability' => $isIncome ? 'directors_loans_to_company' : 'loan_repayments',
-            'equity' => $isIncome ? 'directors_loans_to_company' : 'directors_fees',
+            'liability' => $isIncome ? 'director_loan_in' : 'loan_repayments',
+            'equity' => $isIncome ? 'director_loan_in' : 'directors_fees',
             default => $isIncome ? 'sales_revenue' : 'cogs',
         };
     }

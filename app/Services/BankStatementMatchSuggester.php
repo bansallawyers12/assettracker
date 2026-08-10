@@ -345,7 +345,7 @@ class BankStatementMatchSuggester
                 return 'grants_subsidies';
             }
             if (preg_match('/director loan|loan from director/i', $description)) {
-                return 'directors_loans_to_company';
+                return 'director_loan_in';
             }
             if (preg_match('/related party sale/i', $description)) {
                 return 'sales_to_related_party';

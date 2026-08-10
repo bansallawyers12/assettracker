@@ -60,17 +60,22 @@ class ChartOfAccountSeeder extends Seeder
             // ── ASSETS ──────────────────────────────────────────────────────────
             ['1100', 'Bank / Cash Account', 'asset', 'current_asset', 'Operating bank and cash accounts'],
             ['1130', 'Accounts Receivable', 'asset', 'current_asset', 'Amounts owed by customers for invoiced sales'],
+            ['1140', 'GST Receivable', 'asset', 'current_asset', 'GST credits on purchases awaiting BAS refund or offset'],
             ['1500', 'Property & Assets (Capital)', 'asset', 'fixed_asset', 'Investment properties and capital assets held by the entity'],
+            ['1590', 'Accumulated Depreciation', 'asset', 'fixed_asset', 'Contra-asset — accumulated depreciation on capital assets'],
 
             // ── LIABILITIES ─────────────────────────────────────────────────────
             ['2100', 'GST Clearing', 'liability', 'current_liability', 'Net GST payable or refundable — cleared each BAS period'],
             ['2120', 'PAYG Payable', 'liability', 'current_liability', 'Pay As You Go withholding payable to the ATO'],
             ['2130', 'Super Payable', 'liability', 'current_liability', 'Superannuation contributions accrued but not yet paid'],
             ['2500', 'Director / Entity Loan', 'liability', 'long_term_liability', 'Loans from directors or related entities'],
+            ['4000', 'Long Term Loans', 'liability', 'long_term_liability', 'Mortgage and other long-term borrowings'],
 
             // ── EQUITY ──────────────────────────────────────────────────────────
             ['3100', 'Owner Drawings (Personal)', 'equity', 'equity', 'Withdrawals made by the owner for personal use'],
             ['3120', 'Retained Earnings', 'equity', 'equity', 'Accumulated profits from prior periods — use for manual year-end closing entries if required'],
+            ['3190', 'Opening Balance Equity', 'equity', 'equity', 'Offset for entity opening balance journals — do not use for day-to-day transactions'],
+            ['3200', 'Share Capital / Contributed Equity', 'equity', 'equity', 'Capital contributed by owners or shareholders'],
 
             // ── INCOME ──────────────────────────────────────────────────────────
             ['4100', 'Rental Income', 'income', 'operating_income', 'Rent received from tenants for leased properties'],
@@ -88,6 +93,7 @@ class ChartOfAccountSeeder extends Seeder
             ['5160', 'Repairs & Maintenance', 'expense', 'operating_expense', 'Routine repairs and maintenance costs for investment properties'],
             ['5170', 'Wages & Salaries', 'expense', 'operating_expense', 'Employee wages and salaries (excludes super)'],
             ['5180', 'Superannuation', 'expense', 'operating_expense', 'Superannuation contributions paid or accrued'],
+            ['5195', 'Depreciation Expense', 'expense', 'operating_expense', 'Depreciation on capital assets'],
             ['5900', 'Other Expenses', 'expense', 'other_expense', 'Miscellaneous expenses not classified elsewhere'],
         ];
     }
