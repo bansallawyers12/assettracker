@@ -40,6 +40,7 @@ return [
         'wages_salaries' => '5170',
         'superannuation_expense' => '5180',
         'depreciation_expense' => '5195',
+        'interest_expense' => '7500',
     ],
 
 ];

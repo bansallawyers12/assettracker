@@ -1,7 +1,7 @@
 @php
     $lineRows = old('lines', [
-        ['chart_of_account_id' => '', 'debit' => '', 'credit' => '', 'description' => ''],
-        ['chart_of_account_id' => '', 'debit' => '', 'credit' => '', 'description' => ''],
+        ['chart_of_account_id' => '', 'debit' => '', 'credit' => '', 'description' => '', 'tracking_category_id' => '', 'tracking_sub_category_id' => ''],
+        ['chart_of_account_id' => '', 'debit' => '', 'credit' => '', 'description' => '', 'tracking_category_id' => '', 'tracking_sub_category_id' => ''],
     ]);
 @endphp
 
@@ -62,6 +62,7 @@
                                 <th class="pb-2 pr-2">Account</th>
                                 <th class="pb-2 pr-2 w-28">Debit</th>
                                 <th class="pb-2 pr-2 w-28">Credit</th>
+                                <th class="pb-2 pr-2">Tracking</th>
                                 <th class="pb-2">Memo</th>
                             </tr>
                         </thead>
@@ -88,6 +89,28 @@
                                                value="{{ $row['credit'] ?? '' }}"
                                                class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm tabular-nums">
                                     </td>
+                                    <td class="py-1 pr-2">
+                                        <select name="lines[{{ $i }}][tracking_category_id]"
+                                                class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm">
+                                            <option value="">—</option>
+                                            @foreach($trackingCategories as $category)
+                                                <option value="{{ $category->id }}" @selected((string) ($row['tracking_category_id'] ?? '') === (string) $category->id)>
+                                                    {{ $category->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        <select name="lines[{{ $i }}][tracking_sub_category_id]"
+                                                class="mt-1 w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm">
+                                            <option value="">—</option>
+                                            @foreach($trackingCategories as $category)
+                                                @foreach($category->activeSubCategories as $subCategory)
+                                                    <option value="{{ $subCategory->id }}" @selected((string) ($row['tracking_sub_category_id'] ?? '') === (string) $subCategory->id)>
+                                                        {{ $category->name }} / {{ $subCategory->name }}
+                                                    </option>
+                                                @endforeach
+                                            @endforeach
+                                        </select>
+                                    </td>
                                     <td class="py-1">
                                         <input type="text" name="lines[{{ $i }}][description]"
                                                value="{{ $row['description'] ?? '' }}"
@@ -98,7 +121,7 @@
                         </tbody>
                     </table>
                 </div>
-                <p class="mt-2 text-xs text-gray-500">Leave unused rows blank. Amounts are gross — one side per line.</p>
+                <p class="mt-2 text-xs text-gray-500">Leave unused rows blank. Amounts are gross — one side per line. Tracking is optional per line.</p>
             </div>
 
             <div class="flex justify-end gap-3">

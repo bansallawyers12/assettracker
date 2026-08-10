@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 class ManualJournalEntryService
 {
     /**
-     * @param  list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string}>  $lines
+     * @param  list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string, tracking_category_id?: ?int, tracking_sub_category_id?: ?int}>  $lines
      */
     public function post(
         BusinessEntity $businessEntity,
@@ -54,6 +54,8 @@ class ManualJournalEntryService
                     'credit_amount' => $line['credit'],
                     'description' => $line['description'] ?? null,
                     'reference' => 'MAN:'.$entry->id,
+                    'tracking_category_id' => $line['tracking_category_id'] ?? null,
+                    'tracking_sub_category_id' => $line['tracking_sub_category_id'] ?? null,
                 ]);
             }
 
@@ -107,8 +109,8 @@ class ManualJournalEntryService
     }
 
     /**
-     * @param  list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string}>  $lines
-     * @return list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string}>
+     * @param  list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string, tracking_category_id?: ?int, tracking_sub_category_id?: ?int}>  $lines
+     * @return list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string, tracking_category_id?: ?int, tracking_sub_category_id?: ?int}>
      */
     private function normalizeLines(array $lines): array
     {
@@ -125,11 +127,20 @@ class ManualJournalEntryService
                 continue;
             }
 
+            $trackingCategoryId = isset($line['tracking_category_id']) && $line['tracking_category_id'] !== ''
+                ? (int) $line['tracking_category_id']
+                : null;
+            $trackingSubCategoryId = isset($line['tracking_sub_category_id']) && $line['tracking_sub_category_id'] !== ''
+                ? (int) $line['tracking_sub_category_id']
+                : null;
+
             $normalized[] = [
                 'chart_of_account_id' => $accountId,
                 'debit' => $debit,
                 'credit' => $credit,
                 'description' => $line['description'] ?? null,
+                'tracking_category_id' => $trackingCategoryId > 0 ? $trackingCategoryId : null,
+                'tracking_sub_category_id' => $trackingSubCategoryId > 0 ? $trackingSubCategoryId : null,
             ];
         }
 

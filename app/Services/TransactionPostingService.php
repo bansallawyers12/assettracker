@@ -97,7 +97,7 @@ class TransactionPostingService
 
         $entry = $existing;
         $entry->business_entity_id = $transaction->business_entity_id;
-        $entry->entry_date = $transaction->date;
+        $entry->entry_date = $transaction->paid_at ?? $transaction->date;
         $entry->reference_number = $entry->reference_number ?: $this->bookingJournalReference($transaction);
         $entry->description = $transaction->description ?? 'Auto-posted from Transaction #'.$transaction->id;
         $entry->is_posted = true;
@@ -187,6 +187,8 @@ class TransactionPostingService
                 'credit_amount' => $line['credit'],
                 'description' => $line['description'] ?? null,
                 'reference' => 'TXN:'.$transaction->id,
+                'tracking_category_id' => $transaction->tracking_category_id,
+                'tracking_sub_category_id' => $transaction->tracking_sub_category_id,
             ]);
         }
     }
@@ -597,7 +599,7 @@ class TransactionPostingService
             'loan_repayments' => $this->findByName('Long Term Loans')
                 ?? $this->findAccount((string) config('financial.report_accounts.long_term_loans', '4000')),
             'loan_interest' => $this->findByName('Interest Expense')
-                ?? $this->findAccount('7500')
+                ?? $this->findAccount((string) config('financial.report_accounts.interest_expense', '7500'))
                 ?? $this->findByName('Other Expenses')
                 ?? $this->findAccount('5900'),
             'loan_fees' => $this->findByName('Other Expenses')

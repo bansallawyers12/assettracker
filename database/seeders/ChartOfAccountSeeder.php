@@ -94,6 +94,7 @@ class ChartOfAccountSeeder extends Seeder
             ['5170', 'Wages & Salaries', 'expense', 'operating_expense', 'Employee wages and salaries (excludes super)'],
             ['5180', 'Superannuation', 'expense', 'operating_expense', 'Superannuation contributions paid or accrued'],
             ['5195', 'Depreciation Expense', 'expense', 'operating_expense', 'Depreciation on capital assets'],
+            ['7500', 'Interest Expense', 'expense', 'operating_expense', 'Interest on mortgages and other borrowings'],
             ['5900', 'Other Expenses', 'expense', 'other_expense', 'Miscellaneous expenses not classified elsewhere'],
         ];
     }

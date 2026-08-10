@@ -51,6 +51,16 @@
                 </div>
             </div>
 
+            <div class="flex flex-col gap-1">
+                <label class="text-xs font-medium text-gray-600">Options</label>
+                <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                    <input type="checkbox" name="show_zeros" value="1"
+                           @checked(request()->boolean('show_zeros'))
+                           class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                    Show zero-balance accounts
+                </label>
+            </div>
+
             {{-- Quick period shortcuts --}}
             <div class="flex items-end gap-1.5 flex-wrap">
                 @php
@@ -92,6 +102,15 @@
     </x-slot:filters>
 
     {{-- ── Report statement ────────────────────────────────────────── --}}
+    <div class="px-6 pt-4 text-xs text-gray-600 leading-relaxed border-b border-gray-100">
+        Amounts come from <strong>posted journal entries</strong> on income and expense accounts (paid bank transactions,
+        posted invoices, manual journals, depreciation). GST is excluded from income and expense lines.
+        Posted invoices use the <strong>issue date</strong>; paid bank transactions use the <strong>payment date</strong>.
+        Capital purchases, loan principal, director loans, owner drawings, and BAS/PAYG payments post to balance-sheet
+        accounts and do not appear here. Property P&amp;L reports use transactions by asset and may differ from this
+        entity view.
+        <a href="{{ route('financial-reports.journal-entries.create') }}" class="text-blue-600 hover:underline">Journal entries</a>
+    </div>
     <div class="pb-6">
         <table class="w-full text-sm">
             <tbody>

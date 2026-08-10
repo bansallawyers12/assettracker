@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ResolvesReportEntityScope;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
+use App\Models\TrackingCategory;
 use App\Services\ManualJournalEntryService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -42,10 +43,19 @@ class ManualJournalEntryController extends Controller
 
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
 
+        $trackingCategories = TrackingCategory::query()
+            ->where('business_entity_id', $businessEntity->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->with(['activeSubCategories'])
+            ->get();
+
         return view('financial-reports.journal-entry-create', [
             'businessEntity' => $businessEntity,
             'businessEntities' => $businessEntities,
             'accounts' => $accounts,
+            'trackingCategories' => $trackingCategories,
             'entryDate' => old('entry_date', now()->toDateString()),
         ]);
     }
@@ -64,6 +74,8 @@ class ManualJournalEntryController extends Controller
             'lines.*.debit' => 'nullable|numeric|min:0',
             'lines.*.credit' => 'nullable|numeric|min:0',
             'lines.*.description' => 'nullable|string|max:255',
+            'lines.*.tracking_category_id' => 'nullable|integer|exists:tracking_categories,id',
+            'lines.*.tracking_sub_category_id' => 'nullable|integer|exists:tracking_sub_categories,id',
         ]);
 
         $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
@@ -81,6 +93,8 @@ class ManualJournalEntryController extends Controller
                 'debit' => $debit,
                 'credit' => $credit,
                 'description' => $line['description'] ?? null,
+                'tracking_category_id' => $line['tracking_category_id'] ?? null,
+                'tracking_sub_category_id' => $line['tracking_sub_category_id'] ?? null,
             ];
         }
 

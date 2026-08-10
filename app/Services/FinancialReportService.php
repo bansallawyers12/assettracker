@@ -61,7 +61,7 @@ class FinancialReportService
     /**
      * @param  int|array<int>  $businessEntityIdOrIds
      */
-    public function generateProfitLoss($businessEntityIdOrIds, $startDate, $endDate): array
+    public function generateProfitLoss($businessEntityIdOrIds, $startDate, $endDate, bool $hideZeroBalances = true): array
     {
         $ids = $this->normalizeEntityIds($businessEntityIdOrIds);
 
@@ -82,14 +82,15 @@ class FinancialReportService
             ->orderBy('account_code')
             ->get();
 
-        $income = $this->calculateAccountBalancesGrouped($incomeAccounts, $startDate, $endDate, $ids, $categoryLabels);
-        $expenses = $this->calculateAccountBalancesGrouped($expenseAccounts, $startDate, $endDate, $ids, $categoryLabels);
+        $income = $this->calculateAccountBalancesGrouped($incomeAccounts, $startDate, $endDate, $ids, $categoryLabels, $hideZeroBalances);
+        $expenses = $this->calculateAccountBalancesGrouped($expenseAccounts, $startDate, $endDate, $ids, $categoryLabels, $hideZeroBalances);
 
         return $this->appendEntityScopeToReport([
             'period' => [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
             ],
+            'hide_zero_balances' => $hideZeroBalances,
             'income' => $income,
             'expenses' => $expenses,
             'net_profit' => -$income['total'] - $expenses['total'],
@@ -1239,13 +1240,18 @@ class FinancialReportService
         ], $ids);
     }
 
-    private function calculateAccountBalancesGrouped($accounts, $startDate, $endDate, array $entityIds, array $categoryLabels = []): array
+    private function calculateAccountBalancesGrouped($accounts, $startDate, $endDate, array $entityIds, array $categoryLabels = [], bool $hideZeroBalances = false): array
     {
         $byCategory = [];
         $total = 0;
 
         foreach ($accounts as $account) {
             $balance = $this->getAccountBalance($account->id, $startDate, $endDate, $entityIds);
+
+            if ($hideZeroBalances && abs($balance) < 0.00001) {
+                continue;
+            }
+
             $catKey = $account->account_category ?? 'general';
             $catLabel = $categoryLabels[$catKey] ?? ucwords(str_replace('_', ' ', $catKey));
 

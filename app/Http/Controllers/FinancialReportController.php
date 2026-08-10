@@ -63,7 +63,8 @@ class FinancialReportController extends Controller
 
         $startDate = Carbon::parse($request->get('start_date', FinancialYear::currentStart()->toDateString()))->toDateString();
         $endDate = Carbon::parse($request->get('end_date', FinancialYear::currentEnd()->toDateString()))->toDateString();
-        $report = $this->financialReportService->generateProfitLoss($ids, $startDate, $endDate);
+        $hideZeroBalances = ! $request->boolean('show_zeros');
+        $report = $this->financialReportService->generateProfitLoss($ids, $startDate, $endDate, $hideZeroBalances);
         $report = $this->mergeReportFormScope($report, $request, $ids);
 
         return view('financial-reports.profit-loss', compact('report'));
