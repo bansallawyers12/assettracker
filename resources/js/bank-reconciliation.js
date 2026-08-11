@@ -273,6 +273,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
             const typeSelect = entryEl.querySelector('[data-bank-import-create-type]');
             const chartSelect = entryEl.querySelector('[data-bank-import-chart-account]');
+            const subjectToBasCheckbox = entryEl.querySelector('[data-bank-import-subject-to-bas]');
+            const isFlaggedCheckbox = entryEl.querySelector('[data-bank-import-is-flagged]');
+            const commentsInput = entryEl.querySelector('[data-bank-import-comments]');
 
             let transactionId = '';
             let transactionType = '';
