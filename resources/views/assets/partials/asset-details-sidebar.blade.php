@@ -128,7 +128,7 @@
                 <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-3">Financials</p>
                 <dl class="grid grid-cols-2 gap-3">
                     <div class="rounded-lg bg-gray-50 dark:bg-gray-800/60 px-3 py-2.5 border border-gray-100 dark:border-gray-700">
-                        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Acquisition Cost</dt>
+                        <dt class="text-xs font-medium text-gray-500 dark:text-gray-400">Purchase Price</dt>
                         <dd class="mt-0.5 text-sm font-bold text-gray-900 dark:text-gray-100 tabular-nums">
                             ${{ number_format($asset->acquisition_cost ?? 0, 2) }}
                         </dd>

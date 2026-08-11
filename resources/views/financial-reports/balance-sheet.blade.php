@@ -95,7 +95,7 @@
     {{-- ── Report statement ────────────────────────────────────────── --}}
     <div class="px-6 pt-4 text-xs text-gray-600 leading-relaxed border-b border-gray-100">
         Amounts come from <strong>posted journal entries</strong> (paid bank transactions, posted invoices, manual journals).
-        Property <strong>Buying Price</strong> on assets is for portfolio reports unless you also record an
+        Property <strong>Purchase Price</strong> on assets is for portfolio reports unless you also record an
         <strong>Asset Purchase</strong> transaction or an opening balance journal.
         <a href="{{ route('financial-reports.journal-entries.create') }}" class="text-blue-600 hover:underline">Journal entries</a>
     </div>

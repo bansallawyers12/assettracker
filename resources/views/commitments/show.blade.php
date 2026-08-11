@@ -164,7 +164,7 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Acquisition date</label>
+                            <label class="block text-xs text-gray-600 dark:text-gray-400 mb-1">Settlement Date</label>
                             <x-date-input  name="acquisition_date"
                                    value="{{ $commitment->settlement_date?->format('Y-m-d') ?? date('Y-m-d') }}"
                                    class="w-full rounded-md border-gray-300 text-sm dark:bg-gray-900 dark:border-gray-600" />

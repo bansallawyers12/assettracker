@@ -49,13 +49,10 @@
     $createQuery = array_filter([
         'return_to' => $returnTo,
         'return_business_entity_id' => $isFullPage ? ($contextEntityId ?? null) : null,
-    ], fn ($value) => $value !== null && $value !== '');
-    $createUrlTemplate = route('dashboard').'?'.http_build_query(array_merge($createQuery, [
-        'open_add_transaction' => 1,
-        'business_entity_id' => 'BUSINESS_ENTITY',
-        'payment_status' => 'paid',
+        'bank_account_id' => $bankAccount->id,
         'payment_channel' => \App\Models\Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
-    ]));
+    ], fn ($value) => $value !== null && $value !== '');
+    $createUrlTemplate = url('/business-entities/BUSINESS_ENTITY/balance-sheet-entries/create').'?'.http_build_query($createQuery);
     $importProcessUrl = route('bank-accounts.import.process', $bankAccount);
     $importUnmatchedUrl = route('bank-accounts.import.unmatched', $bankAccount);
     $importApplyUrl = route('bank-accounts.import.apply', $bankAccount);
@@ -84,9 +81,9 @@
 >
     @if($canManageTransactions)
         <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Add non-bank entry</h3>
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Add balance sheet entry</h3>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Record paid transactions not made through this bank account.
+                Record capital and other balance-sheet items not paid through this bank account (use Asset Purchase for property deposits/purchases).
             </p>
 
             <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -130,7 +127,7 @@
                     @endif
                     class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    Add non-bank entry
+                    Add balance sheet entry
                 </button>
             </div>
         </div>

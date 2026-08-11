@@ -9,11 +9,11 @@
 
     <dl class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 text-sm">
         <div>
-            <dt class="text-gray-500 dark:text-gray-400">Buying Date</dt>
+            <dt class="text-gray-500 dark:text-gray-400">Settlement Date</dt>
             <dd class="mt-0.5 text-gray-900 dark:text-gray-100">{{ $asset->acquisition_date?->format('d/m/Y') ?: 'N/A' }}</dd>
         </div>
         <div>
-            <dt class="text-gray-500 dark:text-gray-400">Buying Price</dt>
+            <dt class="text-gray-500 dark:text-gray-400">Purchase Price</dt>
             <dd class="mt-0.5 text-gray-900 dark:text-gray-100">${{ number_format((float) $asset->acquisition_cost, 2) }}</dd>
         </div>
         <div>

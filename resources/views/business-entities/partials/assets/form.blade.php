@@ -44,11 +44,11 @@
 
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-            <label for="assets_acquisition_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Buying Date</label>
+            <label for="assets_acquisition_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Settlement Date</label>
             <x-date-input name="acquisition_date" id="assets_acquisition_date" class="mt-1 block w-full" value="{{ old('acquisition_date', $asset?->acquisition_date?->format('Y-m-d')) }}" required />
         </div>
         <div>
-            <label for="assets_acquisition_cost" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Buying Price</label>
+            <label for="assets_acquisition_cost" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Purchase Price</label>
             <input type="number" step="0.01" name="acquisition_cost" id="assets_acquisition_cost" required value="{{ old('acquisition_cost', $asset?->acquisition_cost) }}" class="mt-1 block w-full rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100 text-sm shadow-xs">
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">For portfolio yield and reports. To show on the balance sheet, also record a paid <strong>Asset Purchase</strong> bank transaction.</p>
         </div>

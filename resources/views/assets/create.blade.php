@@ -72,13 +72,13 @@
                                     </div>
 
                                     <div class="bank-field">
-                                        <label for="acquisition_date" class="bank-field-label">{{ __('Buying Date') }} <span class="text-red-500">*</span></label>
+                                        <label for="acquisition_date" class="bank-field-label">{{ __('Settlement Date') }} <span class="text-red-500">*</span></label>
                                         <x-date-input name="acquisition_date" id="acquisition_date" value="{{ old('acquisition_date') }}" class="bank-field-control" required />
                                         @error('acquisition_date') <p class="bank-field-error">{{ $message }}</p> @enderror
                                     </div>
 
                                     <div class="bank-field">
-                                        <label for="acquisition_cost" class="bank-field-label">{{ __('Buying Price') }} <span class="text-red-500">*</span></label>
+                                        <label for="acquisition_cost" class="bank-field-label">{{ __('Purchase Price') }} <span class="text-red-500">*</span></label>
                                         <input type="number" step="0.01" name="acquisition_cost" id="acquisition_cost" value="{{ old('acquisition_cost') }}" class="bank-field-control" required>
                                         <p class="mt-1 text-xs text-gray-500">For portfolio yield and reports. To show on the balance sheet, also record a paid <strong>Asset Purchase</strong> bank transaction.</p>
                                         @error('acquisition_cost') <p class="bank-field-error">{{ $message }}</p> @enderror
