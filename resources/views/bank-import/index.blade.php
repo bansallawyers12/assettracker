@@ -13,7 +13,7 @@
                         Import from a bank account
                     </h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                        CSV/Excel statement lines are uploaded and matched on each bank account’s transactions panel.
+                        CSV statement lines are uploaded and matched on each bank account’s transactions panel.
                         Open an account below, or jump from an entity’s Bank Import tab.
                     </p>
                     <div class="mt-4 flex flex-wrap gap-3">

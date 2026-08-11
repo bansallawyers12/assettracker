@@ -13,7 +13,7 @@
         <div>
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reconcile statement</h3>
             <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                Upload CSV/Excel lines, review suggestions, then accept selected rows. Nothing posts until you accept.
+                Upload CSV statement lines, review suggestions, then accept selected rows. Nothing posts until you accept.
             </p>
         </div>
         <span class="text-xs font-medium text-amber-800 dark:text-amber-200" data-bank-import-unmatched-count>
@@ -60,7 +60,7 @@
                     type="file"
                     id="bank_import_statement_file"
                     name="statement_file"
-                    accept=".xlsx,.xls,.csv"
+                    accept=".csv"
                     required
                     class="mt-1 block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100 dark:text-gray-300 dark:file:bg-indigo-950/50 dark:file:text-indigo-300"
                 >

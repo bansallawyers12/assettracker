@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Symfony\Component\Process\Process;
 
 class BankImportController extends Controller
 {
@@ -44,7 +43,7 @@ class BankImportController extends Controller
     {
         $request->validate([
             'bank_account_id' => 'required|exists:bank_accounts,id',
-            'statement_file' => 'required|file|mimes:xlsx,xls,csv|max:10240', // 10MB max
+            'statement_file' => 'required|file|mimes:csv,txt|max:10240', // 10MB max
         ]);
 
         try {
@@ -69,8 +68,7 @@ class BankImportController extends Controller
             $filename = 'bank_statement_'.time().'_'.Str::random(16).'.'.$ext;
             $filePath = $file->storeAs('bank_statements', $filename, 'local');
 
-            // Call Python parser
-            $result = $this->parseBankStatement($filePath, $bankAccount->bank_name);
+            $result = $this->parseService->parseStoredFile($filePath, (string) $bankAccount->bank_name);
 
             if (! $result['success']) {
                 // Clean up uploaded file
@@ -225,63 +223,6 @@ class BankImportController extends Controller
                 'success' => false,
                 'message' => 'An error occurred while saving matches.',
             ], 500);
-        }
-    }
-
-    /**
-     * Parse bank statement using Python script
-     */
-    private function parseBankStatement($filePath, $bankName)
-    {
-        try {
-            $fullPath = Storage::disk('local')->path($filePath);
-            $pythonScript = base_path('python/python_bank_parser.py');
-
-            // Check if Python script exists
-            if (! file_exists($pythonScript)) {
-                return [
-                    'success' => false,
-                    'error' => 'Python parser script not found',
-                ];
-            }
-
-            $pythonBin = PHP_OS_FAMILY === 'Windows' ? 'python' : 'python3';
-
-            // Run Python script
-            $process = new Process([
-                $pythonBin,
-                $pythonScript,
-                $fullPath,
-                '--bank-name',
-                $bankName,
-            ]);
-
-            $process->run();
-
-            if (! $process->isSuccessful()) {
-                return [
-                    'success' => false,
-                    'error' => 'Python script failed: '.$process->getErrorOutput(),
-                ];
-            }
-
-            $output = $process->getOutput();
-            $result = json_decode($output, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                return [
-                    'success' => false,
-                    'error' => 'Invalid JSON response from Python script',
-                ];
-            }
-
-            return $result;
-
-        } catch (\Exception $e) {
-            return [
-                'success' => false,
-                'error' => 'Failed to run Python parser: '.$e->getMessage(),
-            ];
         }
     }
 

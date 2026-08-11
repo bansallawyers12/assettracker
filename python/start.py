@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Start / initialize all Python services for the Asset Tracker.
-- Installs dependencies (pandas, openpyxl, xlrd, extract-msg)
-- Verifies both parsers are ready (bank statement + .msg email)
+Start / initialize Python services for the Asset Tracker.
+- Installs dependencies (extract-msg, pdfplumber, FastAPI)
+- Verifies email and PDF parser scripts are ready
 """
 
 import subprocess
@@ -46,10 +46,9 @@ def verify_imports():
     """Verify all required packages can be imported."""
     print("\nVerifying packages...")
     try:
-        import pandas
-        import openpyxl
         import extract_msg
-        print("  pandas, openpyxl, extract_msg OK")
+        import pdfplumber
+        print("  extract_msg, pdfplumber OK")
         return True
     except ImportError as e:
         print(f"  Missing package: {e}")
@@ -57,14 +56,14 @@ def verify_imports():
 
 
 def verify_scripts():
-    """Verify both parser scripts exist."""
+    """Verify parser scripts exist."""
     print("\nVerifying scripts...")
-    bank = SCRIPT_DIR / "python_bank_parser.py"
+    pdf = SCRIPT_DIR / "python_bank_pdf_parser.py"
     msg = SCRIPT_DIR / "parse_msg_simple.py"
-    if bank.exists():
-        print("  python_bank_parser.py OK")
+    if pdf.exists():
+        print("  python_bank_pdf_parser.py OK")
     else:
-        print("  python_bank_parser.py MISSING")
+        print("  python_bank_pdf_parser.py MISSING")
         return False
     if msg.exists():
         print("  parse_msg_simple.py OK")
@@ -93,8 +92,9 @@ def main():
 
     print("\n" + "=" * 50)
     print("All Python services ready.")
-    print("- Bank import: python_bank_parser.py (CSV, XLSX, XLS)")
-    print("- Email parser: parse_msg_simple.py (.msg files)")
+    print("- PDF statement parser: python_bank_pdf_parser.py")
+    print("- Email parser: parse_msg_simple.py")
+    print("- Bank CSV import: handled in Laravel/PHP")
     print("=" * 50)
 
 

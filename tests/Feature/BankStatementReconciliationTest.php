@@ -1,12 +1,14 @@
 <?php
 
-uses(TestCase::class);
-
 use App\Models\BankAccount;
+use App\Services\BankCsvStatementParser;
 use App\Services\BankStatementApplyService;
 use App\Services\BankStatementMatchSuggester;
 use App\Services\BankStatementParseService;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
+
+uses(TestCase::class);
 
 it('registers reconciliation services and meta migration', function () {
     expect(class_exists(BankStatementMatchSuggester::class))->toBeTrue()
@@ -49,14 +51,65 @@ it('allows loan purpose accounts for operating import eligibility', function () 
         ->toContain(BankAccount::PURPOSE_LOAN);
 });
 
-it('parser detects macquarie profile and jul-26 dates', function () {
-    $parser = file_get_contents(base_path('python/python_bank_parser.py'));
+it('parses macquarie csv profile and aug-26 dates', function () {
+    $parser = new BankCsvStatementParser;
+    $fixture = base_path('tests/fixtures/macquarie-bank-statement.csv');
 
-    expect($parser)->toContain("return 'macquarie'")
-        ->and($parser)->toContain('%d-%b-%y')
-        ->and($parser)->toContain('original description')
-        ->and($parser)->toContain('subcategory')
-        ->and($parser)->toContain('balance_after');
+    $result = $parser->parseFile($fixture, 'Macquarie');
+
+    expect($result['success'])->toBeTrue()
+        ->and($result['profile'])->toBe('macquarie')
+        ->and($result['entries'])->toHaveCount(2)
+        ->and($result['entries'][0]['date'])->toBe('2026-08-08')
+        ->and($result['entries'][0]['amount'])->toBe(-500.0)
+        ->and($result['entries'][0]['description'])->toBe('Payment to MONASH COUNCIL RATES - CRN 0001543552')
+        ->and($result['entries'][0]['meta']['balance_after'])->toBe(1234.56)
+        ->and($result['entries'][0]['meta']['subcategory'])->toBe('BPAY Payments')
+        ->and($result['entries'][1]['date'])->toBe('2025-01-21')
+        ->and($result['entries'][1]['amount'])->toBe(1500.0);
+});
+
+it('rejects non-csv bank statement files', function () {
+    $parser = new BankCsvStatementParser;
+    $fixture = base_path('tests/fixtures/macquarie-bank-statement.csv');
+    $xlsxPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'statement.xlsx';
+
+    file_put_contents($xlsxPath, 'not a real xlsx');
+    try {
+        $result = $parser->parseFile($xlsxPath);
+
+        expect($result['success'])->toBeFalse()
+            ->and($result['error'])->toContain('Only CSV bank statements are supported');
+    } finally {
+        @unlink($xlsxPath);
+    }
+
+    expect($parser->parseFile($fixture)['success'])->toBeTrue();
+});
+
+it('parses stored csv via bank statement parse service', function () {
+    Storage::fake('local');
+
+    $csv = file_get_contents(base_path('tests/fixtures/macquarie-bank-statement.csv'));
+    Storage::disk('local')->put('bank_statements/sample.csv', $csv);
+
+    $service = new BankStatementParseService;
+    $result = $service->parseStoredFile('bank_statements/sample.csv', 'Macquarie');
+
+    expect($result['success'])->toBeTrue()
+        ->and($result['profile'])->toBe('macquarie')
+        ->and($result['entries'])->toHaveCount(2);
+});
+
+it('restricts bank import uploads to csv only', function () {
+    $importController = file_get_contents(app_path('Http/Controllers/BankAccountImportController.php'));
+    $legacyController = file_get_contents(app_path('Http/Controllers/BankImportController.php'));
+    $panel = file_get_contents(resource_path('views/bank-accounts/partials/reconciliation-panel.blade.php'));
+
+    expect($importController)->toContain("'statement_file' => 'required|file|mimes:csv,txt|max:10240'")
+        ->and($legacyController)->toContain("'statement_file' => 'required|file|mimes:csv,txt|max:10240'")
+        ->and($panel)->toContain('accept=".csv"')
+        ->and($panel)->not->toContain('.xlsx');
 });
 
 it('preselects invoice payment bank account with suggested statement line', function () {

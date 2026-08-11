@@ -89,7 +89,7 @@ Further frontend notes: [`docs/TECH_UPDATE.md`](docs/TECH_UPDATE.md). ATO lodgem
 - Composer 2+
 - Node.js **22+** (recommended) and npm
 - PostgreSQL 13+
-- Python 3.8+ (bank import and email `.msg` parsing)
+- Python 3.8+ (email `.msg` parsing and PDF statement parsing; bank CSV import is handled in PHP)
 - Redis recommended for cache/queue (see `.env.example`)
 - AWS S3 credentials if using cloud document storage
 - Gmail API credentials if enabling email sync
@@ -112,7 +112,7 @@ Further frontend notes: [`docs/TECH_UPDATE.md`](docs/TECH_UPDATE.md). ATO lodgem
    npm install
    ```
 
-4. **Install Python dependencies** (bank import + email `.msg` parsing)
+4. **Install Python dependencies** (email `.msg` parsing and PDF statement parsing)
    ```bash
    # Windows
    python\start.bat
@@ -263,8 +263,9 @@ php artisan db:seed --class=ComplianceDocumentTypeSeeder
 
 ### Bank statements
 - Dashboard → Bank Import
-- Upload Excel (`.xlsx`, `.xls`) or CSV
-- Parsing/matching uses the Python helpers; manual override is available
+- Upload CSV bank statements
+- CSV parsing runs in PHP; Python helpers remain for PDF statements and email `.msg` files
+- Excel import can return when Python 3.9+ is available on the server
 
 ## Database (key tables)
 

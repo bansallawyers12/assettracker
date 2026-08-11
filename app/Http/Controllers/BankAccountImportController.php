@@ -35,7 +35,7 @@ class BankAccountImportController extends Controller
 
         $validated = $request->validate([
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
-            'statement_file' => 'required|file|mimes:xlsx,xls,csv|max:10240',
+            'statement_file' => 'required|file|mimes:csv,txt|max:10240',
         ]);
 
         $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
