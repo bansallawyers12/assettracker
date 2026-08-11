@@ -236,6 +236,25 @@ class Transaction extends Model
     }
 
     /**
+     * Signed cash flow from the bank account's perspective (positive = money in).
+     * Uses matched statement lines when present; otherwise infers from transaction direction.
+     */
+    public function bankAccountSignedAmount(): float
+    {
+        $entries = $this->relationLoaded('bankStatementEntries')
+            ? $this->bankStatementEntries
+            : $this->bankStatementEntries()->get(['amount']);
+
+        if ($entries->isNotEmpty()) {
+            return round((float) $entries->sum(fn (BankStatementEntry $entry) => (float) $entry->amount), 2);
+        }
+
+        $amount = abs((float) $this->amount);
+
+        return $this->direction === 'income' ? $amount : -$amount;
+    }
+
+    /**
      * @return array{cash: float, net: float, gst: float}
      */
     public function cashParts(): array

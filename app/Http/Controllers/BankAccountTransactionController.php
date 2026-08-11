@@ -10,6 +10,7 @@ use App\Services\BankStatementMatchSuggester;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\View\View;
 
 class BankAccountTransactionController extends Controller
 {
@@ -17,7 +18,35 @@ class BankAccountTransactionController extends Controller
 
     public function index(Request $request, BankAccount $bankAccount): JsonResponse
     {
+        $viewData = $this->transactionsPanelViewData($request, $bankAccount);
+
+        return response()->json([
+            'status' => true,
+            'html' => view('bank-accounts.partials.transactions-panel', $viewData)->render(),
+        ]);
+    }
+
+    public function page(Request $request, BankAccount $bankAccount): View
+    {
+        $viewData = $this->transactionsPanelViewData($request, $bankAccount);
+        $contextEntityId = $viewData['contextEntityId'];
+
+        $backUrl = $contextEntityId !== null
+            ? route('business-entities.show', $contextEntityId).'#tab_bank_accounts'
+            : route('bank-accounts.index');
+
+        return view('bank-accounts.transactions', array_merge($viewData, [
+            'backUrl' => $backUrl,
+        ]));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function transactionsPanelViewData(Request $request, BankAccount $bankAccount): array
+    {
         $this->ensureAccessible($bankAccount);
+        $bankAccount->loadMissing(['holderEntity', 'holderPerson']);
 
         $contextEntityId = $request->filled('business_entity_id')
             ? $request->integer('business_entity_id')
@@ -65,23 +94,20 @@ class BankAccountTransactionController extends Controller
             $defaultAssetId
         );
 
-        return response()->json([
-            'status' => true,
-            'html' => view('bank-accounts.partials.transactions-panel', [
-                'bankAccount' => $bankAccount,
-                'transactions' => $transactions,
-                'eligibleEntities' => $eligibleEntities,
-                'importEntities' => $importEntities,
-                'contextEntityId' => $contextEntityId,
-                'defaultEntityId' => $defaultEntityId,
-                'canManageTransactions' => $eligibleEntities->isNotEmpty(),
-                'canImport' => $importEntities->isNotEmpty(),
-                'unmatchedEntries' => $unmatchedEntries,
-                'matchCandidates' => $matchCandidates,
-                'suggestions' => $suggestions,
-                'transactionTypeGroups' => Transaction::typeSelectGroups(),
-            ])->render(),
-        ]);
+        return [
+            'bankAccount' => $bankAccount,
+            'transactions' => $transactions,
+            'eligibleEntities' => $eligibleEntities,
+            'importEntities' => $importEntities,
+            'contextEntityId' => $contextEntityId,
+            'defaultEntityId' => $defaultEntityId,
+            'canManageTransactions' => $eligibleEntities->isNotEmpty(),
+            'canImport' => $importEntities->isNotEmpty(),
+            'unmatchedEntries' => $unmatchedEntries,
+            'matchCandidates' => $matchCandidates,
+            'suggestions' => $suggestions,
+            'transactionTypeGroups' => Transaction::typeSelectGroups(),
+        ];
     }
 
     /**

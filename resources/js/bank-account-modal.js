@@ -22,6 +22,82 @@ import {
 } from './bank-search-select.js';
 import { bindReconciliationPanel } from './bank-reconciliation.js';
 
+function transactionsFullPageUrl(transactionsUrl) {
+    try {
+        const url = new URL(transactionsUrl, window.location.origin);
+        url.pathname = url.pathname.replace(/\/transactions\/?$/, '/transactions/page');
+
+        return `${url.pathname}${url.search}`;
+    } catch {
+        return transactionsUrl.replace(/\/transactions\/?$/, '/transactions/page');
+    }
+}
+
+function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
+    const contentHost = options.contentHost ?? root;
+    const panel = root.querySelector('[data-bank-transactions-panel]') || root;
+    const addButton = root.querySelector('[data-bank-transactions-add]');
+    const entityPicker = root.querySelector('[data-bank-transactions-entity-picker]');
+
+    async function refreshTransactionsPanel() {
+        const url = panel.dataset.bankTransactionsIndexUrl || refreshUrl;
+        if (!url) {
+            return;
+        }
+
+        const refreshResponse = await apiFetch(url);
+        const refreshPayload = parseJson(await refreshResponse.text());
+
+        if (refreshResponse.ok && refreshPayload?.html) {
+            contentHost.innerHTML = refreshPayload.html;
+            const refreshedRoot = contentHost;
+            const nextPanel = refreshedRoot.querySelector('[data-bank-transactions-panel]') || refreshedRoot;
+            const nextUrl = nextPanel.dataset.bankTransactionsIndexUrl || url;
+            bindTransactionsPanel(refreshedRoot, signal, nextUrl, options);
+        }
+    }
+
+    addButton?.addEventListener('click', () => {
+        const template = addButton.dataset.createUrlTemplate;
+        if (!template) {
+            return;
+        }
+
+        const entityId = (entityPicker?.value || addButton.dataset.defaultEntityId || '').trim();
+        if (!entityId) {
+            showWorkspaceAlert({
+                title: 'Select entity',
+                message: 'Choose which entity should own this transaction before continuing.',
+                variant: 'info',
+            });
+            return;
+        }
+
+        const createUrl = template.replaceAll('BUSINESS_ENTITY', encodeURIComponent(entityId));
+        window.location.assign(createUrl);
+    }, { signal });
+
+    bindReconciliationPanel(panel, signal, refreshTransactionsPanel);
+}
+
+export function initBankTransactionsPage() {
+    const pageRoot = document.querySelector('[data-bank-transactions-page]');
+    if (!pageRoot) {
+        return;
+    }
+
+    const contentHost = pageRoot.querySelector('[data-bank-transactions-page-content]') || pageRoot;
+    const panel = contentHost.querySelector('[data-bank-transactions-panel]');
+    if (!panel) {
+        return;
+    }
+
+    const controller = new AbortController();
+    bindTransactionsPanel(contentHost, controller.signal, panel.dataset.bankTransactionsIndexUrl, {
+        contentHost,
+    });
+}
+
 function parseConfig() {
     const configEl = document.getElementById('add-bank-account-config');
     if (configEl?.textContent?.trim()) {
@@ -169,6 +245,7 @@ export function initBankAccountModal() {
     const titleEl = panelRoot.querySelector('[data-bank-panel-title]');
     const subtitleEl = panelRoot.querySelector('[data-bank-panel-subtitle]');
     const eyebrowEl = panelRoot.querySelector('[data-bank-panel-eyebrow]');
+    const expandBtn = panelRoot.querySelector('[data-bank-panel-expand]');
 
     let attachController = null;
     let createController = null;
@@ -180,6 +257,22 @@ export function initBankAccountModal() {
     let pendingTab = 'link';
     let pendingTargetSelectId = null;
     let pendingTrigger = null;
+
+    function setTransactionsExpandButton(url) {
+        if (!expandBtn) {
+            return;
+        }
+
+        if (url) {
+            expandBtn.href = url;
+            expandBtn.hidden = false;
+            expandBtn.removeAttribute('hidden');
+        } else {
+            expandBtn.hidden = true;
+            expandBtn.setAttribute('hidden', 'hidden');
+            expandBtn.href = '#';
+        }
+    }
 
     function setPanelCopy({ title, subtitle, eyebrow = 'Bank account' }) {
         if (titleEl && title) {
@@ -230,6 +323,7 @@ export function initBankAccountModal() {
         panelMode = 'create';
         pendingTargetSelectId = null;
         pendingTrigger = null;
+        setTransactionsExpandButton(null);
 
         if (!config.createOnly) {
             setActiveTab('link');
@@ -554,6 +648,7 @@ export function initBankAccountModal() {
         pendingCreateUrl = options.createFormUrl || config.createFormUrl;
         pendingAttachFormUrl = buildAttachFormUrl(config.attachFormUrl, pendingTrigger);
         panelMode = 'create';
+        setTransactionsExpandButton(null);
 
         closeWorkspacePanel();
         showTabs(!config.createOnly);
@@ -579,6 +674,7 @@ export function initBankAccountModal() {
     async function openRentAssetsPanel(formUrl) {
         closeWorkspacePanel();
         panelMode = 'edit';
+        setTransactionsExpandButton(null);
         showTabs(false);
         setActiveTab('create');
         setPanelCopy({
@@ -594,6 +690,7 @@ export function initBankAccountModal() {
     async function openEditPanel(editUrl, options = {}) {
         closeWorkspacePanel();
         panelMode = 'edit';
+        setTransactionsExpandButton(null);
         showTabs(false);
         setActiveTab('create');
         setPanelCopy({
@@ -709,6 +806,7 @@ export function initBankAccountModal() {
     async function openStatementsPanel(statementsUrl, options = {}) {
         closeWorkspacePanel();
         panelMode = 'statements';
+        setTransactionsExpandButton(null);
         showTabs(false);
         setActiveTab('create');
         setPanelCopy({
@@ -735,53 +833,10 @@ export function initBankAccountModal() {
         bindStatementsPanel(createHost, createController.signal, statementsUrl);
     }
 
-    function bindTransactionsPanel(root, signal, refreshUrl) {
-        const panel = root.querySelector('[data-bank-transactions-panel]') || root;
-        const addButton = root.querySelector('[data-bank-transactions-add]');
-        const entityPicker = root.querySelector('[data-bank-transactions-entity-picker]');
-
-        async function refreshTransactionsPanel() {
-            const url = panel.dataset.bankTransactionsIndexUrl || refreshUrl;
-            if (!url) {
-                return;
-            }
-
-            const refreshResponse = await apiFetch(url);
-            const refreshPayload = parseJson(await refreshResponse.text());
-
-            if (refreshResponse.ok && refreshPayload?.html) {
-                createHost.innerHTML = refreshPayload.html;
-                const nextUrl = createHost.querySelector('[data-bank-transactions-panel]')?.dataset.bankTransactionsIndexUrl || url;
-                bindTransactionsPanel(createHost, createController?.signal, nextUrl);
-            }
-        }
-
-        addButton?.addEventListener('click', () => {
-            const template = addButton.dataset.createUrlTemplate;
-            if (!template) {
-                return;
-            }
-
-            const entityId = (entityPicker?.value || addButton.dataset.defaultEntityId || '').trim();
-            if (!entityId) {
-                showWorkspaceAlert({
-                    title: 'Select entity',
-                    message: 'Choose which entity should own this transaction before continuing.',
-                    variant: 'info',
-                });
-                return;
-            }
-
-            const createUrl = template.replaceAll('BUSINESS_ENTITY', encodeURIComponent(entityId));
-            window.location.assign(createUrl);
-        }, { signal });
-
-        bindReconciliationPanel(panel, signal, refreshTransactionsPanel);
-    }
-
     async function openTransactionsPanel(transactionsUrl, options = {}) {
         closeWorkspacePanel();
         panelMode = 'transactions';
+        setTransactionsExpandButton(transactionsFullPageUrl(transactionsUrl));
         showTabs(false);
         setActiveTab('create');
         setPanelCopy({
@@ -805,7 +860,13 @@ export function initBankAccountModal() {
         }
 
         createHost.innerHTML = payload.html;
-        bindTransactionsPanel(createHost, createController.signal, transactionsUrl);
+        const loadedPanel = createHost.querySelector('[data-bank-transactions-panel]');
+        const fullPageUrl = loadedPanel?.dataset.bankTransactionsPageUrl
+            || transactionsFullPageUrl(transactionsUrl);
+        setTransactionsExpandButton(fullPageUrl);
+        bindTransactionsPanel(createHost, createController.signal, transactionsUrl, {
+            contentHost: createHost,
+        });
     }
 
     tabButtons.forEach((button) => {

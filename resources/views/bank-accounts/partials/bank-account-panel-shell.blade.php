@@ -32,14 +32,26 @@
                             {!! $panelSubtitle !!}
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        data-bank-panel-close
-                        class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
-                        aria-label="Close panel"
-                    >
-                        <x-lucide-x class="h-4 w-4" aria-hidden="true" />
-                    </button>
+                    <div class="flex shrink-0 items-center gap-1">
+                        <a
+                            href="#"
+                            data-bank-panel-expand
+                            hidden
+                            class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+                            title="Open full page"
+                            aria-label="Open full page"
+                        >
+                            <x-lucide-maximize-2 class="h-4 w-4" aria-hidden="true" />
+                        </a>
+                        <button
+                            type="button"
+                            data-bank-panel-close
+                            class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800"
+                            aria-label="Close panel"
+                        >
+                            <x-lucide-x class="h-4 w-4" aria-hidden="true" />
+                        </button>
+                    </div>
                 </div>
 
                 <div @class(['bank-account-panel-tabs mt-4', 'hidden' => $createOnly]) role="tablist" data-bank-panel-tabs>

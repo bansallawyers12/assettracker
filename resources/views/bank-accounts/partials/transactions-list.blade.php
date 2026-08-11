@@ -27,16 +27,17 @@
                     @php
                         $txEntity = $transaction->businessEntity;
                         $txEntityId = (int) $transaction->business_entity_id;
+                        $signedAmount = $transaction->bankAccountSignedAmount();
                     @endphp
                     <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/60" data-bank-transaction-row="{{ $transaction->id }}">
                         <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
                             {{ $transaction->date?->format('d/m/Y') ?? '—' }}
                         </td>
                         <td class="px-4 py-3 text-sm font-medium tabular-nums whitespace-nowrap">
-                            @if (Transaction::directionFromType((string) $transaction->transaction_type) === 'income')
-                                <span class="text-green-700 dark:text-green-400">+${{ number_format((float) $transaction->amount, 2) }}</span>
+                            @if ($signedAmount >= 0)
+                                <span class="text-green-700 dark:text-green-400">+${{ number_format(abs($signedAmount), 2) }}</span>
                             @else
-                                <span class="text-red-700 dark:text-red-400">−${{ number_format((float) $transaction->amount, 2) }}</span>
+                                <span class="text-red-700 dark:text-red-400">−${{ number_format(abs($signedAmount), 2) }}</span>
                             @endif
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 max-w-[12rem] truncate" title="{{ $transaction->description }}">

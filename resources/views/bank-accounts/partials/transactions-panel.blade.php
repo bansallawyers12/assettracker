@@ -3,6 +3,10 @@
         'bankAccount' => $bankAccount,
         'business_entity_id' => $contextEntityId ?? null,
     ]));
+    $pageUrl = route('bank-accounts.transactions.page', array_filter([
+        'bankAccount' => $bankAccount,
+        'business_entity_id' => $contextEntityId ?? null,
+    ]));
     $returnTo = ($contextEntityId ?? null) ? 'entity' : 'bank-account';
     $createUrlTemplate = route('business-entities.bank-accounts.transactions.create', [
         'businessEntity' => 'BUSINESS_ENTITY',
@@ -25,6 +29,7 @@
     data-bank-transactions-panel
     data-bank-account-id="{{ $bankAccount->id }}"
     data-bank-transactions-index-url="{{ $indexUrl }}"
+    data-bank-transactions-page-url="{{ $pageUrl }}"
     data-bank-import-process-url="{{ $importProcessUrl }}"
     data-bank-import-unmatched-url="{{ $importUnmatchedUrl }}"
     data-bank-import-apply-url="{{ $importApplyUrl }}"

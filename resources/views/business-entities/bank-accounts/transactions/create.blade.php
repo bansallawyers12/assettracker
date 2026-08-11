@@ -35,17 +35,6 @@
                     </div>
                 @endif
 
-                <form method="POST" action="{{ route('business-entities.bank-accounts.extract-from-receipt', [$businessEntity->id, $bankAccount->id]) }}" enctype="multipart/form-data" class="mb-8 pb-8 border-b border-gray-200 dark:border-gray-700">
-                    @csrf
-                    <p class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Pre-fill from receipt (optional)</p>
-                    <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Upload Receipt / Invoice</label>
-                        <input type="file" name="document" class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 dark:file:bg-gray-700 dark:file:text-purple-300" accept="{{ config('documents.transaction_file_accept') }}">
-                        @error('document') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-                    <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md shadow-xs transition duration-200 text-sm font-medium">Extract Data</button>
-                </form>
-
                 <form method="POST" action="{{ route('business-entities.bank-accounts.transactions.store', [$businessEntity->id, $bankAccount->id]) }}" enctype="multipart/form-data" id="bank-store-transaction-form" data-transaction-paid-by-form>
                     @csrf
                     @if(in_array(request('return_to'), ['bank-account', 'entity'], true))
@@ -231,7 +220,7 @@
                         </div>
                     </div>
 
-                    <input type="hidden" name="receipt_path" value="{{ $td['receipt_path'] ?? '' }}">
+                    <input type="hidden" name="receipt_path" value="{{ old('receipt_path', $td['receipt_path'] ?? '') }}">
 
                     <div class="flex gap-4 mt-6">
                         <button type="submit" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md shadow-xs transition duration-200 font-medium">Add Transaction</button>

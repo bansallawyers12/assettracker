@@ -2497,7 +2497,7 @@ class BusinessEntityController extends Controller
     }
 
     /**
-     * Show the form for creating a new transaction, potentially pre-filled from receipt extraction.
+     * Show the form for creating a new transaction.
      *
      * @return View|RedirectResponse
      */
@@ -2520,7 +2520,7 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        // Retrieve pre-filled data from session if redirected from receipt extraction
+        // Optional session defaults (e.g. flashed form values from another entry point)
         $transactionData = session('transactionData', [
             'date' => now()->toDateString(),
             'amount' => '',
