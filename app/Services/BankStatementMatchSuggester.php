@@ -451,6 +451,9 @@ class BankStatementMatchSuggester
             if (preg_match('/bas payment|gst payment|payg payment|tax office|ato/i', $description)) {
                 return 'bas_payments';
             }
+            if (preg_match('/\basic\b|asic annual|annual review fee|payment to asic/i', $description)) {
+                return 'asic_payment';
+            }
             if (preg_match('/director loan repayment|repay director/i', $description)) {
                 return 'repayment_directors_loans';
             }

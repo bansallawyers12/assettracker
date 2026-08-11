@@ -147,6 +147,21 @@ it('falls back to keyword rules for operating accounts', function () {
         ->and($suggestion['transaction_type'])->toBe('loan_repayments');
 });
 
+it('suggests asic payment for asic fee descriptions', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => -575.14,
+        'description' => 'Payment to ASIC - CRN 2296823408705',
+    ]);
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect());
+
+    expect($suggestion['action'])->toBe('create_transaction')
+        ->and($suggestion['confidence'])->toBe('medium')
+        ->and($suggestion['transaction_type'])->toBe('asic_payment');
+});
+
 it('returns none when no rule matches', function () {
     $suggester = new BankStatementMatchSuggester;
     $entry = makeEntry([

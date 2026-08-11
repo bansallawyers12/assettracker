@@ -65,6 +65,7 @@ class Transaction extends Model
         'superannuation' => 'Superannuation',
         'payg_payment' => 'PAYG Payment',
         'bas_payments' => 'BAS / Tax Payment',
+        'asic_payment' => 'ASIC Payment',
         'other_expenses' => 'Other Expenses',
         'asset_purchase' => 'Asset Purchase',
         'other_personal_expenses' => 'Other / Personal Expenses',
@@ -134,6 +135,7 @@ class Transaction extends Model
                 'superannuation' => self::$expenseTypes['superannuation'],
                 'payg_payment' => self::$expenseTypes['payg_payment'],
                 'bas_payments' => self::$expenseTypes['bas_payments'],
+                'asic_payment' => self::$expenseTypes['asic_payment'],
             ],
             'Property & operating' => [
                 'water_service_expenses' => self::$expenseTypes['water_service_expenses'],

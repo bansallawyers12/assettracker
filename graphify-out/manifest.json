@@ -620,8 +620,8 @@
     "semantic_hash": ""
   },
   "app/Models/Transaction.php": {
-    "mtime": 1786430237.5548763,
-    "ast_hash": "34abd93fd4acc2019ef57a2083c5dabd",
+    "mtime": 1786438235.6461153,
+    "ast_hash": "1ad781c13a2dd8a995122ae933c15f99",
     "semantic_hash": ""
   },
   "app/Models/TransactionLine.php": {
@@ -3340,8 +3340,8 @@
     "semantic_hash": ""
   },
   "app/Services/BankStatementMatchSuggester.php": {
-    "mtime": 1786430237.5560162,
-    "ast_hash": "ffb598e1a403deea655a01db61ced278",
+    "mtime": 1786438242.0452213,
+    "ast_hash": "e349c0672761b25e05597bd0e89edb87",
     "semantic_hash": ""
   },
   "app/Services/BankStatementParseService.php": {
@@ -3370,8 +3370,8 @@
     "semantic_hash": ""
   },
   "tests/Unit/BankStatementMatchSuggesterTest.php": {
-    "mtime": 1786430237.6247888,
-    "ast_hash": "d24ae37b91a542dca3d60d024eaf6cdb",
+    "mtime": 1786438246.284436,
+    "ast_hash": "b8f9c08cf37bb380e47ffab87d9e0030",
     "semantic_hash": ""
   },
   "python/tests/test_westpac_pdf_parser.py": {
