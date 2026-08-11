@@ -7,7 +7,7 @@ use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\Transaction;
 use App\Services\BankStatementMatchSuggester;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -160,7 +160,7 @@ class BankAccountTransactionController extends Controller
     }
 
     /**
-     * @param  Builder<Transaction>  $query
+     * @param  Relation<Transaction>  $query
      * @param  array{
      *     q: ?string,
      *     date_from: ?string,
@@ -172,15 +172,15 @@ class BankAccountTransactionController extends Controller
      *     match_status: ?string
      * }  $filters
      */
-    private function applyTransactionFilters(Builder $query, array $filters, ?int $contextEntityId): void
+    private function applyTransactionFilters(Relation $query, array $filters, ?int $contextEntityId): void
     {
         if ($filters['q']) {
             $like = '%'.$filters['q'].'%';
-            $query->where(function (Builder $w) use ($like) {
+            $query->where(function ($w) use ($like) {
                 $w->where('description', 'like', $like)
                     ->orWhere('invoice_number', 'like', $like)
                     ->orWhere('vendor_name', 'like', $like)
-                    ->orWhereHas('vendor', fn (Builder $vq) => $vq->where('name', 'like', $like));
+                    ->orWhereHas('vendor', fn ($vq) => $vq->where('name', 'like', $like));
             });
         }
 
@@ -198,9 +198,9 @@ class BankAccountTransactionController extends Controller
 
         if ($filters['type']) {
             $type = $filters['type'];
-            $query->where(function (Builder $q) use ($type) {
+            $query->where(function ($q) use ($type) {
                 $q->where('transaction_type', $type)
-                    ->orWhereHas('lines', fn (Builder $lq) => $lq->where('transaction_type', $type));
+                    ->orWhereHas('lines', fn ($lq) => $lq->where('transaction_type', $type));
             });
         }
 
@@ -208,11 +208,11 @@ class BankAccountTransactionController extends Controller
             $typeKeys = $filters['direction'] === 'income'
                 ? array_keys(Transaction::$incomeTypes)
                 : array_keys(Transaction::$expenseTypes);
-            $query->where(function (Builder $q) use ($typeKeys) {
+            $query->where(function ($q) use ($typeKeys) {
                 $q->whereIn('transaction_type', $typeKeys)
-                    ->orWhere(function (Builder $q2) use ($typeKeys) {
+                    ->orWhere(function ($q2) use ($typeKeys) {
                         $q2->where('transaction_type', Transaction::TYPE_SPLIT)
-                            ->whereHas('lines', fn (Builder $lq) => $lq->whereIn('transaction_type', $typeKeys));
+                            ->whereHas('lines', fn ($lq) => $lq->whereIn('transaction_type', $typeKeys));
                     });
             });
         }
