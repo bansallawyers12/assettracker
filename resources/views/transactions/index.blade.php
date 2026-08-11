@@ -10,66 +10,37 @@
         </div>
     </x-slot>
 
-    <div class="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-
+    <div class="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" data-global-transactions>
         @if (session('success'))
             <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200">
                 {{ session('success') }}
             </div>
         @endif
 
-        <form method="GET" action="{{ route('transactions.index') }}" class="mb-6 flex flex-wrap gap-3 items-end">
-            <input type="hidden" name="sort" value="{{ $tableSort->column }}">
-            <input type="hidden" name="order" value="{{ $tableSort->order }}">
-            <div>
-                <label for="entity_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Filter by Entity</label>
-                <x-tom-select id="entity_filter" name="entity_id" onchange="this.form.submit()" class="rounded-lg focus:ring-purple-500 focus:border-purple-500">
-                    <option value="">All Entities</option>
-                    @foreach ($businessEntities as $entity)
-                        <option value="{{ $entity->id }}" {{ request('entity_id') == $entity->id ? 'selected' : '' }}>
-                            {{ $entity->legal_name }}
-                        </option>
-                    @endforeach
-                </x-tom-select>
-            </div>
-            <div>
-                <label for="type_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Filter by Type</label>
-                <select id="type_filter" name="type" onchange="this.form.submit()"
-                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-purple-500 focus:border-purple-500">
-                    <option value="">All Types</option>
-                    @foreach (\App\Models\Transaction::allTypes() as $key => $label)
-                        <option value="{{ $key }}" {{ request('type') === $key ? 'selected' : '' }}>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label for="direction_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Income / Expense</label>
-                <select id="direction_filter" name="direction" onchange="this.form.submit()"
-                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-purple-500 focus:border-purple-500">
-                    <option value="">All</option>
-                    <option value="income" {{ request('direction') === 'income' ? 'selected' : '' }}>Income</option>
-                    <option value="expense" {{ request('direction') === 'expense' ? 'selected' : '' }}>Expense</option>
-                </select>
-            </div>
-            <div>
-                <label for="payment_filter" class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Payment</label>
-                <select id="payment_filter" name="payment_status" onchange="this.form.submit()"
-                    class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm shadow-xs focus:ring-purple-500 focus:border-purple-500">
-                    <option value="">All</option>
-                    <option value="paid" {{ request('payment_status') === 'paid' ? 'selected' : '' }}>Paid</option>
-                    <option value="unpaid" {{ request('payment_status') === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
-                </select>
-            </div>
-            @if (request()->hasAny(['entity_id', 'type', 'direction', 'payment_status', 'sort', 'order']))
-                <a href="{{ route('transactions.index') }}" class="inline-flex items-center px-3 py-2 text-xs text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-                    Clear filters
-                </a>
-            @endif
-        </form>
+        <div class="mb-6">
+            @include('transactions.partials.collapsible-filters', [
+                'filters' => $filters,
+                'filtersActive' => $filtersActive,
+                'idPrefix' => 'global_tx',
+                'bodyId' => 'global-tx-filters-body',
+                'storageKey' => 'global-tx-filters-expanded',
+                'mode' => 'page',
+                'wideGrid' => true,
+                'showEntityFilter' => true,
+                'entities' => $businessEntities,
+                'formAction' => route('transactions.index'),
+                'clearUrl' => route('transactions.index'),
+                'transactionTypeGroups' => \App\Models\Transaction::typeSelectGroups(),
+                'hiddenInputs' => [
+                    'sort' => $tableSort->column,
+                    'order' => $tableSort->order,
+                ],
+            ])
+        </div>
 
         @php
-            $incomeSum = $transactions->filter(fn ($t) => $t->direction === 'income')->sum(fn ($t) => (float) $t->amount);
-            $expenseSum = $transactions->filter(fn ($t) => $t->direction === 'expense')->sum(fn ($t) => (float) $t->amount);
+            $pageIncomeSum = $transactions->filter(fn ($t) => $t->direction === 'income')->sum(fn ($t) => (float) $t->amount);
+            $pageExpenseSum = $transactions->filter(fn ($t) => $t->direction === 'expense')->sum(fn ($t) => (float) $t->amount);
         @endphp
 
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -196,7 +167,7 @@
                         @empty
                             <tr>
                                 <td colspan="15" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
-                                    No transactions found.
+                                    {{ $filtersActive ? 'No transactions match these filters.' : 'No transactions found.' }}
                                 </td>
                             </tr>
                         @endforelse
@@ -204,12 +175,23 @@
                 </table>
             </div>
 
-            @if ($transactions->count() > 0)
+            @if ($transactions->total() > 0)
                 <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-                    <div>{{ $transactions->count() }} {{ Str::plural('transaction', $transactions->count()) }} in view</div>
-                    <div>Income total: <span class="font-medium text-green-700 dark:text-green-400">${{ number_format($incomeSum, 2) }}</span></div>
-                    <div>Expense total: <span class="font-medium text-red-700 dark:text-red-400">${{ number_format($expenseSum, 2) }}</span></div>
-                    <div>Net (income &minus; expense): <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($incomeSum - $expenseSum, 2) }}</span></div>
+                    <div>
+                        Showing {{ $transactions->firstItem() }}–{{ $transactions->lastItem() }}
+                        of {{ $transactions->total() }}
+                        {{ Str::plural('transaction', $transactions->total()) }}
+                        {{ $filtersActive ? 'matching filters' : '' }}
+                    </div>
+                    <div>This page — Income: <span class="font-medium text-green-700 dark:text-green-400">${{ number_format($pageIncomeSum, 2) }}</span></div>
+                    <div>This page — Expense: <span class="font-medium text-red-700 dark:text-red-400">${{ number_format($pageExpenseSum, 2) }}</span></div>
+                    <div>This page — Net: <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($pageIncomeSum - $pageExpenseSum, 2) }}</span></div>
+                </div>
+            @endif
+
+            @if ($transactions->hasPages())
+                <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+                    {{ $transactions->links() }}
                 </div>
             @endif
         </div>
