@@ -7,6 +7,7 @@ import {
     notifyFormFailure,
     notifyFormSuccess,
 } from './workspace-panel.js';
+import { refreshTomSelect } from './tomselect-init.js';
 
 export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel) {
     const importPanel = panel.querySelector('[data-bank-import-panel]');
@@ -66,6 +67,8 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             if (keep && candidates.some((candidate) => String(candidate.id) === String(keep))) {
                 select.value = String(keep);
             }
+
+            refreshTomSelect(select);
         });
     }
 
@@ -97,6 +100,8 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             if (keep) {
                 select.value = keep;
             }
+
+            refreshTomSelect(select);
         });
     }
 
@@ -223,6 +228,8 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             if (keep && accounts.some((account) => String(account.id) === String(keep))) {
                 select.value = String(keep);
             }
+
+            refreshTomSelect(select);
         });
     }
 

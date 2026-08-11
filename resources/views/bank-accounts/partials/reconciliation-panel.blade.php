@@ -33,7 +33,7 @@
                     <label for="bank_import_entity_id" class="block text-xs font-medium text-gray-700 dark:text-gray-300">
                         Booking entity <span class="text-red-500">*</span>
                     </label>
-                    <select
+                    <x-tom-select
                         id="bank_import_entity_id"
                         name="business_entity_id"
                         data-bank-import-entity
@@ -46,7 +46,7 @@
                                 {{ $entity->legal_name }}
                             </option>
                         @endforeach
-                    </select>
+                    </x-tom-select>
                 </div>
             @elseif($importEntities->count() === 1)
                 <input type="hidden" name="business_entity_id" data-bank-import-entity value="{{ $importEntities->first()->id }}">
@@ -185,7 +185,7 @@
                             <div class="mt-3 hidden grid gap-2 sm:grid-cols-2" data-bank-import-change>
                                 <div>
                                     <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Match existing</label>
-                                    <select
+                                    <x-tom-select
                                         data-bank-import-transaction
                                         class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                     >
@@ -204,11 +204,11 @@
                                                 @endif
                                             </option>
                                         @endforeach
-                                    </select>
+                                    </x-tom-select>
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Or create as type</label>
-                                    <select
+                                    <x-tom-select
                                         data-bank-import-create-type
                                         class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                     >
@@ -222,16 +222,16 @@
                                                 @endforeach
                                             </optgroup>
                                         @endforeach
-                                    </select>
+                                    </x-tom-select>
                                 </div>
                                 <div class="sm:col-span-2">
                                     <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Or create from chart account</label>
-                                    <select
+                                    <x-tom-select
                                         data-bank-import-chart-account
                                         class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                     >
                                         <option value="">— None —</option>
-                                    </select>
+                                    </x-tom-select>
                                 </div>
                             </div>
 
