@@ -126,6 +126,7 @@
                             </x-tom-select>
                             @error('asset_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
+                        @include('partials.transaction-marker-fields')
                         @php $createGstBasis = old('gst_basis', $td['gst_basis'] ?? ''); @endphp
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GST (10%)</label>

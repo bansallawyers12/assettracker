@@ -1,22 +1,23 @@
-# Graph Report - .  (2026-08-11)
+# Graph Report - assettracker  (2026-08-11)
 
 ## Corpus Check
-- cluster-only mode — file stats not available
+- 698 files · ~280,309 words
+- Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3914 nodes · 8558 edges · 537 communities (428 shown, 109 thin omitted)
+- 3914 nodes · 8558 edges · 535 communities (427 shown, 108 thin omitted)
 - Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 476 edges (avg confidence: 0.78)
-- Token cost: 21,039 input · 6,306 output
+- Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `0787295c`
+- Built from commit: `c9444280`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - Business Entity Management
 - Attribute Encryption Trait
-- Bank Account Linking
+- AuthServiceProvider
 - API Resource Transformers
 - User Management Workspace
 - Encrypted Backup Service
@@ -43,7 +44,7 @@
 - ASIC and Compliance Logic
 - Transaction Model Logic
 - Vendor Management
-- User Model Logic
+- User
 - Financial Reporting Service
 - Document Workspace Controller
 - Lease and Rent Invoicing
@@ -52,9 +53,9 @@
 - Mail Message Controller
 - Compliance Document Handling
 - Bank Statement Controller
-- Compliance and Data Maintenance
-- Business Entity Controller
-- Mail and Attachment Models
+- ComplianceReportController
+- .storeTransaction
+- MailMessage
 - Eloquent Relationships
 - Database Migrations
 - ASIC Renewal Testing
@@ -64,7 +65,6 @@
 - Entity Relationship Models
 - Transaction Payment Frontend
 - Director Loan Reporting
-- Bank Account Security
 - Transaction Posting Service
 - Split Transaction Logic
 - Rich Text Editor Config
@@ -79,9 +79,9 @@
 - Composer Scripts
 - Artisan Maintenance Commands
 - Project Rules Index
-- Bank Account Relations
+- BankAccount
 - Pest Testing Documentation
-- Gmail API Fetcher
+- GmailFetcher
 - Compliance Reminder Sync
 - Document Migration Services
 - Entity Registration Testing
@@ -103,7 +103,7 @@
 - Account Display Attributes
 - ATO Filing Reference
 - Development Dependencies
-- Bank Reconciliation Testing
+- BusinessEntity.php
 - Python Environment Setup
 - Document Category Management
 - Person Workspace Scripts
@@ -155,8 +155,9 @@
 - Property Report Tests
 - Queue Best Practices
 - Console Command Scheduling
+- BusinessEntityController
 - Workspace Notification Helpers
-- Core Entity Models
+- Illuminate\Database\Eloquent\Model
 - Compliance Year Logic Tests
 - Bug Tracking and Priority
 - Frontend Refactoring Plan
@@ -240,7 +241,6 @@
 - Banking and Transactions Priority
 - MCP API Integration
 - Encrypted Filesystem Adapter
-- Commitment Authorization Policies
 - Database Performance Best Practices
 - Events and Notifications Guide
 - Rent Link Management
@@ -297,7 +297,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (537 total, 109 thin omitted)
+## Communities (535 total, 108 thin omitted)
 
 ### Community 0 - "Business Entity Management"
 Cohesion: 0.04
@@ -399,9 +399,9 @@ Nodes (3): Transaction, TransactionObserver, makeTransaction()
 Cohesion: 0.15
 Nodes (3): VendorController, Vendor, VendorSyncService
 
-### Community 29 - "User Model Logic"
-Cohesion: 0.08
-Nodes (4): User, AssetPolicy, BusinessEntityPolicy, Illuminate\Foundation\Auth\User
+### Community 29 - "User"
+Cohesion: 0.07
+Nodes (5): User, AssetPolicy, BusinessEntityPolicy, CommitmentPolicy, Illuminate\Foundation\Auth\User
 
 ### Community 30 - "Financial Reporting Service"
 Cohesion: 0.11
@@ -423,13 +423,13 @@ Nodes (3): MailMessageController, Closure, MailLabel
 Cohesion: 0.06
 Nodes (10): ComplianceController, ComplianceWorkspaceController, ComplianceCategory, ComplianceDocumentFile, ComplianceDocumentFilePolicy, ChecklistFilenameMatcher, ComplianceFilenameMatcher, ComplianceUploadService (+2 more)
 
-### Community 38 - "Compliance and Data Maintenance"
-Cohesion: 0.11
-Nodes (4): ComplianceReportController, Carbon, Illuminate\Pagination\LengthAwarePaginator, Symfony\Component\HttpFoundation\StreamedResponse
+### Community 38 - "ComplianceReportController"
+Cohesion: 0.38
+Nodes (3): ComplianceReportController, Carbon, Symfony\Component\HttpFoundation\StreamedResponse
 
-### Community 40 - "Mail and Attachment Models"
-Cohesion: 0.17
-Nodes (4): MailAttachment, MailMessage, MsgParserService, Illuminate\Database\Eloquent\Relations\BelongsToMany
+### Community 40 - "MailMessage"
+Cohesion: 0.23
+Nodes (3): MailMessage, MsgParserService, Illuminate\Database\Eloquent\Relations\BelongsToMany
 
 ### Community 44 - "Bank PDF Parsing Logic"
 Cohesion: 0.20
@@ -479,9 +479,9 @@ Nodes (6): AddXeroChartOfAccounts, BackfillComplianceDueDates, EnsureComplianceY
 Cohesion: 0.40
 Nodes (3): Project rules index, Loan vs offset accounts, Rule
 
-### Community 65 - "Bank Account Relations"
+### Community 65 - "BankAccount"
 Cohesion: 0.04
-Nodes (3): BankAccount, BankAccountFormTest, BankAccountMaskingTest
+Nodes (4): BankAccount, BusinessEntityBankAccount, BankAccountFormTest, BankAccountMaskingTest
 
 ### Community 66 - "Pest Testing Documentation"
 Cohesion: 0.11
@@ -535,9 +535,9 @@ Nodes (17): Annual GST (voluntary registration, turnover under $75k / $150k NFP)
 Cohesion: 0.18
 Nodes (11): require-dev, laravel/boost, laravel/breeze, laravel/pail, laravel/pint, laravel/sail, mockery/mockery, nunomaduro/collision (+3 more)
 
-### Community 89 - "Bank Reconciliation Testing"
-Cohesion: 0.10
-Nodes (5): CreatesApplication, Illuminate\Database\Eloquent\Relations\Relation, Illuminate\Foundation\Testing\TestCase, TestCase, FinancialReportsHubPageTest
+### Community 89 - "BusinessEntity.php"
+Cohesion: 0.07
+Nodes (6): CreatesApplication, Illuminate\Database\Eloquent\Relations\Relation, Illuminate\Foundation\Testing\TestCase, Illuminate\Pagination\LengthAwarePaginator, TestCase, FinancialReportsHubPageTest
 
 ### Community 90 - "Python Environment Setup"
 Cohesion: 0.29
@@ -687,9 +687,9 @@ Nodes (4): Kernel, Command, Illuminate\Console\Scheduling\Schedule, Illuminate\F
 Cohesion: 0.19
 Nodes (13): alertHttpError(), boot(), ensurePanelFormHandlers(), initFormPlugins(), panelFormHandlers, registerPanelFormHandler(), dismissToast(), escapeHtml() (+5 more)
 
-### Community 180 - "Core Entity Models"
+### Community 180 - "Illuminate\Database\Eloquent\Model"
 Cohesion: 0.15
-Nodes (6): DepreciationSchedule, Email, AuthServiceProvider, Illuminate\Database\Eloquent\Factories\HasFactory, Illuminate\Database\Eloquent\Model, Illuminate\Foundation\Support\Providers\AuthServiceProvider
+Nodes (5): DepreciationSchedule, Email, MailAttachment, Illuminate\Database\Eloquent\Factories\HasFactory, Illuminate\Database\Eloquent\Model
 
 ### Community 186 - "Bug Tracking and Priority"
 Cohesion: 0.25
@@ -886,16 +886,16 @@ Nodes (3): extra, laravel, dont-discover
 ## Knowledge Gaps
 - **544 isolated node(s):** `py`, `npx`, `@upstash/context7-mcp`, `CONTEXT7_API_KEY`, `php` (+539 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **109 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **108 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `BusinessEntity` connect `Business Entity Management` to `Attribute Encryption Trait`, `Bank Account Linking`, `API Resource Transformers`, `User Management Workspace`, `Password Security Policy`, `Bank Transaction Importing`, `Task and Due Date Tracking`, `Authentication Controllers`, `Asset and Car Reporting`, `Portfolio and Profile Workspaces`, `Gmail and Invoice Sync`, `Tracking Category Management`, `Chart of Accounts Controller`, `Document Upload Controller`, `Entity Person Management`, `Compliance Record Policies`, `ASIC and Compliance Logic`, `User Model Logic`, `Financial Reporting Service`, `Document Workspace Controller`, `Lease and Rent Invoicing`, `Commitment and Payment Tracking`, `Mail Message Controller`, `Bank Account Request Handling`, `Compliance Document Handling`, `Compliance and Data Maintenance`, `Business Entity Controller`, `Mail and Attachment Models`, `ASIC Renewal Testing`, `Real Estate Tenant Management`, `Director Loan Reporting`, `Bank Account Security`, `Core Entity Models`, `Contact List Management`, `Persons Workspace Controller`, `Compliance Reporting Service`, `Note Management`, `Artisan Maintenance Commands`, `Bank Account Relations`, `Document Authorization Policies`, `Document Migration Services`, `Entity Registration Testing`, `Financial Report Controller`, `Australian Address Formatting`, `Depreciation Posting Service`, `Document Upload Service`, `Assets Workspace Controller`, `Account Display Attributes`, `Asset Show Controller`, `Person Index Workspace`, `Asset and Lease Management`, `Workspace and Report Controllers`?**
+- **Why does `BusinessEntity` connect `Business Entity Management` to `Attribute Encryption Trait`, `API Resource Transformers`, `User Management Workspace`, `Password Security Policy`, `Bank Transaction Importing`, `Task and Due Date Tracking`, `Authentication Controllers`, `Asset and Car Reporting`, `Portfolio and Profile Workspaces`, `Gmail and Invoice Sync`, `Tracking Category Management`, `Chart of Accounts Controller`, `Document Upload Controller`, `Entity Person Management`, `Compliance Record Policies`, `ASIC and Compliance Logic`, `User`, `Financial Reporting Service`, `Document Workspace Controller`, `Lease and Rent Invoicing`, `Commitment and Payment Tracking`, `Mail Message Controller`, `BusinessEntityController`, `Compliance Document Handling`, `ComplianceReportController`, `.storeTransaction`, `ASIC Renewal Testing`, `Real Estate Tenant Management`, `Director Loan Reporting`, `Illuminate\Database\Eloquent\Model`, `Contact List Management`, `Persons Workspace Controller`, `Compliance Reporting Service`, `Note Management`, `Artisan Maintenance Commands`, `BankAccount`, `Document Authorization Policies`, `Document Migration Services`, `Entity Registration Testing`, `Financial Report Controller`, `Australian Address Formatting`, `Depreciation Posting Service`, `Document Upload Service`, `Assets Workspace Controller`, `Account Display Attributes`, `BusinessEntity.php`, `Asset Show Controller`, `Person Index Workspace`, `Asset and Lease Management`, `Workspace and Report Controllers`?**
   _High betweenness centrality (0.127) - this node is a cross-community bridge._
-- **Why does `BankAccount` connect `Bank Account Relations` to `Business Entity Management`, `Attribute Encryption Trait`, `Bank Account Linking`, `Bank Transaction Importing`, `Task and Due Date Tracking`, `Asset and Car Reporting`, `Document Storage System`, `Portfolio and Profile Workspaces`, `Gmail and Invoice Sync`, `Asset Model Logic`, `Entity Person Management`, `Bank Account Request Handling`, `Bank Statement Controller`, `Business Entity Controller`, `Eloquent Relationships`, `Entity Relationship Models`, `Bank Account Security`, `Core Entity Models`, `Persons Workspace Controller`, `Statement Upload Service`, `Account Display Attributes`, `Bank Reconciliation Testing`, `Asset and Lease Management`, `Workspace and Report Controllers`?**
+- **Why does `BankAccount` connect `BankAccount` to `Business Entity Management`, `Attribute Encryption Trait`, `Bank Transaction Importing`, `Task and Due Date Tracking`, `Asset and Car Reporting`, `Document Storage System`, `Portfolio and Profile Workspaces`, `Gmail and Invoice Sync`, `Asset Model Logic`, `Entity Person Management`, `BusinessEntityController`, `Bank Statement Controller`, `.storeTransaction`, `Eloquent Relationships`, `Entity Relationship Models`, `Illuminate\Database\Eloquent\Model`, `Persons Workspace Controller`, `Statement Upload Service`, `Account Display Attributes`, `BusinessEntity.php`, `Asset and Lease Management`, `Workspace and Report Controllers`?**
   _High betweenness centrality (0.050) - this node is a cross-community bridge._
-- **Why does `Transaction` connect `Transaction Model Logic` to `Bank Account Linking`, `Password Security Policy`, `Bank Transaction Importing`, `Task and Due Date Tracking`, `Document Storage System`, `Gmail and Invoice Sync`, `Document Upload Controller`, `Entity Person Management`, `Vendor Management`, `Financial Reporting Service`, `Business Entity Controller`, `Eloquent Relationships`, `Entity Relationship Models`, `Director Loan Reporting`, `Transaction Posting Service`, `Core Entity Models`, `Property Reporting Service`, `Bank Account Relations`, `Document Migration Services`, `Depreciation Posting Service`, `Document Upload Service`, `Bank Reconciliation Testing`, `Workspace and Report Controllers`?**
+- **Why does `Transaction` connect `Transaction Model Logic` to `Password Security Policy`, `Bank Transaction Importing`, `Task and Due Date Tracking`, `Document Storage System`, `Gmail and Invoice Sync`, `Document Upload Controller`, `Entity Person Management`, `Vendor Management`, `Financial Reporting Service`, `BusinessEntityController`, `.storeTransaction`, `Eloquent Relationships`, `Entity Relationship Models`, `Director Loan Reporting`, `Transaction Posting Service`, `Illuminate\Database\Eloquent\Model`, `Property Reporting Service`, `BankAccount`, `Document Migration Services`, `Depreciation Posting Service`, `Document Upload Service`, `BusinessEntity.php`, `Workspace and Report Controllers`?**
   _High betweenness centrality (0.026) - this node is a cross-community bridge._
 - **Are the 44 inferred relationships involving `BusinessEntity` (e.g. with `.handle()` and `.listHtmlForContext()`) actually correct?**
   _`BusinessEntity` has 44 INFERRED edges - model-reasoned connections that need verification._

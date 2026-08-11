@@ -887,6 +887,9 @@ class BusinessEntityController extends Controller
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
+            'subject_to_bas' => ['sometimes', 'boolean'],
+            'is_flagged' => ['sometimes', 'boolean'],
+            'comments' => ['nullable', 'string'],
             'lines' => 'required|array|min:1|max:20',
             'lines.*.amount' => 'required|numeric|gt:0',
             'lines.*.description' => 'nullable|string|max:255',
@@ -1053,6 +1056,9 @@ class BusinessEntityController extends Controller
                     'paid_by' => $paidBy,
                     'bank_account_id' => $bankAccountId,
                     'payment_document_id' => $paymentDocumentId,
+                    'subject_to_bas' => $request->boolean('subject_to_bas'),
+                    'is_flagged' => $request->boolean('is_flagged'),
+                    'comments' => $request->input('comments'),
                 ];
 
                 if (! $isSplit) {
@@ -1215,6 +1221,9 @@ class BusinessEntityController extends Controller
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
             'counterpart_bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
+            'subject_to_bas' => ['sometimes', 'boolean'],
+            'is_flagged' => ['sometimes', 'boolean'],
+            'comments' => ['nullable', 'string'],
         ], $this->transactionReceiptUploadRules(true)), $this->transactionReceiptValidationMessages());
 
         $this->validateTransactionGstBasis($request);
@@ -1362,6 +1371,9 @@ class BusinessEntityController extends Controller
                 'payment_method' => $request->payment_method,
                 'paid_by' => $paidBy,
                 'payment_document_id' => $paymentDocumentId,
+                'subject_to_bas' => $request->boolean('subject_to_bas'),
+                'is_flagged' => $request->boolean('is_flagged'),
+                'comments' => $request->input('comments'),
             ]);
         });
 
@@ -1487,6 +1499,9 @@ class BusinessEntityController extends Controller
             'bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
             'counterpart_bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
             'payment_document_name' => 'nullable|string|max:255',
+            'subject_to_bas' => ['sometimes', 'boolean'],
+            'is_flagged' => ['sometimes', 'boolean'],
+            'comments' => ['nullable', 'string'],
         ], $this->transactionReceiptUploadRules(false)), $this->transactionReceiptValidationMessages());
 
         if (! $isSplit) {
@@ -1607,6 +1622,7 @@ class BusinessEntityController extends Controller
                 'related_entity_id', 'asset_id', 'counterpart_bank_account_id', 'transfer_group_id',
                 'payment_status', 'due_date', 'paid_at', 'payment_method',
                 'payment_document_id',
+                'subject_to_bas', 'is_flagged', 'comments',
             ]),
             [
                 'gst_amount' => $gstResolved['gst_amount'],
@@ -1614,6 +1630,9 @@ class BusinessEntityController extends Controller
                 'gst_basis' => $gstResolved['gst_basis'],
                 'paid_by' => $paidBy,
                 'bank_account_id' => $bankAccountId,
+                'subject_to_bas' => $request->boolean('subject_to_bas'),
+                'is_flagged' => $request->boolean('is_flagged'),
+                'comments' => $request->input('comments'),
             ]
         ));
 
@@ -1711,6 +1730,9 @@ class BusinessEntityController extends Controller
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
             'counterpart_bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
+            'subject_to_bas' => ['sometimes', 'boolean'],
+            'is_flagged' => ['sometimes', 'boolean'],
+            'comments' => ['nullable', 'string'],
         ], $this->transactionReceiptUploadRules(false)), $this->transactionReceiptValidationMessages());
 
         $this->validateTransactionGstBasis($request);
@@ -1797,12 +1819,16 @@ class BusinessEntityController extends Controller
                 'related_entity_id', 'asset_id', 'counterpart_bank_account_id', 'transfer_group_id',
                 'payment_status', 'due_date', 'paid_at', 'payment_method',
                 'payment_document_id',
+                'subject_to_bas', 'is_flagged', 'comments',
             ]),
             [
                 'gst_amount' => $gstResolved['gst_amount'],
                 'gst_status' => $gstResolved['gst_status'],
                 'gst_basis' => $gstResolved['gst_basis'],
                 'paid_by' => $paidBy,
+                'subject_to_bas' => $request->boolean('subject_to_bas'),
+                'is_flagged' => $request->boolean('is_flagged'),
+                'comments' => $request->input('comments'),
             ]
         ));
 

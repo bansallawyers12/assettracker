@@ -186,6 +186,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         scope.querySelectorAll('[data-bank-import-entry]').forEach((entryEl) => {
             const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
             const chartSelect = entryEl.querySelector('[data-bank-import-chart-account]');
+            const subjectToBasCheckbox = entryEl.querySelector('[data-bank-import-subject-to-bas]');
+            const isFlaggedCheckbox = entryEl.querySelector('[data-bank-import-is-flagged]');
+            const commentsInput = entryEl.querySelector('[data-bank-import-comments]');
             const typeSelect = entryEl.querySelector('[data-bank-import-create-type]');
 
             txSelect?.addEventListener('change', () => {
@@ -318,6 +321,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 transaction_type: transactionType || null,
                 chart_account_id: chartAccountId ? Number(chartAccountId) : null,
                 asset_id: assetId ? Number(assetId) : null,
+                subject_to_bas: Boolean(subjectToBasCheckbox?.checked),
+                is_flagged: Boolean(isFlaggedCheckbox?.checked),
+                comments: commentsInput?.value?.trim() || null,
             });
         });
 

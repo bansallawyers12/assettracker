@@ -129,7 +129,9 @@ class BankAccountTransactionController extends Controller
      *     type: ?string,
      *     direction: ?string,
      *     payment_status: ?string,
-     *     match_status: ?string
+     *     match_status: ?string,
+     *     subject_to_bas: ?string,
+     *     is_flagged: ?string
      * }
      */
     private function validatedTransactionFilters(Request $request): array
@@ -143,6 +145,8 @@ class BankAccountTransactionController extends Controller
             'direction' => ['nullable', Rule::in(['income', 'expense'])],
             'payment_status' => ['nullable', Rule::in(['paid', 'unpaid'])],
             'match_status' => ['nullable', Rule::in(['matched', 'unmatched'])],
+            'subject_to_bas' => ['nullable', Rule::in(['yes', 'no'])],
+            'is_flagged' => ['nullable', Rule::in(['yes', 'no'])],
         ]);
 
         $q = isset($validated['q']) ? trim((string) $validated['q']) : '';
@@ -156,6 +160,8 @@ class BankAccountTransactionController extends Controller
             'direction' => $validated['direction'] ?? null,
             'payment_status' => $validated['payment_status'] ?? null,
             'match_status' => $validated['match_status'] ?? null,
+            'subject_to_bas' => $validated['subject_to_bas'] ?? null,
+            'is_flagged' => $validated['is_flagged'] ?? null,
         ];
     }
 
@@ -169,7 +175,9 @@ class BankAccountTransactionController extends Controller
      *     type: ?string,
      *     direction: ?string,
      *     payment_status: ?string,
-     *     match_status: ?string
+     *     match_status: ?string,
+     *     subject_to_bas: ?string,
+     *     is_flagged: ?string
      * }  $filters
      */
     private function applyTransactionFilters(Relation $query, array $filters, ?int $contextEntityId): void
@@ -178,6 +186,7 @@ class BankAccountTransactionController extends Controller
             $like = '%'.$filters['q'].'%';
             $query->where(function ($w) use ($like) {
                 $w->where('description', 'like', $like)
+                    ->orWhere('comments', 'like', $like)
                     ->orWhere('invoice_number', 'like', $like)
                     ->orWhere('vendor_name', 'like', $like)
                     ->orWhereHas('vendor', fn ($vq) => $vq->where('name', 'like', $like));
@@ -227,6 +236,14 @@ class BankAccountTransactionController extends Controller
             $query->whereHas('bankStatementEntries');
         } elseif ($filters['match_status'] === 'unmatched') {
             $query->whereDoesntHave('bankStatementEntries');
+        }
+
+        if ($filters['subject_to_bas']) {
+            $query->where('subject_to_bas', $filters['subject_to_bas'] === 'yes');
+        }
+
+        if ($filters['is_flagged']) {
+            $query->where('is_flagged', $filters['is_flagged'] === 'yes');
         }
     }
 

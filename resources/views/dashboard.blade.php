@@ -346,6 +346,9 @@
                             @error('date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
                         </div>
+                        <div class="mt-4">
+                            @include('partials.transaction-marker-fields')
+                        </div>
                     </section>
 
                     @include('partials.dashboard-transaction-lines', [

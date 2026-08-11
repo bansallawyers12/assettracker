@@ -9,6 +9,8 @@
         'direction' => null,
         'payment_status' => null,
         'match_status' => null,
+        'subject_to_bas' => null,
+        'is_flagged' => null,
     ];
     $filtersActive = (bool) ($filtersActive ?? false);
     $filterQuery = array_filter([
@@ -21,6 +23,8 @@
         'direction' => $filters['direction'] ?? null,
         'payment_status' => $filters['payment_status'] ?? null,
         'match_status' => $filters['match_status'] ?? null,
+        'subject_to_bas' => $filters['subject_to_bas'] ?? null,
+        'is_flagged' => $filters['is_flagged'] ?? null,
     ], fn ($value) => $value !== null && $value !== '');
     $indexUrl = route('bank-accounts.transactions.index', array_merge(
         ['bankAccount' => $bankAccount],
@@ -284,6 +288,22 @@
                         <option value="">All</option>
                         <option value="matched" @selected(($filters['match_status'] ?? '') === 'matched')>Matched</option>
                         <option value="unmatched" @selected(($filters['match_status'] ?? '') === 'unmatched')>Unmatched</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="bank_tx_filter_bas" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Subject to BAS</label>
+                    <select id="bank_tx_filter_bas" name="subject_to_bas" class="{{ $filterControlClass }}" data-bank-transactions-filter-auto>
+                        <option value="">All</option>
+                        <option value="yes" @selected(($filters['subject_to_bas'] ?? '') === 'yes')>Yes</option>
+                        <option value="no" @selected(($filters['subject_to_bas'] ?? '') === 'no')>No</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="bank_tx_filter_flagged" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Flagged</label>
+                    <select id="bank_tx_filter_flagged" name="is_flagged" class="{{ $filterControlClass }}" data-bank-transactions-filter-auto>
+                        <option value="">All</option>
+                        <option value="yes" @selected(($filters['is_flagged'] ?? '') === 'yes')>Yes</option>
+                        <option value="no" @selected(($filters['is_flagged'] ?? '') === 'no')>No</option>
                     </select>
                 </div>
             </div>

@@ -21,6 +21,7 @@
                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Entity</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Asset</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Type</th>
+                    <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Markers</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Payment</th>
                     <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Bank</th>
                     <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Actions</th>
@@ -64,6 +65,22 @@
                         </td>
                         <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 max-w-[10rem] truncate">
                             {{ Transaction::allTypes()[$transaction->transaction_type] ?? 'Unknown' }}
+                        </td>
+                        <td class="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
+                            <div class="flex flex-wrap items-center gap-1">
+                                @if ($transaction->subject_to_bas)
+                                    <span class="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">BAS</span>
+                                @endif
+                                @if ($transaction->is_flagged)
+                                    <span class="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900 dark:text-red-200">Flagged</span>
+                                @endif
+                                @if ($transaction->comments)
+                                    <span class="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700 dark:bg-gray-800 dark:text-gray-200" title="{{ $transaction->comments }}">Comment: {{ \Illuminate\Support\Str::limit($transaction->comments, 20) }}</span>
+                                @endif
+                                @if (! $transaction->subject_to_bas && ! $transaction->is_flagged && ! $transaction->comments)
+                                    <span class="text-gray-400">—</span>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-4 py-3 text-sm">
                             @if (($transaction->payment_status ?? 'paid') === 'unpaid')

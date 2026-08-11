@@ -83,7 +83,7 @@ function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
     const addButton = root.querySelector('[data-bank-transactions-add]');
     const entityPicker = root.querySelector('[data-bank-transactions-entity-picker]');
     const filterForm = root.querySelector('[data-bank-transactions-filters]');
-    const filterKeys = ['q', 'date_from', 'date_to', 'entity_id', 'type', 'direction', 'payment_status', 'match_status'];
+    const filterKeys = ['q', 'date_from', 'date_to', 'entity_id', 'type', 'direction', 'payment_status', 'match_status', 'subject_to_bas', 'is_flagged'];
 
     function buildIndexUrl(fromForm = filterForm) {
         const baseUrl = panel.dataset.bankTransactionsIndexUrl || refreshUrl;

@@ -233,6 +233,23 @@
                                         <option value="">— None —</option>
                                     </x-tom-select>
                                 </div>
+                                <div class="sm:col-span-2 rounded-md border border-gray-200 dark:border-gray-700 p-2.5">
+                                    <p class="text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-2">Create markers</p>
+                                    <div class="grid gap-2 sm:grid-cols-2">
+                                        <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                                            <input type="checkbox" value="1" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" data-bank-import-subject-to-bas>
+                                            Subject to BAS
+                                        </label>
+                                        <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">
+                                            <input type="checkbox" value="1" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" data-bank-import-is-flagged>
+                                            Flagged
+                                        </label>
+                                    </div>
+                                    <div class="mt-2">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Comments</label>
+                                        <input type="text" class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100" data-bank-import-comments placeholder="Optional marker notes">
+                                    </div>
+                                </div>
                             </div>
 
                             <input type="hidden" data-bank-import-suggested-action value="{{ $action }}">

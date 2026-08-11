@@ -31,10 +31,16 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($panel)->toContain('data-bank-import-accept-selected')
         ->and($panel)->toContain('data-bank-import-select-suggestions')
         ->and($panel)->toContain('data-bank-import-create-type')
+        ->and($panel)->toContain('data-bank-import-subject-to-bas')
+        ->and($panel)->toContain('data-bank-import-is-flagged')
+        ->and($panel)->toContain('data-bank-import-comments')
         ->and($transactions)->toContain('bank-accounts.partials.reconciliation-panel')
         ->and($js)->toContain('export function bindReconciliationPanel')
         ->and($modal)->toContain("from './bank-reconciliation.js'")
-        ->and($modal)->toContain('bindReconciliationPanel');
+        ->and($modal)->toContain('bindReconciliationPanel')
+        ->and($js)->toContain('subject_to_bas')
+        ->and($js)->toContain('is_flagged')
+        ->and($js)->toContain('comments');
 });
 
 it('enriches unmatched endpoint with suggestions in controller source', function () {
@@ -43,7 +49,10 @@ it('enriches unmatched endpoint with suggestions in controller source', function
     expect($source)->toContain('BankStatementMatchSuggester')
         ->and($source)->toContain("'suggestion'")
         ->and($source)->toContain('transaction_type')
-        ->and($source)->toContain('BankStatementApplyService');
+        ->and($source)->toContain('BankStatementApplyService')
+        ->and($source)->toContain('matches.*.subject_to_bas')
+        ->and($source)->toContain('matches.*.is_flagged')
+        ->and($source)->toContain('matches.*.comments');
 });
 
 it('allows loan purpose accounts for operating import eligibility', function () {

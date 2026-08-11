@@ -52,13 +52,20 @@ it('includes transaction filter controls in the transactions panel partial', fun
         ->and($html)->toContain('name="type"')
         ->and($html)->toContain('name="payment_status"')
         ->and($html)->toContain('name="match_status"')
+        ->and($html)->toContain('name="subject_to_bas"')
+        ->and($html)->toContain('name="is_flagged"')
         ->and($html)->toContain('data-bank-transactions-filters-clear')
+        ->and($list)->toContain('Comment:')
         ->and($list)->toContain('No transactions match these filters.')
         ->and($js)->toContain('applyFilters')
         ->and($js)->toContain('buildIndexUrl')
+        ->and($js)->toContain('subject_to_bas')
+        ->and($js)->toContain('is_flagged')
         ->and($js)->toContain('bindCollapsibleFilters')
         ->and($controller)->toContain('applyTransactionFilters')
-        ->and($controller)->toContain('validatedTransactionFilters');
+        ->and($controller)->toContain('validatedTransactionFilters')
+        ->and($controller)->toContain("where('subject_to_bas',")
+        ->and($controller)->toContain("where('is_flagged',");
 });
 
 it('supports returning to the full transactions page after create', function () {

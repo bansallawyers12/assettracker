@@ -145,6 +145,9 @@ class BankStatementApplyService
                     'gst_amount' => null,
                     'gst_status' => 'gst_free',
                     'gst_basis' => null,
+                    'subject_to_bas' => (bool) ($match['subject_to_bas'] ?? false),
+                    'is_flagged' => (bool) ($match['is_flagged'] ?? false),
+                    'comments' => ! empty($match['comments']) ? (string) $match['comments'] : null,
                 ]);
 
                 $bankEntry->update(['transaction_id' => $transaction->id]);

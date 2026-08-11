@@ -165,6 +165,21 @@
                     </p>
                 </div>
 
+                <div>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Subject to BAS</p>
+                    <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->subject_to_bas ? 'Yes' : 'No' }}</p>
+                </div>
+
+                <div>
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Flagged</p>
+                    <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->is_flagged ? 'Yes' : 'No' }}</p>
+                </div>
+
+                <div class="sm:col-span-2">
+                    <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Comments</p>
+                    <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->comments ?: '—' }}</p>
+                </div>
+
                 @if ($transaction->receipt_path)
                     <div>
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Invoice / Bill</p>

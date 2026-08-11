@@ -24,6 +24,7 @@ class Transaction extends Model
         'chart_of_account_id',
         'invoice_number', 'payment_status', 'due_date', 'paid_at', 'payment_method',
         'paid_by', 'payment_document_id',
+        'subject_to_bas', 'is_flagged', 'comments',
     ];
 
     protected $casts = [
@@ -32,6 +33,14 @@ class Transaction extends Model
         'paid_at' => 'date',
         'amount' => 'decimal:2',
         'gst_amount' => 'decimal:2',
+        'subject_to_bas' => 'boolean',
+        'is_flagged' => 'boolean',
+    ];
+
+    protected $attributes = [
+        'subject_to_bas' => false,
+        'is_flagged' => false,
+        'comments' => null,
     ];
 
     /** Income transaction types */

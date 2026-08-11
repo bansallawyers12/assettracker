@@ -140,6 +140,9 @@ class BankAccountImportController extends Controller
             'matches.*.chart_account_id' => 'nullable|integer|exists:chart_of_accounts,id',
             'matches.*.transaction_type' => 'nullable|string|max:100',
             'matches.*.asset_id' => 'nullable|integer|exists:assets,id',
+            'matches.*.subject_to_bas' => 'nullable|boolean',
+            'matches.*.is_flagged' => 'nullable|boolean',
+            'matches.*.comments' => 'nullable|string',
         ]);
 
         $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);

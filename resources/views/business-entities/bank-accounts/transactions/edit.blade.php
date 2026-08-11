@@ -134,6 +134,7 @@
                             </x-tom-select>
                             @error('asset_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
+                        @include('partials.transaction-marker-fields', ['transaction' => $transaction])
 
                         @php
                             $editGstBasis = old('gst_basis', $transaction->gst_basis ?? ((float) ($transaction->gst_amount ?? 0) > 0 ? 'inclusive' : ''));
