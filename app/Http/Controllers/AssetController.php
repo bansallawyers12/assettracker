@@ -13,6 +13,7 @@ use App\Models\Note;
 use App\Models\RealEstateCompany;
 use App\Models\RealEstateCompanyContact;
 use App\Models\Tenant;
+use App\Services\AssetMoveToTrustService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -203,7 +204,73 @@ class AssetController extends Controller
             ];
         }
 
-        return view('assets.show', compact('businessEntity', 'asset', 'assetInvoices', 'invoiceSummary', 'documentCategories'));
+        $moveToTrustTargets = collect();
+        $preferredMoveToTrustId = null;
+        if ($businessEntity->isCompany()) {
+            $linkedTrusts = $businessEntity->trustsWhereCorporateTrustee();
+            $moveToTrustTargets = $businessEntity->moveToTrustCandidates($linkedTrusts);
+            if ($linkedTrusts->count() === 1) {
+                $preferredMoveToTrustId = $linkedTrusts->first()->id;
+            }
+        }
+
+        return view('assets.show', compact(
+            'businessEntity',
+            'asset',
+            'assetInvoices',
+            'invoiceSummary',
+            'documentCategories',
+            'moveToTrustTargets',
+            'preferredMoveToTrustId'
+        ));
+    }
+
+    /**
+     * Reparent asset from a company onto a trust (wrong-entity correction).
+     */
+    public function moveToTrust(
+        Request $request,
+        BusinessEntity $businessEntity,
+        Asset $asset,
+        AssetMoveToTrustService $moveToTrustService
+    ): RedirectResponse {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
+
+        $validated = $request->validate([
+            'target_business_entity_id' => [
+                'required',
+                'integer',
+                BusinessEntity::ruleExistsOperationalTrust(),
+                Rule::notIn([(int) $businessEntity->id]),
+            ],
+        ], [], [
+            'target_business_entity_id' => 'trust',
+        ]);
+
+        $target = BusinessEntity::query()->findOrFail($validated['target_business_entity_id']);
+
+        $this->authorize('update', $target);
+        $this->ensureNotClosed($target);
+        $this->ensureOperationalForAccounting($target);
+
+        $result = $moveToTrustService->move(
+            $asset,
+            $businessEntity,
+            $target,
+            $request->user()?->id
+        );
+
+        $message = 'Asset moved to '.$target->legal_name.'.';
+        if ($result['detached_bank_roles'] !== []) {
+            $message .= ' Some bank account links were removed; re-link under the trust if needed.';
+        }
+
+        return redirect()
+            ->route('business-entities.assets.show', [$target->id, $asset->id])
+            ->with('success', $message);
     }
 
     public function edit(BusinessEntity $businessEntity, Asset $asset)

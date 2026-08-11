@@ -240,6 +240,34 @@ class Transaction extends Model
     }
 
     /**
+     * Payment channels that fund the books via director/entity loan (2500),
+     * not company bank cash. Bank account and external third party are excluded.
+     */
+    public static function usesDirectorLoanFundingChannel(?string $channel): bool
+    {
+        return in_array($channel, [
+            self::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+            self::PAYMENT_CHANNEL_CASH,
+        ], true);
+    }
+
+    /**
+     * Label for the Account column when no bank account is linked.
+     * Cross-entity paid_by shows the paying entity; otherwise "Director funds"
+     * (covers director_funds, cash, and legacy null-bank channels).
+     */
+    public function nonBankFundingAccountLabel(): string
+    {
+        if (is_string($this->paid_by) && preg_match('/^be:\d+$/', $this->paid_by)) {
+            $label = TransactionPayerResolver::paidByLabel($this->paid_by);
+
+            return $label !== '' ? $label : 'Related entity';
+        }
+
+        return self::$paymentChannels[self::PAYMENT_CHANNEL_DIRECTOR_FUNDS];
+    }
+
+    /**
      * Payment channels allowed for balance-sheet entries (never bank account).
      *
      * @return array<string, string>

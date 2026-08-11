@@ -9,11 +9,18 @@
             <h2 class="text-3xl font-bold text-gray-900 dark:text-white">
                 {{ $asset->name }} ({{ $asset->asset_type }})
             </h2>
-            <div class="flex space-x-3">
+            <div class="flex flex-wrap gap-3">
                 <a href="{{ route('business-entities.assets.edit', [$asset->business_entity_id, $asset->id]) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
                     <x-lucide-pencil class="h-5 w-5 mr-2" />
                     Edit Asset
                 </a>
+                @if ($businessEntity->isCompany() && ($moveToTrustTargets ?? collect())->isNotEmpty())
+                    <a href="#move-to-trust"
+                       class="inline-flex items-center px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
+                        <x-lucide-arrow-left-right class="h-5 w-5 mr-2" />
+                        Move to trust
+                    </a>
+                @endif
                 <a href="{{ route('business-entities.show', $asset->business_entity_id) }}" class="inline-flex items-center px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105">
                     Back to Entity
                 </a>
@@ -36,6 +43,14 @@
                 <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200" role="alert">
                     {{ session('error') }}
                 </div>
+            @endif
+            @if ($businessEntity->isCompany() && ($moveToTrustTargets ?? collect())->isNotEmpty())
+                @include('assets.partials.move-to-trust-form', [
+                    'businessEntity' => $businessEntity,
+                    'asset' => $asset,
+                    'moveToTrustTargets' => $moveToTrustTargets,
+                    'preferredMoveToTrustId' => $preferredMoveToTrustId ?? null,
+                ])
             @endif
             <div class="flex flex-col lg:flex-row gap-6">
                 @include('assets.partials.asset-details-sidebar', compact('asset'))
@@ -617,7 +632,7 @@
                                                                         {{ $tx->bankAccount->transactionAccountLabel() }}
                                                                     </a>
                                                                 @else
-                                                                    <span class="text-gray-400">Unassigned</span>
+                                                                    <span class="text-gray-500 dark:text-gray-400" title="No company bank account — funded outside bank">{{ $tx->nonBankFundingAccountLabel() }}</span>
                                                                 @endif
                                                             </td>
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ Transaction::allTypes()[$tx->transaction_type] ?? $tx->transaction_type }}</td>
