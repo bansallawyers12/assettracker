@@ -234,7 +234,7 @@ class CommitmentController extends Controller
             'asset_type' => 'nullable|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
             'acquisition_date' => 'nullable|date',
         ], [], [
-            'acquisition_date' => 'settlement date',
+            'acquisition_date' => 'Settlement Date',
         ]);
 
         $createAsset = $request->boolean('create_asset');

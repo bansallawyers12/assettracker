@@ -36,7 +36,7 @@
     <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 text-sm text-gray-600">
         <span class="font-medium text-gray-800">{{ $subtitle }}</span>
         <span class="mx-2">·</span>
-        Purchase price: <span class="font-medium">${{ number_format((float) ($asset->acquisition_cost ?? 0), 2) }}</span>
+        Purchase Price: <span class="font-medium">${{ number_format((float) ($asset->acquisition_cost ?? 0), 2) }}</span>
         @if($asset->current_value)
             <span class="mx-2">·</span>
             Current value: <span class="font-medium">${{ number_format((float) $asset->current_value, 2) }}</span>

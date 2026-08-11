@@ -34,39 +34,41 @@ it('uses Settlement Date and Purchase Price labels on asset forms and displays',
         ->and($indexAll)->toContain('Purchase Price');
 });
 
-it('maps acquisition validation attributes to settlement date and purchase price', function () {
+it('maps acquisition validation attributes to Settlement Date and Purchase Price', function () {
     $controller = file_get_contents(app_path('Http/Controllers/AssetController.php'));
     $commitmentController = file_get_contents(app_path('Http/Controllers/CommitmentController.php'));
 
-    expect($controller)->toContain("'acquisition_date' => 'settlement date'")
-        ->and($controller)->toContain("'acquisition_cost' => 'purchase price'")
+    expect($controller)->toContain("'acquisition_date' => 'Settlement Date'")
+        ->and($controller)->toContain("'acquisition_cost' => 'Purchase Price'")
         ->and($controller)->toContain('assetFieldAttributes()')
-        ->and($commitmentController)->toContain("'acquisition_date' => 'settlement date'");
+        ->and($controller)->toContain("'acquisition_cost' => 'required|numeric|min:0'")
+        ->and($controller)->toContain("'acquisition_date' => 'required|date'")
+        ->and($commitmentController)->toContain("'acquisition_date' => 'Settlement Date'");
 
     $messages = validator(
         [],
         ['acquisition_date' => 'required', 'acquisition_cost' => 'required'],
         [],
         [
-            'acquisition_date' => 'settlement date',
-            'acquisition_cost' => 'purchase price',
+            'acquisition_date' => 'Settlement Date',
+            'acquisition_cost' => 'Purchase Price',
         ]
     )->errors()->all();
 
-    expect($messages)->toContain('The settlement date field is required.')
-        ->and($messages)->toContain('The purchase price field is required.');
+    expect($messages)->toContain('The Settlement Date field is required.')
+        ->and($messages)->toContain('The Purchase Price field is required.');
 });
 
-it('uses purchase price wording on property reports for acquisition_cost field', function () {
+it('uses Purchase Price wording on property reports for acquisition_cost field', function () {
     $financials = file_get_contents(resource_path('views/property-reports/financials.blade.php'));
     $portfolio = file_get_contents(resource_path('views/property-reports/portfolio.blade.php'));
     $reportsIndex = file_get_contents(resource_path('views/financial-reports/index.blade.php'));
     $assetSummary = file_get_contents(resource_path('views/property-reports/asset-summary.blade.php'));
 
-    expect($financials)->toContain('Purchase price:')
+    expect($financials)->toContain('Purchase Price:')
         ->and($financials)->toContain('purchase price')
         ->and($financials)->not->toContain('Acquisition cost')
-        ->and($portfolio)->toContain('Purchase price')
+        ->and($portfolio)->toContain('Purchase Price')
         ->and($portfolio)->not->toContain('Acquisition cost')
         ->and($portfolio)->not->toContain('>Acquisition</')
         ->and($reportsIndex)->toContain('yield vs purchase price')

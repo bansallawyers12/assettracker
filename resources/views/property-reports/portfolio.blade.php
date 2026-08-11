@@ -133,7 +133,7 @@
                         <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-violet-100 dark:bg-violet-950/50">
                             <x-lucide-landmark class="w-4 h-4 text-violet-600 dark:text-violet-300" aria-hidden="true" />
                         </span>
-                        <p class="portfolio-stat-label">Purchase price</p>
+                        <p class="portfolio-stat-label">Purchase Price</p>
                     </div>
                     <p class="portfolio-stat-value">${{ number_format($totals['total_acquisition_cost'], 0) }}</p>
                     <p class="portfolio-stat-hint">{{ $totals['properties_with_cost'] }} with price data</p>
@@ -266,7 +266,7 @@
                                         <p class="portfolio-money mt-1 text-sm font-semibold text-emerald-700 dark:text-emerald-300">${{ number_format($row['period_income'], 0) }}</p>
                                     </div>
                                     <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
-                                        <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Purchase price</p>
+                                        <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Purchase Price</p>
                                         <p class="portfolio-money mt-1 text-sm font-semibold text-gray-900 dark:text-white">
                                             {{ $row['acquisition_cost'] !== null ? '$' . number_format($row['acquisition_cost'], 0) : '—' }}
                                         </p>
@@ -283,7 +283,7 @@
                                 <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/40">
                                     <th class="px-6 min-w-[220px]">Property</th>
                                     <th class="min-w-[160px]">Entity</th>
-                                    <th class="text-right min-w-[110px]">Purchase price</th>
+                                    <th class="text-right min-w-[110px]">Purchase Price</th>
                                     <th class="text-right min-w-[100px]">Income</th>
                                     <th class="text-right min-w-[100px]">Expenses</th>
                                     <th class="text-right min-w-[100px]">Net</th>
@@ -365,7 +365,7 @@
                                 </p>
                             </div>
                             <div>
-                                <p class="text-gray-500 dark:text-gray-400 text-xs font-medium">Purchase price</p>
+                                <p class="text-gray-500 dark:text-gray-400 text-xs font-medium">Purchase Price</p>
                                 <p class="portfolio-money mt-1 text-base font-semibold text-gray-900 dark:text-white">${{ number_format($totals['total_acquisition_cost'], 2) }}</p>
                             </div>
                         </div>

@@ -229,9 +229,9 @@ class AssetController extends Controller
         $validatedData = $request->validate(array_merge([
             'asset_type' => 'required|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
             'name' => 'required|string|max:255',
-            'acquisition_cost' => 'nullable|numeric|min:0',
+            'acquisition_cost' => 'required|numeric|min:0',
             'current_value' => 'nullable|numeric|min:0',
-            'acquisition_date' => 'nullable|date',
+            'acquisition_date' => 'required|date',
             'status' => 'nullable|in:Active,Inactive,Sold,Under Maintenance',
             'description' => 'nullable|string',
             'registration_number' => 'nullable|string',
@@ -639,8 +639,8 @@ class AssetController extends Controller
     private function assetFieldAttributes(): array
     {
         return [
-            'acquisition_date' => 'settlement date',
-            'acquisition_cost' => 'purchase price',
+            'acquisition_date' => 'Settlement Date',
+            'acquisition_cost' => 'Purchase Price',
         ];
     }
 
