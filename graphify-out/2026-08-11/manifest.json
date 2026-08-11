@@ -170,8 +170,8 @@
     "semantic_hash": "628cac02ed81869515d47eebbf3e0074"
   },
   "app/Http/Controllers/BusinessEntityController.php": {
-    "mtime": 1786428007.492519,
-    "ast_hash": "028b2f725b66f196c40ee99db56cddcd",
+    "mtime": 1786428056.6196268,
+    "ast_hash": "95b4d5c0feeb0fcbb194a47aa509ca2f",
     "semantic_hash": ""
   },
   "app/Http/Controllers/CarReportController.php": {
@@ -2110,9 +2110,9 @@
     "semantic_hash": ""
   },
   "resources/views/business-entities/bank-accounts/transactions/show.blade.php": {
-    "mtime": 1784538823.4410133,
-    "ast_hash": "5c830a796e175a66066ce6a9278a1eb2",
-    "semantic_hash": "5c830a796e175a66066ce6a9278a1eb2"
+    "mtime": 1786428055.604408,
+    "ast_hash": "766f71772c6824f2055e78b24994c0b2",
+    "semantic_hash": ""
   },
   "resources/views/business-entities/closed-index.blade.php": {
     "mtime": 1785470679.3114374,
@@ -3470,8 +3470,8 @@
     "semantic_hash": ""
   },
   "tests/Feature/BankAccountTransactionCreatePageTest.php": {
-    "mtime": 1786426025.1810005,
-    "ast_hash": "898719ef74f7a1a1dad02763e14fe13d",
+    "mtime": 1786428046.5094638,
+    "ast_hash": "eeb03c166ff4157a15a3818f03d436ff",
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/transactions.blade.php": {
@@ -3512,6 +3512,16 @@
   "tests/Unit/LoanOffsetTransactionGuardTest.php": {
     "mtime": 1786427994.452505,
     "ast_hash": "409740385d58c61f40ef5896e8b04f64",
+    "semantic_hash": ""
+  },
+  ".ai/rules/index.md": {
+    "mtime": 1786428043.2439592,
+    "ast_hash": "18985d13cffee699ebb42eafb6aab70f",
+    "semantic_hash": ""
+  },
+  ".ai/rules/loan-offset-transfers.md": {
+    "mtime": 1786428046.0094717,
+    "ast_hash": "af377113726b902901c319f3230e704f",
     "semantic_hash": ""
   }
 }

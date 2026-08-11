@@ -54,6 +54,22 @@ it('allows internal transfer without counterpart when not required', function ()
     expect(true)->toBeTrue();
 });
 
+it('blocks internal transfer on dashboard batch create path', function () {
+    $source = file_get_contents(app_path('Http/Controllers/BusinessEntityController.php'));
+
+    expect($source)->toContain('Internal transfers must be entered from a bank account')
+        ->and($source)->toContain('loanOffsetTransactionGuard->assertAllowed');
+});
+
+it('clears counterpart on non-transfer bank transaction create', function () {
+    $source = file_get_contents(app_path('Http/Controllers/BusinessEntityController.php'));
+
+    expect($source)->toContain('$isInternalTransfer = Transaction::isInternalTransfer')
+        ->and($source)->toContain('if (! $isInternalTransfer) {
+            $counterpartId = null;
+        }');
+});
+
 it('exposes offset in entity operating purposes for import eligibility', function () {
     expect(BankAccount::ENTITY_OPERATING_PURPOSES)->toContain(BankAccount::PURPOSE_OFFSET);
 });

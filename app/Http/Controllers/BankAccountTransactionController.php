@@ -208,6 +208,8 @@ class BankAccountTransactionController extends Controller
             $typeKeys = $filters['direction'] === 'income'
                 ? array_keys(Transaction::$incomeTypes)
                 : array_keys(Transaction::$expenseTypes);
+            // Internal transfers can be money in or out; include them in either direction filter.
+            $typeKeys[] = Transaction::TYPE_INTERNAL_TRANSFER;
             $query->where(function ($q) use ($typeKeys) {
                 $q->whereIn('transaction_type', $typeKeys)
                     ->orWhere(function ($q2) use ($typeKeys) {

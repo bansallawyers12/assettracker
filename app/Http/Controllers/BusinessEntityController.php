@@ -939,6 +939,32 @@ class BusinessEntityController extends Controller
                 requireWhenPaid: true
             );
 
+            if ($bankAccountId !== null) {
+                $bookingBankAccount = BankAccount::query()->find($bankAccountId);
+                if ($bookingBankAccount) {
+                    $assetIdForGuard = $request->filled('asset_id') ? $request->integer('asset_id') : null;
+                    foreach ($resolvedLines as $index => $resolvedLine) {
+                        try {
+                            $this->loanOffsetTransactionGuard->assertAllowed(
+                                $bookingBankAccount,
+                                (string) $resolvedLine['transaction_type'],
+                                $targetEntity,
+                                null,
+                                requireCounterpart: true,
+                                assetId: $assetIdForGuard
+                            );
+                        } catch (ValidationException $e) {
+                            $messages = $e->errors();
+                            $remapped = [];
+                            foreach ($messages as $key => $errs) {
+                                $remapped["lines.{$index}.{$key}"] = $errs;
+                            }
+                            throw ValidationException::withMessages($remapped);
+                        }
+                    }
+                }
+            }
+
             $created = DB::transaction(function () use (
                 $request,
                 $targetEntity,
@@ -1241,7 +1267,11 @@ class BusinessEntityController extends Controller
 
         $paidBy = $this->validatedPaidBy($request);
         $vendorData = $this->resolveTransactionVendorData($request);
-        $transferGroupId = Transaction::isInternalTransfer((string) $request->transaction_type)
+        $isInternalTransfer = Transaction::isInternalTransfer((string) $request->transaction_type);
+        if (! $isInternalTransfer) {
+            $counterpartId = null;
+        }
+        $transferGroupId = $isInternalTransfer
             ? (string) Str::uuid()
             : null;
 
@@ -3230,6 +3260,7 @@ class BusinessEntityController extends Controller
             $typeKeys = $dir === 'income'
                 ? array_keys(Transaction::$incomeTypes)
                 : array_keys(Transaction::$expenseTypes);
+            $typeKeys[] = Transaction::TYPE_INTERNAL_TRANSFER;
             $query->where(function ($q) use ($typeKeys) {
                 $q->whereIn('transaction_type', $typeKeys)
                     ->orWhere(function ($q2) use ($typeKeys) {
@@ -3394,6 +3425,12 @@ class BusinessEntityController extends Controller
             if ($isSplit && in_array($type, $relatedPartyTypes, true)) {
                 throw ValidationException::withMessages([
                     "lines.{$index}.transaction_type" => 'Director loan types cannot be used as allocations on a split remittance. Enter them as a separate single transaction.',
+                ]);
+            }
+
+            if (Transaction::isInternalTransfer($type)) {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.transaction_type" => 'Internal transfers must be entered from a bank account so you can choose the counterpart account.',
                 ]);
             }
         }

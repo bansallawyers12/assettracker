@@ -119,13 +119,15 @@ class BankStatementApplyService
                     assetId: $assetId
                 );
 
-                $guard = app(LoanOffsetTransactionGuard::class);
-                $counterpartId = ! empty($match['counterpart_bank_account_id'])
-                    ? (int) $match['counterpart_bank_account_id']
-                    : $guard->suggestCounterpartBankAccountId($bankAccount, $businessEntity, $assetId);
-                $transferGroupId = $resolvedType === Transaction::TYPE_INTERNAL_TRANSFER
-                    ? (string) Str::uuid()
-                    : null;
+                $counterpartId = null;
+                $transferGroupId = null;
+                if ($resolvedType === Transaction::TYPE_INTERNAL_TRANSFER) {
+                    $guard = app(LoanOffsetTransactionGuard::class);
+                    $counterpartId = ! empty($match['counterpart_bank_account_id'])
+                        ? (int) $match['counterpart_bank_account_id']
+                        : $guard->suggestCounterpartBankAccountId($bankAccount, $businessEntity, $assetId);
+                    $transferGroupId = (string) Str::uuid();
+                }
 
                 $transaction = Transaction::create([
                     'business_entity_id' => $businessEntity->id,
@@ -223,15 +225,13 @@ class BankStatementApplyService
         }
 
         $entryIsIncome = (float) $bankEntry->amount >= 0;
-        $transactionIsIncome = Transaction::directionFromType(
-            (string) $transaction->transaction_type,
-            (float) $bankEntry->amount
-        ) === 'income';
 
         if (Transaction::isInternalTransfer((string) $transaction->transaction_type)) {
             // Direction follows the statement line for transfers.
             return;
         }
+
+        $transactionIsIncome = Transaction::directionFromType((string) $transaction->transaction_type) === 'income';
 
         if ($entryIsIncome !== $transactionIsIncome) {
             throw ValidationException::withMessages([

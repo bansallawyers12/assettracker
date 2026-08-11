@@ -343,7 +343,12 @@
                         if (!showRelated) window.setSelectValue?.(rs, '');
                     }
                     if (counterpartField) {
-                        counterpartField.classList.toggle('hidden', type !== 'internal_transfer');
+                        const showTransfer = type === 'internal_transfer';
+                        counterpartField.classList.toggle('hidden', !showTransfer);
+                        if (!showTransfer) {
+                            const cs = counterpartField.querySelector('select');
+                            if (cs) cs.value = '';
+                        }
                     }
                 }
                 transactionTypeSelect.addEventListener('change', syncTypeDependentFields);

@@ -139,8 +139,12 @@ class BankStatementMatchSuggester
                 continue;
             }
 
-            $txIsIncome = Transaction::directionFromType((string) $transaction->transaction_type) === 'income';
-            if ($entryIsIncome !== $txIsIncome) {
+            $txIsIncome = Transaction::directionFromType(
+                (string) $transaction->transaction_type,
+                (float) $entry->amount
+            ) === 'income';
+            if (! Transaction::isInternalTransfer((string) $transaction->transaction_type)
+                && $entryIsIncome !== $txIsIncome) {
                 continue;
             }
 

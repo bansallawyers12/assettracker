@@ -196,6 +196,31 @@ it('does not suggest loan interest create on offset accounts', function () {
         ->and($suggestion['transaction_type'])->toBeNull();
 });
 
+it('matches internal transfer candidates regardless of default expense direction', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry(['amount' => 1500, 'date' => '2026-08-01', 'description' => 'Redraw to offset']);
+    $candidate = makeTransaction([
+        'id' => 88,
+        'amount' => 1500,
+        'date' => '2026-08-01',
+        'transaction_type' => Transaction::TYPE_INTERNAL_TRANSFER,
+    ]);
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_OFFSET]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect([$candidate]));
+
+    expect($suggestion['action'])->toBe('match_transaction')
+        ->and($suggestion['transaction_id'])->toBe(88);
+});
+
+it('only stores counterpart fields for internal transfers in apply service', function () {
+    $source = file_get_contents(app_path('Services/BankStatementApplyService.php'));
+
+    expect($source)->toContain('if ($resolvedType === Transaction::TYPE_INTERNAL_TRANSFER)')
+        ->and($source)->toContain('$counterpartId = null')
+        ->and($source)->toContain('$transferGroupId = null');
+});
+
 it('exposes loan types and interest expense posting map', function () {
     expect(Transaction::allTypes())->toHaveKeys(['loan_interest', 'loan_fees', 'loan_repayments', 'internal_transfer']);
 
