@@ -255,8 +255,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_console_commands_backfillpersonsencryption",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "backfillpersonsencryption.php"
     },
     {
@@ -1370,8 +1370,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_admin_usermanagementcontroller",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "usermanagementcontroller.php"
     },
     {
@@ -2871,8 +2871,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_bankaccountimportcontroller_bankaccountimportcontroller_process",
-      "community": 65,
-      "community_name": "BankAccount",
+      "community": 50,
+      "community_name": ".rule",
       "norm_label": ".process()"
     },
     {
@@ -2895,8 +2895,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_bankaccountimportcontroller_bankaccountimportcontroller_apply",
-      "community": 65,
-      "community_name": "BankAccount",
+      "community": 50,
+      "community_name": ".rule",
       "norm_label": ".apply()"
     },
     {
@@ -2907,8 +2907,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_bankaccountimportcontroller_bankaccountimportcontroller_authorizeimportentity",
-      "community": 65,
-      "community_name": "BankAccount",
+      "community": 50,
+      "community_name": ".rule",
       "norm_label": ".authorizeimportentity()"
     },
     {
@@ -2919,8 +2919,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_bankaccountimportcontroller_bankaccountimportcontroller_ensureaccessible",
-      "community": 65,
-      "community_name": "BankAccount",
+      "community": 50,
+      "community_name": ".rule",
       "norm_label": ".ensureaccessible()"
     },
     {
@@ -3099,8 +3099,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_bankaccountstatementcontroller_bankaccountstatementcontroller_construct",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": ".__construct()"
     },
     {
@@ -3230,8 +3230,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_bankaccounttransactioncontroller",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "bankaccounttransactioncontroller.php"
     },
     {
@@ -3446,8 +3446,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_bankimportcontroller",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "bankimportcontroller.php"
     },
     {
@@ -3460,7 +3460,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_bankimportcontroller_bankimportcontroller",
       "community": 157,
-      "community_name": "BankImportController",
+      "community_name": "web.php",
       "norm_label": "bankimportcontroller"
     },
     {
@@ -3484,7 +3484,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_bankimportcontroller_bankimportcontroller_index",
       "community": 157,
-      "community_name": "BankImportController",
+      "community_name": "web.php",
       "norm_label": ".index()"
     },
     {
@@ -3520,7 +3520,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_bankimportcontroller_bankimportcontroller_savematches",
       "community": 157,
-      "community_name": "BankImportController",
+      "community_name": "web.php",
       "norm_label": ".savematches()"
     },
     {
@@ -3532,7 +3532,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_bankimportcontroller_bankimportcontroller_maptransactiontype",
       "community": 157,
-      "community_name": "BankImportController",
+      "community_name": "web.php",
       "norm_label": ".maptransactiontype()"
     },
     {
@@ -3914,8 +3914,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_create",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".create()"
     },
     {
@@ -4178,8 +4178,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_createbankaccount",
-      "community": 65,
-      "community_name": "BankAccount",
+      "community": 39,
+      "community_name": "BusinessEntityController",
       "norm_label": ".createbankaccount()"
     },
     {
@@ -4190,8 +4190,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_storebankaccount",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".storebankaccount()"
     },
     {
@@ -4250,8 +4250,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_editbankaccount",
-      "community": 65,
-      "community_name": "BankAccount",
+      "community": 39,
+      "community_name": "BusinessEntityController",
       "norm_label": ".editbankaccount()"
     },
     {
@@ -4262,8 +4262,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_updatebankaccount",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".updatebankaccount()"
     },
     {
@@ -4454,8 +4454,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_createportfoliobankaccount",
-      "community": 65,
-      "community_name": "BankAccount",
+      "community": 39,
+      "community_name": "BusinessEntityController",
       "norm_label": ".createportfoliobankaccount()"
     },
     {
@@ -4466,8 +4466,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_storeportfoliobankaccount",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".storeportfoliobankaccount()"
     },
     {
@@ -4490,8 +4490,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_updateportfoliobankaccount",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".updateportfoliobankaccount()"
     },
     {
@@ -4862,8 +4862,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_mergebanknamefromrequest",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".mergebanknamefromrequest()"
     },
     {
@@ -4874,8 +4874,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_banknamefieldvalidationrules",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".banknamefieldvalidationrules()"
     },
     {
@@ -4886,8 +4886,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_entitybankaccountvalidationrules",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".entitybankaccountvalidationrules()"
     },
     {
@@ -4898,8 +4898,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_portfoliobankaccountvalidationrules",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".portfoliobankaccountvalidationrules()"
     },
     {
@@ -4910,8 +4910,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_preparebankaccountcreaterequest",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".preparebankaccountcreaterequest()"
     },
     {
@@ -4922,8 +4922,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_applycreatebankaccountdefaults",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".applycreatebankaccountdefaults()"
     },
     {
@@ -4934,8 +4934,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_holdervalidationrules",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".holdervalidationrules()"
     },
     {
@@ -4946,8 +4946,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_bankaccountattributesfromrequest",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".bankaccountattributesfromrequest()"
     },
     {
@@ -4958,8 +4958,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_portfoliobankaccountattributesfromrequest",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".portfoliobankaccountattributesfromrequest()"
     },
     {
@@ -4970,8 +4970,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_holderattributesfromvalidated",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".holderattributesfromvalidated()"
     },
     {
@@ -4982,8 +4982,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_personoptionsforholder",
-      "community": 65,
-      "community_name": "BankAccount",
+      "community": 39,
+      "community_name": "BusinessEntityController",
       "norm_label": ".personoptionsforholder()"
     },
     {
@@ -5006,8 +5006,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_businessentitycontroller_businessentitycontroller_bankpaneljsonresponse",
-      "community": 22,
-      "community_name": ".storeBankAccount",
+      "community": 65,
+      "community_name": "BankAccount",
       "norm_label": ".bankpaneljsonresponse()"
     },
     {
@@ -5041,8 +5041,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_carreportcontroller",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 485,
+      "community_name": "BusinessEntity.php",
       "norm_label": "carreportcontroller.php"
     },
     {
@@ -5054,8 +5054,8 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "app_http_controllers_carreportcontroller_carreportcontroller",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 485,
+      "community_name": "BusinessEntity.php",
       "norm_label": "carreportcontroller"
     },
     {
@@ -5078,8 +5078,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_carreportcontroller_carreportcontroller_carregister",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 485,
+      "community_name": "BusinessEntity.php",
       "norm_label": ".carregister()"
     },
     {
@@ -5089,8 +5089,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_chartofaccountcontroller",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "chartofaccountcontroller.php"
     },
     {
@@ -6060,8 +6060,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_concerns_ensuresoperationalbusinessentity",
-      "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "ensuresoperationalbusinessentity.php"
     },
     {
@@ -6072,8 +6072,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_concerns_ensuresoperationalbusinessentity_ensureoperationalforaccounting",
-      "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "ensureoperationalforaccounting()"
     },
     {
@@ -6084,8 +6084,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_concerns_ensuresoperationalbusinessentity_ensurenotclosed",
-      "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "ensurenotclosed()"
     },
     {
@@ -6095,8 +6095,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_concerns_resolvesreportentityscope",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 485,
+      "community_name": "BusinessEntity.php",
       "norm_label": "resolvesreportentityscope.php"
     },
     {
@@ -6130,8 +6130,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_contactlistcontroller",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "contactlistcontroller.php"
     },
     {
@@ -6382,8 +6382,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_documentcontroller",
-      "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "documentcontroller.php"
     },
     {
@@ -6395,8 +6395,8 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "app_http_controllers_documentcontroller_documentcontroller",
-      "community": 81,
-      "community_name": "Document",
+      "community": 10,
+      "community_name": "DocumentStorage",
       "norm_label": "documentcontroller"
     },
     {
@@ -6479,8 +6479,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_documentcontroller_documentcontroller_streamdocument",
-      "community": 81,
-      "community_name": "Document",
+      "community": 10,
+      "community_name": "DocumentStorage",
       "norm_label": ".streamdocument()"
     },
     {
@@ -6491,8 +6491,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_documentcontroller_documentcontroller_safecontentdispositionfilename",
-      "community": 81,
-      "community_name": "Document",
+      "community": 10,
+      "community_name": "DocumentStorage",
       "norm_label": ".safecontentdispositionfilename()"
     },
     {
@@ -6503,8 +6503,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_documentcontroller_documentcontroller_resolvedocumentmimetype",
-      "community": 81,
-      "community_name": "Document",
+      "community": 10,
+      "community_name": "DocumentStorage",
       "norm_label": ".resolvedocumentmimetype()"
     },
     {
@@ -6514,8 +6514,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller",
-      "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "documentworkspacecontroller.php"
     },
     {
@@ -6528,7 +6528,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "documentworkspacecontroller"
     },
     {
@@ -6540,7 +6540,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller_construct",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".__construct()"
     },
     {
@@ -6600,7 +6600,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller_updatecategory",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".updatecategory()"
     },
     {
@@ -6612,7 +6612,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller_destroycategory",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".destroycategory()"
     },
     {
@@ -6624,7 +6624,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller_storeslot",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".storeslot()"
     },
     {
@@ -6636,7 +6636,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller_updateslotlabel",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".updateslotlabel()"
     },
     {
@@ -6648,7 +6648,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller_destroyslot",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".destroyslot()"
     },
     {
@@ -6660,7 +6660,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller_moveslot",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".moveslot()"
     },
     {
@@ -6672,7 +6672,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller_clearfile",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".clearfile()"
     },
     {
@@ -6696,7 +6696,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller_ensurecategorybelongs",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".ensurecategorybelongs()"
     },
     {
@@ -6708,7 +6708,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_documentworkspacecontroller_documentworkspacecontroller_ensuredocumentbelongs",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".ensuredocumentbelongs()"
     },
     {
@@ -6718,8 +6718,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_emailtemplatecontroller",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "emailtemplatecontroller.php"
     },
     {
@@ -7031,8 +7031,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_email_mailmessagecontroller_mailmessagecontroller_construct",
-      "community": 81,
-      "community_name": "Document",
+      "community": 54,
+      "community_name": "MailMessageController",
       "norm_label": ".__construct()"
     },
     {
@@ -7282,8 +7282,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_http_controllers_email_mailmessagecontroller_mailmessagecontroller_storesentemail",
-      "community": 54,
-      "community_name": "MailMessageController",
+      "community": 40,
+      "community_name": "MailMessage",
       "norm_label": ".storesentemail()"
     },
     {
@@ -7293,8 +7293,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_entitypersoncontroller",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "entitypersoncontroller.php"
     },
     {
@@ -7533,8 +7533,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_financialreportcontroller",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 485,
+      "community_name": "BusinessEntity.php",
       "norm_label": "financialreportcontroller.php"
     },
     {
@@ -7737,8 +7737,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_invoicecontroller",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "invoicecontroller.php"
     },
     {
@@ -7917,8 +7917,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_manualjournalentrycontroller",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 17,
+      "community_name": "TrackingCategory",
       "norm_label": "manualjournalentrycontroller.php"
     },
     {
@@ -7931,7 +7931,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_manualjournalentrycontroller_manualjournalentrycontroller",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": "manualjournalentrycontroller"
     },
     {
@@ -7955,7 +7955,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_manualjournalentrycontroller_manualjournalentrycontroller_create",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".create()"
     },
     {
@@ -7967,7 +7967,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_manualjournalentrycontroller_manualjournalentrycontroller_store",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".store()"
     },
     {
@@ -7979,7 +7979,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_manualjournalentrycontroller_manualjournalentrycontroller_storeopeningbalances",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".storeopeningbalances()"
     },
     {
@@ -7991,7 +7991,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_manualjournalentrycontroller_manualjournalentrycontroller_validatemanualjournaltracking",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".validatemanualjournaltracking()"
     },
     {
@@ -8217,8 +8217,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_personsworkspacecontroller",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "personsworkspacecontroller.php"
     },
     {
@@ -8806,7 +8806,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingcategorycontroller",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": "trackingcategorycontroller.php"
     },
     {
@@ -8819,7 +8819,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingcategorycontroller_trackingcategorycontroller",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": "trackingcategorycontroller"
     },
     {
@@ -8831,7 +8831,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingcategorycontroller_trackingcategorycontroller_authorizetrackingcategory",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".authorizetrackingcategory()"
     },
     {
@@ -8843,7 +8843,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingcategorycontroller_trackingcategorycontroller_index",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".index()"
     },
     {
@@ -8855,7 +8855,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingcategorycontroller_trackingcategorycontroller_create",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".create()"
     },
     {
@@ -8879,7 +8879,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingcategorycontroller_trackingcategorycontroller_show",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".show()"
     },
     {
@@ -8891,7 +8891,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingcategorycontroller_trackingcategorycontroller_edit",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".edit()"
     },
     {
@@ -8903,7 +8903,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingcategorycontroller_trackingcategorycontroller_update",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".update()"
     },
     {
@@ -8915,7 +8915,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingcategorycontroller_trackingcategorycontroller_destroy",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".destroy()"
     },
     {
@@ -8925,8 +8925,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_controllers_trackingsubcategorycontroller",
-      "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "trackingsubcategorycontroller.php"
     },
     {
@@ -8939,7 +8939,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingsubcategorycontroller_trackingsubcategorycontroller",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": "trackingsubcategorycontroller"
     },
     {
@@ -8951,7 +8951,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingsubcategorycontroller_trackingsubcategorycontroller_authorizetrackingcategory",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".authorizetrackingcategory()"
     },
     {
@@ -8963,7 +8963,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingsubcategorycontroller_trackingsubcategorycontroller_authorizetrackingsubcategory",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".authorizetrackingsubcategory()"
     },
     {
@@ -8975,7 +8975,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingsubcategorycontroller_trackingsubcategorycontroller_create",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".create()"
     },
     {
@@ -8987,7 +8987,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingsubcategorycontroller_trackingsubcategorycontroller_store",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".store()"
     },
     {
@@ -8999,7 +8999,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingsubcategorycontroller_trackingsubcategorycontroller_edit",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".edit()"
     },
     {
@@ -9011,7 +9011,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingsubcategorycontroller_trackingsubcategorycontroller_update",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".update()"
     },
     {
@@ -9023,7 +9023,7 @@
       "_origin": "ast",
       "id": "app_http_controllers_trackingsubcategorycontroller_trackingsubcategorycontroller_destroy",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".destroy()"
     },
     {
@@ -9992,8 +9992,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_resources_documentslotresource",
-      "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "documentslotresource.php"
     },
     {
@@ -10028,8 +10028,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_http_resources_entitypersonresource",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "entitypersonresource.php"
     },
     {
@@ -10580,8 +10580,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_models_bankaccount",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "bankaccount.php"
     },
     {
@@ -11097,8 +11097,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_bankaccount_bankaccount_businessentity",
-      "community": 85,
-      "community_name": ".businessEntity",
+      "community": 47,
+      "community_name": "Illuminate\\Database\\Eloquent\\Relations\\BelongsTo",
       "norm_label": ".businessentity()"
     },
     {
@@ -11109,8 +11109,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_bankaccount_bankaccount_user",
-      "community": 85,
-      "community_name": ".businessEntity",
+      "community": 47,
+      "community_name": "Illuminate\\Database\\Eloquent\\Relations\\BelongsTo",
       "norm_label": ".user()"
     },
     {
@@ -11121,8 +11121,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_bankaccount_bankaccount_holderentity",
-      "community": 85,
-      "community_name": ".businessEntity",
+      "community": 47,
+      "community_name": "Illuminate\\Database\\Eloquent\\Relations\\BelongsTo",
       "norm_label": ".holderentity()"
     },
     {
@@ -11205,8 +11205,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_bankaccount_bankaccount_businessentities",
-      "community": 85,
-      "community_name": ".businessEntity",
+      "community": 40,
+      "community_name": "MailMessage",
       "norm_label": ".businessentities()"
     },
     {
@@ -11229,8 +11229,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_bankaccount_bankaccount_isaccessibleby",
-      "community": 85,
-      "community_name": ".businessEntity",
+      "community": 47,
+      "community_name": "Illuminate\\Database\\Eloquent\\Relations\\BelongsTo",
       "norm_label": ".isaccessibleby()"
     },
     {
@@ -11241,8 +11241,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_bankaccount_bankaccount_isaccessiblebycurrentuser",
-      "community": 85,
-      "community_name": ".businessEntity",
+      "community": 47,
+      "community_name": "Illuminate\\Database\\Eloquent\\Relations\\BelongsTo",
       "norm_label": ".isaccessiblebycurrentuser()"
     },
     {
@@ -11253,8 +11253,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_bankaccount_bankaccount_iseditableby",
-      "community": 85,
-      "community_name": ".businessEntity",
+      "community": 47,
+      "community_name": "Illuminate\\Database\\Eloquent\\Relations\\BelongsTo",
       "norm_label": ".iseditableby()"
     },
     {
@@ -11265,8 +11265,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_bankaccount_bankaccount_iseditablebycurrentuser",
-      "community": 85,
-      "community_name": ".businessEntity",
+      "community": 47,
+      "community_name": "Illuminate\\Database\\Eloquent\\Relations\\BelongsTo",
       "norm_label": ".iseditablebycurrentuser()"
     },
     {
@@ -11396,8 +11396,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_models_bankstatemententry",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "bankstatemententry.php"
     },
     {
@@ -12342,8 +12342,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_models_chartofaccount",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "chartofaccount.php"
     },
     {
@@ -13050,8 +13050,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_models_document",
-      "community": 40,
-      "community_name": "MailMessage",
+      "community": 72,
+      "community_name": "Illuminate\\Database\\Eloquent\\Model",
       "norm_label": "document.php"
     },
     {
@@ -13063,7 +13063,7 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "app_models_document_document",
-      "community": 81,
+      "community": 92,
       "community_name": "Document",
       "norm_label": "document"
     },
@@ -13075,7 +13075,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_document_document_casts",
-      "community": 81,
+      "community": 92,
       "community_name": "Document",
       "norm_label": ".casts()"
     },
@@ -13087,7 +13087,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_document_document_businessentity",
-      "community": 81,
+      "community": 92,
       "community_name": "Document",
       "norm_label": ".businessentity()"
     },
@@ -13099,7 +13099,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_document_document_documentcategory",
-      "community": 81,
+      "community": 92,
       "community_name": "Document",
       "norm_label": ".documentcategory()"
     },
@@ -13111,7 +13111,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_document_document_user",
-      "community": 81,
+      "community": 92,
       "community_name": "Document",
       "norm_label": ".user()"
     },
@@ -13123,7 +13123,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_document_document_asset",
-      "community": 81,
+      "community": 92,
       "community_name": "Document",
       "norm_label": ".asset()"
     },
@@ -13135,7 +13135,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_document_document_hasfile",
-      "community": 81,
+      "community": 92,
       "community_name": "Document",
       "norm_label": ".hasfile()"
     },
@@ -13147,7 +13147,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_document_document_getfileurl",
-      "community": 81,
+      "community": 92,
       "community_name": "Document",
       "norm_label": ".getfileurl()"
     },
@@ -13159,7 +13159,7 @@
       "_origin": "ast",
       "id": "app_models_documentcategory",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "documentcategory.php"
     },
     {
@@ -13172,7 +13172,7 @@
       "_origin": "ast",
       "id": "app_models_documentcategory_documentcategory",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "documentcategory"
     },
     {
@@ -13184,7 +13184,7 @@
       "_origin": "ast",
       "id": "app_models_documentcategory_documentcategory_casts",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".casts()"
     },
     {
@@ -13196,7 +13196,7 @@
       "_origin": "ast",
       "id": "app_models_documentcategory_documentcategory_businessentity",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".businessentity()"
     },
     {
@@ -13208,7 +13208,7 @@
       "_origin": "ast",
       "id": "app_models_documentcategory_documentcategory_asset",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".asset()"
     },
     {
@@ -13232,7 +13232,7 @@
       "_origin": "ast",
       "id": "app_models_documentcategory_documentcategory_scopeforworkspace",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": ".scopeforworkspace()"
     },
     {
@@ -13831,8 +13831,8 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "app_models_journalline_journalline",
-      "community": 79,
-      "community_name": "JournalEntry",
+      "community": 78,
+      "community_name": "ChartOfAccount",
       "norm_label": "journalline"
     },
     {
@@ -13843,8 +13843,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_journalline_journalline_journalentry",
-      "community": 79,
-      "community_name": "JournalEntry",
+      "community": 78,
+      "community_name": "ChartOfAccount",
       "norm_label": ".journalentry()"
     },
     {
@@ -13855,8 +13855,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_journalline_journalline_chartofaccount",
-      "community": 79,
-      "community_name": "JournalEntry",
+      "community": 78,
+      "community_name": "ChartOfAccount",
       "norm_label": ".chartofaccount()"
     },
     {
@@ -13867,8 +13867,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_journalline_journalline_trackingcategory",
-      "community": 79,
-      "community_name": "JournalEntry",
+      "community": 78,
+      "community_name": "ChartOfAccount",
       "norm_label": ".trackingcategory()"
     },
     {
@@ -13879,8 +13879,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_journalline_journalline_trackingsubcategory",
-      "community": 79,
-      "community_name": "JournalEntry",
+      "community": 78,
+      "community_name": "ChartOfAccount",
       "norm_label": ".trackingsubcategory()"
     },
     {
@@ -13975,8 +13975,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_mailattachment_mailattachment_message",
-      "community": 47,
-      "community_name": "Illuminate\\Database\\Eloquent\\Relations\\BelongsTo",
+      "community": 40,
+      "community_name": "MailMessage",
       "norm_label": ".message()"
     },
     {
@@ -13999,8 +13999,8 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "app_models_maillabel_maillabel",
-      "community": 54,
-      "community_name": "MailMessageController",
+      "community": 40,
+      "community_name": "MailMessage",
       "norm_label": "maillabel"
     },
     {
@@ -14011,8 +14011,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_models_maillabel_maillabel_user",
-      "community": 47,
-      "community_name": "Illuminate\\Database\\Eloquent\\Relations\\BelongsTo",
+      "community": 40,
+      "community_name": "MailMessage",
       "norm_label": ".user()"
     },
     {
@@ -14622,8 +14622,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_models_trackingcategory",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 17,
+      "community_name": "TrackingCategory",
       "norm_label": "trackingcategory.php"
     },
     {
@@ -14636,7 +14636,7 @@
       "_origin": "ast",
       "id": "app_models_trackingcategory_trackingcategory",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": "trackingcategory"
     },
     {
@@ -14648,7 +14648,7 @@
       "_origin": "ast",
       "id": "app_models_trackingcategory_trackingcategory_businessentity",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".businessentity()"
     },
     {
@@ -14660,7 +14660,7 @@
       "_origin": "ast",
       "id": "app_models_trackingcategory_trackingcategory_subcategories",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".subcategories()"
     },
     {
@@ -14672,7 +14672,7 @@
       "_origin": "ast",
       "id": "app_models_trackingcategory_trackingcategory_activesubcategories",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".activesubcategories()"
     },
     {
@@ -14684,7 +14684,7 @@
       "_origin": "ast",
       "id": "app_models_trackingcategory_trackingcategory_transactions",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".transactions()"
     },
     {
@@ -14696,7 +14696,7 @@
       "_origin": "ast",
       "id": "app_models_trackingcategory_trackingcategory_journallines",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".journallines()"
     },
     {
@@ -14708,7 +14708,7 @@
       "_origin": "ast",
       "id": "app_models_trackingcategory_trackingcategory_scopeactive",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".scopeactive()"
     },
     {
@@ -14720,7 +14720,7 @@
       "_origin": "ast",
       "id": "app_models_trackingcategory_trackingcategory_scopeordered",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".scopeordered()"
     },
     {
@@ -14731,7 +14731,7 @@
       "_origin": "ast",
       "id": "app_models_trackingsubcategory",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": "trackingsubcategory.php"
     },
     {
@@ -14744,7 +14744,7 @@
       "_origin": "ast",
       "id": "app_models_trackingsubcategory_trackingsubcategory",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": "trackingsubcategory"
     },
     {
@@ -14756,7 +14756,7 @@
       "_origin": "ast",
       "id": "app_models_trackingsubcategory_trackingsubcategory_trackingcategory",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".trackingcategory()"
     },
     {
@@ -14768,7 +14768,7 @@
       "_origin": "ast",
       "id": "app_models_trackingsubcategory_trackingsubcategory_transactions",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".transactions()"
     },
     {
@@ -14780,7 +14780,7 @@
       "_origin": "ast",
       "id": "app_models_trackingsubcategory_trackingsubcategory_journallines",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".journallines()"
     },
     {
@@ -14792,7 +14792,7 @@
       "_origin": "ast",
       "id": "app_models_trackingsubcategory_trackingsubcategory_scopeactive",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".scopeactive()"
     },
     {
@@ -14804,7 +14804,7 @@
       "_origin": "ast",
       "id": "app_models_trackingsubcategory_trackingsubcategory_scopeordered",
       "community": 17,
-      "community_name": "EnsuresOperationalBusinessEntity.php",
+      "community_name": "TrackingCategory",
       "norm_label": ".scopeordered()"
     },
     {
@@ -16937,8 +16937,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_services_bankaccountassetlinkservice",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 159,
+      "community_name": "PHPUnit\\Framework\\TestCase",
       "norm_label": "bankaccountassetlinkservice.php"
     },
     {
@@ -17069,8 +17069,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_services_bankaccountstatementuploadservice",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": "bankaccountstatementuploadservice.php"
     },
     {
@@ -17082,8 +17082,8 @@
       "_callable_class": true,
       "_origin": "ast",
       "id": "app_services_bankaccountstatementuploadservice_bankaccountstatementuploadservice",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": "bankaccountstatementuploadservice"
     },
     {
@@ -17094,8 +17094,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankaccountstatementuploadservice_bankaccountstatementuploadservice_construct",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": ".__construct()"
     },
     {
@@ -17106,8 +17106,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankaccountstatementuploadservice_bankaccountstatementuploadservice_store",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": ".store()"
     },
     {
@@ -17118,8 +17118,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankaccountstatementuploadservice_bankaccountstatementuploadservice_delete",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": ".delete()"
     },
     {
@@ -17130,8 +17130,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankaccountstatementuploadservice_bankaccountstatementuploadservice_deleteallforaccount",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": ".deleteallforaccount()"
     },
     {
@@ -17142,8 +17142,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankaccountstatementuploadservice_bankaccountstatementuploadservice_basepath",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": ".basepath()"
     },
     {
@@ -17154,8 +17154,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankaccountstatementuploadservice_bankaccountstatementuploadservice_hasoverlappingperiod",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": ".hasoverlappingperiod()"
     },
     {
@@ -17166,8 +17166,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankaccountstatementuploadservice_bankaccountstatementuploadservice_nullablebalance",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": ".nullablebalance()"
     },
     {
@@ -17198,7 +17198,7 @@
       "label": ".parseFile()",
       "file_type": "code",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L54",
+      "source_location": "L57",
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankcsvstatementparser_bankcsvstatementparser_parsefile",
@@ -17210,7 +17210,7 @@
       "label": ".readCsv()",
       "file_type": "code",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L102",
+      "source_location": "L106",
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankcsvstatementparser_bankcsvstatementparser_readcsv",
@@ -17222,7 +17222,7 @@
       "label": ".detectProfile()",
       "file_type": "code",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L152",
+      "source_location": "L156",
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankcsvstatementparser_bankcsvstatementparser_detectprofile",
@@ -17234,7 +17234,7 @@
       "label": ".extractEntries()",
       "file_type": "code",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L178",
+      "source_location": "L182",
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankcsvstatementparser_bankcsvstatementparser_extractentries",
@@ -17246,7 +17246,7 @@
       "label": ".findColumn()",
       "file_type": "code",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L273",
+      "source_location": "L292",
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankcsvstatementparser_bankcsvstatementparser_findcolumn",
@@ -17258,7 +17258,7 @@
       "label": ".resolveAmount()",
       "file_type": "code",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L293",
+      "source_location": "L313",
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankcsvstatementparser_bankcsvstatementparser_resolveamount",
@@ -17270,7 +17270,7 @@
       "label": ".parseAmount()",
       "file_type": "code",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L342",
+      "source_location": "L365",
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankcsvstatementparser_bankcsvstatementparser_parseamount",
@@ -17282,7 +17282,7 @@
       "label": ".parseDate()",
       "file_type": "code",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L369",
+      "source_location": "L392",
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_bankcsvstatementparser_bankcsvstatementparser_parsedate",
@@ -18229,8 +18229,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_services_complianceuploadservice",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 10,
+      "community_name": "DocumentStorage",
       "norm_label": "complianceuploadservice.php"
     },
     {
@@ -18662,7 +18662,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": "documentuploadservice"
     },
     {
@@ -18674,7 +18674,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_sanitizefilename",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".sanitizefilename()"
     },
     {
@@ -18686,7 +18686,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_sanitizelabelforstorage",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".sanitizelabelforstorage()"
     },
     {
@@ -18698,7 +18698,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_basedocspath",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".basedocspath()"
     },
     {
@@ -18710,7 +18710,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_categorypathsegment",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".categorypathsegment()"
     },
     {
@@ -18722,7 +18722,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_attachfiletodocument",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".attachfiletodocument()"
     },
     {
@@ -18734,7 +18734,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_ensuredirectory",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".ensuredirectory()"
     },
     {
@@ -18745,7 +18745,7 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_deletefilefromdocument",
-      "community": 81,
+      "community": 92,
       "community_name": "Document",
       "norm_label": ".deletefilefromdocument()"
     },
@@ -18758,7 +18758,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_firstorcreatecategorynamed",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".firstorcreatecategorynamed()"
     },
     {
@@ -18770,7 +18770,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_createtransactionreceiptdocumentfromupload",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".createtransactionreceiptdocumentfromupload()"
     },
     {
@@ -18782,7 +18782,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_createtransactionreceiptfromexistings3path",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".createtransactionreceiptfromexistings3path()"
     },
     {
@@ -18794,7 +18794,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_copys3objectintodocumentslot",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".copys3objectintodocumentslot()"
     },
     {
@@ -18806,7 +18806,7 @@
       "_origin": "ast",
       "id": "app_services_documentuploadservice_documentuploadservice_mimetypeforextension",
       "community": 81,
-      "community_name": "Document",
+      "community_name": "DocumentUploadService",
       "norm_label": ".mimetypeforextension()"
     },
     {
@@ -18828,8 +18828,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_services_financialreportservice",
-      "community": 79,
-      "community_name": "JournalEntry",
+      "community": 78,
+      "community_name": "ChartOfAccount",
       "norm_label": "financialreportservice.php"
     },
     {
@@ -19726,8 +19726,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_services_invoicepaymentservice",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "invoicepaymentservice.php"
     },
     {
@@ -20456,8 +20456,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_services_transactionpostingservice",
-      "community": 79,
-      "community_name": "JournalEntry",
+      "community": 78,
+      "community_name": "ChartOfAccount",
       "norm_label": "transactionpostingservice.php"
     },
     {
@@ -21175,8 +21175,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_support_documentstorage",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 10,
+      "community_name": "DocumentStorage",
       "norm_label": "documentstorage.php"
     },
     {
@@ -21344,8 +21344,8 @@
       "_callable": true,
       "_origin": "ast",
       "id": "app_support_documentuploadvalidation_documentuploadvalidation_isallowed",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": ".isallowed()"
     },
     {
@@ -21869,8 +21869,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "app_support_tablesort",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "tablesort.php"
     },
     {
@@ -25922,7 +25922,7 @@
       "_origin": "ast",
       "id": "database_migrations_2026_03_28_120000_document_categories_and_documents_checklist",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "2026_03_28_120000_document_categories_and_documents_checklist.php"
     },
     {
@@ -25934,7 +25934,7 @@
       "_origin": "ast",
       "id": "database_migrations_2026_03_28_120000_document_categories_and_documents_checklist_up",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "up()"
     },
     {
@@ -25946,7 +25946,7 @@
       "_origin": "ast",
       "id": "database_migrations_2026_03_28_120000_document_categories_and_documents_checklist_down",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "down()"
     },
     {
@@ -25958,7 +25958,7 @@
       "_origin": "ast",
       "id": "database_migrations_2026_03_28_120000_document_categories_and_documents_checklist_backfillcategoriesandlabels",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "backfillcategoriesandlabels()"
     },
     {
@@ -26716,7 +26716,7 @@
       "_origin": "ast",
       "id": "database_migrations_2026_06_20_000001_add_unique_checklist_label_per_category",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "2026_06_20_000001_add_unique_checklist_label_per_category.php"
     },
     {
@@ -26728,7 +26728,7 @@
       "_origin": "ast",
       "id": "database_migrations_2026_06_20_000001_add_unique_checklist_label_per_category_up",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "up()"
     },
     {
@@ -26740,7 +26740,7 @@
       "_origin": "ast",
       "id": "database_migrations_2026_06_20_000001_add_unique_checklist_label_per_category_down",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "down()"
     },
     {
@@ -26752,7 +26752,7 @@
       "_origin": "ast",
       "id": "database_migrations_2026_06_20_000001_add_unique_checklist_label_per_category_backfillnulllabels",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "backfillnulllabels()"
     },
     {
@@ -26764,7 +26764,7 @@
       "_origin": "ast",
       "id": "database_migrations_2026_06_20_000001_add_unique_checklist_label_per_category_reassignorphans",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "reassignorphans()"
     },
     {
@@ -26776,7 +26776,7 @@
       "_origin": "ast",
       "id": "database_migrations_2026_06_20_000001_add_unique_checklist_label_per_category_deduplicatelabels",
       "community": 92,
-      "community_name": "DocumentCategory",
+      "community_name": "Document",
       "norm_label": "deduplicatelabels()"
     },
     {
@@ -36974,8 +36974,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "routes_web",
-      "community": 158,
-      "community_name": "Illuminate\\View\\View",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "web.php"
     },
     {
@@ -37728,8 +37728,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_unit_bankaccountassetlinkservicetest",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 159,
+      "community_name": "PHPUnit\\Framework\\TestCase",
       "norm_label": "bankaccountassetlinkservicetest.php"
     },
     {
@@ -37800,8 +37800,8 @@
       "source_location": "L1",
       "_origin": "ast",
       "id": "tests_unit_bankaccountformtest",
-      "community": 485,
-      "community_name": "BusinessEntity.php",
+      "community": 157,
+      "community_name": "web.php",
       "norm_label": "bankaccountformtest.php"
     },
     {
@@ -44913,8 +44913,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "illuminate_http_uploadedfile",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 81,
+      "community_name": "DocumentUploadService",
       "norm_label": "illuminate\\http\\uploadedfile"
     },
     {
@@ -45166,8 +45166,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "illuminate_database_eloquent_factories_hasfactory",
-      "community": 40,
-      "community_name": "MailMessage",
+      "community": 72,
+      "community_name": "Illuminate\\Database\\Eloquent\\Model",
       "norm_label": "illuminate\\database\\eloquent\\factories\\hasfactory"
     },
     {
@@ -45276,8 +45276,8 @@
       "source_location": "",
       "_origin": "ast",
       "id": "illuminate_contracts_filesystem_filesystem",
-      "community": 37,
-      "community_name": "BankAccountStatement",
+      "community": 10,
+      "community_name": "DocumentStorage",
       "norm_label": "illuminate\\contracts\\filesystem\\filesystem"
     },
     {
@@ -104122,7 +104122,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L152",
+      "source_location": "L156",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser",
@@ -104133,7 +104133,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L178",
+      "source_location": "L182",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser",
@@ -104144,7 +104144,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L273",
+      "source_location": "L292",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser",
@@ -104155,7 +104155,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L342",
+      "source_location": "L365",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser",
@@ -104166,7 +104166,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L369",
+      "source_location": "L392",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser",
@@ -104177,7 +104177,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L54",
+      "source_location": "L57",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser",
@@ -104188,7 +104188,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L102",
+      "source_location": "L106",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser",
@@ -104199,7 +104199,7 @@
       "relation": "method",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L293",
+      "source_location": "L313",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser",
@@ -104247,7 +104247,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L83",
+      "source_location": "L87",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser_parsefile",
@@ -104259,7 +104259,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L84",
+      "source_location": "L88",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser_parsefile",
@@ -104271,7 +104271,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L71",
+      "source_location": "L75",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser_parsefile",
@@ -104283,7 +104283,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L180",
+      "source_location": "L184",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser_extractentries",
@@ -104295,7 +104295,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L232",
+      "source_location": "L251",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser_extractentries",
@@ -104307,7 +104307,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L210",
+      "source_location": "L214",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser_extractentries",
@@ -104319,7 +104319,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L221",
+      "source_location": "L225",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser_extractentries",
@@ -104331,7 +104331,7 @@
       "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "app/Services/BankCsvStatementParser.php",
-      "source_location": "L302",
+      "source_location": "L323",
       "weight": 1.0,
       "_origin": "ast",
       "source": "app_services_bankcsvstatementparser_bankcsvstatementparser_resolveamount",
@@ -143711,5 +143711,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "cc9b918f968c88bd774a8161ba5cbe0d5b1da7a0"
+  "built_at_commit": "40f2abe6591b5b0380c3bcb717f0574e1b4de6d9"
 }

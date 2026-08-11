@@ -45,8 +45,11 @@ class BankCsvStatementParser
     /** @var list<string> */
     private const DATE_FORMATS = [
         'Y-m-d', 'd/m/Y', 'm/d/Y', 'd-m-Y', 'Y/m/d',
-        'd M Y', 'M d, Y', 'd-M-y', 'd-M-Y', 'd M y',
+        'd M Y', 'j M Y', 'M d, Y', 'd-M-y', 'j-M-y', 'd-M-Y', 'j-M-Y', 'd M y', 'j M y',
     ];
+
+    /** @var list<string> */
+    private const SUPPORTED_EXTENSIONS = ['csv', 'txt'];
 
     /**
      * @return array{success: bool, entries?: list<array<string, mixed>>, error?: string, message?: string, profile?: string}
@@ -60,7 +63,8 @@ class BankCsvStatementParser
             ];
         }
 
-        if (strtolower(pathinfo($filePath, PATHINFO_EXTENSION)) !== 'csv') {
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        if (! in_array($extension, self::SUPPORTED_EXTENSIONS, true)) {
             return [
                 'success' => false,
                 'error' => 'Only CSV bank statements are supported. Excel import will return when Python is upgraded on the server.',
@@ -214,11 +218,26 @@ class BankCsvStatementParser
 
             $description = trim((string) ($descCol !== null ? ($row[$descCol] ?? '') : ''));
             $reference = $refCol !== null ? trim((string) ($row[$refCol] ?? '')) : null;
-            if ($reference === '' || in_array(strtolower($reference), ['nan', 'none'], true)) {
+            if ($reference === null || $reference === '' || in_array(strtolower($reference), ['nan', 'none'], true)) {
                 $reference = null;
             }
 
-            $amount = $this->resolveAmount($row, $headers, $dateCol, $debitCol, $creditCol, $amountCol);
+            $amount = $this->resolveAmount(
+                $row,
+                $headers,
+                $dateCol,
+                $debitCol,
+                $creditCol,
+                $amountCol,
+                array_filter([
+                    $descCol,
+                    $originalDescCol,
+                    $refCol,
+                    $balanceCol,
+                    $categoryCol,
+                    $subcategoryCol,
+                ])
+            );
             if ($amount === 0.0 && $description === '') {
                 continue;
             }
@@ -289,6 +308,7 @@ class BankCsvStatementParser
     /**
      * @param  array<string, string|null>  $row
      * @param  list<string>  $headers
+     * @param  list<string|null>  $excludedColumns
      */
     private function resolveAmount(
         array $row,
@@ -296,7 +316,8 @@ class BankCsvStatementParser
         string $dateCol,
         ?string $debitCol,
         ?string $creditCol,
-        ?string $amountCol
+        ?string $amountCol,
+        array $excludedColumns = []
     ): float {
         if ($debitCol !== null && $creditCol !== null) {
             $debit = $this->parseAmount($row[$debitCol] ?? null);
@@ -325,8 +346,10 @@ class BankCsvStatementParser
             return abs($this->parseAmount($row[$creditCol] ?? null));
         }
 
+        $excluded = array_fill_keys(array_filter([$dateCol, $debitCol, $creditCol, $amountCol, ...$excludedColumns]), true);
+
         foreach ($headers as $header) {
-            if ($header === $dateCol) {
+            if (isset($excluded[$header])) {
                 continue;
             }
 
@@ -382,6 +405,10 @@ class BankCsvStatementParser
         }
 
         foreach (self::DATE_FORMATS as $format) {
+            if (! Carbon::hasFormat($stringValue, $format)) {
+                continue;
+            }
+
             try {
                 return Carbon::createFromFormat($format, $stringValue)->format('Y-m-d');
             } catch (InvalidFormatException) {

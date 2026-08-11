@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Install Python dependencies for bank statement parsing
-echo "Installing Python dependencies for bank statement parsing..."
+# Install Python dependencies for PDF statement parsing and email .msg parsing
+echo "Installing Python dependencies for PDF/email parsing..."
 
 # Check if Python 3 is installed
 if ! command -v python3 &> /dev/null; then
@@ -20,4 +20,4 @@ cd "$(dirname "$0")"
 pip3 install -r requirements.txt
 
 echo "Python dependencies installed successfully!"
-echo "You can now use the bank import functionality."
+echo "PDF statement and email parsing are ready. Bank CSV import runs in Laravel/PHP."

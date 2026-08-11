@@ -160,8 +160,8 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/BankImportController.php": {
-    "mtime": 1786357302.3783422,
-    "ast_hash": "d4ff1a244ca2734f0c319663999ab42c",
+    "mtime": 1786423578.2670305,
+    "ast_hash": "1a518ea142d9932e86da0c55a2988dc1",
     "semantic_hash": ""
   },
   "app/Http/Controllers/BillsTasksController.php": {
@@ -270,7 +270,7 @@
     "semantic_hash": "446e41677c209796f08f8694c0517e03"
   },
   "app/Http/Controllers/FinancialReportController.php": {
-    "mtime": 1786358013.596116,
+    "mtime": 1786416091.5739417,
     "ast_hash": "2bf77d8e79be132588d01a207ef49244",
     "semantic_hash": ""
   },
@@ -640,7 +640,7 @@
     "semantic_hash": "39915567cffe16a49999fe4303a7d788"
   },
   "app/Observers/TransactionObserver.php": {
-    "mtime": 1786358013.599125,
+    "mtime": 1786416091.5739417,
     "ast_hash": "16a85b5af9e36b491b92b0023dbdedba",
     "semantic_hash": ""
   },
@@ -740,7 +740,7 @@
     "semantic_hash": "1f0039cda70740f145feda4bc58cd7d7"
   },
   "app/Services/AtoDueDateService.php": {
-    "mtime": 1786348636.1188872,
+    "mtime": 1786416091.5843086,
     "ast_hash": "ea815e464c6b0ef2a3df6b445dd6c4e4",
     "semantic_hash": "ea815e464c6b0ef2a3df6b445dd6c4e4"
   },
@@ -765,7 +765,7 @@
     "semantic_hash": "360c41a304ad4ec11e1e6764d6250da7"
   },
   "app/Services/ComplianceFilenameMatcher.php": {
-    "mtime": 1786348636.1188872,
+    "mtime": 1786416091.5739417,
     "ast_hash": "1220538e91c11c3de9de4494899b3a92",
     "semantic_hash": "1220538e91c11c3de9de4494899b3a92"
   },
@@ -775,7 +775,7 @@
     "semantic_hash": "e042b487b56cc7ba69687f92004fd8b7"
   },
   "app/Services/ComplianceReportService.php": {
-    "mtime": 1786348636.1188872,
+    "mtime": 1786416091.5843086,
     "ast_hash": "2851bc39a8a29661417d95fcef67fe83",
     "semantic_hash": "2851bc39a8a29661417d95fcef67fe83"
   },
@@ -795,7 +795,7 @@
     "semantic_hash": "7116ef846d6a7a11840a76a4e3e9f140"
   },
   "app/Services/FinancialReportService.php": {
-    "mtime": 1786358013.6001272,
+    "mtime": 1786416091.5870805,
     "ast_hash": "2fce103ec22ff7e64136ac6d64de740a",
     "semantic_hash": ""
   },
@@ -825,7 +825,7 @@
     "semantic_hash": "0e055c6f633fddcf63b89de2ec111e9c"
   },
   "app/Services/TransactionPostingService.php": {
-    "mtime": 1786358151.8527668,
+    "mtime": 1786416091.5843086,
     "ast_hash": "8fc85f9a9f0331448028d8371acbb738",
     "semantic_hash": ""
   },
@@ -995,7 +995,7 @@
     "semantic_hash": "93499c056ddeb25896aadfd7bc160410"
   },
   "config/financial.php": {
-    "mtime": 1786358013.6017022,
+    "mtime": 1786416091.5870805,
     "ast_hash": "195475a90e0a525b61a8af39531c036f",
     "semantic_hash": ""
   },
@@ -1580,7 +1580,7 @@
     "semantic_hash": "9085968d6e06cca68a3055c5ce6981ce"
   },
   "database/migrations/2026_07_25_140000_convert_annual_accounts_to_asic_annual_fees_receipt.php": {
-    "mtime": 1786348636.1231067,
+    "mtime": 1786416091.5870805,
     "ast_hash": "87e6bdcb7fec5c0f6ae933119da747f6",
     "semantic_hash": "87e6bdcb7fec5c0f6ae933119da747f6"
   },
@@ -1610,12 +1610,12 @@
     "semantic_hash": "854191ad303aa9b702e36695e3571af8"
   },
   "database/seeders/ChartOfAccountSeeder.php": {
-    "mtime": 1786358013.6027126,
+    "mtime": 1786416091.5870805,
     "ast_hash": "e4c537054dfed5b9115e81fb03c5678c",
     "semantic_hash": ""
   },
   "database/seeders/ComplianceDocumentTypeSeeder.php": {
-    "mtime": 1786348636.155321,
+    "mtime": 1786416091.5870805,
     "ast_hash": "7d22c7b65f59e9e8d87d9bee0ba44f6b",
     "semantic_hash": "7d22c7b65f59e9e8d87d9bee0ba44f6b"
   },
@@ -1649,15 +1649,10 @@
     "ast_hash": "521f664620e02ad9929f446cd7df8ec8",
     "semantic_hash": "521f664620e02ad9929f446cd7df8ec8"
   },
-  "python/python_bank_parser.py": {
-    "mtime": 1786357301.3197126,
-    "ast_hash": "d55046d1d19949f063b507ac16b36006",
-    "semantic_hash": ""
-  },
   "python/start.py": {
-    "mtime": 1773910182.3455055,
-    "ast_hash": "382b0061ca012b6c7512f878bad5f4fb",
-    "semantic_hash": "382b0061ca012b6c7512f878bad5f4fb"
+    "mtime": 1786423592.5629,
+    "ast_hash": "b9bff9fa95d44d182d93616dddb4195a",
+    "semantic_hash": ""
   },
   "python/start.sh": {
     "mtime": 1773910182.9951448,
@@ -1725,7 +1720,7 @@
     "semantic_hash": "b2a87ae53d76d42952eef0592b2d6255"
   },
   "resources/js/entity-create-form.js": {
-    "mtime": 1786348636.1231067,
+    "mtime": 1786416091.5870805,
     "ast_hash": "fcba755986b5875896d43321ab99ae54",
     "semantic_hash": "fcba755986b5875896d43321ab99ae54"
   },
@@ -2085,8 +2080,8 @@
     "semantic_hash": "2a4a121675ca4698580c49f2e916a683"
   },
   "resources/views/bank-import/index.blade.php": {
-    "mtime": 1786186796.082161,
-    "ast_hash": "4d655e7acb48e795120a7b19a7e30815",
+    "mtime": 1786423580.4965246,
+    "ast_hash": "13a903a0be2dbb2e758b4c5e1cca0bd1",
     "semantic_hash": ""
   },
   "resources/views/bills-tasks/index.blade.php": {
@@ -2205,7 +2200,7 @@
     "semantic_hash": "de1cd4a7da8df1b53ad3932b597d1665"
   },
   "resources/views/business-entities/partials/create-form-fields.blade.php": {
-    "mtime": 1786348636.1188872,
+    "mtime": 1786416091.5843086,
     "ast_hash": "a42a3428ad3f9abb9db472dd40e11b2c",
     "semantic_hash": "a42a3428ad3f9abb9db472dd40e11b2c"
   },
@@ -2255,7 +2250,7 @@
     "semantic_hash": "1726c4ddfe31b837116fdf0b81148c8c"
   },
   "resources/views/business-entities/partials/profile/form.blade.php": {
-    "mtime": 1786348636.1188872,
+    "mtime": 1786416091.5843086,
     "ast_hash": "7e4f37230093f64ca978fe1ea1a56001",
     "semantic_hash": "7e4f37230093f64ca978fe1ea1a56001"
   },
@@ -2575,7 +2570,7 @@
     "semantic_hash": "d606f090f4cc45d891b001d738cf8e21"
   },
   "resources/views/financial-reports/profit-loss.blade.php": {
-    "mtime": 1786358133.005175,
+    "mtime": 1786416091.5739417,
     "ast_hash": "a0c559f3fc84286f1a3fcb8ef4df0e4a",
     "semantic_hash": ""
   },
@@ -2925,7 +2920,7 @@
     "semantic_hash": "8a309f9b9a1627c9b2fcdfbc99258e5c"
   },
   "tests/Unit/AtoDueDateServiceTest.php": {
-    "mtime": 1786348636.1188872,
+    "mtime": 1786416091.5843086,
     "ast_hash": "ccdebf3dee68966e2ad74598f6365f04",
     "semantic_hash": "ccdebf3dee68966e2ad74598f6365f04"
   },
@@ -3045,8 +3040,8 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1786186795.959713,
-    "ast_hash": "0ca6b3bb576ed6808ca1a35c523667ea",
+    "mtime": 1786423585.2588346,
+    "ast_hash": "4e7f727b9eed2fff20e8f55b07932b56",
     "semantic_hash": ""
   },
   "crmbugs.md": {
@@ -3070,8 +3065,8 @@
     "semantic_hash": ""
   },
   "python/requirements.txt": {
-    "mtime": 1786357301.3218496,
-    "ast_hash": "a1e8b13f2fa098a58a4d62398cf40322",
+    "mtime": 1786423586.1626854,
+    "ast_hash": "a53cb7d27b0ca629e6195a141e30c95b",
     "semantic_hash": ""
   },
   "app/Http/Controllers/BankAccountStatementController.php": {
@@ -3145,8 +3140,8 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/BankAccountImportController.php": {
-    "mtime": 1786357300.8912532,
-    "ast_hash": "c85d3d30415465fa7d708bbdfadde927",
+    "mtime": 1786423571.6414568,
+    "ast_hash": "336732260cd5c2cf0e58bd64958a3767",
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/partials/import-match-panel.blade.php": {
@@ -3350,8 +3345,8 @@
     "semantic_hash": ""
   },
   "app/Services/BankStatementParseService.php": {
-    "mtime": 1786357300.898561,
-    "ast_hash": "a04a4666be856416787f6eb62c7ecdf9",
+    "mtime": 1786423567.4486156,
+    "ast_hash": "11445f8575b49241f6204fd6b7da7b15",
     "semantic_hash": ""
   },
   "database/migrations/2026_08_09_084110_add_meta_to_bank_statement_entries_table.php": {
@@ -3365,13 +3360,13 @@
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/partials/reconciliation-panel.blade.php": {
-    "mtime": 1786357301.3268511,
-    "ast_hash": "66225ad041717cad20401d1257500388",
+    "mtime": 1786423579.7514434,
+    "ast_hash": "af1c5122fa9383b28c132a932e211b8c",
     "semantic_hash": ""
   },
   "tests/Feature/BankStatementReconciliationTest.php": {
-    "mtime": 1786357301.3330922,
-    "ast_hash": "f6b36a116f967b210e4e825e1fa9804c",
+    "mtime": 1786423621.8238547,
+    "ast_hash": "207007de33580b40a91feecbb3870510",
     "semantic_hash": ""
   },
   "tests/Unit/BankStatementMatchSuggesterTest.php": {
@@ -3430,7 +3425,7 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/ManualJournalEntryController.php": {
-    "mtime": 1786358130.7715333,
+    "mtime": 1786416091.5870805,
     "ast_hash": "6d56df50d1963c8d84ebb6322d76379e",
     "semantic_hash": ""
   },
@@ -3440,7 +3435,7 @@
     "semantic_hash": ""
   },
   "app/Services/ManualJournalEntryService.php": {
-    "mtime": 1786358013.6001272,
+    "mtime": 1786416091.5870805,
     "ast_hash": "6f2ea044da86e368b21e75ecf62a5720",
     "semantic_hash": ""
   },
@@ -3450,7 +3445,7 @@
     "semantic_hash": ""
   },
   "resources/views/financial-reports/journal-entry-create.blade.php": {
-    "mtime": 1786358013.6451805,
+    "mtime": 1786416091.5703294,
     "ast_hash": "f596e213b8b0b43881780643ec69adc0",
     "semantic_hash": ""
   },
@@ -3460,13 +3455,18 @@
     "semantic_hash": ""
   },
   "app/Console/Commands/RepostPaidTransactionJournals.php": {
-    "mtime": 1786358113.2761579,
+    "mtime": 1786358302.1080058,
     "ast_hash": "8e7ef4c7ea70925437c45909dfdfe7f8",
     "semantic_hash": ""
   },
   "tests/Unit/ProfitLossReportTest.php": {
-    "mtime": 1786358163.1651077,
+    "mtime": 1786358302.1119432,
     "ast_hash": "048ad97802dcc778d9681e9fb4bf683f",
+    "semantic_hash": ""
+  },
+  "app/Services/BankCsvStatementParser.php": {
+    "mtime": 1786423553.055638,
+    "ast_hash": "b4acd3d81630dbbd1c1e3ef018949ee3",
     "semantic_hash": ""
   }
 }

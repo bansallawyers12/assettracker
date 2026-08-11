@@ -101,6 +101,42 @@ it('parses stored csv via bank statement parse service', function () {
         ->and($result['entries'])->toHaveCount(2);
 });
 
+it('parses csv content stored with a txt extension', function () {
+    Storage::fake('local');
+
+    $csv = file_get_contents(base_path('tests/fixtures/macquarie-bank-statement.csv'));
+    Storage::disk('local')->put('bank_statements/sample.txt', $csv);
+
+    $service = new BankStatementParseService;
+    $result = $service->parseStoredFile('bank_statements/sample.txt', 'Macquarie');
+
+    expect($result['success'])->toBeTrue()
+        ->and($result['entries'])->toHaveCount(2);
+});
+
+it('parses macquarie csv profile without deprecation warnings', function () {
+    $parser = new BankCsvStatementParser;
+    $fixture = base_path('tests/fixtures/macquarie-bank-statement.csv');
+
+    $warnings = [];
+    set_error_handler(function (int $severity, string $message) use (&$warnings): bool {
+        if ($severity === E_DEPRECATED) {
+            $warnings[] = $message;
+        }
+
+        return false;
+    });
+
+    try {
+        $result = $parser->parseFile($fixture, 'Macquarie');
+    } finally {
+        restore_error_handler();
+    }
+
+    expect($warnings)->toBeEmpty()
+        ->and($result['success'])->toBeTrue();
+});
+
 it('restricts bank import uploads to csv only', function () {
     $importController = file_get_contents(app_path('Http/Controllers/BankAccountImportController.php'));
     $legacyController = file_get_contents(app_path('Http/Controllers/BankImportController.php'));
