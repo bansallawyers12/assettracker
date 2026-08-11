@@ -884,6 +884,7 @@ class BusinessEntityController extends Controller
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
+            'payment_channel' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentChannels)),
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
@@ -1053,6 +1054,7 @@ class BusinessEntityController extends Controller
                     'due_date' => $request->due_date,
                     'paid_at' => $request->paid_at,
                     'payment_method' => $request->payment_method,
+                    'payment_channel' => $this->resolvedPaymentChannel($request),
                     'paid_by' => $paidBy,
                     'bank_account_id' => $bankAccountId,
                     'payment_document_id' => $paymentDocumentId,
@@ -1217,6 +1219,7 @@ class BusinessEntityController extends Controller
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
+            'payment_channel' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentChannels)),
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
@@ -1369,6 +1372,7 @@ class BusinessEntityController extends Controller
                 'due_date' => $request->due_date,
                 'paid_at' => $request->paid_at,
                 'payment_method' => $request->payment_method,
+                'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
                 'paid_by' => $paidBy,
                 'payment_document_id' => $paymentDocumentId,
                 'subject_to_bas' => $request->boolean('subject_to_bas'),
@@ -1494,6 +1498,7 @@ class BusinessEntityController extends Controller
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
+            'payment_channel' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentChannels)),
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
@@ -1621,6 +1626,7 @@ class BusinessEntityController extends Controller
                 'date', 'amount', 'description', 'vendor_id', 'vendor_name', 'invoice_number', 'transaction_type',
                 'related_entity_id', 'asset_id', 'counterpart_bank_account_id', 'transfer_group_id',
                 'payment_status', 'due_date', 'paid_at', 'payment_method',
+                'payment_channel',
                 'payment_document_id',
                 'subject_to_bas', 'is_flagged', 'comments',
             ]),
@@ -1726,6 +1732,7 @@ class BusinessEntityController extends Controller
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
             'payment_method' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentMethods)),
+            'payment_channel' => 'nullable|in:'.implode(',', array_keys(Transaction::$paymentChannels)),
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
@@ -1818,6 +1825,7 @@ class BusinessEntityController extends Controller
                 'date', 'amount', 'description', 'vendor_id', 'vendor_name', 'invoice_number', 'transaction_type',
                 'related_entity_id', 'asset_id', 'counterpart_bank_account_id', 'transfer_group_id',
                 'payment_status', 'due_date', 'paid_at', 'payment_method',
+                'payment_channel',
                 'payment_document_id',
                 'subject_to_bas', 'is_flagged', 'comments',
             ]),
@@ -1826,6 +1834,7 @@ class BusinessEntityController extends Controller
                 'gst_status' => $gstResolved['gst_status'],
                 'gst_basis' => $gstResolved['gst_basis'],
                 'paid_by' => $paidBy,
+                'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
                 'subject_to_bas' => $request->boolean('subject_to_bas'),
                 'is_flagged' => $request->boolean('is_flagged'),
                 'comments' => $request->input('comments'),
@@ -1874,7 +1883,10 @@ class BusinessEntityController extends Controller
         $entry->update(['transaction_id' => $transaction->id]);
         // Optionally, update the transaction's bank_account_id if it's null
         if (is_null($transaction->bank_account_id)) {
-            $transaction->update(['bank_account_id' => $entry->bank_account_id]);
+            $transaction->update([
+                'bank_account_id' => $entry->bank_account_id,
+                'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+            ]);
         }
 
         // Redirect back to the entity show page (likely to the bank accounts tab)
@@ -2676,7 +2688,10 @@ class BusinessEntityController extends Controller
             }
             // Update the transaction's bank_account_id if it's not already set
             if (is_null($transaction->bank_account_id)) {
-                $transaction->update(['bank_account_id' => $bankAccount->id]);
+                $transaction->update([
+                    'bank_account_id' => $bankAccount->id,
+                    'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+                ]);
             } elseif ($transaction->bank_account_id !== $bankAccount->id) {
                 // Handle case where transaction is already linked to a different account (optional)
                 Log::warning("Transaction {$transactionId} allocated to BankStatementEntry {$bankStatementEntry->id} but already belongs to BankAccount {$transaction->bank_account_id}.");
@@ -2700,7 +2715,7 @@ class BusinessEntityController extends Controller
      *
      * @return View|RedirectResponse
      */
-    public function createTransaction(BusinessEntity $businessEntity, BankAccount $bankAccount)
+    public function createTransaction(Request $request, BusinessEntity $businessEntity, BankAccount $bankAccount)
     {
         $this->authorize('update', $businessEntity);
 
@@ -2736,9 +2751,24 @@ class BusinessEntityController extends Controller
             'due_date' => '',
             'paid_at' => '',
             'payment_method' => '',
+            'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
             'paid_by' => '',
             'direction' => 'expense',
         ]);
+
+        if ($request->filled('payment_channel')) {
+            $requestedChannel = (string) $request->input('payment_channel');
+            if (array_key_exists($requestedChannel, Transaction::$paymentChannels)) {
+                $transactionData['payment_channel'] = $requestedChannel;
+            }
+        }
+
+        if ($request->filled('payment_status')) {
+            $requestedStatus = (string) $request->input('payment_status');
+            if (in_array($requestedStatus, ['paid', 'unpaid'], true)) {
+                $transactionData['payment_status'] = $requestedStatus;
+            }
+        }
 
         if (empty($transactionData['vendor_id']) && ! empty($transactionData['vendor_name'])) {
             $matchedVendorId = Vendor::query()
@@ -3336,6 +3366,7 @@ class BusinessEntityController extends Controller
             'route_business_entity_id' => $routeBusinessEntity->id,
             'request_business_entity_id' => $request->input('business_entity_id'),
             'payment_status' => $request->input('payment_status'),
+            'payment_channel' => $request->input('payment_channel'),
             'due_date' => $request->input('due_date'),
             'paid_at' => $request->input('paid_at'),
             'transaction_type' => $request->input('transaction_type'),
@@ -3687,6 +3718,20 @@ class BusinessEntityController extends Controller
         }
     }
 
+    private function resolvedPaymentChannel(Request $request, ?Transaction $existing = null): string
+    {
+        $raw = $request->input('payment_channel');
+        if (is_string($raw) && array_key_exists($raw, Transaction::$paymentChannels)) {
+            return $raw;
+        }
+
+        if ($existing && is_string($existing->payment_channel) && array_key_exists($existing->payment_channel, Transaction::$paymentChannels)) {
+            return $existing->payment_channel;
+        }
+
+        return Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT;
+    }
+
     /**
      * Other entity bank accounts selectable as an internal-transfer counterpart.
      *
@@ -3803,6 +3848,11 @@ class BusinessEntityController extends Controller
         ?BusinessEntity $bookingEntity = null,
         bool $requireWhenPaid = false
     ): ?int {
+        $paymentChannel = $this->resolvedPaymentChannel($request, $existing);
+        if ($paymentChannel !== Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT) {
+            return null;
+        }
+
         if ($request->input('payment_status') !== 'paid') {
             return $this->validatedBankAccountId($request, $bookingEntity);
         }

@@ -118,6 +118,10 @@
                         <p class="text-sm text-gray-900 dark:text-gray-100">{{ \App\Models\Transaction::$paymentMethods[$transaction->payment_method] ?? ($transaction->payment_method ? ucfirst($transaction->payment_method) : '—') }}</p>
                     </div>
                     <div>
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Payment Channel</p>
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ \App\Models\Transaction::$paymentChannels[$transaction->payment_channel ?? \App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT] ?? '—' }}</p>
+                    </div>
+                    <div>
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                             {{ $transaction->direction === 'income' ? 'Received By' : 'Paid By' }}
                         </p>

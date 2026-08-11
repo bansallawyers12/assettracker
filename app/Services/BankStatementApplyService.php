@@ -132,6 +132,7 @@ class BankStatementApplyService
                 $transaction = Transaction::create([
                     'business_entity_id' => $businessEntity->id,
                     'bank_account_id' => $bankAccount->id,
+                    'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
                     'counterpart_bank_account_id' => $counterpartId,
                     'transfer_group_id' => $transferGroupId,
                     'chart_of_account_id' => $chartAccountId,
@@ -203,6 +204,7 @@ class BankStatementApplyService
         $updates = [];
         if ($transaction->bank_account_id === null) {
             $updates['bank_account_id'] = $bankAccount->id;
+            $updates['payment_channel'] = Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT;
         }
         if (($transaction->payment_status ?? 'paid') === 'unpaid') {
             $updates['payment_status'] = 'paid';

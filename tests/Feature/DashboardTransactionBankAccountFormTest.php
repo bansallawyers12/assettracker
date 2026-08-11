@@ -1,12 +1,15 @@
 <?php
 
-uses(Tests\TestCase::class);
+use Tests\TestCase;
 
-it('marks the dashboard transaction form to require a bank account when paid', function () {
+uses(TestCase::class);
+
+it('marks the dashboard transaction form to conditionally require bank account by channel', function () {
     $html = file_get_contents(resource_path('views/dashboard.blade.php'));
 
-    expect($html)->toContain('data-require-bank-account-when-paid="true"')
-        ->and($html)->toContain('id="store-transaction-form"');
+    expect($html)->toContain('data-require-bank-account-when-paid="false"')
+        ->and($html)->toContain('id="store-transaction-form"')
+        ->and($html)->toContain('name="payment_channel"');
 });
 
 it('labels the shared paid-by bank account field as cash', function () {

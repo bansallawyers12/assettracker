@@ -191,6 +191,7 @@ class BankImportController extends Controller
                     $transaction = Transaction::create([
                         'business_entity_id' => $businessEntity->id,
                         'bank_account_id' => $bankEntry->bank_account_id,
+                        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
                         'chart_of_account_id' => $chartAccount->id,
                         'date' => $bankEntry->date,
                         'amount' => abs((float) $bankEntry->amount),

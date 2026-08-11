@@ -18,7 +18,7 @@
                         </ul>
                     </div>
                 @endif
-                <form method="POST" id="bank-edit-transaction-form" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data" data-transaction-paid-by-form data-require-bank-account-when-paid="true" data-booking-entity-id="{{ $businessEntity->id }}">
+                <form method="POST" id="bank-edit-transaction-form" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data" data-transaction-paid-by-form data-require-bank-account-when-paid="false" data-booking-entity-id="{{ $businessEntity->id }}">
                     @csrf
                     @method('PUT')
                     <input type="hidden" name="business_entity_id" id="business_entity_id" value="{{ $businessEntity->id }}">
@@ -33,6 +33,7 @@
                         $dir = $transaction->direction;
                         $oldDir = old('direction', $dir);
                         $oldStatus = old('payment_status', $transaction->payment_status ?? 'paid');
+                        $oldChannel = old('payment_channel', $transaction->payment_channel ?? \App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT);
                     @endphp
 
                     {{-- Direction toggle --}}
@@ -211,6 +212,15 @@
                                     @endforeach
                                 </select>
                                 @error('payment_method') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Payment Channel</label>
+                                <select name="payment_channel" id="payment_channel" class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
+                                    @foreach (\App\Models\Transaction::$paymentChannels as $value => $label)
+                                        <option value="{{ $value }}" @selected($oldChannel === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('payment_channel') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             @php
                                 $pbSplit = \App\Support\TransactionPayerResolver::splitStoredForForm($transaction->paid_by);

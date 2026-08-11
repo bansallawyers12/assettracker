@@ -37,6 +37,7 @@
 
                 <form method="POST" action="{{ route('business-entities.bank-accounts.transactions.store', [$businessEntity->id, $bankAccount->id]) }}" enctype="multipart/form-data" id="bank-store-transaction-form" data-transaction-paid-by-form>
                     @csrf
+                    <input type="hidden" name="payment_channel" value="{{ \App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT }}">
                     @if(in_array(request('return_to'), ['bank-account', 'entity', 'transactions-page'], true))
                         <input type="hidden" name="return_to" value="{{ request('return_to') }}">
                         @if(request('return_to') === 'transactions-page' && request()->filled('return_business_entity_id'))

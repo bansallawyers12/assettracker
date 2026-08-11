@@ -16,13 +16,21 @@ class Transaction extends Model
 
     public const TYPE_INTERNAL_TRANSFER = 'internal_transfer';
 
+    public const PAYMENT_CHANNEL_BANK_ACCOUNT = 'bank_account';
+
+    public const PAYMENT_CHANNEL_DIRECTOR_FUNDS = 'director_funds';
+
+    public const PAYMENT_CHANNEL_EXTERNAL_THIRD_PARTY = 'external_third_party';
+
+    public const PAYMENT_CHANNEL_CASH = 'cash';
+
     protected $fillable = [
         'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description', 'vendor_id', 'vendor_name',
         'transaction_type', 'gst_amount', 'gst_status', 'gst_basis', 'receipt_path', 'document_id',
         'bank_account_id', 'counterpart_bank_account_id', 'transfer_group_id',
         'tracking_category_id', 'tracking_sub_category_id',
         'chart_of_account_id',
-        'invoice_number', 'payment_status', 'due_date', 'paid_at', 'payment_method',
+        'invoice_number', 'payment_status', 'due_date', 'paid_at', 'payment_method', 'payment_channel',
         'paid_by', 'payment_document_id',
         'subject_to_bas', 'is_flagged', 'comments',
     ];
@@ -38,6 +46,7 @@ class Transaction extends Model
     ];
 
     protected $attributes = [
+        'payment_channel' => self::PAYMENT_CHANNEL_BANK_ACCOUNT,
         'subject_to_bas' => false,
         'is_flagged' => false,
         'comments' => null,
@@ -206,6 +215,14 @@ class Transaction extends Model
         'card' => 'Card',
         'bpay' => 'BPAY',
         'other' => 'Other',
+    ];
+
+    /** Payment channel options */
+    public static $paymentChannels = [
+        self::PAYMENT_CHANNEL_BANK_ACCOUNT => 'Bank account',
+        self::PAYMENT_CHANNEL_DIRECTOR_FUNDS => 'Director funds',
+        self::PAYMENT_CHANNEL_EXTERNAL_THIRD_PARTY => 'External third party',
+        self::PAYMENT_CHANNEL_CASH => 'Cash',
     ];
 
     /** GST status display labels */

@@ -12,6 +12,12 @@ function isTransactionPaid(form) {
     return paidRadio?.checked ?? false;
 }
 
+function paymentChannel(form) {
+    const channelSelect = form.querySelector('#payment_channel, [name="payment_channel"]');
+
+    return String(paidBySelectValue(channelSelect) || channelSelect?.value || '').trim();
+}
+
 function bookingEntityId(form) {
     const fromDataset = String(form.dataset.bookingEntityId || '').trim();
     if (fromDataset) {
@@ -137,9 +143,10 @@ function setupTransactionPaidByBankAccount(form) {
     async function syncBankAccountField() {
         const paid = isTransactionPaid(form);
         const requireWhenPaid = form.dataset.requireBankAccountWhenPaid === 'true';
+        const channel = paymentChannel(form);
         const entityId = resolveBankAccountEntityId(form, paidBySelect);
 
-        if (!paid || !entityId) {
+        if (!paid || !entityId || (channel && channel !== 'bank_account')) {
             wrap.classList.add('hidden');
             window.setSelectValue?.(bankSelect, '');
             window.setSelectDisabled?.(bankSelect, true);
@@ -148,9 +155,13 @@ function setupTransactionPaidByBankAccount(form) {
             return;
         }
 
-        // Legacy forms only show the bank picker when an entity payer is selected,
-        // unless the form opts into requiring a cash account for every paid txn.
-        if (!requireWhenPaid && !parseEntityIdFromPaidBy(paidBySelectValue(paidBySelect))) {
+        // For bank-account channel, always show picker while paid.
+        // For non-bank channels, keep it hidden and cleared.
+        if (
+            channel !== 'bank_account'
+            && !requireWhenPaid
+            && !parseEntityIdFromPaidBy(paidBySelectValue(paidBySelect))
+        ) {
             wrap.classList.add('hidden');
             window.setSelectValue?.(bankSelect, '');
             window.setSelectDisabled?.(bankSelect, true);
@@ -209,6 +220,9 @@ function setupTransactionPaidByBankAccount(form) {
         bindPaidBySelectChange(paidBySelect, syncBankAccountField);
         bindBookingEntityChange(form, syncBankAccountField);
         bindPaymentStatusChange(form, syncBankAccountField);
+        form.querySelectorAll('#payment_channel, [name="payment_channel"]').forEach((input) => {
+            input.addEventListener('change', syncBankAccountField);
+        });
 
         bankSelect.addEventListener('change', () => {
             bankSelect.dataset.selected = paidBySelectValue(bankSelect);

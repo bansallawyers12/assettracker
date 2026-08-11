@@ -89,7 +89,7 @@ Further frontend notes: [`docs/TECH_UPDATE.md`](docs/TECH_UPDATE.md). ATO lodgem
 - Composer 2+
 - Node.js **22+** (recommended) and npm
 - PostgreSQL 13+
-- Python 3.8+ (email `.msg` parsing and PDF statement parsing; bank CSV import is handled in PHP)
+- Python 3.8+ locally (email `.msg` parsing and PDF statement parsing; bank CSV import is handled in PHP)
 - Redis recommended for cache/queue (see `.env.example`)
 - AWS S3 credentials if using cloud document storage
 - Gmail API credentials if enabling email sync
@@ -189,7 +189,7 @@ Further frontend notes: [`docs/TECH_UPDATE.md`](docs/TECH_UPDATE.md). ATO lodgem
 
 ### Production deploy
 
-See [docs/PRODUCTION.md](docs/PRODUCTION.md) for server details, Node/npm versions, and post-deploy steps (`npm ci`, `npm run build`).
+See [docs/PRODUCTION.md](docs/PRODUCTION.md) for server details, runtime versions (including production Python 3.11), and post-deploy steps (`npm ci`, `npm run build`).
 
 `.env.example` is production-oriented. For local HTTP (e.g. `http://localhost` or XAMPP):
 

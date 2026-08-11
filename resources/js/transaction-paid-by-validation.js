@@ -18,14 +18,16 @@ function isTransactionPaid(form) {
     return paidRadio?.checked ?? false;
 }
 
+function paymentChannel(form) {
+    const channelSelect = form.querySelector('#payment_channel, [name="payment_channel"]');
+
+    return String(paidBySelectValue(channelSelect) || channelSelect?.value || '').trim();
+}
+
 function transactionDirection(form) {
     const checked = form.querySelector('input[name="direction"]:checked');
 
     return checked?.value ?? 'expense';
-}
-
-function isEntityPaidBy(selected) {
-    return /^be:\d+$/.test(String(selected).trim());
 }
 
 function paidByRequiredMessage(form) {
@@ -123,8 +125,9 @@ export function validateTransactionPaidBy(form) {
 
     const bankWrap = form.querySelector('#paid_by_bank_account_wrap');
     const bankSelect = form.querySelector('#paid_by_bank_account_id');
-    const requireBank = form.dataset.requireBankAccountWhenPaid === 'true'
-        || (isEntityPaidBy(selected) && transactionDirection(form) === 'income');
+    const requireBankByChannel = paymentChannel(form) === 'bank_account';
+    const requireBank = requireBankByChannel
+        || form.dataset.requireBankAccountWhenPaid === 'true';
 
     if (requireBank && bankSelect) {
         const wrapVisible = bankWrap && !bankWrap.classList.contains('hidden');
@@ -134,7 +137,9 @@ export function validateTransactionPaidBy(form) {
             showPaidByClientError(
                 form,
                 'bank_account',
-                form.dataset.requireBankAccountWhenPaid === 'true'
+                requireBankByChannel
+                    ? 'Bank account is required when payment channel is bank account.'
+                    : form.dataset.requireBankAccountWhenPaid === 'true'
                     ? 'Bank account is required for paid transactions.'
                     : 'Bank account is required when an entity is selected.'
             );

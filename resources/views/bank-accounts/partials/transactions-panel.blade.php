@@ -50,10 +50,12 @@
         'return_to' => $returnTo,
         'return_business_entity_id' => $isFullPage ? ($contextEntityId ?? null) : null,
     ], fn ($value) => $value !== null && $value !== '');
-    $createUrlTemplate = route('business-entities.bank-accounts.transactions.create', [
-        'businessEntity' => 'BUSINESS_ENTITY',
-        'bankAccount' => $bankAccount,
-    ]).'?'.http_build_query($createQuery);
+    $createUrlTemplate = route('dashboard').'?'.http_build_query(array_merge($createQuery, [
+        'open_add_transaction' => 1,
+        'business_entity_id' => 'BUSINESS_ENTITY',
+        'payment_status' => 'paid',
+        'payment_channel' => \App\Models\Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+    ]));
     $importProcessUrl = route('bank-accounts.import.process', $bankAccount);
     $importUnmatchedUrl = route('bank-accounts.import.unmatched', $bankAccount);
     $importApplyUrl = route('bank-accounts.import.apply', $bankAccount);
@@ -82,9 +84,9 @@
 >
     @if($canManageTransactions)
         <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Add transaction</h3>
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Add non-bank entry</h3>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Book to an entity on this account. Asset tagging is optional.
+                Record paid transactions not made through this bank account.
             </p>
 
             <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -128,7 +130,7 @@
                     @endif
                     class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                    Add transaction
+                    Add non-bank entry
                 </button>
             </div>
         </div>

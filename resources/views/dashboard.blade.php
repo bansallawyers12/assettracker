@@ -38,13 +38,14 @@
 
             {{-- Add Transaction Section (Collapsible) --}}
             @php
-                $oldStatus = old('payment_status', session('transactionData.payment_status', 'paid'));
+                $oldStatus = old('payment_status', session('transactionData.payment_status', request('payment_status', 'paid')));
+                $oldChannel = old('payment_channel', session('transactionData.payment_channel', request('payment_channel', \App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT)));
                 $txnLabel = 'block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5';
                 $txnInput = 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 shadow-xs placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
                 $txnSelect = 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 text-sm text-gray-900 dark:text-gray-100 shadow-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
                 $txnSection = 'rounded-xl border border-gray-100 dark:border-gray-700/80 bg-gray-50/60 dark:bg-gray-900/30 p-5 space-y-4';
             @endphp
-            <div id="add-transaction-section" class="{{ ($errors->any() || session('error') || session('keep_open')) ? '' : 'hidden' }} overflow-visible rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl transition-all duration-300">
+            <div id="add-transaction-section" class="{{ ($errors->any() || session('error') || session('keep_open') || request()->boolean('open_add_transaction')) ? '' : 'hidden' }} overflow-visible rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl transition-all duration-300">
                 <div class="relative border-b border-gray-100 dark:border-gray-700 bg-linear-to-r from-blue-50 via-white to-indigo-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800/90 px-6 py-5">
                     <div class="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-blue-500 via-indigo-500 to-violet-500"></div>
                     <div class="flex items-start justify-between gap-4">
@@ -55,7 +56,7 @@
                                 </span>
                                 Add Transactions
                             </h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Record income/expense for an entity. Paid transactions need a bank account and open that account’s transaction list after save.</p>
+                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Record income/expense for an entity. Paid transactions only need a bank account when the payment channel is bank account.</p>
                         </div>
                         <button type="button" id="cancel-transaction-btn" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors" aria-label="Close form">
                             <x-lucide-x class="w-5 h-5" />
@@ -298,7 +299,7 @@
                       data-store-action-template="/business-entities/__ID__/transactions"
                       id="store-transaction-form"
                       data-transaction-paid-by-form
-                      data-require-bank-account-when-paid="true"
+                      data-require-bank-account-when-paid="false"
                       enctype="multipart/form-data"
                       class="dashboard-txn-form space-y-6"
                       x-data="window.dashboardTxnBatch(@js($dashboardTxnBatchConfig))"
@@ -319,7 +320,7 @@
                             <x-tom-select name="business_entity_id" id="business_entity_id" class="{{ $txnSelect }}" required>
                                 <option value="">Select Entity</option>
                                 @foreach ($businessEntities as $entity)
-                                    <option value="{{ $entity->id }}" {{ old('business_entity_id', session('transactionData.business_entity_id')) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
+                                    <option value="{{ $entity->id }}" {{ old('business_entity_id', session('transactionData.business_entity_id', request('business_entity_id'))) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
                                 @endforeach
                             </x-tom-select>
                             @error('business_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
@@ -447,6 +448,15 @@
                                     @endforeach
                                 </x-tom-select>
                                 @error('payment_method') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                            </div>
+                            <div>
+                                <label class="{{ $txnLabel }}">Payment Channel</label>
+                                <x-tom-select name="payment_channel" id="payment_channel" class="{{ $txnSelect }} px-3 py-2.5">
+                                    @foreach (\App\Models\Transaction::$paymentChannels as $value => $label)
+                                        <option value="{{ $value }}" @selected($oldChannel === $value)>{{ $label }}</option>
+                                    @endforeach
+                                </x-tom-select>
+                                @error('payment_channel') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                             <div class="md:col-span-2 lg:col-span-1">
                                 @php

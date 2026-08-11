@@ -148,6 +148,7 @@ class InvoicePaymentService
                 'business_entity_id' => $businessEntity->id,
                 'asset_id' => $lockedInvoice->asset_id,
                 'bank_account_id' => $bankAccount->id,
+                'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
                 'date' => $data['paid_at'],
                 'amount' => $lockedInvoice->total_amount,
                 'description' => 'Payment received for Invoice '.$lockedInvoice->invoice_number,
