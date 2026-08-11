@@ -4,7 +4,11 @@
 
 @if($transactions->isEmpty())
     <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
-        No transactions on this account yet.
+        @if(! empty($filtersActive))
+            No transactions match these filters.
+        @else
+            No transactions on this account yet.
+        @endif
     </p>
 @else
     <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">

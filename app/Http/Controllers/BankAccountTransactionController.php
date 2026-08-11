@@ -7,9 +7,11 @@ use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\Transaction;
 use App\Services\BankStatementMatchSuggester;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class BankAccountTransactionController extends Controller
@@ -48,6 +50,8 @@ class BankAccountTransactionController extends Controller
         $this->ensureAccessible($bankAccount);
         $bankAccount->loadMissing(['holderEntity', 'holderPerson']);
 
+        $filters = $this->validatedTransactionFilters($request);
+
         $contextEntityId = $request->filled('business_entity_id')
             ? $request->integer('business_entity_id')
             : null;
@@ -67,6 +71,8 @@ class BankAccountTransactionController extends Controller
         if ($contextEntityId !== null) {
             $query->where('business_entity_id', $contextEntityId);
         }
+
+        $this->applyTransactionFilters($query, $filters, $contextEntityId);
 
         $transactions = $query->get();
         $eligibleEntities = $this->bookableEntities($bankAccount);
@@ -94,6 +100,8 @@ class BankAccountTransactionController extends Controller
             $defaultAssetId
         );
 
+        $filtersActive = collect($filters)->contains(fn ($value) => $value !== null && $value !== '');
+
         return [
             'bankAccount' => $bankAccount,
             'transactions' => $transactions,
@@ -107,7 +115,117 @@ class BankAccountTransactionController extends Controller
             'matchCandidates' => $matchCandidates,
             'suggestions' => $suggestions,
             'transactionTypeGroups' => Transaction::typeSelectGroups(),
+            'filters' => $filters,
+            'filtersActive' => $filtersActive,
         ];
+    }
+
+    /**
+     * @return array{
+     *     q: ?string,
+     *     date_from: ?string,
+     *     date_to: ?string,
+     *     entity_id: ?int,
+     *     type: ?string,
+     *     direction: ?string,
+     *     payment_status: ?string,
+     *     match_status: ?string
+     * }
+     */
+    private function validatedTransactionFilters(Request $request): array
+    {
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:255'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+            'entity_id' => ['nullable', 'integer'],
+            'type' => ['nullable', 'string', Rule::in(array_keys(Transaction::allTypes()))],
+            'direction' => ['nullable', Rule::in(['income', 'expense'])],
+            'payment_status' => ['nullable', Rule::in(['paid', 'unpaid'])],
+            'match_status' => ['nullable', Rule::in(['matched', 'unmatched'])],
+        ]);
+
+        $q = isset($validated['q']) ? trim((string) $validated['q']) : '';
+
+        return [
+            'q' => $q !== '' ? $q : null,
+            'date_from' => $validated['date_from'] ?? null,
+            'date_to' => $validated['date_to'] ?? null,
+            'entity_id' => isset($validated['entity_id']) ? (int) $validated['entity_id'] : null,
+            'type' => $validated['type'] ?? null,
+            'direction' => $validated['direction'] ?? null,
+            'payment_status' => $validated['payment_status'] ?? null,
+            'match_status' => $validated['match_status'] ?? null,
+        ];
+    }
+
+    /**
+     * @param  Builder<Transaction>  $query
+     * @param  array{
+     *     q: ?string,
+     *     date_from: ?string,
+     *     date_to: ?string,
+     *     entity_id: ?int,
+     *     type: ?string,
+     *     direction: ?string,
+     *     payment_status: ?string,
+     *     match_status: ?string
+     * }  $filters
+     */
+    private function applyTransactionFilters(Builder $query, array $filters, ?int $contextEntityId): void
+    {
+        if ($filters['q']) {
+            $like = '%'.$filters['q'].'%';
+            $query->where(function (Builder $w) use ($like) {
+                $w->where('description', 'like', $like)
+                    ->orWhere('invoice_number', 'like', $like)
+                    ->orWhere('vendor_name', 'like', $like)
+                    ->orWhereHas('vendor', fn (Builder $vq) => $vq->where('name', 'like', $like));
+            });
+        }
+
+        if ($filters['date_from']) {
+            $query->whereDate('date', '>=', $filters['date_from']);
+        }
+
+        if ($filters['date_to']) {
+            $query->whereDate('date', '<=', $filters['date_to']);
+        }
+
+        if ($contextEntityId === null && $filters['entity_id']) {
+            $query->where('business_entity_id', $filters['entity_id']);
+        }
+
+        if ($filters['type']) {
+            $type = $filters['type'];
+            $query->where(function (Builder $q) use ($type) {
+                $q->where('transaction_type', $type)
+                    ->orWhereHas('lines', fn (Builder $lq) => $lq->where('transaction_type', $type));
+            });
+        }
+
+        if ($filters['direction']) {
+            $typeKeys = $filters['direction'] === 'income'
+                ? array_keys(Transaction::$incomeTypes)
+                : array_keys(Transaction::$expenseTypes);
+            $query->where(function (Builder $q) use ($typeKeys) {
+                $q->whereIn('transaction_type', $typeKeys)
+                    ->orWhere(function (Builder $q2) use ($typeKeys) {
+                        $q2->where('transaction_type', Transaction::TYPE_SPLIT)
+                            ->whereHas('lines', fn (Builder $lq) => $lq->whereIn('transaction_type', $typeKeys));
+                    });
+            });
+        }
+
+        if ($filters['payment_status']) {
+            $query->where('payment_status', $filters['payment_status']);
+        }
+
+        if ($filters['match_status'] === 'matched') {
+            $query->whereHas('bankStatementEntries');
+        } elseif ($filters['match_status'] === 'unmatched') {
+            $query->whereDoesntHave('bankStatementEntries');
+        }
     }
 
     /**

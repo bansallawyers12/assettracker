@@ -40,6 +40,8 @@
                 'matchCandidates' => $matchCandidates,
                 'suggestions' => $suggestions,
                 'transactionTypeGroups' => $transactionTypeGroups,
+                'filters' => $filters,
+                'filtersActive' => $filtersActive,
                 'isFullPage' => true,
             ])
         </div>

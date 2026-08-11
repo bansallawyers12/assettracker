@@ -38,9 +38,47 @@ function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
     const panel = root.querySelector('[data-bank-transactions-panel]') || root;
     const addButton = root.querySelector('[data-bank-transactions-add]');
     const entityPicker = root.querySelector('[data-bank-transactions-entity-picker]');
+    const filterForm = root.querySelector('[data-bank-transactions-filters]');
+    const filterKeys = ['q', 'date_from', 'date_to', 'entity_id', 'type', 'direction', 'payment_status', 'match_status'];
 
-    async function refreshTransactionsPanel() {
-        const url = panel.dataset.bankTransactionsIndexUrl || refreshUrl;
+    function buildIndexUrl(fromForm = filterForm) {
+        const baseUrl = panel.dataset.bankTransactionsIndexUrl || refreshUrl;
+        if (!baseUrl) {
+            return null;
+        }
+
+        const url = new URL(baseUrl, window.location.origin);
+        filterKeys.forEach((key) => url.searchParams.delete(key));
+
+        if (fromForm) {
+            const formData = new FormData(fromForm);
+            for (const [key, value] of formData.entries()) {
+                const trimmed = String(value ?? '').trim();
+                if (!trimmed || key === 'business_entity_id') {
+                    continue;
+                }
+                url.searchParams.set(key, trimmed);
+            }
+        }
+
+        return `${url.pathname}${url.search}`;
+    }
+
+    function syncBrowserUrl(indexUrl) {
+        if (!options.syncBrowserUrl || !indexUrl) {
+            return;
+        }
+
+        try {
+            const next = new URL(indexUrl, window.location.origin);
+            next.pathname = next.pathname.replace(/\/transactions\/?$/, '/transactions/page');
+            window.history.replaceState({}, '', `${next.pathname}${next.search}`);
+        } catch {
+            // Ignore invalid URLs.
+        }
+    }
+
+    async function loadTransactionsPanel(url, { updateExpand = false } = {}) {
         if (!url) {
             return;
         }
@@ -53,8 +91,23 @@ function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
             const refreshedRoot = contentHost;
             const nextPanel = refreshedRoot.querySelector('[data-bank-transactions-panel]') || refreshedRoot;
             const nextUrl = nextPanel.dataset.bankTransactionsIndexUrl || url;
+            window.initFlatpickr?.(refreshedRoot);
+            if (updateExpand && typeof options.onPanelUrlChange === 'function') {
+                options.onPanelUrlChange(nextPanel.dataset.bankTransactionsPageUrl || transactionsFullPageUrl(nextUrl));
+            }
             bindTransactionsPanel(refreshedRoot, signal, nextUrl, options);
+            syncBrowserUrl(nextUrl);
         }
+    }
+
+    async function refreshTransactionsPanel() {
+        const url = panel.dataset.bankTransactionsIndexUrl || refreshUrl;
+        await loadTransactionsPanel(url);
+    }
+
+    async function applyFilters(fromForm = filterForm) {
+        const url = buildIndexUrl(fromForm);
+        await loadTransactionsPanel(url, { updateExpand: true });
     }
 
     addButton?.addEventListener('click', () => {
@@ -77,6 +130,28 @@ function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
         window.location.assign(createUrl);
     }, { signal });
 
+    filterForm?.addEventListener('submit', (event) => {
+        event.preventDefault();
+        applyFilters(filterForm);
+    }, { signal });
+
+    filterForm?.querySelectorAll('[data-bank-transactions-filter-auto]').forEach((el) => {
+        el.addEventListener('change', () => {
+            applyFilters(filterForm);
+        }, { signal });
+    });
+
+    filterForm?.querySelector('[data-bank-transactions-filters-clear]')?.addEventListener('click', () => {
+        const clearUrl = filterForm.dataset.bankTransactionsClearUrl
+            || (() => {
+                const url = new URL(panel.dataset.bankTransactionsIndexUrl || refreshUrl, window.location.origin);
+                filterKeys.forEach((key) => url.searchParams.delete(key));
+
+                return `${url.pathname}${url.search}`;
+            })();
+        loadTransactionsPanel(clearUrl, { updateExpand: true });
+    }, { signal });
+
     bindReconciliationPanel(panel, signal, refreshTransactionsPanel);
 }
 
@@ -95,6 +170,7 @@ export function initBankTransactionsPage() {
     const controller = new AbortController();
     bindTransactionsPanel(contentHost, controller.signal, panel.dataset.bankTransactionsIndexUrl, {
         contentHost,
+        syncBrowserUrl: true,
     });
 }
 
@@ -867,6 +943,7 @@ export function initBankAccountModal() {
         setTransactionsExpandButton(fullPageUrl);
         bindTransactionsPanel(createHost, createController.signal, transactionsUrl, {
             contentHost: createHost,
+            onPanelUrlChange: setTransactionsExpandButton,
         });
     }
 

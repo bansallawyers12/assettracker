@@ -35,6 +35,28 @@ it('renders the bank account transactions full page view', function () {
         ->and($html)->toContain("session('success')");
 });
 
+it('includes transaction filter controls in the transactions panel partial', function () {
+    $html = file_get_contents(resource_path('views/bank-accounts/partials/transactions-panel.blade.php'));
+    $list = file_get_contents(resource_path('views/bank-accounts/partials/transactions-list.blade.php'));
+    $js = file_get_contents(resource_path('js/bank-account-modal.js'));
+    $controller = file_get_contents(app_path('Http/Controllers/BankAccountTransactionController.php'));
+
+    expect($html)->toContain('data-bank-transactions-filters')
+        ->and($html)->toContain('name="q"')
+        ->and($html)->toContain('name="date_from"')
+        ->and($html)->toContain('name="date_to"')
+        ->and($html)->toContain('name="direction"')
+        ->and($html)->toContain('name="type"')
+        ->and($html)->toContain('name="payment_status"')
+        ->and($html)->toContain('name="match_status"')
+        ->and($html)->toContain('data-bank-transactions-filters-clear')
+        ->and($list)->toContain('No transactions match these filters.')
+        ->and($js)->toContain('applyFilters')
+        ->and($js)->toContain('buildIndexUrl')
+        ->and($controller)->toContain('applyTransactionFilters')
+        ->and($controller)->toContain('validatedTransactionFilters');
+});
+
 it('supports returning to the full transactions page after create', function () {
     $create = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/create.blade.php'));
     $controller = file_get_contents(app_path('Http/Controllers/BusinessEntityController.php'));

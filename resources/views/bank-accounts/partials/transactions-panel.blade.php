@@ -1,13 +1,44 @@
 @php
     $isFullPage = (bool) ($isFullPage ?? false);
-    $indexUrl = route('bank-accounts.transactions.index', array_filter([
+    $filters = $filters ?? [
+        'q' => null,
+        'date_from' => null,
+        'date_to' => null,
+        'entity_id' => null,
+        'type' => null,
+        'direction' => null,
+        'payment_status' => null,
+        'match_status' => null,
+    ];
+    $filtersActive = (bool) ($filtersActive ?? false);
+    $filterQuery = array_filter([
+        'business_entity_id' => $contextEntityId ?? null,
+        'q' => $filters['q'] ?? null,
+        'date_from' => $filters['date_from'] ?? null,
+        'date_to' => $filters['date_to'] ?? null,
+        'entity_id' => ($contextEntityId ?? null) ? null : ($filters['entity_id'] ?? null),
+        'type' => $filters['type'] ?? null,
+        'direction' => $filters['direction'] ?? null,
+        'payment_status' => $filters['payment_status'] ?? null,
+        'match_status' => $filters['match_status'] ?? null,
+    ], fn ($value) => $value !== null && $value !== '');
+    $indexUrl = route('bank-accounts.transactions.index', array_merge(
+        ['bankAccount' => $bankAccount],
+        $filterQuery
+    ));
+    $pageUrl = route('bank-accounts.transactions.page', array_merge(
+        ['bankAccount' => $bankAccount],
+        $filterQuery
+    ));
+    $clearIndexUrl = route('bank-accounts.transactions.index', array_filter([
         'bankAccount' => $bankAccount,
         'business_entity_id' => $contextEntityId ?? null,
     ]));
-    $pageUrl = route('bank-accounts.transactions.page', array_filter([
+    $clearPageUrl = route('bank-accounts.transactions.page', array_filter([
         'bankAccount' => $bankAccount,
         'business_entity_id' => $contextEntityId ?? null,
     ]));
+    $filterFormAction = $isFullPage ? $clearPageUrl : $clearIndexUrl;
     $returnTo = $isFullPage
         ? 'transactions-page'
         : (($contextEntityId ?? null) ? 'entity' : 'bank-account');
@@ -29,6 +60,8 @@
     $matchCandidates = $matchCandidates ?? collect();
     $defaultImportEntityId = $defaultEntityId
         ?? ($importEntities->count() === 1 ? $importEntities->first()->id : null);
+    $showEntityFilter = ($contextEntityId ?? null) === null && ($eligibleEntities?->count() ?? 0) > 1;
+    $filterControlClass = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
 @endphp
 
 <div
@@ -116,12 +149,136 @@
                     <span class="font-normal text-gray-500 dark:text-gray-400">(filtered by entity)</span>
                 @endif
             </h3>
-            <span class="text-xs text-gray-500 dark:text-gray-400">{{ $transactions->count() }} total</span>
+            <span class="text-xs text-gray-500 dark:text-gray-400">
+                {{ $transactions->count() }}
+                {{ $filtersActive ? ($transactions->count() === 1 ? 'match' : 'matches') : 'total' }}
+            </span>
         </div>
+
+        <form
+            method="GET"
+            action="{{ $filterFormAction }}"
+            class="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60"
+            data-bank-transactions-filters
+            data-bank-transactions-clear-url="{{ $clearIndexUrl }}"
+        >
+            @if($contextEntityId)
+                <input type="hidden" name="business_entity_id" value="{{ $contextEntityId }}">
+            @endif
+
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 {{ $isFullPage ? 'lg:grid-cols-4' : '' }}">
+                <div class="{{ $isFullPage ? 'lg:col-span-2' : 'sm:col-span-2' }}">
+                    <label for="bank_tx_filter_q" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Search</label>
+                    <input
+                        id="bank_tx_filter_q"
+                        type="search"
+                        name="q"
+                        value="{{ $filters['q'] ?? '' }}"
+                        placeholder="Description, vendor, invoice #"
+                        class="{{ $filterControlClass }}"
+                    >
+                </div>
+
+                <div>
+                    <label for="bank_tx_filter_date_from" class="block text-xs font-medium text-gray-700 dark:text-gray-300">From</label>
+                    <x-date-input
+                        id="bank_tx_filter_date_from"
+                        name="date_from"
+                        value="{{ $filters['date_from'] ?? '' }}"
+                        class="{{ $filterControlClass }}"
+                    />
+                </div>
+
+                <div>
+                    <label for="bank_tx_filter_date_to" class="block text-xs font-medium text-gray-700 dark:text-gray-300">To</label>
+                    <x-date-input
+                        id="bank_tx_filter_date_to"
+                        name="date_to"
+                        value="{{ $filters['date_to'] ?? '' }}"
+                        class="{{ $filterControlClass }}"
+                    />
+                </div>
+
+                @if($showEntityFilter)
+                    <div>
+                        <label for="bank_tx_filter_entity" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Entity</label>
+                        <select id="bank_tx_filter_entity" name="entity_id" class="{{ $filterControlClass }}" data-bank-transactions-filter-auto>
+                            <option value="">All entities</option>
+                            @foreach($eligibleEntities as $entity)
+                                <option value="{{ $entity->id }}" @selected((int) ($filters['entity_id'] ?? 0) === (int) $entity->id)>
+                                    {{ $entity->legal_name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                @endif
+
+                <div>
+                    <label for="bank_tx_filter_direction" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Income / Expense</label>
+                    <select id="bank_tx_filter_direction" name="direction" class="{{ $filterControlClass }}" data-bank-transactions-filter-auto>
+                        <option value="">All</option>
+                        <option value="income" @selected(($filters['direction'] ?? '') === 'income')>Income</option>
+                        <option value="expense" @selected(($filters['direction'] ?? '') === 'expense')>Expense</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="bank_tx_filter_type" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Type</label>
+                    <select id="bank_tx_filter_type" name="type" class="{{ $filterControlClass }}" data-bank-transactions-filter-auto>
+                        <option value="">All types</option>
+                        @foreach(($transactionTypeGroups ?? \App\Models\Transaction::typeSelectGroups()) as $groupLabel => $types)
+                            <optgroup label="{{ $groupLabel }}">
+                                @foreach($types as $typeKey => $typeLabel)
+                                    <option value="{{ $typeKey }}" @selected(($filters['type'] ?? '') === $typeKey)>{{ $typeLabel }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label for="bank_tx_filter_payment" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Payment</label>
+                    <select id="bank_tx_filter_payment" name="payment_status" class="{{ $filterControlClass }}" data-bank-transactions-filter-auto>
+                        <option value="">All</option>
+                        <option value="paid" @selected(($filters['payment_status'] ?? '') === 'paid')>Paid</option>
+                        <option value="unpaid" @selected(($filters['payment_status'] ?? '') === 'unpaid')>Unpaid</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label for="bank_tx_filter_match" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Bank match</label>
+                    <select id="bank_tx_filter_match" name="match_status" class="{{ $filterControlClass }}" data-bank-transactions-filter-auto>
+                        <option value="">All</option>
+                        <option value="matched" @selected(($filters['match_status'] ?? '') === 'matched')>Matched</option>
+                        <option value="unmatched" @selected(($filters['match_status'] ?? '') === 'unmatched')>Unmatched</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                    type="submit"
+                    class="inline-flex items-center justify-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-500"
+                >
+                    Apply filters
+                </button>
+                @if($filtersActive)
+                    <button
+                        type="button"
+                        data-bank-transactions-filters-clear
+                        class="inline-flex items-center px-2 py-1.5 text-xs font-medium text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                    >
+                        Clear filters
+                    </button>
+                @endif
+            </div>
+        </form>
+
         <div class="mt-3" data-bank-transactions-list>
             @include('bank-accounts.partials.transactions-list', [
                 'transactions' => $transactions,
                 'bankAccount' => $bankAccount,
+                'filtersActive' => $filtersActive,
             ])
         </div>
     </div>
