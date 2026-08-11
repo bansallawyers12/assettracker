@@ -42,6 +42,9 @@ it('includes transaction filter controls in the transactions panel partial', fun
     $controller = file_get_contents(app_path('Http/Controllers/BankAccountTransactionController.php'));
 
     expect($html)->toContain('data-bank-transactions-filters')
+        ->and($html)->toContain('data-bank-transactions-filters-wrap')
+        ->and($html)->toContain('data-bank-transactions-filters-toggle')
+        ->and($html)->toContain('data-bank-transactions-filters-body')
         ->and($html)->toContain('name="q"')
         ->and($html)->toContain('name="date_from"')
         ->and($html)->toContain('name="date_to"')
@@ -53,6 +56,7 @@ it('includes transaction filter controls in the transactions panel partial', fun
         ->and($list)->toContain('No transactions match these filters.')
         ->and($js)->toContain('applyFilters')
         ->and($js)->toContain('buildIndexUrl')
+        ->and($js)->toContain('bindCollapsibleFilters')
         ->and($controller)->toContain('applyTransactionFilters')
         ->and($controller)->toContain('validatedTransactionFilters');
 });

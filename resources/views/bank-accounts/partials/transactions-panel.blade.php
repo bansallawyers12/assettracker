@@ -62,6 +62,7 @@
         ?? ($importEntities->count() === 1 ? $importEntities->first()->id : null);
     $showEntityFilter = ($contextEntityId ?? null) === null && ($eligibleEntities?->count() ?? 0) > 1;
     $filterControlClass = 'mt-1 block w-full rounded-md border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100';
+    $filtersExpanded = $filtersActive;
 @endphp
 
 <div
@@ -155,13 +156,45 @@
             </span>
         </div>
 
-        <form
-            method="GET"
-            action="{{ $filterFormAction }}"
-            class="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/60"
-            data-bank-transactions-filters
-            data-bank-transactions-clear-url="{{ $clearIndexUrl }}"
+        <div
+            class="mt-3 rounded-lg border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800/60"
+            data-bank-transactions-filters-wrap
+            data-bank-transactions-filters-active="{{ $filtersActive ? '1' : '0' }}"
         >
+            <button
+                type="button"
+                class="flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left"
+                data-bank-transactions-filters-toggle
+                aria-expanded="{{ $filtersExpanded ? 'true' : 'false' }}"
+                aria-controls="bank-tx-filters-body-{{ $bankAccount->id }}"
+            >
+                <span class="flex min-w-0 items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-900 dark:text-gray-100">Filters</span>
+                    @if($filtersActive)
+                        <span class="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300">
+                            Active
+                        </span>
+                    @endif
+                </span>
+                <x-lucide-chevron-down
+                    class="h-4 w-4 shrink-0 text-gray-500 transition-transform duration-200 dark:text-gray-400 {{ $filtersExpanded ? 'rotate-180' : '' }}"
+                    data-bank-transactions-filters-chevron
+                    aria-hidden="true"
+                />
+            </button>
+
+            <form
+                method="GET"
+                action="{{ $filterFormAction }}"
+                id="bank-tx-filters-body-{{ $bankAccount->id }}"
+                @class([
+                    'border-t border-gray-200 p-3 dark:border-gray-700',
+                    'hidden' => ! $filtersExpanded,
+                ])
+                data-bank-transactions-filters
+                data-bank-transactions-filters-body
+                data-bank-transactions-clear-url="{{ $clearIndexUrl }}"
+            >
             @if($contextEntityId)
                 <input type="hidden" name="business_entity_id" value="{{ $contextEntityId }}">
             @endif
@@ -272,7 +305,8 @@
                     </button>
                 @endif
             </div>
-        </form>
+            </form>
+        </div>
 
         <div class="mt-3" data-bank-transactions-list>
             @include('bank-accounts.partials.transactions-list', [

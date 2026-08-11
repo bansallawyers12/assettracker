@@ -33,6 +33,50 @@ function transactionsFullPageUrl(transactionsUrl) {
     }
 }
 
+const BANK_TX_FILTERS_EXPANDED_KEY = 'bank-tx-filters-expanded';
+
+function bindCollapsibleFilters(root, signal) {
+    const wrap = root.querySelector('[data-bank-transactions-filters-wrap]');
+    const toggle = wrap?.querySelector('[data-bank-transactions-filters-toggle]');
+    const body = wrap?.querySelector('[data-bank-transactions-filters-body]');
+    const chevron = wrap?.querySelector('[data-bank-transactions-filters-chevron]');
+
+    if (!wrap || !toggle || !body) {
+        return;
+    }
+
+    const filtersActive = wrap.dataset.bankTransactionsFiltersActive === '1';
+    let expanded = filtersActive;
+
+    if (!filtersActive) {
+        try {
+            expanded = sessionStorage.getItem(BANK_TX_FILTERS_EXPANDED_KEY) === '1';
+        } catch {
+            expanded = false;
+        }
+    }
+
+    function setExpanded(isOpen) {
+        body.classList.toggle('hidden', !isOpen);
+        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        chevron?.classList.toggle('rotate-180', isOpen);
+
+        if (!filtersActive) {
+            try {
+                sessionStorage.setItem(BANK_TX_FILTERS_EXPANDED_KEY, isOpen ? '1' : '0');
+            } catch {
+                // Ignore storage failures.
+            }
+        }
+    }
+
+    setExpanded(expanded);
+
+    toggle.addEventListener('click', () => {
+        setExpanded(body.classList.contains('hidden'));
+    }, { signal });
+}
+
 function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
     const contentHost = options.contentHost ?? root;
     const panel = root.querySelector('[data-bank-transactions-panel]') || root;
@@ -152,6 +196,7 @@ function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
         loadTransactionsPanel(clearUrl, { updateExpand: true });
     }, { signal });
 
+    bindCollapsibleFilters(root, signal);
     bindReconciliationPanel(panel, signal, refreshTransactionsPanel);
 }
 
