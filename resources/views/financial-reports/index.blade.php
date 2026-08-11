@@ -76,7 +76,7 @@
                 [
                     'route' => 'portfolio.index',
                     'title' => 'Property portfolio',
-                    'description' => 'Per-property P&L and yield vs acquisition cost',
+                    'description' => 'Per-property P&L and yield vs purchase price',
                     'icon' => 'lucide-house',
                     'iconBg' => 'bg-teal-100 dark:bg-teal-950/50',
                     'iconColor' => 'text-teal-600 dark:text-teal-400',

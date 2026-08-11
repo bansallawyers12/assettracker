@@ -124,7 +124,7 @@
                         <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[160px]">Loan Account</th>
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[100px]">Direct Debit</th>
                         <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[130px]">Rent Paid By</th>
-                        <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[90px]">Purchased</th>
+                        <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[90px]">Settlement</th>
                         <th class="py-2.5 px-2 text-right text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[100px]">Land Tax</th>
                         <th class="py-2.5 px-2 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[90px]">LT Due</th>
                         <th class="py-2.5 px-2 text-center text-xs font-semibold text-gray-500 uppercase tracking-wide min-w-[60px]">SRO</th>
@@ -242,7 +242,7 @@
                                 {{ $row['rent_paid_by'] ?: '—' }}
                             </td>
 
-                            {{-- Date of Purchase --}}
+                            {{-- Settlement Date --}}
                             <td class="py-2 px-2 text-xs text-gray-600 whitespace-nowrap">
                                 {{ $row['acquisition_date'] ? $row['acquisition_date']->format('M Y') : '—' }}
                             </td>
@@ -363,7 +363,7 @@
                             <th class="py-2 px-2 text-left text-xs font-semibold text-red-400 uppercase tracking-wide min-w-[110px]">Loan Provider</th>
                             <th class="py-2 px-2 text-right text-xs font-semibold text-red-400 uppercase tracking-wide min-w-[100px]">Loan Payment</th>
                             <th class="py-2 px-2 text-right text-xs font-semibold text-red-400 uppercase tracking-wide min-w-[110px]">Loan Balance</th>
-                            <th class="py-2 px-2 text-left text-xs font-semibold text-red-400 uppercase tracking-wide min-w-[90px]">Purchased</th>
+                            <th class="py-2 px-2 text-left text-xs font-semibold text-red-400 uppercase tracking-wide min-w-[90px]">Settlement</th>
                             <th class="py-2 px-2 text-right text-xs font-semibold text-red-400 uppercase tracking-wide min-w-[100px]">Land Tax</th>
                             <th class="py-2 pl-2 text-left text-xs font-semibold text-red-400 uppercase tracking-wide w-12"></th>
                         </tr>

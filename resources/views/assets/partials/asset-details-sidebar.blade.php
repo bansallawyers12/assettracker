@@ -133,7 +133,7 @@
                             ${{ number_format($asset->acquisition_cost ?? 0, 2) }}
                         </dd>
                         <dd class="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                            {{ $asset->acquisition_date ? $asset->acquisition_date->format('d/m/Y') : 'N/A' }}
+                            Settlement Date: {{ $asset->acquisition_date ? $asset->acquisition_date->format('d/m/Y') : 'N/A' }}
                         </dd>
                     </div>
                     <div class="rounded-lg bg-indigo-50 dark:bg-indigo-950/40 px-3 py-2.5 border border-indigo-100 dark:border-indigo-900/50">

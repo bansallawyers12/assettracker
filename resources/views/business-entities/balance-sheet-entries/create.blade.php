@@ -12,7 +12,7 @@
         $oldType = old('transaction_type', $td['transaction_type'] ?? 'asset_purchase');
         $createGstBasis = old('gst_basis', $td['gst_basis'] ?? '');
         $returnTo = old('return_to', $returnContext['return_to'] ?? null);
-        $returnBankAccountId = old('bank_account_id', $returnContext['bank_account_id'] ?? null);
+        $returnBankAccountId = old('return_bank_account_id', $returnContext['return_bank_account_id'] ?? null);
         $returnBusinessEntityId = old('return_business_entity_id', $returnContext['return_business_entity_id'] ?? null);
     @endphp
 
@@ -65,7 +65,7 @@
                         <input type="hidden" name="return_business_entity_id" value="{{ $returnBusinessEntityId }}">
                     @endif
                     @if($returnBankAccountId)
-                        <input type="hidden" name="bank_account_id" value="{{ $returnBankAccountId }}">
+                        <input type="hidden" name="return_bank_account_id" value="{{ $returnBankAccountId }}">
                     @endif
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -241,7 +241,12 @@
                                         'business_entity_id' => $returnBusinessEntityId,
                                     ]))
                                     : route('business-entities.show', $businessEntity),
-                                'entity' => route('business-entities.show', $businessEntity),
+                                'entity' => $returnBankAccountId
+                                    ? route('business-entities.show', [
+                                        'business_entity' => $businessEntity->id,
+                                        'open_bank_transactions' => $returnBankAccountId,
+                                    ]).'#tab_bank_accounts'
+                                    : route('business-entities.show', $businessEntity),
                                 default => route('business-entities.show', $businessEntity),
                             };
                         @endphp

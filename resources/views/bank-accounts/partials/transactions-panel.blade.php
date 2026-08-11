@@ -49,7 +49,7 @@
     $createQuery = array_filter([
         'return_to' => $returnTo,
         'return_business_entity_id' => $isFullPage ? ($contextEntityId ?? null) : null,
-        'bank_account_id' => $bankAccount->id,
+        'return_bank_account_id' => $bankAccount->id,
         'payment_channel' => \App\Models\Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
     ], fn ($value) => $value !== null && $value !== '');
     $createUrlTemplate = url('/business-entities/BUSINESS_ENTITY/balance-sheet-entries/create').'?'.http_build_query($createQuery);

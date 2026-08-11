@@ -25,6 +25,7 @@ it('routes bank transactions panel to dedicated balance sheet entry form', funct
 
     expect($panel)->toContain('Add balance sheet entry')
         ->and($panel)->toContain('balance-sheet-entries/create')
+        ->and($panel)->toContain('return_bank_account_id')
         ->and($panel)->not->toContain('open_add_transaction')
         ->and($panel)->not->toContain("route('dashboard')");
 });
@@ -42,9 +43,14 @@ it('registers balance sheet entry routes and controller actions', function () {
         ->and($controller)->toContain("'bank_account_id' => null")
         ->and($controller)->toContain('Transaction::balanceSheetTypes()')
         ->and($controller)->toContain('Transaction::nonBankPaymentChannels()')
+        ->and($controller)->toContain('return_bank_account_id')
+        ->and($controller)->toContain("'open_bank_transactions' => \$bankAccountId")
+        ->and($controller)->toContain("withFragment('tab_bank_accounts')")
         ->and($form)->toContain('business-entities.balance-sheet-entries.store')
         ->and($form)->toContain('balanceSheetTypeSelectGroups')
         ->and($form)->toContain('nonBankPaymentChannels')
+        ->and($form)->toContain('return_bank_account_id')
+        ->and($form)->toContain('open_bank_transactions')
         ->and($form)->not->toContain('open_add_transaction');
 });
 

@@ -113,7 +113,7 @@ class BalanceSheetEntryController extends Controller
             'comments' => ['nullable', 'string'],
             'return_to' => 'nullable|in:bank-account,entity,transactions-page',
             'return_business_entity_id' => 'nullable|integer',
-            'bank_account_id' => 'nullable|integer|exists:bank_accounts,id',
+            'return_bank_account_id' => 'nullable|integer|exists:bank_accounts,id',
         ], $this->receiptUploadRules()), $this->receiptValidationMessages());
 
         $this->validateGstBasis($request);
@@ -241,7 +241,7 @@ class BalanceSheetEntryController extends Controller
     }
 
     /**
-     * @return array{return_to: ?string, return_business_entity_id: ?int, bank_account_id: ?int}
+     * @return array{return_to: ?string, return_business_entity_id: ?int, return_bank_account_id: ?int}
      */
     private function returnContextFromRequest(Request $request): array
     {
@@ -255,8 +255,8 @@ class BalanceSheetEntryController extends Controller
             'return_business_entity_id' => $request->filled('return_business_entity_id')
                 ? $request->integer('return_business_entity_id')
                 : null,
-            'bank_account_id' => $request->filled('bank_account_id')
-                ? $request->integer('bank_account_id')
+            'return_bank_account_id' => $request->filled('return_bank_account_id')
+                ? $request->integer('return_bank_account_id')
                 : null,
         ];
     }
@@ -267,8 +267,8 @@ class BalanceSheetEntryController extends Controller
         string $success
     ): RedirectResponse {
         $returnTo = $request->input('return_to');
-        $bankAccountId = $request->filled('bank_account_id')
-            ? $request->integer('bank_account_id')
+        $bankAccountId = $request->filled('return_bank_account_id')
+            ? $request->integer('return_bank_account_id')
             : null;
 
         if ($returnTo === 'bank-account' && $bankAccountId) {
@@ -292,9 +292,13 @@ class BalanceSheetEntryController extends Controller
             }
         }
 
-        if ($returnTo === 'entity') {
+        if ($returnTo === 'entity' && $bankAccountId) {
             return redirect()
-                ->route('business-entities.show', $businessEntity)
+                ->route('business-entities.show', [
+                    'business_entity' => $businessEntity->id,
+                    'open_bank_transactions' => $bankAccountId,
+                ])
+                ->withFragment('tab_bank_accounts')
                 ->with('success', $success);
         }
 
@@ -305,7 +309,7 @@ class BalanceSheetEntryController extends Controller
 
     private function normalizeOptionalIds(Request $request): void
     {
-        foreach (['asset_id', 'vendor_id', 'bank_account_id', 'return_business_entity_id'] as $field) {
+        foreach (['asset_id', 'vendor_id', 'return_bank_account_id', 'return_business_entity_id'] as $field) {
             if ($request->has($field) && $request->input($field) === '') {
                 $request->merge([$field => null]);
             }
