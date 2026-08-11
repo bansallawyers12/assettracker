@@ -40,7 +40,11 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($modal)->toContain('bindReconciliationPanel')
         ->and($js)->toContain('subject_to_bas')
         ->and($js)->toContain('is_flagged')
-        ->and($js)->toContain('comments');
+        ->and($js)->toContain('comments')
+        ->and(substr_count($js, "entryEl.querySelector('[data-bank-import-subject-to-bas]')"))->toBeGreaterThanOrEqual(2)
+        ->and(substr_count($js, "entryEl.querySelector('[data-bank-import-is-flagged]')"))->toBeGreaterThanOrEqual(2)
+        ->and(substr_count($js, "entryEl.querySelector('[data-bank-import-comments]')"))->toBeGreaterThanOrEqual(2)
+        ->and(preg_match('/function collectMatches[\s\S]*?const subjectToBasCheckbox\s*=\s*entryEl\.querySelector/', $js))->toBe(1);
 });
 
 it('enriches unmatched endpoint with suggestions in controller source', function () {
