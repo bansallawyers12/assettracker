@@ -48,7 +48,8 @@ it('enriches unmatched endpoint with suggestions in controller source', function
 
 it('allows loan purpose accounts for operating import eligibility', function () {
     expect(BankAccount::ENTITY_OPERATING_PURPOSES)
-        ->toContain(BankAccount::PURPOSE_LOAN);
+        ->toContain(BankAccount::PURPOSE_LOAN)
+        ->toContain(BankAccount::PURPOSE_OFFSET);
 });
 
 it('parses macquarie csv profile and aug-26 dates', function () {

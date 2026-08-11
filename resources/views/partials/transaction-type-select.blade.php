@@ -15,8 +15,13 @@
     @foreach (\App\Models\Transaction::typeSelectGroups() as $groupLabel => $types)
         <optgroup label="{{ $groupLabel }}">
             @foreach ($types as $value => $label)
+                @php
+                    $optionDirection = array_key_exists($value, \App\Models\Transaction::$incomeTypes)
+                        ? 'income'
+                        : (array_key_exists($value, \App\Models\Transaction::$transferTypes) ? 'both' : 'expense');
+                @endphp
                 <option value="{{ $value }}"
-                        data-direction="{{ array_key_exists($value, \App\Models\Transaction::$incomeTypes) ? 'income' : 'expense' }}"
+                        data-direction="{{ $optionDirection }}"
                         {{ (string) $selected === (string) $value ? 'selected' : '' }}>
                     {{ $label }}
                 </option>

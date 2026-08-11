@@ -14,10 +14,13 @@ class Transaction extends Model
 
     public const TYPE_INVOICE_PAYMENT = 'invoice_payment';
 
+    public const TYPE_INTERNAL_TRANSFER = 'internal_transfer';
+
     protected $fillable = [
         'business_entity_id', 'asset_id', 'related_entity_id', 'date', 'amount', 'description', 'vendor_id', 'vendor_name',
         'transaction_type', 'gst_amount', 'gst_status', 'gst_basis', 'receipt_path', 'document_id',
-        'bank_account_id', 'tracking_category_id', 'tracking_sub_category_id',
+        'bank_account_id', 'counterpart_bank_account_id', 'transfer_group_id',
+        'tracking_category_id', 'tracking_sub_category_id',
         'chart_of_account_id',
         'invoice_number', 'payment_status', 'due_date', 'paid_at', 'payment_method',
         'paid_by', 'payment_document_id',
@@ -84,12 +87,27 @@ class Transaction extends Model
     ];
 
     /**
+     * Non-P&L bank movements between entity accounts (e.g. offset ↔ loan).
+     * Direction is chosen on the form / statement sign — not by this map alone.
+     *
+     * @var array<string, string>
+     */
+    public static $transferTypes = [
+        self::TYPE_INTERNAL_TRANSFER => 'Internal Transfer',
+    ];
+
+    /**
      * All transaction types merged. Always available — no DB query needed.
      * Use this instead of $transactionTypes directly in validation and views.
      */
     public static function allTypes(): array
     {
-        return array_merge(static::$incomeTypes, static::$expenseTypes);
+        return array_merge(static::$incomeTypes, static::$expenseTypes, static::$transferTypes);
+    }
+
+    public static function isInternalTransfer(string $type): bool
+    {
+        return $type === self::TYPE_INTERNAL_TRANSFER;
     }
 
     /**
@@ -140,15 +158,20 @@ class Transaction extends Model
                 'rent_to_related_party' => self::$expenseTypes['rent_to_related_party'],
                 'purchases_from_related_party' => self::$expenseTypes['purchases_from_related_party'],
             ],
+            'Loan' => [
+                'loan_repayments' => self::$expenseTypes['loan_repayments'],
+                'loan_interest' => self::$expenseTypes['loan_interest'],
+                'loan_fees' => self::$expenseTypes['loan_fees'],
+            ],
+            'Banking' => [
+                self::TYPE_INTERNAL_TRANSFER => self::$transferTypes[self::TYPE_INTERNAL_TRANSFER],
+            ],
             'Other' => [
                 'other_expenses' => self::$expenseTypes['other_expenses'],
                 'other_personal_expenses' => self::$expenseTypes['other_personal_expenses'],
                 'asset_purchase' => self::$expenseTypes['asset_purchase'],
                 'capital_expenditure' => self::$expenseTypes['capital_expenditure'],
                 'cogs' => self::$expenseTypes['cogs'],
-                'loan_repayments' => self::$expenseTypes['loan_repayments'],
-                'loan_interest' => self::$expenseTypes['loan_interest'],
-                'loan_fees' => self::$expenseTypes['loan_fees'],
             ],
         ];
     }
@@ -191,9 +214,19 @@ class Transaction extends Model
 
     /**
      * Derive direction ('income' or 'expense') from a transaction type key.
+     * Internal transfers default to expense (money leaving this account); pass
+     * $statementAmount when matching a bank line so the sign wins.
      */
-    public static function directionFromType(string $type): string
+    public static function directionFromType(string $type, ?float $statementAmount = null): string
     {
+        if (static::isInternalTransfer($type)) {
+            if ($statementAmount !== null) {
+                return $statementAmount >= 0 ? 'income' : 'expense';
+            }
+
+            return 'expense';
+        }
+
         return array_key_exists($type, static::$incomeTypes) ? 'income' : 'expense';
     }
 
@@ -297,6 +330,11 @@ class Transaction extends Model
     public function bankAccount()
     {
         return $this->belongsTo(BankAccount::class);
+    }
+
+    public function counterpartBankAccount()
+    {
+        return $this->belongsTo(BankAccount::class, 'counterpart_bank_account_id');
     }
 
     public function businessEntity()

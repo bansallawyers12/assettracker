@@ -59,6 +59,7 @@ class BankAccount extends Model
         self::PURPOSE_GENERAL,
         self::PURPOSE_LOAN,
         self::PURPOSE_LOAN_REPAYMENT_PAYING,
+        self::PURPOSE_OFFSET,
         self::PURPOSE_RENT_RECEIVING,
         self::PURPOSE_RENT_PAYING,
     ];

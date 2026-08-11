@@ -160,14 +160,51 @@ it('returns none when no rule matches', function () {
     expect($suggestion['action'])->toBe('none');
 });
 
+it('suggests internal transfer on offset accounts instead of loan repayment', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => -2000,
+        'description' => 'Transfer to loan account',
+        'meta' => [
+            'bank_profile' => 'macquarie',
+            'subcategory' => 'Transfer',
+        ],
+    ]);
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_OFFSET]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect(), 9);
+
+    expect($suggestion['action'])->toBe('create_transaction')
+        ->and($suggestion['transaction_type'])->toBe(Transaction::TYPE_INTERNAL_TRANSFER)
+        ->and($suggestion['asset_id'])->toBe(9);
+});
+
+it('does not suggest loan interest create on offset accounts', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => -100,
+        'description' => 'Interest charge',
+        'meta' => [
+            'subcategory' => 'Interest',
+        ],
+    ]);
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_OFFSET]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect());
+
+    expect($suggestion['action'])->toBe('none')
+        ->and($suggestion['transaction_type'])->toBeNull();
+});
+
 it('exposes loan types and interest expense posting map', function () {
-    expect(Transaction::allTypes())->toHaveKeys(['loan_interest', 'loan_fees', 'loan_repayments']);
+    expect(Transaction::allTypes())->toHaveKeys(['loan_interest', 'loan_fees', 'loan_repayments', 'internal_transfer']);
 
     $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
     expect($source)->toContain("'loan_interest'")
         ->and($source)->toContain('Interest Expense')
         ->and($source)->toContain("'loan_fees'")
-        ->and($source)->toContain('Long Term Loans');
+        ->and($source)->toContain('Long Term Loans')
+        ->and($source)->toContain('isInternalTransfer');
 });
 
 it('claims each candidate transaction at most once across suggestMany', function () {

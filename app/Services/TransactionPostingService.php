@@ -35,6 +35,13 @@ class TransactionPostingService
             return null;
         }
 
+        // Offset↔loan (and other same-entity bank moves) are cash rearrangements only.
+        if (Transaction::isInternalTransfer((string) $transaction->transaction_type)) {
+            $this->unpost($transaction);
+
+            return null;
+        }
+
         return DB::transaction(function () use ($transaction) {
             $transaction->loadMissing('lines');
             $bookerEntry = $this->postBookingEntityJournal($transaction);

@@ -8,6 +8,7 @@ use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class BankStatementApplyService
@@ -107,9 +108,30 @@ class BankStatementApplyService
                     ]);
                 }
 
+                app(LoanOffsetTransactionGuard::class)->assertAllowed(
+                    $bankAccount,
+                    $resolvedType,
+                    $businessEntity,
+                    ! empty($match['counterpart_bank_account_id'])
+                        ? (int) $match['counterpart_bank_account_id']
+                        : null,
+                    requireCounterpart: false,
+                    assetId: $assetId
+                );
+
+                $guard = app(LoanOffsetTransactionGuard::class);
+                $counterpartId = ! empty($match['counterpart_bank_account_id'])
+                    ? (int) $match['counterpart_bank_account_id']
+                    : $guard->suggestCounterpartBankAccountId($bankAccount, $businessEntity, $assetId);
+                $transferGroupId = $resolvedType === Transaction::TYPE_INTERNAL_TRANSFER
+                    ? (string) Str::uuid()
+                    : null;
+
                 $transaction = Transaction::create([
                     'business_entity_id' => $businessEntity->id,
                     'bank_account_id' => $bankAccount->id,
+                    'counterpart_bank_account_id' => $counterpartId,
+                    'transfer_group_id' => $transferGroupId,
                     'chart_of_account_id' => $chartAccountId,
                     'asset_id' => $assetId,
                     'date' => $bankEntry->date,
@@ -201,7 +223,15 @@ class BankStatementApplyService
         }
 
         $entryIsIncome = (float) $bankEntry->amount >= 0;
-        $transactionIsIncome = Transaction::directionFromType((string) $transaction->transaction_type) === 'income';
+        $transactionIsIncome = Transaction::directionFromType(
+            (string) $transaction->transaction_type,
+            (float) $bankEntry->amount
+        ) === 'income';
+
+        if (Transaction::isInternalTransfer((string) $transaction->transaction_type)) {
+            // Direction follows the statement line for transfers.
+            return;
+        }
 
         if ($entryIsIncome !== $transactionIsIncome) {
             throw ValidationException::withMessages([

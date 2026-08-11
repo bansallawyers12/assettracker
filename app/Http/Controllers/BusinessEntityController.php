@@ -27,6 +27,7 @@ use App\Services\BankStatementMatchSuggester;
 use App\Services\CommitmentReportService;
 use App\Services\ComplianceYearService;
 use App\Services\DocumentUploadService;
+use App\Services\LoanOffsetTransactionGuard;
 use App\Services\TransactionPostingService;
 use App\Support\SecurityAuditLogger;
 use App\Support\TableSort;
@@ -48,6 +49,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
@@ -58,7 +60,8 @@ class BusinessEntityController extends Controller
 
     public function __construct(
         private DocumentUploadService $documentUploadService,
-        private BankAccountAssetLinkService $bankAccountAssetLinkService
+        private BankAccountAssetLinkService $bankAccountAssetLinkService,
+        private LoanOffsetTransactionGuard $loanOffsetTransactionGuard
     ) {}
 
     /**
@@ -1185,9 +1188,37 @@ class BusinessEntityController extends Controller
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
+            'counterpart_bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
         ], $this->transactionReceiptUploadRules(true)), $this->transactionReceiptValidationMessages());
 
         $this->validateTransactionGstBasis($request);
+
+        $counterpartId = $request->filled('counterpart_bank_account_id')
+            ? $request->integer('counterpart_bank_account_id')
+            : null;
+        $assetIdForGuard = $request->filled('asset_id') ? $request->integer('asset_id') : null;
+
+        $this->loanOffsetTransactionGuard->assertAllowed(
+            $bankAccount,
+            (string) $request->transaction_type,
+            $bookingEntity,
+            $counterpartId,
+            requireCounterpart: true,
+            assetId: $assetIdForGuard
+        );
+
+        if (Transaction::isInternalTransfer((string) $request->transaction_type)) {
+            $counterpartId = $counterpartId
+                ?? $this->loanOffsetTransactionGuard->suggestCounterpartBankAccountId(
+                    $bankAccount,
+                    $bookingEntity,
+                    $assetIdForGuard
+                );
+            $request->merge([
+                'gst_basis' => null,
+                'gst_amount' => null,
+            ]);
+        }
 
         $gstResolved = TransactionGstResolver::resolve(
             (float) $request->amount,
@@ -1196,14 +1227,25 @@ class BusinessEntityController extends Controller
             Transaction::directionFromType((string) $request->transaction_type)
         );
 
+        if (Transaction::isInternalTransfer((string) $request->transaction_type)) {
+            $gstResolved = [
+                'gst_amount' => null,
+                'gst_status' => 'gst_free',
+                'gst_basis' => null,
+            ];
+        }
+
         $asset = $request->filled('asset_id')
             ? Asset::query()->find($request->integer('asset_id'))
             : null;
 
         $paidBy = $this->validatedPaidBy($request);
         $vendorData = $this->resolveTransactionVendorData($request);
+        $transferGroupId = Transaction::isInternalTransfer((string) $request->transaction_type)
+            ? (string) Str::uuid()
+            : null;
 
-        $transaction = DB::transaction(function () use ($request, $bookingEntity, $bankAccount, $asset, $gstResolved, $paidBy, $vendorData) {
+        $transaction = DB::transaction(function () use ($request, $bookingEntity, $bankAccount, $asset, $gstResolved, $paidBy, $vendorData, $counterpartId, $transferGroupId) {
             $receiptPath = null;
             $documentId = null;
             $prefillPath = $request->input('receipt_path');
@@ -1270,6 +1312,8 @@ class BusinessEntityController extends Controller
                 'asset_id' => $request->filled('asset_id') ? $request->integer('asset_id') : null,
                 'related_entity_id' => $request->related_entity_id,
                 'bank_account_id' => $bankAccount->id,
+                'counterpart_bank_account_id' => $counterpartId,
+                'transfer_group_id' => $transferGroupId,
                 'date' => $request->date,
                 'amount' => $request->amount,
                 'description' => $request->description,
@@ -1348,8 +1392,14 @@ class BusinessEntityController extends Controller
 
         $payerOptions = TransactionPayerResolver::payerOptions();
         $vendors = Vendor::orderedForSelect();
+        $bankAccount = $transaction->bankAccount;
+        $counterpartAccounts = $bankAccount
+            ? $this->counterpartAccountsForEntity($businessEntity, $bankAccount)
+            : collect();
 
-        return view('business-entities.bank-accounts.transactions.edit', compact('businessEntity', 'transaction', 'payerOptions', 'vendors'));
+        return view('business-entities.bank-accounts.transactions.edit', compact(
+            'businessEntity', 'transaction', 'payerOptions', 'vendors', 'bankAccount', 'counterpartAccounts'
+        ));
     }
 
     /**
@@ -1405,6 +1455,7 @@ class BusinessEntityController extends Controller
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
+            'counterpart_bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
             'payment_document_name' => 'nullable|string|max:255',
         ], $this->transactionReceiptUploadRules(false)), $this->transactionReceiptValidationMessages());
 
@@ -1436,12 +1487,53 @@ class BusinessEntityController extends Controller
                 ),
             ]);
         } else {
-            $gstResolved = TransactionGstResolver::resolve(
-                (float) $data['amount'],
-                $data['gst_basis'] ?? null,
-                $request->input('gst_amount'),
-                Transaction::directionFromType((string) $data['transaction_type'])
-            );
+            $bankAccountForGuard = $request->filled('bank_account_id')
+                ? BankAccount::query()->find($request->integer('bank_account_id'))
+                : $transaction->bankAccount;
+            $counterpartId = $request->filled('counterpart_bank_account_id')
+                ? (int) $data['counterpart_bank_account_id']
+                : null;
+            $assetIdForGuard = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
+
+            if ($bankAccountForGuard) {
+                $this->loanOffsetTransactionGuard->assertAllowed(
+                    $bankAccountForGuard,
+                    (string) $data['transaction_type'],
+                    $businessEntity,
+                    $counterpartId,
+                    requireCounterpart: true,
+                    assetId: $assetIdForGuard
+                );
+            }
+
+            if (Transaction::isInternalTransfer((string) $data['transaction_type'])) {
+                $counterpartId = $counterpartId
+                    ?? ($bankAccountForGuard
+                        ? $this->loanOffsetTransactionGuard->suggestCounterpartBankAccountId(
+                            $bankAccountForGuard,
+                            $businessEntity,
+                            $assetIdForGuard
+                        )
+                        : null);
+                $data['counterpart_bank_account_id'] = $counterpartId;
+                $data['transfer_group_id'] = $transaction->transfer_group_id
+                    ?: (string) Str::uuid();
+                $data['gst_basis'] = null;
+                $gstResolved = [
+                    'gst_amount' => null,
+                    'gst_status' => 'gst_free',
+                    'gst_basis' => null,
+                ];
+            } else {
+                $data['counterpart_bank_account_id'] = null;
+                $data['transfer_group_id'] = null;
+                $gstResolved = TransactionGstResolver::resolve(
+                    (float) $data['amount'],
+                    $data['gst_basis'] ?? null,
+                    $request->input('gst_amount'),
+                    Transaction::directionFromType((string) $data['transaction_type'])
+                );
+            }
 
             $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
             $data['related_entity_id'] = $request->filled('related_entity_id') ? (int) $data['related_entity_id'] : null;
@@ -1482,7 +1574,7 @@ class BusinessEntityController extends Controller
         $transaction->update(array_merge(
             Arr::only($data, [
                 'date', 'amount', 'description', 'vendor_id', 'vendor_name', 'invoice_number', 'transaction_type',
-                'related_entity_id', 'asset_id',
+                'related_entity_id', 'asset_id', 'counterpart_bank_account_id', 'transfer_group_id',
                 'payment_status', 'due_date', 'paid_at', 'payment_method',
                 'payment_document_id',
             ]),
@@ -1588,9 +1680,34 @@ class BusinessEntityController extends Controller
             'paid_by_select' => ['nullable', 'string', 'max:255'],
             'paid_by_other' => ['nullable', 'string', 'max:255'],
             'payment_document_name' => 'nullable|string|max:255',
+            'counterpart_bank_account_id' => ['nullable', 'integer', 'exists:bank_accounts,id'],
         ], $this->transactionReceiptUploadRules(false)), $this->transactionReceiptValidationMessages());
 
         $this->validateTransactionGstBasis($request);
+
+        $counterpartId = $request->filled('counterpart_bank_account_id')
+            ? (int) $data['counterpart_bank_account_id']
+            : null;
+        $assetIdForGuard = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
+
+        $this->loanOffsetTransactionGuard->assertAllowed(
+            $bankAccount,
+            (string) $data['transaction_type'],
+            $businessEntity,
+            $counterpartId,
+            requireCounterpart: true,
+            assetId: $assetIdForGuard
+        );
+
+        if (Transaction::isInternalTransfer((string) $data['transaction_type'])) {
+            $counterpartId = $counterpartId
+                ?? $this->loanOffsetTransactionGuard->suggestCounterpartBankAccountId(
+                    $bankAccount,
+                    $businessEntity,
+                    $assetIdForGuard
+                );
+            $data['gst_basis'] = null;
+        }
 
         $gstResolved = TransactionGstResolver::resolve(
             (float) $data['amount'],
@@ -1599,8 +1716,23 @@ class BusinessEntityController extends Controller
             Transaction::directionFromType((string) $data['transaction_type'])
         );
 
+        if (Transaction::isInternalTransfer((string) $data['transaction_type'])) {
+            $gstResolved = [
+                'gst_amount' => null,
+                'gst_status' => 'gst_free',
+                'gst_basis' => null,
+            ];
+        }
+
         $data['asset_id'] = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
         $data['related_entity_id'] = $request->filled('related_entity_id') ? (int) $data['related_entity_id'] : null;
+        $data['counterpart_bank_account_id'] = $counterpartId;
+        if (Transaction::isInternalTransfer((string) $data['transaction_type']) && empty($transaction->transfer_group_id)) {
+            $data['transfer_group_id'] = (string) Str::uuid();
+        } elseif (! Transaction::isInternalTransfer((string) $data['transaction_type'])) {
+            $data['counterpart_bank_account_id'] = null;
+            $data['transfer_group_id'] = null;
+        }
         $vendorData = $this->resolveTransactionVendorData($request);
         $data['vendor_id'] = $vendorData['vendor_id'];
         $data['vendor_name'] = $vendorData['vendor_name'];
@@ -1632,7 +1764,7 @@ class BusinessEntityController extends Controller
         $transaction->update(array_merge(
             Arr::only($data, [
                 'date', 'amount', 'description', 'vendor_id', 'vendor_name', 'invoice_number', 'transaction_type',
-                'related_entity_id', 'asset_id',
+                'related_entity_id', 'asset_id', 'counterpart_bank_account_id', 'transfer_group_id',
                 'payment_status', 'due_date', 'paid_at', 'payment_method',
                 'payment_document_id',
             ]),
@@ -2563,9 +2695,10 @@ class BusinessEntityController extends Controller
 
         $payerOptions = TransactionPayerResolver::payerOptions();
         $vendors = Vendor::orderedForSelect();
+        $counterpartAccounts = $this->counterpartAccountsForEntity($businessEntity, $bankAccount);
 
         return view('business-entities.bank-accounts.transactions.create', compact(
-            'businessEntity', 'bankAccount', 'businessEntities', 'transactionData', 'payerOptions', 'vendors'
+            'businessEntity', 'bankAccount', 'businessEntities', 'transactionData', 'payerOptions', 'vendors', 'counterpartAccounts'
         ));
     }
 
@@ -2583,7 +2716,7 @@ class BusinessEntityController extends Controller
             abort(404); // Or abort(403) if preferred
         }
 
-        $transaction->load(['asset', 'bankAccount', 'lines.vendor', 'lines.relatedEntity']);
+        $transaction->load(['asset', 'bankAccount', 'counterpartBankAccount', 'lines.vendor', 'lines.relatedEntity']);
 
         return view('business-entities.bank-accounts.transactions.show', compact('businessEntity', 'bankAccount', 'transaction'));
     }
@@ -2763,6 +2896,7 @@ class BusinessEntityController extends Controller
             'loan_repayments',          // Principal is financial supply, interest might be
             'loan_interest',            // Financial supply / input taxed
             'loan_fees',                // Often treated as financial / bank fee
+            'internal_transfer',        // Same-entity bank move — outside GST
             'bas_payments',             // Tax payment, outside scope
             'repayment_directors_loans', // Financial supply
             'company_loans_to_directors', // Financial supply
@@ -3488,6 +3622,27 @@ class BusinessEntityController extends Controller
         if (! $request->filled('bank_account_id')) {
             $request->merge(['bank_account_id' => null]);
         }
+    }
+
+    /**
+     * Other entity bank accounts selectable as an internal-transfer counterpart.
+     *
+     * @return Collection<int, BankAccount>
+     */
+    private function counterpartAccountsForEntity(BusinessEntity $entity, BankAccount $current): Collection
+    {
+        return BankAccount::query()
+            ->visibleInPortfolio()
+            ->whereKeyNot($current->id)
+            ->where(function ($q) use ($entity) {
+                $q->where('business_entity_id', $entity->id)
+                    ->orWhereIn('id', BusinessEntityBankAccount::query()
+                        ->where('business_entity_id', $entity->id)
+                        ->pluck('bank_account_id'));
+            })
+            ->orderBy('bank_name')
+            ->orderBy('id')
+            ->get();
     }
 
     private function resolveBankAccountOwnerEntity(

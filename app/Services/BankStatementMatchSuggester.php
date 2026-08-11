@@ -50,12 +50,29 @@ class BankStatementMatchSuggester
             }
         }
 
+        if ($bankAccount->account_purpose === BankAccount::PURPOSE_OFFSET) {
+            $offset = $this->suggestOffsetCreate($entry, $defaultAssetId);
+            if ($offset !== null) {
+                return $offset;
+            }
+        }
+
         $keywordType = $this->determineTransactionType(
             (string) ($entry->description ?? ''),
             (float) $entry->amount
         );
 
         if ($keywordType !== null && $keywordType !== 'unknown') {
+            if ($bankAccount->account_purpose === BankAccount::PURPOSE_OFFSET
+                && in_array($keywordType, LoanOffsetTransactionGuard::LOAN_ECONOMIC_TYPES, true)) {
+                return $this->createSuggestion(
+                    Transaction::TYPE_INTERNAL_TRANSFER,
+                    'medium',
+                    'Offset account: use internal transfer instead of '.$keywordType,
+                    $defaultAssetId
+                );
+            }
+
             return [
                 'action' => 'create_transaction',
                 'confidence' => 'medium',
@@ -262,6 +279,61 @@ class BankStatementMatchSuggester
 
         if (preg_match('/\b(loan repayment|mortgage|principal|redraw)\b/', $description) && (float) $entry->amount < 0) {
             return $this->createSuggestion('loan_repayments', 'medium', 'Keyword: repayment', $defaultAssetId);
+        }
+
+        return null;
+    }
+
+    /**
+     * Offset cash movements that look like loan funding should not book loan economics.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function suggestOffsetCreate(BankStatementEntry $entry, ?int $defaultAssetId): ?array
+    {
+        $meta = is_array($entry->meta) ? $entry->meta : [];
+        $subcategory = strtolower(trim((string) ($meta['subcategory'] ?? '')));
+        $description = strtolower((string) ($entry->description ?? ''));
+        $combined = trim($subcategory.' '.$description);
+
+        if (
+            str_contains($subcategory, 'interest')
+            || str_contains($subcategory, 'fee')
+            || preg_match('/\b(interest|package fee|other fees)\b/', $combined)
+        ) {
+            return [
+                'action' => 'none',
+                'confidence' => 'low',
+                'reason' => 'Interest/fees belong on the loan account — review manually',
+                'transaction_id' => null,
+                'transaction_type' => null,
+                'chart_account_id' => null,
+                'asset_id' => $defaultAssetId,
+                'invoice_id' => null,
+                'alternates' => [],
+            ];
+        }
+
+        if (
+            str_contains($subcategory, 'transfer')
+            || str_contains($subcategory, 'repayment')
+            || preg_match('/\b(transfer|loan repayment|redraw|to loan|from loan|mortgage)\b/', $combined)
+        ) {
+            return $this->createSuggestion(
+                Transaction::TYPE_INTERNAL_TRANSFER,
+                'high',
+                'Offset transfer — not a loan repayment',
+                $defaultAssetId
+            );
+        }
+
+        if (preg_match('/\b(loan repayment|mortgage|redraw|transfer to loan|from offset)\b/', $description)) {
+            return $this->createSuggestion(
+                Transaction::TYPE_INTERNAL_TRANSFER,
+                'medium',
+                'Offset keyword: internal transfer',
+                $defaultAssetId
+            );
         }
 
         return null;

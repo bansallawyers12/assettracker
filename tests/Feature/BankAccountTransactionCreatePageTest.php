@@ -10,7 +10,9 @@ it('does not reference the removed receipt extraction route on the create transa
     expect($html)->not->toContain('business-entities.bank-accounts.extract-from-receipt')
         ->and($html)->not->toContain('Extract Data')
         ->and($html)->not->toContain('Pre-fill from receipt')
-        ->and($html)->toContain('business-entities.bank-accounts.transactions.store');
+        ->and($html)->toContain('business-entities.bank-accounts.transactions.store')
+        ->and($html)->toContain('counterpart_bank_account_id')
+        ->and($html)->toContain('counterpart_account_field');
 });
 
 it('resolves every named route used by the create transaction page', function () {

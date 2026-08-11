@@ -93,6 +93,19 @@
                             ])
                             @error('transaction_type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
+                        <div id="counterpart_account_field" class="hidden">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Transfer to / from account</label>
+                            <select name="counterpart_bank_account_id" id="counterpart_bank_account_id" class="mt-1 block w-full border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-md shadow-xs">
+                                <option value="">Select account</option>
+                                @foreach ($counterpartAccounts ?? [] as $counterpart)
+                                    <option value="{{ $counterpart->id }}" @selected((string) old('counterpart_bank_account_id', $td['counterpart_bank_account_id'] ?? '') === (string) $counterpart->id)>
+                                        {{ $counterpart->displayLabel() }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Required for internal transfers. Loan interest and repayments stay on the loan account.</p>
+                            @error('counterpart_bank_account_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
                         <div id="related_entity_field" style="display: none;">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Related Entity</label>
                             <x-tom-select name="related_entity_id" class="mt-1 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500">
@@ -273,7 +286,8 @@
                 if (!transactionTypeSelect) return;
                 Array.from(transactionTypeSelect.options).forEach(opt => {
                     if (!opt.value) return;
-                    const match = !opt.dataset.direction || opt.dataset.direction === direction;
+                    const optDir = opt.dataset.direction || '';
+                    const match = !optDir || optDir === direction || optDir === 'both';
                     opt.hidden = !match;
                     opt.disabled = !match;
                 });
@@ -319,17 +333,19 @@
                     'repayment_directors_loans',
                     'company_loans_to_directors',
                 ];
-                transactionTypeSelect.addEventListener('change', function () {
-                    const show = relatedPartyTypes.includes(this.value);
-                    relatedEntityField.style.display = show ? 'block' : 'none';
+                const counterpartField = document.getElementById('counterpart_account_field');
+                function syncTypeDependentFields() {
+                    const type = transactionTypeSelect.value;
+                    const showRelated = relatedPartyTypes.includes(type);
+                    relatedEntityField.style.display = showRelated ? 'block' : 'none';
                     const rs = relatedEntityField.querySelector('select');
-                    if (rs) { rs.required = show; if (!show) window.setSelectValue?.(rs, ''); }
-                });
-                if (relatedPartyTypes.includes(transactionTypeSelect.value)) {
-                    relatedEntityField.style.display = 'block';
-                    const rs = relatedEntityField.querySelector('select');
-                    if (rs) rs.required = true;
+                    if (rs) { rs.required = showRelated; if (!showRelated) window.setSelectValue?.(rs, ''); }
+                    if (counterpartField) {
+                        counterpartField.classList.toggle('hidden', type !== 'internal_transfer');
+                    }
                 }
+                transactionTypeSelect.addEventListener('change', syncTypeDependentFields);
+                syncTypeDependentFields();
             }
 
             (function bankCreateGstCalc() {

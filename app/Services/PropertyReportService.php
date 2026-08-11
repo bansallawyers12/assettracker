@@ -15,6 +15,7 @@ class PropertyReportService
         'director_loan_in',
         'director_loan_out',
         'director_loan_repayment',
+        'internal_transfer',
     ];
 
     public const BASIS_CASH = 'cash';

@@ -66,6 +66,13 @@
                     </p>
                 </div>
 
+                @if ($transaction->counterpartBankAccount)
+                    <div>
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Transfer counterpart</p>
+                        <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->counterpartBankAccount->displayLabel() }}</p>
+                    </div>
+                @endif
+
                 <div>
                     <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Invoice Number</p>
                     <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->invoice_number ?? '—' }}</p>
