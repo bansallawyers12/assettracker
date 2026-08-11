@@ -1,4 +1,5 @@
 @php
+    $isFullPage = (bool) ($isFullPage ?? false);
     $indexUrl = route('bank-accounts.transactions.index', array_filter([
         'bankAccount' => $bankAccount,
         'business_entity_id' => $contextEntityId ?? null,
@@ -7,11 +8,17 @@
         'bankAccount' => $bankAccount,
         'business_entity_id' => $contextEntityId ?? null,
     ]));
-    $returnTo = ($contextEntityId ?? null) ? 'entity' : 'bank-account';
+    $returnTo = $isFullPage
+        ? 'transactions-page'
+        : (($contextEntityId ?? null) ? 'entity' : 'bank-account');
+    $createQuery = array_filter([
+        'return_to' => $returnTo,
+        'return_business_entity_id' => $isFullPage ? ($contextEntityId ?? null) : null,
+    ], fn ($value) => $value !== null && $value !== '');
     $createUrlTemplate = route('business-entities.bank-accounts.transactions.create', [
         'businessEntity' => 'BUSINESS_ENTITY',
         'bankAccount' => $bankAccount,
-    ]).'?return_to='.$returnTo;
+    ]).'?'.http_build_query($createQuery);
     $importProcessUrl = route('bank-accounts.import.process', $bankAccount);
     $importUnmatchedUrl = route('bank-accounts.import.unmatched', $bankAccount);
     $importApplyUrl = route('bank-accounts.import.apply', $bankAccount);

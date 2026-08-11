@@ -241,17 +241,25 @@ class Transaction extends Model
      */
     public function bankAccountSignedAmount(): float
     {
-        $entries = $this->relationLoaded('bankStatementEntries')
-            ? $this->bankStatementEntries
-            : $this->bankStatementEntries()->get(['amount']);
-
-        if ($entries->isNotEmpty()) {
-            return round((float) $entries->sum(fn (BankStatementEntry $entry) => (float) $entry->amount), 2);
+        if ($this->relationLoaded('bankStatementEntries')) {
+            if ($this->bankStatementEntries->isNotEmpty()) {
+                return round((float) $this->bankStatementEntries->sum(
+                    fn (BankStatementEntry $entry) => (float) $entry->amount
+                ), 2);
+            }
+        } elseif ($this->bankStatementEntries()->exists()) {
+            return round((float) $this->bankStatementEntries()->sum('amount'), 2);
         }
 
         $amount = abs((float) $this->amount);
 
-        return $this->direction === 'income' ? $amount : -$amount;
+        // Use the direction accessor for splits (needs lines); otherwise type map avoids N+1.
+        $direction = $this->transaction_type === self::TYPE_SPLIT
+            || ($this->relationLoaded('lines') && $this->lines->isNotEmpty())
+            ? $this->direction
+            : static::directionFromType((string) $this->transaction_type);
+
+        return $direction === 'income' ? $amount : -$amount;
     }
 
     /**

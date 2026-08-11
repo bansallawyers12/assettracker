@@ -855,6 +855,7 @@ export function initBankAccountModal() {
         const payload = parseJson(await response.text());
 
         if (!response.ok || !payload?.html) {
+            setTransactionsExpandButton(null);
             createHost.innerHTML = '<p class="text-sm text-red-600 dark:text-red-400">Could not load transactions. Refresh and try again.</p>';
             return;
         }

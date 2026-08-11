@@ -1298,6 +1298,17 @@ class BusinessEntityController extends Controller
                 ->with('open_bank_transactions_account_id', $bankAccount->id);
         }
 
+        if ($request->input('return_to') === 'transactions-page') {
+            return redirect()
+                ->route('bank-accounts.transactions.page', array_filter([
+                    'bankAccount' => $bankAccount,
+                    'business_entity_id' => $request->filled('return_business_entity_id')
+                        ? $request->integer('return_business_entity_id')
+                        : null,
+                ]))
+                ->with('success', "Transaction '{$transaction->description}' added successfully!");
+        }
+
         if ($request->input('return_to') === 'entity') {
             return redirect()
                 ->route('business-entities.show', [

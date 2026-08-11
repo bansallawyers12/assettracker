@@ -37,8 +37,11 @@
 
                 <form method="POST" action="{{ route('business-entities.bank-accounts.transactions.store', [$businessEntity->id, $bankAccount->id]) }}" enctype="multipart/form-data" id="bank-store-transaction-form" data-transaction-paid-by-form>
                     @csrf
-                    @if(in_array(request('return_to'), ['bank-account', 'entity'], true))
+                    @if(in_array(request('return_to'), ['bank-account', 'entity', 'transactions-page'], true))
                         <input type="hidden" name="return_to" value="{{ request('return_to') }}">
+                        @if(request('return_to') === 'transactions-page' && request()->filled('return_business_entity_id'))
+                            <input type="hidden" name="return_business_entity_id" value="{{ request()->integer('return_business_entity_id') }}">
+                        @endif
                     @endif
 
                     <div class="flex gap-3 mb-5">
@@ -134,7 +137,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Business Entity</label>
-                            @if(in_array(request('return_to'), ['bank-account', 'entity'], true))
+                            @if(in_array(request('return_to'), ['bank-account', 'entity', 'transactions-page'], true))
                                 <input type="hidden" name="business_entity_id" value="{{ $businessEntity->id }}">
                                 <p class="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100">
                                     {{ $businessEntity->legal_name }}
@@ -231,6 +234,12 @@
                                     'business_entity' => $businessEntity->id,
                                     'open_bank_transactions' => $bankAccount->id,
                                 ]).'#tab_bank_accounts',
+                                'transactions-page' => route('bank-accounts.transactions.page', array_filter([
+                                    'bankAccount' => $bankAccount,
+                                    'business_entity_id' => request()->filled('return_business_entity_id')
+                                        ? request()->integer('return_business_entity_id')
+                                        : null,
+                                ])),
                                 default => route('business-entities.show', [
                                     'business_entity' => $businessEntity->id,
                                     'bank_account_id' => $bankAccount->id,

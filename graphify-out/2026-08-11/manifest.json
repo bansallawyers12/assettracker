@@ -170,8 +170,8 @@
     "semantic_hash": "628cac02ed81869515d47eebbf3e0074"
   },
   "app/Http/Controllers/BusinessEntityController.php": {
-    "mtime": 1786357300.8944347,
-    "ast_hash": "2fd402d3b5df770381879c39b50888a5",
+    "mtime": 1786425575.9817412,
+    "ast_hash": "83856e27fa61034e08c3ee47b3229068",
     "semantic_hash": ""
   },
   "app/Http/Controllers/CarReportController.php": {
@@ -620,8 +620,8 @@
     "semantic_hash": ""
   },
   "app/Models/Transaction.php": {
-    "mtime": 1786357302.380341,
-    "ast_hash": "b36268d6f1d19d3b29a8f1b809eb509a",
+    "mtime": 1786425545.0001965,
+    "ast_hash": "a8d21d7a82eca69c115820e48c7fdd3a",
     "semantic_hash": ""
   },
   "app/Models/TransactionLine.php": {
@@ -2100,8 +2100,8 @@
     "semantic_hash": "594b4e4cc59d07398c676ba1b1648a08"
   },
   "resources/views/business-entities/bank-accounts/transactions/create.blade.php": {
-    "mtime": 1786425339.3256855,
-    "ast_hash": "69b609c10445c2a5522e38b5af2b5ac9",
+    "mtime": 1786425571.2733076,
+    "ast_hash": "01fee8e3fab2a918564b76c11424dc96",
     "semantic_hash": ""
   },
   "resources/views/business-entities/bank-accounts/transactions/edit.blade.php": {
@@ -3115,8 +3115,8 @@
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/partials/transactions-list.blade.php": {
-    "mtime": 1786186796.0801609,
-    "ast_hash": "586c74904575dcf6bcb65ac0bbbe5bd6",
+    "mtime": 1786425548.8853004,
+    "ast_hash": "9d8b8e44228463e33e922e7a2205baf5",
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/partials/transactions-panel.blade.php": {
@@ -3470,8 +3470,8 @@
     "semantic_hash": ""
   },
   "tests/Feature/BankAccountTransactionCreatePageTest.php": {
-    "mtime": 1786425447.7843091,
-    "ast_hash": "e723a8dc550e3a8e5f2a39670b289c12",
+    "mtime": 1786425581.0687542,
+    "ast_hash": "898719ef74f7a1a1dad02763e14fe13d",
     "semantic_hash": ""
   },
   "resources/views/bank-accounts/transactions.blade.php": {
@@ -3482,6 +3482,11 @@
   "tests/Feature/BankAccountTransactionsPageTest.php": {
     "mtime": 1786425447.7943091,
     "ast_hash": "114663519445ab85744b6b65d483520f",
+    "semantic_hash": ""
+  },
+  "tests/Unit/TransactionBankAccountAmountTest.php": {
+    "mtime": 1786425559.0916567,
+    "ast_hash": "4e904f3c584d2f148789ef58fe527a9a",
     "semantic_hash": ""
   }
 }

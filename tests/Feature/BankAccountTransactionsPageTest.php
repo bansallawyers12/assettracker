@@ -12,7 +12,8 @@ it('registers the bank account transactions full page route', function () {
 it('includes full page url data attribute in the transactions panel partial', function () {
     $html = file_get_contents(resource_path('views/bank-accounts/partials/transactions-panel.blade.php'));
 
-    expect($html)->toContain('data-bank-transactions-page-url');
+    expect($html)->toContain('data-bank-transactions-page-url')
+        ->and($html)->toContain('transactions-page');
 });
 
 it('includes expand control in the bank account panel shell', function () {
@@ -21,7 +22,8 @@ it('includes expand control in the bank account panel shell', function () {
 
     expect($html)->toContain('data-bank-panel-expand')
         ->and($js)->toContain('setTransactionsExpandButton')
-        ->and($js)->toContain('initBankTransactionsPage');
+        ->and($js)->toContain('initBankTransactionsPage')
+        ->and($js)->toContain('setTransactionsExpandButton(null)');
 });
 
 it('renders the bank account transactions full page view', function () {
@@ -29,5 +31,16 @@ it('renders the bank account transactions full page view', function () {
 
     expect($html)->toContain('data-bank-transactions-page')
         ->and($html)->toContain('data-bank-transactions-page-content')
-        ->and($html)->toContain('bank-accounts.partials.transactions-panel');
+        ->and($html)->toContain("'isFullPage' => true")
+        ->and($html)->toContain("session('success')");
+});
+
+it('supports returning to the full transactions page after create', function () {
+    $create = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/create.blade.php'));
+    $controller = file_get_contents(app_path('Http/Controllers/BusinessEntityController.php'));
+
+    expect($create)->toContain('transactions-page')
+        ->and($create)->toContain('return_business_entity_id')
+        ->and($controller)->toContain("return_to') === 'transactions-page'")
+        ->and($controller)->toContain('bank-accounts.transactions.page');
 });

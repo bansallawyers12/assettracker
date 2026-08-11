@@ -49,6 +49,17 @@ it('falls back to transaction direction when no statement line is matched', func
         ->and($payment->bankAccountSignedAmount())->toBe(-120.0);
 });
 
+it('uses type map for non-split transactions without loading lines', function () {
+    $transaction = new Transaction([
+        'amount' => 80.00,
+        'transaction_type' => 'interest_income',
+    ]);
+    $transaction->setRelation('bankStatementEntries', collect());
+    $transaction->setRelation('lines', collect());
+
+    expect($transaction->bankAccountSignedAmount())->toBe(80.0);
+});
+
 it('renders bank signed amounts in the transactions list partial', function () {
     $html = file_get_contents(resource_path('views/bank-accounts/partials/transactions-list.blade.php'));
 

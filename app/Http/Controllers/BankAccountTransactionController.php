@@ -60,7 +60,7 @@ class BankAccountTransactionController extends Controller
         }
 
         $query = $bankAccount->transactions()
-            ->with(['businessEntity', 'asset', 'bankStatementEntries', 'vendor'])
+            ->with(['businessEntity', 'asset', 'bankStatementEntries', 'vendor', 'lines'])
             ->orderByDesc('date')
             ->orderByDesc('id');
 
