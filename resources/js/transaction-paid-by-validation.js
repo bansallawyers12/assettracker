@@ -13,9 +13,18 @@ export function paidBySelectValue(select) {
 }
 
 function isTransactionPaid(form) {
-    const paidRadio = form.querySelector('input[name="payment_status"][value="paid"]');
+    const paidInput = form.querySelector('input[name="payment_status"][value="paid"]');
 
-    return paidRadio?.checked ?? false;
+    if (!paidInput) {
+        return false;
+    }
+
+    // Hidden paid flag (balance sheet entry) has no checked state.
+    if (paidInput.type === 'hidden') {
+        return paidInput.value === 'paid';
+    }
+
+    return paidInput.checked ?? false;
 }
 
 function paymentChannel(form) {
@@ -26,8 +35,20 @@ function paymentChannel(form) {
 
 function transactionDirection(form) {
     const checked = form.querySelector('input[name="direction"]:checked');
+    if (checked?.value) {
+        return checked.value;
+    }
 
-    return checked?.value ?? 'expense';
+    const typeSelect = form.querySelector('#transaction_type, [name="transaction_type"]');
+    if (typeSelect) {
+        const value = String(paidBySelectValue(typeSelect) || typeSelect.value || '').trim();
+        const opt = Array.from(typeSelect.options).find((option) => option.value === value);
+        if (opt?.dataset?.direction) {
+            return opt.dataset.direction;
+        }
+    }
+
+    return 'expense';
 }
 
 function paidByRequiredMessage(form) {

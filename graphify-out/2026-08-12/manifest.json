@@ -1785,13 +1785,13 @@
     "semantic_hash": "518290a5e105eb2ca6cf8db9b67a84ab"
   },
   "resources/js/transaction-paid-by-bank-account.js": {
-    "mtime": 1786509940.3050005,
-    "ast_hash": "8741fdbd9391dc4a98135fd123897334",
+    "mtime": 1786440732.2405274,
+    "ast_hash": "3aa2479e8175c258ce4c1855e0d178f7",
     "semantic_hash": ""
   },
   "resources/js/transaction-paid-by-validation.js": {
-    "mtime": 1786509938.3302462,
-    "ast_hash": "a892afeb437edf719163d1f44542a830",
+    "mtime": 1786440732.2415266,
+    "ast_hash": "a838405ca055104aca479dc263d14c49",
     "semantic_hash": ""
   },
   "resources/js/workspace-dialog.js": {
@@ -3550,8 +3550,8 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/BalanceSheetEntryController.php": {
-    "mtime": 1786509949.2936137,
-    "ast_hash": "3df1b59d1af36e70a8c354feee8a48a4",
+    "mtime": 1786509790.2907653,
+    "ast_hash": "f97b6df73a71765e8d02b63df0b250d0",
     "semantic_hash": ""
   },
   "database/migrations/2026_08_11_110810_ensure_deposits_paid_chart_of_account.php": {
@@ -3560,13 +3560,13 @@
     "semantic_hash": ""
   },
   "resources/views/business-entities/balance-sheet-entries/create.blade.php": {
-    "mtime": 1786509972.2471793,
-    "ast_hash": "7177ed905ae02b6264cd86a545dd3fc9",
+    "mtime": 1786509780.7813668,
+    "ast_hash": "0b26ff498ee06434252551c2ff965764",
     "semantic_hash": ""
   },
   "tests/Feature/BalanceSheetEntryFlowTest.php": {
-    "mtime": 1786509972.9479735,
-    "ast_hash": "d41a45c17ca4e532057dfd61c11ce56b",
+    "mtime": 1786509821.114588,
+    "ast_hash": "5d64f19425e243835afce35ea5329a44",
     "semantic_hash": ""
   },
   ".ai/rules/balance-sheet-entries.md": {

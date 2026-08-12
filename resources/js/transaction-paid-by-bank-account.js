@@ -7,9 +7,18 @@ function parseEntityIdFromPaidBy(value) {
 }
 
 function isTransactionPaid(form) {
-    const paidRadio = form.querySelector('input[name="payment_status"][value="paid"]');
+    const paidInput = form.querySelector('input[name="payment_status"][value="paid"]');
 
-    return paidRadio?.checked ?? false;
+    if (!paidInput) {
+        return false;
+    }
+
+    // Hidden paid flag (balance sheet entry) has no checked state.
+    if (paidInput.type === 'hidden') {
+        return paidInput.value === 'paid';
+    }
+
+    return paidInput.checked ?? false;
 }
 
 function paymentChannel(form) {

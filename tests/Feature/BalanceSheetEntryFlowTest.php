@@ -51,7 +51,49 @@ it('registers balance sheet entry routes and controller actions', function () {
         ->and($form)->toContain('nonBankPaymentChannels')
         ->and($form)->toContain('return_bank_account_id')
         ->and($form)->toContain('open_bank_transactions')
+        ->and($form)->toContain('transaction-paid-by-fields')
         ->and($form)->not->toContain('open_add_transaction');
+});
+
+it('keeps the balance sheet entry form limited to posting fields', function () {
+    $controller = file_get_contents(app_path('Http/Controllers/BalanceSheetEntryController.php'));
+    $form = file_get_contents(resource_path('views/business-entities/balance-sheet-entries/create.blade.php'));
+
+    expect($form)->toContain('name="date"')
+        ->and($form)->toContain('name="amount"')
+        ->and($form)->toContain('name="description"')
+        ->and($form)->toContain('name="transaction_type"')
+        ->and($form)->toContain('name="asset_id"')
+        ->and($form)->toContain('name="payment_channel"')
+        ->and($form)->not->toContain('vendor-select')
+        ->and($form)->not->toContain('name="invoice_number"')
+        ->and($form)->not->toContain('transaction-marker-fields')
+        ->and($form)->not->toContain('name="gst_basis"')
+        ->and($form)->not->toContain('name="gst_amount"')
+        ->and($form)->not->toContain('name="document"')
+        ->and($form)->not->toContain('name="payment_document"')
+        ->and($form)->not->toContain('name="paid_at"')
+        ->and($form)->not->toContain('name="payment_method"')
+        ->and($form)->not->toContain('enctype="multipart/form-data"')
+        ->and($controller)->toContain("'vendor_id' => null")
+        ->and($controller)->toContain("'gst_status' => 'gst_free'")
+        ->and($controller)->toContain("'subject_to_bas' => false")
+        ->and($controller)->toContain("'is_flagged' => false")
+        ->and($controller)->toContain("'paid_at' => \$request->date")
+        ->and($controller)->not->toContain('TransactionGstResolver')
+        ->and($controller)->not->toContain('DocumentUploadService')
+        ->and($controller)->not->toContain('Vendor::');
+});
+
+it('treats hidden payment_status=paid as paid for client paid-by validation', function () {
+    $validation = file_get_contents(resource_path('js/transaction-paid-by-validation.js'));
+    $bankAccount = file_get_contents(resource_path('js/transaction-paid-by-bank-account.js'));
+
+    expect($validation)->toContain("paidInput.type === 'hidden'")
+        ->and($validation)->toContain("paidInput.value === 'paid'")
+        ->and($validation)->toContain('dataset?.direction')
+        ->and($bankAccount)->toContain("paidInput.type === 'hidden'")
+        ->and($bankAccount)->toContain("paidInput.value === 'paid'");
 });
 
 it('defaults balance sheet entries to asset_purchase and posts to capital COA', function () {
