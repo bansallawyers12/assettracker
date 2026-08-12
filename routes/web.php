@@ -33,6 +33,7 @@ use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\EmailTemplatesWorkspaceController;
 use App\Http\Controllers\EntityPersonController;
 use App\Http\Controllers\EntityShowWorkspaceController;
+use App\Http\Controllers\EntityTransactionClearController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ManualJournalEntryController;
@@ -320,6 +321,8 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('business-entities/{businessEntity}/transactions/{transaction}/edit', [BusinessEntityController::class, 'editTransaction'])->name('business-entities.transactions.edit');
     Route::put('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'updateTransaction'])->name('business-entities.transactions.update');
     Route::delete('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'destroyTransaction'])->name('business-entities.transactions.destroy');
+    Route::get('business-entities/{businessEntity}/transactions/clear', [EntityTransactionClearController::class, 'create'])->name('business-entities.transactions.clear.create');
+    Route::delete('business-entities/{businessEntity}/transactions/clear', [EntityTransactionClearController::class, 'destroy'])->name('business-entities.transactions.clear.destroy');
 
     // Balance sheet entries (non-bank capital / deposits / director loan movements)
     Route::get('business-entities/{businessEntity}/balance-sheet-entries/create', [BalanceSheetEntryController::class, 'create'])->name('business-entities.balance-sheet-entries.create');

@@ -14,26 +14,34 @@
                 workspace.
             </p>
         </div>
-        @if($operatingAccounts->isNotEmpty())
-            <div class="flex flex-wrap gap-2">
-                @foreach($operatingAccounts as $account)
-                    <button
-                        type="button"
-                        data-bank-action="transactions"
-                        data-bank-transactions-url="{{ route('bank-accounts.transactions.index', [
-                            'bankAccount' => $account,
-                            'business_entity_id' => $businessEntity->id,
-                        ]) }}"
-                        data-bank-transactions-title="Transactions"
-                        data-bank-transactions-subtitle="{{ $account->displayLabel() }}"
-                        class="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50"
-                    >
-                        <x-lucide-arrow-left-right class="h-3.5 w-3.5" aria-hidden="true" />
-                        {{ $account->account_name ?: $account->bank_name }}
-                    </button>
-                @endforeach
-            </div>
-        @endif
+        <div class="flex flex-wrap items-center gap-2">
+            @if(!$transactions->isEmpty())
+                <a href="{{ route('business-entities.transactions.clear.create', $businessEntity) }}"
+                   class="inline-flex items-center rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/50">
+                    Clear all transactions
+                </a>
+            @endif
+            @if($operatingAccounts->isNotEmpty())
+                <div class="flex flex-wrap gap-2">
+                    @foreach($operatingAccounts as $account)
+                        <button
+                            type="button"
+                            data-bank-action="transactions"
+                            data-bank-transactions-url="{{ route('bank-accounts.transactions.index', [
+                                'bankAccount' => $account,
+                                'business_entity_id' => $businessEntity->id,
+                            ]) }}"
+                            data-bank-transactions-title="Transactions"
+                            data-bank-transactions-subtitle="{{ $account->displayLabel() }}"
+                            class="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50"
+                        >
+                            <x-lucide-arrow-left-right class="h-3.5 w-3.5" aria-hidden="true" />
+                            {{ $account->account_name ?: $account->bank_name }}
+                        </button>
+                    @endforeach
+                </div>
+            @endif
+        </div>
     </div>
 
     @if ($transactions->isEmpty())

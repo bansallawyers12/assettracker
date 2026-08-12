@@ -99,10 +99,6 @@
                                             <x-lucide-clipboard class="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" aria-hidden="true" />
                                             Transactions
                                         </a>
-                                        <a href="{{ route('commitments.index', ['entity' => $businessEntity->id]) }}" class="entity-tab-link entity-external-nav inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
-                                            <x-lucide-file-text class="w-3.5 h-3.5 text-rose-600 dark:text-rose-400 shrink-0" aria-hidden="true" />
-                                            Commitments
-                                        </a>
                                         <a href="#tab_invoices" class="tab-link entity-tab-link inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                             <x-lucide-file-text class="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0" aria-hidden="true" />
                                             Invoices

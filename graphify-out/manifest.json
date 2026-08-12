@@ -2125,9 +2125,9 @@
     "semantic_hash": "f7e373d87781d097e7ed0d2c3b607a5a"
   },
   "resources/views/business-entities/edit.blade.php": {
-    "mtime": 1785397962.8379595,
-    "ast_hash": "6cf5aa4c93a78913d3b7de8606e12408",
-    "semantic_hash": "6cf5aa4c93a78913d3b7de8606e12408"
+    "mtime": 1786534354.5518916,
+    "ast_hash": "6771dd11eab5050facca00f823ab172f",
+    "semantic_hash": ""
   },
   "resources/views/business-entities/index.blade.php": {
     "mtime": 1785470679.3124378,
@@ -2255,8 +2255,8 @@
     "semantic_hash": "7e4f37230093f64ca978fe1ea1a56001"
   },
   "resources/views/business-entities/show.blade.php": {
-    "mtime": 1786186796.0851607,
-    "ast_hash": "f5a6b8efa20a9b6d76561733cf1e3bbe",
+    "mtime": 1786534353.0493498,
+    "ast_hash": "752c6279a0034dfbf2f58bfa52904098",
     "semantic_hash": ""
   },
   "resources/views/car-reports/car-register.blade.php": {
@@ -2865,8 +2865,8 @@
     "semantic_hash": ""
   },
   "routes/web.php": {
-    "mtime": 1786495322.1400206,
-    "ast_hash": "9550db4be9e83c77e8d65e1f011865fe",
+    "mtime": 1786534368.2236829,
+    "ast_hash": "29a08823213ca8b3af451de47aa24fd8",
     "semantic_hash": ""
   },
   "scripts/financial-reports-hub.test.mjs": {
@@ -3130,8 +3130,8 @@
     "semantic_hash": ""
   },
   "resources/views/business-entities/partials/transactions-summary.blade.php": {
-    "mtime": 1786495322.1273518,
-    "ast_hash": "7162075b0176ab0dd2986fbf990d0aac",
+    "mtime": 1786534352.7600732,
+    "ast_hash": "5c39aec36e67f9ed8f0d37604dc4b5b7",
     "semantic_hash": ""
   },
   "tests/Feature/DashboardTransactionBankAccountFormTest.php": {
@@ -3670,13 +3670,33 @@
     "semantic_hash": ""
   },
   "app/Support/FinancialReportCsvExporter.php": {
-    "mtime": 1786527213.57332,
-    "ast_hash": "2bdceb87bcec84e2287c70db21473966",
+    "mtime": 1786527431.1164923,
+    "ast_hash": "14690049d6253d4c61cd4354467ee51b",
     "semantic_hash": ""
   },
   "tests/Unit/FinancialReportCsvExporterTest.php": {
-    "mtime": 1786527283.5347116,
-    "ast_hash": "6677af94cce2d515fe2761edc5afd522",
+    "mtime": 1786527413.339091,
+    "ast_hash": "cd832b8f70258b4b561bfdcb446ba0c9",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/EntityTransactionClearController.php": {
+    "mtime": 1786534323.651878,
+    "ast_hash": "21b7775a746907220a01927442e92a3b",
+    "semantic_hash": ""
+  },
+  "app/Services/EntityTransactionClearService.php": {
+    "mtime": 1786534318.2074575,
+    "ast_hash": "12a8d50e98bd6e311adf0395b990ea9a",
+    "semantic_hash": ""
+  },
+  "resources/views/business-entities/transactions/clear.blade.php": {
+    "mtime": 1786534336.6430392,
+    "ast_hash": "93892b1ed932c0932a02f6e9d83f1f41",
+    "semantic_hash": ""
+  },
+  "tests/Feature/EntityTransactionClearTest.php": {
+    "mtime": 1786534357.371267,
+    "ast_hash": "3b2e5d835581a39729fe1aece1b838df",
     "semantic_hash": ""
   }
 }
