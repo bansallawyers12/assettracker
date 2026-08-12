@@ -7,11 +7,10 @@ use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\Transaction;
 use App\Services\BankStatementMatchSuggester;
-use Illuminate\Database\Eloquent\Relations\Relation;
+use App\Support\TransactionListFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class BankAccountTransactionController extends Controller
@@ -50,7 +49,7 @@ class BankAccountTransactionController extends Controller
         $this->ensureAccessible($bankAccount);
         $bankAccount->loadMissing(['holderEntity', 'holderPerson']);
 
-        $filters = $this->validatedTransactionFilters($request);
+        $filters = TransactionListFilters::fromRequest($request);
 
         $contextEntityId = $request->filled('business_entity_id')
             ? $request->integer('business_entity_id')
@@ -72,7 +71,7 @@ class BankAccountTransactionController extends Controller
             $query->where('business_entity_id', $contextEntityId);
         }
 
-        $this->applyTransactionFilters($query, $filters, $contextEntityId);
+        TransactionListFilters::apply($query, $filters, $contextEntityId);
 
         $transactions = $query->get();
         $eligibleEntities = $this->bookableEntities($bankAccount);
@@ -100,7 +99,7 @@ class BankAccountTransactionController extends Controller
             $defaultAssetId
         );
 
-        $filtersActive = collect($filters)->contains(fn ($value) => $value !== null && $value !== '');
+        $filtersActive = TransactionListFilters::isActive($filters);
 
         return [
             'bankAccount' => $bankAccount,
@@ -118,133 +117,6 @@ class BankAccountTransactionController extends Controller
             'filters' => $filters,
             'filtersActive' => $filtersActive,
         ];
-    }
-
-    /**
-     * @return array{
-     *     q: ?string,
-     *     date_from: ?string,
-     *     date_to: ?string,
-     *     entity_id: ?int,
-     *     type: ?string,
-     *     direction: ?string,
-     *     payment_status: ?string,
-     *     match_status: ?string,
-     *     subject_to_bas: ?string,
-     *     is_flagged: ?string
-     * }
-     */
-    private function validatedTransactionFilters(Request $request): array
-    {
-        $validated = $request->validate([
-            'q' => ['nullable', 'string', 'max:255'],
-            'date_from' => ['nullable', 'date'],
-            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
-            'entity_id' => ['nullable', 'integer'],
-            'type' => ['nullable', 'string', Rule::in(array_keys(Transaction::allTypes()))],
-            'direction' => ['nullable', Rule::in(['income', 'expense'])],
-            'payment_status' => ['nullable', Rule::in(['paid', 'unpaid'])],
-            'match_status' => ['nullable', Rule::in(['matched', 'unmatched'])],
-            'subject_to_bas' => ['nullable', Rule::in(['yes', 'no'])],
-            'is_flagged' => ['nullable', Rule::in(['yes', 'no'])],
-        ]);
-
-        $q = isset($validated['q']) ? trim((string) $validated['q']) : '';
-
-        return [
-            'q' => $q !== '' ? $q : null,
-            'date_from' => $validated['date_from'] ?? null,
-            'date_to' => $validated['date_to'] ?? null,
-            'entity_id' => isset($validated['entity_id']) ? (int) $validated['entity_id'] : null,
-            'type' => $validated['type'] ?? null,
-            'direction' => $validated['direction'] ?? null,
-            'payment_status' => $validated['payment_status'] ?? null,
-            'match_status' => $validated['match_status'] ?? null,
-            'subject_to_bas' => $validated['subject_to_bas'] ?? null,
-            'is_flagged' => $validated['is_flagged'] ?? null,
-        ];
-    }
-
-    /**
-     * @param  Relation<Transaction>  $query
-     * @param  array{
-     *     q: ?string,
-     *     date_from: ?string,
-     *     date_to: ?string,
-     *     entity_id: ?int,
-     *     type: ?string,
-     *     direction: ?string,
-     *     payment_status: ?string,
-     *     match_status: ?string,
-     *     subject_to_bas: ?string,
-     *     is_flagged: ?string
-     * }  $filters
-     */
-    private function applyTransactionFilters(Relation $query, array $filters, ?int $contextEntityId): void
-    {
-        if ($filters['q']) {
-            $like = '%'.$filters['q'].'%';
-            $query->where(function ($w) use ($like) {
-                $w->where('description', 'like', $like)
-                    ->orWhere('comments', 'like', $like)
-                    ->orWhere('invoice_number', 'like', $like)
-                    ->orWhere('vendor_name', 'like', $like)
-                    ->orWhereHas('vendor', fn ($vq) => $vq->where('name', 'like', $like));
-            });
-        }
-
-        if ($filters['date_from']) {
-            $query->whereDate('date', '>=', $filters['date_from']);
-        }
-
-        if ($filters['date_to']) {
-            $query->whereDate('date', '<=', $filters['date_to']);
-        }
-
-        if ($contextEntityId === null && $filters['entity_id']) {
-            $query->where('business_entity_id', $filters['entity_id']);
-        }
-
-        if ($filters['type']) {
-            $type = $filters['type'];
-            $query->where(function ($q) use ($type) {
-                $q->where('transaction_type', $type)
-                    ->orWhereHas('lines', fn ($lq) => $lq->where('transaction_type', $type));
-            });
-        }
-
-        if ($filters['direction']) {
-            $typeKeys = $filters['direction'] === 'income'
-                ? array_keys(Transaction::$incomeTypes)
-                : array_keys(Transaction::$expenseTypes);
-            // Internal transfers can be money in or out; include them in either direction filter.
-            $typeKeys[] = Transaction::TYPE_INTERNAL_TRANSFER;
-            $query->where(function ($q) use ($typeKeys) {
-                $q->whereIn('transaction_type', $typeKeys)
-                    ->orWhere(function ($q2) use ($typeKeys) {
-                        $q2->where('transaction_type', Transaction::TYPE_SPLIT)
-                            ->whereHas('lines', fn ($lq) => $lq->whereIn('transaction_type', $typeKeys));
-                    });
-            });
-        }
-
-        if ($filters['payment_status']) {
-            $query->where('payment_status', $filters['payment_status']);
-        }
-
-        if ($filters['match_status'] === 'matched') {
-            $query->whereHas('bankStatementEntries');
-        } elseif ($filters['match_status'] === 'unmatched') {
-            $query->whereDoesntHave('bankStatementEntries');
-        }
-
-        if ($filters['subject_to_bas']) {
-            $query->where('subject_to_bas', $filters['subject_to_bas'] === 'yes');
-        }
-
-        if ($filters['is_flagged']) {
-            $query->where('is_flagged', $filters['is_flagged'] === 'yes');
-        }
     }
 
     /**

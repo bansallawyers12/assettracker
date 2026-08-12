@@ -57,7 +57,7 @@
                                 <div class="space-y-3 mb-4">
                                     @if($asset->acquisition_cost)
                                         <div class="flex justify-between">
-                                            <span class="text-sm text-gray-500 dark:text-gray-400">Acquisition Cost</span>
+                                            <span class="text-sm text-gray-500 dark:text-gray-400">Purchase Price</span>
                                             <span class="text-sm font-medium text-gray-900 dark:text-gray-100">${{ number_format($asset->acquisition_cost, 2) }}</span>
                                         </div>
                                     @endif
@@ -71,7 +71,7 @@
                                     
                                     @if($asset->acquisition_date)
                                         <div class="flex justify-between">
-                                            <span class="text-sm text-gray-500 dark:text-gray-400">Acquired</span>
+                                            <span class="text-sm text-gray-500 dark:text-gray-400">Settlement Date</span>
                                             <span class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $asset->acquisition_date->format('d/m/Y') }}</span>
                                         </div>
                                     @endif

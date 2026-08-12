@@ -36,7 +36,7 @@
     </div>
 
     <div>
-        <label for="settlement_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Settlement date</label>
+        <label for="settlement_date" class="block text-sm font-medium text-gray-700 dark:text-gray-300">Settlement Date</label>
         <x-date-input  name="settlement_date" id="settlement_date"
                value="{{ old('settlement_date', optional($commitment)->settlement_date?->format('Y-m-d') ?? '') }}"
                class="mt-1 block w-full rounded-md border-gray-300 dark:bg-gray-900 dark:border-gray-600" />

@@ -33,12 +33,12 @@
                             @error('name') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="mb-4">
-                            <label for="acquisition_date" class="block text-sm font-medium text-gray-700">Acquisition Date</label>
+                            <label for="acquisition_date" class="block text-sm font-medium text-gray-700">Settlement Date</label>
                             <x-date-input  name="acquisition_date" id="acquisition_date" value="{{ old('acquisition_date', $asset->acquisition_date instanceof \Carbon\Carbon ? $asset->acquisition_date->format('Y-m-d') : ($asset->acquisition_date ? \Carbon\Carbon::parse($asset->acquisition_date)->format('Y-m-d') : '')) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" required />
                             @error('acquisition_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div class="mb-4">
-                            <label for="acquisition_cost" class="block text-sm font-medium text-gray-700">Acquisition Cost</label>
+                            <label for="acquisition_cost" class="block text-sm font-medium text-gray-700">Purchase Price</label>
                             <input type="number" step="0.01" name="acquisition_cost" id="acquisition_cost" value="{{ old('acquisition_cost', $asset->acquisition_cost) }}" class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-indigo-500 focus:border-indigo-500" required>
                             @error('acquisition_cost') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>

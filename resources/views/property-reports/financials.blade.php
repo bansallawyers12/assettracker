@@ -36,7 +36,7 @@
     <div class="px-6 py-4 border-b border-gray-100 bg-gray-50 text-sm text-gray-600">
         <span class="font-medium text-gray-800">{{ $subtitle }}</span>
         <span class="mx-2">·</span>
-        Acquisition cost: <span class="font-medium">${{ number_format((float) ($asset->acquisition_cost ?? 0), 2) }}</span>
+        Purchase Price: <span class="font-medium">${{ number_format((float) ($asset->acquisition_cost ?? 0), 2) }}</span>
         @if($asset->current_value)
             <span class="mx-2">·</span>
             Current value: <span class="font-medium">${{ number_format((float) $asset->current_value, 2) }}</span>
@@ -81,14 +81,14 @@
             <p class="text-2xl font-bold text-green-900 mt-1 tabular-nums">
                 {{ $yield['gross_yield'] !== null ? number_format($yield['gross_yield'], 2) . '%' : '—' }}
             </p>
-            <p class="text-xs text-green-700 mt-1">Annual rent ÷ acquisition cost</p>
+            <p class="text-xs text-green-700 mt-1">Annual rent ÷ purchase price</p>
         </div>
         <div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
             <p class="text-xs font-semibold uppercase tracking-wide text-blue-700">Net yield</p>
             <p class="text-2xl font-bold text-blue-900 mt-1 tabular-nums">
                 {{ $yield['net_yield'] !== null ? number_format($yield['net_yield'], 2) . '%' : '—' }}
             </p>
-            <p class="text-xs text-blue-700 mt-1">(Rent − expenses) ÷ acquisition cost</p>
+            <p class="text-xs text-blue-700 mt-1">(Rent − expenses) ÷ purchase price</p>
         </div>
         <div class="rounded-lg border border-gray-200 bg-white p-4">
             <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Annualised (est.)</p>

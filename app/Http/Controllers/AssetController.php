@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
+use App\Http\Resources\AssetResource;
 use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BusinessEntity;
@@ -12,6 +13,7 @@ use App\Models\Note;
 use App\Models\RealEstateCompany;
 use App\Models\RealEstateCompanyContact;
 use App\Models\Tenant;
+use App\Services\AssetMoveToTrustService;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -23,6 +25,7 @@ use Illuminate\Validation\ValidationException;
 class AssetController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -116,7 +119,7 @@ class AssetController extends Controller
             'sro_updated' => 'nullable|boolean',
             'real_estate_percentage' => 'nullable|numeric|min:0|max:100',
             'rental_income' => 'nullable|numeric|min:0',
-        ], $this->phaseTwoFinanceRules(), $this->bankAccountLinkRules()));
+        ], $this->phaseTwoFinanceRules(), $this->bankAccountLinkRules()), [], $this->assetFieldAttributes());
 
         $validatedData['asset_type'] = $validatedData['asset_type'] ?? 'Car';
         $validatedData['current_value'] = $validatedData['current_value'] ?? 0;
@@ -140,8 +143,8 @@ class AssetController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Asset created successfully.',
-                'asset' => (new \App\Http\Resources\AssetResource($asset))->resolve(),
-                'assets' => \App\Http\Resources\AssetResource::collection($assets)->resolve(),
+                'asset' => (new AssetResource($asset))->resolve(),
+                'assets' => AssetResource::collection($assets)->resolve(),
                 'list_html' => AssetsWorkspaceController::listHtml($businessEntity),
             ]);
         }
@@ -201,7 +204,73 @@ class AssetController extends Controller
             ];
         }
 
-        return view('assets.show', compact('businessEntity', 'asset', 'assetInvoices', 'invoiceSummary', 'documentCategories'));
+        $moveToTrustTargets = collect();
+        $preferredMoveToTrustId = null;
+        if ($businessEntity->isCompany()) {
+            $linkedTrusts = $businessEntity->trustsWhereCorporateTrustee();
+            $moveToTrustTargets = $businessEntity->moveToTrustCandidates($linkedTrusts);
+            if ($linkedTrusts->count() === 1) {
+                $preferredMoveToTrustId = $linkedTrusts->first()->id;
+            }
+        }
+
+        return view('assets.show', compact(
+            'businessEntity',
+            'asset',
+            'assetInvoices',
+            'invoiceSummary',
+            'documentCategories',
+            'moveToTrustTargets',
+            'preferredMoveToTrustId'
+        ));
+    }
+
+    /**
+     * Reparent asset from a company onto a trust (wrong-entity correction).
+     */
+    public function moveToTrust(
+        Request $request,
+        BusinessEntity $businessEntity,
+        Asset $asset,
+        AssetMoveToTrustService $moveToTrustService
+    ): RedirectResponse {
+        $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
+
+        $validated = $request->validate([
+            'target_business_entity_id' => [
+                'required',
+                'integer',
+                BusinessEntity::ruleExistsOperationalTrust(),
+                Rule::notIn([(int) $businessEntity->id]),
+            ],
+        ], [], [
+            'target_business_entity_id' => 'trust',
+        ]);
+
+        $target = BusinessEntity::query()->findOrFail($validated['target_business_entity_id']);
+
+        $this->authorize('update', $target);
+        $this->ensureNotClosed($target);
+        $this->ensureOperationalForAccounting($target);
+
+        $result = $moveToTrustService->move(
+            $asset,
+            $businessEntity,
+            $target,
+            $request->user()?->id
+        );
+
+        $message = 'Asset moved to '.$target->legal_name.'.';
+        if ($result['detached_bank_roles'] !== []) {
+            $message .= ' Some bank account links were removed; re-link under the trust if needed.';
+        }
+
+        return redirect()
+            ->route('business-entities.assets.show', [$target->id, $asset->id])
+            ->with('success', $message);
     }
 
     public function edit(BusinessEntity $businessEntity, Asset $asset)
@@ -227,9 +296,9 @@ class AssetController extends Controller
         $validatedData = $request->validate(array_merge([
             'asset_type' => 'required|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
             'name' => 'required|string|max:255',
-            'acquisition_cost' => 'nullable|numeric|min:0',
+            'acquisition_cost' => 'required|numeric|min:0',
             'current_value' => 'nullable|numeric|min:0',
-            'acquisition_date' => 'nullable|date',
+            'acquisition_date' => 'required|date',
             'status' => 'nullable|in:Active,Inactive,Sold,Under Maintenance',
             'description' => 'nullable|string',
             'registration_number' => 'nullable|string',
@@ -253,7 +322,7 @@ class AssetController extends Controller
             'sro_updated' => 'nullable|boolean',
             'real_estate_percentage' => 'nullable|numeric|min:0|max:100',
             'rental_income' => 'nullable|numeric|min:0',
-        ], $this->phaseTwoFinanceRules(), $this->bankAccountLinkRules()));
+        ], $this->phaseTwoFinanceRules(), $this->bankAccountLinkRules()), [], $this->assetFieldAttributes());
 
         $validatedData = $this->normalizeFinanceFieldsForAssetType($validatedData);
 
@@ -272,8 +341,8 @@ class AssetController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Asset updated successfully.',
-                'asset' => (new \App\Http\Resources\AssetResource($asset))->resolve(),
-                'assets' => \App\Http\Resources\AssetResource::collection($assets)->resolve(),
+                'asset' => (new AssetResource($asset))->resolve(),
+                'assets' => AssetResource::collection($assets)->resolve(),
                 'list_html' => AssetsWorkspaceController::listHtml($businessEntity),
             ]);
         }
@@ -629,6 +698,19 @@ class AssetController extends Controller
         }
     }
 
+    /**
+     * Friendly validation attribute names for asset form fields.
+     *
+     * @return array<string, string>
+     */
+    private function assetFieldAttributes(): array
+    {
+        return [
+            'acquisition_date' => 'Settlement Date',
+            'acquisition_cost' => 'Purchase Price',
+        ];
+    }
+
     private function ensureTenantBelongsToAsset(Asset $asset, Tenant $tenant): void
     {
         if ((int) $tenant->asset_id !== (int) $asset->id) {
@@ -888,22 +970,22 @@ class AssetController extends Controller
     private function bankAccountLinkRules(): array
     {
         return [
-            'loan_bank_account_id'             => 'nullable|exists:bank_accounts,id',
-            'offset_bank_account_id'           => 'nullable|exists:bank_accounts,id',
-            'rent_collection_bank_account_id'  => 'nullable|exists:bank_accounts,id',
+            'loan_bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'offset_bank_account_id' => 'nullable|exists:bank_accounts,id',
+            'rent_collection_bank_account_id' => 'nullable|exists:bank_accounts,id',
         ];
     }
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array<string, int|null>  keyed by pivot role
+     * @return array<string, int|null> keyed by pivot role
      */
     private function extractBankAccountLinks(array &$data): array
     {
         $links = [
-            BankAccount::ROLE_LOAN             => $data['loan_bank_account_id'] ?? null,
-            BankAccount::ROLE_OFFSET           => $data['offset_bank_account_id'] ?? null,
-            BankAccount::ROLE_RENT_COLLECTION  => $data['rent_collection_bank_account_id'] ?? null,
+            BankAccount::ROLE_LOAN => $data['loan_bank_account_id'] ?? null,
+            BankAccount::ROLE_OFFSET => $data['offset_bank_account_id'] ?? null,
+            BankAccount::ROLE_RENT_COLLECTION => $data['rent_collection_bank_account_id'] ?? null,
         ];
 
         unset(
@@ -921,8 +1003,8 @@ class AssetController extends Controller
     private function validateBankAccountLinks(array $links, BusinessEntity $businessEntity, ?string $assetType = null): void
     {
         $fieldMap = [
-            BankAccount::ROLE_LOAN            => 'loan_bank_account_id',
-            BankAccount::ROLE_OFFSET          => 'offset_bank_account_id',
+            BankAccount::ROLE_LOAN => 'loan_bank_account_id',
+            BankAccount::ROLE_OFFSET => 'offset_bank_account_id',
             BankAccount::ROLE_RENT_COLLECTION => 'rent_collection_bank_account_id',
         ];
 
@@ -938,6 +1020,7 @@ class AssetController extends Controller
 
             if ($role === BankAccount::ROLE_RENT_COLLECTION && ! $isLeasable) {
                 $errors[$fieldMap[$role]] = 'Rent collection accounts can only be linked to leasable properties.';
+
                 continue;
             }
 

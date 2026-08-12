@@ -1,10 +1,11 @@
 <?php
 
-uses(Tests\TestCase::class);
-
 use App\Models\BankAccount;
 use App\Models\Transaction;
 use App\Services\TransactionPostingService;
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 it('treats only a different be:{id} payer as cross-entity', function () {
     $service = app(TransactionPostingService::class);
@@ -57,10 +58,11 @@ it('avoids double-counting director loan GL that was auto-posted from transactio
         ->and($source)->toContain('buildDirectorEntityLoanAccountBlock');
 });
 
-it('reposts when paid_by or paid_at changes and unposts unpaid updates', function () {
+it('reposts when paid_by, payment_channel, or paid_at changes and unposts unpaid updates', function () {
     $source = file_get_contents(app_path('Observers/TransactionObserver.php'));
 
     expect($source)->toContain("'paid_by'")
+        ->and($source)->toContain("'payment_channel'")
         ->and($source)->toContain("'paid_at'")
         ->and($source)->toContain("payment_status === 'unpaid'")
         ->and($source)->toContain('unpost($transaction)');

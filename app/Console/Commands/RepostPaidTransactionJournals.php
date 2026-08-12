@@ -7,16 +7,17 @@ use App\Services\TransactionPostingService;
 use Illuminate\Console\Command;
 
 /**
- * Re-post paid transaction journals so entry dates and tracking categories
- * match current posting rules (e.g. paid_at for booking journals).
+ * Re-post paid transaction journals so entry dates, funding sides, and tracking
+ * match current posting rules (e.g. paid_at, director_funds/cash → 2500).
  */
 class RepostPaidTransactionJournals extends Command
 {
     protected $signature = 'journals:repost-paid-transactions
                             {--dry-run : Show how many transactions would be re-posted without writing}
+                            {--channels= : Comma-separated payment_channel values to limit (e.g. director_funds,cash)}
                             {--chunk=200 : Rows per chunk}';
 
-    protected $description = 'Re-post journals for paid transactions (fixes entry_date and tracking on journal lines)';
+    protected $description = 'Re-post journals for paid transactions (fixes entry_date, director-funds funding, tracking)';
 
     public function handle(TransactionPostingService $postingService): int
     {
@@ -27,10 +28,26 @@ class RepostPaidTransactionJournals extends Command
             ->where('payment_status', 'paid')
             ->orderBy('id');
 
+        $channelsOption = $this->option('channels');
+        if (is_string($channelsOption) && trim($channelsOption) !== '') {
+            $channels = array_values(array_filter(array_map(
+                static fn (string $value): string => trim($value),
+                explode(',', $channelsOption)
+            )));
+            $allowed = array_keys(Transaction::$paymentChannels);
+            $invalid = array_diff($channels, $allowed);
+            if ($invalid !== []) {
+                $this->error('Invalid payment channel(s): '.implode(', ', $invalid));
+
+                return self::FAILURE;
+            }
+            $query->whereIn('payment_channel', $channels);
+        }
+
         $total = (clone $query)->count();
 
         if ($total === 0) {
-            $this->info('No paid transactions found.');
+            $this->info('No matching paid transactions found.');
 
             return self::SUCCESS;
         }

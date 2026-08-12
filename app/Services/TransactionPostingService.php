@@ -14,8 +14,11 @@ use Illuminate\Support\Str;
 /**
  * Posts transaction journals for entity P&L/BS.
  *
- * Same-entity pay (or person paid_by): one booking journal on the booker
- * (TXN-########) using cash ↔ income/expense.
+ * Same-entity pay with bank_account channel (or person paid_by): one booking
+ * journal on the booker (TXN-########) using cash ↔ income/expense.
+ *
+ * Same-entity pay with director_funds or cash channel: funding side is
+ * director/entity loan (2500) ↔ income/expense (not company bank cash).
  *
  * Cross-entity pay (paid_by = be:{other}): two journals —
  *   1) Booking entity: income/expense ↔ director/entity loan (2500), not cash
@@ -227,6 +230,70 @@ class TransactionPostingService
         return $payerId !== $bookerId ? $payerId : null;
     }
 
+    /**
+     * Funding / cash-movement side for operating (non-director-loan-type) journals.
+     *
+     * Priority: cross-entity paid_by → director loan; director_funds/cash channel →
+     * director loan; otherwise bank cash.
+     *
+     * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}  $accounts
+     * @param  'income'|'expense'  $direction
+     * @return array{account_id: int, debit: float, credit: float, description: ?string}|null
+     */
+    private function fundingSideLine(
+        Transaction $transaction,
+        array $accounts,
+        float $amountGross,
+        string $direction
+    ): ?array {
+        $useIntercompany = $this->payerEntityIdFromPaidBy($transaction) !== null
+            && $accounts['director_loan'] !== null;
+        $useDirectorFunds = ! $useIntercompany
+            && $accounts['director_loan'] !== null
+            && $this->shouldFundOperatingSideViaDirectorLoan($transaction);
+
+        if ($direction === 'income') {
+            if ($useIntercompany) {
+                return $this->line($accounts['director_loan']->id, $amountGross, 0, 'Intercompany receivable');
+            }
+            if ($useDirectorFunds) {
+                return $this->line($accounts['director_loan']->id, $amountGross, 0, 'Director funds receivable');
+            }
+            if ($accounts['cash']) {
+                return $this->line($accounts['cash']->id, $amountGross, 0, 'Cash received');
+            }
+
+            return null;
+        }
+
+        if ($useIntercompany) {
+            return $this->line($accounts['director_loan']->id, 0, $amountGross, 'Intercompany payable');
+        }
+        if ($useDirectorFunds) {
+            return $this->line($accounts['director_loan']->id, 0, $amountGross, 'Director funds payable');
+        }
+        if ($accounts['cash']) {
+            return $this->line($accounts['cash']->id, 0, $amountGross, 'Cash paid');
+        }
+
+        return null;
+    }
+
+    /**
+     * Operating P&L funding via director loan (2500) instead of company cash GL.
+     * director_funds/cash channels, plus paid rows with no bank still marked bank_account
+     * (inconsistent legacy). external_third_party left on cash until product defines it.
+     */
+    private function shouldFundOperatingSideViaDirectorLoan(Transaction $transaction): bool
+    {
+        if (Transaction::usesDirectorLoanFundingChannel($transaction->payment_channel)) {
+            return true;
+        }
+
+        return $transaction->bank_account_id === null
+            && $transaction->payment_channel === Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT;
+    }
+
     private function buildBookingEntityLines(Transaction $transaction): array
     {
         if ($transaction->isSplit()) {
@@ -270,19 +337,15 @@ class TransactionPostingService
             return [];
         }
 
-        $payerEntityId = $this->payerEntityIdFromPaidBy($transaction);
-        $useIntercompany = $payerEntityId !== null && $accounts['director_loan'] !== null;
         $incomeTypes = array_keys(Transaction::$incomeTypes);
         $lines = [];
 
         if (in_array($transaction->transaction_type, $incomeTypes, true)) {
-            if ($useIntercompany) {
-                $lines[] = $this->line($accounts['director_loan']->id, $amountGross, 0, 'Intercompany receivable');
-            } elseif ($accounts['cash']) {
-                $lines[] = $this->line($accounts['cash']->id, $amountGross, 0, 'Cash received');
-            } else {
+            $funding = $this->fundingSideLine($transaction, $accounts, $amountGross, 'income');
+            if ($funding === null) {
                 return [];
             }
+            $lines[] = $funding;
             $counterLabel = $transaction->transaction_type === Transaction::TYPE_INVOICE_PAYMENT
                 ? 'Clear accounts receivable'
                 : 'Income';
@@ -291,13 +354,11 @@ class TransactionPostingService
                 $lines[] = $this->line($accounts['gst_payable']->id, 0, $gstAmount, 'GST Payable');
             }
         } else {
-            if ($useIntercompany) {
-                $lines[] = $this->line($accounts['director_loan']->id, 0, $amountGross, 'Intercompany payable');
-            } elseif ($accounts['cash']) {
-                $lines[] = $this->line($accounts['cash']->id, 0, $amountGross, 'Cash paid');
-            } else {
+            $funding = $this->fundingSideLine($transaction, $accounts, $amountGross, 'expense');
+            if ($funding === null) {
                 return [];
             }
+            $lines[] = $funding;
             $lines[] = $this->line($counterAccount->id, $amountNet, 0, 'Expense/Asset');
             if ($gstAmount > 0 && $accounts['gst_receivable']) {
                 $lines[] = $this->line($accounts['gst_receivable']->id, $gstAmount, 0, 'GST Receivable');
@@ -319,32 +380,17 @@ class TransactionPostingService
         $mapping = $this->counterAccountMapping();
         $incomeTypes = array_keys(Transaction::$incomeTypes);
 
-        $payerEntityId = $this->payerEntityIdFromPaidBy($transaction);
-        $useIntercompany = $payerEntityId !== null && $accounts['director_loan'] !== null;
-
         $headerCash = round(abs((float) $transaction->amount), 2);
         $netDirection = $transaction->splitNetDirection();
 
         $lines = [];
 
-        // Cash once from header net remittance.
-        if ($netDirection === 'income') {
-            if ($useIntercompany) {
-                $lines[] = $this->line($accounts['director_loan']->id, $headerCash, 0, 'Intercompany receivable');
-            } elseif ($accounts['cash']) {
-                $lines[] = $this->line($accounts['cash']->id, $headerCash, 0, 'Cash received');
-            } else {
-                return [];
-            }
-        } else {
-            if ($useIntercompany) {
-                $lines[] = $this->line($accounts['director_loan']->id, 0, $headerCash, 'Intercompany payable');
-            } elseif ($accounts['cash']) {
-                $lines[] = $this->line($accounts['cash']->id, 0, $headerCash, 'Cash paid');
-            } else {
-                return [];
-            }
+        // Funding once from header net remittance (cash, director funds, or intercompany).
+        $funding = $this->fundingSideLine($transaction, $accounts, $headerCash, $netDirection);
+        if ($funding === null) {
+            return [];
         }
+        $lines[] = $funding;
 
         foreach ($allocationLines as $allocation) {
             /** @var TransactionLine $allocation */

@@ -12,13 +12,14 @@ it('adds payment channel validation and bank-account gating in transaction contr
         ->and($controller)->toContain("'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT");
 });
 
-it('routes bank transactions panel action to non-bank dashboard flow', function () {
+it('keeps bank transactions panel balance sheet entry separate from dashboard add transaction', function () {
     $panel = file_get_contents(resource_path('views/bank-accounts/partials/transactions-panel.blade.php'));
 
-    expect($panel)->toContain('Add non-bank entry')
-        ->and($panel)->toContain('open_add_transaction')
+    expect($panel)->toContain('Add balance sheet entry')
+        ->and($panel)->toContain('balance-sheet-entries/create')
         ->and($panel)->toContain('payment_channel')
-        ->and($panel)->toContain('PAYMENT_CHANNEL_DIRECTOR_FUNDS');
+        ->and($panel)->toContain('PAYMENT_CHANNEL_DIRECTOR_FUNDS')
+        ->and($panel)->not->toContain('open_add_transaction');
 });
 
 it('stores bank-originated transactions with bank-account payment channel', function () {

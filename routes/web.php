@@ -7,6 +7,7 @@ use App\Http\Controllers\AssetInvoiceController;
 use App\Http\Controllers\AssetShowWorkspaceController;
 use App\Http\Controllers\AssetsWorkspaceController;
 use App\Http\Controllers\Auth\TwoFactorController;
+use App\Http\Controllers\BalanceSheetEntryController;
 use App\Http\Controllers\BankAccountImportController;
 use App\Http\Controllers\BankAccountPanelController;
 use App\Http\Controllers\BankAccountStatementController;
@@ -199,6 +200,8 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Assets (Nested under Business Entities)
     Route::resource('business-entities.assets', AssetController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::post('business-entities/{businessEntity}/assets/{asset}/move-to-trust', [AssetController::class, 'moveToTrust'])
+        ->name('business-entities.assets.move-to-trust');
     Route::post('business-entities/{businessEntity}/assets/{asset}/finalize/{type}', [AssetController::class, 'finalizeDueDate'])->name('assets.finalize-due-date');
     Route::post('business-entities/{businessEntity}/assets/{asset}/extend/{type}', [AssetController::class, 'extendDueDate'])->name('assets.extend-due-date');
 
@@ -317,6 +320,10 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('business-entities/{businessEntity}/transactions/{transaction}/edit', [BusinessEntityController::class, 'editTransaction'])->name('business-entities.transactions.edit');
     Route::put('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'updateTransaction'])->name('business-entities.transactions.update');
     Route::delete('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'destroyTransaction'])->name('business-entities.transactions.destroy');
+
+    // Balance sheet entries (non-bank capital / deposits / director loan movements)
+    Route::get('business-entities/{businessEntity}/balance-sheet-entries/create', [BalanceSheetEntryController::class, 'create'])->name('business-entities.balance-sheet-entries.create');
+    Route::post('business-entities/{businessEntity}/balance-sheet-entries', [BalanceSheetEntryController::class, 'store'])->name('business-entities.balance-sheet-entries.store');
 
     // Existing Bank Account Transaction Routes
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/create', [BusinessEntityController::class, 'createTransaction'])->name('business-entities.bank-accounts.transactions.create');

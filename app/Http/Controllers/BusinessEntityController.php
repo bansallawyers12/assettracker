@@ -33,6 +33,7 @@ use App\Support\SecurityAuditLogger;
 use App\Support\TableSort;
 use App\Support\TransactionCashParts;
 use App\Support\TransactionGstResolver;
+use App\Support\TransactionListFilters;
 use App\Support\TransactionPayerResolver; // Added for handling validation exceptions
 use Carbon\Carbon;
 // Add this at the top with other use statements
@@ -3293,64 +3294,80 @@ class BusinessEntityController extends Controller
             'desc'
         );
 
+        $filters = TransactionListFilters::fromRequest($request);
+        $filtersActive = TransactionListFilters::isActive($filters);
+
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
 
-        $query = Transaction::with(['businessEntity', 'bankAccount', 'bankStatementEntries', 'asset', 'relatedEntity', 'vendor', 'lines']);
+        $query = Transaction::query()
+            ->with(['businessEntity', 'bankAccount', 'bankStatementEntries', 'asset', 'relatedEntity', 'vendor', 'lines']);
 
-        if ($entityId = $request->input('entity_id')) {
-            $query->where('business_entity_id', $entityId);
-        }
+        TransactionListFilters::apply($query, $filters);
 
-        if ($type = $request->input('type')) {
-            $query->where(function ($q) use ($type) {
-                $q->where('transaction_type', $type)
-                    ->orWhereHas('lines', fn ($lq) => $lq->where('transaction_type', $type));
-            });
-        }
+        // Prefer correlated subqueries over joins so filters never collide with related
+        // table columns (assets.description, assets.business_entity_id, etc.).
+        match ($tableSort->column) {
+            'entity' => $query
+                ->orderBy(
+                    BusinessEntity::query()
+                        ->select('legal_name')
+                        ->whereColumn('business_entities.id', 'transactions.business_entity_id')
+                        ->limit(1),
+                    $tableSort->order
+                )
+                ->orderBy('transactions.id', $tableSort->order),
+            'asset' => $query
+                ->orderBy(
+                    Asset::query()
+                        ->select('name')
+                        ->whereColumn('assets.id', 'transactions.asset_id')
+                        ->limit(1),
+                    $tableSort->order
+                )
+                ->orderBy('transactions.id', $tableSort->order),
+            'bank' => $query
+                ->orderBy(
+                    BankAccount::query()
+                        ->select('account_name')
+                        ->whereColumn('bank_accounts.id', 'transactions.bank_account_id')
+                        ->limit(1),
+                    $tableSort->order
+                )
+                ->orderBy('transactions.id', $tableSort->order),
+            'vendor' => $query
+                ->orderBy(
+                    Vendor::query()
+                        ->select('name')
+                        ->whereColumn('vendors.id', 'transactions.vendor_id')
+                        ->limit(1),
+                    $tableSort->order
+                )
+                ->orderBy('transactions.vendor_name', $tableSort->order)
+                ->orderBy('transactions.id', $tableSort->order),
+            default => $tableSort->applyToQuery($query, [
+                'date' => ['date', 'id'],
+                'type' => ['transaction_type', 'id'],
+                'amount' => ['amount', 'id'],
+                'payment' => ['payment_status', 'id'],
+                'due' => ['due_date', 'id'],
+                'description' => ['description', 'id'],
+                'vendor' => ['vendor_name', 'id'],
+            ], 'date'),
+        };
 
-        if (($ps = $request->input('payment_status')) && in_array($ps, ['paid', 'unpaid'], true)) {
-            $query->where('payment_status', $ps);
-        }
+        $transactions = $query->paginate(50)->withQueryString();
 
-        if (($dir = $request->input('direction')) && in_array($dir, ['income', 'expense'], true)) {
-            $typeKeys = $dir === 'income'
-                ? array_keys(Transaction::$incomeTypes)
-                : array_keys(Transaction::$expenseTypes);
-            $typeKeys[] = Transaction::TYPE_INTERNAL_TRANSFER;
-            $query->where(function ($q) use ($typeKeys) {
-                $q->whereIn('transaction_type', $typeKeys)
-                    ->orWhere(function ($q2) use ($typeKeys) {
-                        $q2->where('transaction_type', Transaction::TYPE_SPLIT)
-                            ->whereHas('lines', fn ($lq) => $lq->whereIn('transaction_type', $typeKeys));
-                    });
-            });
-        }
+        // Preserve filters only — sort/order are set by the header component.
+        $sortQuery = TransactionListFilters::queryParams($filters);
 
-        $transactions = $query->get();
-
-        $transactions = $tableSort->sortCollection($transactions, function (Transaction $tx, string $column) {
-            return match ($column) {
-                'entity' => $tx->businessEntity?->legal_name,
-                'asset' => $tx->asset?->name,
-                'bank' => $tx->bankAccount?->account_name,
-                'type' => $tx->transaction_type,
-                'amount' => $tx->amount,
-                'vendor' => $tx->vendor_display,
-                'payment' => $tx->payment_status,
-                'due' => $tx->due_date?->format('Y-m-d'),
-                'description' => $tx->description,
-                default => $tx->date?->format('Y-m-d'),
-            };
-        });
-
-        $sortQuery = array_filter([
-            'entity_id' => $request->input('entity_id'),
-            'type' => $request->input('type'),
-            'direction' => $request->input('direction'),
-            'payment_status' => $request->input('payment_status'),
-        ], fn ($value) => $value !== null && $value !== '');
-
-        return view('transactions.index', compact('transactions', 'businessEntities', 'tableSort', 'sortQuery'));
+        return view('transactions.index', [
+            'transactions' => $transactions,
+            'businessEntities' => $businessEntities,
+            'tableSort' => $tableSort,
+            'sortQuery' => $sortQuery,
+            'filters' => $filters,
+            'filtersActive' => $filtersActive,
+        ]);
     }
 
     /**

@@ -95,7 +95,7 @@
                                         {{ $transaction->bankAccount->transactionAccountLabel() }}
                                     </button>
                                 @else
-                                    <span class="text-gray-400">Unassigned</span>
+                                    <span class="text-gray-500 dark:text-gray-400" title="No company bank account — funded outside bank">{{ $transaction->nonBankFundingAccountLabel() }}</span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ Transaction::allTypes()[$transaction->transaction_type] ?? 'Unknown' }}</td>

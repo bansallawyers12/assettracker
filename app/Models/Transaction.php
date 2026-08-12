@@ -196,6 +196,91 @@ class Transaction extends Model
         ];
     }
 
+    /**
+     * Transaction types intended for the dedicated balance-sheet entry form
+     * (capital / asset purchase and director loan movements — not day-to-day P&L).
+     *
+     * @return array<string, string>
+     */
+    public static function balanceSheetTypes(): array
+    {
+        return [
+            'asset_purchase' => self::$expenseTypes['asset_purchase'],
+            'capital_expenditure' => self::$expenseTypes['capital_expenditure'],
+            'director_loan_in' => self::$incomeTypes['director_loan_in'],
+            'director_loan_out' => self::$expenseTypes['director_loan_out'],
+            'director_loan_repayment' => self::$expenseTypes['director_loan_repayment'],
+            'directors_loans_to_company' => self::$incomeTypes['directors_loans_to_company'],
+            'repayment_directors_loans' => self::$expenseTypes['repayment_directors_loans'],
+            'company_loans_to_directors' => self::$expenseTypes['company_loans_to_directors'],
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, string>>
+     */
+    public static function balanceSheetTypeSelectGroups(): array
+    {
+        $types = self::balanceSheetTypes();
+
+        return [
+            'Capital & assets' => [
+                'asset_purchase' => $types['asset_purchase'],
+                'capital_expenditure' => $types['capital_expenditure'],
+            ],
+            'Director & related party' => [
+                'director_loan_in' => $types['director_loan_in'],
+                'director_loan_out' => $types['director_loan_out'],
+                'director_loan_repayment' => $types['director_loan_repayment'],
+                'directors_loans_to_company' => $types['directors_loans_to_company'],
+                'repayment_directors_loans' => $types['repayment_directors_loans'],
+                'company_loans_to_directors' => $types['company_loans_to_directors'],
+            ],
+        ];
+    }
+
+    /**
+     * Payment channels that fund the books via director/entity loan (2500),
+     * not company bank cash. Bank account and external third party are excluded.
+     */
+    public static function usesDirectorLoanFundingChannel(?string $channel): bool
+    {
+        return in_array($channel, [
+            self::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+            self::PAYMENT_CHANNEL_CASH,
+        ], true);
+    }
+
+    /**
+     * Label for the Account column when no bank account is linked.
+     * Cross-entity paid_by shows the paying entity; otherwise "Director funds"
+     * (covers director_funds, cash, and legacy null-bank channels).
+     */
+    public function nonBankFundingAccountLabel(): string
+    {
+        if (is_string($this->paid_by) && preg_match('/^be:\d+$/', $this->paid_by)) {
+            $label = TransactionPayerResolver::paidByLabel($this->paid_by);
+
+            return $label !== '' ? $label : 'Related entity';
+        }
+
+        return self::$paymentChannels[self::PAYMENT_CHANNEL_DIRECTOR_FUNDS];
+    }
+
+    /**
+     * Payment channels allowed for balance-sheet entries (never bank account).
+     *
+     * @return array<string, string>
+     */
+    public static function nonBankPaymentChannels(): array
+    {
+        return array_filter(
+            self::$paymentChannels,
+            fn (string $key): bool => $key !== self::PAYMENT_CHANNEL_BANK_ACCOUNT,
+            ARRAY_FILTER_USE_KEY
+        );
+    }
+
     /** Transaction types used for entity summary “Super Paid” row. */
     public static function superPaymentTypes(): array
     {

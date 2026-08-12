@@ -21,6 +21,7 @@ import {
     setBankSearchSelectDisabled,
 } from './bank-search-select.js';
 import { bindReconciliationPanel } from './bank-reconciliation.js';
+import { bindCollapsibleFilters } from './transaction-list-filters.js';
 
 function transactionsFullPageUrl(transactionsUrl) {
     try {
@@ -33,58 +34,13 @@ function transactionsFullPageUrl(transactionsUrl) {
     }
 }
 
-const BANK_TX_FILTERS_EXPANDED_KEY = 'bank-tx-filters-expanded';
-
-function bindCollapsibleFilters(root, signal) {
-    const wrap = root.querySelector('[data-bank-transactions-filters-wrap]');
-    const toggle = wrap?.querySelector('[data-bank-transactions-filters-toggle]');
-    const body = wrap?.querySelector('[data-bank-transactions-filters-body]');
-    const chevron = wrap?.querySelector('[data-bank-transactions-filters-chevron]');
-
-    if (!wrap || !toggle || !body) {
-        return;
-    }
-
-    const filtersActive = wrap.dataset.bankTransactionsFiltersActive === '1';
-    let expanded = filtersActive;
-
-    if (!filtersActive) {
-        try {
-            expanded = sessionStorage.getItem(BANK_TX_FILTERS_EXPANDED_KEY) === '1';
-        } catch {
-            expanded = false;
-        }
-    }
-
-    function setExpanded(isOpen) {
-        body.classList.toggle('hidden', !isOpen);
-        toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-        chevron?.classList.toggle('rotate-180', isOpen);
-
-        if (!filtersActive) {
-            try {
-                sessionStorage.setItem(BANK_TX_FILTERS_EXPANDED_KEY, isOpen ? '1' : '0');
-            } catch {
-                // Ignore storage failures.
-            }
-        }
-    }
-
-    setExpanded(expanded);
-
-    toggle.addEventListener('click', () => {
-        setExpanded(body.classList.contains('hidden'));
-    }, { signal });
-}
-
 function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
     const contentHost = options.contentHost ?? root;
     const panel = root.querySelector('[data-bank-transactions-panel]') || root;
     const addButton = root.querySelector('[data-bank-transactions-add]');
     const entityPicker = root.querySelector('[data-bank-transactions-entity-picker]');
-    const filterForm = root.querySelector('[data-bank-transactions-filters]');
+    const filterForm = root.querySelector('[data-tx-filters]') || root.querySelector('[data-bank-transactions-filters]');
     const filterKeys = ['q', 'date_from', 'date_to', 'entity_id', 'type', 'direction', 'payment_status', 'match_status', 'subject_to_bas', 'is_flagged'];
-
     function buildIndexUrl(fromForm = filterForm) {
         const baseUrl = panel.dataset.bankTransactionsIndexUrl || refreshUrl;
         if (!baseUrl) {
@@ -179,14 +135,15 @@ function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
         applyFilters(filterForm);
     }, { signal });
 
-    filterForm?.querySelectorAll('[data-bank-transactions-filter-auto]').forEach((el) => {
+    filterForm?.querySelectorAll('[data-tx-filter-auto], [data-bank-transactions-filter-auto]').forEach((el) => {
         el.addEventListener('change', () => {
             applyFilters(filterForm);
         }, { signal });
     });
 
-    filterForm?.querySelector('[data-bank-transactions-filters-clear]')?.addEventListener('click', () => {
-        const clearUrl = filterForm.dataset.bankTransactionsClearUrl
+    filterForm?.querySelector('[data-tx-filters-clear], [data-bank-transactions-filters-clear]')?.addEventListener('click', () => {
+        const clearUrl = filterForm.dataset.txFiltersClearUrl
+            || filterForm.dataset.bankTransactionsClearUrl
             || (() => {
                 const url = new URL(panel.dataset.bankTransactionsIndexUrl || refreshUrl, window.location.origin);
                 filterKeys.forEach((key) => url.searchParams.delete(key));

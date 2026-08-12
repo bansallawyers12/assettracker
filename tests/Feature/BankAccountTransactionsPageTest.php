@@ -37,24 +37,28 @@ it('renders the bank account transactions full page view', function () {
 
 it('includes transaction filter controls in the transactions panel partial', function () {
     $html = file_get_contents(resource_path('views/bank-accounts/partials/transactions-panel.blade.php'));
+    $shared = file_get_contents(resource_path('views/transactions/partials/collapsible-filters.blade.php'));
     $list = file_get_contents(resource_path('views/bank-accounts/partials/transactions-list.blade.php'));
     $js = file_get_contents(resource_path('js/bank-account-modal.js'));
+    $sharedJs = file_get_contents(resource_path('js/transaction-list-filters.js'));
     $controller = file_get_contents(app_path('Http/Controllers/BankAccountTransactionController.php'));
+    $filtersSupport = file_get_contents(app_path('Support/TransactionListFilters.php'));
 
-    expect($html)->toContain('data-bank-transactions-filters')
-        ->and($html)->toContain('data-bank-transactions-filters-wrap')
-        ->and($html)->toContain('data-bank-transactions-filters-toggle')
-        ->and($html)->toContain('data-bank-transactions-filters-body')
-        ->and($html)->toContain('name="q"')
-        ->and($html)->toContain('name="date_from"')
-        ->and($html)->toContain('name="date_to"')
-        ->and($html)->toContain('name="direction"')
-        ->and($html)->toContain('name="type"')
-        ->and($html)->toContain('name="payment_status"')
-        ->and($html)->toContain('name="match_status"')
-        ->and($html)->toContain('name="subject_to_bas"')
-        ->and($html)->toContain('name="is_flagged"')
-        ->and($html)->toContain('data-bank-transactions-filters-clear')
+    expect($html)->toContain('transactions.partials.collapsible-filters')
+        ->and($shared)->toContain('data-tx-filters-wrap')
+        ->and($shared)->toContain('data-bank-transactions-filters-wrap')
+        ->and($shared)->toContain('data-tx-filters-toggle')
+        ->and($shared)->toContain('data-tx-filters-body')
+        ->and($shared)->toContain('name="q"')
+        ->and($shared)->toContain('name="date_from"')
+        ->and($shared)->toContain('name="date_to"')
+        ->and($shared)->toContain('name="direction"')
+        ->and($shared)->toContain('name="type"')
+        ->and($shared)->toContain('name="payment_status"')
+        ->and($shared)->toContain('name="match_status"')
+        ->and($shared)->toContain('name="subject_to_bas"')
+        ->and($shared)->toContain('name="is_flagged"')
+        ->and($shared)->toContain('data-tx-filters-clear')
         ->and($list)->toContain('Comment:')
         ->and($list)->toContain('No transactions match these filters.')
         ->and($js)->toContain('applyFilters')
@@ -62,10 +66,13 @@ it('includes transaction filter controls in the transactions panel partial', fun
         ->and($js)->toContain('subject_to_bas')
         ->and($js)->toContain('is_flagged')
         ->and($js)->toContain('bindCollapsibleFilters')
-        ->and($controller)->toContain('applyTransactionFilters')
-        ->and($controller)->toContain('validatedTransactionFilters')
-        ->and($controller)->toContain("where('subject_to_bas',")
-        ->and($controller)->toContain("where('is_flagged',");
+        ->and($sharedJs)->toContain('bindCollapsibleFilters')
+        ->and($sharedJs)->toContain('initTransactionListFilters')
+        ->and($controller)->toContain('TransactionListFilters::apply')
+        ->and($controller)->toContain('TransactionListFilters::fromRequest')
+        ->and($controller)->not->toContain("where('subject_to_bas',")
+        ->and($filtersSupport)->toContain('.subject_to_bas')
+        ->and($filtersSupport)->toContain('.is_flagged');
 });
 
 it('supports returning to the full transactions page after create', function () {

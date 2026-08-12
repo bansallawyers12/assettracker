@@ -10,6 +10,7 @@ use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Exists;
 
 class BusinessEntity extends Model
 {
@@ -168,7 +169,7 @@ class BusinessEntity extends Model
      * Use query callbacks instead of ->where(..., false): when the rule is stringified for validation,
      * boolean false is serialized as an empty string and PostgreSQL rejects "" for a boolean column.
      */
-    public static function ruleExistsOperational(string $column = 'id'): \Illuminate\Validation\Rules\Exists
+    public static function ruleExistsOperational(string $column = 'id'): Exists
     {
         return Rule::exists('business_entities', $column)->using(
             fn ($query) => $query->where('exclude_from_financial_reports', false)->whereNull('closed_date')
@@ -178,7 +179,7 @@ class BusinessEntity extends Model
     /**
      * Appointor company for a trust (operating entity, not a trust record).
      */
-    public static function ruleExistsOperationalAppointorCompany(): \Illuminate\Validation\Rules\Exists
+    public static function ruleExistsOperationalAppointorCompany(): Exists
     {
         return self::ruleExistsOperational()->using(
             fn ($query) => $query->where('entity_type', '!=', 'Trust')
@@ -188,7 +189,7 @@ class BusinessEntity extends Model
     /**
      * Corporate trustee / company link: operating non-trust companies that are open.
      */
-    public static function ruleExistsNonTrustCompany(): \Illuminate\Validation\Rules\Exists
+    public static function ruleExistsNonTrustCompany(): Exists
     {
         return self::ruleExistsOperational()->using(
             fn ($query) => $query->where('entity_type', '!=', 'Trust')->open()
@@ -243,7 +244,7 @@ class BusinessEntity extends Model
     /**
      * Purpose links for the entity bank accounts tab (pivot rows, with legacy fallback).
      *
-     * @return \Illuminate\Support\Collection<int, BusinessEntityBankAccount>
+     * @return Collection<int, BusinessEntityBankAccount>
      */
     public function bankAccountLinksForDisplay()
     {
@@ -496,6 +497,76 @@ class BusinessEntity extends Model
             ->filter()
             ->unique('id')
             ->values();
+    }
+
+    /**
+     * Trusts for which this company is an active corporate trustee.
+     *
+     * @return Collection<int, self>
+     */
+    public function trustsWhereCorporateTrustee(): Collection
+    {
+        if (! $this->isCompany()) {
+            return collect();
+        }
+
+        return EntityPerson::query()
+            ->where('entity_trustee_id', $this->id)
+            ->where('role', 'Trustee')
+            ->where('role_status', 'Active')
+            ->with('businessEntity')
+            ->get()
+            ->pluck('businessEntity')
+            ->filter(fn ($entity) => $entity instanceof self
+                && $entity->isTrust()
+                && ! $entity->isClosed()
+                && $entity->isOperationalEntity())
+            ->unique('id')
+            ->sortBy(fn (self $entity) => $entity->legal_name)
+            ->values();
+    }
+
+    /**
+     * Trust destinations for moving assets off this company (linked trustees first).
+     *
+     * @param  Collection<int, self>|null  $preferredTrusts  Preloaded trustee trusts to avoid a second query
+     * @return Collection<int, self>
+     */
+    public function moveToTrustCandidates(?Collection $preferredTrusts = null): Collection
+    {
+        if (! $this->isCompany()) {
+            return collect();
+        }
+
+        $preferredIds = ($preferredTrusts ?? $this->trustsWhereCorporateTrustee())
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return self::query()
+            ->operationalEntities()
+            ->where('entity_type', 'Trust')
+            ->orderBy('legal_name')
+            ->get()
+            ->sortBy(function (self $trust) use ($preferredIds) {
+                $preferred = in_array((int) $trust->id, $preferredIds, true) ? 0 : 1;
+
+                return sprintf('%d-%s', $preferred, mb_strtolower((string) $trust->legal_name));
+            })
+            ->values();
+    }
+
+    /**
+     * Validation rule: open, operational trust id.
+     */
+    public static function ruleExistsOperationalTrust(string $column = 'id'): Exists
+    {
+        return Rule::exists('business_entities', $column)->using(
+            fn ($query) => $query
+                ->where('exclude_from_financial_reports', false)
+                ->whereNull('closed_date')
+                ->where('entity_type', 'Trust')
+        );
     }
 
     /**

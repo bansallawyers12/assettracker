@@ -10,8 +10,10 @@ use App\Models\Commitment;
 use App\Models\CommitmentPayment;
 use App\Services\CommitmentReportService;
 use App\Support\TableSort;
+use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\View\View;
 
 class CommitmentController extends Controller
@@ -72,7 +74,7 @@ class CommitmentController extends Controller
 
         $perPage = 20;
         $page = max(1, (int) $request->input('page', 1));
-        $paginated = new \Illuminate\Pagination\LengthAwarePaginator(
+        $paginated = new LengthAwarePaginator(
             $commitments->forPage($page, $perPage)->values(),
             $commitments->count(),
             $perPage,
@@ -183,7 +185,7 @@ class CommitmentController extends Controller
         if ((float) $validated['amount'] > $maxAllowed + 0.001) {
             return redirect()
                 ->route('business-entities.commitments.show', [$businessEntity, $commitment])
-                ->with('error', 'Payment amount ($' . number_format((float) $validated['amount'], 2) . ') cannot exceed the remaining balance due ($' . number_format($maxAllowed, 2) . ').');
+                ->with('error', 'Payment amount ($'.number_format((float) $validated['amount'], 2).') cannot exceed the remaining balance due ($'.number_format($maxAllowed, 2).').');
         }
 
         $commitment->payments()->create($validated);
@@ -231,6 +233,8 @@ class CommitmentController extends Controller
             'create_asset' => 'nullable|boolean',
             'asset_type' => 'nullable|in:Car,House Owned,House Rented,Warehouse,Land,Office,Shop,Real Estate,Suite',
             'acquisition_date' => 'nullable|date',
+        ], [], [
+            'acquisition_date' => 'Settlement Date',
         ]);
 
         $createAsset = $request->boolean('create_asset');
@@ -252,7 +256,7 @@ class CommitmentController extends Controller
                 'asset_type' => $validated['asset_type'] ?? $commitment->defaultAssetType(),
                 'name' => $commitment->name,
                 'acquisition_date' => $validated['acquisition_date']
-                    ?? ($settlementDate instanceof \Carbon\CarbonInterface
+                    ?? ($settlementDate instanceof CarbonInterface
                         ? $settlementDate->toDateString()
                         : $settlementDate),
                 'acquisition_cost' => $commitment->contract_price,
