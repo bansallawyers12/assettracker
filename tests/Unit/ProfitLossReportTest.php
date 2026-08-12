@@ -57,6 +57,30 @@ it('defaults profit and loss to hide zero balances unless show_zeros is set', fu
         ->and($view)->toContain('posted journal entries');
 });
 
+it('supports consolidated profit and loss drill-down', function () {
+    $service = file_get_contents(app_path('Services/FinancialReportService.php'));
+    $controller = file_get_contents(app_path('Http/Controllers/FinancialReportController.php'));
+    $view = file_get_contents(resource_path('views/financial-reports/profit-loss.blade.php'));
+
+    expect($service)->toContain('function generateProfitLossEntityBreakdown')
+        ->and($controller)->toContain('generateProfitLossEntityBreakdown')
+        ->and($view)->toContain('consolidated-drill-down-banner')
+        ->and($view)->toContain('profit-loss-entity-breakdown')
+        ->and($view)->toContain('financial-reports.account-transactions');
+});
+
+it('supports consolidated balance sheet drill-down', function () {
+    $service = file_get_contents(app_path('Services/FinancialReportService.php'));
+    $controller = file_get_contents(app_path('Http/Controllers/FinancialReportController.php'));
+    $view = file_get_contents(resource_path('views/financial-reports/balance-sheet.blade.php'));
+
+    expect($service)->toContain('function generateBalanceSheetEntityBreakdown')
+        ->and($controller)->toContain('generateBalanceSheetEntityBreakdown')
+        ->and($view)->toContain('consolidated-drill-down-banner')
+        ->and($view)->toContain('balance-sheet-entity-breakdown')
+        ->and($view)->toContain('financial-reports.account-transactions');
+});
+
 it('persists optional tracking on manual journal lines', function () {
     $service = file_get_contents(app_path('Services/ManualJournalEntryService.php'));
     $controller = file_get_contents(app_path('Http/Controllers/ManualJournalEntryController.php'));

@@ -2103,4 +2103,97 @@ class FinancialReportService
 
         return round($this->getAccountBalanceAsOf($account->id, $asOfDate, $entityIds), 2);
     }
+
+    /**
+     * Per-entity P&L columns for consolidated drill-down.
+     *
+     * @param  array<int>  $entityIds
+     * @return array{
+     *   entities: EloquentCollection<int, BusinessEntity>,
+     *   columns: array<int, array{
+     *     entity: BusinessEntity,
+     *     income: float,
+     *     expenses: float,
+     *     net_profit: float
+     *   }>
+     * }
+     */
+    public function generateProfitLossEntityBreakdown(array $entityIds, string $startDate, string $endDate): array
+    {
+        $entities = BusinessEntity::query()
+            ->whereIn('id', $entityIds)
+            ->orderBy('legal_name')
+            ->get();
+
+        $columns = [];
+
+        foreach ($entities as $entity) {
+            $pl = $this->generateProfitLoss((int) $entity->id, $startDate, $endDate, true);
+            $columns[$entity->id] = [
+                'entity' => $entity,
+                'income' => round(abs((float) $pl['income']['total']), 2),
+                'expenses' => round((float) $pl['expenses']['total'], 2),
+                'net_profit' => round((float) $pl['net_profit'], 2),
+            ];
+        }
+
+        return [
+            'entities' => $entities,
+            'columns' => $columns,
+        ];
+    }
+
+    /**
+     * Per-entity balance sheet columns for consolidated drill-down.
+     *
+     * @param  array<int>  $entityIds
+     * @return array{
+     *   entities: EloquentCollection<int, BusinessEntity>,
+     *   bank_cash_account_id: int|null,
+     *   columns: array<int, array{
+     *     entity: BusinessEntity,
+     *     bank_cash: float|null,
+     *     total_assets: float,
+     *     total_liabilities_equity: float,
+     *     out_of_balance: float
+     *   }>
+     * }
+     */
+    public function generateBalanceSheetEntityBreakdown(array $entityIds, string $asOfDate): array
+    {
+        $entities = BusinessEntity::query()
+            ->whereIn('id', $entityIds)
+            ->orderBy('legal_name')
+            ->get();
+
+        $bankCashCode = config('financial.report_accounts.bank_cash');
+        $bankCashAccount = $bankCashCode
+            ? (ChartOfAccount::query()
+                ->where('account_code', $bankCashCode)
+                ->where('is_active', true)
+                ->first()
+                ?? ChartOfAccount::query()->where('account_code', $bankCashCode)->first())
+            : null;
+
+        $columns = [];
+
+        foreach ($entities as $entity) {
+            $sheet = $this->generateBalanceSheet((int) $entity->id, $asOfDate);
+            $totalAssets = (float) $sheet['total_assets'];
+            $totalLe = (float) $sheet['total_liabilities_equity'];
+            $columns[$entity->id] = [
+                'entity' => $entity,
+                'bank_cash' => $this->assetBalanceByConfigCode('bank_cash', [(int) $entity->id], $asOfDate),
+                'total_assets' => round($totalAssets, 2),
+                'total_liabilities_equity' => round($totalLe, 2),
+                'out_of_balance' => round($totalAssets - $totalLe, 2),
+            ];
+        }
+
+        return [
+            'entities' => $entities,
+            'bank_cash_account_id' => $bankCashAccount?->id,
+            'columns' => $columns,
+        ];
+    }
 }

@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesReportEntityScope;
 use App\Models\BusinessEntity;
 use App\Services\ComplianceYearService;
 use App\Services\FinancialReportService;
+use App\Support\ComparativeFinancialReport;
 use App\Support\FinancialYear;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
@@ -41,6 +42,15 @@ class FinancialReportController extends Controller
             ->with('error', 'Choose at least one entity, or select “All reporting entities”.');
     }
 
+    protected function resolveReportCompareMode(Request $request): string
+    {
+        $compare = (string) $request->input('compare', ComparativeFinancialReport::COMPARE_NONE);
+
+        return ComparativeFinancialReport::isEnabled($compare)
+            ? ComparativeFinancialReport::COMPARE_PRIOR_YEAR
+            : ComparativeFinancialReport::COMPARE_NONE;
+    }
+
     public function index()
     {
         $this->authorize('viewAny', BusinessEntity::class);
@@ -64,8 +74,31 @@ class FinancialReportController extends Controller
         $startDate = Carbon::parse($request->get('start_date', FinancialYear::currentStart()->toDateString()))->toDateString();
         $endDate = Carbon::parse($request->get('end_date', FinancialYear::currentEnd()->toDateString()))->toDateString();
         $hideZeroBalances = ! $request->boolean('show_zeros');
-        $report = $this->financialReportService->generateProfitLoss($ids, $startDate, $endDate, $hideZeroBalances);
+        $compare = $this->resolveReportCompareMode($request);
+        $comparing = ComparativeFinancialReport::isEnabled($compare);
+        // When comparing, load all accounts from both periods and filter during merge.
+        $loadZeros = $comparing ? false : $hideZeroBalances;
+        $report = $this->financialReportService->generateProfitLoss($ids, $startDate, $endDate, $loadZeros);
         $report = $this->mergeReportFormScope($report, $request, $ids);
+        $report['compare'] = ComparativeFinancialReport::COMPARE_NONE;
+
+        if ($comparing) {
+            [$priorStart, $priorEnd] = ComparativeFinancialReport::priorYearPeriod($startDate, $endDate);
+            $priorReport = $this->financialReportService->generateProfitLoss(
+                $ids,
+                $priorStart,
+                $priorEnd,
+                false
+            );
+            $report = ComparativeFinancialReport::attachProfitLossComparison($report, $priorReport, $hideZeroBalances);
+        }
+        if (count($ids) > 1) {
+            $report['entity_breakdown'] = $this->financialReportService->generateProfitLossEntityBreakdown(
+                $ids,
+                $startDate,
+                $endDate
+            );
+        }
 
         return view('financial-reports.profit-loss', compact('report'));
     }
@@ -98,8 +131,22 @@ class FinancialReportController extends Controller
         }
 
         $asOfDate = Carbon::parse($request->get('as_of_date', now()))->toDateString();
+        $compare = $this->resolveReportCompareMode($request);
         $report = $this->financialReportService->generateBalanceSheet($ids, $asOfDate);
         $report = $this->mergeReportFormScope($report, $request, $ids);
+        $report['compare'] = ComparativeFinancialReport::COMPARE_NONE;
+
+        if (ComparativeFinancialReport::isEnabled($compare)) {
+            $priorAsOf = ComparativeFinancialReport::priorYearAsOf($asOfDate);
+            $priorReport = $this->financialReportService->generateBalanceSheet($ids, $priorAsOf);
+            $report = ComparativeFinancialReport::attachBalanceSheetComparison($report, $priorReport);
+        }
+        if (count($ids) > 1) {
+            $report['entity_breakdown'] = $this->financialReportService->generateBalanceSheetEntityBreakdown(
+                $ids,
+                $asOfDate
+            );
+        }
 
         return view('financial-reports.balance-sheet', compact('report'));
     }

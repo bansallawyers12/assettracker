@@ -1,4 +1,5 @@
 @php
+    use App\Support\ComparativeFinancialReport;
     use App\Support\ReportScopeQuery;
 
     $entity = $report['business_entity'];
@@ -10,7 +11,15 @@
     $asOfDate = \Carbon\Carbon::parse($report['as_of_date']);
     $subtitle = 'As at ' . $asOfDate->format('j M Y');
     $formRoute = route('financial-reports.balance-sheet');
-    $reportQuery = function (array $merge = []) use ($report) {
+    $comparing = ComparativeFinancialReport::isEnabled($report['compare'] ?? null);
+    $comparison = $report['comparison'] ?? null;
+    $colCount = $comparing ? 4 : 2;
+    $compareMode = $report['compare'] ?? ComparativeFinancialReport::COMPARE_NONE;
+    $reportQuery = function (array $merge = []) use ($report, $compareMode) {
+        if ($compareMode !== ComparativeFinancialReport::COMPARE_NONE) {
+            $merge['compare'] = $compareMode;
+        }
+
         return ReportScopeQuery::build(
             $report['forms_scope'] ?? 'all',
             $report['forms_entity_ids'] ?? [],
@@ -26,6 +35,37 @@
 
         return $v > 0 ? '+'.$formatted : $formatted;
     };
+    $fyStart = \App\Support\FinancialYear::forDate($asOfDate)['start'];
+    $entitySummaryUrl = $isConsolidated
+        ? route('financial-reports.entity-summary', $reportQuery([
+            'period_end_date' => $asOfDate->toDateString(),
+        ]))
+        : null;
+    $accountTransactionsUrl = function (
+        int $accountId,
+        ?\Carbon\Carbon $periodStart = null,
+        ?\Carbon\Carbon $periodEnd = null
+    ) use ($reportQuery, $fyStart, $asOfDate) {
+        return route('financial-reports.account-transactions', $reportQuery([
+            'start_date' => ($periodStart ?? $fyStart)->toDateString(),
+            'end_date' => ($periodEnd ?? $asOfDate)->toDateString(),
+            'account_ids' => [$accountId],
+        ]));
+    };
+    $signedBalanceClass = function (float $v, string $section = 'asset'): string {
+        if ($section === 'asset') {
+            return $v < 0 ? 'text-rose-700' : 'text-gray-800';
+        }
+
+        if ($v < 0) {
+            return 'text-emerald-700';
+        }
+        if ($v > 0) {
+            return 'text-amber-800';
+        }
+
+        return 'text-gray-800';
+    };
 @endphp
 
 <x-report-shell
@@ -34,7 +74,6 @@
     :entity="$entity"
     :entity-scope-label="$entityScopeLabel">
 
-    {{-- ── Filter toolbar ────────────────────────────────────────────── --}}
     <x-slot:filters>
         <form method="GET" action="{{ $formRoute }}"
               class="flex flex-wrap items-end gap-3">
@@ -51,7 +90,15 @@
                        class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500" />
             </div>
 
-            {{-- Balance sheet quick-date shortcuts --}}
+            <div class="flex flex-col gap-1">
+                <label for="compare" class="text-xs font-medium text-gray-600">Compare</label>
+                <select name="compare" id="compare"
+                        class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500 min-w-[9rem]">
+                    <option value="{{ ComparativeFinancialReport::COMPARE_NONE }}" @selected($compareMode === ComparativeFinancialReport::COMPARE_NONE)>None</option>
+                    <option value="{{ ComparativeFinancialReport::COMPARE_PRIOR_YEAR }}" @selected($compareMode === ComparativeFinancialReport::COMPARE_PRIOR_YEAR)>Prior year</option>
+                </select>
+            </div>
+
             <div class="flex items-end gap-1.5 flex-wrap">
                 @php
                     $today = \Carbon\Carbon::now();
@@ -92,20 +139,33 @@
         </form>
     </x-slot:filters>
 
-    {{-- ── Report statement ────────────────────────────────────────── --}}
+    @include('financial-reports.partials.consolidated-drill-down-banner', [
+        'report' => $report,
+        'entitySummaryUrl' => $entitySummaryUrl,
+        'reportType' => 'Balance Sheet',
+    ])
     <div class="px-6 pt-4 text-xs text-gray-600 leading-relaxed border-b border-gray-100">
         Amounts come from <strong>posted journal entries</strong> (paid bank transactions, posted invoices, manual journals).
-        Property <strong>Purchase Price</strong> on assets is for portfolio reports unless you also record an
-        <strong>Asset Purchase</strong> transaction or an opening balance journal.
+        @if($comparing)
+            <strong>Prior year</strong> compares the same calendar date one year earlier.
+        @endif
         <a href="{{ route('financial-reports.journal-entries.create') }}" class="text-blue-600 hover:underline">Journal entries</a>
     </div>
-    <div class="pb-6">
-        <table class="w-full text-sm">
+    <div class="pb-6 overflow-x-auto">
+        <table class="w-full text-sm" @style(['min-width' => $comparing ? '42rem' : '24rem'])>
+            @if($comparing && $comparison)
+                <thead>
+                    @include('financial-reports.partials.comparative-column-headers', [
+                        'currentLabel' => $comparison['current_label'],
+                        'priorLabel' => $comparison['prior_label'],
+                        'changeLabel' => 'Movement',
+                    ])
+                </thead>
+            @endif
             <tbody>
 
-                {{-- ─── ASSETS ──────────────────────────────────────────── --}}
                 <tr>
-                    <td colspan="2"
+                    <td colspan="{{ $colCount }}"
                         class="px-6 pt-5 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
                         Assets
                     </td>
@@ -113,121 +173,174 @@
 
                 @forelse($report['assets']['by_category'] as $catKey => $catGroup)
                     <tr class="border-t border-gray-100">
-                        <td colspan="2" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                        <td colspan="{{ $colCount }}" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
                             {{ $catGroup['label'] }}
                         </td>
                     </tr>
                     @foreach($catGroup['accounts'] as $row)
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-8 py-1.5 text-gray-700">
-                                {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
+                                <a href="{{ $accountTransactionsUrl((int) $row['account']->id) }}"
+                                   class="text-blue-600 hover:underline"
+                                   title="View account transactions (current FY to date)">
+                                    {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
+                                </a>
                             </td>
-                            <td class="px-6 py-1.5 text-right tabular-nums w-40 font-medium {{ ($row['balance'] ?? 0) < 0 ? 'text-rose-700' : 'text-gray-800' }}">
-                                {{ $formatSignedGl((float) ($row['balance'] ?? 0)) }}
-                            </td>
+                            @if($comparing)
+                                @include('financial-reports.partials.comparative-amount-cells', [
+                                    'current' => $row['balance'] ?? 0,
+                                    'prior' => $row['prior_balance'] ?? 0,
+                                    'variance' => $row['variance'] ?? 0,
+                                    'format' => 'signed',
+                                ])
+                            @else
+                                <td class="px-6 py-1.5 text-right tabular-nums w-40 font-medium {{ $signedBalanceClass((float) ($row['balance'] ?? 0), 'asset') }}">
+                                    {{ $formatSignedGl((float) ($row['balance'] ?? 0)) }}
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                     <tr class="border-t border-gray-100">
-                        <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
-                            Total {{ $catGroup['label'] }}
-                        </td>
-                        <td class="px-6 py-1.5 text-right font-semibold tabular-nums w-40 border-t border-gray-200
-                            {{ $catGroup['subtotal'] < 0 ? 'text-rose-800' : 'text-gray-800' }}">
-                            {{ $formatSignedGl((float) $catGroup['subtotal']) }}
-                        </td>
+                        <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">Total {{ $catGroup['label'] }}</td>
+                        @if($comparing)
+                            @include('financial-reports.partials.comparative-amount-cells', [
+                                'current' => $catGroup['subtotal'],
+                                'prior' => $catGroup['prior_subtotal'] ?? 0,
+                                'variance' => $catGroup['subtotal_variance'] ?? 0,
+                                'format' => 'signed',
+                            ])
+                        @else
+                            <td class="px-6 py-1.5 text-right font-semibold tabular-nums w-40 border-t border-gray-200 {{ $catGroup['subtotal'] < 0 ? 'text-rose-800' : 'text-gray-800' }}">
+                                {{ $formatSignedGl((float) $catGroup['subtotal']) }}
+                            </td>
+                        @endif
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="2" class="px-8 py-2 text-xs text-gray-400 italic">No asset accounts found</td>
+                        <td colspan="{{ $colCount }}" class="px-8 py-2 text-xs text-gray-400 italic">No asset accounts found</td>
                     </tr>
                 @endforelse
 
                 <tr class="border-t-2 border-gray-300 bg-gray-50">
                     <td class="px-6 py-3 text-sm font-bold text-gray-900">Total Assets</td>
-                    <td class="px-6 py-3 text-right text-sm font-bold tabular-nums w-40
-                        {{ $report['total_assets'] < 0 ? 'text-rose-900' : 'text-gray-900' }}">
-                        {{ $formatSignedGl((float) $report['total_assets']) }}
-                    </td>
+                    @if($comparing)
+                        @include('financial-reports.partials.comparative-amount-cells', [
+                            'current' => $report['total_assets'],
+                            'prior' => $report['prior_total_assets'] ?? 0,
+                            'variance' => $report['total_assets_variance'] ?? 0,
+                            'format' => 'signed',
+                        ])
+                    @else
+                        <td class="px-6 py-3 text-right text-sm font-bold tabular-nums w-40 {{ $report['total_assets'] < 0 ? 'text-rose-900' : 'text-gray-900' }}">
+                            {{ $formatSignedGl((float) $report['total_assets']) }}
+                        </td>
+                    @endif
                 </tr>
 
-                <tr><td colspan="2" class="py-4"></td></tr>
+                <tr><td colspan="{{ $colCount }}" class="py-4"></td></tr>
 
-                {{-- ─── LIABILITIES ─────────────────────────────────────── --}}
                 <tr>
-                    <td colspan="2"
+                    <td colspan="{{ $colCount }}"
                         class="px-6 pt-2 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
                         Liabilities
                     </td>
                 </tr>
+                @unless($comparing)
                 <tr>
-                    <td colspan="2" class="px-6 pb-2 text-[11px] text-gray-500 leading-snug">
+                    <td colspan="{{ $colCount }}" class="px-6 pb-2 text-[11px] text-gray-500 leading-snug">
                         Amounts show <span class="font-medium text-gray-700">debit − credit</span>:
                         <span class="tabular-nums">+</span> net debit,
                         <span class="tabular-nums">−</span> net credit.
                     </td>
                 </tr>
+                @endunless
 
                 @forelse($report['liabilities']['by_category'] as $catKey => $catGroup)
                     <tr class="border-t border-gray-100">
-                        <td colspan="2" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                        <td colspan="{{ $colCount }}" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
                             {{ $catGroup['label'] }}
                         </td>
                     </tr>
                     @foreach($catGroup['accounts'] as $row)
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-8 py-1.5 text-gray-700">
-                                {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
+                                <a href="{{ $accountTransactionsUrl((int) $row['account']->id) }}"
+                                   class="text-blue-600 hover:underline"
+                                   title="View account transactions (current FY to date)">
+                                    {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
+                                </a>
                             </td>
-                            <td class="px-6 py-1.5 text-right tabular-nums w-40 font-medium
-                                {{ ($row['balance'] ?? 0) < 0 ? 'text-emerald-700' : (($row['balance'] ?? 0) > 0 ? 'text-amber-800' : 'text-gray-800') }}">
-                                {{ $formatSignedGl((float) ($row['balance'] ?? 0)) }}
-                            </td>
+                            @if($comparing)
+                                @include('financial-reports.partials.comparative-amount-cells', [
+                                    'current' => $row['balance'] ?? 0,
+                                    'prior' => $row['prior_balance'] ?? 0,
+                                    'variance' => $row['variance'] ?? 0,
+                                    'format' => 'signed',
+                                ])
+                            @else
+                                <td class="px-6 py-1.5 text-right tabular-nums w-40 font-medium {{ $signedBalanceClass((float) ($row['balance'] ?? 0), 'liability') }}">
+                                    {{ $formatSignedGl((float) ($row['balance'] ?? 0)) }}
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                     <tr class="border-t border-gray-100">
-                        <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
-                            Total {{ $catGroup['label'] }}
-                        </td>
-                        <td class="px-6 py-1.5 text-right font-semibold tabular-nums w-40 border-t border-gray-200
-                            {{ $catGroup['subtotal'] < 0 ? 'text-emerald-800' : ($catGroup['subtotal'] > 0 ? 'text-amber-900' : 'text-gray-700') }}">
-                            {{ $formatSignedGl((float) $catGroup['subtotal']) }}
-                        </td>
+                        <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">Total {{ $catGroup['label'] }}</td>
+                        @if($comparing)
+                            @include('financial-reports.partials.comparative-amount-cells', [
+                                'current' => $catGroup['subtotal'],
+                                'prior' => $catGroup['prior_subtotal'] ?? 0,
+                                'variance' => $catGroup['subtotal_variance'] ?? 0,
+                                'format' => 'signed',
+                            ])
+                        @else
+                            <td class="px-6 py-1.5 text-right font-semibold tabular-nums w-40 border-t border-gray-200 {{ $signedBalanceClass((float) $catGroup['subtotal'], 'liability') }}">
+                                {{ $formatSignedGl((float) $catGroup['subtotal']) }}
+                            </td>
+                        @endif
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="2" class="px-8 py-2 text-xs text-gray-400 italic">No liability accounts found</td>
+                        <td colspan="{{ $colCount }}" class="px-8 py-2 text-xs text-gray-400 italic">No liability accounts found</td>
                     </tr>
                 @endforelse
 
                 <tr class="border-t-2 border-gray-200">
                     <td class="px-6 py-2 text-xs font-semibold text-gray-600">Total Liabilities</td>
-                    <td class="px-6 py-2 text-right font-semibold tabular-nums w-40
-                        {{ $report['liabilities']['total'] < 0 ? 'text-emerald-800' : ($report['liabilities']['total'] > 0 ? 'text-amber-900' : 'text-gray-700') }}">
-                        {{ $formatSignedGl((float) $report['liabilities']['total']) }}
-                    </td>
+                    @if($comparing)
+                        @include('financial-reports.partials.comparative-amount-cells', [
+                            'current' => $report['liabilities']['total'],
+                            'prior' => $report['liabilities']['prior_total'] ?? 0,
+                            'variance' => $report['liabilities']['total_variance'] ?? 0,
+                            'format' => 'signed',
+                        ])
+                    @else
+                        <td class="px-6 py-2 text-right font-semibold tabular-nums w-40 {{ $signedBalanceClass((float) $report['liabilities']['total'], 'liability') }}">
+                            {{ $formatSignedGl((float) $report['liabilities']['total']) }}
+                        </td>
+                    @endif
                 </tr>
 
-                <tr><td colspan="2" class="py-4"></td></tr>
+                <tr><td colspan="{{ $colCount }}" class="py-4"></td></tr>
 
-                {{-- ─── EQUITY ───────────────────────────────────────────── --}}
                 <tr>
-                    <td colspan="2"
+                    <td colspan="{{ $colCount }}"
                         class="px-6 pt-2 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
                         Equity
                     </td>
                 </tr>
+                @unless($comparing)
                 <tr>
-                    <td colspan="2" class="px-6 pb-2 text-[11px] text-gray-500 leading-snug">
-                        Same convention: <span class="font-medium text-gray-700">debit − credit</span>
-                        (<span class="tabular-nums">+</span> debit, <span class="tabular-nums">−</span> credit).
-                        Accumulated profit or loss from income and expense accounts is shown as a computed earnings line
-                        (a <span class="tabular-nums">−</span> amount is profit, matching credit equity).
+                    <td colspan="{{ $colCount }}" class="px-6 pb-2 text-[11px] text-gray-500 leading-snug">
+                        Same convention: <span class="font-medium text-gray-700">debit − credit</span>.
+                        Accumulated earnings is computed from income and expense accounts.
                     </td>
                 </tr>
+                @endunless
 
                 @forelse($report['equity']['by_category'] as $catKey => $catGroup)
                     <tr class="border-t border-gray-100">
-                        <td colspan="2" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                        <td colspan="{{ $colCount }}" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
                             {{ $catGroup['label'] }}
                         </td>
                     </tr>
@@ -237,50 +350,83 @@
                                 @if($row['is_computed'] ?? false)
                                     {{ $row['label'] }}
                                 @else
-                                    {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
+                                    <a href="{{ $accountTransactionsUrl((int) $row['account']->id) }}"
+                                       class="text-blue-600 hover:underline"
+                                       title="View account transactions (current FY to date)">
+                                        {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
+                                    </a>
                                 @endif
                             </td>
-                            <td class="px-6 py-1.5 text-right tabular-nums w-40 font-medium
-                                {{ ($row['balance'] ?? 0) < 0 ? 'text-emerald-700' : (($row['balance'] ?? 0) > 0 ? 'text-amber-800' : 'text-gray-800') }}">
-                                {{ $formatSignedGl((float) ($row['balance'] ?? 0)) }}
-                            </td>
+                            @if($comparing)
+                                @include('financial-reports.partials.comparative-amount-cells', [
+                                    'current' => $row['balance'] ?? 0,
+                                    'prior' => $row['prior_balance'] ?? 0,
+                                    'variance' => $row['variance'] ?? 0,
+                                    'format' => 'signed',
+                                ])
+                            @else
+                                <td class="px-6 py-1.5 text-right tabular-nums w-40 font-medium {{ $signedBalanceClass((float) ($row['balance'] ?? 0), 'liability') }}">
+                                    {{ $formatSignedGl((float) ($row['balance'] ?? 0)) }}
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                     <tr class="border-t border-gray-100">
-                        <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
-                            Total {{ $catGroup['label'] }}
-                        </td>
-                        <td class="px-6 py-1.5 text-right font-semibold tabular-nums w-40 border-t border-gray-200
-                            {{ $catGroup['subtotal'] < 0 ? 'text-emerald-800' : ($catGroup['subtotal'] > 0 ? 'text-amber-900' : 'text-gray-700') }}">
-                            {{ $formatSignedGl((float) $catGroup['subtotal']) }}
-                        </td>
+                        <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">Total {{ $catGroup['label'] }}</td>
+                        @if($comparing)
+                            @include('financial-reports.partials.comparative-amount-cells', [
+                                'current' => $catGroup['subtotal'],
+                                'prior' => $catGroup['prior_subtotal'] ?? 0,
+                                'variance' => $catGroup['subtotal_variance'] ?? 0,
+                                'format' => 'signed',
+                            ])
+                        @else
+                            <td class="px-6 py-1.5 text-right font-semibold tabular-nums w-40 border-t border-gray-200 {{ $signedBalanceClass((float) $catGroup['subtotal'], 'liability') }}">
+                                {{ $formatSignedGl((float) $catGroup['subtotal']) }}
+                            </td>
+                        @endif
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="2" class="px-8 py-2 text-xs text-gray-400 italic">No equity accounts found</td>
+                        <td colspan="{{ $colCount }}" class="px-8 py-2 text-xs text-gray-400 italic">No equity accounts found</td>
                     </tr>
                 @endforelse
 
                 <tr class="border-t-2 border-gray-200">
                     <td class="px-6 py-2 text-xs font-semibold text-gray-600">Total Equity</td>
-                    <td class="px-6 py-2 text-right font-semibold tabular-nums w-40
-                        {{ $report['equity']['total'] < 0 ? 'text-emerald-800' : ($report['equity']['total'] > 0 ? 'text-amber-900' : 'text-gray-700') }}">
-                        {{ $formatSignedGl((float) $report['equity']['total']) }}
-                    </td>
+                    @if($comparing)
+                        @include('financial-reports.partials.comparative-amount-cells', [
+                            'current' => $report['equity']['total'],
+                            'prior' => $report['equity']['prior_total'] ?? 0,
+                            'variance' => $report['equity']['total_variance'] ?? 0,
+                            'format' => 'signed',
+                        ])
+                    @else
+                        <td class="px-6 py-2 text-right font-semibold tabular-nums w-40 {{ $signedBalanceClass((float) $report['equity']['total'], 'liability') }}">
+                            {{ $formatSignedGl((float) $report['equity']['total']) }}
+                        </td>
+                    @endif
                 </tr>
 
-                {{-- ─── TOTAL LIABILITIES & EQUITY ──────────────────────── --}}
                 <tr class="border-t-2 border-gray-300 bg-gray-50">
                     <td class="px-6 py-3 text-sm font-bold text-gray-900">Total Liabilities &amp; Equity</td>
-                    <td class="px-6 py-3 text-right text-sm font-bold tabular-nums w-40
-                        {{ $report['total_liabilities_equity'] < 0 ? 'text-emerald-900' : ($report['total_liabilities_equity'] > 0 ? 'text-amber-900' : 'text-gray-900') }}">
-                        {{ $formatSignedGl((float) $report['total_liabilities_equity']) }}
-                    </td>
+                    @if($comparing)
+                        @include('financial-reports.partials.comparative-amount-cells', [
+                            'current' => $report['total_liabilities_equity'],
+                            'prior' => $report['prior_total_liabilities_equity'] ?? 0,
+                            'variance' => $report['total_liabilities_equity_variance'] ?? 0,
+                            'format' => 'signed',
+                        ])
+                    @else
+                        <td class="px-6 py-3 text-right text-sm font-bold tabular-nums w-40 {{ $signedBalanceClass((float) $report['total_liabilities_equity'], 'liability') }}">
+                            {{ $formatSignedGl((float) $report['total_liabilities_equity']) }}
+                        </td>
+                    @endif
                 </tr>
 
                 @if(!$balanced)
                     <tr class="bg-red-50">
-                        <td colspan="2" class="px-6 py-2 text-xs text-red-700 font-medium">
+                        <td colspan="{{ $colCount }}" class="px-6 py-2 text-xs text-red-700 font-medium">
                             Warning: out of balance by
                             ${{ number_format(abs($report['total_assets'] - $report['total_liabilities_equity']), 2) }}
                         </td>
@@ -290,5 +436,14 @@
             </tbody>
         </table>
     </div>
+
+    @if($comparing)
+        <div class="px-6 pb-4 text-[11px] text-gray-500 border-t border-gray-100 pt-3">
+            Balance sheet amounts use <span class="font-medium text-gray-700">debit − credit</span>
+            (<span class="tabular-nums">+</span> net debit, <span class="tabular-nums">−</span> net credit).
+        </div>
+    @endif
+
+    @include('financial-reports.partials.balance-sheet-entity-breakdown', ['report' => $report])
 
 </x-report-shell>

@@ -1,4 +1,5 @@
 @php
+    use App\Support\ComparativeFinancialReport;
     use App\Support\ReportScopeQuery;
 
     $entity = $report['business_entity'];
@@ -12,9 +13,16 @@
     $subtitle = $startDate->format('j M Y') . ' – ' . $endDate->format('j M Y');
     $formRoute = route('financial-reports.profit-loss');
     $showZeros = request()->boolean('show_zeros');
-    $reportQuery = function (array $merge = []) use ($report, $showZeros) {
+    $comparing = ComparativeFinancialReport::isEnabled($report['compare'] ?? null);
+    $comparison = $report['comparison'] ?? null;
+    $colCount = $comparing ? 4 : 2;
+    $compareMode = $report['compare'] ?? ComparativeFinancialReport::COMPARE_NONE;
+    $reportQuery = function (array $merge = []) use ($report, $showZeros, $compareMode) {
         if ($showZeros) {
             $merge['show_zeros'] = 1;
+        }
+        if ($compareMode !== ComparativeFinancialReport::COMPARE_NONE) {
+            $merge['compare'] = $compareMode;
         }
 
         return ReportScopeQuery::build(
@@ -25,6 +33,18 @@
     };
     $netProfit = $report['net_profit'];
     $isProfit = $netProfit >= 0;
+    $entitySummaryUrl = $isConsolidated
+        ? route('financial-reports.entity-summary', $reportQuery([
+            'period_end_date' => $endDate->toDateString(),
+        ]))
+        : null;
+    $accountTransactionsUrl = function (int $accountId, ?string $periodStart = null, ?string $periodEnd = null) use ($reportQuery, $startDate, $endDate) {
+        return route('financial-reports.account-transactions', $reportQuery([
+            'start_date' => ($periodStart ?? $startDate->toDateString()),
+            'end_date' => ($periodEnd ?? $endDate->toDateString()),
+            'account_ids' => [$accountId],
+        ]));
+    };
 @endphp
 
 <x-report-shell
@@ -54,6 +74,15 @@
                            value="{{ $endDate->toDateString() }}"
                            class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500" />
                 </div>
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <label for="compare" class="text-xs font-medium text-gray-600">Compare</label>
+                <select name="compare" id="compare"
+                        class="border border-gray-300 rounded-sm text-sm px-2 py-1.5 bg-white focus:ring-blue-500 focus:border-blue-500 min-w-[9rem]">
+                    <option value="{{ ComparativeFinancialReport::COMPARE_NONE }}" @selected($compareMode === ComparativeFinancialReport::COMPARE_NONE)>None</option>
+                    <option value="{{ ComparativeFinancialReport::COMPARE_PRIOR_YEAR }}" @selected($compareMode === ComparativeFinancialReport::COMPARE_PRIOR_YEAR)>Prior year</option>
+                </select>
             </div>
 
             <div class="flex flex-col gap-1">
@@ -106,23 +135,34 @@
         </form>
     </x-slot:filters>
 
-    {{-- ── Report statement ────────────────────────────────────────── --}}
+    @include('financial-reports.partials.consolidated-drill-down-banner', [
+        'report' => $report,
+        'entitySummaryUrl' => $entitySummaryUrl,
+        'reportType' => 'Profit & Loss',
+    ])
     <div class="px-6 pt-4 text-xs text-gray-600 leading-relaxed border-b border-gray-100">
         Amounts come from <strong>posted journal entries</strong> on income and expense accounts (paid bank transactions,
         posted invoices, manual journals, depreciation). GST is excluded from income and expense lines.
-        Posted invoices use the <strong>issue date</strong>; paid bank transactions use the <strong>payment date</strong>.
-        Capital purchases, loan principal, director loans, owner drawings, and BAS/PAYG payments post to balance-sheet
-        accounts and do not appear here. Property P&amp;L reports use transactions by asset and may differ from this
-        entity view.
+        @if($comparing)
+            <strong>Prior year</strong> compares the same date range shifted back one year.
+        @endif
         <a href="{{ route('financial-reports.journal-entries.create') }}" class="text-blue-600 hover:underline">Journal entries</a>
     </div>
-    <div class="pb-6">
-        <table class="w-full text-sm">
+    <div class="pb-6 overflow-x-auto">
+        <table class="w-full text-sm" @style(['min-width' => $comparing ? '42rem' : '24rem'])>
+            @if($comparing && $comparison)
+                <thead>
+                    @include('financial-reports.partials.comparative-column-headers', [
+                        'currentLabel' => $comparison['current_label'],
+                        'priorLabel' => $comparison['prior_label'],
+                    ])
+                </thead>
+            @endif
             <tbody>
 
                 {{-- ─── INCOME ──────────────────────────────────────── --}}
                 <tr class="border-t border-gray-100">
-                    <td colspan="2"
+                    <td colspan="{{ $colCount }}"
                         class="px-6 pt-5 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
                         Income
                     </td>
@@ -130,51 +170,80 @@
 
                 @foreach($report['income']['by_category'] as $catKey => $catGroup)
                     <tr class="border-t border-gray-100">
-                        <td colspan="2" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                        <td colspan="{{ $colCount }}" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
                             {{ $catGroup['label'] }}
                         </td>
                     </tr>
                     @foreach($catGroup['accounts'] as $row)
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-8 py-1.5 text-gray-700">
-                                {{ $row['account']->account_code }}
-                                &nbsp;{{ $row['account']->account_name }}
+                                <a href="{{ $accountTransactionsUrl((int) $row['account']->id) }}"
+                                   class="text-blue-600 hover:underline"
+                                   title="View account transactions (current period)">
+                                    {{ $row['account']->account_code }}
+                                    &nbsp;{{ $row['account']->account_name }}
+                                </a>
                             </td>
-                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-36">
-                                {{ number_format(abs($row['balance']), 2) }}
-                            </td>
+                            @if($comparing)
+                                @include('financial-reports.partials.comparative-amount-cells', [
+                                    'current' => $row['balance'],
+                                    'prior' => $row['prior_balance'] ?? 0,
+                                    'variance' => $row['variance'] ?? 0,
+                                    'isIncome' => true,
+                                ])
+                            @else
+                                <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-36">
+                                    {{ number_format(abs($row['balance']), 2) }}
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                     <tr class="border-t border-gray-100">
                         <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
                             Total {{ $catGroup['label'] }}
                         </td>
-                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-36 border-t border-gray-200">
-                            {{ number_format(abs($catGroup['subtotal']), 2) }}
-                        </td>
+                        @if($comparing)
+                            @include('financial-reports.partials.comparative-amount-cells', [
+                                'current' => $catGroup['subtotal'],
+                                'prior' => $catGroup['prior_subtotal'] ?? 0,
+                                'variance' => $catGroup['subtotal_variance'] ?? 0,
+                                'isIncome' => true,
+                            ])
+                        @else
+                            <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-36 border-t border-gray-200">
+                                {{ number_format(abs($catGroup['subtotal']), 2) }}
+                            </td>
+                        @endif
                     </tr>
                 @endforeach
 
                 @if(empty($report['income']['by_category']))
                     <tr>
-                        <td colspan="2" class="px-8 py-2 text-xs text-gray-400 italic">No income accounts found</td>
+                        <td colspan="{{ $colCount }}" class="px-8 py-2 text-xs text-gray-400 italic">No income accounts found</td>
                     </tr>
                 @endif
 
-                {{-- Total Income --}}
                 <tr class="border-t-2 border-gray-200">
                     <td class="px-6 py-2.5 text-sm font-bold text-gray-800">Total Income</td>
-                    <td class="px-6 py-2.5 text-right text-sm font-bold text-gray-900 tabular-nums w-36">
-                        {{ number_format(abs($report['income']['total']), 2) }}
-                    </td>
+                    @if($comparing)
+                        @include('financial-reports.partials.comparative-amount-cells', [
+                            'current' => $report['income']['total'],
+                            'prior' => $report['income']['prior_total'] ?? 0,
+                            'variance' => $report['income']['total_variance'] ?? 0,
+                            'isIncome' => true,
+                        ])
+                    @else
+                        <td class="px-6 py-2.5 text-right text-sm font-bold text-gray-900 tabular-nums w-36">
+                            {{ number_format(abs($report['income']['total']), 2) }}
+                        </td>
+                    @endif
                 </tr>
 
-                {{-- spacer --}}
-                <tr><td colspan="2" class="py-3"></td></tr>
+                <tr><td colspan="{{ $colCount }}" class="py-3"></td></tr>
 
                 {{-- ─── LESS: EXPENSES ──────────────────────────────── --}}
                 <tr class="border-t border-gray-100">
-                    <td colspan="2"
+                    <td colspan="{{ $colCount }}"
                         class="px-6 pt-2 pb-2 text-xs font-bold uppercase tracking-widest text-gray-400">
                         Less: Expenses
                     </td>
@@ -182,60 +251,100 @@
 
                 @foreach($report['expenses']['by_category'] as $catKey => $catGroup)
                     <tr class="border-t border-gray-100">
-                        <td colspan="2" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
+                        <td colspan="{{ $colCount }}" class="px-6 py-1.5 text-xs font-semibold text-gray-500 bg-gray-50">
                             {{ $catGroup['label'] }}
                         </td>
                     </tr>
                     @foreach($catGroup['accounts'] as $row)
                         <tr class="hover:bg-gray-50 transition-colors">
                             <td class="px-8 py-1.5 text-gray-700">
-                                {{ $row['account']->account_code }}
-                                &nbsp;{{ $row['account']->account_name }}
+                                <a href="{{ $accountTransactionsUrl((int) $row['account']->id) }}"
+                                   class="text-blue-600 hover:underline"
+                                   title="View account transactions (current period)">
+                                    {{ $row['account']->account_code }}
+                                    &nbsp;{{ $row['account']->account_name }}
+                                </a>
                             </td>
-                            <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-36">
-                                {{ number_format($row['balance'], 2) }}
-                            </td>
+                            @if($comparing)
+                                @include('financial-reports.partials.comparative-amount-cells', [
+                                    'current' => $row['balance'],
+                                    'prior' => $row['prior_balance'] ?? 0,
+                                    'variance' => $row['variance'] ?? 0,
+                                ])
+                            @else
+                                <td class="px-6 py-1.5 text-right text-gray-800 tabular-nums w-36">
+                                    {{ number_format($row['balance'], 2) }}
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                     <tr class="border-t border-gray-100">
                         <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">
                             Total {{ $catGroup['label'] }}
                         </td>
-                        <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-36 border-t border-gray-200">
-                            {{ number_format($catGroup['subtotal'], 2) }}
-                        </td>
+                        @if($comparing)
+                            @include('financial-reports.partials.comparative-amount-cells', [
+                                'current' => $catGroup['subtotal'],
+                                'prior' => $catGroup['prior_subtotal'] ?? 0,
+                                'variance' => $catGroup['subtotal_variance'] ?? 0,
+                            ])
+                        @else
+                            <td class="px-6 py-1.5 text-right font-semibold text-gray-700 tabular-nums w-36 border-t border-gray-200">
+                                {{ number_format($catGroup['subtotal'], 2) }}
+                            </td>
+                        @endif
                     </tr>
                 @endforeach
 
                 @if(empty($report['expenses']['by_category']))
                     <tr>
-                        <td colspan="2" class="px-8 py-2 text-xs text-gray-400 italic">No expense accounts found</td>
+                        <td colspan="{{ $colCount }}" class="px-8 py-2 text-xs text-gray-400 italic">No expense accounts found</td>
                     </tr>
                 @endif
 
-                {{-- Total Expenses --}}
                 <tr class="border-t-2 border-gray-200">
                     <td class="px-6 py-2.5 text-sm font-bold text-gray-800">Total Expenses</td>
-                    <td class="px-6 py-2.5 text-right text-sm font-bold text-gray-900 tabular-nums w-36">
-                        {{ number_format($report['expenses']['total'], 2) }}
-                    </td>
+                    @if($comparing)
+                        @include('financial-reports.partials.comparative-amount-cells', [
+                            'current' => $report['expenses']['total'],
+                            'prior' => $report['expenses']['prior_total'] ?? 0,
+                            'variance' => $report['expenses']['total_variance'] ?? 0,
+                        ])
+                    @else
+                        <td class="px-6 py-2.5 text-right text-sm font-bold text-gray-900 tabular-nums w-36">
+                            {{ number_format($report['expenses']['total'], 2) }}
+                        </td>
+                    @endif
                 </tr>
 
-                {{-- spacer --}}
-                <tr><td colspan="2" class="py-3"></td></tr>
+                <tr><td colspan="{{ $colCount }}" class="py-3"></td></tr>
 
                 {{-- ─── NET PROFIT / LOSS ───────────────────────────── --}}
                 <tr class="{{ $isProfit ? 'bg-green-50 border-t-2 border-green-200' : 'bg-red-50 border-t-2 border-red-200' }}">
                     <td class="px-6 py-4 text-sm font-bold {{ $isProfit ? 'text-green-800' : 'text-red-800' }}">
                         {{ $isProfit ? 'Net Profit' : 'Net Loss' }}
                     </td>
-                    <td class="px-6 py-4 text-right text-sm font-bold {{ $isProfit ? 'text-green-800' : 'text-red-800' }} tabular-nums w-36">
-                        {{ $isProfit ? '' : '(' }}{{ number_format(abs($netProfit), 2) }}{{ $isProfit ? '' : ')' }}
-                    </td>
+                    @if($comparing)
+                        @include('financial-reports.partials.comparative-amount-cells', [
+                            'current' => $netProfit,
+                            'prior' => $report['prior_net_profit'] ?? 0,
+                            'variance' => $report['net_profit_variance'] ?? 0,
+                            'format' => 'profit_loss',
+                        ])
+                    @else
+                        <td class="px-6 py-4 text-right text-sm font-bold {{ $isProfit ? 'text-green-800' : 'text-red-800' }} tabular-nums w-36">
+                            {{ $isProfit ? '' : '(' }}{{ number_format(abs($netProfit), 2) }}{{ $isProfit ? '' : ')' }}
+                        </td>
+                    @endif
                 </tr>
 
             </tbody>
         </table>
     </div>
+
+    @include('financial-reports.partials.profit-loss-entity-breakdown', [
+        'report' => $report,
+        'showZeros' => $showZeros,
+    ])
 
 </x-report-shell>
