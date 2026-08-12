@@ -7,10 +7,13 @@ use App\Models\BusinessEntity;
 use App\Services\ComplianceYearService;
 use App\Services\FinancialReportService;
 use App\Support\ComparativeFinancialReport;
+use App\Support\FinancialReportCsvExporter;
 use App\Support\FinancialYear;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FinancialReportController extends Controller
 {
@@ -18,8 +21,10 @@ class FinancialReportController extends Controller
 
     protected FinancialReportService $financialReportService;
 
-    public function __construct(FinancialReportService $financialReportService)
-    {
+    public function __construct(
+        FinancialReportService $financialReportService,
+        protected FinancialReportCsvExporter $csvExporter
+    ) {
         $this->financialReportService = $financialReportService;
     }
 
@@ -60,7 +65,7 @@ class FinancialReportController extends Controller
         return view('financial-reports.index', compact('businessEntities'));
     }
 
-    public function profitLossHub(Request $request)
+    public function profitLossHub(Request $request): View|RedirectResponse|StreamedResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
         $ids = $this->resolveReportEntityIds($request);
@@ -100,6 +105,10 @@ class FinancialReportController extends Controller
             );
         }
 
+        if ($request->query('format') === 'csv') {
+            return $this->csvExporter->profitLoss($report);
+        }
+
         return view('financial-reports.profit-loss', compact('report'));
     }
 
@@ -119,7 +128,7 @@ class FinancialReportController extends Controller
         return $this->profitLossHub($request);
     }
 
-    public function balanceSheetHub(Request $request)
+    public function balanceSheetHub(Request $request): View|RedirectResponse|StreamedResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
         $ids = $this->resolveReportEntityIds($request);
@@ -146,6 +155,10 @@ class FinancialReportController extends Controller
                 $ids,
                 $asOfDate
             );
+        }
+
+        if ($request->query('format') === 'csv') {
+            return $this->csvExporter->balanceSheet($report);
         }
 
         return view('financial-reports.balance-sheet', compact('report'));

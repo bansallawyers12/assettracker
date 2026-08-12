@@ -270,8 +270,8 @@
     "semantic_hash": "446e41677c209796f08f8694c0517e03"
   },
   "app/Http/Controllers/FinancialReportController.php": {
-    "mtime": 1786526402.3595414,
-    "ast_hash": "1cc1c6ac1aeb74015f5d5b98fa3b7a24",
+    "mtime": 1786526824.978976,
+    "ast_hash": "7bcbf3d49862744a7933dffd7576177e",
     "semantic_hash": ""
   },
   "app/Http/Controllers/InvoiceController.php": {
@@ -2535,8 +2535,8 @@
     "semantic_hash": "c05b92c8ce85a2eae3285ea289473d5b"
   },
   "resources/views/financial-reports/balance-sheet.blade.php": {
-    "mtime": 1786526603.6371932,
-    "ast_hash": "63fd7b7efa2f36d8c021ef5beb387811",
+    "mtime": 1786526844.4154909,
+    "ast_hash": "829d55d16e0ad9bcae1f6c1e6aa68cc9",
     "semantic_hash": ""
   },
   "resources/views/financial-reports/cash-flow.blade.php": {
@@ -2570,8 +2570,8 @@
     "semantic_hash": "d606f090f4cc45d891b001d738cf8e21"
   },
   "resources/views/financial-reports/profit-loss.blade.php": {
-    "mtime": 1786526498.840358,
-    "ast_hash": "84a7be9ad3e73d56ec795e9e04c3712d",
+    "mtime": 1786526840.8707757,
+    "ast_hash": "53d59358cdd950faf8c967614308b0cc",
     "semantic_hash": ""
   },
   "resources/views/financial-reports/tracking-categories.blade.php": {
@@ -3635,8 +3635,8 @@
     "semantic_hash": ""
   },
   "resources/views/financial-reports/partials/balance-sheet-entity-breakdown.blade.php": {
-    "mtime": 1786526020.5742557,
-    "ast_hash": "aeb5d4f994e4904954b8d816bc3dd2f5",
+    "mtime": 1786526835.5373425,
+    "ast_hash": "2003b8bd7c1517792ef3bc24ce25c21a",
     "semantic_hash": ""
   },
   "resources/views/financial-reports/partials/consolidated-drill-down-banner.blade.php": {
@@ -3645,13 +3645,13 @@
     "semantic_hash": ""
   },
   "resources/views/financial-reports/partials/profit-loss-entity-breakdown.blade.php": {
-    "mtime": 1786526002.2939346,
-    "ast_hash": "e4c7e3db2eb56f56d2b5316b2009227f",
+    "mtime": 1786526834.5394928,
+    "ast_hash": "e642d004a5bc156a959be0487552a338",
     "semantic_hash": ""
   },
   "app/Support/ComparativeFinancialReport.php": {
-    "mtime": 1786526381.7908535,
-    "ast_hash": "95e10aedb6070358d9af10c091446551",
+    "mtime": 1786526812.2790537,
+    "ast_hash": "b90b7002be16a4e888b875029bdbb553",
     "semantic_hash": ""
   },
   "resources/views/financial-reports/partials/comparative-amount-cells.blade.php": {
@@ -3665,8 +3665,8 @@
     "semantic_hash": ""
   },
   "tests/Unit/ComparativeFinancialReportTest.php": {
-    "mtime": 1786526635.6561875,
-    "ast_hash": "1e51ec628bf472f6114f8fef98b8d691",
+    "mtime": 1786526888.716625,
+    "ast_hash": "fed8dfd6e57b79389052101d12f373b7",
     "semantic_hash": ""
   }
 }

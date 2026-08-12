@@ -125,7 +125,9 @@
                         More
                     </button>
                     <div x-show="open" @click.outside="open = false"
-                         class="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white border border-gray-200 z-20 text-sm">
+                         class="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white border border-gray-200 z-20 text-sm">
+                        <a href="{{ route('financial-reports.balance-sheet', $reportQuery(['as_of_date' => $asOfDate->toDateString(), 'format' => 'csv'])) }}"
+                           class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Export CSV</a>
                         <a href="javascript:window.print()"
                            class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Print / PDF</a>
                     </div>
