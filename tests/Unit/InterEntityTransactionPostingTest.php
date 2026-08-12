@@ -58,6 +58,18 @@ it('avoids double-counting director loan GL that was auto-posted from transactio
         ->and($source)->toContain('buildDirectorEntityLoanAccountBlock');
 });
 
+it('includes same-entity director funds operating posts in the 2500 balance sheet rebuild', function () {
+    $source = file_get_contents(app_path('Services/FinancialReportService.php'));
+
+    expect($source)->toContain('directorFundsOperatingTransactionsForLoanReport')
+        ->and($source)->toContain('directorLoanExplicitTransactionTypes')
+        ->and($source)->toContain('PAYMENT_CHANNEL_DIRECTOR_FUNDS')
+        ->and($source)->toContain('PAYMENT_CHANNEL_CASH')
+        ->and($source)->toContain('Same-entity director funds / cash')
+        ->and($source)->toContain('usesDirectorLoanFundingChannel($t->payment_channel)')
+        ->and($source)->toContain('Director funds movement');
+});
+
 it('reposts when paid_by, payment_channel, or paid_at changes and unposts unpaid updates', function () {
     $source = file_get_contents(app_path('Observers/TransactionObserver.php'));
 

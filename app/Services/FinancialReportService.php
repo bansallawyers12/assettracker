@@ -598,8 +598,10 @@ class FinancialReportService
     }
 
     /**
-     * Intercompany “paid by another entity” (be:) transactions, and income received into another entity's bank account:
-     * two lines per event (borrower and lender) with TRN date, counterparty, and mirrored Dr/Cr.
+     * Director / entity loan (2500) activity for reports:
+     * - Intercompany paid_by be:{other} and cross-bank income (two mirrored lines)
+     * - Same-entity director_funds / cash (and orphan bank_account with no bank) operating posts (one line)
+     * Explicit director_loan_* types stay on the manual GL path (see getDirectorLoanManualGlBalanceAsOf).
      *
      * @param  array<int>  $ids
      * @return array{account: ChartOfAccount, is_director_entity_loan: true, opening_balance: float, lines: list<array<string, mixed>>, closing_balance: float}
@@ -614,8 +616,8 @@ class FinancialReportService
         $asOfBefore = $startC->copy()->subDay()->toDateString();
 
         $incomeTypeKeys = array_keys(Transaction::$incomeTypes);
-        // Explicit director-loan transaction types are excluded; synthetic 2500 lines cover operating cross-entity flows.
-        $excludeSyntheticDirectorLoan = ['director_loan_in', 'director_loan_out', 'director_loan_repayment'];
+        // Explicit director-loan types use manual GL; synthetic lines cover operating funding via 2500.
+        $excludeSyntheticDirectorLoan = $this->directorLoanExplicitTransactionTypes();
         $incomeTypesForCrossBank = array_values(array_diff($incomeTypeKeys, $excludeSyntheticDirectorLoan));
 
         // Include flows where the booking entity is in scope OR the paying entity (paid_by be:{id}) is in scope.
@@ -664,6 +666,11 @@ class FinancialReportService
             ->with(['businessEntity', 'bankAccount.businessEntity', 'asset', 'lines'])
             ->get()
             ->filter(function (Transaction $t) {
+                // Director-funds / cash funding posts to 2500 directly — handled as single-leg synthetics.
+                if (Transaction::usesDirectorLoanFundingChannel($t->payment_channel)) {
+                    return false;
+                }
+
                 $ba = $t->bankAccount;
                 if (! $ba) {
                     return false;
@@ -681,22 +688,8 @@ class FinancialReportService
             })
             ->values();
 
-        $inPeriodPaidBy = $crossEntity->filter(function (Transaction $t) use ($startDate, $endDate) {
-            $ds = $this->transactionEffectivePaymentAt($t)->toDateString();
-
-            return $ds >= $startDate && $ds <= $endDate;
-        })->values();
-
-        $paidByIds = $inPeriodPaidBy->pluck('id')->all();
-
-        $inPeriodCrossBank = $crossBankIncome->filter(function (Transaction $t) use ($startDate, $endDate, $paidByIds) {
-            if (in_array($t->id, $paidByIds, true)) {
-                return false;
-            }
-            $ds = $this->transactionEffectivePaymentAt($t)->toDateString();
-
-            return $ds >= $startDate && $ds <= $endDate;
-        })->values();
+        // Same-entity director_funds / cash (and bank_account with null bank) that post Dr/Cr 2500.
+        $directorFundsFunded = $this->directorFundsOperatingTransactionsForLoanReport($ids, $excludeSyntheticDirectorLoan);
 
         $throughEndPaidBy = $crossEntity->filter(function (Transaction $t) use ($endDate) {
             return $this->transactionEffectivePaymentAt($t)->toDateString() <= $endDate;
@@ -712,30 +705,35 @@ class FinancialReportService
             return $this->transactionEffectivePaymentAt($t)->toDateString() <= $endDate;
         })->values();
 
+        $throughEndDirectorFunds = $directorFundsFunded->filter(function (Transaction $t) use ($endDate, $throughEndPaidByIds) {
+            if (in_array($t->id, $throughEndPaidByIds, true)) {
+                return false;
+            }
+
+            return $this->transactionEffectivePaymentAt($t)->toDateString() <= $endDate;
+        })->values();
+
+        $sortKey = function (Transaction $t): string {
+            $d = $this->transactionEffectivePaymentAt($t);
+            $ds = $d->format('Y-m-d');
+
+            return $ds.'-'.str_pad((string) $t->id, 10, '0', STR_PAD_LEFT);
+        };
+
         $throughEnd = $throughEndPaidBy
             ->merge($throughEndCrossBank)
+            ->merge($throughEndDirectorFunds)
             ->unique('id')
-            ->sortBy(function (Transaction $t) {
-                $d = $this->transactionEffectivePaymentAt($t);
-                $ds = $d->format('Y-m-d');
-
-                return $ds.'-'.str_pad((string) $t->id, 10, '0', STR_PAD_LEFT);
-            })
+            ->sortBy($sortKey)
             ->values();
 
-        $inPeriod = $inPeriodPaidBy
-            ->merge($inPeriodCrossBank)
-            ->unique('id')
-            ->sortBy(function (Transaction $t) {
-                $d = $this->transactionEffectivePaymentAt($t);
-                $ds = $d->format('Y-m-d');
-
-                return $ds.'-'.str_pad((string) $t->id, 10, '0', STR_PAD_LEFT);
-            })
-            ->values();
+        $directorFundsIds = $throughEndDirectorFunds->pluck('id')->all();
 
         $lenderIds = [];
         foreach ($throughEnd as $t) {
+            if (in_array($t->id, $directorFundsIds, true)) {
+                continue;
+            }
             $cid = $this->counterpartyBusinessEntityIdForDirectorLoanReport($t);
             if ($cid !== null) {
                 $lenderIds[$cid] = true;
@@ -749,13 +747,6 @@ class FinancialReportService
 
         foreach ($throughEnd as $t) {
             $gross = $this->transactionGrossAmount($t);
-            $lenderPayerId = $this->counterpartyBusinessEntityIdForDirectorLoanReport($t);
-            if ($lenderPayerId === null) {
-                continue;
-            }
-            $lenderEntity = $lendersById->get($lenderPayerId);
-            $lenderName = $lenderEntity?->legal_name
-                ?? TransactionPayerResolver::paidByLabel($t->paid_by);
             $borrowerEntity = $t->businessEntity;
             $borrowerName = (string) ($borrowerEntity?->legal_name ?? '');
 
@@ -766,7 +757,11 @@ class FinancialReportService
             if ($ref === null || $ref === '') {
                 $ref = 'TXN-'.str_pad((string) $t->id, 8, '0', STR_PAD_LEFT);
             }
-            $baseDesc = (string) ($t->description ?? 'Intercompany loan movement');
+            $desc = trim((string) ($t->description ?? ''));
+            $isDirectorFundsLeg = in_array($t->id, $directorFundsIds, true);
+            $baseDesc = $desc !== ''
+                ? $desc
+                : ($isDirectorFundsLeg ? 'Director funds movement' : 'Intercompany loan movement');
 
             $refStr = (string) $ref;
             $isOperatingIncome = $this->isOperatingIncomeForDirectorLoanReport(
@@ -774,6 +769,35 @@ class FinancialReportService
                 $incomeTypeKeys,
                 $excludeSyntheticDirectorLoan
             );
+
+            // Same-entity director funds / cash: one 2500 leg on the booking entity (matches posting).
+            if ($isDirectorFundsLeg) {
+                $otherParty = TransactionPayerResolver::paidByLabel($t->paid_by);
+                if ($otherParty === '') {
+                    $otherParty = $t->nonBankFundingAccountLabel();
+                }
+                $lineData[] = $this->mergeDirectorLoanLineWithTransactionDetails($t, [
+                    'date' => $at,
+                    'reference' => $refStr,
+                    'description' => $baseDesc,
+                    'entity_name' => $borrowerName,
+                    'reporting_business_entity_id' => (int) $t->business_entity_id,
+                    'is_director_loan_line' => true,
+                    'other_party' => $otherParty,
+                    'debit' => $isOperatingIncome ? $gross : null,
+                    'credit' => $isOperatingIncome ? null : $gross,
+                ]);
+
+                continue;
+            }
+
+            $lenderPayerId = $this->counterpartyBusinessEntityIdForDirectorLoanReport($t);
+            if ($lenderPayerId === null) {
+                continue;
+            }
+            $lenderEntity = $lendersById->get($lenderPayerId);
+            $lenderName = $lenderEntity?->legal_name
+                ?? TransactionPayerResolver::paidByLabel($t->paid_by);
 
             if ($isRepayment) {
                 $lineData[] = $this->mergeDirectorLoanLineWithTransactionDetails($t, [
@@ -924,21 +948,15 @@ class FinancialReportService
     }
 
     /**
-     * Director/entity loan GL excluding auto-posted Transaction journals (those are
-     * reported via synthetic intercompany lines in buildDirectorEntityLoanAccountBlock).
+     * Director/entity loan GL excluding auto-posted operating Transaction journals (those are
+     * reported via synthetic lines in buildDirectorEntityLoanAccountBlock). Includes explicit
+     * director_loan_* types and non-transaction / manual journals.
      *
      * @param  array<int>  $entityIds
      */
     private function getDirectorLoanManualGlBalanceAsOf($accountId, string $asOfDate, array $entityIds): float
     {
-        $directorLoanTypes = [
-            'director_loan_in',
-            'director_loan_out',
-            'director_loan_repayment',
-            'directors_loans_to_company',
-            'repayment_directors_loans',
-            'company_loans_to_directors',
-        ];
+        $directorLoanTypes = $this->directorLoanExplicitTransactionTypes();
 
         $debits = JournalLine::where('chart_of_account_id', $accountId)
             ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds, $directorLoanTypes) {
@@ -977,6 +995,59 @@ class FinancialReportService
             ->sum('credit_amount');
 
         return (float) $debits - (float) $credits;
+    }
+
+    /**
+     * Explicit director-loan transaction types booked directly to 2500 (not via fundingSideLine).
+     *
+     * @return list<string>
+     */
+    private function directorLoanExplicitTransactionTypes(): array
+    {
+        return [
+            'director_loan_in',
+            'director_loan_out',
+            'director_loan_repayment',
+            'directors_loans_to_company',
+            'repayment_directors_loans',
+            'company_loans_to_directors',
+        ];
+    }
+
+    /**
+     * Paid operating transactions funded by director_funds / cash (or orphan bank_account channel)
+     * that post a same-entity 2500 journal — excludes cross-entity be:{other} (handled separately).
+     *
+     * @param  array<int>  $entityIds
+     * @param  list<string>  $excludeTypes
+     * @return Collection<int, Transaction>
+     */
+    private function directorFundsOperatingTransactionsForLoanReport(array $entityIds, array $excludeTypes): Collection
+    {
+        return Transaction::query()
+            ->where('payment_status', 'paid')
+            ->whereIn('business_entity_id', $entityIds)
+            ->whereNotIn('transaction_type', $excludeTypes)
+            ->where(function ($q) {
+                $q->whereIn('payment_channel', [
+                    Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+                    Transaction::PAYMENT_CHANNEL_CASH,
+                ])->orWhere(function ($q2) {
+                    $q2->where('payment_channel', Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT)
+                        ->whereNull('bank_account_id');
+                });
+            })
+            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset', 'lines'])
+            ->get()
+            ->filter(function (Transaction $t) {
+                if (! preg_match('/^be:(\d+)$/', (string) $t->paid_by, $m)) {
+                    return true;
+                }
+
+                // Cross-entity be:{other} already has mirrored synthetic lines.
+                return (int) $m[1] === (int) $t->business_entity_id;
+            })
+            ->values();
     }
 
     private function lenderEntityIdFromPaidBy(Transaction $t): ?int
@@ -1093,14 +1164,7 @@ class FinancialReportService
      */
     private function crossEntityPaidByTransactionsForScope(array $entityIds)
     {
-        $excludeTypes = [
-            'director_loan_in',
-            'director_loan_out',
-            'director_loan_repayment',
-            'directors_loans_to_company',
-            'repayment_directors_loans',
-            'company_loans_to_directors',
-        ];
+        $excludeTypes = $this->directorLoanExplicitTransactionTypes();
 
         return Transaction::query()
             ->where('payment_status', 'paid')
@@ -1136,11 +1200,11 @@ class FinancialReportService
         }
 
         $incomeTypeKeys = array_keys(Transaction::$incomeTypes);
-        if (! $this->isOperatingIncomeForDirectorLoanReport($t, $incomeTypeKeys, [
-            'director_loan_in',
-            'director_loan_out',
-            'director_loan_repayment',
-        ])) {
+        if (! $this->isOperatingIncomeForDirectorLoanReport(
+            $t,
+            $incomeTypeKeys,
+            $this->directorLoanExplicitTransactionTypes()
+        )) {
             return null;
         }
         if (! $t->bankAccount) {

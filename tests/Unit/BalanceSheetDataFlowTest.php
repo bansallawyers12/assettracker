@@ -31,8 +31,9 @@ it('maps loan repayments to long term loans account config', function () {
 it('includes director loan transaction GL on balance sheet manual 2500 balance', function () {
     $source = file_get_contents(app_path('Services/FinancialReportService.php'));
 
-    expect($source)->toContain('whereIn(\'transaction_type\', $directorLoanTypes)')
-        ->and($source)->toContain('whereHasMorph(\'source\', [Transaction::class]');
+    expect($source)->toContain('directorLoanExplicitTransactionTypes')
+        ->and($source)->toContain('whereHasMorph(\'source\', [Transaction::class]')
+        ->and($source)->toContain('directorFundsOperatingTransactionsForLoanReport');
 });
 
 it('documents manual journal entry service and routes', function () {
