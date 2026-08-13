@@ -1,7 +1,12 @@
 @php
+    use App\Models\BankAccount;
     use App\Models\Transaction;
 
-    $operatingAccounts = $bankAccounts ?? collect();
+    $accountsById = ($bankAccounts ?? collect())->keyBy('id');
+    $operatingLinks = ($entityBankAccountLinks ?? collect())
+        ->filter(fn ($link) => in_array($link->purpose, BankAccount::ENTITY_OPERATING_PURPOSES, true))
+        ->unique('bank_account_id')
+        ->values();
 @endphp
 
 <div class="space-y-3">
@@ -21,23 +26,35 @@
                     Clear all transactions
                 </a>
             @endif
-            @if($operatingAccounts->isNotEmpty())
+            @if($operatingLinks->isNotEmpty())
                 <div class="flex flex-wrap gap-2">
-                    @foreach($operatingAccounts as $account)
-                        <button
-                            type="button"
-                            data-bank-action="transactions"
-                            data-bank-transactions-url="{{ route('bank-accounts.transactions.index', [
-                                'bankAccount' => $account,
-                                'business_entity_id' => $businessEntity->id,
-                            ]) }}"
-                            data-bank-transactions-title="Transactions"
-                            data-bank-transactions-subtitle="{{ $account->displayLabel() }}"
-                            class="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50"
-                        >
-                            <x-lucide-arrow-left-right class="h-3.5 w-3.5" aria-hidden="true" />
-                            {{ $account->account_name ?: $account->bank_name }}
-                        </button>
+                    @foreach($operatingLinks as $link)
+                        @php
+                            $account = $accountsById->get($link->bank_account_id) ?? $link->bankAccount;
+                            $unmatched = $account?->unmatchedStatementEntryCount() ?? 0;
+                            $workspaceLabel = $account?->entityWorkspaceLabel($businessEntity) ?? '—';
+                        @endphp
+                        @if($account)
+                            <button
+                                type="button"
+                                data-bank-action="transactions"
+                                data-bank-transactions-url="{{ route('bank-accounts.transactions.index', [
+                                    'bankAccount' => $account,
+                                    'business_entity_id' => $businessEntity->id,
+                                ]) }}"
+                                data-bank-transactions-title="Transactions"
+                                data-bank-transactions-subtitle="{{ $workspaceLabel }}"
+                                class="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50"
+                            >
+                                <x-lucide-arrow-left-right class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                <span>{{ $workspaceLabel }}</span>
+                                @if ($unmatched > 0)
+                                    <span class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
+                                        {{ $unmatched }} unmatched
+                                    </span>
+                                @endif
+                            </button>
+                        @endif
                     @endforeach
                 </div>
             @endif
@@ -88,6 +105,9 @@
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300 max-w-[10rem]">
                                 @if ($transaction->bankAccount)
+                                    @php
+                                        $accountLabel = $transaction->bankAccount->entityWorkspaceLabel($businessEntity);
+                                    @endphp
                                     <button
                                         type="button"
                                         data-bank-action="transactions"
@@ -96,11 +116,11 @@
                                             'business_entity_id' => $businessEntity->id,
                                         ]) }}"
                                         data-bank-transactions-title="Transactions"
-                                        data-bank-transactions-subtitle="{{ $transaction->bankAccount->displayLabel() }}"
+                                        data-bank-transactions-subtitle="{{ $accountLabel }}"
                                         class="text-left text-violet-700 hover:text-violet-900 dark:text-violet-300 dark:hover:text-violet-200 truncate max-w-full"
                                         title="Open account transactions"
                                     >
-                                        {{ $transaction->bankAccount->transactionAccountLabel() }}
+                                        {{ $accountLabel }}
                                     </button>
                                 @else
                                     <span class="text-gray-500 dark:text-gray-400" title="No company bank account — funded outside bank">{{ $transaction->nonBankFundingAccountLabel() }}</span>

@@ -623,7 +623,10 @@ class BusinessEntityController extends Controller
             ->values();
         $bankAccounts = BankAccount::query()
             ->whereIn('id', $operatingAccountIds)
-            ->with(['bankStatementEntries.transaction'])
+            ->with([
+                'bankStatementEntries.transaction',
+                'entityPurposeLinks' => fn ($q) => $q->where('business_entity_id', $businessEntity->id),
+            ])
             ->get();
         $portfolioBankAccounts = BankAccount::query()
             ->visibleInPortfolio()
@@ -636,7 +639,15 @@ class BusinessEntityController extends Controller
             ->orderBy('account_name')
             ->get();
         $transactions = $businessEntity->transactions()
-            ->with(['bankStatementEntries', 'asset', 'relatedEntity', 'paymentDocument', 'vendor', 'lines', 'bankAccount'])
+            ->with([
+                'bankStatementEntries',
+                'asset',
+                'relatedEntity',
+                'paymentDocument',
+                'vendor',
+                'lines',
+                'bankAccount.entityPurposeLinks' => fn ($q) => $q->where('business_entity_id', $businessEntity->id),
+            ])
             ->orderBy('date', 'desc')
             ->get();
         $invoices = Invoice::where('business_entity_id', $businessEntity->id)

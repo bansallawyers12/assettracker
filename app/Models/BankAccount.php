@@ -442,6 +442,45 @@ class BankAccount extends Model
     }
 
     /**
+     * Compact label for entity workspace chips and tables (purpose + masked account).
+     * Omits account name and holder — the entity context is already known.
+     */
+    public function entityWorkspaceLabel(BusinessEntity $entity, ?string $purpose = null): string
+    {
+        if ($purpose !== null) {
+            $purposeLabels = [self::purposeLabel($purpose)];
+        } else {
+            $purposes = $this->purposesOnEntity($entity);
+            $purposeLabels = array_map(fn (string $p) => self::purposeLabel($p), $purposes);
+        }
+
+        if ($purposeLabels === []) {
+            $purposeLabels = [self::purposeLabel($this->account_purpose)];
+        }
+
+        $label = implode(', ', $purposeLabels);
+        $suffix = $this->maskedAccountNumber() ?? self::formatBsb($this->bsb);
+
+        if ($suffix !== null && $suffix !== '') {
+            return "{$label} · {$suffix}";
+        }
+
+        return $label;
+    }
+
+    /**
+     * Count of imported statement lines not yet linked to a transaction.
+     */
+    public function unmatchedStatementEntryCount(): int
+    {
+        if ($this->relationLoaded('bankStatementEntries')) {
+            return $this->bankStatementEntries->whereNull('transaction_id')->count();
+        }
+
+        return $this->bankStatementEntries()->whereNull('transaction_id')->count();
+    }
+
+    /**
      * Route to edit this account (portfolio-wide or entity-scoped).
      */
     public function editRoute(): string

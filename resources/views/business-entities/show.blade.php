@@ -133,6 +133,7 @@
                                     'businessEntity' => $businessEntity,
                                     'transactions' => $transactions,
                                     'bankAccounts' => $bankAccounts ?? collect(),
+                                    'entityBankAccountLinks' => $entityBankAccountLinks ?? collect(),
                                 ])
                             </div>
 
@@ -506,6 +507,7 @@
                                 @include('business-entities.partials.bank-import-summary', [
                                     'businessEntity' => $businessEntity,
                                     'bankAccounts' => $bankAccounts ?? collect(),
+                                    'entityBankAccountLinks' => $entityBankAccountLinks ?? collect(),
                                 ])
                             </div>
 

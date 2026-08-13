@@ -1,12 +1,16 @@
 {{-- Entity bank import is demoted: reconcile from bank account transactions panel. --}}
 @php
-    $operatingAccounts = ($bankAccounts ?? collect());
-    $unmatchedTotal = $operatingAccounts->sum(function ($account) {
-        if ($account->relationLoaded('bankStatementEntries')) {
-            return $account->bankStatementEntries->whereNull('transaction_id')->count();
-        }
+    use App\Models\BankAccount;
 
-        return $account->bankStatementEntries()->whereNull('transaction_id')->count();
+    $accountsById = ($bankAccounts ?? collect())->keyBy('id');
+    $operatingLinks = ($entityBankAccountLinks ?? collect())
+        ->filter(fn ($link) => in_array($link->purpose, BankAccount::ENTITY_OPERATING_PURPOSES, true))
+        ->unique('bank_account_id')
+        ->values();
+    $unmatchedTotal = $operatingLinks->sum(function ($link) use ($accountsById) {
+        $account = $accountsById->get($link->bank_account_id) ?? $link->bankAccount;
+
+        return $account?->unmatchedStatementEntryCount() ?? 0;
     });
 @endphp
 
@@ -25,7 +29,7 @@
         </div>
     </div>
 
-    @if ($operatingAccounts->isEmpty())
+    @if ($operatingLinks->isEmpty())
         <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-6">
             Link an operating bank account first, then import statement lines there.
         </p>
@@ -40,34 +44,38 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-900">
-                    @foreach ($operatingAccounts as $account)
+                    @foreach ($operatingLinks as $link)
                         @php
-                            $unmatched = $account->relationLoaded('bankStatementEntries')
-                                ? $account->bankStatementEntries->whereNull('transaction_id')->count()
-                                : $account->bankStatementEntries()->whereNull('transaction_id')->count();
+                            $account = $accountsById->get($link->bank_account_id) ?? $link->bankAccount;
+                            $unmatched = $account?->unmatchedStatementEntryCount() ?? 0;
+                            $workspaceLabel = $account?->entityWorkspaceLabel($businessEntity) ?? '—';
                         @endphp
-                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
-                            <td class="px-4 py-3 text-sm text-gray-800 dark:text-gray-200">
-                                <div class="font-medium">{{ $account->account_name ?: $account->bank_name }}</div>
-                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ $account->displayLabel() }}</div>
-                            </td>
-                            <td class="px-4 py-3 text-sm tabular-nums text-gray-700 dark:text-gray-300">{{ $unmatched }}</td>
-                            <td class="px-4 py-3 text-right">
-                                <button
-                                    type="button"
-                                    data-bank-action="transactions"
-                                    data-bank-transactions-url="{{ route('bank-accounts.transactions.index', [
-                                        'bankAccount' => $account,
-                                        'business_entity_id' => $businessEntity->id,
-                                    ]) }}"
-                                    data-bank-transactions-title="Import & match"
-                                    data-bank-transactions-subtitle="{{ $account->displayLabel() }}"
-                                    class="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
-                                >
-                                    Open account
-                                </button>
-                            </td>
-                        </tr>
+                        @if($account)
+                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
+                                <td class="px-4 py-3 text-sm text-gray-800 dark:text-gray-200">
+                                    <div class="font-medium">{{ $workspaceLabel }}</div>
+                                    @if ($account->bank_name)
+                                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ $account->bank_name }}</div>
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-sm tabular-nums text-gray-700 dark:text-gray-300">{{ $unmatched }}</td>
+                                <td class="px-4 py-3 text-right">
+                                    <button
+                                        type="button"
+                                        data-bank-action="transactions"
+                                        data-bank-transactions-url="{{ route('bank-accounts.transactions.index', [
+                                            'bankAccount' => $account,
+                                            'business_entity_id' => $businessEntity->id,
+                                        ]) }}"
+                                        data-bank-transactions-title="Import & match"
+                                        data-bank-transactions-subtitle="{{ $workspaceLabel }}"
+                                        class="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                                    >
+                                        Open account
+                                    </button>
+                                </td>
+                            </tr>
+                        @endif
                     @endforeach
                 </tbody>
             </table>
