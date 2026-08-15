@@ -1,23 +1,36 @@
 @php
     $suggestions = $suggestions ?? [];
-    $transactionTypeGroups = $transactionTypeGroups ?? \App\Models\Transaction::typeSelectGroups();
+    $isLoanActivityImport = (bool) ($isLoanActivityImport ?? $bankAccount->isLoanLedgerAccount());
+    $transactionTypeGroups = $transactionTypeGroups
+        ?? ($isLoanActivityImport
+            ? \App\Models\Transaction::loanActivityTypeSelectGroups()
+            : \App\Models\Transaction::typeSelectGroups());
     $allTypes = \App\Models\Transaction::allTypes();
+    $pendingCountLabel = $isLoanActivityImport ? 'to apply' : 'unmatched';
 @endphp
 
 <div
     class="rounded-lg border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/50 dark:bg-amber-950/20"
     data-bank-import-panel
     data-reconciliation-panel
+    data-loan-activity="{{ $isLoanActivityImport ? '1' : '0' }}"
 >
     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
-            <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reconcile statement</h3>
-            <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                Upload CSV statement lines, review suggestions, then accept selected rows. Nothing posts until you accept.
-            </p>
+            @if($isLoanActivityImport)
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Update loan activity</h3>
+                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                    This is the loan ledger, not cash. Interest and fees capitalise to the loan. Repayments reduce the loan and cash once — keep offset “to loan” lines as internal transfers.
+                </p>
+            @else
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reconcile statement</h3>
+                <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                    Upload CSV statement lines, review suggestions, then accept selected rows. Nothing posts until you accept.
+                </p>
+            @endif
         </div>
         <span class="text-xs font-medium text-amber-800 dark:text-amber-200" data-bank-import-unmatched-count>
-            {{ $unmatchedEntries->count() }} unmatched
+            {{ $unmatchedEntries->count() }} {{ $pendingCountLabel }}
         </span>
     </div>
 
@@ -224,15 +237,17 @@
                                         @endforeach
                                     </x-tom-select>
                                 </div>
-                                <div class="sm:col-span-2">
-                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Or create from chart account</label>
-                                    <x-tom-select
-                                        data-bank-import-chart-account
-                                        class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                                    >
-                                        <option value="">— None —</option>
-                                    </x-tom-select>
-                                </div>
+                                @unless($isLoanActivityImport)
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Or create from chart account</label>
+                                        <x-tom-select
+                                            data-bank-import-chart-account
+                                            class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                        >
+                                            <option value="">— None —</option>
+                                        </x-tom-select>
+                                    </div>
+                                @endunless
                                 <div class="sm:col-span-2 rounded-md border border-gray-200 dark:border-gray-700 p-2.5">
                                     <p class="text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-2">Create markers</p>
                                     <div class="grid gap-2 sm:grid-cols-2">
@@ -261,7 +276,11 @@
                 </div>
             @empty
                 <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4" data-bank-import-empty>
-                    No unmatched statement lines. Upload a CSV/Excel file to begin.
+                    @if($isLoanActivityImport)
+                        No loan activity lines waiting. Upload the loan CSV to apply interest, fees, and repayments.
+                    @else
+                        No unmatched statement lines. Upload a CSV/Excel file to begin.
+                    @endif
                 </p>
             @endforelse
         </div>

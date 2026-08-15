@@ -56,6 +56,20 @@ class BankStatementApplyService
                     ]);
                 }
 
+                if ($bankAccount->isLoanLedgerAccount() && $chartAccountId !== null) {
+                    throw ValidationException::withMessages([
+                        'matches' => 'Loan activity must use Loan Interest, Loan Fees, or Loan Repayment rather than a chart account.',
+                    ]);
+                }
+
+                if ($bankAccount->isLoanLedgerAccount()
+                    && $transactionType !== null
+                    && ! array_key_exists($transactionType, Transaction::loanActivityTypes())) {
+                    throw ValidationException::withMessages([
+                        'matches' => "Transaction type [{$transactionType}] is not valid for loan activity.",
+                    ]);
+                }
+
                 if ($transactionId !== null && isset($claimedTransactionIds[$transactionId])) {
                     throw ValidationException::withMessages([
                         'matches' => "Transaction #{$transactionId} is selected for more than one statement line.",

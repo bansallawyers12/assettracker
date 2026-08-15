@@ -175,7 +175,8 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             const countEl = importPanel.querySelector('[data-bank-import-unmatched-count]');
             if (countEl && Array.isArray(payload.entries)) {
                 const count = payload.entries.length;
-                countEl.textContent = `${count} unmatched`;
+                const suffix = importPanel.dataset.loanActivity === '1' ? 'to apply' : 'unmatched';
+                countEl.textContent = `${count} ${suffix}`;
             }
         } catch {
             // Keep existing candidates if refresh fails.

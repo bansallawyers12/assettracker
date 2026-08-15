@@ -15,6 +15,7 @@ class RepostPaidTransactionJournals extends Command
     protected $signature = 'journals:repost-paid-transactions
                             {--dry-run : Show how many transactions would be re-posted without writing}
                             {--channels= : Comma-separated payment_channel values to limit (e.g. director_funds,cash)}
+                            {--types= : Comma-separated transaction_type values to limit (e.g. loan_interest,loan_fees)}
                             {--chunk=200 : Rows per chunk}';
 
     protected $description = 'Re-post journals for paid transactions (fixes entry_date, director-funds funding, tracking)';
@@ -42,6 +43,22 @@ class RepostPaidTransactionJournals extends Command
                 return self::FAILURE;
             }
             $query->whereIn('payment_channel', $channels);
+        }
+
+        $typesOption = $this->option('types');
+        if (is_string($typesOption) && trim($typesOption) !== '') {
+            $types = array_values(array_filter(array_map(
+                static fn (string $value): string => trim($value),
+                explode(',', $typesOption)
+            )));
+            $allowed = array_keys(Transaction::allTypes());
+            $invalid = array_diff($types, $allowed);
+            if ($invalid !== []) {
+                $this->error('Invalid transaction type(s): '.implode(', ', $invalid));
+
+                return self::FAILURE;
+            }
+            $query->whereIn('transaction_type', $types);
         }
 
         $total = (clone $query)->count();

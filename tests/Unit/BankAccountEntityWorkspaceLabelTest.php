@@ -73,9 +73,12 @@ it('renders entity workspace labels in transaction and bank import summaries', f
 
     expect($transactionsSummary)->toContain('entityWorkspaceLabel(')
         ->and($transactionsSummary)->toContain('unmatchedStatementEntryCount()')
+        ->and($transactionsSummary)->toContain('isLoanLedgerAccount()')
+        ->and($transactionsSummary)->toContain('to apply')
         ->and($transactionsSummary)->toContain('entityBankAccountLinks')
         ->and($transactionsSummary)->toContain("unique('bank_account_id')")
         ->and($bankImportSummary)->toContain('entityWorkspaceLabel(')
+        ->and($bankImportSummary)->toContain('isLoanLedgerAccount()')
         ->and($bankImportSummary)->toContain("unique('bank_account_id')")
         ->and($show)->toContain("'entityBankAccountLinks' => \$entityBankAccountLinks");
 });

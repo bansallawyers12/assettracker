@@ -123,7 +123,8 @@ class BankAccountImportController extends Controller
             'success' => true,
             'entries' => $entryPayloads,
             'candidates' => $candidates->map(fn (Transaction $transaction) => $this->candidatePayload($transaction)),
-            'transaction_types' => Transaction::typeSelectGroups(),
+            'transaction_types' => Transaction::typeSelectGroupsForBankAccount($bankAccount),
+            'is_loan_activity' => $bankAccount->isLoanLedgerAccount(),
         ]);
     }
 

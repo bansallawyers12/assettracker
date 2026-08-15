@@ -130,6 +130,52 @@ class Transaction extends Model
     }
 
     /**
+     * Interest and fees charged to the loan (capitalised). Not a cash payment.
+     */
+    public static function isCapitalizedLoanCharge(string $type): bool
+    {
+        return in_array($type, ['loan_interest', 'loan_fees'], true);
+    }
+
+    /**
+     * Transaction types accepted when creating activity from a loan statement.
+     *
+     * @return array<string, string>
+     */
+    public static function loanActivityTypes(): array
+    {
+        return [
+            'loan_repayments' => self::$expenseTypes['loan_repayments'],
+            'loan_interest' => self::$expenseTypes['loan_interest'],
+            'loan_fees' => self::$expenseTypes['loan_fees'],
+        ];
+    }
+
+    /**
+     * Create-type options when importing a loan-purpose account statement.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public static function loanActivityTypeSelectGroups(): array
+    {
+        return [
+            'Loan activity' => self::loanActivityTypes(),
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, string>>
+     */
+    public static function typeSelectGroupsForBankAccount(BankAccount $bankAccount): array
+    {
+        if ($bankAccount->isLoanLedgerAccount()) {
+            return self::loanActivityTypeSelectGroups();
+        }
+
+        return self::typeSelectGroups();
+    }
+
+    /**
      * Grouped options for transaction type select (label => key => display).
      *
      * @return array<string, array<string, string>>

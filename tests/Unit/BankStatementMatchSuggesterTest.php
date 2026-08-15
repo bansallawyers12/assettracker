@@ -236,6 +236,14 @@ it('only stores counterpart fields for internal transfers in apply service', fun
         ->and($source)->toContain('$transferGroupId = null');
 });
 
+it('enforces loan activity create types in apply service', function () {
+    $source = file_get_contents(app_path('Services/BankStatementApplyService.php'));
+
+    expect($source)->toContain('$bankAccount->isLoanLedgerAccount()')
+        ->and($source)->toContain('Transaction::loanActivityTypes()')
+        ->and($source)->toContain('Loan activity must use Loan Interest, Loan Fees, or Loan Repayment');
+});
+
 it('exposes loan types and interest expense posting map', function () {
     expect(Transaction::allTypes())->toHaveKeys(['loan_interest', 'loan_fees', 'loan_repayments', 'internal_transfer']);
 

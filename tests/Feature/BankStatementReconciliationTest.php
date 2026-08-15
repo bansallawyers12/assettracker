@@ -28,6 +28,9 @@ it('includes shared reconciliation panel markup and JS module', function () {
     $modal = file_get_contents(resource_path('js/bank-account-modal.js'));
 
     expect($panel)->toContain('data-reconciliation-panel')
+        ->and($panel)->toContain('data-loan-activity')
+        ->and($panel)->toContain('Update loan activity')
+        ->and($panel)->toContain('Reconcile statement')
         ->and($panel)->toContain('data-bank-import-accept-selected')
         ->and($panel)->toContain('data-bank-import-select-suggestions')
         ->and($panel)->toContain('data-bank-import-create-type')
@@ -35,7 +38,9 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($panel)->toContain('data-bank-import-is-flagged')
         ->and($panel)->toContain('data-bank-import-comments')
         ->and($transactions)->toContain('bank-accounts.partials.reconciliation-panel')
+        ->and($transactions)->toContain('isLoanActivityImport')
         ->and($js)->toContain('export function bindReconciliationPanel')
+        ->and($js)->toContain("importPanel.dataset.loanActivity === '1'")
         ->and($modal)->toContain("from './bank-reconciliation.js'")
         ->and($modal)->toContain('bindReconciliationPanel')
         ->and($js)->toContain('subject_to_bas')
@@ -53,6 +58,7 @@ it('enriches unmatched endpoint with suggestions in controller source', function
     expect($source)->toContain('BankStatementMatchSuggester')
         ->and($source)->toContain("'suggestion'")
         ->and($source)->toContain('transaction_type')
+        ->and($source)->toContain('typeSelectGroupsForBankAccount')
         ->and($source)->toContain('BankStatementApplyService')
         ->and($source)->toContain('matches.*.subject_to_bas')
         ->and($source)->toContain('matches.*.is_flagged')

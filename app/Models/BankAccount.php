@@ -469,6 +469,14 @@ class BankAccount extends Model
     }
 
     /**
+     * Loan-purpose accounts are a liability ledger, not a cash bank.
+     */
+    public function isLoanLedgerAccount(): bool
+    {
+        return $this->account_purpose === self::PURPOSE_LOAN;
+    }
+
+    /**
      * Count of imported statement lines not yet linked to a transaction.
      */
     public function unmatchedStatementEntryCount(): int

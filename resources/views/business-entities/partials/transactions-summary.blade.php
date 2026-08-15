@@ -33,6 +33,7 @@
                             $account = $accountsById->get($link->bank_account_id) ?? $link->bankAccount;
                             $unmatched = $account?->unmatchedStatementEntryCount() ?? 0;
                             $workspaceLabel = $account?->entityWorkspaceLabel($businessEntity) ?? '—';
+                            $isLoanLedger = $account?->isLoanLedgerAccount() ?? false;
                         @endphp
                         @if($account)
                             <button
@@ -42,7 +43,7 @@
                                     'bankAccount' => $account,
                                     'business_entity_id' => $businessEntity->id,
                                 ]) }}"
-                                data-bank-transactions-title="Transactions"
+                                data-bank-transactions-title="{{ $isLoanLedger ? 'Loan activity' : 'Transactions' }}"
                                 data-bank-transactions-subtitle="{{ $workspaceLabel }}"
                                 class="inline-flex items-center gap-1.5 rounded-md border border-violet-300 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50"
                             >
@@ -50,7 +51,7 @@
                                 <span>{{ $workspaceLabel }}</span>
                                 @if ($unmatched > 0)
                                     <span class="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
-                                        {{ $unmatched }} unmatched
+                                        {{ $unmatched }} {{ $isLoanLedger ? 'to apply' : 'unmatched' }}
                                     </span>
                                 @endif
                             </button>

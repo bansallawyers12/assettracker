@@ -106,5 +106,7 @@ it('supports scoped channel filter on journals repost command', function () {
     $source = file_get_contents(app_path('Console/Commands/RepostPaidTransactionJournals.php'));
 
     expect($source)->toContain('{--channels=')
-        ->and($source)->toContain('whereIn(\'payment_channel\'');
+        ->and($source)->toContain('{--types=')
+        ->and($source)->toContain('whereIn(\'payment_channel\'')
+        ->and($source)->toContain('whereIn(\'transaction_type\'');
 });

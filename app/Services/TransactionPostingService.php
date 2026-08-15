@@ -234,9 +234,10 @@ class TransactionPostingService
      * Funding / cash-movement side for operating (non-director-loan-type) journals.
      *
      * Priority: cross-entity paid_by → director loan; director_funds/cash channel →
-     * director loan; otherwise bank cash.
+     * director loan; loan_interest/loan_fees → long-term loans (capitalised, no cash);
+     * otherwise bank cash.
      *
-     * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}  $accounts
+     * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ?ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}  $accounts
      * @param  'income'|'expense'  $direction
      * @return array{account_id: int, debit: float, credit: float, description: ?string}|null
      */
@@ -251,6 +252,11 @@ class TransactionPostingService
         $useDirectorFunds = ! $useIntercompany
             && $accounts['director_loan'] !== null
             && $this->shouldFundOperatingSideViaDirectorLoan($transaction);
+        $useLoanLiability = ! $useIntercompany
+            && ! $useDirectorFunds
+            && Transaction::isCapitalizedLoanCharge((string) $transaction->transaction_type)
+            && $transaction->bankAccount?->isLoanLedgerAccount()
+            && $accounts['long_term_loans'] !== null;
 
         if ($direction === 'income') {
             if ($useIntercompany) {
@@ -258,6 +264,9 @@ class TransactionPostingService
             }
             if ($useDirectorFunds) {
                 return $this->line($accounts['director_loan']->id, $amountGross, 0, 'Director funds receivable');
+            }
+            if ($useLoanLiability) {
+                return $this->line($accounts['long_term_loans']->id, $amountGross, 0, 'Loan liability reduced');
             }
             if ($accounts['cash']) {
                 return $this->line($accounts['cash']->id, $amountGross, 0, 'Cash received');
@@ -271,6 +280,9 @@ class TransactionPostingService
         }
         if ($useDirectorFunds) {
             return $this->line($accounts['director_loan']->id, 0, $amountGross, 'Director funds payable');
+        }
+        if ($useLoanLiability) {
+            return $this->line($accounts['long_term_loans']->id, 0, $amountGross, 'Capitalised to loan');
         }
         if ($accounts['cash']) {
             return $this->line($accounts['cash']->id, 0, $amountGross, 'Cash paid');
@@ -448,7 +460,7 @@ class TransactionPostingService
     /**
      * Director / entity loan movements: cash (or AR for cross-entity) ↔ account 2500.
      *
-     * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}  $accounts
+     * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ?ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}  $accounts
      * @return list<array{account_id: int, debit: float, credit: float, description: ?string}>
      */
     private function buildDirectorLoanBookingLines(Transaction $transaction, array $accounts, float $amountGross): array
@@ -519,13 +531,14 @@ class TransactionPostingService
     }
 
     /**
-     * @return array{cash: ChartOfAccount, director_loan: ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}
+     * @return array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ?ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}
      */
     private function resolveGlAccounts(): array
     {
         return [
             'cash' => $this->ensureCashAccount(),
             'director_loan' => $this->ensureDirectorLoanAccount(),
+            'long_term_loans' => $this->findLongTermLoansAccount(),
             'gst_payable' => $this->findByName('GST Payable')
                 ?? $this->findByName('GST Clearing')
                 ?? $this->findAccount('2100')
@@ -548,6 +561,12 @@ class TransactionPostingService
     private function findDirectorLoanAccount(): ?ChartOfAccount
     {
         return $this->findAccount('2500');
+    }
+
+    private function findLongTermLoansAccount(): ?ChartOfAccount
+    {
+        return $this->findByName('Long Term Loans')
+            ?? $this->findAccount((string) config('financial.report_accounts.long_term_loans', '4000'));
     }
 
     private function findAccount(string $code): ?ChartOfAccount
@@ -654,8 +673,7 @@ class TransactionPostingService
             'rent_utilities' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'marketing_advertising' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'travel_expenses' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
-            'loan_repayments' => $this->findByName('Long Term Loans')
-                ?? $this->findAccount((string) config('financial.report_accounts.long_term_loans', '4000')),
+            'loan_repayments' => $this->findLongTermLoansAccount(),
             'loan_interest' => $this->findByName('Interest Expense')
                 ?? $this->findAccount((string) config('financial.report_accounts.interest_expense', '7500'))
                 ?? $this->findByName('Other Expenses')

@@ -24,7 +24,7 @@ it('resolves GST receivable from dedicated asset account config', function () {
 it('maps loan repayments to long term loans account config', function () {
     $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
 
-    expect($source)->toContain("'loan_repayments' => \$this->findByName('Long Term Loans')")
+    expect($source)->toContain("'loan_repayments' => \$this->findLongTermLoansAccount()")
         ->and($source)->toContain("config('financial.report_accounts.long_term_loans'");
 });
 

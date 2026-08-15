@@ -9,6 +9,9 @@
         ->values();
     $unmatchedTotal = $operatingLinks->sum(function ($link) use ($accountsById) {
         $account = $accountsById->get($link->bank_account_id) ?? $link->bankAccount;
+        if ($account?->isLoanLedgerAccount()) {
+            return 0;
+        }
 
         return $account?->unmatchedStatementEntryCount() ?? 0;
     });
@@ -25,7 +28,7 @@
             </p>
         </div>
         <div class="text-sm text-amber-800 dark:text-amber-200">
-            {{ $unmatchedTotal }} unmatched line{{ $unmatchedTotal === 1 ? '' : 's' }}
+            {{ $unmatchedTotal }} cash line{{ $unmatchedTotal === 1 ? '' : 's' }} unmatched
         </div>
     </div>
 
@@ -39,7 +42,7 @@
                 <thead class="bg-gray-50 dark:bg-gray-800/80">
                     <tr>
                         <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Account</th>
-                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Unmatched</th>
+                        <th class="px-4 py-2 text-left text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Pending</th>
                         <th class="px-4 py-2 text-right text-xs font-semibold uppercase text-gray-600 dark:text-gray-300">Open</th>
                     </tr>
                 </thead>
@@ -49,6 +52,7 @@
                             $account = $accountsById->get($link->bank_account_id) ?? $link->bankAccount;
                             $unmatched = $account?->unmatchedStatementEntryCount() ?? 0;
                             $workspaceLabel = $account?->entityWorkspaceLabel($businessEntity) ?? '—';
+                            $isLoanLedger = $account?->isLoanLedgerAccount() ?? false;
                         @endphp
                         @if($account)
                             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/60">
@@ -58,7 +62,9 @@
                                         <div class="text-xs text-gray-500 dark:text-gray-400">{{ $account->bank_name }}</div>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-sm tabular-nums text-gray-700 dark:text-gray-300">{{ $unmatched }}</td>
+                                <td class="px-4 py-3 text-sm tabular-nums text-gray-700 dark:text-gray-300">
+                                    {{ $unmatched }} {{ $isLoanLedger ? 'to apply' : 'unmatched' }}
+                                </td>
                                 <td class="px-4 py-3 text-right">
                                     <button
                                         type="button"
@@ -67,7 +73,7 @@
                                             'bankAccount' => $account,
                                             'business_entity_id' => $businessEntity->id,
                                         ]) }}"
-                                        data-bank-transactions-title="Import & match"
+                                        data-bank-transactions-title="{{ $isLoanLedger ? 'Loan activity' : 'Import & match' }}"
                                         data-bank-transactions-subtitle="{{ $workspaceLabel }}"
                                         class="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
                                     >

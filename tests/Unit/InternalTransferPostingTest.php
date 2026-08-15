@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BankAccount;
 use App\Models\Transaction;
 use App\Services\TransactionPostingService;
 use Tests\TestCase;
@@ -33,6 +34,21 @@ it('includes internal transfer in banking type select group', function () {
     expect($groups)->toHaveKey('Banking')
         ->and($groups['Banking'])->toHaveKey(Transaction::TYPE_INTERNAL_TRANSFER)
         ->and($groups)->toHaveKey('Loan');
+});
+
+it('limits loan ledger import types to loan activity', function () {
+    $loanAccount = new BankAccount(['account_purpose' => BankAccount::PURPOSE_LOAN]);
+    $offsetAccount = new BankAccount(['account_purpose' => BankAccount::PURPOSE_OFFSET]);
+
+    expect(Transaction::isCapitalizedLoanCharge('loan_interest'))->toBeTrue()
+        ->and(Transaction::isCapitalizedLoanCharge('loan_fees'))->toBeTrue()
+        ->and(Transaction::isCapitalizedLoanCharge('loan_repayments'))->toBeFalse()
+        ->and($loanAccount->isLoanLedgerAccount())->toBeTrue()
+        ->and($offsetAccount->isLoanLedgerAccount())->toBeFalse()
+        ->and(Transaction::loanActivityTypeSelectGroups())->toHaveKey('Loan activity')
+        ->and(Transaction::loanActivityTypeSelectGroups()['Loan activity'])->toHaveKeys(['loan_interest', 'loan_fees', 'loan_repayments'])
+        ->and(Transaction::typeSelectGroupsForBankAccount($loanAccount))->toHaveKey('Loan activity')
+        ->and(Transaction::typeSelectGroupsForBankAccount($offsetAccount))->toHaveKey('Banking');
 });
 
 it('excludes internal transfers from property operating reports', function () {

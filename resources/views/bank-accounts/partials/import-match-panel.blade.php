@@ -6,5 +6,6 @@
     'unmatchedEntries' => $unmatchedEntries,
     'matchCandidates' => $matchCandidates,
     'suggestions' => $suggestions ?? [],
-    'transactionTypeGroups' => $transactionTypeGroups ?? \App\Models\Transaction::typeSelectGroups(),
+    'transactionTypeGroups' => $transactionTypeGroups ?? \App\Models\Transaction::typeSelectGroupsForBankAccount($bankAccount),
+    'isLoanActivityImport' => $isLoanActivityImport ?? $bankAccount->isLoanLedgerAccount(),
 ])

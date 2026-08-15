@@ -113,7 +113,8 @@ class BankAccountTransactionController extends Controller
             'unmatchedEntries' => $unmatchedEntries,
             'matchCandidates' => $matchCandidates,
             'suggestions' => $suggestions,
-            'transactionTypeGroups' => Transaction::typeSelectGroups(),
+            'transactionTypeGroups' => Transaction::typeSelectGroupsForBankAccount($bankAccount),
+            'isLoanActivityImport' => $bankAccount->isLoanLedgerAccount(),
             'filters' => $filters,
             'filtersActive' => $filtersActive,
         ];
