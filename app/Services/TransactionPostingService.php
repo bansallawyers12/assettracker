@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\BankAccount;
 use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\JournalLine;
@@ -24,6 +25,11 @@ use Illuminate\Support\Str;
  *   1) Booking entity: income/expense ↔ director/entity loan (2500), not cash
  *   2) Payer entity: cash ↔ director/entity loan (TXN-########-PAY)
  *
+ * Loan ledger accounts are not cash: loan_interest/loan_fees capitalise to 4000;
+ * loan_repayments on the loan account do not post (cash left via offset).
+ * Offset↔loan internal_transfer posts on the cash/offset side only (1100 ↔ 4000).
+ * Cash↔cash internal transfers remain a wash (no journal).
+ *
  * Unpaid transactions are unposted (obligation only; no cash movement yet).
  * Property reports still filter transactions by asset_id separately.
  */
@@ -38,15 +44,20 @@ class TransactionPostingService
             return null;
         }
 
-        // Offset↔loan (and other same-entity bank moves) are cash rearrangements only.
-        if (Transaction::isInternalTransfer((string) $transaction->transaction_type)) {
+        $transaction->loadMissing(['bankAccount', 'counterpartBankAccount', 'bankStatementEntries', 'lines', 'businessEntity']);
+
+        // Loan-account repayments are loan activity only — Bank/Cash moves on the offset transfer.
+        if ($this->isLoanLedgerRepayment($transaction)) {
             $this->unpost($transaction);
 
             return null;
         }
 
+        if (Transaction::isInternalTransfer((string) $transaction->transaction_type)) {
+            return $this->postInternalTransferJournal($transaction);
+        }
+
         return DB::transaction(function () use ($transaction) {
-            $transaction->loadMissing('lines');
             $bookerEntry = $this->postBookingEntityJournal($transaction);
 
             // Never leave a payer cash journal without a matching booking entry.
@@ -77,6 +88,126 @@ class TransactionPostingService
 
             $this->deletePayerJournalIfExists($transaction);
         });
+    }
+
+    /**
+     * Offset/cash → loan: Dr 4000 / Cr 1100 (or reverse on redraw). Loan side and cash↔cash: no journal.
+     */
+    private function postInternalTransferJournal(Transaction $transaction): ?JournalEntry
+    {
+        return DB::transaction(function () use ($transaction) {
+            $lines = $this->buildLoanOffsetTransferLines($transaction);
+
+            if ($lines === []) {
+                $this->unpost($transaction);
+
+                return null;
+            }
+
+            return $this->persistBookingLines($transaction, $lines);
+        });
+    }
+
+    /**
+     * @param  list<array{account_id: int, debit: float, credit: float, description: ?string}>  $lines
+     */
+    private function persistBookingLines(Transaction $transaction, array $lines): JournalEntry
+    {
+        $existing = JournalEntry::query()
+            ->where('source_type', Transaction::class)
+            ->where('source_id', $transaction->id)
+            ->where('business_entity_id', $transaction->business_entity_id)
+            ->first();
+
+        if ($existing) {
+            $existing->journalLines()->delete();
+        } else {
+            $existing = new JournalEntry;
+        }
+
+        $entry = $existing;
+        $entry->business_entity_id = $transaction->business_entity_id;
+        $entry->entry_date = $this->journalEntryDateFor($transaction);
+        $entry->reference_number = $entry->reference_number ?: $this->bookingJournalReference($transaction);
+        $entry->description = $transaction->description ?? 'Auto-posted from Transaction #'.$transaction->id;
+        $entry->is_posted = true;
+        $entry->created_by = $transaction->businessEntity?->user_id ?? auth()->id();
+        $entry->source_type = Transaction::class;
+        $entry->source_id = $transaction->id;
+
+        $this->persistJournalEntry($entry, $lines, $transaction);
+
+        return $entry;
+    }
+
+    /**
+     * @return list<array{account_id: int, debit: float, credit: float, description: ?string}>
+     */
+    private function buildLoanOffsetTransferLines(Transaction $transaction): array
+    {
+        $bank = $transaction->bankAccount;
+        if ($bank === null) {
+            return [];
+        }
+
+        // Loan ledger side of the pair never posts — cash/offset side owns 1100 ↔ 4000.
+        if ($bank->isLoanLedgerAccount()) {
+            return [];
+        }
+
+        $counterpart = $transaction->counterpartBankAccount;
+        if ($counterpart === null && $transaction->counterpart_bank_account_id) {
+            $counterpart = BankAccount::query()->find($transaction->counterpart_bank_account_id);
+        }
+
+        if ($counterpart === null || ! $counterpart->isLoanLedgerAccount()) {
+            return [];
+        }
+
+        $accounts = $this->resolveGlAccounts();
+        if ($accounts['cash'] === null || $accounts['long_term_loans'] === null) {
+            Log::warning('TransactionPostingService: missing cash or long-term loans for offset↔loan transfer', [
+                'transaction_id' => $transaction->id,
+                'business_entity' => $transaction->business_entity_id,
+            ]);
+
+            return [];
+        }
+
+        $amount = round(abs((float) $transaction->amount), 2);
+        if ($amount <= 0) {
+            return [];
+        }
+
+        if ($this->internalTransferLeavesCashAccount($transaction)) {
+            return [
+                $this->line($accounts['long_term_loans']->id, $amount, 0, 'Loan repayment from offset'),
+                $this->line($accounts['cash']->id, 0, $amount, 'Cash paid to loan'),
+            ];
+        }
+
+        return [
+            $this->line($accounts['cash']->id, $amount, 0, 'Cash received from loan'),
+            $this->line($accounts['long_term_loans']->id, 0, $amount, 'Loan redraw to offset'),
+        ];
+    }
+
+    private function internalTransferLeavesCashAccount(Transaction $transaction): bool
+    {
+        // Imports store abs(amount); direction comes from the linked statement line.
+        if ($transaction->bankStatementEntries->isNotEmpty()) {
+            return $transaction->bankAccountSignedAmount() < 0;
+        }
+
+        // Manual rows without a statement default to money leaving the cash account.
+        return (float) $transaction->amount <= 0
+            || Transaction::directionFromType(Transaction::TYPE_INTERNAL_TRANSFER) === 'expense';
+    }
+
+    private function isLoanLedgerRepayment(Transaction $transaction): bool
+    {
+        return $transaction->transaction_type === 'loan_repayments'
+            && $transaction->bankAccount?->isLoanLedgerAccount();
     }
 
     private function deletePayerJournalIfExists(Transaction $transaction): void
@@ -234,7 +365,8 @@ class TransactionPostingService
      * Funding / cash-movement side for operating (non-director-loan-type) journals.
      *
      * Priority: cross-entity paid_by → director loan; director_funds/cash channel →
-     * director loan; loan_interest/loan_fees → long-term loans (capitalised, no cash);
+     * director loan; loan_interest/loan_fees on loan ledger → long-term loans (no cash);
+     * loan_repayments on loan ledger → none (offset internal_transfer posts 1100↔4000);
      * otherwise bank cash.
      *
      * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ?ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}  $accounts
@@ -247,6 +379,10 @@ class TransactionPostingService
         float $amountGross,
         string $direction
     ): ?array {
+        if ($this->isLoanLedgerRepayment($transaction)) {
+            return null;
+        }
+
         $useIntercompany = $this->payerEntityIdFromPaidBy($transaction) !== null
             && $accounts['director_loan'] !== null;
         $useDirectorFunds = ! $useIntercompany

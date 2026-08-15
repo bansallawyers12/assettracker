@@ -535,13 +535,19 @@
             // Function to switch tabs
             function switchTab(targetId, options) {
                 const opts = options || {};
-                const candidate = document.getElementById(targetId);
-                let resolvedId = targetId;
+                const tabAliases = {
+                    tab_bank_import: 'tab_bank_accounts',
+                };
+                const aliasedFrom = Object.prototype.hasOwnProperty.call(tabAliases, targetId) ? targetId : null;
+                let resolvedId = aliasedFrom ? tabAliases[aliasedFrom] : targetId;
+                const candidate = document.getElementById(resolvedId);
                 if (!candidate || !candidate.classList.contains('tab-content')) {
                     resolvedId = 'tab_assets';
                     if (opts.fixInvalidHash && window.location.hash !== '#' + resolvedId) {
                         history.replaceState(null, '', '#' + resolvedId);
                     }
+                } else if (aliasedFrom && window.location.hash === '#' + aliasedFrom) {
+                    history.replaceState(null, '', '#' + resolvedId);
                 }
 
                 tabContents.forEach(content => {

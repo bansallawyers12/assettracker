@@ -6,3 +6,4 @@ Before planning or editing, find the row whose globs match the file's path and r
 | --- | --- |
 | resources/views/business-entities/** | .ai/rules/business-entities.md |
 | resources/views/bank-accounts/partials/** | .ai/rules/partials.md |
+| app/Services/TransactionPostingService.php | .ai/rules/services.md |

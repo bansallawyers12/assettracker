@@ -77,7 +77,8 @@ it('renders entity workspace labels in the transactions summary', function () {
         ->and($transactionsSummary)->toContain('entityBankAccountLinks')
         ->and($transactionsSummary)->toContain("unique('bank_account_id')")
         ->and($show)->toContain("'entityBankAccountLinks' => \$entityBankAccountLinks")
-        ->and($show)->not->toContain('tab_bank_import');
+        ->and($show)->not->toContain('id="tab_bank_import"')
+        ->and($show)->toContain("tab_bank_import: 'tab_bank_accounts'");
 });
 
 it('eager loads entity purpose links for workspace labels on the entity show page', function () {

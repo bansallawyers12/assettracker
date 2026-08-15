@@ -23,10 +23,12 @@ it('includes reconciliation markup in the bank transactions panel partial', func
 it('removes the entity bank import tab in favour of bank accounts', function () {
     $show = file_get_contents(resource_path('views/business-entities/show.blade.php'));
 
-    expect($show)->not->toContain('tab_bank_import')
+    expect($show)->not->toContain('id="tab_bank_import"')
+        ->and($show)->not->toContain('href="#tab_bank_import"')
         ->and($show)->not->toContain('business-entities.partials.bank-import-summary')
         ->and($show)->not->toContain('id="bank-import-form"')
         ->and($show)->toContain('#tab_bank_accounts')
+        ->and($show)->toContain("tab_bank_import: 'tab_bank_accounts'")
         ->and(file_exists(resource_path('views/business-entities/partials/bank-import-summary.blade.php')))
         ->toBeFalse();
 });

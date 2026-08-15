@@ -7,13 +7,14 @@ use Tests\TestCase;
 
 uses(TestCase::class);
 
-it('skips journal posting for internal transfers', function () {
+it('skips journal posting for cash-to-cash internal transfers', function () {
     $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
 
     expect($source)->toContain('isInternalTransfer')
-        ->and($source)->toContain('$this->unpost($transaction)');
+        ->and($source)->toContain('postInternalTransferJournal')
+        ->and($source)->toContain('buildLoanOffsetTransferLines')
+        ->and($source)->toContain('isLoanLedgerRepayment');
 });
-
 it('registers internal transfer as a non-pnl transfer type', function () {
     expect(Transaction::allTypes())->toHaveKey(Transaction::TYPE_INTERNAL_TRANSFER)
         ->and(Transaction::$transferTypes)->toHaveKey(Transaction::TYPE_INTERNAL_TRANSFER)

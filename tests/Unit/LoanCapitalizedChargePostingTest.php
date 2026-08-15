@@ -72,8 +72,7 @@ it('funds loan interest and fees to long term loans not cash', function () {
         ->and($interestLine['description'])->toBe('Capitalised to loan')
         ->and($feesLine['account_id'])->toBe(4000)
         ->and($feesLine['description'])->toBe('Capitalised to loan')
-        ->and($repaymentLine['account_id'])->toBe(1100)
-        ->and($repaymentLine['description'])->toBe('Cash paid')
+        ->and($repaymentLine)->toBeNull()
         ->and($refundLine['account_id'])->toBe(4000)
         ->and($refundLine['debit'])->toBe(10.0)
         ->and($refundLine['description'])->toBe('Loan liability reduced');
@@ -121,5 +120,46 @@ it('documents capitalised loan charge posting in TransactionPostingService', fun
     expect($source)->toContain('isCapitalizedLoanCharge')
         ->and($source)->toContain('Capitalised to loan')
         ->and($source)->toContain('findLongTermLoansAccount')
-        ->and($source)->toContain("'long_term_loans'");
+        ->and($source)->toContain("'long_term_loans'")
+        ->and($source)->toContain('isLoanLedgerRepayment')
+        ->and($source)->toContain('buildLoanOffsetTransferLines')
+        ->and($source)->toContain('Cash paid to loan');
+});
+
+it('does not build transfer journals on the loan ledger side or cash-to-cash moves', function () {
+    $service = app(TransactionPostingService::class);
+    $method = (new ReflectionClass($service))->getMethod('buildLoanOffsetTransferLines');
+    $method->setAccessible(true);
+
+    $offset = new BankAccount(['account_purpose' => BankAccount::PURPOSE_OFFSET]);
+    $loan = new BankAccount(['account_purpose' => BankAccount::PURPOSE_LOAN]);
+
+    $loanSide = new Transaction([
+        'business_entity_id' => 1,
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'bank_account_id' => 1849,
+        'counterpart_bank_account_id' => 1930,
+        'transaction_type' => Transaction::TYPE_INTERNAL_TRANSFER,
+        'amount' => 6243.41,
+        'paid_by' => null,
+    ]);
+    $loanSide->setRelation('bankAccount', $loan);
+    $loanSide->setRelation('counterpartBankAccount', $offset);
+    $loanSide->setRelation('bankStatementEntries', collect());
+
+    $cashWash = new Transaction([
+        'business_entity_id' => 1,
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'bank_account_id' => 1,
+        'counterpart_bank_account_id' => 2,
+        'transaction_type' => Transaction::TYPE_INTERNAL_TRANSFER,
+        'amount' => 100.0,
+        'paid_by' => null,
+    ]);
+    $cashWash->setRelation('bankAccount', new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]));
+    $cashWash->setRelation('counterpartBankAccount', new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]));
+    $cashWash->setRelation('bankStatementEntries', collect());
+
+    expect($method->invoke($service, $loanSide))->toBe([])
+        ->and($method->invoke($service, $cashWash))->toBe([]);
 });
