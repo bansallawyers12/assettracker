@@ -32,6 +32,7 @@ class TransactionObserver
             'asset_id', 'bank_account_id', 'chart_of_account_id',
             'tracking_category_id', 'tracking_sub_category_id',
             'date', 'payment_status', 'payment_channel', 'paid_by', 'paid_at',
+            'counterpart_bank_account_id',
         ];
 
         if ($transaction->wasChanged($postingFields) || $transaction->isSplit()) {

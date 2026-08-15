@@ -35,6 +35,8 @@ use Illuminate\Support\Str;
  */
 class TransactionPostingService
 {
+    public function __construct(private LoanOffsetTransactionGuard $loanOffsetGuard) {}
+
     public function post(Transaction $transaction): ?JournalEntry
     {
         // Unpaid transactions represent obligations only — no cash movement to post yet.
@@ -44,17 +46,21 @@ class TransactionPostingService
             return null;
         }
 
-        $transaction->loadMissing(['bankAccount', 'counterpartBankAccount', 'bankStatementEntries', 'lines', 'businessEntity']);
+        $transaction->loadMissing(['bankAccount', 'counterpartBankAccount', 'lines', 'businessEntity']);
+
+        // Imports attach the statement after Transaction::create; always reload for transfer direction.
+        if (Transaction::isInternalTransfer((string) $transaction->transaction_type)) {
+            $transaction->unsetRelation('bankStatementEntries');
+            $transaction->load('bankStatementEntries');
+        } else {
+            $transaction->loadMissing('bankStatementEntries');
+        }
 
         // Loan-account repayments are loan activity only — Bank/Cash moves on the offset transfer.
         if ($this->isLoanLedgerRepayment($transaction)) {
             $this->unpost($transaction);
 
             return null;
-        }
-
-        if (Transaction::isInternalTransfer((string) $transaction->transaction_type)) {
-            return $this->postInternalTransferJournal($transaction);
         }
 
         return DB::transaction(function () use ($transaction) {
@@ -92,75 +98,21 @@ class TransactionPostingService
 
     /**
      * Offset/cash → loan: Dr 4000 / Cr 1100 (or reverse on redraw). Loan side and cash↔cash: no journal.
-     */
-    private function postInternalTransferJournal(Transaction $transaction): ?JournalEntry
-    {
-        return DB::transaction(function () use ($transaction) {
-            $lines = $this->buildLoanOffsetTransferLines($transaction);
-
-            if ($lines === []) {
-                $this->unpost($transaction);
-
-                return null;
-            }
-
-            return $this->persistBookingLines($transaction, $lines);
-        });
-    }
-
-    /**
-     * @param  list<array{account_id: int, debit: float, credit: float, description: ?string}>  $lines
-     */
-    private function persistBookingLines(Transaction $transaction, array $lines): JournalEntry
-    {
-        $existing = JournalEntry::query()
-            ->where('source_type', Transaction::class)
-            ->where('source_id', $transaction->id)
-            ->where('business_entity_id', $transaction->business_entity_id)
-            ->first();
-
-        if ($existing) {
-            $existing->journalLines()->delete();
-        } else {
-            $existing = new JournalEntry;
-        }
-
-        $entry = $existing;
-        $entry->business_entity_id = $transaction->business_entity_id;
-        $entry->entry_date = $this->journalEntryDateFor($transaction);
-        $entry->reference_number = $entry->reference_number ?: $this->bookingJournalReference($transaction);
-        $entry->description = $transaction->description ?? 'Auto-posted from Transaction #'.$transaction->id;
-        $entry->is_posted = true;
-        $entry->created_by = $transaction->businessEntity?->user_id ?? auth()->id();
-        $entry->source_type = Transaction::class;
-        $entry->source_id = $transaction->id;
-
-        $this->persistJournalEntry($entry, $lines, $transaction);
-
-        return $entry;
-    }
-
-    /**
+     *
      * @return list<array{account_id: int, debit: float, credit: float, description: ?string}>
      */
     private function buildLoanOffsetTransferLines(Transaction $transaction): array
     {
         $bank = $transaction->bankAccount;
-        if ($bank === null) {
+        if ($bank === null || $bank->isLoanLedgerAccount()) {
             return [];
         }
 
-        // Loan ledger side of the pair never posts — cash/offset side owns 1100 ↔ 4000.
-        if ($bank->isLoanLedgerAccount()) {
-            return [];
-        }
+        $loanCounterpart = $this->resolvedLoanCounterpart($transaction);
+        $isOffset = $this->loanOffsetGuard->isOffsetAccount($bank, $transaction->businessEntity);
 
-        $counterpart = $transaction->counterpartBankAccount;
-        if ($counterpart === null && $transaction->counterpart_bank_account_id) {
-            $counterpart = BankAccount::query()->find($transaction->counterpart_bank_account_id);
-        }
-
-        if ($counterpart === null || ! $counterpart->isLoanLedgerAccount()) {
+        // Offset internal transfers are cash↔loan even when import omitted counterpart.
+        if ($loanCounterpart === null && ! $isOffset) {
             return [];
         }
 
@@ -192,16 +144,41 @@ class TransactionPostingService
         ];
     }
 
-    private function internalTransferLeavesCashAccount(Transaction $transaction): bool
+    private function resolvedLoanCounterpart(Transaction $transaction): ?BankAccount
     {
-        // Imports store abs(amount); direction comes from the linked statement line.
-        if ($transaction->bankStatementEntries->isNotEmpty()) {
-            return $transaction->bankAccountSignedAmount() < 0;
+        $counterpart = $transaction->counterpartBankAccount;
+        if ($counterpart === null && $transaction->counterpart_bank_account_id) {
+            $counterpart = BankAccount::query()->find($transaction->counterpart_bank_account_id);
         }
 
-        // Manual rows without a statement default to money leaving the cash account.
-        return (float) $transaction->amount <= 0
-            || Transaction::directionFromType(Transaction::TYPE_INTERNAL_TRANSFER) === 'expense';
+        if ($counterpart?->isLoanLedgerAccount()) {
+            return $counterpart;
+        }
+
+        $bank = $transaction->bankAccount;
+        if ($bank === null) {
+            return null;
+        }
+
+        $suggestedId = $this->loanOffsetGuard->suggestCounterpartBankAccountId(
+            $bank,
+            $transaction->businessEntity,
+            $transaction->asset_id !== null ? (int) $transaction->asset_id : null
+        );
+
+        if ($suggestedId === null) {
+            return null;
+        }
+
+        $suggested = BankAccount::query()->find($suggestedId);
+
+        return $suggested?->isLoanLedgerAccount() ? $suggested : null;
+    }
+
+    private function internalTransferLeavesCashAccount(Transaction $transaction): bool
+    {
+        // Imports store abs(amount). Linked statement sign wins; otherwise type defaults to leaving cash.
+        return $transaction->bankAccountSignedAmount() < 0;
     }
 
     private function isLoanLedgerRepayment(Transaction $transaction): bool
@@ -444,6 +421,10 @@ class TransactionPostingService
 
     private function buildBookingEntityLines(Transaction $transaction): array
     {
+        if (Transaction::isInternalTransfer((string) $transaction->transaction_type)) {
+            return $this->buildLoanOffsetTransferLines($transaction);
+        }
+
         if ($transaction->isSplit()) {
             return $this->buildSplitBookingEntityLines($transaction);
         }

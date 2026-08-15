@@ -11,9 +11,10 @@ it('skips journal posting for cash-to-cash internal transfers', function () {
     $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
 
     expect($source)->toContain('isInternalTransfer')
-        ->and($source)->toContain('postInternalTransferJournal')
         ->and($source)->toContain('buildLoanOffsetTransferLines')
-        ->and($source)->toContain('isLoanLedgerRepayment');
+        ->and($source)->toContain('isLoanLedgerRepayment')
+        ->and($source)->toContain('resolvedLoanCounterpart')
+        ->and($source)->not->toContain('postInternalTransferJournal');
 });
 it('registers internal transfer as a non-pnl transfer type', function () {
     expect(Transaction::allTypes())->toHaveKey(Transaction::TYPE_INTERNAL_TRANSFER)
@@ -60,4 +61,12 @@ it('excludes internal transfers from property operating reports', function () {
 
 it('posts via TransactionPostingService class', function () {
     expect(class_exists(TransactionPostingService::class))->toBeTrue();
+});
+
+it('reposts after a statement line is linked and when counterpart changes', function () {
+    $apply = file_get_contents(app_path('Services/BankStatementApplyService.php'));
+    $observer = file_get_contents(app_path('Observers/TransactionObserver.php'));
+
+    expect($apply)->toContain('postAfterStatementLinked')
+        ->and($observer)->toContain("'counterpart_bank_account_id'");
 });

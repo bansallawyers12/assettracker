@@ -13,6 +13,8 @@ use Illuminate\Validation\ValidationException;
 
 class BankStatementApplyService
 {
+    public function __construct(private TransactionPostingService $postingService) {}
+
     /**
      * @param  list<array<string, mixed>>  $matches
      * @return array{matchedExisting: int, transactionsCreated: int, skipped: int}
@@ -166,6 +168,7 @@ class BankStatementApplyService
                 ]);
 
                 $bankEntry->update(['transaction_id' => $transaction->id]);
+                $this->postAfterStatementLinked($transaction);
                 $created++;
             }
 
@@ -230,6 +233,13 @@ class BankStatementApplyService
         }
 
         $bankEntry->update(['transaction_id' => $transaction->id]);
+        $this->postAfterStatementLinked($transaction);
+    }
+
+    private function postAfterStatementLinked(Transaction $transaction): void
+    {
+        $transaction->unsetRelation('bankStatementEntries');
+        $this->postingService->post($transaction);
     }
 
     public function assertEntryMatchesTransaction(BankStatementEntry $bankEntry, Transaction $transaction): void

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\BankAccount;
+use App\Models\BankStatementEntry;
 use App\Models\ChartOfAccount;
 use App\Models\Transaction;
 use App\Services\TransactionPostingService;
@@ -123,7 +124,8 @@ it('documents capitalised loan charge posting in TransactionPostingService', fun
         ->and($source)->toContain("'long_term_loans'")
         ->and($source)->toContain('isLoanLedgerRepayment')
         ->and($source)->toContain('buildLoanOffsetTransferLines')
-        ->and($source)->toContain('Cash paid to loan');
+        ->and($source)->toContain('Cash paid to loan')
+        ->and($source)->toContain('isOffsetAccount');
 });
 
 it('does not build transfer journals on the loan ledger side or cash-to-cash moves', function () {
@@ -146,6 +148,7 @@ it('does not build transfer journals on the loan ledger side or cash-to-cash mov
     $loanSide->setRelation('bankAccount', $loan);
     $loanSide->setRelation('counterpartBankAccount', $offset);
     $loanSide->setRelation('bankStatementEntries', collect());
+    $loanSide->setRelation('businessEntity', null);
 
     $cashWash = new Transaction([
         'business_entity_id' => 1,
@@ -159,7 +162,33 @@ it('does not build transfer journals on the loan ledger side or cash-to-cash mov
     $cashWash->setRelation('bankAccount', new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]));
     $cashWash->setRelation('counterpartBankAccount', new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]));
     $cashWash->setRelation('bankStatementEntries', collect());
+    $cashWash->setRelation('businessEntity', null);
 
     expect($method->invoke($service, $loanSide))->toBe([])
         ->and($method->invoke($service, $cashWash))->toBe([]);
+});
+
+it('uses the linked statement sign for internal transfer cash direction', function () {
+    $service = app(TransactionPostingService::class);
+    $method = (new ReflectionClass($service))->getMethod('internalTransferLeavesCashAccount');
+    $method->setAccessible(true);
+
+    $outflow = new Transaction([
+        'transaction_type' => Transaction::TYPE_INTERNAL_TRANSFER,
+        'amount' => 7000,
+    ]);
+    $outflow->setRelation('bankStatementEntries', collect([
+        new BankStatementEntry(['amount' => -7000]),
+    ]));
+
+    $inflow = new Transaction([
+        'transaction_type' => Transaction::TYPE_INTERNAL_TRANSFER,
+        'amount' => 7000,
+    ]);
+    $inflow->setRelation('bankStatementEntries', collect([
+        new BankStatementEntry(['amount' => 7000]),
+    ]));
+
+    expect($method->invoke($service, $outflow))->toBeTrue()
+        ->and($method->invoke($service, $inflow))->toBeFalse();
 });
