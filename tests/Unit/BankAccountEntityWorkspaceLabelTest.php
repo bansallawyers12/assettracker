@@ -66,9 +66,8 @@ it('counts unmatched statement entries from loaded relations', function () {
     expect($account->unmatchedStatementEntryCount())->toBe(2);
 });
 
-it('renders entity workspace labels in transaction and bank import summaries', function () {
+it('renders entity workspace labels in the transactions summary', function () {
     $transactionsSummary = file_get_contents(resource_path('views/business-entities/partials/transactions-summary.blade.php'));
-    $bankImportSummary = file_get_contents(resource_path('views/business-entities/partials/bank-import-summary.blade.php'));
     $show = file_get_contents(resource_path('views/business-entities/show.blade.php'));
 
     expect($transactionsSummary)->toContain('entityWorkspaceLabel(')
@@ -77,10 +76,8 @@ it('renders entity workspace labels in transaction and bank import summaries', f
         ->and($transactionsSummary)->toContain('to apply')
         ->and($transactionsSummary)->toContain('entityBankAccountLinks')
         ->and($transactionsSummary)->toContain("unique('bank_account_id')")
-        ->and($bankImportSummary)->toContain('entityWorkspaceLabel(')
-        ->and($bankImportSummary)->toContain('isLoanLedgerAccount()')
-        ->and($bankImportSummary)->toContain("unique('bank_account_id')")
-        ->and($show)->toContain("'entityBankAccountLinks' => \$entityBankAccountLinks");
+        ->and($show)->toContain("'entityBankAccountLinks' => \$entityBankAccountLinks")
+        ->and($show)->not->toContain('tab_bank_import');
 });
 
 it('eager loads entity purpose links for workspace labels on the entity show page', function () {

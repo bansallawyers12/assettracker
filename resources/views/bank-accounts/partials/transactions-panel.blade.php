@@ -78,6 +78,10 @@
     data-bank-import-apply-url="{{ $importApplyUrl }}"
     data-chart-accounts-url="{{ $chartAccountsUrl }}"
 >
+    @include('bank-accounts.partials.balance-snapshot', [
+        'balanceSnapshots' => $balanceSnapshots ?? [],
+    ])
+
     @if($canManageTransactions)
         <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Add balance sheet entry</h3>

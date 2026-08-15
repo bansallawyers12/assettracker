@@ -1,6 +1,8 @@
 <?php
 
-uses(Tests\TestCase::class);
+use Tests\TestCase;
+
+uses(TestCase::class);
 
 it('registers bank-account import routes', function () {
     expect(route('bank-accounts.import.process', ['bankAccount' => 1]))
@@ -18,11 +20,13 @@ it('includes reconciliation markup in the bank transactions panel partial', func
         ->and($html)->toContain('data-bank-import-process-url');
 });
 
-it('demotes the entity bank import tab to a summary deep link', function () {
+it('removes the entity bank import tab in favour of bank accounts', function () {
     $show = file_get_contents(resource_path('views/business-entities/show.blade.php'));
-    $summary = file_get_contents(resource_path('views/business-entities/partials/bank-import-summary.blade.php'));
 
-    expect($show)->toContain('business-entities.partials.bank-import-summary')
+    expect($show)->not->toContain('tab_bank_import')
+        ->and($show)->not->toContain('business-entities.partials.bank-import-summary')
         ->and($show)->not->toContain('id="bank-import-form"')
-        ->and($summary)->toContain('data-bank-action="transactions"');
+        ->and($show)->toContain('#tab_bank_accounts')
+        ->and(file_exists(resource_path('views/business-entities/partials/bank-import-summary.blade.php')))
+        ->toBeFalse();
 });

@@ -97,10 +97,6 @@
                                             <x-lucide-credit-card class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" aria-hidden="true" />
                                             Bank Accounts
                                         </a>
-                                        <a href="#tab_bank_import" class="tab-link entity-tab-link inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
-                                            <x-lucide-cloud-upload class="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" aria-hidden="true" />
-                                            Bank Import
-                                        </a>
                                         <a href="#tab_transactions" class="tab-link entity-tab-link inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                             <x-lucide-clipboard class="w-3.5 h-3.5 text-violet-600 dark:text-violet-400 shrink-0" aria-hidden="true" />
                                             Transactions
@@ -508,15 +504,6 @@
                                 </div>
                             </div>
 
-                            <!-- Bank Import Tab -->
-                            <div id="tab_bank_import" class="tab-content hidden">
-                                @include('business-entities.partials.bank-import-summary', [
-                                    'businessEntity' => $businessEntity,
-                                    'bankAccounts' => $bankAccounts ?? collect(),
-                                    'entityBankAccountLinks' => $entityBankAccountLinks ?? collect(),
-                                ])
-                            </div>
-
                         </div> {{-- End of tab-content-container --}}
                     </div> {{-- End of right content card --}}
                 </div> {{-- End of right content column --}}
@@ -618,7 +605,7 @@
             switchTab(initialTab, { fixInvalidHash: true });
 
             const urlParams = new URLSearchParams(window.location.search);
-            // Legacy bank-import deep link: ?bank_account_id=#tab_bank_import
+            // Legacy deep link: ?bank_account_id= opens the account transactions panel for import/match.
             const legacyImportAccountId = urlParams.get('bank_account_id');
             if (legacyImportAccountId && window.openBankAccountTransactionsPanel) {
                 const transactionsUrl = @json(url('/bank-accounts')) + '/' + encodeURIComponent(legacyImportAccountId)
@@ -631,7 +618,7 @@
                 const cleanedSearch = urlParams.toString();
                 const cleanedUrl = window.location.pathname
                     + (cleanedSearch ? '?' + cleanedSearch : '')
-                    + (window.location.hash || '#tab_bank_import');
+                    + (window.location.hash || '#tab_bank_accounts');
                 history.replaceState(null, '', cleanedUrl);
             }
 

@@ -1,0 +1,256 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Asset;
+use App\Models\BankAccount;
+use App\Models\BankAccountStatement;
+use App\Models\BankStatementEntry;
+use App\Models\Transaction;
+use Illuminate\Support\Collection;
+
+class BankAccountBalanceSnapshotService
+{
+    /**
+     * This account plus a linked loan/offset pair when one exists.
+     *
+     * @return list<array{
+     *     account_id: int,
+     *     label: string,
+     *     is_loan: bool,
+     *     is_current: bool,
+     *     books: float,
+     *     statement: float|null,
+     *     statement_as_of: string|null,
+     *     statement_source: string|null,
+     *     difference: float|null,
+     *     is_reconciled: bool
+     * }>
+     */
+    public function forPanel(BankAccount $account): array
+    {
+        $snapshots = [$this->snapshot($account, isCurrent: true)];
+
+        $paired = $this->pairedLoanOrOffsetAccount($account);
+        if ($paired !== null && (int) $paired->id !== (int) $account->id) {
+            $snapshots[] = $this->snapshot($paired, isCurrent: false);
+        }
+
+        return $snapshots;
+    }
+
+    /**
+     * @return array{
+     *     account_id: int,
+     *     label: string,
+     *     is_loan: bool,
+     *     is_current: bool,
+     *     books: float,
+     *     statement: float|null,
+     *     statement_as_of: string|null,
+     *     statement_source: string|null,
+     *     difference: float|null,
+     *     is_reconciled: bool
+     * }
+     */
+    public function snapshot(BankAccount $account, bool $isCurrent = true): array
+    {
+        $books = $this->bookBalance($account);
+        $statement = $this->latestStatementBalance($account);
+        $statementAmount = $statement['amount'];
+        $difference = $statementAmount === null ? null : round($statementAmount - $books, 2);
+
+        return [
+            'account_id' => (int) $account->id,
+            'label' => $account->transactionAccountLabel(),
+            'is_loan' => $account->isLoanLedgerAccount(),
+            'is_current' => $isCurrent,
+            'books' => $books,
+            'statement' => $statementAmount,
+            'statement_as_of' => $statement['as_of'],
+            'statement_source' => $statement['source'],
+            'difference' => $difference,
+            'is_reconciled' => $difference !== null && abs($difference) < 0.005,
+        ];
+    }
+
+    public function bookBalance(BankAccount $account): float
+    {
+        $transactions = $this->paidTransactions($account);
+
+        return round($transactions->sum(fn (Transaction $transaction) => $transaction->bankAccountSignedAmount()), 2);
+    }
+
+    /**
+     * @return array{amount: float|null, as_of: string|null, source: string|null}
+     */
+    public function latestStatementBalance(BankAccount $account): array
+    {
+        $fromCsv = $this->latestCsvRunningBalance($account);
+        $fromPdf = $this->latestPdfClosingBalance($account);
+
+        if ($fromCsv === null && $fromPdf === null) {
+            return ['amount' => null, 'as_of' => null, 'source' => null];
+        }
+
+        if ($fromCsv === null) {
+            return $fromPdf;
+        }
+
+        if ($fromPdf === null) {
+            return $fromCsv;
+        }
+
+        if (($fromCsv['sort'] ?? '') >= ($fromPdf['sort'] ?? '')) {
+            return $fromCsv;
+        }
+
+        return $fromPdf;
+    }
+
+    public function pairedLoanOrOffsetAccount(BankAccount $account): ?BankAccount
+    {
+        $account->loadMissing(['assets.bankAccounts']);
+
+        foreach ($account->assets as $asset) {
+            if (! $asset instanceof Asset) {
+                continue;
+            }
+
+            $loan = $asset->linkedLoanAccount();
+            $offset = $asset->bankAccountForRole(BankAccount::ROLE_OFFSET);
+
+            if ($loan === null || $offset === null) {
+                continue;
+            }
+
+            if ((int) $account->id === (int) $loan->id) {
+                return $offset;
+            }
+
+            if ((int) $account->id === (int) $offset->id) {
+                return $loan;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @return Collection<int, Transaction>
+     */
+    private function paidTransactions(BankAccount $account): Collection
+    {
+        if ($account->relationLoaded('transactions')) {
+            return $account->transactions
+                ->filter(fn (Transaction $transaction) => $this->isPaid($transaction))
+                ->values();
+        }
+
+        return $account->transactions()
+            ->where(function ($query): void {
+                $query->where('payment_status', 'paid')
+                    ->orWhereNull('payment_status');
+            })
+            ->with(['bankStatementEntries', 'lines'])
+            ->get();
+    }
+
+    private function isPaid(Transaction $transaction): bool
+    {
+        $status = $transaction->payment_status;
+
+        return $status === null || $status === 'paid';
+    }
+
+    /**
+     * @return array{amount: float, as_of: string, source: string, sort: string}|null
+     */
+    private function latestCsvRunningBalance(BankAccount $account): ?array
+    {
+        $entry = $this->latestStatementEntryWithBalance($account);
+        if ($entry === null) {
+            return null;
+        }
+
+        $amount = $entry->metaValue('balance_after');
+        if ($amount === null || $amount === '') {
+            return null;
+        }
+
+        $date = $entry->date?->toDateString() ?? '';
+
+        return [
+            'amount' => round((float) $amount, 2),
+            'as_of' => $entry->date?->format('d/m/Y'),
+            'source' => 'csv',
+            'sort' => $date.'-'.str_pad((string) $entry->id, 12, '0', STR_PAD_LEFT),
+        ];
+    }
+
+    private function latestStatementEntryWithBalance(BankAccount $account): ?BankStatementEntry
+    {
+        $hasBalance = function (BankStatementEntry $entry): bool {
+            $amount = $entry->metaValue('balance_after');
+
+            return $amount !== null && $amount !== '';
+        };
+
+        if ($account->relationLoaded('bankStatementEntries')) {
+            return $account->bankStatementEntries
+                ->filter($hasBalance)
+                ->sortByDesc(fn (BankStatementEntry $entry) => sprintf(
+                    '%s-%012d',
+                    $entry->date?->toDateString() ?? '',
+                    (int) $entry->id
+                ))
+                ->first();
+        }
+
+        return $account->bankStatementEntries()
+            ->whereNotNull('meta->balance_after')
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * @return array{amount: float, as_of: string, source: string, sort: string}|null
+     */
+    private function latestPdfClosingBalance(BankAccount $account): ?array
+    {
+        $statement = $this->latestPdfStatement($account);
+        if ($statement === null || $statement->closing_balance === null) {
+            return null;
+        }
+
+        $date = $statement->statement_period_end?->toDateString() ?? '';
+
+        return [
+            'amount' => round((float) $statement->closing_balance, 2),
+            'as_of' => $statement->statement_period_end?->format('d/m/Y'),
+            'source' => 'statement',
+            'sort' => $date.'-'.str_pad((string) $statement->id, 12, '0', STR_PAD_LEFT),
+        ];
+    }
+
+    private function latestPdfStatement(BankAccount $account): ?BankAccountStatement
+    {
+        if ($account->relationLoaded('statements')) {
+            return $account->statements
+                ->filter(fn (BankAccountStatement $statement) => $statement->closing_balance !== null)
+                ->sortByDesc(fn (BankAccountStatement $statement) => sprintf(
+                    '%s-%012d',
+                    $statement->statement_period_end?->toDateString() ?? '',
+                    (int) $statement->id
+                ))
+                ->first();
+        }
+
+        return $account->statements()
+            ->whereNotNull('closing_balance')
+            ->orderByDesc('statement_period_end')
+            ->orderByDesc('id')
+            ->first();
+    }
+}

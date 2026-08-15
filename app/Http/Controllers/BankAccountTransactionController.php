@@ -6,6 +6,7 @@ use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\Transaction;
+use App\Services\BankAccountBalanceSnapshotService;
 use App\Services\BankStatementMatchSuggester;
 use App\Support\TransactionListFilters;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +16,10 @@ use Illuminate\View\View;
 
 class BankAccountTransactionController extends Controller
 {
-    public function __construct(private BankStatementMatchSuggester $suggester) {}
+    public function __construct(
+        private BankStatementMatchSuggester $suggester,
+        private BankAccountBalanceSnapshotService $balanceSnapshots,
+    ) {}
 
     public function index(Request $request, BankAccount $bankAccount): JsonResponse
     {
@@ -117,6 +121,7 @@ class BankAccountTransactionController extends Controller
             'isLoanActivityImport' => $bankAccount->isLoanLedgerAccount(),
             'filters' => $filters,
             'filtersActive' => $filtersActive,
+            'balanceSnapshots' => $this->balanceSnapshots->forPanel($bankAccount),
         ];
     }
 

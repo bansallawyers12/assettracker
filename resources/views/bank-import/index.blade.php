@@ -14,7 +14,7 @@
                     </h3>
                     <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
                         CSV statement lines are uploaded and matched on each bank account’s transactions panel.
-                        Open an account below, or jump from an entity’s Bank Import tab.
+                        Open an account below, or jump from an entity’s Bank Accounts tab.
                     </p>
                     <div class="mt-4 flex flex-wrap gap-3">
                         <a href="{{ route('bank-accounts.index') }}"
@@ -28,7 +28,7 @@
                     <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">Or start from an entity</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         @forelse($businessEntities as $entity)
-                            <a href="{{ route('business-entities.show', $entity) }}#tab_bank_import"
+                            <a href="{{ route('business-entities.show', $entity) }}#tab_bank_accounts"
                                class="block p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-indigo-500 dark:hover:border-indigo-400 transition-colors">
                                 <div class="font-semibold text-indigo-600 dark:text-indigo-400">{{ $entity->legal_name }}</div>
                                 <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">Entity Type: {{ $entity->entity_type_label }}</div>

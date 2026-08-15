@@ -13,7 +13,8 @@ it('includes full page url data attribute in the transactions panel partial', fu
     $html = file_get_contents(resource_path('views/bank-accounts/partials/transactions-panel.blade.php'));
 
     expect($html)->toContain('data-bank-transactions-page-url')
-        ->and($html)->toContain('transactions-page');
+        ->and($html)->toContain('transactions-page')
+        ->and($html)->toContain('bank-accounts.partials.balance-snapshot');
 });
 
 it('includes expand control in the bank account panel shell', function () {
