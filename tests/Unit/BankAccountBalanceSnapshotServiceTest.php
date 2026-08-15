@@ -165,6 +165,34 @@ it('prefers a more recent pdf closing balance over an older csv balance', functi
         ->and($snapshot['statement_source'])->toBe('statement');
 });
 
+it('prefers csv running balance when it is on the same day as a pdf closing balance', function () {
+    $account = snapshotAccount(['account_purpose' => BankAccount::PURPOSE_OFFSET, 'account_name' => 'Offset'], 14);
+
+    $account->setRelation('transactions', collect());
+
+    $csv = new BankStatementEntry([
+        'date' => Carbon::parse('2026-08-01'),
+        'amount' => 10,
+        'meta' => ['balance_after' => 40],
+    ]);
+    $csv->id = 1;
+
+    $pdf = new BankAccountStatement([
+        'statement_period_end' => Carbon::parse('2026-08-01'),
+        'closing_balance' => 99,
+    ]);
+    $pdf->id = 99;
+
+    $account->setRelation('bankStatementEntries', collect([$csv]));
+    $account->setRelation('statements', collect([$pdf]));
+    $account->setRelation('assets', collect());
+
+    $snapshot = (new BankAccountBalanceSnapshotService)->snapshot($account);
+
+    expect($snapshot['statement'])->toBe(40.0)
+        ->and($snapshot['statement_source'])->toBe('csv');
+});
+
 it('includes the linked loan or offset account on the panel snapshot', function () {
     $loan = snapshotAccount(['account_purpose' => BankAccount::PURPOSE_LOAN, 'account_name' => 'Loan', 'account_number' => '1849'], 20);
     $offset = snapshotAccount(['account_purpose' => BankAccount::PURPOSE_OFFSET, 'account_name' => 'Offset', 'account_number' => '1930'], 21);

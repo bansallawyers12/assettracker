@@ -1,5 +1,6 @@
 @php
     $balanceSnapshots = $balanceSnapshots ?? [];
+    $includesLoan = collect($balanceSnapshots)->contains(fn ($snapshot) => ($snapshot['is_loan'] ?? false));
 @endphp
 
 @if ($balanceSnapshots !== [])
@@ -8,7 +9,11 @@
             <div>
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Account balances</h3>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    Books vs last statement. Difference should be unmatched lines or missing history.
+                    @if ($includesLoan)
+                        Offset is cash; the loan card is the liability ledger, not cash recon. Difference is unmatched lines or missing history.
+                    @else
+                        Books vs last statement. Difference should be unmatched lines or missing history.
+                    @endif
                 </p>
             </div>
         </div>
@@ -19,9 +24,11 @@
                     $difference = $snapshot['difference'];
                     $aligned = $snapshot['is_reconciled'];
                     $booksClass = $snapshot['books'] < 0 ? 'text-red-700 dark:text-red-300' : 'text-gray-900 dark:text-gray-100';
-                    $diffClass = $aligned
-                        ? 'text-emerald-700 dark:text-emerald-300'
-                        : 'text-amber-800 dark:text-amber-200';
+                    $diffClass = match (true) {
+                        $difference === null => 'text-gray-500 dark:text-gray-400',
+                        $aligned => 'text-emerald-700 dark:text-emerald-300',
+                        default => 'text-amber-800 dark:text-amber-200',
+                    };
                 @endphp
                 <div @class([
                     'rounded-md border bg-white p-3 dark:bg-gray-900',

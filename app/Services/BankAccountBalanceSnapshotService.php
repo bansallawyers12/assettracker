@@ -32,7 +32,7 @@ class BankAccountBalanceSnapshotService
         $snapshots = [$this->snapshot($account, isCurrent: true)];
 
         $paired = $this->pairedLoanOrOffsetAccount($account);
-        if ($paired !== null && (int) $paired->id !== (int) $account->id) {
+        if ($this->shouldShowPairedAccount($account, $paired)) {
             $snapshots[] = $this->snapshot($paired, isCurrent: false);
         }
 
@@ -94,18 +94,33 @@ class BankAccountBalanceSnapshotService
         }
 
         if ($fromCsv === null) {
-            return $fromPdf;
+            return $this->publicStatement($fromPdf);
         }
 
         if ($fromPdf === null) {
-            return $fromCsv;
+            return $this->publicStatement($fromCsv);
         }
 
-        if (($fromCsv['sort'] ?? '') >= ($fromPdf['sort'] ?? '')) {
-            return $fromCsv;
+        // Compare calendar dates only. IDs are from different tables.
+        // On the same day, prefer the CSV running balance.
+        if (($fromCsv['date'] ?? '') >= ($fromPdf['date'] ?? '')) {
+            return $this->publicStatement($fromCsv);
         }
 
-        return $fromPdf;
+        return $this->publicStatement($fromPdf);
+    }
+
+    private function shouldShowPairedAccount(BankAccount $account, ?BankAccount $paired): bool
+    {
+        if ($paired === null || (int) $paired->id === (int) $account->id) {
+            return false;
+        }
+
+        if (auth()->user() && ! $paired->isAccessibleByCurrentUser()) {
+            return false;
+        }
+
+        return true;
     }
 
     public function pairedLoanOrOffsetAccount(BankAccount $account): ?BankAccount
@@ -142,6 +157,11 @@ class BankAccountBalanceSnapshotService
     private function paidTransactions(BankAccount $account): Collection
     {
         if ($account->relationLoaded('transactions')) {
+            $persisted = $account->transactions->filter(fn (Transaction $transaction) => $transaction->exists);
+            if ($persisted->isNotEmpty()) {
+                $persisted->loadMissing(['bankStatementEntries', 'lines']);
+            }
+
             return $account->transactions
                 ->filter(fn (Transaction $transaction) => $this->isPaid($transaction))
                 ->values();
@@ -184,7 +204,7 @@ class BankAccountBalanceSnapshotService
             'amount' => round((float) $amount, 2),
             'as_of' => $entry->date?->format('d/m/Y'),
             'source' => 'csv',
-            'sort' => $date.'-'.str_pad((string) $entry->id, 12, '0', STR_PAD_LEFT),
+            'date' => $date,
         ];
     }
 
@@ -230,7 +250,20 @@ class BankAccountBalanceSnapshotService
             'amount' => round((float) $statement->closing_balance, 2),
             'as_of' => $statement->statement_period_end?->format('d/m/Y'),
             'source' => 'statement',
-            'sort' => $date.'-'.str_pad((string) $statement->id, 12, '0', STR_PAD_LEFT),
+            'date' => $date,
+        ];
+    }
+
+    /**
+     * @param  array{amount: float, as_of: string|null, source: string, date?: string}  $row
+     * @return array{amount: float, as_of: string|null, source: string}
+     */
+    private function publicStatement(array $row): array
+    {
+        return [
+            'amount' => $row['amount'],
+            'as_of' => $row['as_of'],
+            'source' => $row['source'],
         ];
     }
 

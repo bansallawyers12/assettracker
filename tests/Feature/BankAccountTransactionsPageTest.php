@@ -15,6 +15,12 @@ it('includes full page url data attribute in the transactions panel partial', fu
     expect($html)->toContain('data-bank-transactions-page-url')
         ->and($html)->toContain('transactions-page')
         ->and($html)->toContain('bank-accounts.partials.balance-snapshot');
+
+    $snapshot = file_get_contents(resource_path('views/bank-accounts/partials/balance-snapshot.blade.php'));
+
+    expect($snapshot)->toContain('data-bank-balance-snapshot')
+        ->and($snapshot)->toContain('loan ledger')
+        ->and($snapshot)->toContain('not cash recon');
 });
 
 it('includes expand control in the bank account panel shell', function () {
