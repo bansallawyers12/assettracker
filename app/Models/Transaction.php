@@ -396,6 +396,18 @@ class Transaction extends Model
     }
 
     /**
+     * True when this row is linked to a bank statement line (import create or later match).
+     */
+    public function isLinkedToBankStatement(): bool
+    {
+        if ($this->relationLoaded('bankStatementEntries')) {
+            return $this->bankStatementEntries->isNotEmpty();
+        }
+
+        return $this->bankStatementEntries()->exists();
+    }
+
+    /**
      * Get the direction of this transaction instance.
      * Split headers use net of allocation cash (income − expense).
      */

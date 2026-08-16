@@ -18,10 +18,14 @@
                         </ul>
                     </div>
                 @endif
-                <form method="POST" id="bank-edit-transaction-form" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data" data-transaction-paid-by-form data-require-bank-account-when-paid="false" data-booking-entity-id="{{ $businessEntity->id }}">
+                <form method="POST" id="bank-edit-transaction-form" action="{{ route('business-entities.transactions.update', [$businessEntity->id, $transaction->id]) }}" enctype="multipart/form-data" data-manual-transaction-edit data-transaction-paid-by-form data-require-bank-account-when-paid="false" data-booking-entity-id="{{ $businessEntity->id }}">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="edit_origin" value="manual">
                     <input type="hidden" name="business_entity_id" id="business_entity_id" value="{{ $businessEntity->id }}">
+                    @if (request()->filled('return_to'))
+                        <input type="hidden" name="return_to" value="{{ request('return_to') }}">
+                    @endif
 
                     @if ($transaction->isSplit())
                         <div class="mb-5 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-100">
@@ -118,7 +122,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Related Entity</label>
                             <x-tom-select name="related_entity_id" class="mt-1 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Select Related Entity</option>
-                                @foreach(\App\Models\BusinessEntity::operationalEntities()->where('id', '!=', $transaction->business_entity_id)->orderBy('legal_name')->get() as $entity)
+                                @foreach ($relatedEntities as $entity)
                                     <option value="{{ $entity->id }}" {{ old('related_entity_id', $transaction->related_entity_id) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
                                 @endforeach
                             </x-tom-select>
@@ -129,7 +133,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Asset <span class="text-gray-400 font-normal">(optional)</span></label>
                             <x-tom-select name="asset_id" class="mt-1 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">None — entity only</option>
-                                @foreach ($businessEntity->assets()->orderBy('name')->get() as $asset)
+                                @foreach ($entityAssets as $asset)
                                     <option value="{{ $asset->id }}" {{ (string) old('asset_id', $transaction->asset_id) === (string) $asset->id ? 'selected' : '' }}>{{ $asset->name }}</option>
                                 @endforeach
                             </x-tom-select>
@@ -264,7 +268,7 @@
 
                     <div class="flex gap-4 mt-5">
                         <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-xs transition duration-200">Update Transaction</button>
-                        <a href="{{ $transaction->bank_account_id
+                        <a href="{{ request('return_to') === 'bank-account' && $transaction->bank_account_id
                             ? route('business-entities.show', ['business_entity' => $businessEntity->id, 'open_bank_transactions' => $transaction->bank_account_id]).'#tab_bank_accounts'
                             : route('business-entities.show', $businessEntity->id).'#tab_transactions' }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 font-semibold py-2 px-4 rounded-md shadow-xs transition duration-200">Cancel</a>
                     </div>

@@ -43,6 +43,8 @@ it('builds profit and loss csv with statement and supporting entries sections', 
                     'reference' => 'INV-1',
                     'description' => 'August rent',
                     'entity_name' => 'Demo Pty Ltd',
+                    'bank_account' => 'Offset • ****1930',
+                    'transaction_type' => 'Rental Income',
                     'debit' => null,
                     'credit' => 1200.0,
                     'running_balance' => -1200.0,
@@ -63,7 +65,9 @@ it('builds profit and loss csv with statement and supporting entries sections', 
         ->and($csv)->toContain('Rent Income')
         ->and($csv)->toContain('Supporting entries (current period)')
         ->and($csv)->toContain('August rent')
-        ->and($csv)->toContain('INV-1');
+        ->and($csv)->toContain('INV-1')
+        ->and($csv)->toContain('Offset • ****1930')
+        ->and($csv)->toContain('Rental Income');
 });
 
 it('includes prior period supporting entries when profit and loss compare is enabled', function () {
@@ -137,7 +141,7 @@ it('includes prior period supporting entries when profit and loss compare is ena
         ->and($csv)->toContain('Blank date line');
 });
 
-it('builds balance sheet csv with fy-to-date supporting entries', function () {
+it('builds balance sheet csv with all-history supporting entries', function () {
     $account = (object) ['id' => 20, 'account_code' => '1100', 'account_name' => 'Bank / Cash'];
     $entity = (object) ['id' => 2, 'legal_name' => 'Holdings Pty Ltd'];
 
@@ -168,7 +172,7 @@ it('builds balance sheet csv with fy-to-date supporting entries', function () {
         ->once()
         ->withArgs(function (array $ids, string $start, string $end, array $accountIds) {
             return $ids === [2]
-                && $start === '2026-07-01'
+                && $start === FinancialReportCsvExporter::SUPPORTING_ENTRIES_EPOCH
                 && $end === '2026-08-12'
                 && $accountIds === [20];
         })
@@ -198,7 +202,7 @@ it('builds balance sheet csv with fy-to-date supporting entries', function () {
     expect($csv)->toContain('Balance Sheet')
         ->and($csv)->toContain('SECTION,Statement')
         ->and($csv)->toContain('1100')
-        ->and($csv)->toContain('Supporting entries (current FY to as-at date)')
+        ->and($csv)->toContain('Supporting entries (all posted lines through as-at date)')
         ->and($csv)->toContain('Opening balance')
         ->and($csv)->toContain('Payment');
 });
@@ -245,4 +249,19 @@ it('exposes export csv links on profit and loss and balance sheet views', functi
         ->and($pl)->toContain('Export CSV')
         ->and($bs)->toContain("'format' => 'csv'")
         ->and($bs)->toContain('Export CSV');
+});
+
+it('places export csv as a toolbar button on profit and loss and balance sheet', function () {
+    $pl = file_get_contents(resource_path('views/financial-reports/profit-loss.blade.php'));
+    $bs = file_get_contents(resource_path('views/financial-reports/balance-sheet.blade.php'));
+
+    expect($pl)->toContain('inline-flex items-center border border-gray-300 bg-white text-gray-700 text-sm font-medium rounded-sm px-3 py-1.5 hover:bg-gray-50')
+        ->and($bs)->toContain('inline-flex items-center border border-gray-300 bg-white text-gray-700 text-sm font-medium rounded-sm px-3 py-1.5 hover:bg-gray-50');
+});
+
+it('does not double-count synthetic payer cash in account transaction openings', function () {
+    $source = file_get_contents(app_path('Services/FinancialReportService.php'));
+
+    expect($source)->toContain('function generateAccountTransactions')
+        ->and($source)->not->toContain('$openingBalance += $this->crossEntityPayerBankSyntheticNet');
 });

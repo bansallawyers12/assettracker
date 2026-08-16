@@ -4,7 +4,12 @@
     'selected' => '',
     'required' => true,
     'class' => '',
+    'groups' => null,
 ])
+
+@php
+    $typeGroups = $groups ?? \App\Models\Transaction::typeSelectGroups();
+@endphp
 
 <select name="{{ $name }}" id="{{ $id }}" @if($required) required @endif
         class="{{ $class }}"
@@ -12,7 +17,7 @@
         data-tomselect
         data-tomselect-search="false">
     <option value="">Select Type</option>
-    @foreach (\App\Models\Transaction::typeSelectGroups() as $groupLabel => $types)
+    @foreach ($typeGroups as $groupLabel => $types)
         <optgroup label="{{ $groupLabel }}">
             @foreach ($types as $value => $label)
                 @php

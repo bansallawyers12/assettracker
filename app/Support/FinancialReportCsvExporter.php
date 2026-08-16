@@ -8,6 +8,8 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class FinancialReportCsvExporter
 {
+    public const SUPPORTING_ENTRIES_EPOCH = '1970-01-01';
+
     public function __construct(private FinancialReportService $financialReportService) {}
 
     /**
@@ -111,9 +113,8 @@ class FinancialReportCsvExporter
         $asOf = Carbon::parse($report['as_of_date'])->toDateString();
         $filename = 'balance-sheet-as-at-'.$asOf.'.csv';
         $comparing = ComparativeFinancialReport::isEnabled($report['compare'] ?? null);
-        $fyStart = FinancialYear::forDate(Carbon::parse($asOf))['start']->toDateString();
 
-        return $this->streamDownload($filename, function ($out) use ($report, $asOf, $comparing, $fyStart) {
+        return $this->streamDownload($filename, function ($out) use ($report, $asOf, $comparing) {
             $this->writeMeta($out, 'Balance Sheet', $report, [
                 'As at' => Carbon::parse($asOf)->format('j M Y'),
             ]);
@@ -177,10 +178,10 @@ class FinancialReportCsvExporter
             $this->writeSupportingEntries(
                 $out,
                 $report,
-                $fyStart,
+                self::SUPPORTING_ENTRIES_EPOCH,
                 $asOf,
                 $accountIds,
-                'Supporting entries (current FY to as-at date)'
+                'Supporting entries (all posted lines through as-at date)'
             );
 
             if ($comparing) {
@@ -188,14 +189,13 @@ class FinancialReportCsvExporter
                     $report['comparison']['prior_as_of_date']
                         ?? ComparativeFinancialReport::priorYearAsOf($asOf)
                 )->toDateString();
-                $priorFyStart = FinancialYear::forDate(Carbon::parse($priorAsOf))['start']->toDateString();
                 $this->writeSupportingEntries(
                     $out,
                     $report,
-                    $priorFyStart,
+                    self::SUPPORTING_ENTRIES_EPOCH,
                     $priorAsOf,
                     $accountIds,
-                    'Supporting entries (prior FY to prior as-at date)'
+                    'Supporting entries (all posted lines through prior as-at date)'
                 );
             }
         });
@@ -208,6 +208,10 @@ class FinancialReportCsvExporter
     {
         return response()->streamDownload(function () use ($callback) {
             $out = fopen('php://output', 'w');
+            if ($out === false) {
+                return;
+            }
+
             // UTF-8 BOM helps Excel open CSV correctly.
             fwrite($out, "\xEF\xBB\xBF");
             $callback($out);
@@ -234,7 +238,7 @@ class FinancialReportCsvExporter
 
         $this->writeRow($out, [
             'Note',
-            'Amounts come from posted journal entries. Supporting entries list line-level detail for accounts on the statement. When Compare is enabled, both current and prior periods are included.',
+            'Amounts come from posted journal entries. Supporting entries list the journal lines behind each statement account (including bank account and type when known). Balance sheet supporting entries include all history through the as-at date. When Compare is enabled, both current and prior periods are included.',
         ]);
     }
 
@@ -512,6 +516,8 @@ class FinancialReportCsvExporter
             'Reference',
             'Description',
             'Entity',
+            'Bank account',
+            'Type',
             'Debit',
             'Credit',
             'Running balance',
@@ -563,6 +569,8 @@ class FinancialReportCsvExporter
                 '',
                 '',
                 '',
+                '',
+                '',
                 number_format($opening, 2, '.', ''),
             ]);
 
@@ -577,6 +585,8 @@ class FinancialReportCsvExporter
                     (string) ($line['reference'] ?? ''),
                     (string) ($line['description'] ?? ''),
                     (string) ($line['entity_name'] ?? $line['booking_entity_name'] ?? ''),
+                    (string) ($line['bank_account'] ?? ''),
+                    (string) ($line['transaction_type'] ?? ''),
                     $debit !== null ? number_format((float) $debit, 2, '.', '') : '',
                     $credit !== null ? number_format((float) $credit, 2, '.', '') : '',
                     number_format((float) ($line['running_balance'] ?? 0), 2, '.', ''),

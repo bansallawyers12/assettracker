@@ -181,13 +181,6 @@ class FinancialReportService
                 $this->isBankOrCashChartAccount($account) ? $account : null
             );
 
-            if ($this->isBankOrCashChartAccount($account)) {
-                $openingBalance += $this->crossEntityPayerBankSyntheticNet(
-                    $ids,
-                    $start->copy()->subDay()->toDateString()
-                );
-            }
-
             $lines = JournalLine::where('chart_of_account_id', $account->id)
                 ->whereHas('journalEntry', function ($q) use ($ids, $start, $end) {
                     $q->whereIn('business_entity_id', $ids)

@@ -117,6 +117,10 @@
             </div>
 
             <div class="flex items-end gap-2 ml-auto">
+                <a href="{{ route('financial-reports.balance-sheet', $reportQuery(['as_of_date' => $asOfDate->toDateString(), 'format' => 'csv'])) }}"
+                   class="inline-flex items-center border border-gray-300 bg-white text-gray-700 text-sm font-medium rounded-sm px-3 py-1.5 hover:bg-gray-50 focus:outline-hidden focus:ring-2 focus:ring-blue-500">
+                    Export CSV
+                </a>
                 <div class="relative" x-data="{ open: false }">
                     <button type="button"
                             @click="open = !open"
@@ -124,10 +128,8 @@
                         <x-lucide-ellipsis-vertical class="h-4 w-4 text-gray-500" />
                         More
                     </button>
-                    <div x-show="open" @click.outside="open = false"
+                    <div x-show="open" @click.outside="open = false" x-cloak
                          class="absolute right-0 mt-1 w-48 rounded-md shadow-lg bg-white border border-gray-200 z-20 text-sm">
-                        <a href="{{ route('financial-reports.balance-sheet', $reportQuery(['as_of_date' => $asOfDate->toDateString(), 'format' => 'csv'])) }}"
-                           class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Export CSV</a>
                         <a href="javascript:window.print()"
                            class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Print / PDF</a>
                     </div>

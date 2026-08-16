@@ -1446,7 +1446,7 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $transaction->load(['asset', 'lines']);
+        $transaction->load(['asset', 'lines', 'bankStatementEntries', 'bankAccount']);
 
         $payerOptions = TransactionPayerResolver::payerOptions();
         $vendors = Vendor::orderedForSelect();
@@ -1454,9 +1454,25 @@ class BusinessEntityController extends Controller
         $counterpartAccounts = $bankAccount
             ? $this->counterpartAccountsForEntity($businessEntity, $bankAccount)
             : collect();
+        $entityAssets = $businessEntity->assets()->orderBy('name')->get();
+        $relatedEntities = BusinessEntity::operationalEntities()
+            ->where('id', '!=', $businessEntity->id)
+            ->orderBy('legal_name')
+            ->get();
 
-        return view('business-entities.bank-accounts.transactions.edit', compact(
-            'businessEntity', 'transaction', 'payerOptions', 'vendors', 'bankAccount', 'counterpartAccounts'
+        $view = $transaction->isLinkedToBankStatement()
+            ? 'business-entities.bank-accounts.transactions.edit-from-statement'
+            : 'business-entities.bank-accounts.transactions.edit';
+
+        return view($view, compact(
+            'businessEntity',
+            'transaction',
+            'payerOptions',
+            'vendors',
+            'bankAccount',
+            'counterpartAccounts',
+            'entityAssets',
+            'relatedEntities'
         ));
     }
 
@@ -1476,6 +1492,14 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        $transaction->loadMissing(['lines', 'bankStatementEntries']);
+        $isStatementEdit = $request->input('edit_origin') === 'statement'
+            && $transaction->isLinkedToBankStatement();
+
+        if ($isStatementEdit) {
+            $this->mergePreservedFieldsForStatementEdit($request, $transaction);
+        }
+
         $this->normalizeOptionalTransactionAssetId($request);
         $this->normalizeOptionalRelatedEntityId($request);
         $this->normalizeOptionalVendorId($request);
@@ -1484,7 +1508,6 @@ class BusinessEntityController extends Controller
 
         $this->prepareTransactionUploadValidation($request, ['payment_document']);
 
-        $transaction->loadMissing('lines');
         $isSplit = $transaction->isSplit();
 
         $typeRule = $isSplit
@@ -1521,8 +1544,15 @@ class BusinessEntityController extends Controller
             'comments' => ['nullable', 'string'],
         ], $this->transactionReceiptUploadRules(false)), $this->transactionReceiptValidationMessages());
 
-        if (! $isSplit) {
+        if (! $isSplit && ! $isStatementEdit) {
             $this->validateTransactionGstBasis($request);
+        }
+
+        if ($isStatementEdit) {
+            $data['date'] = $transaction->date->toDateString();
+            if (! $isSplit) {
+                $data['amount'] = $transaction->amount;
+            }
         }
 
         if ($isSplit) {
@@ -1555,6 +1585,14 @@ class BusinessEntityController extends Controller
             $counterpartId = $request->filled('counterpart_bank_account_id')
                 ? (int) $data['counterpart_bank_account_id']
                 : null;
+            if (
+                $isStatementEdit
+                && $counterpartId === null
+                && Transaction::isInternalTransfer((string) $data['transaction_type'])
+                && $transaction->counterpart_bank_account_id
+            ) {
+                $counterpartId = (int) $transaction->counterpart_bank_account_id;
+            }
             $assetIdForGuard = $request->filled('asset_id') ? (int) $data['asset_id'] : null;
 
             if ($bankAccountForGuard) {
@@ -1563,7 +1601,7 @@ class BusinessEntityController extends Controller
                     (string) $data['transaction_type'],
                     $businessEntity,
                     $counterpartId,
-                    requireCounterpart: true,
+                    requireCounterpart: ! $isStatementEdit,
                     assetId: $assetIdForGuard
                 );
             }
@@ -1585,6 +1623,14 @@ class BusinessEntityController extends Controller
                     'gst_amount' => null,
                     'gst_status' => 'gst_free',
                     'gst_basis' => null,
+                ];
+            } elseif ($isStatementEdit) {
+                $data['counterpart_bank_account_id'] = null;
+                $data['transfer_group_id'] = null;
+                $gstResolved = [
+                    'gst_amount' => $transaction->gst_amount !== null ? (float) $transaction->gst_amount : null,
+                    'gst_status' => $transaction->gst_status,
+                    'gst_basis' => $transaction->gst_basis,
                 ];
             } else {
                 $data['counterpart_bank_account_id'] = null;
@@ -1625,13 +1671,21 @@ class BusinessEntityController extends Controller
             $data['payment_document_id'] = $payDocument->id;
         }
 
-        $paidBy = $this->validatedPaidBy($request);
+        $paidBy = $this->validatedPaidBy($request, requireWhenPaid: ! $isStatementEdit);
+        if ($isStatementEdit && ($paidBy === null || trim($paidBy) === '')) {
+            $paidBy = $transaction->paid_by;
+        }
+
         $bankAccountId = $this->resolveBankAccountIdForTransactionSave(
             $request,
             $transaction,
             $businessEntity,
-            requireWhenPaid: true
+            requireWhenPaid: ! $isStatementEdit
         );
+
+        if ($isStatementEdit && $bankAccountId === null && $transaction->bank_account_id) {
+            $bankAccountId = $transaction->bank_account_id;
+        }
 
         $transaction->update(array_merge(
             Arr::only($data, [
@@ -1654,11 +1708,16 @@ class BusinessEntityController extends Controller
             ]
         ));
 
+        $returnTo = $request->input('return_to');
+        $openBank = $returnTo === 'bank-account'
+            ? ($bankAccountId ?: $transaction->bank_account_id)
+            : null;
+
         return redirect()->route('business-entities.show', array_filter([
             'business_entity' => $businessEntity->id,
-            'open_bank_transactions' => $bankAccountId,
+            'open_bank_transactions' => $openBank,
         ]))
-            ->withFragment($bankAccountId ? 'tab_bank_accounts' : 'tab_transactions')
+            ->withFragment($openBank ? 'tab_bank_accounts' : 'tab_transactions')
             ->with('success', 'Transaction updated successfully!');
     }
 
@@ -3701,7 +3760,7 @@ class BusinessEntityController extends Controller
         ];
     }
 
-    private function validatedPaidBy(Request $request): ?string
+    private function validatedPaidBy(Request $request, bool $requireWhenPaid = true): ?string
     {
         $raw = $request->input('paid_by_select');
         if (is_array($raw)) {
@@ -3719,7 +3778,7 @@ class BusinessEntityController extends Controller
         $paidBy = TransactionPayerResolver::resolveFromRequest($request);
 
         $transactionType = trim((string) $request->input('transaction_type', ''));
-        if ($request->input('payment_status') === 'paid' && $transactionType !== '') {
+        if ($requireWhenPaid && $request->input('payment_status') === 'paid' && $transactionType !== '') {
             $direction = Transaction::directionFromType($transactionType);
             if ($paidBy === null || trim($paidBy) === '') {
                 $lines = $request->input('lines');
@@ -3737,6 +3796,31 @@ class BusinessEntityController extends Controller
         TransactionPayerResolver::assertSelectionAllowed($paidBy);
 
         return $paidBy;
+    }
+
+    /**
+     * Statement classify-edit does not post payment/GST/vendor. Keep those values so update does not wipe them.
+     */
+    private function mergePreservedFieldsForStatementEdit(Request $request, Transaction $transaction): void
+    {
+        $pbSplit = TransactionPayerResolver::splitStoredForForm($transaction->paid_by);
+
+        $request->merge([
+            'date' => $transaction->date->toDateString(),
+            'amount' => $transaction->amount,
+            'payment_status' => $transaction->payment_status ?? 'paid',
+            'due_date' => $transaction->due_date?->toDateString(),
+            'paid_at' => $transaction->paid_at?->toDateString(),
+            'payment_method' => $transaction->payment_method,
+            'payment_channel' => $transaction->payment_channel,
+            'paid_by_select' => $pbSplit['select'],
+            'paid_by_other' => $pbSplit['other'],
+            'bank_account_id' => $transaction->bank_account_id,
+            'gst_basis' => $transaction->gst_basis,
+            'gst_amount' => $transaction->gst_amount,
+            'invoice_number' => $transaction->invoice_number,
+            'vendor_id' => $transaction->vendor_id,
+        ]);
     }
 
     private function normalizeOptionalBankAccountId(Request $request): void
