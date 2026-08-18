@@ -63,6 +63,8 @@ class Transaction extends Model
         'director_loan_in' => 'Director Loan In',
         // Programmatic / import — not shown in normal type pickers
         'invoice_payment' => 'Invoice payment (AR receipt)',
+        'loan_drawdown' => 'Loan Drawdown',
+        'equity_contribution' => 'Equity Contribution',
         // Legacy / import aliases
         'grants_subsidies' => 'Grants & Subsidies',
         'sales_to_related_party' => 'Sales to Related Party',

@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\ChartOfAccount;
 use App\Models\Transaction;
+use App\Services\BankStatementApplyService;
 use App\Services\ManualJournalEntryService;
 use App\Services\TransactionPostingService;
 use Tests\TestCase;
@@ -47,13 +49,17 @@ it('documents manual journal entry service and routes', function () {
         ->and($routes)->toContain('financial-reports.opening-balances.store');
 });
 
-it('maps bank import liability and equity inflows to director_loan_in', function () {
-    $apply = file_get_contents(app_path('Services/BankStatementApplyService.php'));
-    $legacy = file_get_contents(app_path('Http/Controllers/BankImportController.php'));
+it('keeps imported director, bank-loan, and equity funding types distinct', function () {
+    $service = app(BankStatementApplyService::class);
+    $directorLoan = new ChartOfAccount(['account_code' => '2500', 'account_type' => 'liability']);
+    $longTermLoan = new ChartOfAccount(['account_code' => '4000', 'account_type' => 'liability']);
+    $shareCapital = new ChartOfAccount(['account_code' => '3200', 'account_type' => 'equity']);
 
-    expect($apply)->toContain("'liability' => \$isIncome ? 'director_loan_in'")
-        ->and($apply)->toContain("'equity' => \$isIncome ? 'director_loan_in'")
-        ->and($legacy)->toContain("'payment_status' => 'paid'");
+    expect($service->mapTransactionType($directorLoan, 1000))->toBe('director_loan_in')
+        ->and($service->mapTransactionType($directorLoan, -1000))->toBe('director_loan_out')
+        ->and($service->mapTransactionType($longTermLoan, 1000))->toBe('loan_drawdown')
+        ->and($service->mapTransactionType($shareCapital, 1000))->toBe('equity_contribution')
+        ->and(Transaction::allTypes())->toHaveKeys(['loan_drawdown', 'equity_contribution']);
 });
 
 it('supports invoice unpost when no payment recorded', function () {

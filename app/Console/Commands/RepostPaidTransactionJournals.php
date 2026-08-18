@@ -16,6 +16,7 @@ class RepostPaidTransactionJournals extends Command
                             {--dry-run : Show how many transactions would be re-posted without writing}
                             {--channels= : Comma-separated payment_channel values to limit (e.g. director_funds,cash)}
                             {--types= : Comma-separated transaction_type values to limit (e.g. loan_interest,loan_fees)}
+                            {--entity= : Business entity ID to limit}
                             {--chunk=200 : Rows per chunk}';
 
     protected $description = 'Re-post journals for paid transactions (fixes entry_date, director-funds funding, tracking)';
@@ -28,6 +29,16 @@ class RepostPaidTransactionJournals extends Command
         $query = Transaction::query()
             ->where('payment_status', 'paid')
             ->orderBy('id');
+
+        $entityOption = $this->option('entity');
+        if (is_string($entityOption) && trim($entityOption) !== '') {
+            if (! ctype_digit($entityOption) || (int) $entityOption < 1) {
+                $this->error('Entity must be a positive integer ID.');
+
+                return self::FAILURE;
+            }
+            $query->where('business_entity_id', (int) $entityOption);
+        }
 
         $channelsOption = $this->option('channels');
         if (is_string($channelsOption) && trim($channelsOption) !== '') {

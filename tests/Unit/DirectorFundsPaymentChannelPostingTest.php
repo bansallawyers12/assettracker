@@ -107,6 +107,8 @@ it('supports scoped channel filter on journals repost command', function () {
 
     expect($source)->toContain('{--channels=')
         ->and($source)->toContain('{--types=')
+        ->and($source)->toContain('{--entity=')
         ->and($source)->toContain('whereIn(\'payment_channel\'')
-        ->and($source)->toContain('whereIn(\'transaction_type\'');
+        ->and($source)->toContain('whereIn(\'transaction_type\'')
+        ->and($source)->toContain("where('business_entity_id'");
 });

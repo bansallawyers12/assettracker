@@ -15,6 +15,8 @@ class PropertyReportService
         'director_loan_in',
         'director_loan_out',
         'director_loan_repayment',
+        'loan_drawdown',
+        'equity_contribution',
         'internal_transfer',
     ];
 

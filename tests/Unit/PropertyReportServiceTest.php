@@ -40,11 +40,13 @@ class PropertyReportServiceTest extends TestCase
         $this->assertSame(100.0, $this->service->netAmount($transaction));
     }
 
-    public function test_aggregate_excludes_director_loan_types(): void
+    public function test_aggregate_excludes_financing_and_equity_types(): void
     {
         $rows = collect([
             new Transaction(['transaction_type' => 'rental_income', 'amount' => 1000, 'gst_amount' => 0]),
             new Transaction(['transaction_type' => 'director_loan_in', 'amount' => 5000, 'gst_amount' => 0]),
+            new Transaction(['transaction_type' => 'loan_drawdown', 'amount' => 10000, 'gst_amount' => 0]),
+            new Transaction(['transaction_type' => 'equity_contribution', 'amount' => 20000, 'gst_amount' => 0]),
             new Transaction(['transaction_type' => 'land_tax', 'amount' => 200, 'gst_amount' => 0]),
         ]);
 

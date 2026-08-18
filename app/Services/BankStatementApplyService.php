@@ -113,7 +113,7 @@ class BankStatementApplyService
                 if ($resolvedType === null && $chartAccountId !== null) {
                     $chartAccount = ChartOfAccount::query()->findOrFail($chartAccountId);
                     $resolvedType = $this->mapTransactionType(
-                        (string) $chartAccount->account_type,
+                        $chartAccount,
                         (float) $bankEntry->amount
                     );
                 }
@@ -269,16 +269,19 @@ class BankStatementApplyService
         }
     }
 
-    public function mapTransactionType(string $accountType, float $amount): string
+    public function mapTransactionType(ChartOfAccount $chartAccount, float $amount): string
     {
         $isIncome = $amount >= 0;
+        if ((string) $chartAccount->account_code === '2500') {
+            return $isIncome ? 'director_loan_in' : 'director_loan_out';
+        }
 
-        return match ($accountType) {
+        return match ($chartAccount->account_type) {
             'income' => $isIncome ? 'sales_revenue' : 'cogs',
             'expense' => $isIncome ? 'sales_revenue' : 'cogs',
             'asset' => $isIncome ? 'capital_expenditure' : 'asset_purchase',
-            'liability' => $isIncome ? 'director_loan_in' : 'loan_repayments',
-            'equity' => $isIncome ? 'director_loan_in' : 'directors_fees',
+            'liability' => $isIncome ? 'loan_drawdown' : 'loan_repayments',
+            'equity' => $isIncome ? 'equity_contribution' : 'directors_fees',
             default => $isIncome ? 'sales_revenue' : 'cogs',
         };
     }

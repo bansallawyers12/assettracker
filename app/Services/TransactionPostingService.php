@@ -765,6 +765,8 @@ class TransactionPostingService
             'asset_sales' => $this->findByName('Asset Sales') ?? $this->findAccount('4900'),
             'grants_subsidies' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
             'sales_to_related_party' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
+            'loan_drawdown' => $this->findLongTermLoansAccount(),
+            'equity_contribution' => $this->findByName('Share Capital / Contributed Equity') ?? $this->findAccount('3200'),
             'directors_loans_to_company' => $this->ensureDirectorLoanAccount(),
             'director_loan_in' => $this->ensureDirectorLoanAccount(),
             'director_loan_out' => $this->ensureDirectorLoanAccount(),

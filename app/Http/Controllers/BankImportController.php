@@ -8,6 +8,7 @@ use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use App\Models\Transaction;
+use App\Services\BankStatementApplyService;
 use App\Services\BankStatementParseService;
 use App\Services\TransactionPostingService;
 use Illuminate\Http\Request;
@@ -24,7 +25,8 @@ class BankImportController extends Controller
 
     public function __construct(
         TransactionPostingService $transactionPostingService,
-        private BankStatementParseService $parseService
+        private BankStatementParseService $parseService,
+        private BankStatementApplyService $applyService
     ) {
         $this->transactionPostingService = $transactionPostingService;
     }
@@ -196,7 +198,7 @@ class BankImportController extends Controller
                         'date' => $bankEntry->date,
                         'amount' => abs((float) $bankEntry->amount),
                         'description' => $bankEntry->description,
-                        'transaction_type' => $this->mapTransactionType($chartAccount->account_type, (float) $bankEntry->amount),
+                        'transaction_type' => $this->applyService->mapTransactionType($chartAccount, (float) $bankEntry->amount),
                         'payment_status' => 'paid',
                         'paid_at' => $bankEntry->date,
                         'gst_amount' => null,
@@ -224,29 +226,6 @@ class BankImportController extends Controller
                 'success' => false,
                 'message' => 'An error occurred while saving matches.',
             ], 500);
-        }
-    }
-
-    /**
-     * Map chart of account type to transaction type
-     */
-    private function mapTransactionType($accountType, $amount)
-    {
-        $isIncome = $amount >= 0;
-
-        switch ($accountType) {
-            case 'income':
-                return $isIncome ? 'sales_revenue' : 'cogs';
-            case 'expense':
-                return $isIncome ? 'sales_revenue' : 'cogs';
-            case 'asset':
-                return $isIncome ? 'capital_expenditure' : 'asset_purchase';
-            case 'liability':
-                return $isIncome ? 'director_loan_in' : 'loan_repayments';
-            case 'equity':
-                return $isIncome ? 'director_loan_in' : 'directors_fees';
-            default:
-                return $isIncome ? 'sales_revenue' : 'cogs';
         }
     }
 }
