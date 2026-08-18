@@ -53,6 +53,12 @@
         'payment_channel' => \App\Models\Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
     ], fn ($value) => $value !== null && $value !== '');
     $createUrlTemplate = url('/business-entities/BUSINESS_ENTITY/balance-sheet-entries/create').'?'.http_build_query($createQuery);
+    $clearTransactionsUrl = ($contextEntityId ?? null)
+        ? route('business-entities.bank-accounts.transactions.clear.create', [
+            'businessEntity' => $contextEntityId,
+            'bankAccount' => $bankAccount->id,
+        ])
+        : null;
     $importProcessUrl = route('bank-accounts.import.process', $bankAccount);
     $importUnmatchedUrl = route('bank-accounts.import.unmatched', $bankAccount);
     $importApplyUrl = route('bank-accounts.import.apply', $bankAccount);
@@ -157,10 +163,19 @@
                     <span class="font-normal text-gray-500 dark:text-gray-400">(filtered by entity)</span>
                 @endif
             </h3>
-            <span class="text-xs text-gray-500 dark:text-gray-400">
-                {{ $transactions->count() }}
-                {{ $filtersActive ? ($transactions->count() === 1 ? 'match' : 'matches') : 'total' }}
-            </span>
+            <div class="flex items-center gap-2">
+                <span class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ $transactions->count() }}
+                    {{ $filtersActive ? ($transactions->count() === 1 ? 'match' : 'matches') : 'total' }}
+                </span>
+                @if($clearTransactionsUrl && ($canManageTransactions ?? false) && ($hasClearableTransactions ?? false))
+                    <a href="{{ $clearTransactionsUrl }}"
+                       title="Deletes every transaction on this bank account for this entity, not just the current filter."
+                       class="inline-flex items-center rounded-md border border-red-300 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/50">
+                        Clear account transactions
+                    </a>
+                @endif
+            </div>
         </div>
 
         <div class="mt-3">

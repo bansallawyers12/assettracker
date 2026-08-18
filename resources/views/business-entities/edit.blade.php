@@ -301,18 +301,6 @@
                             @error('exclude_from_financial_reports') <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span> @enderror
                         </div>
                         
-                        <div class="mt-8 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
-                            <p class="text-sm font-medium text-red-800 dark:text-red-200">Accounting data</p>
-                            <p class="mt-1 text-xs text-red-700 dark:text-red-300">
-                                Remove every transaction for this entity to start over (for example after a bad loan import).
-                                Manual journals are optional on the next screen.
-                            </p>
-                            <a href="{{ route('business-entities.transactions.clear.create', $businessEntity) }}"
-                               class="mt-3 inline-flex items-center rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 dark:border-red-800 dark:bg-red-950/50 dark:text-red-200 dark:hover:bg-red-900/40">
-                                Clear all transactions…
-                            </a>
-                        </div>
-
                         <div class="mt-8 flex justify-between items-center">
                             <div class="text-sm text-gray-500">Last updated: {{ $businessEntity->updated_at->format('d M Y, h:i A') }}</div>
                             

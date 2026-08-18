@@ -12,6 +12,7 @@ use App\Http\Controllers\BankAccountImportController;
 use App\Http\Controllers\BankAccountPanelController;
 use App\Http\Controllers\BankAccountStatementController;
 use App\Http\Controllers\BankAccountsWorkspaceController;
+use App\Http\Controllers\BankAccountTransactionClearController;
 use App\Http\Controllers\BankAccountTransactionController;
 use App\Http\Controllers\BankImportController;
 use App\Http\Controllers\BillsTasksController;
@@ -33,7 +34,6 @@ use App\Http\Controllers\EmailTemplateController;
 use App\Http\Controllers\EmailTemplatesWorkspaceController;
 use App\Http\Controllers\EntityPersonController;
 use App\Http\Controllers\EntityShowWorkspaceController;
-use App\Http\Controllers\EntityTransactionClearController;
 use App\Http\Controllers\FinancialReportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\ManualJournalEntryController;
@@ -318,11 +318,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Transaction Routes
     Route::post('business-entities/{businessEntity}/transactions', [BusinessEntityController::class, 'storeTransaction'])->name('business-entities.transactions.store');
-    Route::get('business-entities/{businessEntity}/transactions/{transaction}/edit', [BusinessEntityController::class, 'editTransaction'])->name('business-entities.transactions.edit');
-    Route::put('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'updateTransaction'])->name('business-entities.transactions.update');
-    Route::delete('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'destroyTransaction'])->name('business-entities.transactions.destroy');
-    Route::get('business-entities/{businessEntity}/transactions/clear', [EntityTransactionClearController::class, 'create'])->name('business-entities.transactions.clear.create');
-    Route::delete('business-entities/{businessEntity}/transactions/clear', [EntityTransactionClearController::class, 'destroy'])->name('business-entities.transactions.clear.destroy');
+    Route::get('business-entities/{businessEntity}/transactions/{transaction}/edit', [BusinessEntityController::class, 'editTransaction'])->whereNumber('transaction')->name('business-entities.transactions.edit');
+    Route::put('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'updateTransaction'])->whereNumber('transaction')->name('business-entities.transactions.update');
+    Route::delete('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'destroyTransaction'])->whereNumber('transaction')->name('business-entities.transactions.destroy');
 
     // Balance sheet entries (non-bank capital / deposits / director loan movements)
     Route::get('business-entities/{businessEntity}/balance-sheet-entries/create', [BalanceSheetEntryController::class, 'create'])->name('business-entities.balance-sheet-entries.create');
@@ -331,8 +329,10 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     // Existing Bank Account Transaction Routes
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/create', [BusinessEntityController::class, 'createTransaction'])->name('business-entities.bank-accounts.transactions.create');
     Route::post('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions', [BusinessEntityController::class, 'storeBankTransaction'])->name('business-entities.bank-accounts.transactions.store');
-    Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/{transaction}', [BusinessEntityController::class, 'showTransaction'])->name('business-entities.bank-accounts.transactions.show');
-    Route::put('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/{transaction}', [BusinessEntityController::class, 'updateBankTransaction'])->name('business-entities.bank-accounts.transactions.update');
+    Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/clear', [BankAccountTransactionClearController::class, 'create'])->name('business-entities.bank-accounts.transactions.clear.create');
+    Route::delete('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/clear', [BankAccountTransactionClearController::class, 'destroy'])->name('business-entities.bank-accounts.transactions.clear.destroy');
+    Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/{transaction}', [BusinessEntityController::class, 'showTransaction'])->whereNumber('transaction')->name('business-entities.bank-accounts.transactions.show');
+    Route::put('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/{transaction}', [BusinessEntityController::class, 'updateBankTransaction'])->whereNumber('transaction')->name('business-entities.bank-accounts.transactions.update');
     Route::post('/business-entities/{businessEntity}/bank-accounts/{bankStatementEntry}/match-transaction', [BusinessEntityController::class, 'matchTransaction'])->name('business-entities.bank-accounts.match-transaction');
 
     // API for Bank Accounts

@@ -105,6 +105,11 @@ class BankAccountTransactionController extends Controller
 
         $filtersActive = TransactionListFilters::isActive($filters);
 
+        $hasClearableTransactions = $contextEntityId !== null
+            && $bankAccount->transactions()
+                ->where('business_entity_id', $contextEntityId)
+                ->exists();
+
         return [
             'bankAccount' => $bankAccount,
             'transactions' => $transactions,
@@ -112,6 +117,7 @@ class BankAccountTransactionController extends Controller
             'importEntities' => $importEntities,
             'contextEntityId' => $contextEntityId,
             'defaultEntityId' => $defaultEntityId,
+            'hasClearableTransactions' => $hasClearableTransactions,
             'canManageTransactions' => $eligibleEntities->isNotEmpty(),
             'canImport' => $importEntities->isNotEmpty(),
             'unmatchedEntries' => $unmatchedEntries,

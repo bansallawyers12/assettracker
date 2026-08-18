@@ -2,30 +2,27 @@
 
 namespace App\Services;
 
+use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use App\Models\Invoice;
-use App\Models\JournalEntry;
-use App\Models\JournalLine;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 
-class EntityTransactionClearService
+class BankAccountTransactionClearService
 {
     /**
      * @return array{
      *     transactions: int,
-     *     manual_journals: int,
      *     linked_invoices: int,
      *     bank_statement_entries: int
      * }
      */
-    public function preview(BusinessEntity $businessEntity): array
+    public function preview(BusinessEntity $businessEntity, BankAccount $bankAccount): array
     {
-        $transactionIds = $this->transactionIdsForEntity($businessEntity);
+        $transactionIds = $this->transactionIdsForScope($businessEntity, $bankAccount);
 
         return [
             'transactions' => count($transactionIds),
-            'manual_journals' => $this->manualJournalQuery($businessEntity)->count(),
             'linked_invoices' => $this->linkedInvoiceQuery($transactionIds)->count(),
             'bank_statement_entries' => $this->matchedBankStatementEntryCount($transactionIds),
         ];
@@ -34,27 +31,19 @@ class EntityTransactionClearService
     /**
      * @return array{
      *     transactions_deleted: int,
-     *     manual_journals_deleted: int,
      *     invoices_reset: int
      * }
      */
-    public function clear(BusinessEntity $businessEntity, bool $includeManualJournals = false): array
+    public function clear(BusinessEntity $businessEntity, BankAccount $bankAccount): array
     {
-        return DB::transaction(function () use ($businessEntity, $includeManualJournals) {
-            $transactionIds = $this->transactionIdsForEntity($businessEntity);
+        return DB::transaction(function () use ($businessEntity, $bankAccount) {
+            $transactionIds = $this->transactionIdsForScope($businessEntity, $bankAccount);
 
             $invoicesReset = $this->resetLinkedInvoices($transactionIds);
-
             $transactionsDeleted = $this->deleteTransactions($transactionIds);
-
-            $manualJournalsDeleted = 0;
-            if ($includeManualJournals) {
-                $manualJournalsDeleted = $this->deleteManualJournals($businessEntity);
-            }
 
             return [
                 'transactions_deleted' => $transactionsDeleted,
-                'manual_journals_deleted' => $manualJournalsDeleted,
                 'invoices_reset' => $invoicesReset,
             ];
         });
@@ -63,10 +52,11 @@ class EntityTransactionClearService
     /**
      * @return list<int>
      */
-    private function transactionIdsForEntity(BusinessEntity $businessEntity): array
+    private function transactionIdsForScope(BusinessEntity $businessEntity, BankAccount $bankAccount): array
     {
         return Transaction::query()
             ->where('business_entity_id', $businessEntity->id)
+            ->where('bank_account_id', $bankAccount->id)
             ->orderBy('id')
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
@@ -97,14 +87,6 @@ class EntityTransactionClearService
         return (int) DB::table('bank_statement_entries')
             ->whereIn('transaction_id', $transactionIds)
             ->count();
-    }
-
-    private function manualJournalQuery(BusinessEntity $businessEntity)
-    {
-        return JournalEntry::query()
-            ->where('business_entity_id', $businessEntity->id)
-            ->whereNull('source_type')
-            ->whereNull('source_id');
     }
 
     /**
@@ -147,20 +129,5 @@ class EntityTransactionClearService
             });
 
         return $deleted;
-    }
-
-    private function deleteManualJournals(BusinessEntity $businessEntity): int
-    {
-        $entries = $this->manualJournalQuery($businessEntity)->get(['id']);
-        if ($entries->isEmpty()) {
-            return 0;
-        }
-
-        $entryIds = $entries->pluck('id')->all();
-
-        JournalLine::query()->whereIn('journal_entry_id', $entryIds)->delete();
-        JournalEntry::query()->whereIn('id', $entryIds)->delete();
-
-        return count($entryIds);
     }
 }

@@ -20,12 +20,6 @@
             </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-            @if(!$transactions->isEmpty())
-                <a href="{{ route('business-entities.transactions.clear.create', $businessEntity) }}"
-                   class="inline-flex items-center rounded-md border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/50">
-                    Clear all transactions
-                </a>
-            @endif
             @if($operatingLinks->isNotEmpty())
                 <div class="flex flex-wrap gap-2">
                     @foreach($operatingLinks as $link)
