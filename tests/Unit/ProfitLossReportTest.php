@@ -81,6 +81,15 @@ it('supports consolidated balance sheet drill-down', function () {
         ->and($view)->toContain('financial-reports.account-transactions');
 });
 
+it('shows account transactions quick date shortcuts including financial years', function () {
+    $view = file_get_contents(resource_path('views/financial-reports/account-transactions.blade.php'));
+
+    expect($view)->toContain('Quick period shortcuts')
+        ->and($view)->toContain('FinancialYear::monthShortcuts')
+        ->and($view)->toContain('FinancialYear::periodShortcuts')
+        ->and($view)->toContain("route('financial-reports.account-transactions'");
+});
+
 it('persists optional tracking on manual journal lines', function () {
     $service = file_get_contents(app_path('Services/ManualJournalEntryService.php'));
     $controller = file_get_contents(app_path('Http/Controllers/ManualJournalEntryController.php'));

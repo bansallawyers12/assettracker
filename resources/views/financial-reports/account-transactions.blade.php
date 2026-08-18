@@ -119,6 +119,23 @@
                 </div>
             </div>
 
+            {{-- Quick period shortcuts --}}
+            <div class="flex items-end gap-1.5 flex-wrap">
+                @php
+                    $today = \Carbon\Carbon::now();
+                    $shortcuts = array_merge(
+                        \App\Support\FinancialYear::monthShortcuts($today),
+                        \App\Support\FinancialYear::periodShortcuts($today)
+                    );
+                @endphp
+                @foreach($shortcuts as $label => [$s, $e])
+                    <a href="{{ route('financial-reports.account-transactions', $reportQuery(['start_date' => $s, 'end_date' => $e])) }}"
+                       class="text-xs border border-gray-300 rounded-sm px-2 py-1.5 text-gray-600 hover:bg-white hover:border-blue-400 hover:text-blue-600 transition-colors bg-transparent whitespace-nowrap">
+                        {{ $label }}
+                    </a>
+                @endforeach
+            </div>
+
             {{-- Actions --}}
             <div class="flex items-end gap-2 ml-auto">
                 {{-- More dropdown --}}
