@@ -150,6 +150,7 @@
             'importEntities' => $importEntities,
             'defaultImportEntityId' => $defaultImportEntityId,
             'unmatchedEntries' => $unmatchedEntries,
+            'matchedEntryCount' => $matchedEntryCount ?? 0,
             'matchCandidates' => $matchCandidates,
             'suggestions' => $suggestions ?? [],
             'transactionTypeGroups' => $transactionTypeGroups ?? \App\Models\Transaction::typeSelectGroupsForBankAccount($bankAccount),

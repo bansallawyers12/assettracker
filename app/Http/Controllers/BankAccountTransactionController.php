@@ -94,6 +94,21 @@ class BankAccountTransactionController extends Controller
             ->orderByDesc('id')
             ->get();
 
+        $matchedCountEntityId = $contextEntityId ?? $defaultEntityId;
+        $matchedEntryCount = $matchedCountEntityId === null
+            ? 0
+            : BankStatementEntry::query()
+                ->where('bank_account_id', $bankAccount->id)
+                ->whereNotNull('transaction_id')
+                ->whereIn(
+                    'transaction_id',
+                    Transaction::query()
+                        ->select('id')
+                        ->where('business_entity_id', $matchedCountEntityId)
+                        ->where('bank_account_id', $bankAccount->id)
+                )
+                ->count();
+
         $matchCandidates = $this->matchCandidates($bankAccount, $contextEntityId ?? $defaultEntityId);
         $defaultAssetId = $this->defaultLoanAssetId($bankAccount);
         $suggestions = $this->suggester->suggestMany(
@@ -121,6 +136,7 @@ class BankAccountTransactionController extends Controller
             'canManageTransactions' => $eligibleEntities->isNotEmpty(),
             'canImport' => $importEntities->isNotEmpty(),
             'unmatchedEntries' => $unmatchedEntries,
+            'matchedEntryCount' => $matchedEntryCount,
             'matchCandidates' => $matchCandidates,
             'suggestions' => $suggestions,
             'transactionTypeGroups' => Transaction::typeSelectGroupsForBankAccount($bankAccount),

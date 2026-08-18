@@ -91,6 +91,26 @@ class BankAccountImportController extends Controller
         $this->ensureAccessible($bankAccount);
 
         $businessEntityId = $request->integer('business_entity_id') ?: null;
+        $matchedEntryCount = 0;
+        if ($businessEntityId !== null) {
+            $businessEntity = BusinessEntity::query()->find($businessEntityId);
+            if ($businessEntity === null || ! auth()->user()?->can('view', $businessEntity)) {
+                abort(403, 'Unauthorized action.');
+            }
+
+            $matchedEntryCount = BankStatementEntry::query()
+                ->where('bank_account_id', $bankAccount->id)
+                ->whereNotNull('transaction_id')
+                ->whereIn(
+                    'transaction_id',
+                    Transaction::query()
+                        ->select('id')
+                        ->where('business_entity_id', $businessEntityId)
+                        ->where('bank_account_id', $bankAccount->id)
+                )
+                ->count();
+        }
+
         $entries = BankStatementEntry::query()
             ->where('bank_account_id', $bankAccount->id)
             ->whereNull('transaction_id')
@@ -125,6 +145,7 @@ class BankAccountImportController extends Controller
             'candidates' => $candidates->map(fn (Transaction $transaction) => $this->candidatePayload($transaction)),
             'transaction_types' => Transaction::typeSelectGroupsForBankAccount($bankAccount),
             'is_loan_activity' => $bankAccount->isLoanLedgerAccount(),
+            'matched_count' => $matchedEntryCount,
         ]);
     }
 
@@ -171,12 +192,13 @@ class BankAccountImportController extends Controller
         }
     }
 
-    public function destroyUnmatched(Request $request, BankAccount $bankAccount): JsonResponse
+    public function destroyEntries(Request $request, BankAccount $bankAccount): JsonResponse
     {
         $this->ensureAccessible($bankAccount);
 
         $validated = $request->validate([
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
+            'match_status' => ['required', Rule::in(['unmatched', 'matched'])],
             'scope' => ['required', Rule::in(['selected', 'all'])],
             'entry_ids' => ['required_if:scope,selected', 'array'],
             'entry_ids.*' => ['integer'],
@@ -185,9 +207,28 @@ class BankAccountImportController extends Controller
         $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
         $this->authorizeImportEntity($bankAccount, $businessEntity);
 
-        $query = BankStatementEntry::query()
-            ->where('bank_account_id', $bankAccount->id)
-            ->whereNull('transaction_id');
+        $matchStatus = $validated['match_status'];
+        if ($matchStatus === 'matched' && $validated['scope'] === 'selected') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Matched statement lines can only be cleared in bulk.',
+            ], 422);
+        }
+
+        $query = BankStatementEntry::query()->where('bank_account_id', $bankAccount->id);
+
+        if ($matchStatus === 'unmatched') {
+            $query->whereNull('transaction_id');
+        } else {
+            $query->whereNotNull('transaction_id')
+                ->whereIn(
+                    'transaction_id',
+                    Transaction::query()
+                        ->select('id')
+                        ->where('business_entity_id', $businessEntity->id)
+                        ->where('bank_account_id', $bankAccount->id)
+                );
+        }
 
         if ($validated['scope'] === 'selected') {
             $ids = collect($validated['entry_ids'] ?? [])
@@ -210,20 +251,26 @@ class BankAccountImportController extends Controller
         $deleted = $query->delete();
 
         if ($deleted === 0) {
+            $emptyMessage = $matchStatus === 'matched'
+                ? 'There are no matched statement lines to remove.'
+                : ($validated['scope'] === 'selected'
+                    ? 'No selected unmatched lines were found to remove.'
+                    : 'There are no unmatched statement lines to remove.');
+
             return response()->json([
                 'success' => false,
-                'message' => $validated['scope'] === 'selected'
-                    ? 'No selected unmatched lines were found to remove.'
-                    : 'There are no unmatched statement lines to remove.',
+                'message' => $emptyMessage,
             ], 422);
         }
+
+        $label = $matchStatus === 'matched' ? 'matched' : 'unmatched';
 
         return response()->json([
             'success' => true,
             'deleted' => $deleted,
             'message' => $deleted === 1
-                ? 'Removed 1 unmatched statement line.'
-                : "Removed {$deleted} unmatched statement lines.",
+                ? "Removed 1 {$label} statement line."
+                : "Removed {$deleted} {$label} statement lines.",
         ]);
     }
 

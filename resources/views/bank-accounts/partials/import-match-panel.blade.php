@@ -4,6 +4,7 @@
     'importEntities' => $importEntities,
     'defaultImportEntityId' => $defaultImportEntityId ?? null,
     'unmatchedEntries' => $unmatchedEntries,
+    'matchedEntryCount' => $matchedEntryCount ?? 0,
     'matchCandidates' => $matchCandidates,
     'suggestions' => $suggestions ?? [],
     'transactionTypeGroups' => $transactionTypeGroups ?? \App\Models\Transaction::typeSelectGroupsForBankAccount($bankAccount),
