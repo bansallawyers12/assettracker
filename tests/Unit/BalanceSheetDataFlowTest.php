@@ -1,6 +1,8 @@
 <?php
 
+use App\Models\Transaction;
 use App\Services\ManualJournalEntryService;
+use App\Services\TransactionPostingService;
 use Tests\TestCase;
 
 uses(TestCase::class);
@@ -82,9 +84,13 @@ it('stores chart_of_account_id on bank statement created transactions', function
     expect($apply)->toContain("'chart_of_account_id' => \$chartAccountId");
 });
 
-it('respects chart_of_account_id override when bank import maps to non-2500 accounts', function () {
-    $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
+it('keeps explicit director loan types on account 2500 despite a stale chart account override', function () {
+    $service = app(TransactionPostingService::class);
+    $method = (new ReflectionClass($service))->getMethod('shouldUseDirectorLoanBookingLines');
+    $transaction = new Transaction([
+        'transaction_type' => 'director_loan_in',
+        'chart_of_account_id' => 4000,
+    ]);
 
-    expect($source)->toContain('function shouldUseDirectorLoanBookingLines')
-        ->and($source)->toContain('chart_of_account_id');
+    expect($method->invoke($service, $transaction))->toBeTrue();
 });

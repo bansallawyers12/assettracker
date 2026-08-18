@@ -832,26 +832,11 @@ class TransactionPostingService
     }
 
     /**
-     * Bank import may map liability inflows to director_loan_in while chart_of_account_id
-     * points at a different account (e.g. 4000 Long Term Loans). Respect that override.
+     * Explicit director-loan transaction types always belong to the Director / Entity Loan
+     * account. A stale chart-account selection must not silently reclassify them as another loan.
      */
     private function shouldUseDirectorLoanBookingLines(Transaction $transaction): bool
     {
-        if (! $this->isDirectorLoanTransactionType($transaction->transaction_type)) {
-            return false;
-        }
-
-        if (! $transaction->chart_of_account_id) {
-            return true;
-        }
-
-        $override = ChartOfAccount::query()->find($transaction->chart_of_account_id);
-        if (! $override) {
-            return true;
-        }
-
-        $directorLoan = $this->ensureDirectorLoanAccount();
-
-        return (int) $override->id === (int) $directorLoan->id;
+        return $this->isDirectorLoanTransactionType($transaction->transaction_type);
     }
 }
