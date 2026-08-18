@@ -69,6 +69,13 @@ it('supports consolidated profit and loss drill-down', function () {
         ->and($view)->toContain('financial-reports.account-transactions');
 });
 
+it('shows balance sheet as-of shortcuts including last financial year', function () {
+    $view = file_get_contents(resource_path('views/financial-reports/balance-sheet.blade.php'));
+
+    expect($view)->toContain('FinancialYear::asOfShortcuts')
+        ->and($view)->toContain("route('financial-reports.balance-sheet'");
+});
+
 it('supports consolidated balance sheet drill-down', function () {
     $service = file_get_contents(app_path('Services/FinancialReportService.php'));
     $controller = file_get_contents(app_path('Http/Controllers/FinancialReportController.php'));

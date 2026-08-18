@@ -100,15 +100,7 @@
             </div>
 
             <div class="flex items-end gap-1.5 flex-wrap">
-                @php
-                    $today = \Carbon\Carbon::now();
-                    $bsShortcuts = [
-                        'Today' => $today->toDateString(),
-                        'End of month' => $today->copy()->endOfMonth()->toDateString(),
-                        'End of FY' => \App\Support\FinancialYear::currentEnd($today)->toDateString(),
-                    ];
-                @endphp
-                @foreach($bsShortcuts as $label => $date)
+                @foreach(\App\Support\FinancialYear::asOfShortcuts() as $label => $date)
                     <a href="{{ route('financial-reports.balance-sheet', $reportQuery(['as_of_date' => $date])) }}"
                        class="text-xs border border-gray-300 rounded-sm px-2 py-1.5 text-gray-600 hover:bg-white hover:border-blue-400 hover:text-blue-600 transition-colors bg-transparent whitespace-nowrap">
                         {{ $label }}

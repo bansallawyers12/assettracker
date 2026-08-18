@@ -126,4 +126,23 @@ class FinancialYear
             ],
         ];
     }
+
+    /**
+     * Point-in-time dates for as-of reports (balance sheet, lodgements).
+     *
+     * @return array<string, string>
+     */
+    public static function asOfShortcuts(?Carbon $date = null): array
+    {
+        $date = $date ?? now();
+        $lastMonth = $date->copy()->subMonthNoOverflow();
+
+        return [
+            'Today' => $date->copy()->toDateString(),
+            'End of month' => $date->copy()->endOfMonth()->toDateString(),
+            'End of last month' => $lastMonth->copy()->endOfMonth()->toDateString(),
+            'End of FY' => self::currentEnd($date)->toDateString(),
+            'End of last FY' => self::previousEnd($date)->toDateString(),
+        ];
+    }
 }
