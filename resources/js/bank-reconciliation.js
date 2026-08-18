@@ -17,6 +17,8 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
 
     const uploadForm = importPanel.querySelector('[data-bank-import-upload-form]');
     const acceptBtn = importPanel.querySelector('[data-bank-import-accept-selected]');
+    const removeSelectedBtn = importPanel.querySelector('[data-bank-import-remove-selected]');
+    const clearAllBtn = importPanel.querySelector('[data-bank-import-clear-all]');
     const errorBox = importPanel.querySelector('[data-bank-import-errors]');
 
     function showImportError(message) {
@@ -38,6 +40,60 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     function getImportEntityId() {
         const entityField = importPanel.querySelector('[data-bank-import-entity]');
         return (entityField?.value || '').trim();
+    }
+
+    function selectedUnmatchedEntryIds() {
+        return Array.from(importPanel.querySelectorAll('[data-bank-import-entry]'))
+            .filter((entryEl) => entryEl.querySelector('[data-bank-import-select]')?.checked)
+            .map((entryEl) => Number(entryEl.dataset.entryId))
+            .filter((id) => Number.isInteger(id) && id > 0);
+    }
+
+    async function clearUnmatchedEntries({ scope, entryIds = [] }) {
+        clearImportError();
+
+        const clearUrl = panel.dataset.bankImportClearEntriesUrl;
+        if (!clearUrl) {
+            return;
+        }
+
+        const entityId = getImportEntityId();
+        if (!entityId) {
+            showImportError('Select a booking entity before removing statement lines.');
+            return;
+        }
+
+        const confirmMessage = scope === 'all'
+            ? 'Remove all unmatched statement lines on this account? Booked transactions are not deleted.'
+            : `Remove ${entryIds.length} selected unmatched statement line(s)? Booked transactions are not deleted.`;
+
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
+
+        const response = await apiFetch(clearUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+            },
+            body: JSON.stringify({
+                business_entity_id: Number(entityId),
+                scope,
+                entry_ids: entryIds,
+            }),
+        });
+        const payload = parseJson(await response.text());
+
+        if (!response.ok || !payload?.success) {
+            const message = payload?.message || 'Could not remove statement lines.';
+            showImportError(message);
+            notifyFormFailure(null, payload, { title: 'Remove failed' });
+            return;
+        }
+
+        notifyFormSuccess(payload.message || 'Statement lines removed.', 'Bank entries cleared');
+        await refreshTransactionsPanel();
     }
 
     function populateCandidateSelects(candidates) {
@@ -496,6 +552,40 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         } finally {
             acceptBtn.disabled = false;
             acceptBtn.textContent = originalLabel;
+        }
+    }, { signal });
+
+    clearAllBtn?.addEventListener('click', async () => {
+        const unmatchedCount = importPanel.querySelectorAll('[data-bank-import-entry]').length;
+        if (unmatchedCount === 0) {
+            showImportError('There are no unmatched statement lines to remove.');
+            return;
+        }
+
+        clearAllBtn.disabled = true;
+        try {
+            await clearUnmatchedEntries({ scope: 'all' });
+        } catch (error) {
+            showImportError(error?.message || 'Could not remove statement lines.');
+        } finally {
+            clearAllBtn.disabled = unmatchedCount === 0;
+        }
+    }, { signal });
+
+    removeSelectedBtn?.addEventListener('click', async () => {
+        const entryIds = selectedUnmatchedEntryIds();
+        if (!entryIds.length) {
+            showImportError('Select at least one unmatched line to remove.');
+            return;
+        }
+
+        removeSelectedBtn.disabled = true;
+        try {
+            await clearUnmatchedEntries({ scope: 'selected', entryIds });
+        } catch (error) {
+            showImportError(error?.message || 'Could not remove statement lines.');
+        } finally {
+            removeSelectedBtn.disabled = false;
         }
     }, { signal });
 

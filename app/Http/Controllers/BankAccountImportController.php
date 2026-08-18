@@ -171,6 +171,62 @@ class BankAccountImportController extends Controller
         }
     }
 
+    public function destroyUnmatched(Request $request, BankAccount $bankAccount): JsonResponse
+    {
+        $this->ensureAccessible($bankAccount);
+
+        $validated = $request->validate([
+            'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
+            'scope' => ['required', Rule::in(['selected', 'all'])],
+            'entry_ids' => ['required_if:scope,selected', 'array'],
+            'entry_ids.*' => ['integer'],
+        ]);
+
+        $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
+        $this->authorizeImportEntity($bankAccount, $businessEntity);
+
+        $query = BankStatementEntry::query()
+            ->where('bank_account_id', $bankAccount->id)
+            ->whereNull('transaction_id');
+
+        if ($validated['scope'] === 'selected') {
+            $ids = collect($validated['entry_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn (int $id) => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+
+            if ($ids === []) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Select at least one unmatched line to remove.',
+                ], 422);
+            }
+
+            $query->whereIn('id', $ids);
+        }
+
+        $deleted = $query->delete();
+
+        if ($deleted === 0) {
+            return response()->json([
+                'success' => false,
+                'message' => $validated['scope'] === 'selected'
+                    ? 'No selected unmatched lines were found to remove.'
+                    : 'There are no unmatched statement lines to remove.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'deleted' => $deleted,
+            'message' => $deleted === 1
+                ? 'Removed 1 unmatched statement line.'
+                : "Removed {$deleted} unmatched statement lines.",
+        ]);
+    }
+
     private function authorizeImportEntity(BankAccount $bankAccount, BusinessEntity $businessEntity): void
     {
         $this->authorize('update', $businessEntity);

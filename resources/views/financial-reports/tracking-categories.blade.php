@@ -17,6 +17,26 @@
         </div>
 
         <!-- Filters -->
+        @php
+            use App\Support\ReportScopeQuery;
+
+            $today = \Carbon\Carbon::now();
+            $shortcuts = array_merge(
+                \App\Support\FinancialYear::monthShortcuts($today),
+                \App\Support\FinancialYear::periodShortcuts($today)
+            );
+            $reportQuery = function (array $merge = []) use ($report) {
+                if (request()->filled('tracking_category_id')) {
+                    $merge['tracking_category_id'] = request('tracking_category_id');
+                }
+
+                return ReportScopeQuery::build(
+                    $report['forms_scope'] ?? 'all',
+                    $report['forms_entity_ids'] ?? [],
+                    $merge
+                );
+            };
+        @endphp
         <div class="bg-white shadow-xs sm:rounded-lg mb-6">
             <div class="px-4 py-5 sm:p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Filters</h3>
@@ -58,6 +78,14 @@
                                 </option>
                             @endforeach
                         </x-tom-select>
+                    </div>
+                    <div class="sm:col-span-4 flex flex-wrap items-end gap-1.5">
+                        @foreach($shortcuts as $label => [$s, $e])
+                            <a href="{{ route('financial-reports.tracking-categories', $reportQuery(['start_date' => $s, 'end_date' => $e])) }}"
+                               class="text-xs border border-gray-300 rounded-sm px-2 py-1.5 text-gray-600 hover:bg-white hover:border-blue-400 hover:text-blue-600 transition-colors bg-transparent whitespace-nowrap">
+                                {{ $label }}
+                            </a>
+                        @endforeach
                     </div>
                     <div class="flex items-end">
                         <button type="submit" 

@@ -12,6 +12,11 @@
     $subtitle = $startDate->format('j M Y') . ' – ' . $endDate->format('j M Y');
     $formRoute = route('financial-reports.account-transactions');
     $reportQuery = function (array $merge = []) use ($report) {
+        $accountIds = $report['filters']['account_ids'] ?? [];
+        if ($accountIds !== [] && ! array_key_exists('account_ids', $merge)) {
+            $merge['account_ids'] = $accountIds;
+        }
+
         return ReportScopeQuery::build(
             $report['forms_scope'] ?? 'all',
             $report['forms_entity_ids'] ?? [],

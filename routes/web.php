@@ -448,6 +448,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('/bank-accounts/{bankAccount}/import/process', [BankAccountImportController::class, 'process'])->name('bank-accounts.import.process');
     Route::get('/bank-accounts/{bankAccount}/import/unmatched', [BankAccountImportController::class, 'unmatched'])->name('bank-accounts.import.unmatched');
     Route::post('/bank-accounts/{bankAccount}/import/apply', [BankAccountImportController::class, 'apply'])->name('bank-accounts.import.apply');
+    Route::post('/bank-accounts/{bankAccount}/import/clear-entries', [BankAccountImportController::class, 'destroyUnmatched'])->name('bank-accounts.import.clear-entries');
     Route::get('/transactions', [BusinessEntityController::class, 'transactionsIndex'])->name('transactions.index');
     Route::get('/invoices', [InvoiceController::class, 'index'])->name('invoices.index');
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');

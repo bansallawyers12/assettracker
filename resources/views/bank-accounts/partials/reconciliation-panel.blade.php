@@ -80,7 +80,15 @@
             </div>
         </div>
 
-        <div class="flex justify-end">
+        <div class="flex flex-wrap items-center justify-end gap-2">
+            <button
+                type="button"
+                data-bank-import-clear-all
+                class="inline-flex items-center rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/40"
+                @disabled($unmatchedEntries->isEmpty())
+            >
+                Clear bank entries
+            </button>
             <button
                 type="submit"
                 data-bank-import-upload-submit
@@ -103,6 +111,14 @@
                 </button>
                 <button type="button" data-bank-import-select-suggestions class="rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-800 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200">
                     Select suggestions
+                </button>
+                <button
+                    type="button"
+                    data-bank-import-remove-selected
+                    class="inline-flex items-center justify-center rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-900/40"
+                    @disabled($unmatchedEntries->isEmpty())
+                >
+                    Remove selected
                 </button>
                 <button
                     type="button"

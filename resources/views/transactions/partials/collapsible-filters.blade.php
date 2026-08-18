@@ -122,6 +122,33 @@
                 />
             </div>
 
+            <div @class([
+                'sm:col-span-2' => ! $wideGrid,
+                'lg:col-span-4' => $wideGrid,
+            ])>
+                <p class="block text-xs font-medium text-gray-700 dark:text-gray-300">Quick range</p>
+                <div class="mt-1 flex flex-wrap gap-1.5">
+                    @php
+                        $today = \Carbon\Carbon::now();
+                        $shortcuts = array_merge(
+                            \App\Support\FinancialYear::monthShortcuts($today),
+                            \App\Support\FinancialYear::periodShortcuts($today)
+                        );
+                    @endphp
+                    @foreach($shortcuts as $label => [$s, $e])
+                        <button
+                            type="button"
+                            data-tx-date-shortcut
+                            data-date-from="{{ $s }}"
+                            data-date-to="{{ $e }}"
+                            class="inline-flex items-center rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:border-indigo-400 hover:text-indigo-600 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-300"
+                        >
+                            {{ $label }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+
             @if($showEntityFilter)
                 <div>
                     <label for="{{ $idPrefix }}_filter_entity" class="block text-xs font-medium text-gray-700 dark:text-gray-300">Entity</label>

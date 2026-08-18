@@ -62,6 +62,7 @@
     $importProcessUrl = route('bank-accounts.import.process', $bankAccount);
     $importUnmatchedUrl = route('bank-accounts.import.unmatched', $bankAccount);
     $importApplyUrl = route('bank-accounts.import.apply', $bankAccount);
+    $importClearEntriesUrl = route('bank-accounts.import.clear-entries', $bankAccount);
     $chartAccountsUrl = route('chart-of-accounts.api');
     $canImport = $canImport ?? false;
     $importEntities = $importEntities ?? collect();
@@ -82,6 +83,7 @@
     data-bank-import-process-url="{{ $importProcessUrl }}"
     data-bank-import-unmatched-url="{{ $importUnmatchedUrl }}"
     data-bank-import-apply-url="{{ $importApplyUrl }}"
+    data-bank-import-clear-entries-url="{{ $importClearEntriesUrl }}"
     data-chart-accounts-url="{{ $chartAccountsUrl }}"
 >
     @include('bank-accounts.partials.balance-snapshot', [

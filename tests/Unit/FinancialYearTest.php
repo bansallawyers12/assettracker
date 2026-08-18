@@ -52,6 +52,16 @@ class FinancialYearTest extends TestCase
         $this->assertSame(['2024-07-01', '2025-06-30'], $shortcuts['Last FY']);
     }
 
+    public function test_month_shortcuts_match_this_and_last_month(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-03-10'));
+
+        $shortcuts = FinancialYear::monthShortcuts();
+
+        $this->assertSame(['2026-03-01', '2026-03-31'], $shortcuts['This month']);
+        $this->assertSame(['2026-02-01', '2026-02-28'], $shortcuts['Last month']);
+    }
+
     protected function tearDown(): void
     {
         Carbon::setTestNow();

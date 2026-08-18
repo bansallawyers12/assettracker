@@ -87,7 +87,16 @@ it('shows account transactions quick date shortcuts including financial years', 
     expect($view)->toContain('Quick period shortcuts')
         ->and($view)->toContain('FinancialYear::monthShortcuts')
         ->and($view)->toContain('FinancialYear::periodShortcuts')
-        ->and($view)->toContain("route('financial-reports.account-transactions'");
+        ->and($view)->toContain("route('financial-reports.account-transactions'")
+        ->and($view)->toContain("\$merge['account_ids'] = \$accountIds");
+});
+
+it('shows tracking categories quick date shortcuts including financial years', function () {
+    $view = file_get_contents(resource_path('views/financial-reports/tracking-categories.blade.php'));
+
+    expect($view)->toContain('FinancialYear::monthShortcuts')
+        ->and($view)->toContain('FinancialYear::periodShortcuts')
+        ->and($view)->toContain("route('financial-reports.tracking-categories'");
 });
 
 it('persists optional tracking on manual journal lines', function () {

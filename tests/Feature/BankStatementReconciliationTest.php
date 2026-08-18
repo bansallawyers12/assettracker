@@ -32,6 +32,11 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($panel)->toContain('Update loan activity')
         ->and($panel)->toContain('Reconcile statement')
         ->and($panel)->toContain('data-bank-import-accept-selected')
+        ->and($panel)->toContain('data-bank-import-clear-all')
+        ->and($panel)->toContain('data-bank-import-remove-selected')
+        ->and($panel)->toContain('Clear bank entries')
+        ->and($panel)->toContain('Remove selected')
+        ->and($transactions)->toContain('bank-accounts.import.clear-entries')
         ->and($panel)->toContain('data-bank-import-select-suggestions')
         ->and($panel)->toContain('data-bank-import-create-type')
         ->and($panel)->toContain('data-bank-import-subject-to-bas')
@@ -40,6 +45,9 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($transactions)->toContain('bank-accounts.partials.reconciliation-panel')
         ->and($transactions)->toContain('isLoanActivityImport')
         ->and($js)->toContain('export function bindReconciliationPanel')
+        ->and($js)->toContain('bankImportClearEntriesUrl')
+        ->and($js)->toContain("scope: 'all'")
+        ->and($js)->toContain("scope: 'selected'")
         ->and($js)->toContain("importPanel.dataset.loanActivity === '1'")
         ->and($modal)->toContain("from './bank-reconciliation.js'")
         ->and($modal)->toContain('bindReconciliationPanel')
@@ -62,7 +70,10 @@ it('enriches unmatched endpoint with suggestions in controller source', function
         ->and($source)->toContain('BankStatementApplyService')
         ->and($source)->toContain('matches.*.subject_to_bas')
         ->and($source)->toContain('matches.*.is_flagged')
-        ->and($source)->toContain('matches.*.comments');
+        ->and($source)->toContain('matches.*.comments')
+        ->and($source)->toContain('function destroyUnmatched')
+        ->and($source)->toContain("Rule::in(['selected', 'all'])")
+        ->and($source)->toContain("whereNull('transaction_id')");
 });
 
 it('allows loan purpose accounts for operating import eligibility', function () {

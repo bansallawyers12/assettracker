@@ -45,6 +45,35 @@ export function bindCollapsibleFilters(root, signal) {
     toggle.addEventListener('click', () => {
         setExpanded(body.classList.contains('hidden'));
     }, { signal });
+
+    body.querySelectorAll('[data-tx-date-shortcut]').forEach((button) => {
+        button.addEventListener('click', () => {
+            setExpanded(true);
+
+            const from = button.dataset.dateFrom || '';
+            const to = button.dataset.dateTo || '';
+            const fromInput = body.querySelector('input[name="date_from"]');
+            const toInput = body.querySelector('input[name="date_to"]');
+
+            if (typeof window.setDateInputValue === 'function') {
+                window.setDateInputValue(fromInput, from);
+                window.setDateInputValue(toInput, to);
+            } else {
+                if (fromInput) {
+                    fromInput.value = from;
+                }
+                if (toInput) {
+                    toInput.value = to;
+                }
+            }
+
+            if (typeof body.requestSubmit === 'function') {
+                body.requestSubmit();
+            } else {
+                body.submit();
+            }
+        }, { signal });
+    });
 }
 
 /**
