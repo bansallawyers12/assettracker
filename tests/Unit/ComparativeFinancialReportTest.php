@@ -129,6 +129,69 @@ it('merges balance sheet computed equity lines from prior period only', function
         ->and($row['variance'])->toBe(5000.0);
 });
 
+it('merges current and prior bank breakdown rows explicitly', function () {
+    $account = (object) ['id' => 20, 'account_code' => '1100', 'account_name' => 'Bank / Cash'];
+
+    $current = [
+        'as_of_date' => '2026-06-30',
+        'assets' => [
+            'by_category' => [
+                'current_asset' => [
+                    'label' => 'Current Assets',
+                    'accounts' => [[
+                        'account' => $account,
+                        'balance' => 700.0,
+                        'bank_breakdown' => [
+                            'accounts' => [[
+                                'account_id' => 10,
+                                'label' => 'Operating',
+                                'purpose' => 'General',
+                                'balance' => 700.0,
+                            ]],
+                            'unattributed' => 0.0,
+                        ],
+                    ]],
+                    'subtotal' => 700.0,
+                ],
+            ],
+            'total' => 700.0,
+        ],
+    ];
+    $prior = [
+        'as_of_date' => '2025-06-30',
+        'assets' => [
+            'by_category' => [
+                'current_asset' => [
+                    'label' => 'Current Assets',
+                    'accounts' => [[
+                        'account' => $account,
+                        'balance' => 500.0,
+                        'bank_breakdown' => [
+                            'accounts' => [[
+                                'account_id' => 10,
+                                'label' => 'Operating',
+                                'purpose' => 'General',
+                                'balance' => 500.0,
+                            ]],
+                            'unattributed' => 25.0,
+                        ],
+                    ]],
+                    'subtotal' => 500.0,
+                ],
+            ],
+            'total' => 500.0,
+        ],
+    ];
+
+    $merged = ComparativeFinancialReport::attachBalanceSheetComparison($current, $prior);
+    $breakdown = $merged['assets']['by_category']['current_asset']['accounts'][0]['bank_breakdown'];
+
+    expect($breakdown['accounts'][0]['balance'])->toBe(700.0)
+        ->and($breakdown['accounts'][0]['prior_balance'])->toBe(500.0)
+        ->and($breakdown['unattributed'])->toBe(0.0)
+        ->and($breakdown['prior_unattributed'])->toBe(25.0);
+});
+
 it('formats variance with sign and optional parentheses', function () {
     expect(ComparativeFinancialReport::formatVariance(1500.5))->toBe('+1,500.50')
         ->and(ComparativeFinancialReport::formatVariance(-250.25))->toBe('-250.25')

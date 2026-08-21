@@ -155,7 +155,19 @@ it('builds balance sheet csv with all-history supporting entries', function () {
             'by_category' => [
                 'current_asset' => [
                     'label' => 'Current Assets',
-                    'accounts' => [['account' => $account, 'balance' => -100.0]],
+                    'accounts' => [[
+                        'account' => $account,
+                        'balance' => -100.0,
+                        'bank_breakdown' => [
+                            'accounts' => [[
+                                'account_id' => 5,
+                                'label' => 'Operating · ****1234',
+                                'purpose' => 'General',
+                                'balance' => -75.0,
+                            ]],
+                            'unattributed' => -25.0,
+                        ],
+                    ]],
                     'subtotal' => -100.0,
                 ],
             ],
@@ -202,6 +214,8 @@ it('builds balance sheet csv with all-history supporting entries', function () {
     expect($csv)->toContain('Balance Sheet')
         ->and($csv)->toContain('SECTION,Statement')
         ->and($csv)->toContain('1100')
+        ->and($csv)->toContain('Operating · ****1234 · General')
+        ->and($csv)->toContain('Unallocated / reconciliation difference')
         ->and($csv)->toContain('Supporting entries (all posted lines through as-at date)')
         ->and($csv)->toContain('Opening balance')
         ->and($csv)->toContain('Payment');

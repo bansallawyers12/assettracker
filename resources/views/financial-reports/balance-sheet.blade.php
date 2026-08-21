@@ -195,32 +195,54 @@
                                 </td>
                             @endif
                         </tr>
-                        @if(! $comparing && ! empty($row['bank_breakdown']))
+                        @if(! empty($row['bank_breakdown']))
                             @foreach($row['bank_breakdown']['accounts'] as $bankRow)
                                 <tr class="bg-gray-50/40">
                                     <td class="px-12 py-1 text-xs text-gray-500">
                                         {{ $bankRow['label'] }}
                                         <span class="text-gray-400">&middot; {{ $bankRow['purpose'] }}</span>
                                     </td>
-                                    <td class="px-6 py-1 text-right text-xs tabular-nums w-40 text-gray-500">
-                                        {{ $formatSignedGl((float) $bankRow['balance']) }}
-                                    </td>
+                                    @if($comparing)
+                                        @include('financial-reports.partials.comparative-amount-cells', [
+                                            'current' => $bankRow['balance'] ?? 0,
+                                            'prior' => $bankRow['prior_balance'] ?? 0,
+                                            'variance' => ($bankRow['balance'] ?? 0) - ($bankRow['prior_balance'] ?? 0),
+                                            'format' => 'signed',
+                                        ])
+                                    @else
+                                        <td class="px-6 py-1 text-right text-xs tabular-nums w-40 text-gray-500">
+                                            {{ $formatSignedGl((float) $bankRow['balance']) }}
+                                        </td>
+                                    @endif
                                 </tr>
                             @endforeach
-                            @if(abs((float) $row['bank_breakdown']['unattributed']) >= 0.005)
+                            @php
+                                $unattributed = (float) ($row['bank_breakdown']['unattributed'] ?? 0);
+                                $priorUnattributed = (float) ($row['bank_breakdown']['prior_unattributed'] ?? 0);
+                            @endphp
+                            @if(abs($unattributed) >= 0.005 || ($comparing && abs($priorUnattributed) >= 0.005))
                                 <tr class="bg-gray-50/40">
                                     <td class="px-12 py-1 text-xs italic text-gray-500">
-                                        Not held in a bank account (director funds, cross-entity)
+                                        Unallocated / reconciliation difference
                                     </td>
-                                    <td class="px-6 py-1 text-right text-xs tabular-nums w-40 text-gray-500">
-                                        {{ $formatSignedGl((float) $row['bank_breakdown']['unattributed']) }}
-                                    </td>
+                                    @if($comparing)
+                                        @include('financial-reports.partials.comparative-amount-cells', [
+                                            'current' => $unattributed,
+                                            'prior' => $priorUnattributed,
+                                            'variance' => $unattributed - $priorUnattributed,
+                                            'format' => 'signed',
+                                        ])
+                                    @else
+                                        <td class="px-6 py-1 text-right text-xs tabular-nums w-40 text-gray-500">
+                                            {{ $formatSignedGl($unattributed) }}
+                                        </td>
+                                    @endif
                                 </tr>
                             @endif
                             <tr>
                                 <td colspan="{{ $colCount }}" class="px-12 pb-2 text-[11px] text-gray-400 leading-snug">
-                                    Bank balances per account are a memo from the bank ledger, not from journals &mdash;
-                                    they explain the Bank / Cash total rather than replace it.
+                                    Memo allocation by bank account. Any difference includes manual journals or
+                                    transactions whose bank account could not be identified.
                                 </td>
                             </tr>
                         @endif

@@ -253,6 +253,7 @@ class ComparativeFinancialReport
                 $rowsByKey[$key] = array_merge($row, [
                     'balance' => (float) ($row['balance'] ?? 0),
                     'prior_balance' => 0.0,
+                    '_prior_bank_breakdown' => null,
                 ]);
             }
 
@@ -262,9 +263,12 @@ class ComparativeFinancialReport
                     $rowsByKey[$key] = array_merge($row, [
                         'balance' => 0.0,
                         'prior_balance' => (float) ($row['balance'] ?? 0),
+                        'bank_breakdown' => null,
+                        '_prior_bank_breakdown' => $row['bank_breakdown'] ?? null,
                     ]);
                 } else {
                     $rowsByKey[$key]['prior_balance'] = (float) ($row['balance'] ?? 0);
+                    $rowsByKey[$key]['_prior_bank_breakdown'] = $row['bank_breakdown'] ?? null;
                 }
             }
 
@@ -275,6 +279,14 @@ class ComparativeFinancialReport
             foreach ($rowsByKey as $row) {
                 $currentBalance = (float) ($row['balance'] ?? 0);
                 $priorBalance = (float) ($row['prior_balance'] ?? 0);
+                $priorBankBreakdown = $row['_prior_bank_breakdown'] ?? null;
+                unset($row['_prior_bank_breakdown']);
+                if (($row['bank_breakdown'] ?? null) !== null || $priorBankBreakdown !== null) {
+                    $row['bank_breakdown'] = self::mergeBankBreakdowns(
+                        $row['bank_breakdown'] ?? null,
+                        $priorBankBreakdown
+                    );
+                }
 
                 if (abs($currentBalance) < 0.00001 && abs($priorBalance) < 0.00001) {
                     continue;
@@ -314,6 +326,47 @@ class ComparativeFinancialReport
             'total' => $totalCurrent,
             'prior_total' => $totalPrior,
             'total_variance' => round($totalCurrent - $totalPrior, 2),
+        ];
+    }
+
+    /**
+     * @param  array{accounts?: list<array<string, mixed>>, unattributed?: float}|null  $current
+     * @param  array{accounts?: list<array<string, mixed>>, unattributed?: float}|null  $prior
+     * @return array{accounts: list<array<string, mixed>>, unattributed: float, prior_unattributed: float}
+     */
+    private static function mergeBankBreakdowns(?array $current, ?array $prior): array
+    {
+        $rows = [];
+
+        foreach ($current['accounts'] ?? [] as $account) {
+            $id = (int) $account['account_id'];
+            $rows[$id] = array_merge($account, [
+                'balance' => (float) ($account['balance'] ?? 0),
+                'prior_balance' => 0.0,
+            ]);
+        }
+
+        foreach ($prior['accounts'] ?? [] as $account) {
+            $id = (int) $account['account_id'];
+            if (! isset($rows[$id])) {
+                $rows[$id] = array_merge($account, [
+                    'balance' => 0.0,
+                    'prior_balance' => (float) ($account['balance'] ?? 0),
+                ]);
+            } else {
+                $rows[$id]['prior_balance'] = (float) ($account['balance'] ?? 0);
+            }
+        }
+
+        usort($rows, fn (array $a, array $b) => strcmp(
+            (string) ($a['label'] ?? ''),
+            (string) ($b['label'] ?? '')
+        ));
+
+        return [
+            'accounts' => array_values($rows),
+            'unattributed' => (float) ($current['unattributed'] ?? 0),
+            'prior_unattributed' => (float) ($prior['unattributed'] ?? 0),
         ];
     }
 

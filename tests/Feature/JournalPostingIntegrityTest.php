@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
@@ -378,4 +379,171 @@ it('flags a loan ledger repayment that has no cash side transfer', function () {
     ]);
 
     $this->artisan('loans:audit-unmatched-repayments')->assertExitCode(0);
+});
+
+it('matches an imported offset repayment when the linked loan counterpart was omitted', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $offset = ledgerBankAccount($entity, BankAccount::PURPOSE_OFFSET);
+    $asset = Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Owned',
+        'name' => 'Linked property',
+        'acquisition_date' => '2026-01-01',
+        'acquisition_cost' => 500000,
+        'current_value' => 500000,
+        'status' => 'Active',
+    ]);
+    $asset->bankAccounts()->attach([
+        $loan->id => ['role' => BankAccount::ROLE_LOAN],
+        $offset->id => ['role' => BankAccount::ROLE_OFFSET],
+    ]);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $loan->id,
+        'asset_id' => $asset->id,
+        'date' => '2026-08-15',
+        'paid_at' => '2026-08-15',
+        'amount' => 2000,
+        'description' => 'Mortgage statement repayment',
+        'transaction_type' => 'loan_repayments',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $offset->id,
+        'asset_id' => $asset->id,
+        'counterpart_bank_account_id' => null,
+        'date' => '2026-08-15',
+        'paid_at' => '2026-08-15',
+        'amount' => 2000,
+        'description' => 'Imported offset transfer without counterpart',
+        'transaction_type' => Transaction::TYPE_INTERNAL_TRANSFER,
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    $this->artisan('loans:audit-unmatched-repayments')->assertSuccessful();
+});
+
+it('does not let one cash transfer satisfy multiple loan repayments', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $offset = ledgerBankAccount($entity, BankAccount::PURPOSE_OFFSET);
+
+    foreach ([15, 16] as $day) {
+        Transaction::create([
+            'business_entity_id' => $entity->id,
+            'bank_account_id' => $loan->id,
+            'date' => "2026-08-{$day}",
+            'paid_at' => "2026-08-{$day}",
+            'amount' => 2000,
+            'description' => 'Mortgage statement repayment',
+            'transaction_type' => 'loan_repayments',
+            'payment_status' => 'paid',
+            'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        ]);
+    }
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $offset->id,
+        'counterpart_bank_account_id' => $loan->id,
+        'date' => '2026-08-15',
+        'paid_at' => '2026-08-15',
+        'amount' => 2000,
+        'description' => 'Only one offset transfer',
+        'transaction_type' => Transaction::TYPE_INTERNAL_TRANSFER,
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    $this->artisan('loans:audit-unmatched-repayments')
+        ->expectsOutputToContain('1 of 2')
+        ->assertFailed();
+});
+
+it('validates loan repayment audit options', function () {
+    $this->artisan('loans:audit-unmatched-repayments', ['--entity' => '0'])->assertFailed();
+    $this->artisan('loans:audit-unmatched-repayments', ['--days' => '-1'])->assertFailed();
+    $this->artisan('loans:audit-unmatched-repayments', ['--from' => '21/08/2026'])->assertFailed();
+    $this->artisan('loans:audit-unmatched-repayments', [
+        '--from' => '2026-08-22',
+        '--to' => '2026-08-21',
+    ])->assertFailed();
+});
+
+it('allocates cross-entity cash to the bank account owner', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $bookingEntity = ledgerEntity('Booking Entity Pty Ltd');
+    $payingEntity = ledgerEntity('Paying Entity Pty Ltd');
+    $payingBank = ledgerBankAccount($payingEntity);
+
+    Transaction::create([
+        'business_entity_id' => $bookingEntity->id,
+        'bank_account_id' => $payingBank->id,
+        'date' => '2026-08-15',
+        'paid_at' => '2026-08-15',
+        'amount' => 300,
+        'description' => 'Expense paid by related entity',
+        'transaction_type' => 'other_expenses',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'paid_by' => 'be:'.$payingEntity->id,
+    ]);
+
+    $balanceSheet = app(FinancialReportService::class)
+        ->generateBalanceSheet($payingEntity->id, '2026-08-31');
+    $bankRow = collect($balanceSheet['assets']['by_category'])
+        ->flatMap(fn (array $category) => $category['accounts'])
+        ->firstWhere(fn (array $row) => ($row['account']->account_code ?? null) === '1100');
+
+    expect((float) $bankRow['balance'])->toBe(-300.0)
+        ->and($bankRow['bank_breakdown']['accounts'])->toHaveCount(1)
+        ->and((float) $bankRow['bank_breakdown']['accounts'][0]['balance'])->toBe(-300.0)
+        ->and((float) $bankRow['bank_breakdown']['unattributed'])->toBe(0.0);
+});
+
+it('shows both sides of a cash to cash transfer even when bank cash nets to zero', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $general = ledgerBankAccount($entity);
+    $offset = ledgerBankAccount($entity, BankAccount::PURPOSE_OFFSET);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $general->id,
+        'counterpart_bank_account_id' => $offset->id,
+        'date' => '2026-08-15',
+        'paid_at' => '2026-08-15',
+        'amount' => 500,
+        'description' => 'Move cash into offset',
+        'transaction_type' => Transaction::TYPE_INTERNAL_TRANSFER,
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    $balanceSheet = app(FinancialReportService::class)->generateBalanceSheet($entity->id, '2026-08-31');
+    $bankRow = collect($balanceSheet['assets']['by_category'])
+        ->flatMap(fn (array $category) => $category['accounts'])
+        ->firstWhere(fn (array $row) => ($row['account']->account_code ?? null) === '1100');
+    $balances = collect($bankRow['bank_breakdown']['accounts'])
+        ->mapWithKeys(fn (array $row) => [$row['account_id'] => $row['balance']])
+        ->all();
+
+    expect((float) $bankRow['balance'])->toBe(0.0)
+        ->and($balances)->toEqual([
+            $general->id => -500.0,
+            $offset->id => 500.0,
+        ])
+        ->and((float) $bankRow['bank_breakdown']['unattributed'])->toBe(0.0);
 });

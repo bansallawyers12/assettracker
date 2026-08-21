@@ -24,6 +24,8 @@ class FinancialReportService
      */
     private const DIRECTOR_LOAN_BALANCE_SHEET_START_DATE = '1970-01-01';
 
+    public function __construct(private BankAccountBalanceSnapshotService $bankBalanceSnapshots) {}
+
     /**
      * @param  int|array<int>  $businessEntityIdOrIds
      * @return array<int>
@@ -100,8 +102,11 @@ class FinancialReportService
     /**
      * @param  int|array<int>  $businessEntityIdOrIds
      */
-    public function generateBalanceSheet($businessEntityIdOrIds, $asOfDate): array
-    {
+    public function generateBalanceSheet(
+        $businessEntityIdOrIds,
+        $asOfDate,
+        bool $includeBankBreakdown = true
+    ): array {
         $ids = $this->normalizeEntityIds($businessEntityIdOrIds);
 
         $categoryLabels = [
@@ -113,7 +118,13 @@ class FinancialReportService
             'equity' => 'Equity',
         ];
 
-        $assets = $this->getAccountBalancesByTypeGrouped($ids, 'asset', $asOfDate, $categoryLabels);
+        $assets = $this->getAccountBalancesByTypeGrouped(
+            $ids,
+            'asset',
+            $asOfDate,
+            $categoryLabels,
+            $includeBankBreakdown
+        );
         $liabilities = $this->getAccountBalancesByTypeGrouped($ids, 'liability', $asOfDate, $categoryLabels);
         [$assets, $liabilities] = $this->appendDirectorEntityLoanToBalanceSheet(
             $assets,
@@ -1315,8 +1326,13 @@ class FinancialReportService
         return ['by_category' => $byCategory, 'total' => $total];
     }
 
-    private function getAccountBalancesByTypeGrouped(array $entityIds, $accountType, $asOfDate, array $categoryLabels = []): array
-    {
+    private function getAccountBalancesByTypeGrouped(
+        array $entityIds,
+        $accountType,
+        $asOfDate,
+        array $categoryLabels = [],
+        bool $includeBankBreakdown = false
+    ): array {
         $accounts = ChartOfAccount::where('account_type', $accountType)
             ->where('is_active', true)
             ->orderBy('account_code')
@@ -1339,7 +1355,14 @@ class FinancialReportService
                 $excludeCrossEntityBankCash ? $account : null
             );
 
-            if ($excludeCrossEntityBankCash && abs($balance) < 0.00001) {
+            $breakdown = null;
+            if ($includeBankBreakdown && $excludeCrossEntityBankCash) {
+                $breakdown = $this->bankCashBreakdown($account, $entityIds, $asOfDate, $balance);
+            }
+
+            if ($excludeCrossEntityBankCash
+                && abs($balance) < 0.00001
+                && $breakdown === null) {
                 continue;
             }
 
@@ -1351,11 +1374,8 @@ class FinancialReportService
             }
 
             $row = ['account' => $account, 'balance' => $balance];
-            if ($excludeCrossEntityBankCash) {
-                $breakdown = $this->bankCashBreakdown($account, $entityIds, $asOfDate, $balance);
-                if ($breakdown !== null) {
-                    $row['bank_breakdown'] = $breakdown;
-                }
+            if ($breakdown !== null) {
+                $row['bank_breakdown'] = $breakdown;
             }
 
             $byCategory[$catKey]['accounts'][] = $row;
@@ -1387,7 +1407,7 @@ class FinancialReportService
             return null;
         }
 
-        $accounts = app(BankAccountBalanceSnapshotService::class)->entityBankBalancesAsOf($entityIds, $asOfDate);
+        $accounts = $this->bankBalanceSnapshots->entityBankBalancesAsOf($entityIds, $asOfDate);
         if ($accounts === []) {
             return null;
         }
@@ -2204,7 +2224,11 @@ class FinancialReportService
         $columns = [];
 
         foreach ($entities as $entity) {
-            $sheet = $this->generateBalanceSheet((int) $entity->id, $asOfDate);
+            $sheet = $this->generateBalanceSheet(
+                (int) $entity->id,
+                $asOfDate,
+                includeBankBreakdown: false
+            );
             $totalAssets = (float) $sheet['total_assets'];
             $totalLe = (float) $sheet['total_liabilities_equity'];
             $columns[$entity->id] = [

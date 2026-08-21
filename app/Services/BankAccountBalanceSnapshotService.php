@@ -74,9 +74,9 @@ class BankAccountBalanceSnapshotService
         ];
     }
 
-    public function bookBalance(BankAccount $account, ?string $asOfDate = null): float
+    public function bookBalance(BankAccount $account): float
     {
-        $transactions = $this->paidTransactions($account, $asOfDate);
+        $transactions = $this->paidTransactions($account);
 
         return round($transactions->sum(fn (Transaction $transaction) => $transaction->bankAccountSignedAmount()), 2);
     }
@@ -84,9 +84,9 @@ class BankAccountBalanceSnapshotService
     /**
      * Per-bank-account book balances behind the Bank/Cash GL total, for the balance sheet memo.
      *
-     * Loan-purpose accounts are excluded because they are not cash (they sit in long-term loans),
-     * and rows are scoped to the transactions belonging to the entities being reported, so a bank
-     * account shared across entities only contributes its own entity's movements.
+     * Loan-purpose accounts are excluded because they are not cash (they sit in long-term loans).
+     * Scope follows bank-account ownership, rather than the transaction's booking entity, because
+     * cross-entity transactions move cash through the payer / receiver entity's bank.
      *
      * @param  array<int>  $entityIds
      * @return list<array{account_id: int, label: string, purpose: string, balance: float}>
@@ -97,36 +97,122 @@ class BankAccountBalanceSnapshotService
             return [];
         }
 
-        $transactions = Transaction::query()
-            ->whereIn('business_entity_id', $entityIds)
+        $query = Transaction::query()
             ->whereNotNull('bank_account_id')
             ->where(function ($query): void {
                 $query->where('payment_status', 'paid')
                     ->orWhereNull('payment_status');
             })
             ->where(fn ($query) => $this->applyEffectiveDateLimit($query, $asOfDate))
-            ->with(['bankStatementEntries', 'lines', 'bankAccount'])
-            ->get()
-            ->filter(fn (Transaction $transaction) => $transaction->bankAccount !== null
-                && ! $transaction->bankAccount->isLoanLedgerAccount());
-
-        return $transactions
-            ->groupBy('bank_account_id')
-            ->map(function (Collection $rows) {
-                $account = $rows->first()->bankAccount;
-
-                return [
-                    'account_id' => (int) $account->id,
-                    'label' => $account->transactionAccountLabel(),
-                    'purpose' => BankAccount::purposeLabel((string) $account->account_purpose),
-                    'balance' => round($rows->sum(
-                        fn (Transaction $transaction) => $transaction->bankAccountSignedAmount()
-                    ), 2),
-                ];
+            ->where(function ($query) use ($entityIds): void {
+                $query->whereHas('bankAccount', fn ($bank) => $bank
+                    ->whereIn('business_entity_id', $entityIds)
+                    ->where('account_purpose', '!=', BankAccount::PURPOSE_LOAN))
+                    ->orWhere(function ($transfer) use ($entityIds): void {
+                        $transfer->where('transaction_type', Transaction::TYPE_INTERNAL_TRANSFER)
+                            ->whereHas('counterpartBankAccount', fn ($counterpart) => $counterpart
+                                ->whereIn('business_entity_id', $entityIds)
+                                ->where('account_purpose', '!=', BankAccount::PURPOSE_LOAN));
+                    });
             })
+            ->with(['bankStatementEntries', 'lines', 'bankAccount', 'counterpartBankAccount']);
+
+        $accounts = [];
+        $balances = [];
+        $unpairedTransferSources = [];
+
+        foreach ($query->lazyById(500) as $transaction) {
+            $account = $transaction->bankAccount;
+            if ($account === null || $account->isLoanLedgerAccount()) {
+                continue;
+            }
+
+            $accountId = (int) $account->id;
+            $accountInScope = in_array((int) $account->business_entity_id, $entityIds, true);
+            if ($accountInScope) {
+                $accounts[$accountId] = $account;
+            }
+
+            $signedAmount = $this->journalCashSignedAmount($transaction);
+            if ($transaction->transaction_type !== Transaction::TYPE_INTERNAL_TRANSFER) {
+                if ($accountInScope) {
+                    $balances[$accountId] = ($balances[$accountId] ?? 0.0) + $signedAmount;
+                }
+
+                continue;
+            }
+
+            $counterpart = $transaction->counterpartBankAccount;
+            if ($counterpart === null || $counterpart->isLoanLedgerAccount()) {
+                if ($accountInScope) {
+                    $balances[$accountId] = ($balances[$accountId] ?? 0.0) + $signedAmount;
+                }
+
+                continue;
+            }
+
+            $counterpartId = (int) $counterpart->id;
+            $counterpartInScope = in_array((int) $counterpart->business_entity_id, $entityIds, true);
+
+            $movementKey = $this->cashTransferMovementKey($transaction, $signedAmount);
+            $otherSourceId = $accountId === min($accountId, $counterpartId)
+                ? max($accountId, $counterpartId)
+                : min($accountId, $counterpartId);
+            if (($unpairedTransferSources[$movementKey][$otherSourceId] ?? 0) > 0) {
+                $unpairedTransferSources[$movementKey][$otherSourceId]--;
+
+                continue;
+            }
+
+            $unpairedTransferSources[$movementKey][$accountId] =
+                ($unpairedTransferSources[$movementKey][$accountId] ?? 0) + 1;
+            if ($accountInScope) {
+                $balances[$accountId] = ($balances[$accountId] ?? 0.0) + $signedAmount;
+            }
+            if ($counterpartInScope) {
+                $accounts[$counterpartId] = $counterpart;
+                $balances[$counterpartId] = ($balances[$counterpartId] ?? 0.0) - $signedAmount;
+            }
+        }
+
+        return collect($accounts)
+            ->map(fn (BankAccount $account) => [
+                'account_id' => (int) $account->id,
+                'label' => $account->transactionAccountLabel(),
+                'purpose' => BankAccount::purposeLabel((string) $account->account_purpose),
+                'balance' => round($balances[(int) $account->id] ?? 0.0, 2),
+            ])
             ->sortBy('label')
             ->values()
             ->all();
+    }
+
+    /**
+     * Use the cash amount that journals post, while retaining statement direction for transfers.
+     */
+    private function journalCashSignedAmount(Transaction $transaction): float
+    {
+        $cash = abs((float) $transaction->cashParts()['cash']);
+        $direction = $transaction->transaction_type === Transaction::TYPE_INTERNAL_TRANSFER
+            ? ($transaction->bankAccountSignedAmount() >= 0 ? 'income' : 'expense')
+            : $transaction->direction;
+
+        return $direction === 'income' ? $cash : -$cash;
+    }
+
+    private function cashTransferMovementKey(Transaction $transaction, float $signedAmount): string
+    {
+        $sourceId = (int) $transaction->bank_account_id;
+        $counterpartId = (int) $transaction->counterpart_bank_account_id;
+        $fromId = $signedAmount < 0 ? $sourceId : $counterpartId;
+        $toId = $signedAmount < 0 ? $counterpartId : $sourceId;
+
+        return implode(':', [
+            $fromId,
+            $toId,
+            number_format(abs($signedAmount), 2, '.', ''),
+            ($transaction->paid_at ?? $transaction->date)?->toDateString() ?? '',
+        ]);
     }
 
     /**
@@ -202,7 +288,7 @@ class BankAccountBalanceSnapshotService
     /**
      * @return Collection<int, Transaction>
      */
-    private function paidTransactions(BankAccount $account, ?string $asOfDate = null): Collection
+    private function paidTransactions(BankAccount $account): Collection
     {
         if ($account->relationLoaded('transactions')) {
             $persisted = $account->transactions->filter(fn (Transaction $transaction) => $transaction->exists);
@@ -211,8 +297,7 @@ class BankAccountBalanceSnapshotService
             }
 
             return $account->transactions
-                ->filter(fn (Transaction $transaction) => $this->isPaid($transaction)
-                    && $this->isOnOrBefore($transaction, $asOfDate))
+                ->filter(fn (Transaction $transaction) => $this->isPaid($transaction))
                 ->values();
         }
 
@@ -221,10 +306,6 @@ class BankAccountBalanceSnapshotService
                 $query->where('payment_status', 'paid')
                     ->orWhereNull('payment_status');
             })
-            ->when(
-                $asOfDate !== null,
-                fn ($query) => $query->where(fn ($inner) => $this->applyEffectiveDateLimit($inner, $asOfDate))
-            )
             ->with(['bankStatementEntries', 'lines'])
             ->get();
     }
@@ -240,17 +321,6 @@ class BankAccountBalanceSnapshotService
         })->orWhere(function ($booked) use ($asOfDate): void {
             $booked->whereNull('paid_at')->whereDate('date', '<=', $asOfDate);
         });
-    }
-
-    private function isOnOrBefore(Transaction $transaction, ?string $asOfDate): bool
-    {
-        if ($asOfDate === null) {
-            return true;
-        }
-
-        $effective = $transaction->paid_at ?? $transaction->date;
-
-        return $effective === null || $effective->toDateString() <= $asOfDate;
     }
 
     private function isPaid(Transaction $transaction): bool

@@ -385,6 +385,50 @@ class FinancialReportCsvExporter
                         $this->formatSigned($current),
                     ]);
                 }
+
+                foreach ($row['bank_breakdown']['accounts'] ?? [] as $bankRow) {
+                    $bankName = trim(
+                        (string) ($bankRow['label'] ?? '')
+                        .' · '
+                        .(string) ($bankRow['purpose'] ?? '')
+                    );
+                    $bankCurrent = (float) ($bankRow['balance'] ?? 0);
+                    $bankPrior = (float) ($bankRow['prior_balance'] ?? 0);
+
+                    $cells = [
+                        $sectionLabel,
+                        $catGroup['label'] ?? '',
+                        '',
+                        $bankName,
+                        $this->formatSigned($bankCurrent),
+                    ];
+                    if ($comparing) {
+                        $cells[] = $this->formatSigned($bankPrior);
+                        $cells[] = ComparativeFinancialReport::formatVariance($bankCurrent - $bankPrior);
+                    }
+                    $this->writeRow($out, $cells);
+                }
+
+                if (isset($row['bank_breakdown'])) {
+                    $unattributed = (float) ($row['bank_breakdown']['unattributed'] ?? 0);
+                    $priorUnattributed = (float) ($row['bank_breakdown']['prior_unattributed'] ?? 0);
+                    if (abs($unattributed) >= 0.005 || ($comparing && abs($priorUnattributed) >= 0.005)) {
+                        $cells = [
+                            $sectionLabel,
+                            $catGroup['label'] ?? '',
+                            '',
+                            'Unallocated / reconciliation difference',
+                            $this->formatSigned($unattributed),
+                        ];
+                        if ($comparing) {
+                            $cells[] = $this->formatSigned($priorUnattributed);
+                            $cells[] = ComparativeFinancialReport::formatVariance(
+                                $unattributed - $priorUnattributed
+                            );
+                        }
+                        $this->writeRow($out, $cells);
+                    }
+                }
             }
 
             $subCurrent = (float) ($catGroup['subtotal'] ?? 0);
