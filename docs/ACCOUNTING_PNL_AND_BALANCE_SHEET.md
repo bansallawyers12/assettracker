@@ -240,7 +240,7 @@ These were live defects and have been closed in code (covered by `tests/Feature/
 
 - **Missing GST / long-term-loan accounts silently broke journals.** GST lines were skipped when 1140 / GST payable did not exist, leaving debit ≠ credit — and reports **exclude** unbalanced entries, so the whole transaction disappeared. Offset↔loan transfers wrote nothing without 4000, and `loan_repayments` / `loan_drawdown` had no counter account at all. Posting now creates 2100, 1140, and 4000 on demand, the same way it already created 1100, 1130, and 2500.
 - **Unbalanced journals could be persisted.** `persistJournalEntry` now logs an error and saves nothing (deleting any existing entry) instead of writing a row that both statements ignore.
-- **`asic_payment` never posted** — it had no entry in `counterAccountMapping()`. It now maps to “ASIC Fees” if that account exists, else Other Expenses / 5900. A test asserts every postable type has a counter account, so the next new type cannot repeat this.
+- **`asic_payment` never posted** — it had no entry in `counterAccountMapping()`. It now maps to “ASIC Fees” (**5125**, added to the canonical seeder) and falls back to Other Expenses / 5900 where that account is absent. A test asserts every postable type has a counter account, so the next new type cannot repeat this.
 - **GST payable no longer falls back to code 2200**, which is an unrelated asset account under the optional `xero:chart-of-accounts` chart.
 - **Explicit director-loan types ignored the payment channel.** `director_loan_in` / `director_loan_out` always debited or credited **1100**, so a balance-sheet entry with the default `director_funds` channel inflated Bank/Cash for money that never went through the bank. The funding side now follows the same rule as operating types: outside the bank, both legs are **2500**, so the entry is recorded but moves neither cash nor the loan balance. The balance sheet already excludes these types from its synthetic 2500 lines and reads their real GL, so nothing is double-counted.
 - **Chart of accounts repaired in this environment** (`db:seed --class=ChartOfAccountSeeder`): 1140, 1590, 2120, 2130, 3120, 3190, 3200, 4000, 5170, 5180, 5195, and 7500 were missing, so wages, super, PAYG, equity, and loan-principal types could not post at all.
@@ -251,11 +251,15 @@ These were live defects and have been closed in code (covered by `tests/Feature/
 
 2. **Loan repayment on the loan account is a no-op.** Correct only if the cash movement is also booked as an **internal transfer on offset/general**. If staff only tick `loan_repayments` on the loan statement, **neither cash nor 4000 changes**. Easy to understate repayments.
 
+   Posting is deliberately left alone: blocking the row fights bank imports (one side routinely arrives before the other), and auto-posting the cash side has to un-post itself when the offset row appears, which double-counts the repayment whenever matching is imperfect. Instead `php artisan loans:audit-unmatched-repayments` lists loan-ledger repayments with no matching transfer (paired by `transfer_group_id`, or by counterpart account plus amount within `--days`). It writes nothing and exits non-zero when it finds gaps, so it can be scheduled as a check.
+
 3. **Paid-basis P&L.** Unpaid supplier bills never hit expenses. That is consistent with the observer, but it is **not** accrual accounting. Period P&L can be wrong for management/tax if bills are left unpaid.
 
 ### Medium
 
-4. **Single cash GL (1100).** Offset, operating, and rent accounts cannot be distinguished on the balance sheet. Entity cash is one pool. Transfers between them are invisible. That is coherent for a single 1100, but it will not match “offset vs transaction account” bank totals.
+4. **Single cash GL (1100).** Offset, operating, and rent accounts share one GL account, so the ledger itself cannot distinguish them and transfers between them are invisible. Splitting the GL per purpose was rejected: offset money **is** cash, so it changes presentation only, at the cost of a migration, a full repost, reallocating existing manual journals and opening balances, and widening the `isBankOrCashChartAccount` name heuristic that both the balance sheet and the 2500 reconstruction depend on.
+
+   The balance sheet instead shows a **memo breakdown** under Bank/Cash: one line per bank account, from `BankAccountBalanceSnapshotService::entityBankBalancesAsOf()` — the same book balances as the bank panel, scoped to the reported entities and dated the same way journals are (`paid_at` falling back to `date`). Loan-purpose accounts are excluded because they belong to 4000. Because `journal_lines` records a chart account and **not** a bank account, this cannot be derived from the ledger, so the remainder is shown as **Not held in a bank account** — legitimately non-bank cash (director funds, cross-entity payments) plus any GST-exclusive difference between statement amounts and posted cash. Making it tie exactly would mean putting `bank_account_id` on journal lines.
 
 5. **Director loan BS is reconstructed, not raw 2500.** If synthetics disagree with journals (legacy data, missing PAY journal, unpaid_by patterns), 2500 on the BS can differ from 2500 on a generic trial balance. The Account transactions screen for 2500 follows the reconstruction, which hides the discrepancy. The synthetic cash scale now comes from the same `Transaction::cashParts()` helper the posting service funds journals with, so at least GST-exclusive rows cannot drift.
 
@@ -269,7 +273,7 @@ These were live defects and have been closed in code (covered by `tests/Feature/
 
 10. **CoA `current_balance` is unused**; opening CoA field is unused. Anyone reading those columns will not match reports.
 
-11. **1150 Deposits Paid** exists in this database but posting / seeder use **1500** for deposits/purchases. 1150 will stay empty unless someone journals it manually.
+11. **1150 Deposits Paid** is intentionally unreachable from the transaction forms. `.ai/rules/balance-sheet-entries.md` settles deposits on `asset_purchase` → **1500** (a deposit and a settlement payment are the same gesture here — capital spent on an asset — and the asset link identifies the property), and `tests/Feature/BalanceSheetEntryFlowTest.php` asserts the posting service references neither `TYPE_DEPOSIT_PAID` nor `findByName('Deposits Paid')`. The account stays **active** for the occasional manual journal (Dr 1150 / Cr 2500 on exchange, Dr 1500 / Cr 1150 at settlement) when committed-but-unsettled funds need to be visible. Automating it was rejected: it needs a deposit marker the form rule bans, and it adds a settlement reclass that silently understates the property whenever someone forgets it. Not a defect.
 
 ### Low
 

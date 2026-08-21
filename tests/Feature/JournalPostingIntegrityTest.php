@@ -84,7 +84,7 @@ it('maps every postable transaction type to a counter GL account', function () {
     expect($unmapped)->toBe([]);
 });
 
-it('posts a paid ASIC payment as an expense against bank cash', function () {
+it('posts a paid ASIC payment to the dedicated ASIC fees account', function () {
     $this->seed(ChartOfAccountSeeder::class);
 
     $entity = ledgerEntity();
@@ -104,7 +104,7 @@ it('posts a paid ASIC payment as an expense against bank cash', function () {
 
     expect(ledgerLines($transaction))->toEqual([
         '1100' => [0.0, 63.0],
-        '5900' => [63.0, 0.0],
+        '5125' => [63.0, 0.0],
     ]);
 });
 
@@ -279,4 +279,103 @@ it('reports posted income and director funded expenses on the profit and loss an
         ->and(round($profitLoss['net_profit'], 2))->toBe(800.0)
         ->and(round($balanceSheet['total_assets'], 2))->toBe(1120.0)
         ->and(round($balanceSheet['total_liabilities_equity'], 2))->toBe(1120.0);
+});
+
+it('breaks the bank cash total down per bank account without double counting', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $general = ledgerBankAccount($entity);
+    $offset = ledgerBankAccount($entity, BankAccount::PURPOSE_OFFSET);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $general->id,
+        'date' => '2026-08-01',
+        'paid_at' => '2026-08-01',
+        'amount' => 1100,
+        'description' => 'Rent received',
+        'transaction_type' => 'rental_income',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $offset->id,
+        'date' => '2026-08-03',
+        'paid_at' => '2026-08-03',
+        'amount' => 300,
+        'description' => 'Council rates',
+        'transaction_type' => 'other_expenses',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    // Funded outside any bank: belongs to 2500, so it must not appear in the bank breakdown.
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => null,
+        'date' => '2026-08-05',
+        'paid_at' => '2026-08-05',
+        'amount' => 220,
+        'description' => 'Water rates paid by director',
+        'transaction_type' => 'water_service_expenses',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+    ]);
+
+    $balanceSheet = app(FinancialReportService::class)->generateBalanceSheet($entity->id, '2027-06-30');
+
+    $bankRow = collect($balanceSheet['assets']['by_category'])
+        ->flatMap(fn (array $category) => $category['accounts'])
+        ->firstWhere(fn (array $row) => ($row['account']->account_code ?? null) === '1100');
+
+    $perAccount = collect($bankRow['bank_breakdown']['accounts'])
+        ->mapWithKeys(fn (array $line) => [$line['account_id'] => $line['balance']])
+        ->all();
+
+    expect(round((float) $bankRow['balance'], 2))->toBe(800.0)
+        ->and($perAccount)->toEqual([
+            $general->id => 1100.0,
+            $offset->id => -300.0,
+        ])
+        ->and((float) $bankRow['bank_breakdown']['unattributed'])->toBe(0.0);
+});
+
+it('flags a loan ledger repayment that has no cash side transfer', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $offset = ledgerBankAccount($entity, BankAccount::PURPOSE_OFFSET);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $loan->id,
+        'date' => '2026-08-15',
+        'paid_at' => '2026-08-15',
+        'amount' => 2000,
+        'description' => 'Loan repayment on the mortgage statement',
+        'transaction_type' => 'loan_repayments',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    $this->artisan('loans:audit-unmatched-repayments')->assertExitCode(1);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $offset->id,
+        'counterpart_bank_account_id' => $loan->id,
+        'date' => '2026-08-15',
+        'paid_at' => '2026-08-15',
+        'amount' => 2000,
+        'description' => 'Repayment out of the offset',
+        'transaction_type' => Transaction::TYPE_INTERNAL_TRANSFER,
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    $this->artisan('loans:audit-unmatched-repayments')->assertExitCode(0);
 });

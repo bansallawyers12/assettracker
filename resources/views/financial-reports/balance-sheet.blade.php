@@ -195,6 +195,35 @@
                                 </td>
                             @endif
                         </tr>
+                        @if(! $comparing && ! empty($row['bank_breakdown']))
+                            @foreach($row['bank_breakdown']['accounts'] as $bankRow)
+                                <tr class="bg-gray-50/40">
+                                    <td class="px-12 py-1 text-xs text-gray-500">
+                                        {{ $bankRow['label'] }}
+                                        <span class="text-gray-400">&middot; {{ $bankRow['purpose'] }}</span>
+                                    </td>
+                                    <td class="px-6 py-1 text-right text-xs tabular-nums w-40 text-gray-500">
+                                        {{ $formatSignedGl((float) $bankRow['balance']) }}
+                                    </td>
+                                </tr>
+                            @endforeach
+                            @if(abs((float) $row['bank_breakdown']['unattributed']) >= 0.005)
+                                <tr class="bg-gray-50/40">
+                                    <td class="px-12 py-1 text-xs italic text-gray-500">
+                                        Not held in a bank account (director funds, cross-entity)
+                                    </td>
+                                    <td class="px-6 py-1 text-right text-xs tabular-nums w-40 text-gray-500">
+                                        {{ $formatSignedGl((float) $row['bank_breakdown']['unattributed']) }}
+                                    </td>
+                                </tr>
+                            @endif
+                            <tr>
+                                <td colspan="{{ $colCount }}" class="px-12 pb-2 text-[11px] text-gray-400 leading-snug">
+                                    Bank balances per account are a memo from the bank ledger, not from journals &mdash;
+                                    they explain the Bank / Cash total rather than replace it.
+                                </td>
+                            </tr>
+                        @endif
                     @endforeach
                     <tr class="border-t border-gray-100">
                         <td class="px-8 py-1.5 text-xs font-semibold text-gray-500 italic">Total {{ $catGroup['label'] }}</td>

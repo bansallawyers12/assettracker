@@ -74,11 +74,59 @@ class BankAccountBalanceSnapshotService
         ];
     }
 
-    public function bookBalance(BankAccount $account): float
+    public function bookBalance(BankAccount $account, ?string $asOfDate = null): float
     {
-        $transactions = $this->paidTransactions($account);
+        $transactions = $this->paidTransactions($account, $asOfDate);
 
         return round($transactions->sum(fn (Transaction $transaction) => $transaction->bankAccountSignedAmount()), 2);
+    }
+
+    /**
+     * Per-bank-account book balances behind the Bank/Cash GL total, for the balance sheet memo.
+     *
+     * Loan-purpose accounts are excluded because they are not cash (they sit in long-term loans),
+     * and rows are scoped to the transactions belonging to the entities being reported, so a bank
+     * account shared across entities only contributes its own entity's movements.
+     *
+     * @param  array<int>  $entityIds
+     * @return list<array{account_id: int, label: string, purpose: string, balance: float}>
+     */
+    public function entityBankBalancesAsOf(array $entityIds, string $asOfDate): array
+    {
+        if ($entityIds === []) {
+            return [];
+        }
+
+        $transactions = Transaction::query()
+            ->whereIn('business_entity_id', $entityIds)
+            ->whereNotNull('bank_account_id')
+            ->where(function ($query): void {
+                $query->where('payment_status', 'paid')
+                    ->orWhereNull('payment_status');
+            })
+            ->where(fn ($query) => $this->applyEffectiveDateLimit($query, $asOfDate))
+            ->with(['bankStatementEntries', 'lines', 'bankAccount'])
+            ->get()
+            ->filter(fn (Transaction $transaction) => $transaction->bankAccount !== null
+                && ! $transaction->bankAccount->isLoanLedgerAccount());
+
+        return $transactions
+            ->groupBy('bank_account_id')
+            ->map(function (Collection $rows) {
+                $account = $rows->first()->bankAccount;
+
+                return [
+                    'account_id' => (int) $account->id,
+                    'label' => $account->transactionAccountLabel(),
+                    'purpose' => BankAccount::purposeLabel((string) $account->account_purpose),
+                    'balance' => round($rows->sum(
+                        fn (Transaction $transaction) => $transaction->bankAccountSignedAmount()
+                    ), 2),
+                ];
+            })
+            ->sortBy('label')
+            ->values()
+            ->all();
     }
 
     /**
@@ -154,7 +202,7 @@ class BankAccountBalanceSnapshotService
     /**
      * @return Collection<int, Transaction>
      */
-    private function paidTransactions(BankAccount $account): Collection
+    private function paidTransactions(BankAccount $account, ?string $asOfDate = null): Collection
     {
         if ($account->relationLoaded('transactions')) {
             $persisted = $account->transactions->filter(fn (Transaction $transaction) => $transaction->exists);
@@ -163,7 +211,8 @@ class BankAccountBalanceSnapshotService
             }
 
             return $account->transactions
-                ->filter(fn (Transaction $transaction) => $this->isPaid($transaction))
+                ->filter(fn (Transaction $transaction) => $this->isPaid($transaction)
+                    && $this->isOnOrBefore($transaction, $asOfDate))
                 ->values();
         }
 
@@ -172,8 +221,36 @@ class BankAccountBalanceSnapshotService
                 $query->where('payment_status', 'paid')
                     ->orWhereNull('payment_status');
             })
+            ->when(
+                $asOfDate !== null,
+                fn ($query) => $query->where(fn ($inner) => $this->applyEffectiveDateLimit($inner, $asOfDate))
+            )
             ->with(['bankStatementEntries', 'lines'])
             ->get();
+    }
+
+    /**
+     * Journals date a transaction by `paid_at` and fall back to `date`; balances as of a date
+     * must use the same rule so the memo lines up with the GL.
+     */
+    private function applyEffectiveDateLimit($query, string $asOfDate): void
+    {
+        $query->where(function ($paid) use ($asOfDate): void {
+            $paid->whereNotNull('paid_at')->whereDate('paid_at', '<=', $asOfDate);
+        })->orWhere(function ($booked) use ($asOfDate): void {
+            $booked->whereNull('paid_at')->whereDate('date', '<=', $asOfDate);
+        });
+    }
+
+    private function isOnOrBefore(Transaction $transaction, ?string $asOfDate): bool
+    {
+        if ($asOfDate === null) {
+            return true;
+        }
+
+        $effective = $transaction->paid_at ?? $transaction->date;
+
+        return $effective === null || $effective->toDateString() <= $asOfDate;
     }
 
     private function isPaid(Transaction $transaction): bool

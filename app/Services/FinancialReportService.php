@@ -1350,12 +1350,54 @@ class FinancialReportService
                 $byCategory[$catKey] = ['label' => $catLabel, 'accounts' => [], 'subtotal' => 0];
             }
 
-            $byCategory[$catKey]['accounts'][] = ['account' => $account, 'balance' => $balance];
+            $row = ['account' => $account, 'balance' => $balance];
+            if ($excludeCrossEntityBankCash) {
+                $breakdown = $this->bankCashBreakdown($account, $entityIds, $asOfDate, $balance);
+                if ($breakdown !== null) {
+                    $row['bank_breakdown'] = $breakdown;
+                }
+            }
+
+            $byCategory[$catKey]['accounts'][] = $row;
             $byCategory[$catKey]['subtotal'] += $balance;
             $total += $balance;
         }
 
         return ['by_category' => $byCategory, 'total' => $total];
+    }
+
+    /**
+     * Memo breakdown of the Bank/Cash GL total by bank account.
+     *
+     * Journal lines carry a chart account, not a bank account, so this cannot be derived from the
+     * ledger. It reuses the same per-account book balances shown on the bank panel, and reports
+     * whatever is left over as unattributed — money funded outside a bank account (director funds,
+     * cross-entity payments) legitimately belongs to no bank.
+     *
+     * @param  array<int>  $entityIds
+     * @return array{accounts: list<array{account_id: int, label: string, purpose: string, balance: float}>, unattributed: float}|null
+     */
+    private function bankCashBreakdown(
+        ChartOfAccount $account,
+        array $entityIds,
+        string $asOfDate,
+        float $glBalance
+    ): ?array {
+        if ((string) $account->account_code !== (string) config('financial.report_accounts.bank_cash', '1100')) {
+            return null;
+        }
+
+        $accounts = app(BankAccountBalanceSnapshotService::class)->entityBankBalancesAsOf($entityIds, $asOfDate);
+        if ($accounts === []) {
+            return null;
+        }
+
+        $attributed = array_sum(array_column($accounts, 'balance'));
+
+        return [
+            'accounts' => $accounts,
+            'unattributed' => round($glBalance - $attributed, 2),
+        ];
     }
 
     /**

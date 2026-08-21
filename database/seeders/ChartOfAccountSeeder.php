@@ -87,6 +87,7 @@ class ChartOfAccountSeeder extends Seeder
             ['5100', 'Water Service Expenses', 'expense', 'operating_expense', 'Water usage and sewerage charges for investment properties'],
             ['5110', 'Management Fees', 'expense', 'operating_expense', 'Property management fees paid to managing agents'],
             ['5120', 'Legal Expenses', 'expense', 'operating_expense', 'Legal and conveyancing costs related to property or entity matters'],
+            ['5125', 'ASIC Fees', 'expense', 'operating_expense', 'ASIC annual review fees and other regulatory filing charges'],
             ['5130', 'Land Tax', 'expense', 'operating_expense', 'State land tax assessed on investment property holdings'],
             ['5140', 'Valuation & Rates', 'expense', 'operating_expense', 'Council rates, water rates, and independent property valuations'],
             ['5150', 'OC Fees', 'expense', 'operating_expense', "Owners' corporation / body corporate levies"],
