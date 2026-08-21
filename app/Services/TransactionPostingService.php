@@ -32,6 +32,10 @@ use Illuminate\Support\Str;
  *
  * Unpaid transactions are unposted (obligation only; no cash movement yet).
  * Property reports still filter transactions by asset_id separately.
+ *
+ * Cash (1100), director loan (2500), long-term loans (4000), and the GST accounts are created
+ * when missing so a journal never posts short of a line, and an unbalanced set of lines is
+ * never saved — reports read balanced journals only, so it would vanish from both statements.
  */
 class TransactionPostingService
 {
@@ -117,15 +121,6 @@ class TransactionPostingService
         }
 
         $accounts = $this->resolveGlAccounts();
-        if ($accounts['cash'] === null || $accounts['long_term_loans'] === null) {
-            Log::warning('TransactionPostingService: missing cash or long-term loans for offset↔loan transfer', [
-                'transaction_id' => $transaction->id,
-                'business_entity' => $transaction->business_entity_id,
-            ]);
-
-            return [];
-        }
-
         $amount = round(abs((float) $transaction->amount), 2);
         if ($amount <= 0) {
             return [];
@@ -233,7 +228,9 @@ class TransactionPostingService
             return null;
         }
 
-        $this->persistJournalEntry($entry, $lines, $transaction);
+        if (! $this->persistJournalEntry($entry, $lines, $transaction)) {
+            return null;
+        }
 
         return $entry;
     }
@@ -276,21 +273,43 @@ class TransactionPostingService
         $entry->source_type = Transaction::class;
         $entry->source_id = $transaction->id;
 
-        $this->persistJournalEntry($entry, $lines, $transaction);
+        if (! $this->persistJournalEntry($entry, $lines, $transaction)) {
+            return null;
+        }
 
         return $entry;
     }
 
     /**
+     * Reports only read balanced, posted journals, so an out-of-balance entry would silently
+     * disappear from the P&L and balance sheet. Refuse it instead and leave no partial row.
+     *
      * @param  list<array{account_id: int, debit: float, credit: float, description: ?string}>  $lines
      */
-    private function persistJournalEntry(JournalEntry $entry, array $lines, Transaction $transaction): void
+    private function persistJournalEntry(JournalEntry $entry, array $lines, Transaction $transaction): bool
     {
         $totalDebit = 0.0;
         $totalCredit = 0.0;
         foreach ($lines as $line) {
             $totalDebit += $line['debit'];
             $totalCredit += $line['credit'];
+        }
+
+        if (abs($totalDebit - $totalCredit) > 0.005) {
+            Log::error('TransactionPostingService: refusing to persist an unbalanced journal', [
+                'transaction_id' => $transaction->id,
+                'transaction_type' => $transaction->transaction_type,
+                'business_entity' => $entry->business_entity_id,
+                'total_debit' => round($totalDebit, 2),
+                'total_credit' => round($totalCredit, 2),
+            ]);
+
+            if ($entry->exists) {
+                $entry->journalLines()->delete();
+                $entry->delete();
+            }
+
+            return false;
         }
 
         $entry->total_debit = $totalDebit;
@@ -309,6 +328,8 @@ class TransactionPostingService
                 'tracking_sub_category_id' => $transaction->tracking_sub_category_id,
             ]);
         }
+
+        return true;
     }
 
     private function journalEntryDateFor(Transaction $transaction): \DateTimeInterface|string|null
@@ -346,7 +367,7 @@ class TransactionPostingService
      * loan_repayments on loan ledger → none (offset internal_transfer posts 1100↔4000);
      * otherwise bank cash.
      *
-     * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ?ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}  $accounts
+     * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ChartOfAccount, gst_payable: ChartOfAccount, gst_receivable: ChartOfAccount}  $accounts
      * @param  'income'|'expense'  $direction
      * @return array{account_id: int, debit: float, credit: float, description: ?string}|null
      */
@@ -360,16 +381,13 @@ class TransactionPostingService
             return null;
         }
 
-        $useIntercompany = $this->payerEntityIdFromPaidBy($transaction) !== null
-            && $accounts['director_loan'] !== null;
+        $useIntercompany = $this->payerEntityIdFromPaidBy($transaction) !== null;
         $useDirectorFunds = ! $useIntercompany
-            && $accounts['director_loan'] !== null
             && $this->shouldFundOperatingSideViaDirectorLoan($transaction);
         $useLoanLiability = ! $useIntercompany
             && ! $useDirectorFunds
             && Transaction::isCapitalizedLoanCharge((string) $transaction->transaction_type)
-            && $transaction->bankAccount?->isLoanLedgerAccount()
-            && $accounts['long_term_loans'] !== null;
+            && $transaction->bankAccount?->isLoanLedgerAccount();
 
         if ($direction === 'income') {
             if ($useIntercompany) {
@@ -381,11 +399,8 @@ class TransactionPostingService
             if ($useLoanLiability) {
                 return $this->line($accounts['long_term_loans']->id, $amountGross, 0, 'Loan liability reduced');
             }
-            if ($accounts['cash']) {
-                return $this->line($accounts['cash']->id, $amountGross, 0, 'Cash received');
-            }
 
-            return null;
+            return $this->line($accounts['cash']->id, $amountGross, 0, 'Cash received');
         }
 
         if ($useIntercompany) {
@@ -397,11 +412,8 @@ class TransactionPostingService
         if ($useLoanLiability) {
             return $this->line($accounts['long_term_loans']->id, 0, $amountGross, 'Capitalised to loan');
         }
-        if ($accounts['cash']) {
-            return $this->line($accounts['cash']->id, 0, $amountGross, 'Cash paid');
-        }
 
-        return null;
+        return $this->line($accounts['cash']->id, 0, $amountGross, 'Cash paid');
     }
 
     /**
@@ -479,7 +491,7 @@ class TransactionPostingService
                 ? 'Clear accounts receivable'
                 : 'Income';
             $lines[] = $this->line($counterAccount->id, 0, $amountNet, $counterLabel);
-            if ($gstAmount > 0 && $accounts['gst_payable']) {
+            if ($gstAmount > 0) {
                 $lines[] = $this->line($accounts['gst_payable']->id, 0, $gstAmount, 'GST Payable');
             }
         } else {
@@ -489,7 +501,7 @@ class TransactionPostingService
             }
             $lines[] = $funding;
             $lines[] = $this->line($counterAccount->id, $amountNet, 0, 'Expense/Asset');
-            if ($gstAmount > 0 && $accounts['gst_receivable']) {
+            if ($gstAmount > 0) {
                 $lines[] = $this->line($accounts['gst_receivable']->id, $gstAmount, 0, 'GST Receivable');
             }
         }
@@ -531,9 +543,6 @@ class TransactionPostingService
 
             if ($this->isDirectorLoanTransactionType($type)) {
                 $directorLoan = $accounts['director_loan'];
-                if (! $directorLoan) {
-                    return [];
-                }
                 if (in_array($type, $incomeTypes, true)) {
                     $lines[] = $this->line($directorLoan->id, 0, $amountNet, 'Director / entity loan: '.$label);
                 } else {
@@ -560,12 +569,12 @@ class TransactionPostingService
 
             if (in_array($type, $incomeTypes, true)) {
                 $lines[] = $this->line($counterAccount->id, 0, $amountNet, 'Income: '.$label);
-                if ($gstAmount > 0 && $accounts['gst_payable']) {
+                if ($gstAmount > 0) {
                     $lines[] = $this->line($accounts['gst_payable']->id, 0, $gstAmount, 'GST Payable');
                 }
             } else {
                 $lines[] = $this->line($counterAccount->id, $amountNet, 0, 'Expense: '.$label);
-                if ($gstAmount > 0 && $accounts['gst_receivable']) {
+                if ($gstAmount > 0) {
                     $lines[] = $this->line($accounts['gst_receivable']->id, $gstAmount, 0, 'GST Receivable');
                 }
             }
@@ -577,16 +586,12 @@ class TransactionPostingService
     /**
      * Director / entity loan movements: cash (or AR for cross-entity) ↔ account 2500.
      *
-     * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ?ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}  $accounts
+     * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ChartOfAccount, gst_payable: ChartOfAccount, gst_receivable: ChartOfAccount}  $accounts
      * @return list<array{account_id: int, debit: float, credit: float, description: ?string}>
      */
     private function buildDirectorLoanBookingLines(Transaction $transaction, array $accounts, float $amountGross): array
     {
         $directorLoan = $accounts['director_loan'];
-        if (! $directorLoan) {
-            return [];
-        }
-
         $receivable = $this->ensureAccountsReceivable();
         $payerEntityId = $this->payerEntityIdFromPaidBy($transaction);
         $useIntercompany = $payerEntityId !== null;
@@ -594,25 +599,20 @@ class TransactionPostingService
         $isIncome = in_array($transaction->transaction_type, $incomeTypes, true);
         $lines = [];
 
+        // Funded outside the company bank (director funds / cash / no bank chosen): both legs are
+        // 2500, so the entry is recorded without moving cash and nets to nil on the loan account.
+        [$fundingAccount, $fundingLabel] = match (true) {
+            $useIntercompany => [$receivable, 'Receivable from related entity'],
+            $this->shouldFundOperatingSideViaDirectorLoan($transaction) => [$directorLoan, 'Director funds (no bank movement)'],
+            default => [$accounts['cash'], $isIncome ? 'Cash received' : 'Cash paid'],
+        };
+
         if ($isIncome) {
-            if ($useIntercompany) {
-                $lines[] = $this->line($receivable->id, $amountGross, 0, 'Receivable from related entity');
-            } elseif ($accounts['cash']) {
-                $lines[] = $this->line($accounts['cash']->id, $amountGross, 0, 'Cash received');
-            } else {
-                return [];
-            }
+            $lines[] = $this->line($fundingAccount->id, $amountGross, 0, $fundingLabel);
             $lines[] = $this->line($directorLoan->id, 0, $amountGross, 'Director / entity loan');
         } else {
-            if ($useIntercompany) {
-                $lines[] = $this->line($directorLoan->id, $amountGross, 0, 'Director / entity loan');
-                $lines[] = $this->line($receivable->id, 0, $amountGross, 'Receivable from related entity');
-            } elseif ($accounts['cash']) {
-                $lines[] = $this->line($directorLoan->id, $amountGross, 0, 'Director / entity loan');
-                $lines[] = $this->line($accounts['cash']->id, 0, $amountGross, 'Cash paid');
-            } else {
-                return [];
-            }
+            $lines[] = $this->line($directorLoan->id, $amountGross, 0, 'Director / entity loan');
+            $lines[] = $this->line($fundingAccount->id, 0, $amountGross, $fundingLabel);
         }
 
         return $lines;
@@ -648,20 +648,16 @@ class TransactionPostingService
     }
 
     /**
-     * @return array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ?ChartOfAccount, gst_payable: ?ChartOfAccount, gst_receivable: ?ChartOfAccount}
+     * @return array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ChartOfAccount, gst_payable: ChartOfAccount, gst_receivable: ChartOfAccount}
      */
     private function resolveGlAccounts(): array
     {
         return [
             'cash' => $this->ensureCashAccount(),
             'director_loan' => $this->ensureDirectorLoanAccount(),
-            'long_term_loans' => $this->findLongTermLoansAccount(),
-            'gst_payable' => $this->findByName('GST Payable')
-                ?? $this->findByName('GST Clearing')
-                ?? $this->findAccount('2100')
-                ?? $this->findAccount('2200'),
-            'gst_receivable' => $this->findByName('GST Receivable')
-                ?? $this->findAccount((string) config('financial.report_accounts.gst_receivable', '1140')),
+            'long_term_loans' => $this->ensureLongTermLoansAccount(),
+            'gst_payable' => $this->ensureGstPayableAccount(),
+            'gst_receivable' => $this->ensureGstReceivableAccount(),
         ];
     }
 
@@ -680,10 +676,28 @@ class TransactionPostingService
         return $this->findAccount('2500');
     }
 
-    private function findLongTermLoansAccount(): ?ChartOfAccount
+    /**
+     * Long-term borrowings (4000). Created when absent so capitalised loan charges and
+     * offset↔loan transfers always post instead of silently writing no journal.
+     */
+    private function ensureLongTermLoansAccount(): ChartOfAccount
     {
+        $code = (string) config('financial.report_accounts.long_term_loans', '4000');
+
         return $this->findByName('Long Term Loans')
-            ?? $this->findAccount((string) config('financial.report_accounts.long_term_loans', '4000'));
+            ?? $this->findAccount($code)
+            ?? ChartOfAccount::firstOrCreate(
+                ['account_code' => $code],
+                [
+                    'account_name' => 'Long Term Loans',
+                    'account_type' => 'liability',
+                    'account_category' => 'long_term_liability',
+                    'is_active' => true,
+                    'description' => 'Mortgage and other long-term borrowings',
+                    'opening_balance' => 0,
+                    'current_balance' => 0,
+                ]
+            );
     }
 
     private function findAccount(string $code): ?ChartOfAccount
@@ -733,6 +747,53 @@ class TransactionPostingService
             );
     }
 
+    /**
+     * GST collected on sales (2100). Created when absent so a GST amount is never dropped
+     * from an income journal, which would leave debits and credits out of balance.
+     */
+    private function ensureGstPayableAccount(): ChartOfAccount
+    {
+        return $this->findByName('GST Payable')
+            ?? $this->findByName('GST Clearing')
+            ?? $this->findAccount('2100')
+            ?? ChartOfAccount::firstOrCreate(
+                ['account_code' => '2100'],
+                [
+                    'account_name' => 'GST Clearing',
+                    'account_type' => 'liability',
+                    'account_category' => 'current_liability',
+                    'is_active' => true,
+                    'description' => 'Net GST payable or refundable — cleared each BAS period',
+                    'opening_balance' => 0,
+                    'current_balance' => 0,
+                ]
+            );
+    }
+
+    /**
+     * GST credits on purchases (1140). Created when absent for the same balancing reason
+     * as ensureGstPayableAccount().
+     */
+    private function ensureGstReceivableAccount(): ChartOfAccount
+    {
+        $code = (string) config('financial.report_accounts.gst_receivable', '1140');
+
+        return $this->findByName('GST Receivable')
+            ?? $this->findAccount($code)
+            ?? ChartOfAccount::firstOrCreate(
+                ['account_code' => $code],
+                [
+                    'account_name' => 'GST Receivable',
+                    'account_type' => 'asset',
+                    'account_category' => 'current_asset',
+                    'is_active' => true,
+                    'description' => 'GST credits on purchases awaiting BAS refund or offset',
+                    'opening_balance' => 0,
+                    'current_balance' => 0,
+                ]
+            );
+    }
+
     private function ensureAccountsReceivable(): ChartOfAccount
     {
         return ChartOfAccount::firstOrCreate(
@@ -765,7 +826,7 @@ class TransactionPostingService
             'asset_sales' => $this->findByName('Asset Sales') ?? $this->findAccount('4900'),
             'grants_subsidies' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
             'sales_to_related_party' => $this->findByName('Other Income') ?? $this->findAccount('4900'),
-            'loan_drawdown' => $this->findLongTermLoansAccount(),
+            'loan_drawdown' => $this->ensureLongTermLoansAccount(),
             'equity_contribution' => $this->findByName('Share Capital / Contributed Equity') ?? $this->findAccount('3200'),
             'directors_loans_to_company' => $this->ensureDirectorLoanAccount(),
             'director_loan_in' => $this->ensureDirectorLoanAccount(),
@@ -785,6 +846,10 @@ class TransactionPostingService
             'superannuation' => $this->findByName('Superannuation') ?? $this->findAccount('5180'),
             'payg_payment' => $this->findByName('PAYG Payable') ?? $this->findAccount('2120'),
             'bas_payments' => $this->findByName('GST Clearing') ?? $this->findAccount('2100'),
+            'asic_payment' => $this->findByName('ASIC Fees')
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findByName('Other Expense')
+                ?? $this->findAccount('5900'),
             'other_expenses' => $this->findByName('Other Expenses') ?? $this->findByName('Other Expense') ?? $this->findAccount('5900'),
             'asset_purchase' => $this->findByName('Property & Assets (Capital)') ?? $this->findByName('Property & Equipment') ?? $this->findAccount('1500'),
             'capital_expenditure' => $this->findByName('Property & Assets (Capital)') ?? $this->findAccount('1500'),
@@ -792,7 +857,7 @@ class TransactionPostingService
             'rent_utilities' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'marketing_advertising' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
             'travel_expenses' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
-            'loan_repayments' => $this->findLongTermLoansAccount(),
+            'loan_repayments' => $this->ensureLongTermLoansAccount(),
             'loan_interest' => $this->findByName('Interest Expense')
                 ?? $this->findAccount((string) config('financial.report_accounts.interest_expense', '7500'))
                 ?? $this->findByName('Other Expenses')

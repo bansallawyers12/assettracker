@@ -43,7 +43,7 @@ return new class extends Migration
     {
         if (DB::table('mail_messages')->whereNull('user_id')->exists()
             || DB::table('mail_labels')->whereNull('user_id')->exists()) {
-            throw new \RuntimeException(
+            throw new RuntimeException(
                 'Cannot rollback mail user_id nullability while mail_messages.user_id or mail_labels.user_id contain NULL values.'
             );
         }
@@ -73,17 +73,7 @@ return new class extends Migration
 
     private function hasUserForeignKey(string $table): bool
     {
-        return collect(DB::select(
-            "SELECT 1
-             FROM information_schema.table_constraints tc
-             JOIN information_schema.key_column_usage kcu
-               ON tc.constraint_name = kcu.constraint_name
-              AND tc.table_schema = kcu.table_schema
-             WHERE tc.constraint_type = 'FOREIGN KEY'
-               AND tc.table_schema = current_schema()
-               AND tc.table_name = ?
-               AND kcu.column_name = 'user_id'",
-            [$table]
-        ))->isNotEmpty();
+        return collect(Schema::getForeignKeys($table))
+            ->contains(fn (array $foreignKey) => in_array('user_id', $foreignKey['columns'], true));
     }
 };

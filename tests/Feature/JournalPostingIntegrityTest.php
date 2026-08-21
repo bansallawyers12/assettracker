@@ -1,0 +1,282 @@
+<?php
+
+use App\Models\BankAccount;
+use App\Models\BusinessEntity;
+use App\Models\ChartOfAccount;
+use App\Models\JournalEntry;
+use App\Models\JournalLine;
+use App\Models\Transaction;
+use App\Services\FinancialReportService;
+use App\Services\TransactionPostingService;
+use Database\Seeders\ChartOfAccountSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+uses(TestCase::class, RefreshDatabase::class);
+
+function ledgerEntity(string $legalName = 'Ledger Test Pty Ltd'): BusinessEntity
+{
+    return BusinessEntity::create([
+        'legal_name' => $legalName,
+        'entity_type' => 'Company',
+        'status' => 'Active',
+        'registered_address' => '1 Test Street',
+        'registered_email' => 'ledger@example.test',
+        'phone_number' => '0400000000',
+    ]);
+}
+
+function ledgerBankAccount(BusinessEntity $entity, string $purpose = BankAccount::PURPOSE_GENERAL): BankAccount
+{
+    return BankAccount::create([
+        'business_entity_id' => $entity->id,
+        'bank_name' => 'Test Bank',
+        'bsb' => '123456',
+        'account_number' => '12345678',
+        'account_name' => 'Test '.$purpose,
+        'account_purpose' => $purpose,
+    ]);
+}
+
+/**
+ * Posted journal lines for a transaction, totalled per account code => [debit, credit].
+ *
+ * @return array<string, array{0: float, 1: float}>
+ */
+function ledgerLines(Transaction $transaction): array
+{
+    $entryIds = JournalEntry::query()
+        ->where('source_type', Transaction::class)
+        ->where('source_id', $transaction->id)
+        ->pluck('id');
+
+    return JournalLine::query()
+        ->whereIn('journal_entry_id', $entryIds)
+        ->with('chartOfAccount')
+        ->get()
+        ->groupBy(fn (JournalLine $line) => (string) $line->chartOfAccount->account_code)
+        ->map(fn ($lines) => [
+            round((float) $lines->sum(fn (JournalLine $line) => (float) $line->debit_amount), 2),
+            round((float) $lines->sum(fn (JournalLine $line) => (float) $line->credit_amount), 2),
+        ])
+        ->all();
+}
+
+it('maps every postable transaction type to a counter GL account', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $service = app(TransactionPostingService::class);
+    $method = (new ReflectionClass($service))->getMethod('counterAccountMapping');
+    $method->setAccessible(true);
+    $mapping = $method->invoke($service);
+
+    // Internal transfers post from bank purposes, not the type => account map.
+    $postableTypes = array_values(array_diff(
+        array_keys(Transaction::allTypes()),
+        array_keys(Transaction::$transferTypes)
+    ));
+
+    $unmapped = array_values(array_filter(
+        $postableTypes,
+        fn (string $type) => ! isset($mapping[$type])
+    ));
+
+    expect($unmapped)->toBe([]);
+});
+
+it('posts a paid ASIC payment as an expense against bank cash', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $bank = ledgerBankAccount($entity);
+
+    $transaction = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $bank->id,
+        'date' => '2026-08-10',
+        'paid_at' => '2026-08-10',
+        'amount' => 63,
+        'description' => 'ASIC annual review fee',
+        'transaction_type' => 'asic_payment',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    expect(ledgerLines($transaction))->toEqual([
+        '1100' => [0.0, 63.0],
+        '5900' => [63.0, 0.0],
+    ]);
+});
+
+it('creates the GST account when it is missing so a GST expense still balances', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    ChartOfAccount::where('account_code', '1140')->delete();
+
+    $entity = ledgerEntity();
+    $bank = ledgerBankAccount($entity);
+
+    $transaction = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $bank->id,
+        'date' => '2026-08-10',
+        'paid_at' => '2026-08-10',
+        'amount' => 220,
+        'gst_amount' => 20,
+        'gst_basis' => 'inclusive',
+        'description' => 'Water rates',
+        'transaction_type' => 'water_service_expenses',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    $entry = JournalEntry::where('source_id', $transaction->id)->sole();
+
+    expect(ledgerLines($transaction))->toEqual([
+        '1100' => [0.0, 220.0],
+        '5100' => [200.0, 0.0],
+        '1140' => [20.0, 0.0],
+    ])->and((float) $entry->total_debit)->toBe((float) $entry->total_credit);
+});
+
+it('creates the long term loans account when it is missing so an offset to loan transfer still posts', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    ChartOfAccount::where('account_code', '4000')->delete();
+
+    $entity = ledgerEntity();
+    $offset = ledgerBankAccount($entity, BankAccount::PURPOSE_OFFSET);
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+
+    $transaction = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $offset->id,
+        'counterpart_bank_account_id' => $loan->id,
+        'date' => '2026-08-10',
+        'paid_at' => '2026-08-10',
+        'amount' => 500,
+        'description' => 'Offset to loan',
+        'transaction_type' => Transaction::TYPE_INTERNAL_TRANSFER,
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    expect(ledgerLines($transaction))->toEqual([
+        '4000' => [500.0, 0.0],
+        '1100' => [0.0, 500.0],
+    ]);
+});
+
+it('keeps bank cash out of a director loan funded outside the bank', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+
+    $offBank = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => null,
+        'date' => '2026-08-10',
+        'paid_at' => '2026-08-10',
+        'amount' => 5000,
+        'description' => 'Director lent funds outside the bank',
+        'transaction_type' => 'director_loan_in',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+    ]);
+
+    $bank = ledgerBankAccount($entity);
+    $intoBank = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $bank->id,
+        'date' => '2026-08-11',
+        'paid_at' => '2026-08-11',
+        'amount' => 5000,
+        'description' => 'Director lent funds into the bank',
+        'transaction_type' => 'director_loan_in',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    // Both legs on 2500: recorded, but no cash movement and nil net on the loan account.
+    expect(ledgerLines($offBank))->toEqual(['2500' => [5000.0, 5000.0]])
+        ->and(ledgerLines($intoBank))->toEqual([
+            '1100' => [5000.0, 0.0],
+            '2500' => [0.0, 5000.0],
+        ]);
+});
+
+it('refuses to persist an unbalanced journal and leaves no partial entry', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $transaction = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'date' => '2026-08-10',
+        'amount' => 100,
+        'transaction_type' => 'other_expenses',
+        'payment_status' => 'unpaid',
+    ]);
+
+    $service = app(TransactionPostingService::class);
+    $method = (new ReflectionClass($service))->getMethod('persistJournalEntry');
+    $method->setAccessible(true);
+
+    $entry = new JournalEntry;
+    $entry->business_entity_id = $entity->id;
+    $entry->entry_date = '2026-08-10';
+    $entry->reference_number = 'TXN-UNBALANCED';
+    $entry->description = 'Deliberately unbalanced';
+    $entry->is_posted = true;
+
+    $lines = [
+        ['account_id' => ChartOfAccount::where('account_code', '5900')->value('id'), 'debit' => 100.0, 'credit' => 0.0, 'description' => 'Expense'],
+        ['account_id' => ChartOfAccount::where('account_code', '1100')->value('id'), 'debit' => 0.0, 'credit' => 90.0, 'description' => 'Short cash'],
+    ];
+
+    expect($method->invoke($service, $entry, $lines, $transaction))->toBeFalse()
+        ->and(JournalEntry::count())->toBe(0)
+        ->and(JournalLine::count())->toBe(0);
+});
+
+it('reports posted income and director funded expenses on the profit and loss and keeps the balance sheet balanced', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $bank = ledgerBankAccount($entity);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $bank->id,
+        'date' => '2026-08-01',
+        'paid_at' => '2026-08-01',
+        'amount' => 1100,
+        'gst_amount' => 100,
+        'gst_basis' => 'inclusive',
+        'description' => 'Rent received',
+        'transaction_type' => 'rental_income',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => null,
+        'date' => '2026-08-05',
+        'paid_at' => '2026-08-05',
+        'amount' => 220,
+        'gst_amount' => 20,
+        'gst_basis' => 'inclusive',
+        'description' => 'Water rates paid by director',
+        'transaction_type' => 'water_service_expenses',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+    ]);
+
+    $reports = app(FinancialReportService::class);
+    $profitLoss = $reports->generateProfitLoss($entity->id, '2026-07-01', '2027-06-30');
+    $balanceSheet = $reports->generateBalanceSheet($entity->id, '2027-06-30');
+
+    expect(round(-$profitLoss['income']['total'], 2))->toBe(1000.0)
+        ->and(round($profitLoss['expenses']['total'], 2))->toBe(200.0)
+        ->and(round($profitLoss['net_profit'], 2))->toBe(800.0)
+        ->and(round($balanceSheet['total_assets'], 2))->toBe(1120.0)
+        ->and(round($balanceSheet['total_liabilities_equity'], 2))->toBe(1120.0);
+});

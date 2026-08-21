@@ -21,14 +21,15 @@ it('maps director loan transaction types to GL posting in TransactionPostingServ
 it('resolves GST receivable from dedicated asset account config', function () {
     $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
 
-    expect($source)->toContain("'gst_receivable' => \$this->findByName('GST Receivable')")
+    expect($source)->toContain("'gst_receivable' => \$this->ensureGstReceivableAccount()")
+        ->and($source)->toContain("\$this->findByName('GST Receivable')")
         ->and($source)->toContain("config('financial.report_accounts.gst_receivable'");
 });
 
 it('maps loan repayments to long term loans account config', function () {
     $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
 
-    expect($source)->toContain("'loan_repayments' => \$this->findLongTermLoansAccount()")
+    expect($source)->toContain("'loan_repayments' => \$this->ensureLongTermLoansAccount()")
         ->and($source)->toContain("config('financial.report_accounts.long_term_loans'");
 });
 

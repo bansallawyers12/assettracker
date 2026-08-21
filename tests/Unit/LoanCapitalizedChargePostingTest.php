@@ -120,7 +120,7 @@ it('documents capitalised loan charge posting in TransactionPostingService', fun
 
     expect($source)->toContain('isCapitalizedLoanCharge')
         ->and($source)->toContain('Capitalised to loan')
-        ->and($source)->toContain('findLongTermLoansAccount')
+        ->and($source)->toContain('ensureLongTermLoansAccount')
         ->and($source)->toContain("'long_term_loans'")
         ->and($source)->toContain('isLoanLedgerRepayment')
         ->and($source)->toContain('buildLoanOffsetTransferLines')

@@ -1229,21 +1229,12 @@ class FinancialReportService
     }
 
     /**
-     * Cash scale for synthetic director-loan lines — must match TransactionPostingService::cashNetAndGst()['cash'].
+     * Cash scale for synthetic director-loan lines — must match the cash amount
+     * TransactionPostingService funds the journal with (`Transaction::cashParts()`).
      */
     private function transactionGrossAmount(Transaction $transaction): float
     {
-        $amt = (float) $transaction->amount;
-        $gst = max(0.0, (float) ($transaction->gst_amount ?? 0));
-        if ($gst < 0.000001) {
-            return round($amt, 2);
-        }
-
-        if ($transaction->gst_basis === 'exclusive') {
-            return round($amt + $gst, 2);
-        }
-
-        return round($amt, 2);
+        return $transaction->cashParts()['cash'];
     }
 
     private function transactionEffectivePaymentAt(Transaction $transaction): Carbon
