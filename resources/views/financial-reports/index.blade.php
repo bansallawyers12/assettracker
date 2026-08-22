@@ -147,7 +147,7 @@
             <div class="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-indigo-200/40 blur-3xl dark:bg-indigo-800/20" aria-hidden="true"></div>
             <div class="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-blue-200/30 blur-3xl dark:bg-blue-900/20" aria-hidden="true"></div>
 
-            <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+            <div class="relative w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
                 <div class="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
                     <div class="max-w-2xl">
                         <p class="reports-hub-kicker">Reporting</p>
@@ -173,7 +173,7 @@
             </div>
         </div>
 
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8 py-8 space-y-8">
             @if (session('error'))
                 <div class="rounded-xl border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-800 dark:text-red-200 flex items-start gap-3" role="alert">
                     <x-lucide-circle-alert class="h-5 w-5 shrink-0 mt-0.5" />

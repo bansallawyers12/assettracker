@@ -4,7 +4,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 shadow-xs sm:rounded-lg p-6">
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Entity: <span class="font-medium text-gray-800 dark:text-gray-200">{{ $businessEntity->legal_name }}</span></p>
 

@@ -243,3 +243,50 @@ it('points reports hub card to journal index', function () {
 
     expect($index)->toContain("'route' => 'financial-reports.journal-entries.index'");
 });
+
+it('limits the hub create entity picker to the selected report scope', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity('Alpha Journal Pty Ltd');
+    $otherEntity = manualJournalEntity('Zulu Out Of Scope Pty Ltd');
+
+    $html = $this->actingAs($user)
+        ->get(route('financial-reports.journal-entries.create', [
+            'scope' => 'selected',
+            'entity_ids' => [$entity->id],
+        ]))
+        ->assertSuccessful()
+        ->getContent();
+
+    $start = strpos($html, 'name="prefill_entity_id"');
+    $end = strpos($html, '</select>', $start);
+    expect($start)->not->toBeFalse()
+        ->and($end)->not->toBeFalse();
+
+    $select = substr($html, $start, $end - $start);
+
+    expect($select)->toContain($entity->legal_name)
+        ->and($select)->not->toContain($otherEntity->legal_name);
+});
+
+it('scopes hub journal detail account transactions to that journal entity', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-DETAIL001');
+
+    $accountTransactionsUrl = route('financial-reports.account-transactions', [
+        'scope' => 'selected',
+        'entity_ids' => [$entity->id],
+        'start_date' => '2026-08-15',
+        'end_date' => '2026-08-15',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('financial-reports.journal-entries.show', [
+            'journalEntry' => $entry,
+            'scope' => 'all',
+        ]))
+        ->assertSuccessful()
+        ->assertSee(e($accountTransactionsUrl), false);
+});

@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="w-full px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
                 <h1 class="text-xl font-semibold text-gray-900 dark:text-white">Future commitments</h1>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Signed contracts for property, cars, and other purchases not yet settled.</p>
@@ -23,7 +23,7 @@
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
         @if (session('success'))
             <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
         @endif

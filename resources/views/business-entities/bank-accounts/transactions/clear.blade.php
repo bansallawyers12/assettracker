@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-12 bg-gray-100 dark:bg-gray-900 min-h-screen">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 border-t-4 border-red-500">
                 <h3 class="text-lg font-semibold text-red-700 dark:text-red-400">Danger zone</h3>
                 <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">

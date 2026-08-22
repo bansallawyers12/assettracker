@@ -14,7 +14,7 @@
         data-roles-url="{{ route('persons.workspace.roles', $person) }}"
         data-entity-picker-url="{{ route('persons.roles.form.create', $person) }}"
     >
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div id="person-workspace-alerts"></div>
 
             <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-xs sm:rounded-lg">

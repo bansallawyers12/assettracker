@@ -20,19 +20,26 @@
             $merge
         );
     };
+    $listQuery = function (array $merge = []) use ($report, $startDate, $endDate, $typeFilter, $reportQuery) {
+        return $reportQuery(array_merge([
+            'start_date' => $startDate->toDateString(),
+            'end_date' => $endDate->toDateString(),
+            'type' => $typeFilter,
+        ], $merge));
+    };
     $createUrl = $entityScoped
         ? $routes['create']
         : $routes['create'].'?'.http_build_query($reportQuery());
-    $showEntry = function ($entry) use ($entityScoped, $reportQuery, $routes) {
+    $showEntry = function ($entry) use ($entityScoped, $listQuery, $routes) {
         if ($entityScoped) {
-            return route($routes['show'], [
+            return route($routes['show'], array_merge([
                 'businessEntity' => $routes['entity'],
                 'journalEntry' => $entry,
-            ]);
+            ], $listQuery()));
         }
 
         return route('financial-reports.journal-entries.show', array_merge(
-            $reportQuery(),
+            $listQuery(),
             ['journalEntry' => $entry]
         ));
     };

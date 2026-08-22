@@ -50,7 +50,7 @@ class ManualJournalRegister
             ->count();
 
         $entriesQuery = (clone $baseQuery)
-            ->with(['businessEntity', 'journalLines.chartOfAccount'])
+            ->with(['businessEntity'])
             ->withCount('journalLines')
             ->orderByDesc('entry_date')
             ->orderByDesc('id');

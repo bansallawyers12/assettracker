@@ -59,6 +59,8 @@ class AppServiceProvider extends ServiceProvider
             'financial-reports.cash-flow',
             'financial-reports.account-transactions',
             'financial-reports.tracking-categories',
+            'financial-reports.journal-entries-index',
+            'financial-reports.journal-entry-show',
         ];
 
         View::composer($glReportViews, function ($view) {

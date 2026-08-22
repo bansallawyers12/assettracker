@@ -17,7 +17,7 @@
         </div>
     </x-slot>
 
-    <div class="py-8 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="py-8 w-full px-4 sm:px-6 lg:px-8">
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800">
 
             {{-- Header bar --}}

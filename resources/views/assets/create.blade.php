@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="entity-form-page py-8 lg:py-10">
-        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="mb-8">
                 <a href="{{ route('business-entities.show', $businessEntity->id) }}#tab_assets"
                    class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">

@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-8 bg-gray-50 dark:bg-gray-800 min-h-screen">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg p-6">
                 @include('assets.partials.leases.form')
             </div>

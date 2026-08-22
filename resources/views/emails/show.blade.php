@@ -6,7 +6,7 @@
     </x-slot>
 
     <div class="py-8 bg-gray-100 dark:bg-gray-900 min-h-screen">
-        <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 border border-blue-200 dark:border-blue-700">
                 <div class="flex justify-between items-start mb-4">
                     <div class="space-y-2">

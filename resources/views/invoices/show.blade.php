@@ -29,7 +29,7 @@
         </div>
     </x-slot>
 
-    <div class="py-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="py-8 w-full px-4 sm:px-6 lg:px-8">
         @if (session('success'))
             <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200">{{ session('success') }}</div>
         @endif

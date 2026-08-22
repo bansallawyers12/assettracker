@@ -4,7 +4,7 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 shadow-xs sm:rounded-lg p-6">
                 <form method="POST" action="{{ route('business-entities.commitments.update', [$businessEntity, $commitment]) }}" class="space-y-5">
                     @csrf

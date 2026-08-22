@@ -1,5 +1,5 @@
 <x-app-layout>
-<div class="container mx-auto px-4 py-8">
+<div class="w-full px-4 sm:px-6 lg:px-8 py-8">
     <div class="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center mb-6">
         <div>
             <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Tracking Categories</h1>

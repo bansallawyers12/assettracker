@@ -5,7 +5,7 @@
         data-create-form-url="{{ route('persons.form.create') }}"
         data-current-page="{{ $persons->currentPage() }}"
     >
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Persons</h1>

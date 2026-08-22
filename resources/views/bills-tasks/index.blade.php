@@ -16,7 +16,7 @@
 
 <x-app-layout>
     <div class="py-6 lg:py-8 bg-linear-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 min-h-screen">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
             @if (session('success'))
                 <div class="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-800 dark:text-emerald-200 text-sm border border-emerald-200 dark:border-emerald-800">{{ session('success') }}</div>
             @endif

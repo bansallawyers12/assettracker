@@ -92,7 +92,7 @@
 
 <x-app-layout :skip-workspace-panels="true">
     <div class="entity-summary-page min-h-screen bg-linear-to-br from-gray-50 via-white to-amber-50/40 dark:from-gray-950 dark:via-gray-900 dark:to-amber-950/20 py-6 lg:py-8 print:bg-white print:py-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
 
             {{-- Hero --}}
             <div class="relative overflow-hidden rounded-2xl bg-linear-to-r from-amber-600 via-orange-600 to-rose-700 p-6 lg:p-8 text-white shadow-xl print:hidden">

@@ -1,6 +1,6 @@
 <x-app-layout>
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-2xl mx-auto">
+<div class="w-full px-4 sm:px-6 lg:px-8 py-8">
+    <div class="w-full">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2">Add Vendor</h1>
         <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">
             Create a vendor to use when recording expenses and bills.

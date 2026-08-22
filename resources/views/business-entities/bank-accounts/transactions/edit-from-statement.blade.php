@@ -35,7 +35,7 @@
     @endphp
 
     <div class="py-12 bg-gray-100 dark:bg-gray-900 min-h-screen">
-        <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 border-t-4 border-amber-300 dark:border-amber-600" data-statement-transaction-edit>
                 @if ($errors->any())
                     <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200" role="alert">

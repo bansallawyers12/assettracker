@@ -33,7 +33,7 @@
     </x-slot>
 
     <div class="entity-show-page py-6 bg-gray-50 dark:bg-gray-800 min-h-screen" data-profile-form-url="{{ route('entities.profile.form', $businessEntity) }}">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             @if (session('success'))
                 <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200" role="alert">
                     {{ session('success') }}
@@ -512,7 +512,7 @@
                     </div> {{-- End of right content card --}}
                 </div> {{-- End of right content column --}}
             </div> {{-- End of main flex container --}}
-        </div> {{-- End of max-w-7xl container --}}
+        </div> {{-- End of page container --}}
     </div> {{-- End of py-8 background div --}}
 
     @include('bank-accounts.partials.add-account-modal', [

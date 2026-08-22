@@ -8,7 +8,7 @@
 
 <x-app-layout>
     <div class="profile-page py-8 lg:py-10">
-        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="mb-8">
                 <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ __('Account settings') }}</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">

@@ -1,13 +1,13 @@
 {{-- CI/CD auto-trigger test --}}
 <x-app-layout>
     <div class="min-h-[calc(100vh-4rem)] bg-linear-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center p-6">
-        <div class="max-w-4xl w-full">
+        <div class="w-full">
             <div class="text-center mb-10">
                 <div class="flex items-center justify-center gap-3 mb-6">
                     <x-application-logo class="w-14 h-14 fill-current text-blue-600 dark:text-blue-400" />
                     <h1 class="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white tracking-tight">{{ config('app.name') }}</h1>
                 </div>
-                <p class="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+                <p class="text-lg text-gray-600 dark:text-gray-400 w-full">
                     Manage your business entities, assets, persons, and financial transactions &mdash; all in one place.
                 </p>
             </div>

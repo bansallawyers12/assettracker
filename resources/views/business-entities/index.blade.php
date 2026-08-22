@@ -18,7 +18,7 @@
     </x-slot>
 
     <div class="py-8 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             @if (session('success'))
                 <div class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200" role="alert">
                     {{ session('success') }}

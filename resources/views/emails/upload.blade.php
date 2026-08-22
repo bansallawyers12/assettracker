@@ -16,7 +16,7 @@
     </x-slot>
 
     <div class="py-8 bg-gray-100 dark:bg-gray-900 min-h-screen">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
             @if (session('status'))
                 <div class="bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-lg border border-blue-200 dark:border-blue-700">{{ session('status') }}</div>
             @endif

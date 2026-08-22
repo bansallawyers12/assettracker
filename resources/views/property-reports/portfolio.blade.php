@@ -29,7 +29,7 @@
 
 <x-app-layout>
     <div class="portfolio-page py-6 lg:py-8 bg-linear-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 min-h-screen">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
 
             {{-- Hero --}}
             <div class="relative overflow-hidden rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-700 p-6 lg:p-8 text-white shadow-xl">

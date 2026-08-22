@@ -2,29 +2,30 @@
     use App\Support\ReportScopeQuery;
 
     $entity = $report['business_entity'] ?? $entry->businessEntity;
-    $isConsolidated = $report['is_consolidated'] ?? false;
     $subtitle = $entry->entry_date->format('j M Y').' · '.$entry->reference_number;
-    $indexUrl = $routes['index'];
-    $createUrl = $routes['create'];
-    $reportQuery = function (array $merge = []) use ($report) {
-        return ReportScopeQuery::build(
-            $report['forms_scope'] ?? 'selected',
-            $report['forms_entity_ids'] ?? [(int) $entry->business_entity_id],
-            $merge
+    $listQuery = array_filter([
+        'start_date' => request('start_date'),
+        'end_date' => request('end_date'),
+        'type' => request('type'),
+    ], fn ($value) => $value !== null && $value !== '');
+    if (! $entityScoped) {
+        $listQuery = array_merge(
+            ReportScopeQuery::build(
+                $report['forms_scope'] ?? 'selected',
+                $report['forms_entity_ids'] ?? [(int) $entry->business_entity_id],
+            ),
+            $listQuery
         );
-    };
-    $accountTransactionsUrl = $entityScoped
-        ? route('business-entities.financial-reports.account-transactions', array_merge(
-            ['businessEntity' => $routes['entity'] ?? $entity],
-            $reportQuery([
-                'start_date' => $entry->entry_date->toDateString(),
-                'end_date' => $entry->entry_date->toDateString(),
-            ])
-        ))
-        : route('financial-reports.account-transactions', $reportQuery([
-            'start_date' => $entry->entry_date->toDateString(),
-            'end_date' => $entry->entry_date->toDateString(),
-        ]));
+    }
+    $indexUrl = $listQuery === []
+        ? $routes['index']
+        : $routes['index'].'?'.http_build_query($listQuery);
+    $accountTransactionsUrl = route('financial-reports.account-transactions', [
+        'scope' => 'selected',
+        'entity_ids' => [(int) $entry->business_entity_id],
+        'start_date' => $entry->entry_date->toDateString(),
+        'end_date' => $entry->entry_date->toDateString(),
+    ]);
 @endphp
 
 <x-report-shell

@@ -1,6 +1,6 @@
 <x-app-layout>
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-2xl mx-auto">
+<div class="w-full px-4 sm:px-6 lg:px-8 py-8">
+    <div class="w-full">
         <div class="mb-6">
             <h1 class="text-3xl font-bold text-gray-900">Edit Sub-category</h1>
             <p class="text-gray-600 mt-2">{{ $businessEntity->legal_name }} - {{ $trackingCategory->name }}</p>

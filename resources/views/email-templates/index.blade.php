@@ -5,7 +5,7 @@
         data-create-form-url="{{ route('email-templates.form.create') }}"
         data-current-page="{{ $templates->currentPage() }}"
     >
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
 
             {{-- Hero --}}
             <div class="relative overflow-hidden rounded-2xl bg-linear-to-r from-violet-600 via-purple-600 to-indigo-700 p-6 lg:p-8 text-white shadow-xl">

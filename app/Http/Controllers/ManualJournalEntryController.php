@@ -167,6 +167,7 @@ class ManualJournalEntryController extends Controller
                 ->with('error', 'No reporting entities are available.');
         }
 
+        $pickerEntityIds = $entityIds;
         $prefillEntityId = (int) $request->query('prefill_entity_id', 0);
         if ($prefillEntityId > 0 && in_array($prefillEntityId, $entityIds, true)) {
             $entityIds = [$prefillEntityId];
@@ -180,7 +181,7 @@ class ManualJournalEntryController extends Controller
 
         $this->authorize('update', $businessEntity);
 
-        return $this->renderCreateForm($businessEntity, false, $this->hubRoutes(), $request);
+        return $this->renderCreateForm($businessEntity, false, $this->hubRoutes(), $request, $pickerEntityIds);
     }
 
     public function storeForEntity(BusinessEntity $businessEntity, Request $request): RedirectResponse
@@ -357,12 +358,14 @@ class ManualJournalEntryController extends Controller
 
     /**
      * @param  array<string, mixed>  $routes
+     * @param  array<int>|null  $scopedEntityIds
      */
     private function renderCreateForm(
         BusinessEntity $businessEntity,
         bool $entityScoped,
         array $routes,
         ?Request $request = null,
+        ?array $scopedEntityIds = null,
     ): View {
         $accounts = ChartOfAccount::query()
             ->where('is_active', true)
@@ -370,6 +373,9 @@ class ManualJournalEntryController extends Controller
             ->get();
 
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+        $pickerEntities = $scopedEntityIds === null
+            ? $businessEntities
+            : $businessEntities->whereIn('id', $scopedEntityIds)->values();
 
         $trackingCategories = TrackingCategory::query()
             ->where('business_entity_id', $businessEntity->id)
@@ -386,7 +392,7 @@ class ManualJournalEntryController extends Controller
 
         return view('financial-reports.journal-entry-create', [
             'businessEntity' => $businessEntity,
-            'businessEntities' => $businessEntities,
+            'businessEntities' => $pickerEntities,
             'accounts' => $accounts,
             'trackingCategories' => $trackingCategories,
             'entryDate' => old('entry_date', now()->toDateString()),
@@ -411,7 +417,7 @@ class ManualJournalEntryController extends Controller
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function entityRoutes(BusinessEntity $businessEntity): array
     {

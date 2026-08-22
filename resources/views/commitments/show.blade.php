@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="bg-white border-b border-gray-200 dark:bg-gray-900 dark:border-gray-700">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div class="w-full px-4 sm:px-6 lg:px-8 py-4">
             <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
                 <div>
                     <p class="text-sm text-gray-500 dark:text-gray-400">{{ $businessEntity->legal_name }}</p>
@@ -19,7 +19,7 @@
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <div class="w-full px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         @if (session('success'))
             <div class="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">{{ session('success') }}</div>
         @endif

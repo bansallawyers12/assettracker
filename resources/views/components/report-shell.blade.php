@@ -5,15 +5,11 @@
     'entityScopeLabel' => null,
 ])
 
-@php
-    $containerClass = 'w-full px-4 sm:px-6 lg:px-8';
-@endphp
-
 <x-app-layout>
 
     {{-- ── Breadcrumb ──────────────────────────────────────────────── --}}
     <div class="bg-white border-b border-gray-200 print:hidden">
-        <div class="{{ $containerClass }} py-2">
+        <x-app-container class="py-2">
             <nav class="flex items-center gap-1.5 text-sm">
                 @if($entity)
                     <a href="{{ route('business-entities.show', $entity) }}"
@@ -30,27 +26,27 @@
                 <x-lucide-chevron-right class="h-3.5 w-3.5 text-gray-400 shrink-0" />
                 <span class="text-gray-600 truncate">{{ $title }}</span>
             </nav>
-        </div>
+        </x-app-container>
     </div>
 
     {{-- ── Page title ──────────────────────────────────────────────── --}}
     <div class="bg-white border-b border-gray-200">
-        <div class="{{ $containerClass }} py-4">
+        <x-app-container class="py-4">
             <h1 class="text-xl font-semibold text-gray-900">{{ $title }}</h1>
-        </div>
+        </x-app-container>
     </div>
 
     {{-- ── Filter toolbar ──────────────────────────────────────────── --}}
     @if(isset($filters) && $filters->isNotEmpty())
     <div class="bg-gray-50 border-b border-gray-200 print:hidden">
-        <div class="{{ $containerClass }} py-3">
+        <x-app-container class="py-3">
             {{ $filters }}
-        </div>
+        </x-app-container>
     </div>
     @endif
 
     {{-- ── Report body ─────────────────────────────────────────────── --}}
-    <div class="{{ $containerClass }} py-6 print:px-0 print:py-4">
+    <x-app-container class="py-6 print:px-0 print:py-4">
         <div class="bg-white shadow-xs rounded-lg border border-gray-200 print:shadow-none print:border-0">
 
             {{-- Report heading inside the white panel --}}
@@ -70,6 +66,6 @@
             {{ $slot }}
 
         </div>
-    </div>
+    </x-app-container>
 
 </x-app-layout>

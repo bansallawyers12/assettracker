@@ -16,7 +16,7 @@
     @endphp
 
     <div class="py-12 bg-gray-100 dark:bg-gray-900 min-h-screen">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 border-t-4 border-indigo-400 dark:border-indigo-600">
                 <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
                     Record capital and director-loan items not paid through a bank account

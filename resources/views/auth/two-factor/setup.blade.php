@@ -1,6 +1,6 @@
 <x-app-layout>
     <div class="two-factor-setup-page py-8 lg:py-10">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="mb-8">
                 <a href="{{ route('profile.edit') }}" class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
                     <x-lucide-arrow-left class="h-4 w-4" aria-hidden="true" />

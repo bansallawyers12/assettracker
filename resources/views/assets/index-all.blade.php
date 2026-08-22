@@ -17,7 +17,7 @@
     </x-slot>
 
     <div class="py-8 bg-blue-50 dark:bg-blue-900 min-h-screen">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full px-4 sm:px-6 lg:px-8">
             @if ($assets->isEmpty())
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 text-center">
                     <div class="mx-auto w-24 h-24 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
