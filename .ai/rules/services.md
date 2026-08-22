@@ -4,6 +4,7 @@ paths:
   - app/Services/BankStatementApplyService.php
   - 'app/Services/**'
   - 'app/Services/{FinancialReportService,BankAccountBalanceSnapshotService}.php'
+  - app/Services/ManualJournalEntryService.php
 ---
 
 # Services
@@ -41,3 +42,6 @@ The 1100 memo is scoped by bank_account.business_entity_id, not transaction.busi
 
 ## Supersedes the older Bank/Cash memo implementation note
 The earlier memo note saying it is transaction-entity scoped, hidden in comparisons, and expects cross-entity/GST differences is obsolete. Follow “Bank/Cash memo allocation follows bank ownership and journal cash amounts”; comparative and CSV output must include the allocation.
+
+## Edit in place; reverse and void offset
+Manual journals (source_type null) are edited in place on the same id. Reverse posts a new posted journal with flipped D/C, user-chosen date, and reverses_journal_entry_id pointing at the original — do not set source_type to JournalEntry or the offset drops out of the manual register. Void is a reverse on the original date plus voided_at on the original; both stay posted so the GL nets to zero. Do not delete. Cannot edit/reverse/void if already reversed or voided; cannot void a reversal (void the original). Opening-balance OPEN- references stay on edit.

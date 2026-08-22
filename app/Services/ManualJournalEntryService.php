@@ -19,9 +19,17 @@ class ManualJournalEntryService
         string $entryDate,
         string $description,
         array $lines,
-        ?string $referenceNumber = null
+        ?string $referenceNumber = null,
+        ?int $reversesJournalEntryId = null
     ): JournalEntry {
-        return DB::transaction(function () use ($businessEntity, $entryDate, $description, $lines, $referenceNumber) {
+        return DB::transaction(function () use (
+            $businessEntity,
+            $entryDate,
+            $description,
+            $lines,
+            $referenceNumber,
+            $reversesJournalEntryId
+        ) {
             $normalized = $this->normalizeLines($lines);
             $this->assertBalanced($normalized);
 
@@ -34,32 +42,74 @@ class ManualJournalEntryService
             $entry->created_by = $businessEntity->user_id ?? auth()->id();
             $entry->source_type = null;
             $entry->source_id = null;
-
-            $totalDebit = 0.0;
-            $totalCredit = 0.0;
-            foreach ($normalized as $line) {
-                $totalDebit += $line['debit'];
-                $totalCredit += $line['credit'];
-            }
-
-            $entry->total_debit = $totalDebit;
-            $entry->total_credit = $totalCredit;
+            $entry->reverses_journal_entry_id = $reversesJournalEntryId;
+            $this->fillTotals($entry, $normalized);
             $entry->save();
 
-            foreach ($normalized as $line) {
-                JournalLine::create([
-                    'journal_entry_id' => $entry->id,
-                    'chart_of_account_id' => $line['chart_of_account_id'],
-                    'debit_amount' => $line['debit'],
-                    'credit_amount' => $line['credit'],
-                    'description' => $line['description'] ?? null,
-                    'reference' => 'MAN:'.$entry->id,
-                    'tracking_category_id' => $line['tracking_category_id'] ?? null,
-                    'tracking_sub_category_id' => $line['tracking_sub_category_id'] ?? null,
-                ]);
-            }
+            $this->replaceLines($entry, $normalized);
 
             return $entry->load('journalLines');
+        });
+    }
+
+    /**
+     * @param  list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string, tracking_category_id?: ?int, tracking_sub_category_id?: ?int}>  $lines
+     */
+    public function update(
+        JournalEntry $entry,
+        string $entryDate,
+        string $description,
+        array $lines,
+        ?string $referenceNumber = null
+    ): JournalEntry {
+        return DB::transaction(function () use ($entry, $entryDate, $description, $lines, $referenceNumber) {
+            $entry->refresh();
+            $this->assertEditable($entry);
+
+            $normalized = $this->normalizeLines($lines);
+            $this->assertBalanced($normalized);
+
+            $entry->entry_date = $entryDate;
+            $entry->description = $description;
+            if (! $entry->isOpeningBalance() && $referenceNumber) {
+                $entry->reference_number = $referenceNumber;
+            }
+            $this->fillTotals($entry, $normalized);
+            $entry->save();
+
+            $this->replaceLines($entry, $normalized);
+
+            return $entry->load('journalLines');
+        });
+    }
+
+    public function reverse(JournalEntry $entry, string $entryDate): JournalEntry
+    {
+        return DB::transaction(function () use ($entry, $entryDate) {
+            $entry->refresh();
+            $this->assertReversible($entry);
+
+            return $this->postOffset($entry, $entryDate, 'Reversal of '.$entry->reference_number, 'REV-');
+        });
+    }
+
+    public function void(JournalEntry $entry): JournalEntry
+    {
+        return DB::transaction(function () use ($entry) {
+            $entry->refresh();
+            $this->assertVoidable($entry);
+
+            $offset = $this->postOffset(
+                $entry,
+                $entry->entry_date->toDateString(),
+                'Void of '.$entry->reference_number,
+                'VOID-'
+            );
+
+            $entry->voided_at = now();
+            $entry->save();
+
+            return $offset;
         });
     }
 
@@ -106,6 +156,130 @@ class ManualJournalEntryService
             $lines,
             $reference
         );
+    }
+
+    /**
+     * @param  list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string, tracking_category_id?: ?int, tracking_sub_category_id?: ?int}>  $normalized
+     */
+    private function fillTotals(JournalEntry $entry, array $normalized): void
+    {
+        $totalDebit = 0.0;
+        $totalCredit = 0.0;
+        foreach ($normalized as $line) {
+            $totalDebit += $line['debit'];
+            $totalCredit += $line['credit'];
+        }
+
+        $entry->total_debit = $totalDebit;
+        $entry->total_credit = $totalCredit;
+    }
+
+    /**
+     * @param  list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string, tracking_category_id?: ?int, tracking_sub_category_id?: ?int}>  $normalized
+     */
+    private function replaceLines(JournalEntry $entry, array $normalized): void
+    {
+        $entry->journalLines()->delete();
+
+        foreach ($normalized as $line) {
+            JournalLine::create([
+                'journal_entry_id' => $entry->id,
+                'chart_of_account_id' => $line['chart_of_account_id'],
+                'debit_amount' => $line['debit'],
+                'credit_amount' => $line['credit'],
+                'description' => $line['description'] ?? null,
+                'reference' => 'MAN:'.$entry->id,
+                'tracking_category_id' => $line['tracking_category_id'] ?? null,
+                'tracking_sub_category_id' => $line['tracking_sub_category_id'] ?? null,
+            ]);
+        }
+    }
+
+    private function postOffset(JournalEntry $entry, string $entryDate, string $description, string $prefix): JournalEntry
+    {
+        $entry->loadMissing(['journalLines', 'businessEntity']);
+
+        $lines = [];
+        foreach ($entry->journalLines as $line) {
+            $lines[] = [
+                'chart_of_account_id' => (int) $line->chart_of_account_id,
+                'debit' => (float) $line->credit_amount,
+                'credit' => (float) $line->debit_amount,
+                'description' => $line->description,
+                'tracking_category_id' => $line->tracking_category_id,
+                'tracking_sub_category_id' => $line->tracking_sub_category_id,
+            ];
+        }
+
+        $businessEntity = $entry->businessEntity;
+        if (! $businessEntity) {
+            throw new \DomainException('Journal is missing its entity.');
+        }
+
+        return $this->post(
+            $businessEntity,
+            $entryDate,
+            $description,
+            $lines,
+            $this->nextOffsetReference($prefix, (string) $entry->reference_number),
+            (int) $entry->id
+        );
+    }
+
+    private function assertUserPostedManual(JournalEntry $entry): void
+    {
+        if ($entry->source_type !== null || ! $entry->is_posted) {
+            throw new \DomainException('Only posted manual journals can be changed.');
+        }
+    }
+
+    private function assertEditable(JournalEntry $entry): void
+    {
+        $this->assertUserPostedManual($entry);
+
+        if ($entry->isVoided()) {
+            throw new \DomainException('Voided journals cannot be edited.');
+        }
+
+        if ($entry->reversedBy()->exists()) {
+            throw new \DomainException('This journal has been reversed or voided. Post a new journal instead of editing it.');
+        }
+    }
+
+    private function assertReversible(JournalEntry $entry): void
+    {
+        $this->assertUserPostedManual($entry);
+
+        if ($entry->isVoided()) {
+            throw new \DomainException('This journal is already voided.');
+        }
+
+        if ($entry->reversedBy()->exists()) {
+            throw new \DomainException('This journal already has a reversal.');
+        }
+    }
+
+    private function assertVoidable(JournalEntry $entry): void
+    {
+        $this->assertReversible($entry);
+
+        if ($entry->isReversal()) {
+            throw new \DomainException('Void the original journal instead of voiding a reversal.');
+        }
+    }
+
+    private function nextOffsetReference(string $prefix, string $originalReference): string
+    {
+        $base = Str::limit($prefix.$originalReference, 46, '');
+        $candidate = $base;
+        $suffix = 2;
+
+        while (JournalEntry::query()->where('reference_number', $candidate)->exists()) {
+            $candidate = Str::limit($base.'-'.$suffix, 50, '');
+            $suffix++;
+        }
+
+        return $candidate;
     }
 
     /**

@@ -290,3 +290,149 @@ it('scopes hub journal detail account transactions to that journal entity', func
         ->assertSuccessful()
         ->assertSee(e($accountTransactionsUrl), false);
 });
+
+it('updates a manual journal in place', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-EDIT001');
+    ['bank' => $bank, 'equity' => $equity] = manualJournalAccounts();
+
+    $this->actingAs($user)
+        ->put(route('business-entities.financial-reports.journal-entries.update', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]), [
+            'business_entity_id' => $entity->id,
+            'entry_date' => '2026-08-16',
+            'description' => 'Updated manual journal',
+            'reference_number' => 'MAN-EDIT001',
+            'lines' => [
+                ['chart_of_account_id' => $bank->id, 'debit' => 175, 'credit' => 0],
+                ['chart_of_account_id' => $equity->id, 'debit' => 0, 'credit' => 175],
+            ],
+        ])
+        ->assertRedirect(route('business-entities.financial-reports.journal-entries.show', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]));
+
+    $entry->refresh()->load('journalLines');
+
+    expect((float) $entry->total_debit)->toBe(175.0)
+        ->and($entry->description)->toBe('Updated manual journal')
+        ->and($entry->entry_date->toDateString())->toBe('2026-08-16')
+        ->and($entry->journalLines)->toHaveCount(2);
+});
+
+it('posts a reversing journal with flipped debits and credits', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-REV001');
+
+    $this->actingAs($user)
+        ->post(route('business-entities.financial-reports.journal-entries.reverse', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]), [
+            'entry_date' => '2026-08-22',
+        ])
+        ->assertRedirect();
+
+    $reversal = JournalEntry::query()->where('reverses_journal_entry_id', $entry->id)->sole();
+    $originalDebits = $entry->journalLines()->pluck('debit_amount', 'chart_of_account_id');
+    $originalCredits = $entry->journalLines()->pluck('credit_amount', 'chart_of_account_id');
+
+    expect($reversal->source_type)->toBeNull()
+        ->and($reversal->entry_date->toDateString())->toBe('2026-08-22')
+        ->and($reversal->is_posted)->toBeTrue()
+        ->and($entry->fresh()->canEdit())->toBeFalse();
+
+    foreach ($reversal->journalLines as $line) {
+        expect((float) $line->debit_amount)->toBe((float) $originalCredits[$line->chart_of_account_id])
+            ->and((float) $line->credit_amount)->toBe((float) $originalDebits[$line->chart_of_account_id]);
+    }
+});
+
+it('voids a journal on the original date without deleting it', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-VOID001');
+
+    $this->actingAs($user)
+        ->post(route('business-entities.financial-reports.journal-entries.void', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]))
+        ->assertRedirect(route('business-entities.financial-reports.journal-entries.show', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]));
+
+    $entry->refresh();
+    $offset = JournalEntry::query()->where('reverses_journal_entry_id', $entry->id)->sole();
+
+    expect($entry->voided_at)->not->toBeNull()
+        ->and($entry->is_posted)->toBeTrue()
+        ->and(JournalEntry::query()->find($entry->id))->not->toBeNull()
+        ->and($offset->entry_date->toDateString())->toBe($entry->entry_date->toDateString())
+        ->and($entry->canVoid())->toBeFalse();
+});
+
+it('forbids editing a voided journal', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-NOEDIT001');
+    app(ManualJournalEntryService::class)->void($entry);
+
+    $this->actingAs($user)
+        ->get(route('business-entities.financial-reports.journal-entries.edit', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]))
+        ->assertForbidden();
+});
+
+it('does not void a journal twice', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-VOIDTWICE');
+    app(ManualJournalEntryService::class)->void($entry);
+
+    $this->actingAs($user)
+        ->from(route('business-entities.financial-reports.journal-entries.show', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]))
+        ->post(route('business-entities.financial-reports.journal-entries.void', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]))
+        ->assertRedirect()
+        ->assertSessionHas('error');
+
+    expect(JournalEntry::query()->where('reverses_journal_entry_id', $entry->id)->count())->toBe(1);
+});
+
+it('returns not found when reversing a system journal', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-SYS001');
+    $entry->source_type = Transaction::class;
+    $entry->source_id = 1;
+    $entry->save();
+
+    $this->actingAs($user)
+        ->post(route('business-entities.financial-reports.journal-entries.reverse', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]), [
+            'entry_date' => '2026-08-22',
+        ])
+        ->assertNotFound();
+});

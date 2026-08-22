@@ -405,6 +405,10 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('business-entities/{businessEntity}/financial-reports/journal-entries/create', [ManualJournalEntryController::class, 'createForEntity'])->name('business-entities.financial-reports.journal-entries.create');
     Route::post('business-entities/{businessEntity}/financial-reports/journal-entries', [ManualJournalEntryController::class, 'storeForEntity'])->name('business-entities.financial-reports.journal-entries.store');
     Route::post('business-entities/{businessEntity}/financial-reports/opening-balances', [ManualJournalEntryController::class, 'storeOpeningBalancesForEntity'])->name('business-entities.financial-reports.opening-balances.store');
+    Route::get('business-entities/{businessEntity}/financial-reports/journal-entries/{journalEntry}/edit', [ManualJournalEntryController::class, 'editForEntity'])->scopeBindings()->name('business-entities.financial-reports.journal-entries.edit');
+    Route::put('business-entities/{businessEntity}/financial-reports/journal-entries/{journalEntry}', [ManualJournalEntryController::class, 'updateForEntity'])->scopeBindings()->name('business-entities.financial-reports.journal-entries.update');
+    Route::post('business-entities/{businessEntity}/financial-reports/journal-entries/{journalEntry}/reverse', [ManualJournalEntryController::class, 'reverseForEntity'])->scopeBindings()->name('business-entities.financial-reports.journal-entries.reverse');
+    Route::post('business-entities/{businessEntity}/financial-reports/journal-entries/{journalEntry}/void', [ManualJournalEntryController::class, 'voidForEntity'])->scopeBindings()->name('business-entities.financial-reports.journal-entries.void');
     Route::get('business-entities/{businessEntity}/financial-reports/journal-entries/{journalEntry}', [ManualJournalEntryController::class, 'show'])->scopeBindings()->name('business-entities.financial-reports.journal-entries.show');
 
     // Invoice Routes
@@ -466,6 +470,10 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/financial-reports/journal-entries', [ManualJournalEntryController::class, 'indexHub'])->name('financial-reports.journal-entries.index');
     Route::get('/financial-reports/journal-entries/create', [ManualJournalEntryController::class, 'create'])->name('financial-reports.journal-entries.create');
     Route::post('/financial-reports/journal-entries', [ManualJournalEntryController::class, 'store'])->name('financial-reports.journal-entries.store');
+    Route::get('/financial-reports/journal-entries/{journalEntry}/edit', [ManualJournalEntryController::class, 'editHub'])->name('financial-reports.journal-entries.edit');
+    Route::put('/financial-reports/journal-entries/{journalEntry}', [ManualJournalEntryController::class, 'updateHub'])->name('financial-reports.journal-entries.update');
+    Route::post('/financial-reports/journal-entries/{journalEntry}/reverse', [ManualJournalEntryController::class, 'reverseHub'])->name('financial-reports.journal-entries.reverse');
+    Route::post('/financial-reports/journal-entries/{journalEntry}/void', [ManualJournalEntryController::class, 'voidHub'])->name('financial-reports.journal-entries.void');
     Route::get('/financial-reports/journal-entries/{journalEntry}', [ManualJournalEntryController::class, 'showHub'])->name('financial-reports.journal-entries.show');
     Route::post('/financial-reports/opening-balances', [ManualJournalEntryController::class, 'storeOpeningBalances'])->name('financial-reports.opening-balances.store');
     Route::get('/financial-reports/commitments', [CommitmentController::class, 'report'])->name('financial-reports.commitments');

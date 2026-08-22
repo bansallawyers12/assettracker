@@ -18,6 +18,8 @@ class JournalEntry extends Model
         'created_by',
         'source_type',
         'source_id',
+        'reverses_journal_entry_id',
+        'voided_at',
     ];
 
     protected $casts = [
@@ -25,6 +27,7 @@ class JournalEntry extends Model
         'total_debit' => 'decimal:2',
         'total_credit' => 'decimal:2',
         'is_posted' => 'boolean',
+        'voided_at' => 'datetime',
     ];
 
     public function businessEntity()
@@ -45,6 +48,57 @@ class JournalEntry extends Model
     public function source()
     {
         return $this->morphTo();
+    }
+
+    public function reverses()
+    {
+        return $this->belongsTo(self::class, 'reverses_journal_entry_id');
+    }
+
+    public function reversedBy()
+    {
+        return $this->hasMany(self::class, 'reverses_journal_entry_id');
+    }
+
+    public function isVoided(): bool
+    {
+        return $this->voided_at !== null;
+    }
+
+    public function isReversal(): bool
+    {
+        return $this->reverses_journal_entry_id !== null;
+    }
+
+    public function hasBeenOffset(): bool
+    {
+        if ($this->relationLoaded('reversedBy')) {
+            return $this->reversedBy->isNotEmpty();
+        }
+
+        if (array_key_exists('reversed_by_count', $this->attributes)) {
+            return (int) $this->reversed_by_count > 0;
+        }
+
+        return $this->reversedBy()->exists();
+    }
+
+    public function canEdit(): bool
+    {
+        return $this->source_type === null
+            && $this->is_posted
+            && ! $this->isVoided()
+            && ! $this->hasBeenOffset();
+    }
+
+    public function canReverse(): bool
+    {
+        return $this->canEdit();
+    }
+
+    public function canVoid(): bool
+    {
+        return $this->canReverse() && ! $this->isReversal();
     }
 
     /**

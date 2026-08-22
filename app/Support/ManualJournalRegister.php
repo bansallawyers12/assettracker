@@ -51,7 +51,7 @@ class ManualJournalRegister
 
         $entriesQuery = (clone $baseQuery)
             ->with(['businessEntity'])
-            ->withCount('journalLines')
+            ->withCount(['journalLines', 'reversedBy'])
             ->orderByDesc('entry_date')
             ->orderByDesc('id');
 
@@ -87,6 +87,8 @@ class ManualJournalRegister
                 'journalLines.trackingCategory',
                 'journalLines.trackingSubCategory',
                 'user',
+                'reverses',
+                'reversedBy',
             ])
             ->find($journalEntryId);
     }

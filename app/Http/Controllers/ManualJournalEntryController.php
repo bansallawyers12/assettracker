@@ -14,6 +14,7 @@ use App\Support\ManualJournalRegister;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class ManualJournalEntryController extends Controller
@@ -220,6 +221,111 @@ class ManualJournalEntryController extends Controller
         return $this->persistOpeningBalances($request, $this->hubRoutes());
     }
 
+    public function editForEntity(BusinessEntity $businessEntity, JournalEntry $journalEntry): View|RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        if ($redirect = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $redirect;
+        }
+
+        $entry = $this->editableEntryOrAbort($journalEntry, [(int) $businessEntity->id], $businessEntity);
+
+        return $this->renderCreateForm(
+            $businessEntity,
+            true,
+            $this->entityRoutes($businessEntity),
+            editing: $entry
+        );
+    }
+
+    public function editHub(JournalEntry $journalEntry, Request $request): View|RedirectResponse
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $entityIds = $this->requireReportEntityIds($request);
+        if ($entityIds instanceof RedirectResponse) {
+            return $entityIds;
+        }
+
+        $entry = $this->editableEntryOrAbort($journalEntry, $entityIds);
+        $this->authorize('update', $entry->businessEntity);
+
+        return $this->renderCreateForm(
+            $entry->businessEntity,
+            false,
+            $this->hubRoutes(),
+            $request,
+            $entityIds,
+            $entry
+        );
+    }
+
+    public function updateForEntity(BusinessEntity $businessEntity, JournalEntry $journalEntry, Request $request): RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        if ($redirect = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $redirect;
+        }
+
+        $request->merge(['business_entity_id' => $businessEntity->id]);
+
+        return $this->updateJournal($request, $journalEntry, [(int) $businessEntity->id], $this->entityRoutes($businessEntity));
+    }
+
+    public function updateHub(JournalEntry $journalEntry, Request $request): RedirectResponse
+    {
+        $entityIds = $this->requireReportEntityIds($request);
+        if ($entityIds instanceof RedirectResponse) {
+            return $entityIds;
+        }
+
+        return $this->updateJournal($request, $journalEntry, $entityIds, $this->hubRoutes());
+    }
+
+    public function reverseForEntity(BusinessEntity $businessEntity, JournalEntry $journalEntry, Request $request): RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        if ($redirect = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $redirect;
+        }
+
+        return $this->reverseJournal($request, $journalEntry, [(int) $businessEntity->id], $this->entityRoutes($businessEntity));
+    }
+
+    public function reverseHub(JournalEntry $journalEntry, Request $request): RedirectResponse
+    {
+        $entityIds = $this->requireReportEntityIds($request);
+        if ($entityIds instanceof RedirectResponse) {
+            return $entityIds;
+        }
+
+        return $this->reverseJournal($request, $journalEntry, $entityIds, $this->hubRoutes());
+    }
+
+    public function voidForEntity(BusinessEntity $businessEntity, JournalEntry $journalEntry): RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        if ($redirect = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $redirect;
+        }
+
+        return $this->voidJournal($journalEntry, [(int) $businessEntity->id], $this->entityRoutes($businessEntity));
+    }
+
+    public function voidHub(JournalEntry $journalEntry, Request $request): RedirectResponse
+    {
+        $entityIds = $this->requireReportEntityIds($request);
+        if ($entityIds instanceof RedirectResponse) {
+            return $entityIds;
+        }
+
+        return $this->voidJournal($journalEntry, $entityIds, $this->hubRoutes());
+    }
+
     /**
      * @param  array<string, mixed>  $routes
      */
@@ -227,19 +333,7 @@ class ManualJournalEntryController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $validated = $request->validate([
-            'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
-            'entry_date' => 'required|date',
-            'description' => 'required|string|max:255',
-            'reference_number' => 'nullable|string|max:50',
-            'lines' => 'required|array|min:2|max:40',
-            'lines.*.chart_of_account_id' => 'nullable|integer|exists:chart_of_accounts,id',
-            'lines.*.debit' => 'nullable|numeric|min:0',
-            'lines.*.credit' => 'nullable|numeric|min:0',
-            'lines.*.description' => 'nullable|string|max:255',
-            'lines.*.tracking_category_id' => 'nullable|integer|exists:tracking_categories,id',
-            'lines.*.tracking_sub_category_id' => 'nullable|integer|exists:tracking_sub_categories,id',
-        ]);
+        $validated = $request->validate($this->journalRules());
 
         $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
         $this->authorize('update', $businessEntity);
@@ -366,6 +460,7 @@ class ManualJournalEntryController extends Controller
         array $routes,
         ?Request $request = null,
         ?array $scopedEntityIds = null,
+        ?JournalEntry $editing = null,
     ): View {
         $accounts = ChartOfAccount::query()
             ->where('is_active', true)
@@ -386,19 +481,22 @@ class ManualJournalEntryController extends Controller
             ->get();
 
         $scopeQuery = [];
-        if ($request && ! $entityScoped) {
+        if ($request && ! $entityScoped && ! $editing) {
             $scopeQuery = $this->scopeQueryForCreate($request);
         }
+
+        $entryDate = old('entry_date', $editing?->entry_date?->toDateString() ?? now()->toDateString());
 
         return view('financial-reports.journal-entry-create', [
             'businessEntity' => $businessEntity,
             'businessEntities' => $pickerEntities,
             'accounts' => $accounts,
             'trackingCategories' => $trackingCategories,
-            'entryDate' => old('entry_date', now()->toDateString()),
+            'entryDate' => $entryDate,
             'entityScoped' => $entityScoped,
             'routes' => $routes,
             'scopeQuery' => $scopeQuery,
+            'editing' => $editing,
         ]);
     }
 
@@ -413,6 +511,10 @@ class ManualJournalEntryController extends Controller
             'store' => route('financial-reports.journal-entries.store'),
             'openingBalancesStore' => route('financial-reports.opening-balances.store'),
             'show' => 'financial-reports.journal-entries.show',
+            'edit' => 'financial-reports.journal-entries.edit',
+            'update' => 'financial-reports.journal-entries.update',
+            'reverse' => 'financial-reports.journal-entries.reverse',
+            'void' => 'financial-reports.journal-entries.void',
         ];
     }
 
@@ -427,6 +529,10 @@ class ManualJournalEntryController extends Controller
             'store' => route('business-entities.financial-reports.journal-entries.store', $businessEntity),
             'openingBalancesStore' => route('business-entities.financial-reports.opening-balances.store', $businessEntity),
             'show' => 'business-entities.financial-reports.journal-entries.show',
+            'edit' => 'business-entities.financial-reports.journal-entries.edit',
+            'update' => 'business-entities.financial-reports.journal-entries.update',
+            'reverse' => 'business-entities.financial-reports.journal-entries.reverse',
+            'void' => 'business-entities.financial-reports.journal-entries.void',
             'entity' => $businessEntity,
         ];
     }
@@ -448,6 +554,160 @@ class ManualJournalEntryController extends Controller
             'scope' => 'selected',
             'entity_ids' => [(int) $entry->business_entity_id],
         ]);
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     * @param  array<string, mixed>  $routes
+     */
+    private function updateJournal(Request $request, JournalEntry $journalEntry, array $entityIds, array $routes): RedirectResponse
+    {
+        $entry = $this->editableEntryOrAbort($journalEntry, $entityIds);
+        $this->authorize('update', $entry->businessEntity);
+
+        $validated = $request->validate($this->journalRules($entry));
+        $businessEntity = $entry->businessEntity;
+        $lines = $this->normalizeSubmittedLines($validated['lines'], $businessEntity);
+        if ($lines instanceof RedirectResponse) {
+            return $lines;
+        }
+
+        try {
+            $updated = $this->manualJournalService->update(
+                $entry,
+                Carbon::parse($validated['entry_date'])->toDateString(),
+                $validated['description'],
+                $lines,
+                $validated['reference_number'] ?? null
+            );
+        } catch (\Throwable $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->to($this->showUrlForEntry($routes, $updated))
+            ->with('success', 'Journal entry '.$updated->reference_number.' updated.');
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     * @param  array<string, mixed>  $routes
+     */
+    private function reverseJournal(Request $request, JournalEntry $journalEntry, array $entityIds, array $routes): RedirectResponse
+    {
+        $entry = $this->visibleManualOrAbort($journalEntry, $entityIds);
+        $this->authorize('update', $entry->businessEntity);
+
+        $validated = $request->validate([
+            'entry_date' => 'required|date',
+        ]);
+
+        try {
+            $reversal = $this->manualJournalService->reverse(
+                $entry,
+                Carbon::parse($validated['entry_date'])->toDateString()
+            );
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->to($this->showUrlForEntry($routes, $reversal))
+            ->with('success', 'Reversal '.$reversal->reference_number.' posted.');
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     * @param  array<string, mixed>  $routes
+     */
+    private function voidJournal(JournalEntry $journalEntry, array $entityIds, array $routes): RedirectResponse
+    {
+        $entry = $this->visibleManualOrAbort($journalEntry, $entityIds);
+        $this->authorize('update', $entry->businessEntity);
+
+        try {
+            $offset = $this->manualJournalService->void($entry);
+        } catch (\Throwable $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return redirect()
+            ->to($this->showUrlForEntry($routes, $entry->fresh() ?? $entry))
+            ->with('success', 'Journal voided. Offset '.$offset->reference_number.' posted on the original date.');
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     */
+    private function visibleManualOrAbort(JournalEntry $journalEntry, array $entityIds): JournalEntry
+    {
+        $entry = $this->register->findVisibleEntry((int) $journalEntry->id, $entityIds);
+        if (! $entry) {
+            abort(404);
+        }
+
+        return $entry;
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     */
+    private function editableEntryOrAbort(JournalEntry $journalEntry, array $entityIds, ?BusinessEntity $businessEntity = null): JournalEntry
+    {
+        $entry = $this->visibleManualOrAbort($journalEntry, $entityIds);
+
+        if ($businessEntity && (int) $entry->business_entity_id !== (int) $businessEntity->id) {
+            abort(404);
+        }
+
+        if (! $entry->canEdit()) {
+            abort(403, 'This journal cannot be edited.');
+        }
+
+        return $entry;
+    }
+
+    /**
+     * @return array<int>|RedirectResponse
+     */
+    private function requireReportEntityIds(Request $request): array|RedirectResponse
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $entityIds = $this->resolveReportEntityIds($request);
+        if ($entityIds === null) {
+            return $this->redirectInvalidReportScope();
+        }
+        if ($entityIds === []) {
+            return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
+        }
+
+        return $entityIds;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function journalRules(?JournalEntry $ignore = null): array
+    {
+        $referenceRule = ['nullable', 'string', 'max:50'];
+        if ($ignore) {
+            $referenceRule[] = Rule::unique('journal_entries', 'reference_number')->ignore($ignore->id);
+        }
+
+        return [
+            'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
+            'entry_date' => 'required|date',
+            'description' => 'required|string|max:255',
+            'reference_number' => $referenceRule,
+            'lines' => 'required|array|min:2|max:40',
+            'lines.*.chart_of_account_id' => 'nullable|integer|exists:chart_of_accounts,id',
+            'lines.*.debit' => 'nullable|numeric|min:0',
+            'lines.*.credit' => 'nullable|numeric|min:0',
+            'lines.*.description' => 'nullable|string|max:255',
+            'lines.*.tracking_category_id' => 'nullable|integer|exists:tracking_categories,id',
+            'lines.*.tracking_sub_category_id' => 'nullable|integer|exists:tracking_sub_categories,id',
+        ];
     }
 
     /**

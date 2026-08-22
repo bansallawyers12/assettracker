@@ -1,8 +1,21 @@
 @php
-    $lineRows = old('lines', [
-        ['chart_of_account_id' => '', 'debit' => '', 'credit' => '', 'description' => '', 'tracking_category_id' => '', 'tracking_sub_category_id' => ''],
-        ['chart_of_account_id' => '', 'debit' => '', 'credit' => '', 'description' => '', 'tracking_category_id' => '', 'tracking_sub_category_id' => ''],
-    ]);
+    $editing = $editing ?? null;
+    $emptyLine = ['chart_of_account_id' => '', 'debit' => '', 'credit' => '', 'description' => '', 'tracking_category_id' => '', 'tracking_sub_category_id' => ''];
+    $defaultLines = $editing
+        ? $editing->journalLines->map(fn ($line) => [
+            'chart_of_account_id' => $line->chart_of_account_id,
+            'debit' => (float) $line->debit_amount > 0 ? $line->debit_amount : '',
+            'credit' => (float) $line->credit_amount > 0 ? $line->credit_amount : '',
+            'description' => $line->description ?? '',
+            'tracking_category_id' => $line->tracking_category_id ?? '',
+            'tracking_sub_category_id' => $line->tracking_sub_category_id ?? '',
+        ])->all()
+        : [$emptyLine, $emptyLine];
+    if ($editing) {
+        $defaultLines[] = $emptyLine;
+        $defaultLines[] = $emptyLine;
+    }
+    $lineRows = old('lines', $defaultLines);
     $entityScoped = $entityScoped ?? false;
     $routes = $routes ?? [
         'index' => route('financial-reports.journal-entries.index'),
@@ -12,13 +25,25 @@
     ];
     $scopeQuery = $scopeQuery ?? [];
     $entityPickerAction = $routes['create'].($scopeQuery !== [] ? '?'.http_build_query($scopeQuery) : '');
+    $formAction = $editing
+        ? route($routes['update'], $entityScoped && isset($routes['entity'])
+            ? ['businessEntity' => $routes['entity'], 'journalEntry' => $editing]
+            : ['journalEntry' => $editing])
+        : $routes['store'];
+    $cancelUrl = $editing
+        ? route($routes['show'], $entityScoped && isset($routes['entity'])
+            ? ['businessEntity' => $routes['entity'], 'journalEntry' => $editing]
+            : ['journalEntry' => $editing])
+        : $routes['index'];
 @endphp
 
 <x-app-layout>
     <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Manual journal entry</h1>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    {{ $editing ? 'Edit manual journal' : 'Manual journal entry' }}
+                </h1>
                 <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
                     Post opening balances, equity adjustments, or other entries not created by bank transactions or invoices.
                     Debits must equal credits.
@@ -37,7 +62,7 @@
             <div class="mb-4 rounded-sm border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{{ session('error') }}</div>
         @endif
 
-        @unless($entityScoped)
+        @unless($entityScoped || $editing)
             <form method="GET" action="{{ $entityPickerAction }}" class="mb-4 bg-white dark:bg-gray-900 shadow rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Entity (applies to both forms below)</label>
                 <div class="flex flex-wrap items-end gap-3">
@@ -63,9 +88,12 @@
             </form>
         @endunless
 
-        <form method="POST" action="{{ $routes['store'] }}"
+        <form method="POST" action="{{ $formAction }}"
               class="bg-white dark:bg-gray-900 shadow rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-6 space-y-6">
             @csrf
+            @if($editing)
+                @method('PUT')
+            @endif
 
             <input type="hidden" name="business_entity_id" value="{{ $businessEntity->id }}">
 
@@ -76,14 +104,15 @@
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
-                <input type="text" name="description" value="{{ old('description') }}" required maxlength="255"
+                <input type="text" name="description" value="{{ old('description', $editing?->description) }}" required maxlength="255"
                        class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm">
             </div>
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reference (optional)</label>
-                <input type="text" name="reference_number" value="{{ old('reference_number') }}" maxlength="50"
-                       class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm">
+                <input type="text" name="reference_number" value="{{ old('reference_number', $editing?->reference_number) }}" maxlength="50"
+                       class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm"
+                       @readonly($editing?->isOpeningBalance())>
             </div>
 
             <div>
@@ -158,17 +187,18 @@
             </div>
 
             <div class="flex justify-end gap-3">
-                <a href="{{ $routes['index'] }}"
+                <a href="{{ $cancelUrl }}"
                    class="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
                     Cancel
                 </a>
                 <button type="submit"
                         class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-                    Post journal
+                        {{ $editing ? 'Save changes' : 'Post journal' }}
                 </button>
             </div>
         </form>
 
+        @unless($editing)
         <div class="mt-10 bg-white dark:bg-gray-900 shadow rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-6">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Entity opening balances</h2>
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
@@ -229,5 +259,6 @@
                 </div>
             </form>
         </div>
+        @endunless
     </div>
 </x-app-layout>

@@ -151,11 +151,19 @@
                                 </td>
                             @endif
                             <td class="py-2 pr-3">
-                                @if($entry->isOpeningBalance())
-                                    <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Opening balance</span>
-                                @else
-                                    <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Manual</span>
-                                @endif
+                                <div class="flex flex-wrap gap-1">
+                                    @if($entry->isOpeningBalance())
+                                        <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">Opening balance</span>
+                                    @else
+                                        <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700">Manual</span>
+                                    @endif
+                                    @if($entry->isVoided())
+                                        <span class="inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">Voided</span>
+                                    @endif
+                                    @if($entry->isReversal())
+                                        <span class="inline-flex rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800">Reversal</span>
+                                    @endif
+                                </div>
                             </td>
                             <td class="py-2 pr-3 text-right tabular-nums text-gray-800">
                                 ${{ number_format((float) $entry->total_debit, 2) }}

@@ -9,5 +9,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Http/Controllers/BalanceSheetEntryController.php | .ai/rules/controllers.md |
 | resources/views/bank-accounts/partials/** | .ai/rules/partials.md |
 | database/seeders/** | .ai/rules/seeders.md |
-| app/Services/TransactionPostingService.php, app/Services/BankStatementApplyService.php, app/Services/**, app/Services/{FinancialReportService,BankAccountBalanceSnapshotService}.php | .ai/rules/services.md |
+| app/Services/TransactionPostingService.php, app/Services/BankStatementApplyService.php, app/Services/**, app/Services/{FinancialReportService,BankAccountBalanceSnapshotService}.php, app/Services/ManualJournalEntryService.php | .ai/rules/services.md |
 | resources/views/business-entities/bank-accounts/transactions/** | .ai/rules/transactions.md |
