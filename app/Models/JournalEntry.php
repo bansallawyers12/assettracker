@@ -87,6 +87,7 @@ class JournalEntry extends Model
     {
         return $this->source_type === null
             && $this->is_posted
+            && ! $this->isReversal()
             && ! $this->isVoided()
             && ! $this->hasBeenOffset();
     }

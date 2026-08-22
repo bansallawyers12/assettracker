@@ -418,6 +418,63 @@ it('does not void a journal twice', function () {
     expect(JournalEntry::query()->where('reverses_journal_entry_id', $entry->id)->count())->toBe(1);
 });
 
+it('updates a manual journal from the hub with report scope preserved', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-HUBEDIT001');
+    ['bank' => $bank, 'equity' => $equity] = manualJournalAccounts();
+
+    $scope = [
+        'scope' => 'selected',
+        'entity_ids' => [$entity->id],
+    ];
+
+    $this->actingAs($user)
+        ->get(route('financial-reports.journal-entries.edit', array_merge([
+            'journalEntry' => $entry,
+        ], $scope)))
+        ->assertSuccessful()
+        ->assertSee('Edit manual journal');
+
+    $this->actingAs($user)
+        ->put(route('financial-reports.journal-entries.update', $entry), array_merge($scope, [
+            'business_entity_id' => $entity->id,
+            'entry_date' => '2026-08-17',
+            'description' => 'Hub updated manual journal',
+            'reference_number' => 'MAN-HUBEDIT001',
+            'lines' => [
+                ['chart_of_account_id' => $bank->id, 'debit' => 200, 'credit' => 0],
+                ['chart_of_account_id' => $equity->id, 'debit' => 0, 'credit' => 200],
+            ],
+        ]))
+        ->assertRedirect(route('financial-reports.journal-entries.show', [
+            'journalEntry' => $entry,
+            'scope' => 'selected',
+            'entity_ids' => [$entity->id],
+        ]));
+
+    $entry->refresh();
+
+    expect((float) $entry->total_debit)->toBe(200.0)
+        ->and($entry->description)->toBe('Hub updated manual journal');
+});
+
+it('forbids editing a reversal journal', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-NOEDITREV');
+    $reversal = app(ManualJournalEntryService::class)->reverse($entry, '2026-08-22');
+
+    $this->actingAs($user)
+        ->get(route('business-entities.financial-reports.journal-entries.edit', [
+            'businessEntity' => $entity,
+            'journalEntry' => $reversal,
+        ]))
+        ->assertForbidden();
+});
+
 it('returns not found when reversing a system journal', function () {
     $this->seed(ChartOfAccountSeeder::class);
     $user = manualJournalUser();

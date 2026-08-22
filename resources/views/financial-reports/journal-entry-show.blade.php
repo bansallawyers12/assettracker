@@ -29,7 +29,7 @@
     ]);
     $journalParams = $entityScoped
         ? ['businessEntity' => $routes['entity'], 'journalEntry' => $entry]
-        : ['journalEntry' => $entry];
+        : array_merge(['journalEntry' => $entry], $listQuery);
     $relatedShow = function (JournalEntry $related) use ($entityScoped, $routes, $listQuery) {
         if ($entityScoped) {
             return route($routes['show'], array_merge([

@@ -33,7 +33,7 @@
     $cancelUrl = $editing
         ? route($routes['show'], $entityScoped && isset($routes['entity'])
             ? ['businessEntity' => $routes['entity'], 'journalEntry' => $editing]
-            : ['journalEntry' => $editing])
+            : array_merge(['journalEntry' => $editing], $scopeQuery))
         : $routes['index'];
 @endphp
 
@@ -96,6 +96,17 @@
             @endif
 
             <input type="hidden" name="business_entity_id" value="{{ $businessEntity->id }}">
+            @unless($entityScoped)
+                @foreach($scopeQuery as $key => $value)
+                    @if(is_array($value))
+                        @foreach($value as $item)
+                            <input type="hidden" name="{{ $key }}[]" value="{{ $item }}">
+                        @endforeach
+                    @else
+                        <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                    @endif
+                @endforeach
+            @endunless
 
             <div>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>

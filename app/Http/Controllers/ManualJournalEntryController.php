@@ -481,7 +481,7 @@ class ManualJournalEntryController extends Controller
             ->get();
 
         $scopeQuery = [];
-        if ($request && ! $entityScoped && ! $editing) {
+        if ($request && ! $entityScoped) {
             $scopeQuery = $this->scopeQueryForCreate($request);
         }
 

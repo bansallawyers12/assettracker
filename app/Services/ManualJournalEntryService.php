@@ -237,6 +237,10 @@ class ManualJournalEntryService
     {
         $this->assertUserPostedManual($entry);
 
+        if ($entry->isReversal()) {
+            throw new \DomainException('Reversal journals cannot be edited.');
+        }
+
         if ($entry->isVoided()) {
             throw new \DomainException('Voided journals cannot be edited.');
         }
