@@ -32,8 +32,7 @@
 <x-report-shell
     title="Asset summary"
     subtitle="Property register — ownership, tenants &amp; loan details"
-    :entity-scope-label="$entityScopeLabel"
-    :full-width="true">
+    :entity-scope-label="$entityScopeLabel">
 
     <x-slot:filters>
         <form method="GET" action="{{ $formRoute }}" class="flex flex-wrap items-end gap-3">

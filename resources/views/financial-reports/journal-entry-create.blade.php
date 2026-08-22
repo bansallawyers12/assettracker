@@ -3,42 +3,75 @@
         ['chart_of_account_id' => '', 'debit' => '', 'credit' => '', 'description' => '', 'tracking_category_id' => '', 'tracking_sub_category_id' => ''],
         ['chart_of_account_id' => '', 'debit' => '', 'credit' => '', 'description' => '', 'tracking_category_id' => '', 'tracking_sub_category_id' => ''],
     ]);
+    $entityScoped = $entityScoped ?? false;
+    $routes = $routes ?? [
+        'index' => route('financial-reports.journal-entries.index'),
+        'create' => route('financial-reports.journal-entries.create'),
+        'store' => route('financial-reports.journal-entries.store'),
+        'openingBalancesStore' => route('financial-reports.opening-balances.store'),
+    ];
+    $scopeQuery = $scopeQuery ?? [];
+    $entityPickerAction = $routes['create'].($scopeQuery !== [] ? '?'.http_build_query($scopeQuery) : '');
 @endphp
 
 <x-app-layout>
-    <div class="container mx-auto px-4 py-8 max-w-4xl">
-        <div class="mb-6">
-            <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Manual journal entry</h1>
-            <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Post opening balances, equity adjustments, or other entries not created by bank transactions or invoices.
-                Debits must equal credits.
-            </p>
+    <div class="w-full px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-gray-100">Manual journal entry</h1>
+                <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                    Post opening balances, equity adjustments, or other entries not created by bank transactions or invoices.
+                    Debits must equal credits.
+                </p>
+                @if($entityScoped)
+                    <p class="mt-1 text-sm font-medium text-gray-800 dark:text-gray-200">{{ $businessEntity->legal_name }}</p>
+                @endif
+            </div>
+            <a href="{{ $routes['index'] }}"
+               class="text-sm text-indigo-600 hover:underline dark:text-indigo-400">
+                View all journals
+            </a>
         </div>
 
         @if(session('error'))
             <div class="mb-4 rounded-sm border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800">{{ session('error') }}</div>
         @endif
 
-        <form method="POST" action="{{ route('financial-reports.journal-entries.store') }}"
-              class="bg-white dark:bg-gray-900 shadow rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-6 space-y-6">
-            @csrf
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Entity</label>
-                    <select name="business_entity_id" required
-                            class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm">
+        @unless($entityScoped)
+            <form method="GET" action="{{ $entityPickerAction }}" class="mb-4 bg-white dark:bg-gray-900 shadow rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-4">
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Entity (applies to both forms below)</label>
+                <div class="flex flex-wrap items-end gap-3">
+                    @foreach($scopeQuery as $key => $value)
+                        @if(is_array($value))
+                            @foreach($value as $item)
+                                <input type="hidden" name="{{ $key }}[]" value="{{ $item }}">
+                            @endforeach
+                        @else
+                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                        @endif
+                    @endforeach
+                    <select name="prefill_entity_id" required onchange="this.form.submit()"
+                            class="min-w-[16rem] rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm">
                         @foreach($businessEntities as $entity)
-                            <option value="{{ $entity->id }}" @selected((int) old('business_entity_id', $businessEntity->id) === (int) $entity->id)>
+                            <option value="{{ $entity->id }}" @selected((int) $businessEntity->id === (int) $entity->id)>
                                 {{ $entity->legal_name }}
                             </option>
                         @endforeach
                     </select>
+                    <p class="text-xs text-gray-500">Tracking categories match the selected entity.</p>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
-                    <x-date-input name="entry_date" value="{{ $entryDate }}" class="w-full text-sm" required />
-                </div>
+            </form>
+        @endunless
+
+        <form method="POST" action="{{ $routes['store'] }}"
+              class="bg-white dark:bg-gray-900 shadow rounded-lg ring-1 ring-gray-200 dark:ring-gray-700 p-6 space-y-6">
+            @csrf
+
+            <input type="hidden" name="business_entity_id" value="{{ $businessEntity->id }}">
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+                <x-date-input name="entry_date" value="{{ $entryDate }}" class="w-full text-sm max-w-xs" required />
             </div>
 
             <div>
@@ -125,7 +158,7 @@
             </div>
 
             <div class="flex justify-end gap-3">
-                <a href="{{ route('financial-reports.index') }}"
+                <a href="{{ $routes['index'] }}"
                    class="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300">
                     Cancel
                 </a>
@@ -143,24 +176,24 @@
                 against <strong>3190 Opening Balance Equity</strong>.
             </p>
 
-            <form method="POST" action="{{ route('financial-reports.opening-balances.store') }}" class="mt-4 space-y-4">
+            <form method="POST" action="{{ $routes['openingBalancesStore'] }}" class="mt-4 space-y-4">
                 @csrf
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Entity</label>
-                        <select name="business_entity_id" required
-                                class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-sm">
-                            @foreach($businessEntities as $entity)
-                                <option value="{{ $entity->id }}" @selected((int) $businessEntity->id === (int) $entity->id)>
-                                    {{ $entity->legal_name }}
-                                </option>
+                <input type="hidden" name="business_entity_id" value="{{ $businessEntity->id }}">
+                @unless($entityScoped)
+                    @foreach($scopeQuery as $key => $value)
+                        @if(is_array($value))
+                            @foreach($value as $item)
+                                <input type="hidden" name="{{ $key }}[]" value="{{ $item }}">
                             @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">As of date</label>
-                        <x-date-input name="as_of_date" value="{{ now()->toDateString() }}" class="w-full text-sm" required />
-                    </div>
+                        @else
+                            <input type="hidden" name="{{ $key }}" value="{{ $value }}">
+                        @endif
+                    @endforeach
+                @endunless
+
+                <div class="max-w-xs">
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">As of date</label>
+                    <x-date-input name="as_of_date" value="{{ now()->toDateString() }}" class="w-full text-sm" required />
                 </div>
 
                 <div class="overflow-x-auto max-h-96">

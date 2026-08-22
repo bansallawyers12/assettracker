@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ResolvesReportEntityScope;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
+use App\Models\JournalEntry;
 use App\Models\TrackingCategory;
 use App\Models\TrackingSubCategory;
 use App\Services\ManualJournalEntryService;
+use App\Support\FinancialYear;
+use App\Support\ManualJournalRegister;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +20,137 @@ class ManualJournalEntryController extends Controller
 {
     use ResolvesReportEntityScope;
 
-    public function __construct(private ManualJournalEntryService $manualJournalService) {}
+    public function __construct(
+        private ManualJournalEntryService $manualJournalService,
+        private ManualJournalRegister $register,
+    ) {}
+
+    public function indexHub(Request $request): View|RedirectResponse
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $entityIds = $this->resolveReportEntityIds($request);
+        if ($entityIds === null) {
+            return $this->redirectInvalidReportScope();
+        }
+        if ($entityIds === []) {
+            return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
+        }
+
+        $report = $this->buildIndexReport($request, $entityIds, 'all');
+        $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+
+        return view('financial-reports.journal-entries-index', [
+            'report' => $report,
+            'businessEntities' => $businessEntities,
+            'entityScoped' => false,
+            'routes' => $this->hubRoutes(),
+        ]);
+    }
+
+    public function index(BusinessEntity $businessEntity, Request $request): View|RedirectResponse
+    {
+        $this->authorize('view', $businessEntity);
+
+        if ($redirect = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $redirect;
+        }
+
+        $request->merge([
+            'scope' => 'selected',
+            'entity_ids' => [(int) $businessEntity->id],
+        ]);
+
+        $report = $this->buildIndexReport($request, [(int) $businessEntity->id], 'selected');
+        $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+
+        return view('financial-reports.journal-entries-index', [
+            'report' => $report,
+            'businessEntities' => $businessEntities,
+            'entityScoped' => true,
+            'routes' => $this->entityRoutes($businessEntity),
+        ]);
+    }
+
+    public function showHub(JournalEntry $journalEntry, Request $request): View|RedirectResponse
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $entityIds = $this->resolveReportEntityIds($request);
+        if ($entityIds === null) {
+            return $this->redirectInvalidReportScope();
+        }
+        if ($entityIds === []) {
+            return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
+        }
+
+        $entry = $this->register->findVisibleEntry((int) $journalEntry->id, $entityIds);
+        if (! $entry) {
+            abort(404);
+        }
+
+        $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+        $report = $this->mergeReportFormScope([
+            'business_entity' => $entry->businessEntity,
+            'business_entities' => collect([$entry->businessEntity]),
+            'is_consolidated' => false,
+        ], $request, $entityIds);
+
+        return view('financial-reports.journal-entry-show', [
+            'entry' => $entry,
+            'report' => $report,
+            'businessEntities' => $businessEntities,
+            'entityScoped' => false,
+            'routes' => $this->hubRoutes(),
+        ]);
+    }
+
+    public function show(BusinessEntity $businessEntity, JournalEntry $journalEntry): View|RedirectResponse
+    {
+        $this->authorize('view', $businessEntity);
+
+        if ($redirect = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $redirect;
+        }
+
+        if ((int) $journalEntry->business_entity_id !== (int) $businessEntity->id
+            || $journalEntry->source_type !== null
+            || ! $journalEntry->is_posted) {
+            abort(404);
+        }
+
+        $entry = $this->register->findVisibleEntry((int) $journalEntry->id, [(int) $businessEntity->id]);
+        if (! $entry) {
+            abort(404);
+        }
+
+        $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+
+        return view('financial-reports.journal-entry-show', [
+            'entry' => $entry,
+            'report' => [
+                'business_entity' => $businessEntity,
+                'business_entities' => collect([$businessEntity]),
+                'is_consolidated' => false,
+                'forms_scope' => 'selected',
+                'forms_entity_ids' => [(int) $businessEntity->id],
+            ],
+            'businessEntities' => $businessEntities,
+            'entityScoped' => true,
+            'routes' => $this->entityRoutes($businessEntity),
+        ]);
+    }
+
+    public function createForEntity(BusinessEntity $businessEntity, Request $request): View|RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        if ($redirect = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $redirect;
+        }
+
+        return $this->renderCreateForm($businessEntity, true, $this->entityRoutes($businessEntity));
+    }
 
     public function create(Request $request): View|RedirectResponse
     {
@@ -25,8 +158,18 @@ class ManualJournalEntryController extends Controller
 
         $entityIds = $this->resolveReportEntityIds($request);
         if ($entityIds === null) {
-            return redirect()->route('financial-reports.journal-entries.create')
+            return redirect()->route('financial-reports.journal-entries.index')
                 ->with('error', 'Choose at least one entity, or select “All reporting entities”.');
+        }
+
+        if ($entityIds === []) {
+            return redirect()->route('financial-reports.index')
+                ->with('error', 'No reporting entities are available.');
+        }
+
+        $prefillEntityId = (int) $request->query('prefill_entity_id', 0);
+        if ($prefillEntityId > 0 && in_array($prefillEntityId, $entityIds, true)) {
+            $entityIds = [$prefillEntityId];
         }
 
         $businessEntity = BusinessEntity::query()->find($entityIds[0]);
@@ -37,31 +180,49 @@ class ManualJournalEntryController extends Controller
 
         $this->authorize('update', $businessEntity);
 
-        $accounts = ChartOfAccount::query()
-            ->where('is_active', true)
-            ->orderBy('account_code')
-            ->get();
+        return $this->renderCreateForm($businessEntity, false, $this->hubRoutes(), $request);
+    }
 
-        $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+    public function storeForEntity(BusinessEntity $businessEntity, Request $request): RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
 
-        $trackingCategories = TrackingCategory::query()
-            ->where('business_entity_id', $businessEntity->id)
-            ->where('is_active', true)
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->with(['activeSubCategories'])
-            ->get();
+        if ($redirect = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $redirect;
+        }
 
-        return view('financial-reports.journal-entry-create', [
-            'businessEntity' => $businessEntity,
-            'businessEntities' => $businessEntities,
-            'accounts' => $accounts,
-            'trackingCategories' => $trackingCategories,
-            'entryDate' => old('entry_date', now()->toDateString()),
-        ]);
+        $request->merge(['business_entity_id' => $businessEntity->id]);
+
+        return $this->storeJournal($request, $this->entityRoutes($businessEntity));
     }
 
     public function store(Request $request): RedirectResponse
+    {
+        return $this->storeJournal($request, $this->hubRoutes());
+    }
+
+    public function storeOpeningBalancesForEntity(BusinessEntity $businessEntity, Request $request): RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        if ($redirect = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $redirect;
+        }
+
+        $request->merge(['business_entity_id' => $businessEntity->id]);
+
+        return $this->persistOpeningBalances($request, $this->entityRoutes($businessEntity));
+    }
+
+    public function storeOpeningBalances(Request $request): RedirectResponse
+    {
+        return $this->persistOpeningBalances($request, $this->hubRoutes());
+    }
+
+    /**
+     * @param  array<string, mixed>  $routes
+     */
+    private function storeJournal(Request $request, array $routes): RedirectResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
@@ -82,43 +243,9 @@ class ManualJournalEntryController extends Controller
         $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
         $this->authorize('update', $businessEntity);
 
-        $lines = [];
-        foreach ($validated['lines'] as $line) {
-            $accountId = (int) ($line['chart_of_account_id'] ?? 0);
-            $debit = round((float) ($line['debit'] ?? 0), 2);
-            $credit = round((float) ($line['credit'] ?? 0), 2);
-            if ($accountId <= 0 || ($debit === 0.0 && $credit === 0.0)) {
-                continue;
-            }
-
-            $trackingCategoryId = isset($line['tracking_category_id']) && $line['tracking_category_id'] !== ''
-                ? (int) $line['tracking_category_id']
-                : null;
-            $trackingSubCategoryId = isset($line['tracking_sub_category_id']) && $line['tracking_sub_category_id'] !== ''
-                ? (int) $line['tracking_sub_category_id']
-                : null;
-
-            if ($trackingSubCategoryId && ! $trackingCategoryId) {
-                $subCategory = TrackingSubCategory::query()->find($trackingSubCategoryId);
-                $trackingCategoryId = $subCategory?->tracking_category_id;
-            }
-
-            $lines[] = [
-                'chart_of_account_id' => $accountId,
-                'debit' => $debit,
-                'credit' => $credit,
-                'description' => $line['description'] ?? null,
-                'tracking_category_id' => $trackingCategoryId,
-                'tracking_sub_category_id' => $trackingSubCategoryId,
-            ];
-        }
-
-        if (count($lines) < 2) {
-            return back()->withInput()->with('error', 'Enter at least two lines with debits or credits.');
-        }
-
-        if ($error = $this->validateManualJournalTracking($businessEntity, $lines)) {
-            return back()->withInput()->with('error', $error);
+        $lines = $this->normalizeSubmittedLines($validated['lines'], $businessEntity);
+        if ($lines instanceof RedirectResponse) {
+            return $lines;
         }
 
         try {
@@ -134,16 +261,14 @@ class ManualJournalEntryController extends Controller
         }
 
         return redirect()
-            ->route('financial-reports.account-transactions', [
-                'scope' => 'selected',
-                'entity_ids' => [$businessEntity->id],
-                'start_date' => $entry->entry_date->toDateString(),
-                'end_date' => $entry->entry_date->toDateString(),
-            ])
+            ->to($this->showUrlForEntry($routes, $entry))
             ->with('success', 'Journal entry '.$entry->reference_number.' posted.');
     }
 
-    public function storeOpeningBalances(Request $request): RedirectResponse
+    /**
+     * @param  array<string, mixed>  $routes
+     */
+    private function persistOpeningBalances(Request $request, array $routes): RedirectResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
@@ -191,13 +316,196 @@ class ManualJournalEntryController extends Controller
             $success .= ' Some rows were skipped: '.implode(' ', $errors);
         }
 
+        $indexParams = [
+            'start_date' => $asOfDate,
+            'end_date' => $asOfDate,
+            'type' => ManualJournalRegister::TYPE_OPENING,
+        ];
+
+        if (($routes['show'] ?? '') === 'financial-reports.journal-entries.show') {
+            $indexParams = array_merge($this->scopeQueryForCreate($request), $indexParams);
+        }
+
         return redirect()
-            ->route('financial-reports.balance-sheet', [
-                'scope' => 'selected',
-                'entity_ids' => [$businessEntity->id],
-                'as_of_date' => $asOfDate,
-            ])
+            ->to($routes['index'].'?'.http_build_query($indexParams))
             ->with('success', $success);
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     */
+    private function buildIndexReport(Request $request, array $entityIds, string $defaultScope): array
+    {
+        $startDate = Carbon::parse(
+            $request->get('start_date', FinancialYear::currentStart()->toDateString())
+        )->toDateString();
+        $endDate = Carbon::parse(
+            $request->get('end_date', FinancialYear::currentEnd()->toDateString())
+        )->toDateString();
+        $typeFilter = (string) $request->get('type', ManualJournalRegister::TYPE_ALL);
+
+        $report = $this->register->buildIndexReport(
+            $entityIds,
+            $startDate,
+            $endDate,
+            $typeFilter,
+            (string) $request->input('scope', $defaultScope),
+        );
+
+        return $this->mergeReportFormScope($report, $request, $entityIds);
+    }
+
+    /**
+     * @param  array<string, mixed>  $routes
+     */
+    private function renderCreateForm(
+        BusinessEntity $businessEntity,
+        bool $entityScoped,
+        array $routes,
+        ?Request $request = null,
+    ): View {
+        $accounts = ChartOfAccount::query()
+            ->where('is_active', true)
+            ->orderBy('account_code')
+            ->get();
+
+        $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
+
+        $trackingCategories = TrackingCategory::query()
+            ->where('business_entity_id', $businessEntity->id)
+            ->where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->with(['activeSubCategories'])
+            ->get();
+
+        $scopeQuery = [];
+        if ($request && ! $entityScoped) {
+            $scopeQuery = $this->scopeQueryForCreate($request);
+        }
+
+        return view('financial-reports.journal-entry-create', [
+            'businessEntity' => $businessEntity,
+            'businessEntities' => $businessEntities,
+            'accounts' => $accounts,
+            'trackingCategories' => $trackingCategories,
+            'entryDate' => old('entry_date', now()->toDateString()),
+            'entityScoped' => $entityScoped,
+            'routes' => $routes,
+            'scopeQuery' => $scopeQuery,
+        ]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function hubRoutes(): array
+    {
+        return [
+            'index' => route('financial-reports.journal-entries.index'),
+            'create' => route('financial-reports.journal-entries.create'),
+            'store' => route('financial-reports.journal-entries.store'),
+            'openingBalancesStore' => route('financial-reports.opening-balances.store'),
+            'show' => 'financial-reports.journal-entries.show',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function entityRoutes(BusinessEntity $businessEntity): array
+    {
+        return [
+            'index' => route('business-entities.financial-reports.journal-entries.index', $businessEntity),
+            'create' => route('business-entities.financial-reports.journal-entries.create', $businessEntity),
+            'store' => route('business-entities.financial-reports.journal-entries.store', $businessEntity),
+            'openingBalancesStore' => route('business-entities.financial-reports.opening-balances.store', $businessEntity),
+            'show' => 'business-entities.financial-reports.journal-entries.show',
+            'entity' => $businessEntity,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $routes
+     */
+    private function showUrlForEntry(array $routes, JournalEntry $entry): string
+    {
+        if (($routes['show'] ?? '') === 'business-entities.financial-reports.journal-entries.show') {
+            return route($routes['show'], [
+                'businessEntity' => $routes['entity'] ?? $entry->business_entity_id,
+                'journalEntry' => $entry,
+            ]);
+        }
+
+        return route('financial-reports.journal-entries.show', [
+            'journalEntry' => $entry,
+            'scope' => 'selected',
+            'entity_ids' => [(int) $entry->business_entity_id],
+        ]);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rawLines
+     * @return list<array{chart_of_account_id: int, debit: float, credit: float, description?: ?string, tracking_category_id?: ?int, tracking_sub_category_id?: ?int}>|RedirectResponse
+     */
+    private function normalizeSubmittedLines(array $rawLines, BusinessEntity $businessEntity): array|RedirectResponse
+    {
+        $lines = [];
+        foreach ($rawLines as $line) {
+            $accountId = (int) ($line['chart_of_account_id'] ?? 0);
+            $debit = round((float) ($line['debit'] ?? 0), 2);
+            $credit = round((float) ($line['credit'] ?? 0), 2);
+            if ($accountId <= 0 || ($debit === 0.0 && $credit === 0.0)) {
+                continue;
+            }
+
+            $trackingCategoryId = isset($line['tracking_category_id']) && $line['tracking_category_id'] !== ''
+                ? (int) $line['tracking_category_id']
+                : null;
+            $trackingSubCategoryId = isset($line['tracking_sub_category_id']) && $line['tracking_sub_category_id'] !== ''
+                ? (int) $line['tracking_sub_category_id']
+                : null;
+
+            if ($trackingSubCategoryId && ! $trackingCategoryId) {
+                $subCategory = TrackingSubCategory::query()->find($trackingSubCategoryId);
+                $trackingCategoryId = $subCategory?->tracking_category_id;
+            }
+
+            $lines[] = [
+                'chart_of_account_id' => $accountId,
+                'debit' => $debit,
+                'credit' => $credit,
+                'description' => $line['description'] ?? null,
+                'tracking_category_id' => $trackingCategoryId,
+                'tracking_sub_category_id' => $trackingSubCategoryId,
+            ];
+        }
+
+        if (count($lines) < 2) {
+            return back()->withInput()->with('error', 'Enter at least two lines with debits or credits.');
+        }
+
+        if ($error = $this->validateManualJournalTracking($businessEntity, $lines)) {
+            return back()->withInput()->with('error', $error);
+        }
+
+        return $lines;
+    }
+
+    protected function redirectIfExcludedFromFinancialReports(BusinessEntity $businessEntity): ?RedirectResponse
+    {
+        if ($businessEntity->isTenancyContactOnly()) {
+            return redirect()->route('financial-reports.index')
+                ->with('error', 'Financial reports are not available for this company because it is excluded from reporting (for example, a property manager kept for contact purposes only).');
+        }
+
+        return null;
+    }
+
+    protected function redirectInvalidReportScope(): RedirectResponse
+    {
+        return redirect()->route('financial-reports.journal-entries.index')
+            ->with('error', 'Choose at least one entity, or select “All reporting entities”.');
     }
 
     /**
@@ -233,5 +541,20 @@ class ManualJournalEntryController extends Controller
         }
 
         return null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function scopeQueryForCreate(Request $request): array
+    {
+        $query = ['scope' => (string) $request->input('scope', 'all')];
+        if ($query['scope'] === 'selected') {
+            foreach ((array) $request->input('entity_ids', []) as $id) {
+                $query['entity_ids'][] = (int) $id;
+            }
+        }
+
+        return $query;
     }
 }

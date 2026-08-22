@@ -95,7 +95,7 @@
 
             <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
                 Per-entity opening balances are posted via
-                <a href="{{ route('financial-reports.journal-entries.create') }}" class="text-indigo-600 hover:underline">Journal entries</a>.
+                <a href="{{ route('financial-reports.journal-entries.index') }}" class="text-indigo-600 hover:underline">Journal entries</a>.
             </p>
 
             <div class="flex items-center justify-end mt-6 space-x-4">

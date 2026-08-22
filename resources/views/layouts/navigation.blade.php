@@ -1,5 +1,5 @@
 <nav x-data="{ open: false }" class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50 backdrop-blur-xs bg-white/95 dark:bg-gray-900/95">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="w-full px-4 sm:px-6 lg:px-8">
         <div class="flex h-14 sm:h-16 items-center gap-3 sm:gap-4">
 
             {{-- Logo --}}

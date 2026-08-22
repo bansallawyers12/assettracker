@@ -714,9 +714,26 @@
     @apply block;
   }
 
-  /* Widen global containers that use Tailwind's max-w-7xl */
-  .max-w-7xl {
-    max-width: 96rem !important; /* 1536px, wider than default 80rem */
+  /* Full-width app layout — expand page-level containers (not modals, panels, or truncate helpers) */
+  .max-w-7xl.mx-auto,
+  .max-w-6xl.mx-auto,
+  .max-w-5xl.mx-auto,
+  .max-w-4xl.mx-auto,
+  .max-w-3xl.mx-auto,
+  .max-w-2xl.mx-auto,
+  .container.mx-auto {
+    max-width: none !important;
+    width: 100%;
+  }
+
+  .container {
+    max-width: none !important;
+    width: 100%;
+  }
+
+  .max-w-4xl.w-full {
+    max-width: none !important;
+    width: 100%;
   }
 
   .bank-ws-form input.flatpickr-input,

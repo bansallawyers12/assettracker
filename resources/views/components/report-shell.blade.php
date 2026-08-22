@@ -3,13 +3,10 @@
     'subtitle' => null,
     'entity' => null,
     'entityScopeLabel' => null,
-    'fullWidth' => false,
 ])
 
 @php
-    $containerClass = $fullWidth
-        ? 'w-full px-4 sm:px-6 lg:px-8'
-        : 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8';
+    $containerClass = 'w-full px-4 sm:px-6 lg:px-8';
 @endphp
 
 <x-app-layout>

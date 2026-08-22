@@ -46,7 +46,10 @@ it('documents manual journal entry service and routes', function () {
 
     $routes = file_get_contents(base_path('routes/web.php'));
 
-    expect($routes)->toContain('financial-reports.journal-entries.create')
+    expect($routes)->toContain('financial-reports.journal-entries.index')
+        ->and($routes)->toContain('financial-reports.journal-entries.create')
+        ->and($routes)->toContain('financial-reports.journal-entries.show')
+        ->and($routes)->toContain('business-entities.financial-reports.journal-entries.index')
         ->and($routes)->toContain('financial-reports.opening-balances.store');
 });
 

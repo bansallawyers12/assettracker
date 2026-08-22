@@ -23,7 +23,7 @@
                     (for example a property deposit from director funds — use Asset Purchase).
                     For day-to-day income and expenses, use Add transaction on the dashboard.
                     For advanced journals, use
-                    <a href="{{ route('financial-reports.journal-entries.create') }}" class="text-indigo-600 hover:underline dark:text-indigo-400">manual journal</a>.
+                    <a href="{{ route('business-entities.financial-reports.journal-entries.create', $businessEntity) }}" class="text-indigo-600 hover:underline dark:text-indigo-400">manual journal</a>.
                 </p>
 
                 @if (session('success'))

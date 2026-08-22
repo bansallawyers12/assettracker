@@ -150,7 +150,12 @@
         @if($comparing)
             <strong>Prior year</strong> compares the same date range shifted back one year.
         @endif
-        <a href="{{ route('financial-reports.journal-entries.create') }}" class="text-blue-600 hover:underline">Journal entries</a>
+        @php
+            $journalEntriesUrl = ($entity && ! $isConsolidated)
+                ? route('business-entities.financial-reports.journal-entries.index', $entity)
+                : route('financial-reports.journal-entries.index', $reportQuery());
+        @endphp
+        <a href="{{ $journalEntriesUrl }}" class="text-blue-600 hover:underline">Journal entries</a>
     </div>
     <div class="pb-6 overflow-x-auto">
         <table class="w-full text-sm" @style(['min-width' => $comparing ? '42rem' : '24rem'])>

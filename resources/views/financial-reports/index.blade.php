@@ -50,7 +50,7 @@
                     'hoverBorder' => 'hover:border-purple-300 dark:hover:border-purple-600',
                 ],
                 [
-                    'route' => 'financial-reports.journal-entries.create',
+                    'route' => 'financial-reports.journal-entries.index',
                     'title' => 'Journal entries',
                     'description' => 'Manual journals and entity opening balances',
                     'icon' => 'lucide-book-open',

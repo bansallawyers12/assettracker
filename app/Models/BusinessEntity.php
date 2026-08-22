@@ -226,6 +226,11 @@ class BusinessEntity extends Model
         return $this->hasMany(BankAccount::class);
     }
 
+    public function journalEntries()
+    {
+        return $this->hasMany(JournalEntry::class);
+    }
+
     public function bankAccountLinks()
     {
         return $this->hasMany(BusinessEntityBankAccount::class);
