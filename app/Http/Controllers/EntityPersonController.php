@@ -8,7 +8,7 @@ use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use App\Models\EntityPerson;
 use App\Models\Person;
-use App\Support\TableSort;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,64 +17,6 @@ use Illuminate\Support\Facades\Log;
 class EntityPersonController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
-
-    /**
-     * Display a listing of entity-person relationships.
-     */
-    public function index(Request $request)
-    {
-        $this->authorize('viewAny', BusinessEntity::class);
-
-        $tableSort = TableSort::resolve($request, ['entity', 'person', 'role', 'appointment', 'asic_due'], 'entity', 'asc');
-
-        $entityPersons = EntityPerson::with(['businessEntity', 'person', 'trusteeEntity'])
-            ->where('role_status', 'Active')
-            ->get();
-
-        $entityPersons = $tableSort->sortCollection($entityPersons, function (EntityPerson $entityPerson, string $column) {
-            return match ($column) {
-                'person' => $entityPerson->person
-                    ? trim($entityPerson->person->first_name.' '.$entityPerson->person->last_name)
-                    : ($entityPerson->trusteeEntity?->legal_name ?? ''),
-                'role' => $entityPerson->role,
-                'appointment' => $entityPerson->appointment_date?->format('Y-m-d') ?? '',
-                'asic_due' => $entityPerson->asic_due_date?->format('Y-m-d') ?? '',
-                default => $entityPerson->businessEntity?->legal_name ?? '',
-            };
-        });
-
-        return view('entity-persons.index', compact('entityPersons', 'tableSort'));
-    }
-
-    /**
-     * Show the form for creating a new entity-person relationship.
-     */
-    public function create($business_entity_id)
-    {
-        $businessEntity = BusinessEntity::find($business_entity_id);
-
-        if (! $businessEntity) {
-            return redirect()->route('business-entities.index')->withErrors(['error' => 'Business entity not found. Please select a valid entity.']);
-        }
-
-        $this->authorize('update', $businessEntity);
-        $this->ensureNotClosed($businessEntity);
-        $this->ensureOperationalForAccounting($businessEntity);
-
-        $persons = Person::query()
-            ->get()
-            ->sortBy(fn (Person $person) => mb_strtolower($person->displayName()), SORT_NATURAL | SORT_FLAG_CASE)
-            ->values();
-
-        $businessEntities = BusinessEntity::query()
-            ->operationalEntities()
-            ->where('entity_type', '!=', 'Trust')
-            ->where('id', '!=', $businessEntity->id)
-            ->orderBy('legal_name')
-            ->get();
-
-        return view('entity-persons.create', compact('businessEntity', 'persons', 'businessEntities'));
-    }
 
     /**
      * Store a newly created entity-person relationship in storage.
@@ -156,6 +98,7 @@ class EntityPersonController extends Controller
                 $personId = $person->id;
             } catch (\Exception $e) {
                 Log::error('Failed to create new person: '.$e->getMessage());
+
                 return $this->personFormError($request, ['error' => 'Failed to create new person.']);
             }
         }
@@ -183,6 +126,7 @@ class EntityPersonController extends Controller
             Log::info('Created EntityPerson', ['id' => $entityPerson->id]);
         } catch (\Exception $e) {
             Log::error('Failed to create EntityPerson: '.$e->getMessage());
+
             return $this->personFormError($request, ['error' => 'Failed to create relationship.']);
         }
 
@@ -199,46 +143,6 @@ class EntityPersonController extends Controller
         return redirect()->route('business-entities.show', $request->business_entity_id)
             ->withFragment('tab_persons')
             ->with('success', 'Entity-Person relationship created successfully.');
-    }
-
-    /**
-     * Display the specified entity-person relationship.
-     */
-    public function show(EntityPerson $entityPerson)
-    {
-        $this->authorize('view', $entityPerson->businessEntity);
-        $businessEntity = $entityPerson->businessEntity;
-        return view('entity-persons.show', compact('entityPerson', 'businessEntity'));
-    }
-
-    /**
-     * Show the form for editing the specified entity-person relationship.
-     */
-    public function edit(EntityPerson $entityPerson)
-    {
-        $this->authorize('update', $entityPerson->businessEntity);
-        $this->ensureNotClosed($entityPerson->businessEntity);
-
-        $entityPerson->load(['businessEntity', 'person', 'trusteeEntity', 'appointorEntity']);
-        $businessEntity = $entityPerson->businessEntity;
-        $businessEntities = BusinessEntity::query()
-            ->where('entity_type', '!=', 'Trust')
-            ->where('id', '!=', $businessEntity->id)
-            ->where(function ($query) use ($entityPerson) {
-                $query->operationalEntities();
-
-                if ($entityPerson->entity_trustee_id) {
-                    $query->orWhere('id', $entityPerson->entity_trustee_id);
-                }
-            })
-            ->orderBy('legal_name')
-            ->get();
-        $persons = Person::query()
-            ->get()
-            ->sortBy(fn (Person $person) => mb_strtolower($person->displayName()), SORT_NATURAL | SORT_FLAG_CASE)
-            ->values();
-
-        return view('entity-persons.edit', compact('entityPerson', 'businessEntity', 'businessEntities', 'persons'));
     }
 
     /**
@@ -335,19 +239,6 @@ class EntityPersonController extends Controller
     }
 
     /**
-     * Remove the specified entity-person relationship from storage.
-     */
-    public function destroy(EntityPerson $entityPerson)
-    {
-        $this->authorize('update', $entityPerson->businessEntity);
-        $this->ensureNotClosed($entityPerson->businessEntity);
-
-        $entityPerson->delete();
-
-        return redirect()->route('entity-persons.index')->with('success', 'Entity-Person relationship deleted successfully.');
-    }
-
-    /**
      * Finalize the ASIC due date for an entity-person relationship.
      */
     public function finalizeDueDate(EntityPerson $entityPerson)
@@ -372,10 +263,11 @@ class EntityPersonController extends Controller
         $this->ensureNotClosed($entityPerson->businessEntity);
 
         if ($entityPerson->asic_due_date) {
-            $newDueDate = \Carbon\Carbon::parse($entityPerson->asic_due_date)->addDays(30);
+            $newDueDate = Carbon::parse($entityPerson->asic_due_date)->addDays(30);
             $entityPerson->update([
                 'asic_due_date' => $newDueDate,
             ]);
+
             return redirect()->route('dashboard')->with('success', 'ASIC due date extended by 30 days.');
         }
 

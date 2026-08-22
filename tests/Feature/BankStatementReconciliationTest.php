@@ -178,11 +178,9 @@ it('parses macquarie csv profile without deprecation warnings', function () {
 
 it('restricts bank import uploads to csv only', function () {
     $importController = file_get_contents(app_path('Http/Controllers/BankAccountImportController.php'));
-    $legacyController = file_get_contents(app_path('Http/Controllers/BankImportController.php'));
     $panel = file_get_contents(resource_path('views/bank-accounts/partials/reconciliation-panel.blade.php'));
 
     expect($importController)->toContain("'statement_file' => 'required|file|mimes:csv,txt|max:10240'")
-        ->and($legacyController)->toContain("'statement_file' => 'required|file|mimes:csv,txt|max:10240'")
         ->and($panel)->toContain('accept=".csv"')
         ->and($panel)->not->toContain('.xlsx');
 });

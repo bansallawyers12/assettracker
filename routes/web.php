@@ -14,7 +14,6 @@ use App\Http\Controllers\BankAccountStatementController;
 use App\Http\Controllers\BankAccountsWorkspaceController;
 use App\Http\Controllers\BankAccountTransactionClearController;
 use App\Http\Controllers\BankAccountTransactionController;
-use App\Http\Controllers\BankImportController;
 use App\Http\Controllers\BillsTasksController;
 use App\Http\Controllers\BusinessEntityController;
 use App\Http\Controllers\CarReportController;
@@ -179,7 +178,6 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::patch('business-entities/{businessEntity}/document-slots/{document}/move', [DocumentWorkspaceController::class, 'moveSlot'])->name('entities.document-slots.move');
     Route::post('business-entities/{businessEntity}/documents/bulk-upload', [DocumentController::class, 'bulkUpload'])->name('entities.documents.bulk-upload');
     Route::post('business-entities/{businessEntity}/documents/auto-match', [DocumentController::class, 'autoMatch'])->name('entities.documents.auto-match');
-    Route::post('business-entities/{businessEntity}/transactions/{transaction}/match', [BusinessEntityController::class, 'matchTransaction'])->name('business-entities.transactions.match');
 
     // Notes
     Route::post('notes/{note}/finalize', [AssetController::class, 'finalizeNote'])->name('notes.finalize');
@@ -191,7 +189,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     // Future commitments
     Route::get('/commitments', [CommitmentController::class, 'index'])->name('commitments.index');
     Route::resource('business-entities.commitments', CommitmentController::class)
-        ->only(['create', 'store', 'show', 'edit', 'update', 'destroy']);
+        ->only(['create', 'store', 'show', 'edit', 'update']);
     Route::post('business-entities/{businessEntity}/commitments/{commitment}/payments', [CommitmentController::class, 'storePayment'])
         ->name('business-entities.commitments.payments.store');
     Route::delete('business-entities/{businessEntity}/commitments/{commitment}/payments/{payment}', [CommitmentController::class, 'destroyPayment'])
@@ -200,7 +198,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
         ->name('business-entities.commitments.settle');
 
     // Assets (Nested under Business Entities)
-    Route::resource('business-entities.assets', AssetController::class)->only(['index', 'create', 'store', 'show', 'edit', 'update', 'destroy']);
+    Route::resource('business-entities.assets', AssetController::class)->only(['create', 'store', 'show', 'edit', 'update', 'destroy']);
     Route::post('business-entities/{businessEntity}/assets/{asset}/move-to-trust', [AssetController::class, 'moveToTrust'])
         ->name('business-entities.assets.move-to-trust');
     Route::post('business-entities/{businessEntity}/assets/{asset}/finalize/{type}', [AssetController::class, 'finalizeDueDate'])->name('assets.finalize-due-date');
@@ -245,9 +243,6 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Tenant and Lease Routes
     Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/create', [AssetController::class, 'createTenant'])->name('business-entities.assets.tenants.create');
-    Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants', function ($businessEntity, $asset) {
-        return redirect()->route('business-entities.assets.tenants.create', [$businessEntity, $asset]);
-    })->name('business-entities.assets.tenants.index');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/tenants', [AssetController::class, 'storeTenant'])->name('business-entities.assets.tenants.store');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/{tenant}/edit', [AssetController::class, 'editTenant'])->name('business-entities.assets.tenants.edit');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/{tenant}/form/edit', [AssetShowWorkspaceController::class, 'editTenantForm'])->name('business-entities.assets.tenants.form.edit');
@@ -264,8 +259,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('business-entities/{businessEntity}/assets/{asset}/invoices/create-for-lease', [AssetInvoiceController::class, 'storeForLease'])->name('assets.invoices.store-for-lease');
 
     // Entity Persons
-    Route::get('entity-persons/create/{business_entity_id}', [EntityPersonController::class, 'create'])->name('entity-persons.create');
-    Route::resource('entity-persons', EntityPersonController::class)->except(['create']);
+    Route::resource('entity-persons', EntityPersonController::class)->only(['store', 'update']);
     Route::post('entity-persons/{entityPerson}/finalize-due-date', [EntityPersonController::class, 'finalizeDueDate'])->name('entity-persons.finalize-due-date');
     Route::post('entity-persons/{entityPerson}/extend-due-date', [EntityPersonController::class, 'extendDueDate'])->name('entity-persons.extend-due-date');
     Route::get('/business-entities/{businessEntity}/persons/workspace', [PersonsWorkspaceController::class, 'index'])->name('entities.persons.workspace');
@@ -332,23 +326,15 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/clear', [BankAccountTransactionClearController::class, 'create'])->name('business-entities.bank-accounts.transactions.clear.create');
     Route::delete('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/clear', [BankAccountTransactionClearController::class, 'destroy'])->name('business-entities.bank-accounts.transactions.clear.destroy');
     Route::get('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/{transaction}', [BusinessEntityController::class, 'showTransaction'])->whereNumber('transaction')->name('business-entities.bank-accounts.transactions.show');
-    Route::put('/business-entities/{businessEntity}/bank-accounts/{bankAccount}/transactions/{transaction}', [BusinessEntityController::class, 'updateBankTransaction'])->whereNumber('transaction')->name('business-entities.bank-accounts.transactions.update');
-    Route::post('/business-entities/{businessEntity}/bank-accounts/{bankStatementEntry}/match-transaction', [BusinessEntityController::class, 'matchTransaction'])->name('business-entities.bank-accounts.match-transaction');
 
     // API for Bank Accounts
     Route::get('/api/business-entities/{businessEntity}/bank-accounts', [BusinessEntityController::class, 'getBankAccounts'])->name('business-entities.bank-accounts.api');
 
-    // Bank Import Routes
-    Route::post('/business-entities/{businessEntity}/bank-import/process', [BankImportController::class, 'process'])->name('business-entities.bank-import.process');
-    Route::get('/business-entities/{businessEntity}/bank-import/entries', [BankImportController::class, 'entries'])->name('business-entities.bank-import.entries');
-    Route::post('/business-entities/{businessEntity}/bank-import/save-matches', [BankImportController::class, 'saveMatches'])->name('business-entities.bank-import.save-matches');
-
     // Chart of Accounts JSON (global list; entity in legacy URL is ignored)
     Route::get('/api/chart-of-accounts', [ChartOfAccountController::class, 'apiIndex'])->name('chart-of-accounts.api');
-    Route::get('/api/business-entities/{businessEntity}/chart-of-accounts', [ChartOfAccountController::class, 'getAccountsJson'])->name('business-entities.chart-of-accounts.api');
 
     // Reminder routes
-    Route::resource('reminders', ReminderController::class);
+    Route::resource('reminders', ReminderController::class)->only(['store', 'show', 'destroy']);
     Route::post('reminders/{reminder}/complete', [ReminderController::class, 'complete'])->name('reminders.complete');
     Route::post('reminders/{reminder}/extend', [ReminderController::class, 'extend'])->name('reminders.extend');
     Route::post('reminders/bulk-complete', [ReminderController::class, 'bulkComplete'])->name('reminders.bulk-complete');
@@ -374,7 +360,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/email-templates/workspace', [EmailTemplatesWorkspaceController::class, 'workspace'])->name('email-templates.workspace');
     Route::get('/email-templates/form/create', [EmailTemplatesWorkspaceController::class, 'createForm'])->name('email-templates.form.create');
     Route::get('/email-templates/{emailTemplate}/form/edit', [EmailTemplatesWorkspaceController::class, 'editForm'])->name('email-templates.form.edit');
-    Route::resource('email-templates', EmailTemplateController::class);
+    Route::resource('email-templates', EmailTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
     Route::get('/email-templates/{emailTemplate}/preview', [EmailTemplateController::class, 'preview'])->name('email-templates.preview');
     Route::get('/email-templates-api/templates', [EmailTemplateController::class, 'getTemplates'])->name('email-templates.api');
 
@@ -392,10 +378,6 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/business-entities/{businessEntity}/chart-of-accounts/{chartOfAccount}/edit', function (ChartOfAccount $chartOfAccount) {
         return redirect()->route('chart-of-accounts.edit', $chartOfAccount);
     })->name('business-entities.chart-of-accounts.edit');
-    // Legacy nested write routes (same controller; entity segment ignored — chart is global)
-    Route::post('/business-entities/{businessEntity}/chart-of-accounts', [ChartOfAccountController::class, 'store'])->name('business-entities.chart-of-accounts.store');
-    Route::match(['put', 'patch'], '/business-entities/{businessEntity}/chart-of-accounts/{chart_of_account}', [ChartOfAccountController::class, 'update'])->name('business-entities.chart-of-accounts.update');
-    Route::delete('/business-entities/{businessEntity}/chart-of-accounts/{chart_of_account}', [ChartOfAccountController::class, 'destroy'])->name('business-entities.chart-of-accounts.destroy');
     Route::get('business-entities/{businessEntity}/financial-reports/account-transactions', [FinancialReportController::class, 'accountTransactions'])->name('business-entities.financial-reports.account-transactions');
     Route::get('business-entities/{businessEntity}/financial-reports/profit-loss', [FinancialReportController::class, 'profitLoss'])->name('business-entities.financial-reports.profit-loss');
     Route::get('business-entities/{businessEntity}/financial-reports/balance-sheet', [FinancialReportController::class, 'balanceSheet'])->name('business-entities.financial-reports.balance-sheet');
@@ -477,12 +459,10 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/financial-reports/journal-entries/{journalEntry}', [ManualJournalEntryController::class, 'showHub'])->name('financial-reports.journal-entries.show');
     Route::post('/financial-reports/opening-balances', [ManualJournalEntryController::class, 'storeOpeningBalances'])->name('financial-reports.opening-balances.store');
     Route::get('/financial-reports/commitments', [CommitmentController::class, 'report'])->name('financial-reports.commitments');
-    Route::get('/bank-import', [BankImportController::class, 'index'])->name('bank-import.index');
-
+    Route::redirect('/financial-reports/fleet-register', '/financial-reports/car-register');
     Route::get('/financial-reports/car-register', [CarReportController::class, 'carRegister'])->name('financial-reports.car-register');
     Route::get('/financial-reports/compliance-gaps', [ComplianceReportController::class, 'missingItr'])->name('financial-reports.compliance-gaps');
     Route::get('/financial-reports/ato-lodgements', [ComplianceReportController::class, 'atoLodgements'])->name('financial-reports.ato-lodgements');
-    Route::redirect('/financial-reports/fleet-register', '/financial-reports/car-register');
     Route::get('/financial-reports/asset-summary', [PropertyReportController::class, 'assetSummary'])->name('financial-reports.asset-summary');
     Route::get('/portfolio', [PropertyReportController::class, 'portfolio'])->name('portfolio.index');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/financials', [PropertyReportController::class, 'show'])->name('assets.financials');

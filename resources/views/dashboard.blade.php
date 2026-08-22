@@ -295,7 +295,7 @@
                     };
                 </script>
                 <form method="POST"
-                      action="/business-entities/{{ $dashboardTransactionEntityId }}/transactions"
+                      action="{{ route('business-entities.transactions.store', $dashboardTransactionEntityId) }}"
                       data-store-action-template="/business-entities/__ID__/transactions"
                       id="store-transaction-form"
                       data-transaction-paid-by-form
