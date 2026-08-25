@@ -5,19 +5,35 @@ namespace App\Support;
 class TransactionGstResolver
 {
     /**
-     * @param  float  $amount  Amount as entered (ex-GST if exclusive; total incl. GST if inclusive)
-     * @param  string|null  $gstBasis  'inclusive', 'exclusive', or null (no GST treatment)
+     * @param  float  $amount  Amount as entered (ex-GST if exclusive; total cash if inclusive/manual)
+     * @param  string|null  $gstBasis  'inclusive', 'exclusive', 'manual', or null (no GST treatment)
      * @param  mixed  $gstAmountInput  Raw request value for gst_amount
      * @param  string  $direction  'income' or 'expense'
      * @return array{gst_amount: float|null, gst_basis: string|null, gst_status: string|null}
      */
     public static function resolve(float $amount, ?string $gstBasis, mixed $gstAmountInput, string $direction): array
     {
-        $basis = in_array($gstBasis, ['inclusive', 'exclusive'], true) ? $gstBasis : null;
+        $basis = in_array($gstBasis, ['inclusive', 'exclusive', 'manual'], true) ? $gstBasis : null;
 
         $manualGst = null;
         if ($gstAmountInput !== null && $gstAmountInput !== '' && is_numeric($gstAmountInput)) {
             $manualGst = round((float) $gstAmountInput, 2);
+        }
+
+        if ($basis === 'manual') {
+            if ($manualGst === null || $manualGst <= 0) {
+                return [
+                    'gst_amount' => null,
+                    'gst_basis' => null,
+                    'gst_status' => 'gst_free',
+                ];
+            }
+
+            return [
+                'gst_amount' => $manualGst,
+                'gst_basis' => 'manual',
+                'gst_status' => self::gstStatusForDirection($direction),
+            ];
         }
 
         if ($manualGst !== null && $manualGst > 0) {

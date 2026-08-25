@@ -189,7 +189,7 @@
                                 related_entity_id: seed.related_entity_id != null && seed.related_entity_id !== '' ? String(seed.related_entity_id) : '',
                                 gst_basis: gstBasis,
                                 gst_amount: seed.gst_amount ?? '',
-                                gstTouched: !!(seed.gst_amount !== null && seed.gst_amount !== undefined && String(seed.gst_amount) !== ''),
+                                gstTouched: gstBasis === 'manual' || !!(seed.gst_amount !== null && seed.gst_amount !== undefined && String(seed.gst_amount) !== ''),
                             };
                         };
 
@@ -264,8 +264,10 @@
                                 if (!line || line.gstTouched) return;
                                 const amount = parseFloat(line.amount);
                                 const basis = line.gst_basis;
-                                if (!basis || basis === 'none' || Number.isNaN(amount)) {
-                                    line.gst_amount = '';
+                                if (!basis || basis === 'none' || basis === 'manual' || Number.isNaN(amount)) {
+                                    if (basis !== 'manual') {
+                                        line.gst_amount = '';
+                                    }
                                     return;
                                 }
                                 if (basis === 'inclusive') {

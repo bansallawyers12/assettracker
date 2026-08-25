@@ -151,17 +151,20 @@
                                     <input type="radio" name="gst_basis" value="" class="rounded-full border-gray-300 text-blue-600" {{ $editGstBasis === '' || $editGstBasis === null ? 'checked' : '' }}> No GST
                                 </label>
                                 <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                                    <input type="radio" name="gst_basis" value="inclusive" class="rounded-full border-gray-300 text-blue-600" {{ $editGstBasis === 'inclusive' ? 'checked' : '' }}> GST inclusive — amount includes 10%
+                                    <input type="radio" name="gst_basis" value="inclusive" class="rounded-full border-gray-300 text-blue-600" {{ $editGstBasis === 'inclusive' ? 'checked' : '' }}> GST inclusive — full amount includes 10%
                                 </label>
                                 <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
                                     <input type="radio" name="gst_basis" value="exclusive" class="rounded-full border-gray-300 text-blue-600" {{ $editGstBasis === 'exclusive' ? 'checked' : '' }}> GST exclusive — 10% on top
                                 </label>
+                                <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                                    <input type="radio" name="gst_basis" value="manual" class="rounded-full border-gray-300 text-blue-600" {{ $editGstBasis === 'manual' ? 'checked' : '' }}> Manual GST — enter amount from invoice (mixed rates)
+                                </label>
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Leave GST amount blank to auto-calculate. Enter a value to override.</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Inclusive/Exclusive auto-calculate. Use Manual when the invoice has mixed GST (some lines GST-free).</p>
                             @error('gst_basis') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST amount <span class="text-gray-400 font-normal">(optional)</span></label>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST amount <span class="text-gray-400 font-normal">(optional unless Manual)</span></label>
                             <input type="number" name="gst_amount" id="bank_edit_gst_amount" step="0.01" value="{{ old('gst_amount', $transaction->gst_amount) }}"
                                    class="mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white">
                             @error('gst_amount') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -375,23 +378,51 @@
                 const amtEl = document.getElementById('bank_edit_amount');
                 const gstEl = document.getElementById('bank_edit_gst_amount');
                 if (!form || !amtEl || !gstEl) return;
-                let gstTouched = @json(old('gst_amount') !== null && old('gst_amount') !== '');
-                gstEl.addEventListener('input', () => { gstTouched = true; });
                 function basis() {
                     const r = form.querySelector('input[name="gst_basis"]:checked');
                     return r ? r.value : '';
                 }
+                function expectedGst(amount, b) {
+                    if (b === 'inclusive') return Math.round((amount - amount / 1.1) * 100) / 100;
+                    if (b === 'exclusive') return Math.round(amount * 0.1 * 100) / 100;
+                    return null;
+                }
+                // Preserve invoice overrides (manual / non-standard GST) when editing the amount.
+                let gstTouched = false;
+                (function initGstTouched() {
+                    const b = basis();
+                    const a = parseFloat(amtEl.value);
+                    const g = parseFloat(gstEl.value);
+                    if (b === 'manual') {
+                        gstTouched = true;
+                        return;
+                    }
+                    if (Number.isNaN(a) || Number.isNaN(g) || g <= 0) return;
+                    const expected = expectedGst(a, b);
+                    if (expected !== null && Math.abs(expected - g) > 0.009) {
+                        gstTouched = true;
+                    }
+                })();
+                gstEl.addEventListener('input', () => { gstTouched = true; });
                 function recalc() {
                     if (gstTouched) return;
                     const a = parseFloat(amtEl.value);
                     const b = basis();
-                    if (!b || Number.isNaN(a)) { gstEl.value = ''; return; }
-                    if (b === 'inclusive') gstEl.value = (Math.round((a - a / 1.1) * 100) / 100).toFixed(2);
-                    else if (b === 'exclusive') gstEl.value = (Math.round(a * 0.1 * 100) / 100).toFixed(2);
+                    if (!b || b === 'manual' || Number.isNaN(a)) {
+                        if (b !== 'manual') gstEl.value = '';
+                        return;
+                    }
+                    const expected = expectedGst(a, b);
+                    if (expected !== null) gstEl.value = expected.toFixed(2);
                 }
                 amtEl.addEventListener('input', recalc);
                 form.querySelectorAll('input[name="gst_basis"]').forEach((r) => r.addEventListener('change', () => {
                     if (!r.checked) return;
+                    if (r.value === 'manual') {
+                        gstTouched = true;
+                        gstEl.value = '';
+                        return;
+                    }
                     gstTouched = false;
                     recalc();
                 }));

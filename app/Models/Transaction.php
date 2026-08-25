@@ -371,7 +371,11 @@ class Transaction extends Model
     public static $gstBasisLabels = [
         'inclusive' => 'GST inclusive (total includes 10% GST)',
         'exclusive' => 'GST exclusive (10% added on top)',
+        'manual' => 'Manual GST (enter amount from invoice — use for mixed rates)',
     ];
+
+    /** @var list<string> */
+    public static array $gstBasisValues = ['inclusive', 'exclusive', 'manual'];
 
     /**
      * Derive direction ('income' or 'expense') from a transaction type key.

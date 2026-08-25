@@ -138,7 +138,7 @@
                 {{-- GST per line --}}
                 <div class="space-y-3 pt-1 border-t border-gray-100 dark:border-gray-700">
                     <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">GST (10%)</p>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <label class="cursor-pointer">
                             <input type="radio" class="sr-only" value="none"
                                    :name="'lines[' + index + '][gst_basis]'"
@@ -161,6 +161,7 @@
                                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500/30'
                                     : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60'">
                                 <span class="font-semibold text-gray-900 dark:text-gray-100">Inclusive</span>
+                                <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Full amount @ 10%</span>
                             </div>
                         </label>
                         <label class="cursor-pointer">
@@ -173,19 +174,41 @@
                                     ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500/30'
                                     : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60'">
                                 <span class="font-semibold text-gray-900 dark:text-gray-100">Exclusive</span>
+                                <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">10% on top</span>
+                            </div>
+                        </label>
+                        <label class="cursor-pointer">
+                            <input type="radio" class="sr-only" value="manual"
+                                   :name="'lines[' + index + '][gst_basis]'"
+                                   x-model="line.gst_basis"
+                                   @change="line.gstTouched = true; line.gst_amount = ''; recalcGst(index)">
+                            <div class="h-full rounded-lg border px-3 py-2.5 text-sm transition-all"
+                                 :class="line.gst_basis === 'manual'
+                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-500/30'
+                                    : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/60'">
+                                <span class="font-semibold text-gray-900 dark:text-gray-100">Manual</span>
+                                <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Mixed GST invoices</span>
                             </div>
                         </label>
                     </div>
-                    <div class="max-w-xs">
-                        <label class="{{ $txnLabel }}">GST amount <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                    <div class="max-w-xs space-y-1">
+                        <label class="{{ $txnLabel }}">
+                            GST amount
+                            <span class="normal-case font-normal text-gray-400"
+                                  x-text="line.gst_basis === 'manual' ? '(required)' : '(optional)'"></span>
+                        </label>
                         <div class="relative">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-sm font-medium text-gray-400">$</span>
                             <input type="number" step="0.01"
                                    :name="'lines[' + index + '][gst_amount]'"
                                    x-model="line.gst_amount"
                                    @input="line.gstTouched = true"
+                                   :required="line.gst_basis === 'manual'"
                                    class="{{ $txnInput }} pl-8 tabular-nums">
                         </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400" x-show="line.gst_basis === 'manual'" x-cloak>
+                            Enter the invoice TOTAL GST when some lines are GST-free or mixed rates.
+                        </p>
                     </div>
                 </div>
             </div>

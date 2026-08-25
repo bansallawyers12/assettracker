@@ -4,6 +4,9 @@ namespace App\Support;
 
 /**
  * Cash / net / GST decomposition for a transaction or allocation line amount.
+ *
+ * Inclusive and manual: amount is bank/cash total (GST is a component of amount).
+ * Exclusive: amount is net; cash = amount + GST.
  */
 class TransactionCashParts
 {

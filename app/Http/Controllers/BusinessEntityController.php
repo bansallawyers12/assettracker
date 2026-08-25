@@ -911,7 +911,7 @@ class BusinessEntityController extends Controller
             'lines.*.transaction_type' => $typeRule,
             'lines.*.related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'lines.*.gst_amount' => 'nullable|numeric|min:0',
-            'lines.*.gst_basis' => 'nullable|in:inclusive,exclusive',
+            'lines.*.gst_basis' => 'nullable|in:'.implode(',', Transaction::$gstBasisValues),
         ], $this->transactionReceiptUploadRules(true)), $this->transactionReceiptValidationMessages());
 
         Log::info('Dashboard add transaction: validation passed, persisting', $this->storeTransactionRequestLogContext($request, $businessEntity));
@@ -1225,7 +1225,7 @@ class BusinessEntityController extends Controller
                 Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $bookingEntity->id)),
             ],
             'gst_amount' => 'nullable|numeric',
-            'gst_basis' => 'nullable|in:inclusive,exclusive',
+            'gst_basis' => 'nullable|in:'.implode(',', Transaction::$gstBasisValues),
             'document_name' => 'nullable|string|max:255',
             'payment_status' => 'required|in:unpaid,paid',
             'due_date' => 'nullable|date',
@@ -1528,7 +1528,7 @@ class BusinessEntityController extends Controller
                 Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $businessEntity->id)),
             ],
             'gst_amount' => 'nullable|numeric',
-            'gst_basis' => 'nullable|in:inclusive,exclusive',
+            'gst_basis' => 'nullable|in:'.implode(',', Transaction::$gstBasisValues),
             'payment_status' => 'required|in:unpaid,paid',
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
@@ -1798,7 +1798,7 @@ class BusinessEntityController extends Controller
                 Rule::exists('assets', 'id')->where(fn ($q) => $q->where('business_entity_id', $businessEntity->id)),
             ],
             'gst_amount' => 'nullable|numeric',
-            'gst_basis' => 'nullable|in:inclusive,exclusive',
+            'gst_basis' => 'nullable|in:'.implode(',', Transaction::$gstBasisValues),
             'payment_status' => 'required|in:unpaid,paid',
             'due_date' => 'nullable|date',
             'paid_at' => 'nullable|date',
@@ -2955,16 +2955,69 @@ class BusinessEntityController extends Controller
 
     private function validateTransactionGstBasis(Request $request): void
     {
+        $basis = $request->input('gst_basis');
         $raw = $request->input('gst_amount');
-        if ($raw === null || $raw === '') {
+        $hasGstAmount = $raw !== null && $raw !== '' && is_numeric($raw) && round((float) $raw, 2) > 0;
+
+        if ($basis === 'manual') {
+            if (! $hasGstAmount) {
+                throw ValidationException::withMessages([
+                    'gst_amount' => 'Enter the GST amount from the invoice when using Manual GST.',
+                ]);
+            }
+
+            $this->assertIncludedGstDoesNotExceedAmount(
+                'gst_amount',
+                $request->input('amount'),
+                $raw,
+                $basis
+            );
+
             return;
         }
-        if (! is_numeric($raw) || round((float) $raw, 2) <= 0) {
+
+        if (! $hasGstAmount) {
             return;
         }
-        if (! in_array($request->input('gst_basis'), ['inclusive', 'exclusive'], true)) {
+
+        if (! in_array($basis, Transaction::$gstBasisValues, true)) {
             throw ValidationException::withMessages([
-                'gst_basis' => 'Select whether the amount is GST inclusive or GST exclusive when you enter a GST amount.',
+                'gst_basis' => 'Select whether the amount is GST inclusive, exclusive, or manual when you enter a GST amount.',
+            ]);
+        }
+
+        $this->assertIncludedGstDoesNotExceedAmount(
+            'gst_amount',
+            $request->input('amount'),
+            $raw,
+            $basis
+        );
+    }
+
+    /**
+     * Inclusive/manual totals already include GST, so GST cannot exceed the line amount.
+     */
+    private function assertIncludedGstDoesNotExceedAmount(
+        string $errorKey,
+        mixed $amount,
+        mixed $gstAmount,
+        ?string $basis
+    ): void {
+        if (! in_array($basis, ['inclusive', 'manual'], true)) {
+            return;
+        }
+        if ($amount === null || $amount === '' || ! is_numeric($amount)) {
+            return;
+        }
+        if ($gstAmount === null || $gstAmount === '' || ! is_numeric($gstAmount)) {
+            return;
+        }
+
+        $gst = round((float) $gstAmount, 2);
+        $amt = round(abs((float) $amount), 2);
+        if ($gst > $amt) {
+            throw ValidationException::withMessages([
+                $errorKey => 'GST amount cannot be greater than the line amount when GST is included in the total.',
             ]);
         }
     }
@@ -3545,12 +3598,28 @@ class BusinessEntityController extends Controller
         foreach ($lines as $index => $line) {
             $type = (string) ($line['transaction_type'] ?? '');
             $gstAmount = $line['gst_amount'] ?? null;
-            if ($gstAmount !== null && $gstAmount !== '' && is_numeric($gstAmount) && round((float) $gstAmount, 2) > 0) {
-                if (! in_array($line['gst_basis'] ?? null, ['inclusive', 'exclusive'], true)) {
-                    throw ValidationException::withMessages([
-                        "lines.{$index}.gst_basis" => 'Select whether the amount is GST inclusive or GST exclusive when you enter a GST amount.',
-                    ]);
-                }
+            $hasGstAmount = $gstAmount !== null && $gstAmount !== '' && is_numeric($gstAmount) && round((float) $gstAmount, 2) > 0;
+            $basis = $line['gst_basis'] ?? null;
+
+            if ($basis === 'manual' && ! $hasGstAmount) {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.gst_amount" => 'Enter the GST amount from the invoice when using Manual GST.',
+                ]);
+            }
+
+            if ($hasGstAmount && ! in_array($basis, Transaction::$gstBasisValues, true)) {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.gst_basis" => 'Select whether the amount is GST inclusive, exclusive, or manual when you enter a GST amount.',
+                ]);
+            }
+
+            if ($hasGstAmount) {
+                $this->assertIncludedGstDoesNotExceedAmount(
+                    "lines.{$index}.gst_amount",
+                    $line['amount'] ?? null,
+                    $gstAmount,
+                    is_string($basis) ? $basis : null
+                );
             }
 
             $relatedId = $line['related_entity_id'] ?? null;
