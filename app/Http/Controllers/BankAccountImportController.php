@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
+use App\Models\ChartOfAccount;
 use App\Models\Transaction;
 use App\Services\BankStatementApplyService;
 use App\Services\BankStatementMatchSuggester;
@@ -245,6 +246,16 @@ class BankAccountImportController extends Controller
             'entries' => $entryPayloads,
             'candidates' => $candidates->map(fn (Transaction $transaction) => $this->candidatePayload($transaction)),
             'transaction_types' => Transaction::typeSelectGroupsForBankAccount($bankAccount),
+            'chart_accounts' => $bankAccount->isLoanLedgerAccount()
+                ? []
+                : ChartOfAccount::activeForSelect()
+                    ->map(fn (ChartOfAccount $account) => [
+                        'id' => $account->id,
+                        'account_code' => $account->account_code,
+                        'account_name' => $account->account_name,
+                    ])
+                    ->values()
+                    ->all(),
             'is_loan_activity' => $bankAccount->isLoanLedgerAccount(),
             'matched_count' => $matchedEntryCount,
         ]);

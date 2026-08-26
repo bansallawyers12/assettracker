@@ -144,10 +144,7 @@ class BankAccountTransactionController extends Controller
             'isLoanActivityImport' => $bankAccount->isLoanLedgerAccount(),
             'chartAccounts' => $bankAccount->isLoanLedgerAccount()
                 ? collect()
-                : ChartOfAccount::query()
-                    ->where('is_active', true)
-                    ->orderBy('account_code')
-                    ->get(['id', 'account_code', 'account_name']),
+                : ChartOfAccount::activeForSelect(),
             'filters' => $filters,
             'filtersActive' => $filtersActive,
             'balanceSnapshots' => $this->balanceSnapshots->forPanel($bankAccount),

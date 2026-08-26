@@ -39,10 +39,12 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($panel)->toContain('Clear matched')
         ->and($panel)->toContain('data-bank-import-remove-selected')
         ->and($panel)->toContain('Remove selected')
-        ->and($panel)->toContain('Or create from chart account')
+        ->and($panel)->toContain('Create from chart of accounts')
+        ->and($panel)->toContain('Match existing transaction')
         ->and($panel)->toContain('data-bank-import-chart-account')
-        ->and($panel)->toContain('$chartAccounts')
-        ->and($panel)->not->toContain('data-bank-import-chart-account"')
+        ->and($panel)->toContain('activeForSelect')
+        ->and($panel)->toContain('$resolvedChartAccounts')
+        ->and($panel)->toContain('size="8"')
         ->and($transactions)->toContain('bank-accounts.import.clear-entries')
         ->and($panel)->toContain('data-bank-import-select-suggestions')
         ->and($panel)->toContain('data-bank-import-create-type')
@@ -52,7 +54,7 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($transactions)->toContain('bank-accounts.partials.reconciliation-panel')
         ->and($transactions)->toContain('isLoanActivityImport')
         ->and($controller)->toContain("'chartAccounts'")
-        ->and($controller)->toContain('ChartOfAccount::query()')
+        ->and($controller)->toContain('ChartOfAccount::activeForSelect')
         ->and($js)->toContain('export function bindReconciliationPanel')
         ->and($js)->toContain('bankImportClearEntriesUrl')
         ->and($js)->toContain("matchStatus: 'unmatched'")
@@ -60,6 +62,7 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($js)->toContain("scope: 'all'")
         ->and($js)->toContain("scope: 'selected'")
         ->and($js)->toContain('payload.matched_count')
+        ->and($js)->toContain('payload.chart_accounts')
         ->and($js)->toContain("importPanel.dataset.loanActivity === '1'")
         ->and($js)->toContain('forceActivateTomSelectsIn')
         ->and($modal)->toContain("from './bank-reconciliation.js'")
@@ -88,6 +91,8 @@ it('enriches unmatched endpoint with suggestions in controller source', function
         ->and($source)->toContain("Rule::in(['unmatched', 'matched'])")
         ->and($source)->toContain("Rule::in(['selected', 'all'])")
         ->and($source)->toContain("'matched_count'")
+        ->and($source)->toContain("'chart_accounts'")
+        ->and($source)->toContain('ChartOfAccount::activeForSelect')
         ->and($source)->toContain("whereNull('transaction_id')")
         ->and($source)->toContain('whereNotNull');
 });
@@ -189,7 +194,7 @@ it('restricts bank import uploads to csv only', function () {
     $panel = file_get_contents(resource_path('views/bank-accounts/partials/reconciliation-panel.blade.php'));
 
     expect($importController)->toContain("'statement_file' => 'required|file|mimes:csv,txt|max:10240'")
-        ->and($panel)->toContain('accept=".csv"')
+        ->and($panel)->toContain('accept=".csv,.txt"')
         ->and($panel)->not->toContain('.xlsx');
 });
 

@@ -256,6 +256,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
 
             populateCandidateSelects(Array.isArray(payload.candidates) ? payload.candidates : []);
             populateCreateTypeSelects(payload.transaction_types || null);
+            populateChartAccountSelects(Array.isArray(payload.chart_accounts) ? payload.chart_accounts : []);
             applySuggestionDefaults(Array.isArray(payload.entries) ? payload.entries : []);
 
             const countEl = importPanel.querySelector('[data-bank-import-unmatched-count]');
@@ -306,6 +307,10 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     }
 
     function populateChartAccountSelects(accounts) {
+        if (!Array.isArray(accounts) || accounts.length === 0) {
+            return;
+        }
+
         importPanel.querySelectorAll('[data-bank-import-chart-account]').forEach((select) => {
             const keep = select.value;
             select.innerHTML = '';
@@ -322,7 +327,11 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             if (keep && accounts.some((account) => String(account.id) === String(keep))) {
                 select.value = String(keep);
             }
-            // Native select for chart accounts — do not wrap with Tom Select.
+            // Native listbox for chart accounts — do not wrap with Tom Select.
+        });
+
+        importPanel.querySelectorAll('[data-bank-import-chart-account-count]').forEach((el) => {
+            el.textContent = `(${accounts.length})`;
         });
     }
 
@@ -340,11 +349,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             const response = await apiFetch(url);
             const payload = parseJson(await response.text());
             const accounts = payload?.accounts || payload?.data || (Array.isArray(payload) ? payload : []);
-            if (Array.isArray(accounts) && accounts.length > 0) {
-                populateChartAccountSelects(accounts);
-            }
+            populateChartAccountSelects(accounts);
         } catch {
-            // Chart accounts are optional until create-from-account is used.
+            // Server-rendered options remain if the API is unavailable.
         }
     }
 

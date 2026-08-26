@@ -8,6 +8,10 @@
     $allTypes = \App\Models\Transaction::allTypes();
     $pendingCountLabel = $isLoanActivityImport ? 'to apply' : 'unmatched';
     $matchedEntryCount = (int) ($matchedEntryCount ?? 0);
+    $resolvedChartAccounts = collect($chartAccounts ?? []);
+    if (! $isLoanActivityImport && $resolvedChartAccounts->isEmpty()) {
+        $resolvedChartAccounts = \App\Models\ChartOfAccount::activeForSelect();
+    }
 @endphp
 
 <div
@@ -330,8 +334,38 @@
                             </div>
 
                             <div class="mt-3 hidden grid gap-2 sm:grid-cols-2" data-bank-import-change>
+                                @unless($isLoanActivityImport)
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">
+                                            Create from chart of accounts
+                                            <span class="font-normal text-gray-400" data-bank-import-chart-account-count>({{ $resolvedChartAccounts->count() }})</span>
+                                        </label>
+                                        <p class="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                                            Pick a GL account to create this line. This is not the Match existing list.
+                                        </p>
+                                        {{-- Native listbox: options stay visible inside the Change panel (Tom Select hid them). --}}
+                                        <select
+                                            data-bank-import-chart-account
+                                            size="8"
+                                            class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                        >
+                                            <option value="">— None —</option>
+                                            @foreach($resolvedChartAccounts as $chartAccount)
+                                                <option value="{{ $chartAccount->id }}">
+                                                    {{ $chartAccount->account_code }} - {{ $chartAccount->account_name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @if($resolvedChartAccounts->isEmpty())
+                                            <p class="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
+                                                No active chart accounts found. Add accounts under Chart of accounts first.
+                                            </p>
+                                        @endif
+                                    </div>
+                                @endunless
                                 <div>
-                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Match existing</label>
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Match existing transaction</label>
+                                    <p class="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">Booked transactions only — not chart of accounts.</p>
                                     <x-tom-select
                                         data-bank-import-transaction
                                         class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
@@ -352,6 +386,11 @@
                                             </option>
                                         @endforeach
                                     </x-tom-select>
+                                    @if($matchCandidates->isEmpty())
+                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                            No unmatched booked transactions for this entity. Use chart of accounts or create as type.
+                                        </p>
+                                    @endif
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Or create as type</label>
@@ -371,31 +410,6 @@
                                         @endforeach
                                     </x-tom-select>
                                 </div>
-                                @unless($isLoanActivityImport)
-                                    <div class="sm:col-span-2">
-                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">
-                                            Or create from chart account
-                                            <span class="font-normal text-gray-400">({{ ($chartAccounts ?? collect())->count() }})</span>
-                                        </label>
-                                        {{-- Native select so options stay visible inside the Change panel. --}}
-                                        <select
-                                            data-bank-import-chart-account
-                                            class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                                        >
-                                            <option value="">— None —</option>
-                                            @foreach(($chartAccounts ?? collect()) as $chartAccount)
-                                                <option value="{{ $chartAccount->id }}">
-                                                    {{ $chartAccount->account_code }} - {{ $chartAccount->account_name }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                        @if(($chartAccounts ?? collect())->isEmpty())
-                                            <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                                No active chart accounts found. Add accounts under Chart of accounts first.
-                                            </p>
-                                        @endif
-                                    </div>
-                                @endunless
                                 <div class="sm:col-span-2 rounded-md border border-gray-200 dark:border-gray-700 p-2.5">
                                     <p class="text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-2">Create markers</p>
                                     <div class="grid gap-2 sm:grid-cols-2">

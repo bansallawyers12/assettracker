@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 
 class ChartOfAccount extends Model
@@ -23,6 +24,19 @@ class ChartOfAccount extends Model
         'current_balance' => 'decimal:2',
         'is_active' => 'boolean',
     ];
+
+    /**
+     * Active accounts for reconciliation / journal pickers.
+     *
+     * @return Collection<int, self>
+     */
+    public static function activeForSelect(): Collection
+    {
+        return static::query()
+            ->where('is_active', true)
+            ->orderBy('account_code')
+            ->get(['id', 'account_code', 'account_name']);
+    }
 
     public static $accountTypes = [
         'asset' => 'Asset',
