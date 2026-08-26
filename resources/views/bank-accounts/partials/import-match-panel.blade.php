@@ -9,4 +9,5 @@
     'suggestions' => $suggestions ?? [],
     'transactionTypeGroups' => $transactionTypeGroups ?? \App\Models\Transaction::typeSelectGroupsForBankAccount($bankAccount),
     'isLoanActivityImport' => $isLoanActivityImport ?? $bankAccount->isLoanLedgerAccount(),
+    'chartAccounts' => $chartAccounts ?? collect(),
 ])

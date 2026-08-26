@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
+use App\Models\ChartOfAccount;
 use App\Models\Transaction;
 use App\Services\BankAccountBalanceSnapshotService;
 use App\Services\BankStatementMatchSuggester;
@@ -141,6 +142,12 @@ class BankAccountTransactionController extends Controller
             'suggestions' => $suggestions,
             'transactionTypeGroups' => Transaction::typeSelectGroupsForBankAccount($bankAccount),
             'isLoanActivityImport' => $bankAccount->isLoanLedgerAccount(),
+            'chartAccounts' => $bankAccount->isLoanLedgerAccount()
+                ? collect()
+                : ChartOfAccount::query()
+                    ->where('is_active', true)
+                    ->orderBy('account_code')
+                    ->get(['id', 'account_code', 'account_name']),
             'filters' => $filters,
             'filtersActive' => $filtersActive,
             'balanceSnapshots' => $this->balanceSnapshots->forPanel($bankAccount),

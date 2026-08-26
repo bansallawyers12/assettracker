@@ -37,11 +37,15 @@
                 'canManageTransactions' => $canManageTransactions,
                 'canImport' => $canImport,
                 'unmatchedEntries' => $unmatchedEntries,
+                'matchedEntryCount' => $matchedEntryCount ?? 0,
                 'matchCandidates' => $matchCandidates,
                 'suggestions' => $suggestions,
                 'transactionTypeGroups' => $transactionTypeGroups,
+                'isLoanActivityImport' => $isLoanActivityImport ?? $bankAccount->isLoanLedgerAccount(),
+                'chartAccounts' => $chartAccounts ?? collect(),
                 'filters' => $filters,
                 'filtersActive' => $filtersActive,
+                'balanceSnapshots' => $balanceSnapshots ?? [],
                 'isFullPage' => true,
             ])
         </div>

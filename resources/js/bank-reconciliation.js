@@ -7,7 +7,7 @@ import {
     notifyFormFailure,
     notifyFormSuccess,
 } from './workspace-panel.js';
-import { refreshTomSelect } from './tomselect-init.js';
+import { forceActivateTomSelectsIn, refreshTomSelect } from './tomselect-init.js';
 
 export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel) {
     const importPanel = panel.querySelector('[data-bank-import-panel]');
@@ -322,12 +322,15 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             if (keep && accounts.some((account) => String(account.id) === String(keep))) {
                 select.value = String(keep);
             }
-
-            refreshTomSelect(select);
+            // Native select for chart accounts — do not wrap with Tom Select.
         });
     }
 
     async function loadChartAccounts() {
+        if (importPanel.dataset.loanActivity === '1') {
+            return;
+        }
+
         const url = panel.dataset.chartAccountsUrl;
         if (!url) {
             return;
@@ -337,7 +340,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             const response = await apiFetch(url);
             const payload = parseJson(await response.text());
             const accounts = payload?.accounts || payload?.data || (Array.isArray(payload) ? payload : []);
-            if (Array.isArray(accounts)) {
+            if (Array.isArray(accounts) && accounts.length > 0) {
                 populateChartAccountSelects(accounts);
             }
         } catch {
@@ -434,6 +437,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 return;
             }
             change.classList.toggle('hidden');
+            if (!change.classList.contains('hidden')) {
+                forceActivateTomSelectsIn(change);
+            }
         }, { signal });
     });
 

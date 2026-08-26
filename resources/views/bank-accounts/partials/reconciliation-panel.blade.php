@@ -373,13 +373,27 @@
                                 </div>
                                 @unless($isLoanActivityImport)
                                     <div class="sm:col-span-2">
-                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Or create from chart account</label>
-                                        <x-tom-select
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">
+                                            Or create from chart account
+                                            <span class="font-normal text-gray-400">({{ ($chartAccounts ?? collect())->count() }})</span>
+                                        </label>
+                                        {{-- Native select so options stay visible inside the Change panel. --}}
+                                        <select
                                             data-bank-import-chart-account
                                             class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                         >
                                             <option value="">— None —</option>
-                                        </x-tom-select>
+                                            @foreach(($chartAccounts ?? collect()) as $chartAccount)
+                                                <option value="{{ $chartAccount->id }}">
+                                                    {{ $chartAccount->account_code }} - {{ $chartAccount->account_name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                        @if(($chartAccounts ?? collect())->isEmpty())
+                                            <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                                No active chart accounts found. Add accounts under Chart of accounts first.
+                                            </p>
+                                        @endif
                                     </div>
                                 @endunless
                                 <div class="sm:col-span-2 rounded-md border border-gray-200 dark:border-gray-700 p-2.5">

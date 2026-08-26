@@ -26,6 +26,7 @@ it('includes shared reconciliation panel markup and JS module', function () {
     $transactions = file_get_contents(resource_path('views/bank-accounts/partials/transactions-panel.blade.php'));
     $js = file_get_contents(resource_path('js/bank-reconciliation.js'));
     $modal = file_get_contents(resource_path('js/bank-account-modal.js'));
+    $controller = file_get_contents(app_path('Http/Controllers/BankAccountTransactionController.php'));
 
     expect($panel)->toContain('data-reconciliation-panel')
         ->and($panel)->toContain('data-loan-activity')
@@ -38,6 +39,10 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($panel)->toContain('Clear matched')
         ->and($panel)->toContain('data-bank-import-remove-selected')
         ->and($panel)->toContain('Remove selected')
+        ->and($panel)->toContain('Or create from chart account')
+        ->and($panel)->toContain('data-bank-import-chart-account')
+        ->and($panel)->toContain('$chartAccounts')
+        ->and($panel)->not->toContain('data-bank-import-chart-account"')
         ->and($transactions)->toContain('bank-accounts.import.clear-entries')
         ->and($panel)->toContain('data-bank-import-select-suggestions')
         ->and($panel)->toContain('data-bank-import-create-type')
@@ -46,6 +51,8 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($panel)->toContain('data-bank-import-comments')
         ->and($transactions)->toContain('bank-accounts.partials.reconciliation-panel')
         ->and($transactions)->toContain('isLoanActivityImport')
+        ->and($controller)->toContain("'chartAccounts'")
+        ->and($controller)->toContain('ChartOfAccount::query()')
         ->and($js)->toContain('export function bindReconciliationPanel')
         ->and($js)->toContain('bankImportClearEntriesUrl')
         ->and($js)->toContain("matchStatus: 'unmatched'")
@@ -54,6 +61,7 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($js)->toContain("scope: 'selected'")
         ->and($js)->toContain('payload.matched_count')
         ->and($js)->toContain("importPanel.dataset.loanActivity === '1'")
+        ->and($js)->toContain('forceActivateTomSelectsIn')
         ->and($modal)->toContain("from './bank-reconciliation.js'")
         ->and($modal)->toContain('bindReconciliationPanel')
         ->and($js)->toContain('subject_to_bas')
