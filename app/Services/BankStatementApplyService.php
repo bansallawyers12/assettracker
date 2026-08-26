@@ -205,14 +205,9 @@ class BankStatementApplyService
 
         if ($transaction->bank_account_id !== null
             && (int) $transaction->bank_account_id !== (int) $bankAccount->id) {
-            $canReassignToLoanLedger = $bankAccount->isLoanLedgerAccount()
-                && array_key_exists((string) $transaction->transaction_type, Transaction::loanActivityTypes());
-
-            if (! $canReassignToLoanLedger) {
-                throw ValidationException::withMessages([
-                    'matches' => 'Selected transaction belongs to a different bank account.',
-                ]);
-            }
+            throw ValidationException::withMessages([
+                'matches' => 'Selected transaction belongs to a different bank account.',
+            ]);
         }
 
         if ($transaction->bankStatementEntries()->exists()) {
@@ -224,8 +219,7 @@ class BankStatementApplyService
         $this->assertEntryMatchesTransaction($bankEntry, $transaction);
 
         $updates = [];
-        if ($transaction->bank_account_id === null
-            || (int) $transaction->bank_account_id !== (int) $bankAccount->id) {
+        if ($transaction->bank_account_id === null) {
             $updates['bank_account_id'] = $bankAccount->id;
             $updates['payment_channel'] = Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT;
         }

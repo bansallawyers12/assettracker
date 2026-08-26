@@ -54,7 +54,7 @@ function resolveDropdownParent(select) {
     // Custom DOM parents append the list without coordinates, so it appears at
     // the bottom of large containers (dashboard form, slide-over panels).
     // Report hub entity scope cards use overflow-hidden, which clips inline dropdowns.
-    if (select.closest('#add-transaction-section, .bank-account-panel-sheet, .entity-workspace-panel-sheet, [data-entity-panel-body], .persons-ws-form, [data-report-entity-scope-picker], [data-bank-import-panel], [data-bank-import-entries], [data-bank-transactions-panel]')) {
+    if (select.closest('#add-transaction-section, .bank-account-panel-sheet, .entity-workspace-panel-sheet, [data-entity-panel-body], .persons-ws-form, [data-report-entity-scope-picker]')) {
         return 'body';
     }
 

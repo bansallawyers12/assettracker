@@ -7,12 +7,7 @@ import {
     notifyFormFailure,
     notifyFormSuccess,
 } from './workspace-panel.js';
-import {
-    forceActivateTomSelectsIn,
-    getSelectValue,
-    refreshTomSelect,
-    setSelectValue,
-} from './tomselect-init.js';
+import { refreshTomSelect } from './tomselect-init.js';
 
 export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel) {
     const importPanel = panel.querySelector('[data-bank-import-panel]');
@@ -133,7 +128,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
 
     function populateCandidateSelects(candidates) {
         importPanel.querySelectorAll('[data-bank-import-transaction]').forEach((select) => {
-            const keep = getSelectValue(select);
+            const keep = select.value;
             select.innerHTML = '';
             const empty = document.createElement('option');
             empty.value = '';
@@ -156,9 +151,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             });
 
             if (keep && candidates.some((candidate) => String(candidate.id) === String(keep))) {
-                setSelectValue(select, String(keep));
-            } else {
-                setSelectValue(select, '');
+                select.value = String(keep);
             }
 
             refreshTomSelect(select);
@@ -384,9 +377,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             const suggestedType = entryEl.querySelector('[data-bank-import-suggested-type]')?.value || '';
 
             if (changeOpen) {
-                transactionId = getSelectValue(txSelect);
-                transactionType = getSelectValue(typeSelect);
-                chartAccountId = getSelectValue(chartSelect);
+                transactionId = txSelect?.value || '';
+                transactionType = typeSelect?.value || '';
+                chartAccountId = chartSelect?.value || '';
 
                 // Opening Change with empty overrides should not discard a valid suggestion.
                 if (!transactionId && !transactionType && !chartAccountId) {
@@ -441,9 +434,6 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 return;
             }
             change.classList.toggle('hidden');
-            if (!change.classList.contains('hidden')) {
-                forceActivateTomSelectsIn(change);
-            }
         }, { signal });
     });
 

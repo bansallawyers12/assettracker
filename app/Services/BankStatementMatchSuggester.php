@@ -267,7 +267,7 @@ class BankStatementMatchSuggester
             if (
                 str_contains($subcategory, 'transfer')
                 || str_contains($subcategory, 'repayment')
-                || preg_match('/\b(transfer|trns|from account|loan repayment|redraw|linked acc)\b/', $combined)
+                || preg_match('/\b(transfer|from account|loan repayment|redraw)\b/', $combined)
             ) {
                 return $this->createSuggestion('loan_repayments', 'high', 'Subcategory: Transfer/repayment', $defaultAssetId);
             }
@@ -281,10 +281,7 @@ class BankStatementMatchSuggester
             return $this->createSuggestion('loan_fees', 'medium', 'Keyword: fee', $defaultAssetId);
         }
 
-        if (
-            preg_match('/\b(loan repayment|mortgage|principal|redraw|linked acc|trns)\b/', $description)
-            && (float) $entry->amount < 0
-        ) {
+        if (preg_match('/\b(loan repayment|mortgage|principal|redraw)\b/', $description) && (float) $entry->amount < 0) {
             return $this->createSuggestion('loan_repayments', 'medium', 'Keyword: repayment', $defaultAssetId);
         }
 

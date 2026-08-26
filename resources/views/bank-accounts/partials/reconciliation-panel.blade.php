@@ -334,7 +334,6 @@
                                     <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Match existing</label>
                                     <x-tom-select
                                         data-bank-import-transaction
-                                        data-tomselect-dropdown-parent="body"
                                         class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                     >
                                         <option value="">— None —</option>
@@ -353,17 +352,11 @@
                                             </option>
                                         @endforeach
                                     </x-tom-select>
-                                    @if($matchCandidates->isEmpty())
-                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
-                                            No unmatched booked transactions for this account. Use Create as type, or book a transaction first.
-                                        </p>
-                                    @endif
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Or create as type</label>
                                     <x-tom-select
                                         data-bank-import-create-type
-                                        data-tomselect-dropdown-parent="body"
                                         class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                     >
                                         <option value="">— None —</option>
