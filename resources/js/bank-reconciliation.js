@@ -21,6 +21,32 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     const clearUnmatchedBtn = importPanel.querySelector('[data-bank-import-clear-unmatched]');
     const clearMatchedBtn = importPanel.querySelector('[data-bank-import-clear-matched]');
     const errorBox = importPanel.querySelector('[data-bank-import-errors]');
+    const mappingPreview = importPanel.querySelector('[data-bank-import-mapping-preview]');
+    const sourceColumnsEl = importPanel.querySelector('[data-bank-import-source-columns]');
+    const previewThead = importPanel.querySelector('[data-bank-import-preview-thead]');
+    const previewTbody = importPanel.querySelector('[data-bank-import-preview-tbody]');
+    const previewMeta = importPanel.querySelector('[data-bank-import-preview-meta]');
+    const pickHint = importPanel.querySelector('[data-bank-import-pick-hint]');
+    const mappingReadyHint = importPanel.querySelector('[data-bank-import-mapping-ready-hint]');
+    const confirmMappingBtn = importPanel.querySelector('[data-bank-import-confirm-mapping]');
+    const cancelPreviewBtn = importPanel.querySelector('[data-bank-import-cancel-preview]');
+
+    let importPreviewToken = null;
+    let importPreviewHeaders = [];
+    let importPreviewRows = [];
+    let selectedSourceColumn = null;
+
+    const MAPPING_FIELDS = ['date', 'description', 'amount', 'debit', 'credit', 'reference', 'balance'];
+    const PRIMARY_FIELDS = ['date', 'description', 'amount'];
+    const FIELD_LABELS = {
+        date: 'Date',
+        description: 'Description',
+        amount: 'Amount',
+        debit: 'Debit',
+        credit: 'Credit',
+        reference: 'Reference',
+        balance: 'Balance',
+    };
 
     function showImportError(message) {
         if (!errorBox) {
@@ -438,42 +464,407 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         reloadCandidatesForEntity();
     }, { signal });
 
-    uploadForm?.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        event.stopPropagation();
+    function hideMappingPreview() {
+        importPreviewToken = null;
+        importPreviewHeaders = [];
+        importPreviewRows = [];
+        selectedSourceColumn = null;
+        mappingPreview?.classList.add('hidden');
+        if (sourceColumnsEl) {
+            sourceColumnsEl.innerHTML = '';
+        }
+        if (previewThead) {
+            previewThead.innerHTML = '';
+        }
+        if (previewTbody) {
+            previewTbody.innerHTML = '';
+        }
+        if (previewMeta) {
+            previewMeta.textContent = '';
+        }
+        if (pickHint) {
+            pickHint.textContent = 'Click a column, then click a target field';
+        }
+        importPanel.querySelectorAll('[data-bank-import-map-field]').forEach((select) => {
+            select.innerHTML = '<option value="">— Choose column —</option>';
+            select.value = '';
+        });
+        refreshMappingUi();
+    }
+
+    function currentMapping() {
+        const mapping = {};
+        MAPPING_FIELDS.forEach((field) => {
+            const select = importPanel.querySelector(`[data-bank-import-map-field="${field}"]`);
+            const value = (select?.value || '').trim();
+            mapping[field] = value || null;
+        });
+        return mapping;
+    }
+
+    function assignColumnToField(field, column) {
+        const select = importPanel.querySelector(`[data-bank-import-map-field="${field}"]`);
+        if (!select) {
+            return;
+        }
+
+        if (column) {
+            importPanel.querySelectorAll('[data-bank-import-map-field]').forEach((other) => {
+                if (other !== select && other.value === column) {
+                    other.value = '';
+                }
+            });
+        }
+
+        select.value = column || '';
+        selectedSourceColumn = null;
+        if (pickHint) {
+            pickHint.textContent = 'Click a column, then click a target field';
+        }
+        refreshMappingUi();
+    }
+
+    function orderedPreviewColumns(mapping) {
+        const used = new Set();
+        const columns = [];
+
+        PRIMARY_FIELDS.forEach((field) => {
+            const header = mapping[field];
+            if (header && !used.has(header)) {
+                columns.push({ role: field, header, label: FIELD_LABELS[field] });
+                used.add(header);
+            }
+        });
+
+        ['debit', 'credit', 'reference', 'balance'].forEach((field) => {
+            const header = mapping[field];
+            if (header && !used.has(header)) {
+                columns.push({ role: field, header, label: FIELD_LABELS[field] });
+                used.add(header);
+            }
+        });
+
+        importPreviewHeaders.forEach((header) => {
+            if (!used.has(header)) {
+                columns.push({ role: null, header, label: header });
+            }
+        });
+
+        return columns;
+    }
+
+    function sampleValuesForColumn(header, limit = 3) {
+        if (!header) {
+            return [];
+        }
+
+        return importPreviewRows
+            .map((row) => String(row?.[header] ?? '').trim())
+            .filter((value) => value !== '')
+            .slice(0, limit);
+    }
+
+    function refreshMappingUi() {
+        const mapping = currentMapping();
+        const mappedHeaders = new Set(Object.values(mapping).filter(Boolean));
+
+        importPanel.querySelectorAll('[data-bank-import-drop-target]').forEach((target) => {
+            const field = target.dataset.bankImportDropTarget;
+            const required = target.dataset.required === '1';
+            const select = target.querySelector('[data-bank-import-map-field]');
+            const status = target.querySelector('[data-bank-import-map-status]');
+            const samplesEl = target.querySelector('[data-bank-import-sample-values]');
+            const value = (select?.value || '').trim();
+            const mapped = Boolean(value);
+
+            target.classList.toggle('border-emerald-400', mapped);
+            target.classList.toggle('bg-emerald-50/50', mapped);
+            target.classList.toggle('dark:border-emerald-600', mapped);
+            target.classList.toggle('dark:bg-emerald-950/20', mapped);
+            target.classList.toggle('border-amber-400', required && !mapped);
+            target.classList.toggle('bg-amber-50/40', required && !mapped);
+            target.classList.toggle('ring-2', selectedSourceColumn !== null);
+            target.classList.toggle('ring-indigo-300', selectedSourceColumn !== null);
+
+            if (status) {
+                if (mapped) {
+                    status.textContent = 'Mapped';
+                    status.className = 'rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200';
+                } else if (required) {
+                    status.textContent = 'Needed';
+                    status.className = 'rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200';
+                } else {
+                    status.textContent = 'Optional';
+                    status.className = 'rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300';
+                }
+            }
+
+            if (samplesEl) {
+                const samples = sampleValuesForColumn(value);
+                samplesEl.textContent = mapped
+                    ? `From “${value}”: ${samples.join(' · ') || '—'}`
+                    : (selectedSourceColumn
+                        ? `Click to assign “${selectedSourceColumn}”`
+                        : 'Sample values appear here');
+            }
+        });
+
+        sourceColumnsEl?.querySelectorAll('[data-column-name]').forEach((chip) => {
+            const header = chip.dataset.columnName;
+            const isMapped = mappedHeaders.has(header);
+            const isSelected = selectedSourceColumn === header;
+            chip.classList.toggle('ring-2', isSelected);
+            chip.classList.toggle('ring-indigo-500', isSelected);
+            chip.classList.toggle('border-emerald-400', isMapped && !isSelected);
+            chip.classList.toggle('bg-emerald-50', isMapped && !isSelected);
+            chip.classList.toggle('text-emerald-900', isMapped && !isSelected);
+            chip.classList.toggle('dark:bg-emerald-950/40', isMapped && !isSelected);
+            chip.classList.toggle('dark:text-emerald-200', isMapped && !isSelected);
+            chip.classList.toggle('opacity-70', isMapped && !isSelected);
+        });
+
+        renderAlignedPreviewTable(mapping);
+
+        const mappingError = validateMappingClient(mapping);
+        if (confirmMappingBtn) {
+            confirmMappingBtn.disabled = Boolean(mappingError);
+        }
+        if (mappingReadyHint) {
+            mappingReadyHint.textContent = mappingError
+                || 'Ready — preview matches Date, Description, Amount. Confirm to import.';
+            mappingReadyHint.classList.toggle('text-emerald-700', !mappingError);
+            mappingReadyHint.classList.toggle('dark:text-emerald-300', !mappingError);
+        }
+    }
+
+    function populateMappingSelects(headers, suggested = {}) {
+        importPanel.querySelectorAll('[data-bank-import-map-field]').forEach((select) => {
+            const field = select.dataset.bankImportMapField;
+            select.innerHTML = '';
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = '— Choose column —';
+            select.appendChild(empty);
+
+            headers.forEach((header) => {
+                const option = document.createElement('option');
+                option.value = header;
+                option.textContent = header;
+                select.appendChild(option);
+            });
+
+            const suggestedValue = suggested?.[field] || '';
+            if (suggestedValue && headers.includes(suggestedValue)) {
+                select.value = suggestedValue;
+            }
+        });
+    }
+
+    function renderSourceColumnChips(headers) {
+        if (!sourceColumnsEl) {
+            return;
+        }
+        sourceColumnsEl.innerHTML = '';
+        headers.forEach((header) => {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.draggable = true;
+            chip.dataset.columnName = header;
+            chip.className = 'cursor-pointer rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-800 transition hover:bg-indigo-100 active:cursor-grabbing dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200 dark:hover:bg-indigo-900/50';
+            chip.textContent = header;
+            chip.title = 'Click, then click Date / Description / Amount — or drag onto a field';
+
+            chip.addEventListener('click', () => {
+                selectedSourceColumn = selectedSourceColumn === header ? null : header;
+                if (pickHint) {
+                    pickHint.textContent = selectedSourceColumn
+                        ? `Selected “${selectedSourceColumn}” — now click Date, Description, or Amount`
+                        : 'Click a column, then click a target field';
+                }
+                refreshMappingUi();
+            }, { signal });
+
+            chip.addEventListener('dragstart', (event) => {
+                selectedSourceColumn = header;
+                event.dataTransfer?.setData('text/plain', header);
+                event.dataTransfer.effectAllowed = 'copy';
+                chip.classList.add('opacity-60');
+            }, { signal });
+
+            chip.addEventListener('dragend', () => {
+                chip.classList.remove('opacity-60');
+            }, { signal });
+
+            sourceColumnsEl.appendChild(chip);
+        });
+    }
+
+    function renderAlignedPreviewTable(mapping) {
+        if (!previewThead || !previewTbody) {
+            return;
+        }
+
+        const columns = orderedPreviewColumns(mapping);
+        previewThead.innerHTML = '';
+        previewTbody.innerHTML = '';
+
+        const headRow = document.createElement('tr');
+        columns.forEach((column) => {
+            const th = document.createElement('th');
+            th.scope = 'col';
+            th.className = column.role
+                ? 'px-2.5 py-2 text-left font-semibold text-indigo-900 dark:text-indigo-100 whitespace-nowrap bg-indigo-100/80 dark:bg-indigo-950/60'
+                : 'px-2.5 py-2 text-left font-medium text-gray-500 dark:text-gray-400 whitespace-nowrap';
+            th.innerHTML = column.role
+                ? `<span class="block text-[10px] uppercase tracking-wide opacity-80">${column.label}</span><span class="font-normal text-[11px]">${column.header}</span>`
+                : `<span class="block text-[10px] uppercase tracking-wide">Unused</span><span class="text-[11px]">${column.header}</span>`;
+            headRow.appendChild(th);
+        });
+        previewThead.appendChild(headRow);
+
+        importPreviewRows.slice(0, 6).forEach((row) => {
+            const tr = document.createElement('tr');
+            columns.forEach((column) => {
+                const td = document.createElement('td');
+                td.className = column.role
+                    ? 'px-2.5 py-1.5 text-gray-900 dark:text-gray-100 whitespace-nowrap max-w-[14rem] truncate font-medium'
+                    : 'px-2.5 py-1.5 text-gray-400 dark:text-gray-500 whitespace-nowrap max-w-[12rem] truncate';
+                const value = row?.[column.header] ?? '';
+                td.textContent = value;
+                td.title = String(value);
+                tr.appendChild(td);
+            });
+            previewTbody.appendChild(tr);
+        });
+    }
+
+    function showMappingPreview(payload) {
+        importPreviewToken = payload.preview_token || null;
+        importPreviewHeaders = Array.isArray(payload.headers) ? payload.headers : [];
+        importPreviewRows = Array.isArray(payload.sample_rows) ? payload.sample_rows : [];
+        selectedSourceColumn = null;
+
+        populateMappingSelects(importPreviewHeaders, payload.suggested_mapping || {});
+        renderSourceColumnChips(importPreviewHeaders);
+        refreshMappingUi();
+
+        if (previewMeta) {
+            const name = payload.original_name || 'CSV';
+            const count = payload.row_count ?? 0;
+            previewMeta.textContent = `${name} · ${count} data row(s)`;
+        }
+
+        mappingPreview?.classList.remove('hidden');
+        mappingPreview?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function bindMappingDropTargets() {
+        importPanel.querySelectorAll('[data-bank-import-drop-target]').forEach((target) => {
+            const field = target.dataset.bankImportDropTarget;
+            const select = target.querySelector('[data-bank-import-map-field]');
+
+            target.addEventListener('click', (event) => {
+                if (event.target === select || select?.contains(event.target)) {
+                    return;
+                }
+                if (!selectedSourceColumn) {
+                    if (pickHint) {
+                        pickHint.textContent = 'First click a file column above, then click this field';
+                    }
+                    return;
+                }
+                assignColumnToField(field, selectedSourceColumn);
+            }, { signal });
+
+            target.addEventListener('dragover', (event) => {
+                event.preventDefault();
+                target.classList.add('border-indigo-500', 'bg-indigo-50');
+            }, { signal });
+
+            target.addEventListener('dragleave', () => {
+                target.classList.remove('border-indigo-500', 'bg-indigo-50');
+            }, { signal });
+
+            target.addEventListener('drop', (event) => {
+                event.preventDefault();
+                target.classList.remove('border-indigo-500', 'bg-indigo-50');
+                const column = event.dataTransfer?.getData('text/plain');
+                if (!column) {
+                    return;
+                }
+                assignColumnToField(field, column);
+            }, { signal });
+
+            select?.addEventListener('change', () => {
+                assignColumnToField(field, select.value || null);
+            }, { signal });
+        });
+    }
+
+    function validateMappingClient(mapping) {
+        if (!mapping.date) {
+            return 'Date is required.';
+        }
+        if (!mapping.description) {
+            return 'Description is required.';
+        }
+        if (!mapping.amount && !mapping.debit && !mapping.credit) {
+            return 'Amount is required (or map Debit and/or Credit).';
+        }
+        return null;
+    }
+
+    bindMappingDropTargets();
+
+    cancelPreviewBtn?.addEventListener('click', () => {
+        hideMappingPreview();
+        clearImportError();
+    }, { signal });
+
+    confirmMappingBtn?.addEventListener('click', async () => {
         clearImportError();
 
         const processUrl = panel.dataset.bankImportProcessUrl;
-        if (!processUrl) {
+        if (!processUrl || !importPreviewToken) {
+            showImportError('Upload a CSV first to create a preview.');
             return;
         }
 
         const entityId = getImportEntityId();
         if (!entityId) {
-            showImportError('Select a booking entity before uploading.');
+            showImportError('Select a booking entity before confirming.');
             return;
         }
 
-        const submitBtn = uploadForm.querySelector('[data-bank-import-upload-submit]');
-        const originalLabel = submitBtn?.textContent;
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Processing…';
+        const mapping = currentMapping();
+        const mappingError = validateMappingClient(mapping);
+        if (mappingError) {
+            showImportError(mappingError);
+            return;
         }
 
-        try {
-            const formData = new FormData(uploadForm);
-            formData.set('business_entity_id', entityId);
+        confirmMappingBtn.disabled = true;
+        const originalLabel = confirmMappingBtn.textContent;
+        confirmMappingBtn.textContent = 'Importing…';
 
+        try {
             const response = await apiFetch(processUrl, {
                 method: 'POST',
-                body: formData,
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({
+                    business_entity_id: Number(entityId),
+                    preview_token: importPreviewToken,
+                    column_mapping: mapping,
+                }),
             });
             const payload = parseJson(await response.text());
 
             if (!response.ok || !payload?.success) {
-                showImportError(payload?.message || 'Upload failed.');
-                notifyFormFailure(uploadForm, payload, { title: 'Import failed' });
+                showImportError(payload?.message || 'Import failed.');
+                notifyFormFailure(null, payload, { title: 'Import failed' });
                 return;
             }
 
@@ -487,7 +878,63 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 ),
                 'Statement imported'
             );
+            hideMappingPreview();
             await refreshTransactionsPanel();
+        } catch (error) {
+            showImportError(error?.message || 'Import failed. Check your connection and try again.');
+        } finally {
+            confirmMappingBtn.disabled = false;
+            if (originalLabel) {
+                confirmMappingBtn.textContent = originalLabel;
+            }
+        }
+    }, { signal });
+
+    uploadForm?.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        clearImportError();
+
+        const previewUrl = panel.dataset.bankImportPreviewUrl;
+        if (!previewUrl) {
+            showImportError('Preview endpoint is not configured.');
+            return;
+        }
+
+        const entityId = getImportEntityId();
+        if (!entityId) {
+            showImportError('Select a booking entity before uploading.');
+            return;
+        }
+
+        const submitBtn = uploadForm.querySelector('[data-bank-import-upload-submit]');
+        const originalLabel = submitBtn?.textContent;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Reading…';
+        }
+
+        try {
+            const formData = new FormData(uploadForm);
+            formData.set('business_entity_id', entityId);
+
+            const response = await apiFetch(previewUrl, {
+                method: 'POST',
+                body: formData,
+            });
+            const payload = parseJson(await response.text());
+
+            if (!response.ok || !payload?.success) {
+                showImportError(payload?.message || 'Upload failed.');
+                notifyFormFailure(uploadForm, payload, { title: 'Preview failed' });
+                return;
+            }
+
+            showMappingPreview(payload);
+            notifyFormSuccess(
+                payload.message || 'Review column mapping, then confirm import.',
+                'CSV preview ready'
+            );
         } catch (error) {
             showImportError(error?.message || 'Upload failed. Check your connection and try again.');
         } finally {
@@ -499,6 +946,8 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             }
         }
     }, { signal });
+
+    // Legacy direct-process handler replaced by preview → confirm mapping above.
 
     acceptBtn?.addEventListener('click', async () => {
         clearImportError();

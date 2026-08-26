@@ -26,7 +26,7 @@
             @else
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reconcile statement</h3>
                 <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                    Upload CSV statement lines, review suggestions, then accept selected rows. Nothing posts until you accept.
+                    Upload a CSV, confirm Date / Description / Amount columns (auto-detected; drag to remap), then accept selected rows. Nothing posts until you accept.
                 </p>
             @endif
         </div>
@@ -74,7 +74,7 @@
                     type="file"
                     id="bank_import_statement_file"
                     name="statement_file"
-                    accept=".csv"
+                    accept=".csv,.txt"
                     required
                     class="mt-1 block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100 dark:text-gray-300 dark:file:bg-indigo-950/50 dark:file:text-indigo-300"
                 >
@@ -103,10 +103,119 @@
                 data-bank-import-upload-submit
                 class="inline-flex items-center rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 disabled:opacity-60"
             >
-                Upload &amp; parse
+                Upload &amp; preview
             </button>
         </div>
     </form>
+
+    <div
+        data-bank-import-mapping-preview
+        class="mt-4 hidden space-y-4 rounded-xl border border-indigo-200 bg-white p-4 shadow-xs dark:border-indigo-900/50 dark:bg-gray-900/50"
+    >
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+                <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Step 2 — Match columns</h4>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                    1) Click a <span class="font-medium text-gray-700 dark:text-gray-200">file column</span> below,
+                    2) click Date / Description / Amount to assign it.
+                    Or use the dropdown. The preview table reorders to match.
+                </p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" data-bank-import-preview-meta></p>
+            </div>
+            <button
+                type="button"
+                data-bank-import-cancel-preview
+                class="shrink-0 rounded-md border border-gray-300 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-800"
+            >
+                Cancel preview
+            </button>
+        </div>
+
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Your file columns</p>
+                <p class="text-[11px] text-indigo-700 dark:text-indigo-300" data-bank-import-pick-hint>Click a column, then click a target field</p>
+            </div>
+            <div class="flex flex-wrap gap-2" data-bank-import-source-columns></div>
+        </div>
+
+        <div>
+            <p class="mb-2 text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Import as (required fields first)</p>
+            <div class="grid gap-3 sm:grid-cols-3" data-bank-import-mapping-targets>
+                @php
+                    $mappingTargets = [
+                        'date' => ['label' => 'Date', 'help' => 'Transaction / value date', 'required' => true],
+                        'description' => ['label' => 'Description', 'help' => 'Narration / particulars', 'required' => true],
+                        'amount' => ['label' => 'Amount', 'help' => 'Or use Debit/Credit below', 'required' => true],
+                        'debit' => ['label' => 'Debit', 'help' => 'Optional', 'required' => false],
+                        'credit' => ['label' => 'Credit', 'help' => 'Optional', 'required' => false],
+                        'reference' => ['label' => 'Reference', 'help' => 'Optional', 'required' => false],
+                        'balance' => ['label' => 'Balance', 'help' => 'Optional', 'required' => false],
+                    ];
+                @endphp
+                @foreach ($mappingTargets as $field => $target)
+                    <button
+                        type="button"
+                        data-bank-import-drop-target="{{ $field }}"
+                        data-required="{{ $target['required'] ? '1' : '0' }}"
+                        class="group rounded-lg border-2 border-dashed border-gray-300 bg-white p-3 text-left transition hover:border-indigo-400 hover:bg-indigo-50/40 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:hover:border-indigo-500 dark:hover:bg-indigo-950/30 {{ $target['required'] ? 'sm:min-h-[7.5rem]' : '' }}"
+                    >
+                        <div class="flex items-start justify-between gap-2">
+                            <div>
+                                <span class="text-xs font-semibold text-gray-900 dark:text-gray-100">
+                                    {{ $target['label'] }}
+                                    @if($target['required'])
+                                        <span class="text-red-500">*</span>
+                                    @endif
+                                </span>
+                                <p class="text-[10px] text-gray-500 dark:text-gray-400">{{ $target['help'] }}</p>
+                            </div>
+                            <span
+                                data-bank-import-map-status
+                                class="rounded-full px-1.5 py-0.5 text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-200"
+                            >{{ $target['required'] ? 'Needed' : 'Optional' }}</span>
+                        </div>
+                        <select
+                            data-bank-import-map-field="{{ $field }}"
+                            class="mt-2 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                            onclick="event.stopPropagation()"
+                        >
+                            <option value="">— Choose column —</option>
+                        </select>
+                        <p class="mt-1.5 min-h-[2.25rem] text-[10px] leading-snug text-gray-500 dark:text-gray-400" data-bank-import-sample-values>
+                            Sample values appear here
+                        </p>
+                    </button>
+                @endforeach
+            </div>
+        </div>
+
+        <div>
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Preview as it will import</p>
+                <p class="text-[11px] text-gray-500 dark:text-gray-400">Columns reorder when you change mapping</p>
+            </div>
+            <div class="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+                <table class="min-w-full divide-y divide-gray-200 text-xs dark:divide-gray-700">
+                    <thead class="bg-indigo-50 dark:bg-indigo-950/40" data-bank-import-preview-thead></thead>
+                    <tbody class="divide-y divide-gray-100 bg-white dark:divide-gray-800 dark:bg-gray-900" data-bank-import-preview-tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 dark:border-gray-800">
+            <p class="text-xs text-gray-500 dark:text-gray-400" data-bank-import-mapping-ready-hint>
+                Map Date, Description, and Amount (or Debit/Credit) to continue.
+            </p>
+            <button
+                type="button"
+                data-bank-import-confirm-mapping
+                class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+                Confirm import
+            </button>
+        </div>
+    </div>
 
     <div class="mt-5 border-t border-amber-200/80 pt-4 dark:border-amber-900/40">
         <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">

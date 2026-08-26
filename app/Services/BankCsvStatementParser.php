@@ -10,12 +10,14 @@ class BankCsvStatementParser
     /** @var list<string> */
     private const DATE_COLUMNS = [
         'date', 'transaction date', 'trans date', 'value date', 'posting date', 'post date',
+        'txn date', 'tran date', 'processed date',
     ];
 
     /** @var list<string> */
     private const DESCRIPTION_COLUMNS = [
-        'description', 'details', 'particulars', 'narration', 'memo', 'reference', 'payee', 'payer',
-        'original description', 'narrative',
+        'description', 'details', 'particulars', 'narration', 'memo', 'payee', 'payer',
+        'original description', 'narrative', 'transaction description', 'transaction details',
+        'merchant', 'transaction narrative',
     ];
 
     /** @var list<string> */
@@ -25,7 +27,7 @@ class BankCsvStatementParser
     private const CREDIT_COLUMNS = ['credit', 'credit amount', 'deposit', 'in', 'cr', 'income'];
 
     /** @var list<string> */
-    private const AMOUNT_COLUMNS = ['amount', 'transaction amount', 'net amount', 'value'];
+    private const AMOUNT_COLUMNS = ['amount', 'transaction amount', 'net amount', 'value', 'txn amount'];
 
     /** @var list<string> */
     private const REFERENCE_COLUMNS = ['reference', 'ref', 'transaction id', 'cheque no', 'cheque number'];
@@ -51,10 +53,64 @@ class BankCsvStatementParser
     /** @var list<string> */
     private const SUPPORTED_EXTENSIONS = ['csv', 'txt'];
 
+    /** @var list<string> */
+    public const MAPPING_FIELDS = ['date', 'description', 'amount', 'debit', 'credit', 'reference', 'balance'];
+
     /**
+     * Inspect a CSV and return headers, sample rows, and an auto-suggested column mapping.
+     *
+     * @return array{success: bool, headers?: list<string>, sample_rows?: list<array<string, string>>, suggested_mapping?: array<string, string|null>, profile?: string, row_count?: int, error?: string}
+     */
+    public function inspectFile(string $filePath): array
+    {
+        if (! is_file($filePath)) {
+            return ['success' => false, 'error' => "File not found: {$filePath}"];
+        }
+
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        if (! in_array($extension, self::SUPPORTED_EXTENSIONS, true)) {
+            return [
+                'success' => false,
+                'error' => 'Only CSV bank statements are supported. Excel import will return when Python is upgraded on the server.',
+            ];
+        }
+
+        try {
+            $rows = $this->readCsv($filePath);
+            if ($rows === []) {
+                return [
+                    'success' => false,
+                    'error' => 'File is empty or has no data rows.',
+                ];
+            }
+
+            $headers = array_keys($rows[0]);
+            $profile = $this->detectProfile($headers);
+            $suggested = $this->suggestMapping($headers, $rows);
+
+            return [
+                'success' => true,
+                'headers' => $headers,
+                'sample_rows' => array_slice($rows, 0, 8),
+                'suggested_mapping' => $suggested,
+                'profile' => $profile,
+                'row_count' => count($rows),
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Parse a stored CSV bank statement file.
+     *
+     * @param  array<string, string|null>|null  $columnMapping
      * @return array{success: bool, entries?: list<array<string, mixed>>, error?: string, message?: string, profile?: string}
      */
-    public function parseFile(string $filePath, string $bankName = ''): array
+    public function parseFile(string $filePath, string $bankName = '', ?array $columnMapping = null): array
     {
         if (! is_file($filePath)) {
             return [
@@ -85,7 +141,17 @@ class BankCsvStatementParser
 
             $headers = array_keys($rows[0]);
             $profile = $this->detectProfile($headers);
-            $entries = $this->extractEntries($rows, $headers, $profile, $bankName);
+            $mapping = $columnMapping ?? $this->suggestMapping($headers, $rows);
+
+            $mappingError = $this->validateMapping($mapping, $headers);
+            if ($mappingError !== null) {
+                return [
+                    'success' => false,
+                    'error' => $mappingError,
+                ];
+            }
+
+            $entries = $this->extractEntries($rows, $headers, $profile, $bankName, $mapping);
 
             return [
                 'success' => true,
@@ -98,6 +164,91 @@ class BankCsvStatementParser
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Auto-detect mapping from header names and sample cell content.
+     * Works even when columns are out of order or poorly named.
+     *
+     * @param  list<string>  $headers
+     * @param  list<array<string, string|null>>  $rows
+     * @return array<string, string|null>
+     */
+    public function suggestMapping(array $headers, array $rows): array
+    {
+        $byName = [
+            'date' => $this->findColumn($headers, self::DATE_COLUMNS),
+            'description' => $this->findColumn($headers, self::DESCRIPTION_COLUMNS),
+            'amount' => $this->findColumn($headers, self::AMOUNT_COLUMNS),
+            'debit' => $this->findColumn($headers, self::DEBIT_COLUMNS),
+            'credit' => $this->findColumn($headers, self::CREDIT_COLUMNS),
+            'reference' => $this->findColumn($headers, self::REFERENCE_COLUMNS),
+            'balance' => $this->findColumn($headers, self::BALANCE_COLUMNS),
+        ];
+
+        $sample = array_slice($rows, 0, 25);
+        $scores = [];
+        foreach ($headers as $header) {
+            $scores[$header] = $this->scoreColumnContent($sample, $header);
+        }
+
+        if ($byName['date'] === null) {
+            $byName['date'] = $this->bestUnusedHeader($scores, $byName, 'date');
+        }
+
+        if ($byName['amount'] === null && $byName['debit'] === null && $byName['credit'] === null) {
+            $byName['amount'] = $this->bestUnusedHeader($scores, $byName, 'amount');
+        }
+
+        if ($byName['description'] === null) {
+            $byName['description'] = $this->bestUnusedHeader($scores, $byName, 'description');
+        }
+
+        if ($byName['balance'] === null) {
+            $candidate = $this->bestUnusedHeader($scores, $byName, 'balance');
+            if ($candidate !== null && ($scores[$candidate]['balance'] ?? 0) >= 0.4) {
+                $byName['balance'] = $candidate;
+            }
+        }
+
+        return $byName;
+    }
+
+    /**
+     * @param  array<string, string|null>  $mapping
+     * @param  list<string>  $headers
+     */
+    public function validateMapping(array $mapping, array $headers): ?string
+    {
+        $headerSet = array_fill_keys($headers, true);
+
+        foreach (['date', 'description', 'amount', 'debit', 'credit', 'reference', 'balance'] as $field) {
+            $column = $mapping[$field] ?? null;
+            if ($column === null || $column === '') {
+                continue;
+            }
+            if (! isset($headerSet[$column])) {
+                return "Mapped column [{$column}] for {$field} was not found in the file headers.";
+            }
+        }
+
+        if (empty($mapping['date'])) {
+            return 'Date (or Transaction Date) is required. Drag or select the date column.';
+        }
+
+        if (empty($mapping['description'])) {
+            return 'Description is required. Drag or select the description column.';
+        }
+
+        $hasAmount = ! empty($mapping['amount']);
+        $hasDebit = ! empty($mapping['debit']);
+        $hasCredit = ! empty($mapping['credit']);
+
+        if (! $hasAmount && ! $hasDebit && ! $hasCredit) {
+            return 'Amount is required. Map Amount, or Debit and/or Credit columns.';
+        }
+
+        return null;
     }
 
     /**
@@ -124,6 +275,7 @@ class BankCsvStatementParser
 
         /** @var list<string> $headers */
         $headers = array_map(static fn ($column) => trim((string) $column), $headerRow);
+        $headers = $this->ensureUniqueHeaders($headers);
         $headerCount = count($headers);
 
         $rows = [];
@@ -152,6 +304,30 @@ class BankCsvStatementParser
 
     /**
      * @param  list<string>  $headers
+     * @return list<string>
+     */
+    private function ensureUniqueHeaders(array $headers): array
+    {
+        $seen = [];
+        $unique = [];
+
+        foreach ($headers as $index => $header) {
+            $label = $header !== '' ? $header : 'Column '.($index + 1);
+            $base = $label;
+            $suffix = 2;
+            while (isset($seen[strtolower($label)])) {
+                $label = $base.' ('.$suffix.')';
+                $suffix++;
+            }
+            $seen[strtolower($label)] = true;
+            $unique[] = $label;
+        }
+
+        return $unique;
+    }
+
+    /**
+     * @param  list<string>  $headers
      */
     private function detectProfile(array $headers): string
     {
@@ -163,11 +339,7 @@ class BankCsvStatementParser
             || in_array('sub-category', $normalized, true);
         $hasTransactionDate = in_array('transaction date', $normalized, true);
 
-        if ($hasOriginal && $hasSubcategory && $hasTransactionDate) {
-            return 'macquarie';
-        }
-
-        if ($hasOriginal && $hasSubcategory) {
+        if ($hasOriginal && ($hasSubcategory || $hasTransactionDate)) {
             return 'macquarie';
         }
 
@@ -177,35 +349,24 @@ class BankCsvStatementParser
     /**
      * @param  list<array<string, string|null>>  $rows
      * @param  list<string>  $headers
+     * @param  array<string, string|null>  $mapping
      * @return list<array<string, mixed>>
      */
-    private function extractEntries(array $rows, array $headers, string $profile, string $bankName): array
+    private function extractEntries(array $rows, array $headers, string $profile, string $bankName, array $mapping): array
     {
-        $dateCol = $this->findColumn($headers, self::DATE_COLUMNS);
-        $originalDescCol = $this->findColumn($headers, self::ORIGINAL_DESCRIPTION_COLUMNS);
-        $descCol = $this->findColumn($headers, self::DESCRIPTION_COLUMNS);
-        $debitCol = $this->findColumn($headers, self::DEBIT_COLUMNS);
-        $creditCol = $this->findColumn($headers, self::CREDIT_COLUMNS);
-        $amountCol = $this->findColumn($headers, self::AMOUNT_COLUMNS);
-        $refCol = $this->findColumn($headers, self::REFERENCE_COLUMNS);
-        $balanceCol = $this->findColumn($headers, self::BALANCE_COLUMNS);
+        $dateCol = $mapping['date'] ?? null;
+        $descCol = $mapping['description'] ?? null;
+        $debitCol = $mapping['debit'] ?? null;
+        $creditCol = $mapping['credit'] ?? null;
+        $amountCol = $mapping['amount'] ?? null;
+        $refCol = $mapping['reference'] ?? null;
+        $balanceCol = $mapping['balance'] ?? null;
         $categoryCol = $this->findColumn($headers, self::CATEGORY_COLUMNS);
         $subcategoryCol = $this->findColumn($headers, self::SUBCATEGORY_COLUMNS);
+        $originalDescCol = $this->findColumn($headers, self::ORIGINAL_DESCRIPTION_COLUMNS);
 
-        if ($profile === 'macquarie' && $originalDescCol !== null) {
+        if ($profile === 'macquarie' && $originalDescCol !== null && empty($mapping['description'])) {
             $descCol = $originalDescCol;
-        }
-
-        if ($dateCol === null) {
-            $dateCol = $headers[0] ?? null;
-        }
-
-        if ($descCol === null && count($headers) > 1) {
-            $descCol = $headers[1];
-        }
-
-        if ($dateCol === null) {
-            throw new \InvalidArgumentException('Could not find date column. Tried: '.implode(', ', self::DATE_COLUMNS));
         }
 
         $entries = [];
@@ -225,7 +386,7 @@ class BankCsvStatementParser
             $amount = $this->resolveAmount(
                 $row,
                 $headers,
-                $dateCol,
+                (string) $dateCol,
                 $debitCol,
                 $creditCol,
                 $amountCol,
@@ -303,6 +464,84 @@ class BankCsvStatementParser
         }
 
         return null;
+    }
+
+    /**
+     * @param  list<array<string, string|null>>  $sample
+     * @return array{date: float, amount: float, description: float, balance: float}
+     */
+    private function scoreColumnContent(array $sample, string $header): array
+    {
+        $dateHits = 0;
+        $amountHits = 0;
+        $textHits = 0;
+        $balanceish = 0;
+        $total = 0;
+
+        foreach ($sample as $row) {
+            $value = trim((string) ($row[$header] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+            $total++;
+
+            if ($this->parseDate($value) !== null) {
+                $dateHits++;
+            }
+
+            $normalized = str_replace([',', ' ', '$', '€', '£', '₹', '(', ')'], '', $value);
+            if ($normalized !== '' && is_numeric($normalized)) {
+                $amountHits++;
+                $abs = abs((float) $normalized);
+                if ($abs >= 100) {
+                    $balanceish++;
+                }
+            } elseif (mb_strlen($value) >= 3 && ! is_numeric($normalized)) {
+                $textHits++;
+            }
+        }
+
+        if ($total === 0) {
+            return ['date' => 0.0, 'amount' => 0.0, 'description' => 0.0, 'balance' => 0.0];
+        }
+
+        return [
+            'date' => $dateHits / $total,
+            'amount' => $amountHits / $total,
+            'description' => $textHits / $total,
+            'balance' => $balanceish / $total,
+        ];
+    }
+
+    /**
+     * @param  array<string, array{date: float, amount: float, description: float, balance: float}>  $scores
+     * @param  array<string, string|null>  $used
+     */
+    private function bestUnusedHeader(array $scores, array $used, string $field): ?string
+    {
+        $usedHeaders = array_filter($used);
+        $best = null;
+        $bestScore = 0.35;
+
+        foreach ($scores as $header => $scoreSet) {
+            if (in_array($header, $usedHeaders, true)) {
+                continue;
+            }
+
+            $score = $scoreSet[$field] ?? 0.0;
+            if ($field === 'description') {
+                // Prefer text-heavy columns that are not mostly numeric/date.
+                $score = ($scoreSet['description'] ?? 0) - (($scoreSet['date'] ?? 0) * 0.5) - (($scoreSet['amount'] ?? 0) * 0.4);
+                $bestScore = 0.2;
+            }
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $best = $header;
+            }
+        }
+
+        return $best;
     }
 
     /**

@@ -13,18 +13,40 @@ class BankStatementParseService
     ) {}
 
     /**
-     * Parse a stored CSV bank statement file.
+     * Inspect a stored CSV and return headers, sample rows, and suggested column mapping.
      *
-     * Excel import is deferred until Python 3.9+ is available on the server.
-     *
-     * @return array{success: bool, entries?: list<array<string, mixed>>, error?: string, message?: string, profile?: string}
+     * @return array{success: bool, headers?: list<string>, sample_rows?: list<array<string, string>>, suggested_mapping?: array<string, string|null>, profile?: string, row_count?: int, error?: string}
      */
-    public function parseStoredFile(string $storagePath, string $bankName = ''): array
+    public function inspectStoredFile(string $storagePath): array
     {
         try {
             $fullPath = Storage::disk('local')->path($storagePath);
 
-            return $this->csvParser->parseFile($fullPath, $bankName);
+            return $this->csvParser->inspectFile($fullPath);
+        } catch (\Throwable $e) {
+            Log::error('Bank statement inspect failed: '.$e->getMessage());
+
+            return [
+                'success' => false,
+                'error' => 'Failed to inspect CSV statement: '.$e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Parse a stored CSV bank statement file.
+     *
+     * Excel import is deferred until Python 3.9+ is available on the server.
+     *
+     * @param  array<string, string|null>|null  $columnMapping
+     * @return array{success: bool, entries?: list<array<string, mixed>>, error?: string, message?: string, profile?: string}
+     */
+    public function parseStoredFile(string $storagePath, string $bankName = '', ?array $columnMapping = null): array
+    {
+        try {
+            $fullPath = Storage::disk('local')->path($storagePath);
+
+            return $this->csvParser->parseFile($fullPath, $bankName, $columnMapping);
         } catch (\Throwable $e) {
             Log::error('Bank statement parse failed: '.$e->getMessage());
 

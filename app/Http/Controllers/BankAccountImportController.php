@@ -13,6 +13,7 @@ use App\Services\BankStatementParseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -29,7 +30,7 @@ class BankAccountImportController extends Controller
         private BankStatementMatchSuggester $suggester
     ) {}
 
-    public function process(Request $request, BankAccount $bankAccount): JsonResponse
+    public function preview(Request $request, BankAccount $bankAccount): JsonResponse
     {
         $this->ensureAccessible($bankAccount);
 
@@ -44,14 +45,108 @@ class BankAccountImportController extends Controller
         try {
             $file = $request->file('statement_file');
             $ext = strtolower($file->getClientOriginalExtension() ?: 'csv');
-            $filename = 'bank_statement_'.time().'_'.Str::random(16).'.'.$ext;
+            $filename = 'bank_statement_preview_'.time().'_'.Str::random(16).'.'.$ext;
             $filePath = $file->storeAs('bank_statements', $filename, 'local');
 
-            $result = $this->parseService->parseStoredFile($filePath, (string) $bankAccount->bank_name);
-
-            if (! ($result['success'] ?? false)) {
+            $inspect = $this->parseService->inspectStoredFile($filePath);
+            if (! ($inspect['success'] ?? false)) {
                 Storage::disk('local')->delete($filePath);
 
+                return response()->json([
+                    'success' => false,
+                    'message' => $inspect['error'] ?? 'Could not read the CSV file.',
+                ], 400);
+            }
+
+            $token = (string) Str::uuid();
+            Cache::put($this->previewCacheKey($token), [
+                'path' => $filePath,
+                'bank_account_id' => (int) $bankAccount->id,
+                'business_entity_id' => (int) $businessEntity->id,
+                'original_name' => $file->getClientOriginalName(),
+            ], now()->addMinutes(30));
+
+            return response()->json([
+                'success' => true,
+                'preview_token' => $token,
+                'original_name' => $file->getClientOriginalName(),
+                'headers' => $inspect['headers'] ?? [],
+                'sample_rows' => $inspect['sample_rows'] ?? [],
+                'suggested_mapping' => $inspect['suggested_mapping'] ?? [],
+                'profile' => $inspect['profile'] ?? 'generic',
+                'row_count' => $inspect['row_count'] ?? 0,
+                'required_fields' => ['date', 'description', 'amount'],
+                'message' => 'Review the column mapping, then confirm import. Date, Description, and Amount are required.',
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Bank account import preview error: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while reading the file.',
+            ], 500);
+        }
+    }
+
+    public function process(Request $request, BankAccount $bankAccount): JsonResponse
+    {
+        $this->ensureAccessible($bankAccount);
+
+        $validated = $request->validate([
+            'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
+            'preview_token' => 'required|string|uuid',
+            'column_mapping' => 'required|array',
+            'column_mapping.date' => 'required|string|max:255',
+            'column_mapping.description' => 'required|string|max:255',
+            'column_mapping.amount' => 'nullable|string|max:255',
+            'column_mapping.debit' => 'nullable|string|max:255',
+            'column_mapping.credit' => 'nullable|string|max:255',
+            'column_mapping.reference' => 'nullable|string|max:255',
+            'column_mapping.balance' => 'nullable|string|max:255',
+        ]);
+
+        $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
+        $this->authorizeImportEntity($bankAccount, $businessEntity);
+
+        $cacheKey = $this->previewCacheKey($validated['preview_token']);
+        $preview = Cache::get($cacheKey);
+        if (! is_array($preview) || empty($preview['path'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Preview expired. Upload the CSV again.',
+            ], 422);
+        }
+
+        if ((int) ($preview['bank_account_id'] ?? 0) !== (int) $bankAccount->id
+            || (int) ($preview['business_entity_id'] ?? 0) !== (int) $businessEntity->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Preview does not match this bank account or entity.',
+            ], 422);
+        }
+
+        $filePath = (string) $preview['path'];
+        $mapping = [
+            'date' => $validated['column_mapping']['date'],
+            'description' => $validated['column_mapping']['description'],
+            'amount' => $validated['column_mapping']['amount'] ?? null,
+            'debit' => $validated['column_mapping']['debit'] ?? null,
+            'credit' => $validated['column_mapping']['credit'] ?? null,
+            'reference' => $validated['column_mapping']['reference'] ?? null,
+            'balance' => $validated['column_mapping']['balance'] ?? null,
+        ];
+
+        if (empty($mapping['amount']) && empty($mapping['debit']) && empty($mapping['credit'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Amount is required. Map Amount, or Debit and/or Credit.',
+            ], 422);
+        }
+
+        try {
+            $result = $this->parseService->parseStoredFile($filePath, (string) $bankAccount->bank_name, $mapping);
+
+            if (! ($result['success'] ?? false)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Failed to parse file: '.($result['error'] ?? 'Unknown error'),
@@ -60,6 +155,7 @@ class BankAccountImportController extends Controller
 
             $storeResult = $this->parseService->storeEntries($result['entries'] ?? [], $bankAccount->id);
             Storage::disk('local')->delete($filePath);
+            Cache::forget($cacheKey);
 
             $created = $storeResult['created'];
             $skipped = $storeResult['skippedDuplicates'];
@@ -84,6 +180,11 @@ class BankAccountImportController extends Controller
                 'message' => 'An error occurred while processing the file.',
             ], 500);
         }
+    }
+
+    private function previewCacheKey(string $token): string
+    {
+        return 'bank_import_preview:'.$token;
     }
 
     public function unmatched(Request $request, BankAccount $bankAccount): JsonResponse

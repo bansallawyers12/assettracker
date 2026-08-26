@@ -59,6 +59,7 @@
             'bankAccount' => $bankAccount->id,
         ])
         : null;
+    $importPreviewUrl = route('bank-accounts.import.preview', $bankAccount);
     $importProcessUrl = route('bank-accounts.import.process', $bankAccount);
     $importUnmatchedUrl = route('bank-accounts.import.unmatched', $bankAccount);
     $importApplyUrl = route('bank-accounts.import.apply', $bankAccount);
@@ -80,6 +81,7 @@
     data-bank-account-id="{{ $bankAccount->id }}"
     data-bank-transactions-index-url="{{ $indexUrl }}"
     data-bank-transactions-page-url="{{ $pageUrl }}"
+    data-bank-import-preview-url="{{ $importPreviewUrl }}"
     data-bank-import-process-url="{{ $importProcessUrl }}"
     data-bank-import-unmatched-url="{{ $importUnmatchedUrl }}"
     data-bank-import-apply-url="{{ $importApplyUrl }}"
