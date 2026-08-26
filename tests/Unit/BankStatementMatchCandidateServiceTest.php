@@ -5,15 +5,16 @@ use Tests\TestCase;
 
 uses(TestCase::class);
 
-it('loads all unmatched entity transactions as match candidates', function () {
+it('loads same-account candidates before unassigned rows so they are not crowded out', function () {
     $source = file_get_contents(app_path('Services/BankStatementMatchCandidateService.php'));
 
     expect(class_exists(BankStatementMatchCandidateService::class))->toBeTrue()
-        ->and($source)->toContain("whereIn('business_entity_id', \$entityIds)")
-        ->and($source)->toContain("whereDoesntHave('bankStatementEntries')")
-        ->and($source)->toContain('limit(300)')
-        ->and($source)->not->toContain("where('bank_account_id', \$bankAccount->id)")
-        ->and($source)->not->toContain('canUseForTransaction');
+        ->and($source)->toContain('where(\'bank_account_id\', $bankAccount->id)')
+        ->and($source)->toContain('whereNull(\'bank_account_id\')')
+        ->and($source)->toContain('whereDoesntHave(\'bankStatementEntries\')')
+        ->and($source)->toContain('isLoanLedgerAccount()')
+        ->and($source)->toContain('loanActivityTypes()')
+        ->and($source)->toContain('unique(\'id\')');
 });
 
 it('wires match candidate service into bank import and transactions controllers', function () {
@@ -27,6 +28,6 @@ it('wires match candidate service into bank import and transactions controllers'
         ->and($transactions)->toContain('BankStatementMatchCandidateService')
         ->and($transactions)->toContain('$this->matchCandidates->forAccount(')
         ->and($transactions)->not->toContain('private function matchCandidates(')
-        ->and($apply)->toContain("updates['bank_account_id'] = \$bankAccount->id")
-        ->and($apply)->not->toContain('belongs to a different bank account');
+        ->and($apply)->toContain('canReassignToLoanLedger')
+        ->and($apply)->toContain('loanActivityTypes()');
 });

@@ -203,6 +203,18 @@ class BankStatementApplyService
             ]);
         }
 
+        if ($transaction->bank_account_id !== null
+            && (int) $transaction->bank_account_id !== (int) $bankAccount->id) {
+            $canReassignToLoanLedger = $bankAccount->isLoanLedgerAccount()
+                && array_key_exists((string) $transaction->transaction_type, Transaction::loanActivityTypes());
+
+            if (! $canReassignToLoanLedger) {
+                throw ValidationException::withMessages([
+                    'matches' => 'Selected transaction belongs to a different bank account.',
+                ]);
+            }
+        }
+
         if ($transaction->bankStatementEntries()->exists()) {
             throw ValidationException::withMessages([
                 'matches' => 'Selected transaction is already matched to a statement line.',

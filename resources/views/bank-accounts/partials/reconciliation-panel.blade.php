@@ -1,6 +1,5 @@
 @php
     $suggestions = $suggestions ?? [];
-    $matchCandidates = $matchCandidates ?? collect();
     $isLoanActivityImport = (bool) ($isLoanActivityImport ?? $bankAccount->isLoanLedgerAccount());
     $transactionTypeGroups = $transactionTypeGroups
         ?? ($isLoanActivityImport
@@ -9,18 +8,6 @@
     $allTypes = \App\Models\Transaction::allTypes();
     $pendingCountLabel = $isLoanActivityImport ? 'to apply' : 'unmatched';
     $matchedEntryCount = (int) ($matchedEntryCount ?? 0);
-    $matchCandidatePayload = $matchCandidates->map(static function ($candidate) {
-        return [
-            'id' => (int) $candidate->id,
-            'date' => $candidate->date?->format('Y-m-d'),
-            'amount' => (float) $candidate->amount,
-            'description' => (string) ($candidate->description ?? ''),
-            'entity_name' => $candidate->businessEntity?->legal_name,
-            'transaction_type' => $candidate->transaction_type,
-            'payment_status' => $candidate->payment_status,
-            'business_entity_id' => $candidate->business_entity_id,
-        ];
-    })->values()->all();
 @endphp
 
 <div
@@ -28,7 +15,6 @@
     data-bank-import-panel
     data-reconciliation-panel
     data-loan-activity="{{ $isLoanActivityImport ? '1' : '0' }}"
-    data-bank-import-candidates='@json($matchCandidatePayload)'
 >
     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -345,15 +331,10 @@
 
                             <div class="mt-3 hidden grid gap-2 sm:grid-cols-2" data-bank-import-change>
                                 <div>
-                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">
-                                        Match existing
-                                        <span class="font-normal text-gray-400" data-bank-import-candidate-count>
-                                            ({{ $matchCandidates->count() }})
-                                        </span>
-                                    </label>
-                                    {{-- Native select: Tom Select was hiding options inside the Change panel. --}}
-                                    <select
+                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Match existing</label>
+                                    <x-tom-select
                                         data-bank-import-transaction
+                                        data-tomselect-dropdown-parent="body"
                                         class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                     >
                                         <option value="">— None —</option>
@@ -371,10 +352,10 @@
                                                 @endif
                                             </option>
                                         @endforeach
-                                    </select>
+                                    </x-tom-select>
                                     @if($matchCandidates->isEmpty())
-                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400" data-bank-import-candidate-empty>
-                                            No unmatched booked transactions for this entity yet. Use Create as type, or book a transaction first.
+                                        <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+                                            No unmatched booked transactions for this account. Use Create as type, or book a transaction first.
                                         </p>
                                     @endif
                                 </div>
