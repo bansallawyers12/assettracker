@@ -7,6 +7,7 @@ use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\Transaction;
 use App\Services\BankAccountBalanceSnapshotService;
+use App\Services\BankStatementMatchCandidateService;
 use App\Services\BankStatementMatchSuggester;
 use App\Support\TransactionListFilters;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ class BankAccountTransactionController extends Controller
 {
     public function __construct(
         private BankStatementMatchSuggester $suggester,
+        private BankStatementMatchCandidateService $matchCandidates,
         private BankAccountBalanceSnapshotService $balanceSnapshots,
     ) {}
 
@@ -109,7 +111,7 @@ class BankAccountTransactionController extends Controller
                 )
                 ->count();
 
-        $matchCandidates = $this->matchCandidates($bankAccount, $contextEntityId ?? $defaultEntityId);
+        $matchCandidates = $this->matchCandidates->forAccount($bankAccount, $contextEntityId ?? $defaultEntityId);
         $defaultAssetId = $this->defaultLoanAssetId($bankAccount);
         $suggestions = $this->suggester->suggestMany(
             $unmatchedEntries,
@@ -178,40 +180,6 @@ class BankAccountTransactionController extends Controller
                     && ($bankAccount->canUseForBankImport($entity) || $bankAccount->canUseForTransaction($entity));
             })
             ->values();
-    }
-
-    /**
-     * @return Collection<int, Transaction>
-     */
-    private function matchCandidates(BankAccount $bankAccount, ?int $businessEntityId): Collection
-    {
-        $query = Transaction::query()
-            ->where(function ($q) use ($bankAccount) {
-                $q->where('bank_account_id', $bankAccount->id)
-                    ->orWhereNull('bank_account_id');
-            })
-            ->whereDoesntHave('bankStatementEntries')
-            ->with('businessEntity')
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->limit(200);
-
-        if ($businessEntityId) {
-            $query->where('business_entity_id', $businessEntityId);
-        } else {
-            $entityIds = $bankAccount->eligibleTransactionEntities()->pluck('id');
-            $query->whereIn('business_entity_id', $entityIds);
-        }
-
-        return $query->get()->filter(function (Transaction $transaction) use ($bankAccount) {
-            if ($transaction->bank_account_id === null) {
-                $entity = $transaction->businessEntity;
-
-                return $entity && $bankAccount->canUseForTransaction($entity);
-            }
-
-            return (int) $transaction->bank_account_id === (int) $bankAccount->id;
-        })->values();
     }
 
     private function defaultLoanAssetId(BankAccount $bankAccount): ?int

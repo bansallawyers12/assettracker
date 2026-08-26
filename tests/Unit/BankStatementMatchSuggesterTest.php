@@ -114,6 +114,24 @@ it('suggests loan fees and repayments from macquarie subcategory', function (str
     'transfer' => ['Transfer', 'loan_repayments'],
 ]);
 
+it('suggests loan repayment for macquarie linked account transfer descriptions', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => -2500,
+        'description' => 'ONLINE D1004359283 Linked Acc Trns LEVEL 7 21 V',
+        'meta' => [
+            'bank_profile' => 'macquarie',
+        ],
+    ]);
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_LOAN]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect());
+
+    expect($suggestion['action'])->toBe('create_transaction')
+        ->and($suggestion['transaction_type'])->toBe('loan_repayments')
+        ->and($suggestion['confidence'])->toBe('high');
+});
+
 it('flags dishonour lines as low confidence none', function () {
     $suggester = new BankStatementMatchSuggester;
     $entry = makeEntry([
