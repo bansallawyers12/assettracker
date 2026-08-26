@@ -11,7 +11,6 @@ import {
     forceActivateTomSelectsIn,
     getSelectValue,
     refreshTomSelect,
-    setSelectValue,
 } from './tomselect-init.js';
 
 export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel) {
@@ -40,6 +39,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     let importPreviewHeaders = [];
     let importPreviewRows = [];
     let selectedSourceColumn = null;
+    let matchCandidates = readCandidatesFromPanel();
 
     const MAPPING_FIELDS = ['date', 'description', 'amount', 'debit', 'credit', 'reference', 'balance'];
     const PRIMARY_FIELDS = ['date', 'description', 'amount'];
@@ -52,6 +52,78 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         reference: 'Reference',
         balance: 'Balance',
     };
+
+    function readCandidatesFromPanel() {
+        const raw = importPanel.getAttribute('data-bank-import-candidates') || '[]';
+        try {
+            const parsed = JSON.parse(raw);
+
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+
+    function candidateOptionLabel(candidate) {
+        const dateLabel = candidate.date
+            ? String(candidate.date).split('-').reverse().join('/')
+            : '—';
+        const amountLabel = Number(candidate.amount || 0).toFixed(2);
+        const desc = String(candidate.description || 'No description').slice(0, 40);
+        const entity = candidate.entity_name ? ` (${candidate.entity_name})` : '';
+
+        return `${dateLabel} · $${amountLabel} · ${desc}${entity}`;
+    }
+
+    function fillMatchSelect(select, candidates, preferredValue = '') {
+        if (!select) {
+            return;
+        }
+
+        const keep = preferredValue || select.value || '';
+        select.innerHTML = '';
+        const empty = document.createElement('option');
+        empty.value = '';
+        empty.textContent = '— None —';
+        select.appendChild(empty);
+
+        candidates.forEach((candidate) => {
+            const option = document.createElement('option');
+            option.value = String(candidate.id);
+            option.dataset.amount = String(candidate.amount ?? '');
+            option.dataset.date = String(candidate.date ?? '');
+            option.textContent = candidateOptionLabel(candidate);
+            select.appendChild(option);
+        });
+
+        if (keep && candidates.some((candidate) => String(candidate.id) === String(keep))) {
+            select.value = String(keep);
+        } else {
+            select.value = '';
+        }
+    }
+
+    function updateCandidateMeta(candidates) {
+        const countEl = importPanel.querySelector('[data-bank-import-candidate-count]');
+        if (countEl) {
+            countEl.textContent = `(${candidates.length})`;
+        }
+
+        importPanel.querySelectorAll('[data-bank-import-candidate-empty]').forEach((el) => {
+            el.classList.toggle('hidden', candidates.length > 0);
+        });
+
+        importPanel.setAttribute('data-bank-import-candidates', JSON.stringify(candidates));
+    }
+
+    function populateCandidateSelects(candidates) {
+        matchCandidates = Array.isArray(candidates) ? candidates : [];
+        updateCandidateMeta(matchCandidates);
+
+        importPanel.querySelectorAll('[data-bank-import-transaction]').forEach((select) => {
+            fillMatchSelect(select, matchCandidates, select.value);
+        });
+    }
 
     function showImportError(message) {
         if (!errorBox) {
@@ -129,40 +201,6 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
 
         notifyFormSuccess(payload.message || 'Statement lines removed.', 'Bank entries cleared');
         await refreshTransactionsPanel();
-    }
-
-    function populateCandidateSelects(candidates) {
-        importPanel.querySelectorAll('[data-bank-import-transaction]').forEach((select) => {
-            const keep = getSelectValue(select);
-            select.innerHTML = '';
-            const empty = document.createElement('option');
-            empty.value = '';
-            empty.textContent = '— None —';
-            select.appendChild(empty);
-
-            candidates.forEach((candidate) => {
-                const option = document.createElement('option');
-                option.value = String(candidate.id);
-                option.dataset.amount = String(candidate.amount ?? '');
-                option.dataset.date = String(candidate.date ?? '');
-                const dateLabel = candidate.date
-                    ? candidate.date.split('-').reverse().join('/')
-                    : '—';
-                const amountLabel = Number(candidate.amount || 0).toFixed(2);
-                const desc = String(candidate.description || 'No description').slice(0, 40);
-                const entity = candidate.entity_name ? ` (${candidate.entity_name})` : '';
-                option.textContent = `${dateLabel} · $${amountLabel} · ${desc}${entity}`;
-                select.appendChild(option);
-            });
-
-            if (keep && candidates.some((candidate) => String(candidate.id) === String(keep))) {
-                setSelectValue(select, String(keep));
-            } else {
-                setSelectValue(select, '');
-            }
-
-            refreshTomSelect(select);
-        });
     }
 
     function populateCreateTypeSelects(groups) {
@@ -442,6 +480,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             }
             change.classList.toggle('hidden');
             if (!change.classList.contains('hidden')) {
+                const txSelect = change.querySelector('[data-bank-import-transaction]');
+                const suggestedTx = entryEl.querySelector('[data-bank-import-suggested-transaction]')?.value || '';
+                fillMatchSelect(txSelect, matchCandidates, suggestedTx || txSelect?.value || '');
                 forceActivateTomSelectsIn(change);
             }
         }, { signal });
@@ -1071,6 +1112,11 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             removeSelectedBtn.disabled = false;
         }
     }, { signal });
+
+    populateCandidateSelects(matchCandidates);
+    if (getImportEntityId()) {
+        reloadCandidatesForEntity();
+    }
 
     loadChartAccounts();
 }
