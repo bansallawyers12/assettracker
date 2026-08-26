@@ -340,13 +340,9 @@
                                             Create from chart of accounts
                                             <span class="font-normal text-gray-400" data-bank-import-chart-account-count>({{ $resolvedChartAccounts->count() }})</span>
                                         </label>
-                                        <p class="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
-                                            Pick a GL account to create this line. This is not the Match existing list.
-                                        </p>
-                                        {{-- Native listbox: options stay visible inside the Change panel (Tom Select hid them). --}}
-                                        <select
+                                        {{-- Options are server-rendered; Tom Select activates when Change opens. --}}
+                                        <x-tom-select
                                             data-bank-import-chart-account
-                                            size="8"
                                             class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                         >
                                             <option value="">— None —</option>
@@ -355,7 +351,7 @@
                                                     {{ $chartAccount->account_code }} - {{ $chartAccount->account_name }}
                                                 </option>
                                             @endforeach
-                                        </select>
+                                        </x-tom-select>
                                         @if($resolvedChartAccounts->isEmpty())
                                             <p class="mt-1 text-[11px] text-amber-700 dark:text-amber-300">
                                                 No active chart accounts found. Add accounts under Chart of accounts first.
@@ -365,7 +361,6 @@
                                 @endunless
                                 <div>
                                     <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Match existing transaction</label>
-                                    <p class="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">Booked transactions only — not chart of accounts.</p>
                                     <x-tom-select
                                         data-bank-import-transaction
                                         class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"

@@ -327,7 +327,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             if (keep && accounts.some((account) => String(account.id) === String(keep))) {
                 select.value = String(keep);
             }
-            // Native listbox for chart accounts — do not wrap with Tom Select.
+            refreshTomSelect(select);
         });
 
         importPanel.querySelectorAll('[data-bank-import-chart-account-count]').forEach((el) => {
