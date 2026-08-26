@@ -329,10 +329,6 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             }
             refreshTomSelect(select);
         });
-
-        importPanel.querySelectorAll('[data-bank-import-chart-account-count]').forEach((el) => {
-            el.textContent = `(${accounts.length})`;
-        });
     }
 
     async function loadChartAccounts() {
@@ -446,6 +442,8 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             change.classList.toggle('hidden');
             if (!change.classList.contains('hidden')) {
                 forceActivateTomSelectsIn(change);
+                // Re-sync chart options after Tom Select activates inside the previously-hidden panel.
+                loadChartAccounts();
             }
         }, { signal });
     });
