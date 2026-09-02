@@ -43,7 +43,7 @@ class BankStatementMatchSuggester
             return $match;
         }
 
-        if ($bankAccount->account_purpose === BankAccount::PURPOSE_LOAN) {
+        if ($bankAccount->isLoanLedgerAccount()) {
             $loan = $this->suggestLoanCreate($entry, $defaultAssetId);
             if ($loan !== null) {
                 return $loan;
@@ -64,7 +64,7 @@ class BankStatementMatchSuggester
 
         if ($keywordType !== null && $keywordType !== 'unknown') {
             if ($bankAccount->isLoanLedgerAccount()
-                && ! array_key_exists($keywordType, Transaction::loanLedgerAllowedTypes())) {
+                && ! Transaction::isAllowedOnBankAccount($bankAccount, $keywordType)) {
                 return $none;
             }
 

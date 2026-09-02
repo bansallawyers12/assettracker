@@ -250,6 +250,32 @@ it('posts director loan out on a loan ledger as a redraw not cash', function () 
     ]);
 });
 
+it('posts related-entity director loan in on a loan ledger to 4000 not AR', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $related = ledgerEntity('Related Payer Pty Ltd');
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $transaction = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $loan->id,
+        'date' => '2026-08-14',
+        'paid_at' => '2026-08-14',
+        'amount' => 8000,
+        'description' => 'Related entity put money into the loan account',
+        'transaction_type' => 'director_loan_in',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'paid_by' => 'be:'.$related->id,
+    ]);
+
+    $lines = ledgerLines($transaction);
+
+    expect($lines)->toHaveKey('4000')
+        ->and($lines['4000'])->toEqual([8000.0, 0.0])
+        ->and($lines)->not->toHaveKey('1130');
+});
+
 it('posts explicit director loan types to account 2500 via the bank', function (string $type, array $expected) {
     $this->seed(ChartOfAccountSeeder::class);
 

@@ -160,10 +160,28 @@ class Transaction extends Model
      */
     public static function loanLedgerAllowedTypes(): array
     {
-        return self::loanActivityTypes() + array_intersect_key(
-            self::allTypes(),
-            array_flip(self::directorLoanPickerTypes())
-        );
+        return self::loanActivityTypes() + self::directorLoanPickerTypeMap();
+    }
+
+    /**
+     * Whether this type may be saved on the given bank account.
+     * Loan ledgers only allow loan activity and director loan in/out; an existing
+     * legacy type may be kept on edit so old rows remain saveable.
+     */
+    public static function isAllowedOnBankAccount(
+        ?BankAccount $bankAccount,
+        string $type,
+        ?string $existingType = null
+    ): bool {
+        if ($bankAccount === null || ! $bankAccount->isLoanLedgerAccount()) {
+            return true;
+        }
+
+        if (array_key_exists($type, self::loanLedgerAllowedTypes())) {
+            return true;
+        }
+
+        return $existingType !== null && $existingType !== '' && $type === $existingType;
     }
 
     /**
@@ -175,10 +193,7 @@ class Transaction extends Model
     {
         return [
             'Loan activity' => self::loanActivityTypes(),
-            'Director & related party' => array_intersect_key(
-                self::allTypes(),
-                array_flip(self::directorLoanPickerTypes())
-            ),
+            'Director & related party' => self::directorLoanPickerTypeMap(),
         ];
     }
 
@@ -315,6 +330,17 @@ class Transaction extends Model
             'director_loan_in',
             'director_loan_out',
         ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function directorLoanPickerTypeMap(): array
+    {
+        return array_intersect_key(
+            self::allTypes(),
+            array_flip(self::directorLoanPickerTypes())
+        );
     }
 
     /**

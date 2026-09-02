@@ -99,6 +99,7 @@
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Transaction Type</label>
                             @include('partials.transaction-type-select', [
                                 'selected' => old('transaction_type', $transaction->transaction_type),
+                                'bankAccount' => $bankAccount ?? $transaction->bankAccount,
                                 'class' => 'mt-1 block w-full border-gray-300 dark:border-gray-600 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white',
                             ])
                             @error('transaction_type') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror

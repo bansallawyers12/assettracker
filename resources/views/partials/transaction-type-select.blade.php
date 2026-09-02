@@ -5,11 +5,13 @@
     'required' => true,
     'class' => '',
     'groups' => null,
+    'bankAccount' => null,
 ])
 
 @php
     $typeGroups = $groups ?? \App\Models\Transaction::typeSelectGroupsForDisplay(
-        is_string($selected) && $selected !== '' ? $selected : null
+        is_string($selected) && $selected !== '' ? $selected : null,
+        $bankAccount
     );
 @endphp
 

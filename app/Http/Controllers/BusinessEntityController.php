@@ -1257,6 +1257,12 @@ class BusinessEntityController extends Controller
             assetId: $assetIdForGuard
         );
 
+        if (! Transaction::isAllowedOnBankAccount($bankAccount, (string) $request->transaction_type)) {
+            throw ValidationException::withMessages([
+                'transaction_type' => 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, or Director Loan In/Out.',
+            ]);
+        }
+
         if (Transaction::isInternalTransfer((string) $request->transaction_type)) {
             $counterpartId = $counterpartId
                 ?? $this->loanOffsetTransactionGuard->suggestCounterpartBankAccountId(
@@ -1604,6 +1610,16 @@ class BusinessEntityController extends Controller
                     requireCounterpart: ! $isStatementEdit,
                     assetId: $assetIdForGuard
                 );
+
+                if (! Transaction::isAllowedOnBankAccount(
+                    $bankAccountForGuard,
+                    (string) $data['transaction_type'],
+                    (string) $transaction->transaction_type
+                )) {
+                    throw ValidationException::withMessages([
+                        'transaction_type' => 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, or Director Loan In/Out.',
+                    ]);
+                }
             }
 
             if (Transaction::isInternalTransfer((string) $data['transaction_type'])) {

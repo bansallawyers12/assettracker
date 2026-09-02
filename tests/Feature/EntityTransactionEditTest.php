@@ -54,7 +54,13 @@ it('detects statement-linked transactions from bank statement entries', function
 
 it('lets loan statement edits use loan activity type groups', function () {
     $statementEdit = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/edit-from-statement.blade.php'));
+    $create = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/create.blade.php'));
+    $manualEdit = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/edit.blade.php'));
+    $typeSelect = file_get_contents(resource_path('views/partials/transaction-type-select.blade.php'));
 
     expect($statementEdit)->toContain('typeSelectGroupsForDisplay')
-        ->and($statementEdit)->toContain('typeGroups');
+        ->and($statementEdit)->toContain('typeGroups')
+        ->and($create)->toContain("'bankAccount' => \$bankAccount")
+        ->and($manualEdit)->toContain("'bankAccount' => \$bankAccount")
+        ->and($typeSelect)->toContain('bankAccount');
 });

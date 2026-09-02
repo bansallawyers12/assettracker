@@ -585,7 +585,7 @@ class TransactionPostingService
     }
 
     /**
-     * Director / entity loan movements: cash (or AR for cross-entity) ↔ account 2500.
+     * Director / entity loan movements: cash, loan ledger (4000), or AR ↔ account 2500.
      *
      * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ChartOfAccount, gst_payable: ChartOfAccount, gst_receivable: ChartOfAccount}  $accounts
      * @return list<array{account_id: int, debit: float, credit: float, description: ?string}>
@@ -594,22 +594,22 @@ class TransactionPostingService
     {
         $directorLoan = $accounts['director_loan'];
         $receivable = $this->ensureAccountsReceivable();
-        $payerEntityId = $this->payerEntityIdFromPaidBy($transaction);
-        $useIntercompany = $payerEntityId !== null;
+        $useIntercompany = $this->payerEntityIdFromPaidBy($transaction) !== null;
         $incomeTypes = array_keys(Transaction::$incomeTypes);
         $isIncome = in_array($transaction->transaction_type, $incomeTypes, true);
         $lines = [];
 
         // Funded outside the company bank (director funds / cash / no bank chosen): both legs are
         // 2500, so the entry is recorded without moving cash and nets to nil on the loan account.
-        // Money received or paid on a loan-purpose account is the bank loan (4000), not cash.
+        // Money on a loan-purpose account is the bank loan (4000), not cash or AR, even when
+        // paid_by is another entity — the statement already moved the facility, not a receivable.
         [$fundingAccount, $fundingLabel] = match (true) {
-            $useIntercompany => [$receivable, 'Receivable from related entity'],
             $this->shouldFundOperatingSideViaDirectorLoan($transaction) => [$directorLoan, 'Director funds (no bank movement)'],
             $transaction->bankAccount?->isLoanLedgerAccount() => [
                 $accounts['long_term_loans'],
                 $isIncome ? 'Loan liability reduced' : 'Loan liability increased',
             ],
+            $useIntercompany => [$receivable, 'Receivable from related entity'],
             default => [$accounts['cash'], $isIncome ? 'Cash received' : 'Cash paid'],
         };
 

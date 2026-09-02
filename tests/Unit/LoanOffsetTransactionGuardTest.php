@@ -58,7 +58,8 @@ it('blocks internal transfer on dashboard batch create path', function () {
     $source = file_get_contents(app_path('Http/Controllers/BusinessEntityController.php'));
 
     expect($source)->toContain('Internal transfers must be entered from a bank account')
-        ->and($source)->toContain('loanOffsetTransactionGuard->assertAllowed');
+        ->and($source)->toContain('loanOffsetTransactionGuard->assertAllowed')
+        ->and($source)->toContain('isAllowedOnBankAccount');
 });
 
 it('clears counterpart on non-transfer bank transaction create', function () {

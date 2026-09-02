@@ -267,7 +267,7 @@ it('enforces loan activity create types in apply service', function () {
     $source = file_get_contents(app_path('Services/BankStatementApplyService.php'));
 
     expect($source)->toContain('$bankAccount->isLoanLedgerAccount()')
-        ->and($source)->toContain('Transaction::loanLedgerAllowedTypes()')
+        ->and($source)->toContain('Transaction::isAllowedOnBankAccount')
         ->and($source)->toContain('Loan activity must use Loan Interest, Loan Fees, Loan Repayment, or Director Loan In/Out');
 });
 

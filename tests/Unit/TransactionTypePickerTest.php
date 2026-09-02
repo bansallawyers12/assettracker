@@ -101,5 +101,8 @@ it('keeps loan ledger pickers on loan activity and director loan types', functio
             'loan_repayments',
             'director_loan_in',
             'director_loan_out',
-        ]);
+        ])
+        ->and(Transaction::isAllowedOnBankAccount($loanAccount, 'director_loan_in'))->toBeTrue()
+        ->and(Transaction::isAllowedOnBankAccount($loanAccount, 'sales_revenue'))->toBeFalse()
+        ->and(Transaction::isAllowedOnBankAccount($loanAccount, 'directors_loans_to_company', 'directors_loans_to_company'))->toBeTrue();
 });

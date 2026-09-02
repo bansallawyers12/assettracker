@@ -66,7 +66,7 @@ class BankStatementApplyService
 
                 if ($bankAccount->isLoanLedgerAccount()
                     && $transactionType !== null
-                    && ! array_key_exists($transactionType, Transaction::loanLedgerAllowedTypes())) {
+                    && ! Transaction::isAllowedOnBankAccount($bankAccount, $transactionType)) {
                     throw ValidationException::withMessages([
                         'matches' => "Transaction type [{$transactionType}] is not valid for loan activity.",
                     ]);
