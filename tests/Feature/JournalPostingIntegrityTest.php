@@ -237,6 +237,52 @@ it('posts explicit director loan types to account 2500 via the bank', function (
     ]],
 ]);
 
+it('shows bank-matched director loan in on the balance sheet and 2500 account activity', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $bank = ledgerBankAccount($entity, BankAccount::PURPOSE_OFFSET);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $bank->id,
+        'date' => '2026-02-23',
+        'paid_at' => '2026-02-23',
+        'amount' => 824329.38,
+        'description' => 'Account close director loan in',
+        'transaction_type' => 'director_loan_in',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'gst_status' => 'gst_free',
+    ]);
+
+    $reports = app(FinancialReportService::class);
+    $balanceSheet = $reports->generateBalanceSheet($entity->id, '2026-09-02');
+    $directorLoanAccount = ChartOfAccount::query()->where('account_code', '2500')->firstOrFail();
+    $accountActivity = $reports->generateAccountTransactions(
+        $entity->id,
+        '2026-01-01',
+        '2026-09-02',
+        [$directorLoanAccount->id]
+    );
+
+    $directorLoanRow = collect($balanceSheet['liabilities']['by_category'])
+        ->flatMap(fn (array $category) => $category['accounts'])
+        ->firstWhere(fn (array $row) => ($row['account']->account_code ?? null) === '2500');
+
+    $activityBlock = collect($accountActivity['accounts'])
+        ->firstWhere(fn (array $block) => ($block['account']->account_code ?? null) === '2500');
+
+    expect($directorLoanRow)->not->toBeNull()
+        ->and(round((float) $directorLoanRow['balance'], 2))->toBe(-824329.38)
+        ->and(round((float) $balanceSheet['total_assets'], 2))->toBe(824329.38)
+        ->and(round((float) $balanceSheet['total_liabilities_equity'], 2))->toBe(824329.38)
+        ->and($activityBlock)->not->toBeNull()
+        ->and(round((float) $activityBlock['closing_balance'], 2))->toBe(824329.38)
+        ->and($activityBlock['lines'])->toHaveCount(1)
+        ->and($activityBlock['lines'][0]['credit'])->toBe(824329.38);
+});
+
 it('refuses to persist an unbalanced journal and leaves no partial entry', function () {
     $this->seed(ChartOfAccountSeeder::class);
 

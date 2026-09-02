@@ -5,6 +5,7 @@ paths:
   - 'app/Services/**'
   - 'app/Services/{FinancialReportService,BankAccountBalanceSnapshotService}.php'
   - app/Services/ManualJournalEntryService.php
+  - app/Services/FinancialReportService.php
 ---
 
 # Services
@@ -45,3 +46,6 @@ The earlier memo note saying it is transaction-entity scoped, hidden in comparis
 
 ## Edit in place; reverse and void offset
 Manual journals (source_type null) are edited in place on the same id. Reverse posts a new posted journal with flipped D/C, user-chosen date, and reverses_journal_entry_id pointing at the original — do not set source_type to JournalEntry or the offset drops out of the manual register. Void is a reverse on the original date plus voided_at on the original; both stay posted so the GL nets to zero. Do not delete. Cannot edit/reverse/void if already reversed or voided; cannot void a reversal (void the original). Opening-balance OPEN- references stay on edit.
+
+## Director loan BS closing includes in-period 2500 GL
+Director loan 2500 is stripped from the normal liability GL loop and rebuilt in buildDirectorEntityLoanAccountBlock. Opening is explicit/manual 2500 GL as of the day before start plus synthetics before start. Closing must also add in-period explicit/manual 2500 journal lines (directorLoanManualGlReportLines). Do not rely on opening alone when the balance-sheet start is 1970-01-01 — that zeros in-period director_loan_in/out. Do not add synthetics for explicit director_loan_* types.

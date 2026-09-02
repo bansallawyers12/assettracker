@@ -13,6 +13,7 @@ use App\Models\TransactionLine;
 use App\Support\FinancialYear;
 use App\Support\TransactionPayerResolver;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 
@@ -20,7 +21,8 @@ class FinancialReportService
 {
     /**
      * Start date for cumulative director / entity loan activity on the balance sheet.
-     * Opening = non-transaction GL as of the prior day + synthetic pre-period lines.
+     * Opening = explicit/manual 2500 GL as of the prior day + synthetic pre-period lines.
+     * Closing also includes in-period explicit/manual 2500 journal lines.
      */
     private const DIRECTOR_LOAN_BALANCE_SHEET_START_DATE = '1970-01-01';
 
@@ -605,7 +607,7 @@ class FinancialReportService
      * Director / entity loan (2500) activity for reports:
      * - Intercompany paid_by be:{other} and cross-bank income (two mirrored lines)
      * - Same-entity director_funds / cash (and orphan bank_account with no bank) operating posts (one line)
-     * Explicit director_loan_* types stay on the manual GL path (see getDirectorLoanManualGlBalanceAsOf).
+     * Explicit director_loan_* types stay on the manual GL path (opening + in-period journal lines).
      *
      * @param  array<int>  $ids
      * @return array{account: ChartOfAccount, is_director_entity_loan: true, opening_balance: float, lines: list<array<string, mixed>>, closing_balance: float}
@@ -898,11 +900,25 @@ class FinancialReportService
             }
         }
 
-        // Synthetic lines already represent auto-posted Transaction journals on 2500
-        // (booker + payer). Only fold in non-transaction GL so opening is not doubled.
+        // Synthetics cover operating 2500 posts (director funds / cross-entity). Explicit
+        // director_loan_* types and manual journals are real GL — include them in opening
+        // (as-of day before start) and as in-period lines so closing is not stuck at 1970.
         $openingBalance = $this->liabilityOwedFromGl(
             $this->getDirectorLoanManualGlBalanceAsOf($account->id, $asOfBefore, $ids)
         ) + $syntheticBeforeStart;
+
+        foreach ($this->directorLoanManualGlReportLines($account->id, $ids, $startDate, $endDate) as $glLine) {
+            $inPeriodLineData[] = $glLine;
+        }
+
+        usort($inPeriodLineData, function (array $a, array $b): int {
+            $dateCmp = $this->directorLoanLineDateString($a) <=> $this->directorLoanLineDateString($b);
+            if ($dateCmp !== 0) {
+                return $dateCmp;
+            }
+
+            return strcmp((string) ($a['reference'] ?? ''), (string) ($b['reference'] ?? ''));
+        });
 
         $running = $openingBalance;
         foreach ($inPeriodLineData as &$ld) {
@@ -960,45 +976,105 @@ class FinancialReportService
      */
     private function getDirectorLoanManualGlBalanceAsOf($accountId, string $asOfDate, array $entityIds): float
     {
-        $directorLoanTypes = $this->directorLoanExplicitTransactionTypes();
-
-        $debits = JournalLine::where('chart_of_account_id', $accountId)
-            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds, $directorLoanTypes) {
-                $query->whereIn('business_entity_id', $entityIds)
-                    ->where('entry_date', '<=', $asOfDate);
-                $this->applyBalancedPostedJournalConstraints($query);
-                $query->where(function ($q) use ($directorLoanTypes) {
-                    $q->whereNull('source_type')
-                        ->orWhere('source_type', '!=', Transaction::class)
-                        ->orWhere(function ($q2) use ($directorLoanTypes) {
-                            $q2->where('source_type', Transaction::class)
-                                ->whereHasMorph('source', [Transaction::class], function ($tq) use ($directorLoanTypes) {
-                                    $tq->whereIn('transaction_type', $directorLoanTypes);
-                                });
-                        });
-                });
-            })
+        $debits = (float) $this->directorLoanManualGlLinesQuery($accountId, $entityIds, asOfDate: $asOfDate)
             ->sum('debit_amount');
-
-        $credits = JournalLine::where('chart_of_account_id', $accountId)
-            ->whereHas('journalEntry', function ($query) use ($asOfDate, $entityIds, $directorLoanTypes) {
-                $query->whereIn('business_entity_id', $entityIds)
-                    ->where('entry_date', '<=', $asOfDate);
-                $this->applyBalancedPostedJournalConstraints($query);
-                $query->where(function ($q) use ($directorLoanTypes) {
-                    $q->whereNull('source_type')
-                        ->orWhere('source_type', '!=', Transaction::class)
-                        ->orWhere(function ($q2) use ($directorLoanTypes) {
-                            $q2->where('source_type', Transaction::class)
-                                ->whereHasMorph('source', [Transaction::class], function ($tq) use ($directorLoanTypes) {
-                                    $tq->whereIn('transaction_type', $directorLoanTypes);
-                                });
-                        });
-                });
-            })
+        $credits = (float) $this->directorLoanManualGlLinesQuery($accountId, $entityIds, asOfDate: $asOfDate)
             ->sum('credit_amount');
 
-        return (float) $debits - (float) $credits;
+        return $debits - $credits;
+    }
+
+    /**
+     * In-period 2500 journal lines for the director-loan report (owed convention: credit increases).
+     *
+     * @param  array<int>  $entityIds
+     * @return list<array<string, mixed>>
+     */
+    private function directorLoanManualGlReportLines($accountId, array $entityIds, string $startDate, string $endDate): array
+    {
+        $lines = $this->directorLoanManualGlLinesQuery(
+            $accountId,
+            $entityIds,
+            asOfDate: $endDate,
+            fromDate: $startDate,
+        )
+            ->with([
+                'journalEntry.businessEntity',
+                'journalEntry.source' => function ($morphTo) {
+                    $morphTo->morphWith([
+                        Transaction::class => ['businessEntity', 'bankAccount.businessEntity', 'asset'],
+                    ]);
+                },
+            ])
+            ->get();
+
+        $mapped = [];
+        foreach ($lines as $line) {
+            $entry = $line->journalEntry;
+            if ($entry === null) {
+                continue;
+            }
+
+            $debit = (float) ($line->debit_amount ?? 0);
+            $credit = (float) ($line->credit_amount ?? 0);
+            $base = [
+                'date' => $entry->entry_date,
+                'reference' => $this->accountTransactionReference($entry),
+                'description' => $this->accountTransactionDescription($line),
+                'entity_name' => (string) ($entry->businessEntity?->legal_name ?? ''),
+                'reporting_business_entity_id' => (int) $entry->business_entity_id,
+                'is_director_loan_line' => true,
+                'debit' => $debit > 0 ? $debit : null,
+                'credit' => $credit > 0 ? $credit : null,
+            ];
+
+            $source = $entry->relationLoaded('source') ? $entry->source : null;
+            if ($source instanceof Transaction) {
+                $mapped[] = $this->mergeDirectorLoanLineWithTransactionDetails($source, $base);
+
+                continue;
+            }
+
+            $mapped[] = array_merge($this->accountTransactionLineDetails($entry), $base);
+        }
+
+        return $mapped;
+    }
+
+    /**
+     * @param  array<int>  $entityIds
+     * @return Builder<JournalLine>
+     */
+    private function directorLoanManualGlLinesQuery(
+        $accountId,
+        array $entityIds,
+        ?string $asOfDate = null,
+        ?string $fromDate = null
+    ): Builder {
+        $directorLoanTypes = $this->directorLoanExplicitTransactionTypes();
+
+        return JournalLine::query()
+            ->where('chart_of_account_id', $accountId)
+            ->whereHas('journalEntry', function ($query) use ($entityIds, $directorLoanTypes, $asOfDate, $fromDate) {
+                $query->whereIn('business_entity_id', $entityIds);
+                if ($fromDate !== null) {
+                    $query->where('entry_date', '>=', $fromDate);
+                }
+                if ($asOfDate !== null) {
+                    $query->where('entry_date', '<=', $asOfDate);
+                }
+                $this->applyBalancedPostedJournalConstraints($query);
+                $query->where(function ($q) use ($directorLoanTypes) {
+                    $q->whereNull('source_type')
+                        ->orWhere('source_type', '!=', Transaction::class)
+                        ->orWhere(function ($q2) use ($directorLoanTypes) {
+                            $q2->where('source_type', Transaction::class)
+                                ->whereHasMorph('source', [Transaction::class], function ($tq) use ($directorLoanTypes) {
+                                    $tq->whereIn('transaction_type', $directorLoanTypes);
+                                });
+                        });
+                });
+            });
     }
 
     /**
