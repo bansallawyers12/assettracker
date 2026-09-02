@@ -8,9 +8,8 @@
     @php
         $statementEntry = $transaction->bankStatementEntries->first();
         $isLoanActivity = (bool) ($bankAccount?->isLoanLedgerAccount());
-        $currentType = (string) $transaction->transaction_type;
-        $typeGroups = \App\Models\Transaction::typeSelectGroupsForDisplay($currentType, $bankAccount);
-        $oldType = old('transaction_type', $transaction->transaction_type);
+        $oldType = (string) old('transaction_type', $transaction->transaction_type);
+        $typeGroups = \App\Models\Transaction::typeSelectGroupsForDisplay($oldType, $bankAccount);
         $cancelHref = request('return_to') === 'bank-account' && $transaction->bank_account_id
             ? route('business-entities.show', ['business_entity' => $businessEntity->id, 'open_bank_transactions' => $transaction->bank_account_id]).'#tab_bank_accounts'
             : route('business-entities.show', $businessEntity->id).'#tab_transactions';

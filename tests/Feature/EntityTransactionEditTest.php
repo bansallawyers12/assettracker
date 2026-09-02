@@ -55,6 +55,6 @@ it('detects statement-linked transactions from bank statement entries', function
 it('lets loan statement edits use loan activity type groups', function () {
     $statementEdit = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/edit-from-statement.blade.php'));
 
-    expect($statementEdit)->toContain('typeSelectGroupsForBankAccount')
+    expect($statementEdit)->toContain('typeSelectGroupsForDisplay')
         ->and($statementEdit)->toContain('typeGroups');
 });

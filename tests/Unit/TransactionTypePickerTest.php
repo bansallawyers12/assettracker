@@ -14,7 +14,11 @@ it('hides legacy import director loan types from new entry pickers', function ()
         'director_loan_out',
         'director_loan_repayment',
         'directors_fees',
-    ])->not->toHaveKeys(Transaction::legacyImportDirectorLoanTypes());
+    ]);
+
+    foreach (Transaction::legacyImportDirectorLoanTypes() as $type) {
+        expect($directorGroup)->not->toHaveKey($type);
+    }
 });
 
 it('hides legacy import director loan types from balance sheet entry pickers', function () {
@@ -24,7 +28,11 @@ it('hides legacy import director loan types from balance sheet entry pickers', f
         'director_loan_in',
         'director_loan_out',
         'director_loan_repayment',
-    ])->not->toHaveKeys(Transaction::legacyImportDirectorLoanTypes());
+    ]);
+
+    foreach (Transaction::legacyImportDirectorLoanTypes() as $type) {
+        expect($directorGroup)->not->toHaveKey($type);
+    }
 });
 
 it('preserves legacy director loan type on edit pickers under Current group', function () {
@@ -57,10 +65,21 @@ it('includes legacy types in related party validation list', function () {
 });
 
 it('uses modern director loan types for bank account picker groups', function () {
-    $bankAccount = new BankAccount(['account_purpose' => 'operating']);
+    $bankAccount = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
 
     $groups = Transaction::typeSelectGroupsForDisplay(null, $bankAccount);
     $directorGroup = $groups['Director & related party'];
 
-    expect($directorGroup)->not->toHaveKeys(Transaction::legacyImportDirectorLoanTypes());
+    foreach (Transaction::legacyImportDirectorLoanTypes() as $type) {
+        expect($directorGroup)->not->toHaveKey($type);
+    }
+});
+
+it('keeps loan ledger pickers on loan activity types', function () {
+    $loanAccount = new BankAccount(['account_purpose' => BankAccount::PURPOSE_LOAN]);
+
+    $groups = Transaction::typeSelectGroupsForDisplay(null, $loanAccount);
+
+    expect($groups)->toHaveKey('Loan activity')
+        ->and($groups)->not->toHaveKey('Director & related party');
 });
