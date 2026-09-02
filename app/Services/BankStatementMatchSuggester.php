@@ -455,10 +455,10 @@ class BankStatementMatchSuggester
                 return 'asic_payment';
             }
             if (preg_match('/director loan repayment|repay director/i', $description)) {
-                return 'repayment_directors_loans';
+                return 'director_loan_repayment';
             }
             if (preg_match('/loan to director|advance to director/i', $description)) {
-                return 'company_loans_to_directors';
+                return 'director_loan_out';
             }
             if (preg_match('/director fee|directors fee/i', $description)) {
                 return 'directors_fees';

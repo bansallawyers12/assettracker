@@ -8,7 +8,9 @@
 ])
 
 @php
-    $typeGroups = $groups ?? \App\Models\Transaction::typeSelectGroups();
+    $typeGroups = $groups ?? \App\Models\Transaction::typeSelectGroupsForDisplay(
+        is_string($selected) && $selected !== '' ? $selected : null
+    );
 @endphp
 
 <select name="{{ $name }}" id="{{ $id }}" @if($required) required @endif

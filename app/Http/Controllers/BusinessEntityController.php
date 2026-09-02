@@ -3584,14 +3584,7 @@ class BusinessEntityController extends Controller
      */
     private function assertDashboardTransactionLinesValid(array $lines, BusinessEntity $targetEntity): void
     {
-        $relatedPartyTypes = [
-            'director_loan_in',
-            'director_loan_out',
-            'director_loan_repayment',
-            'directors_loans_to_company',
-            'repayment_directors_loans',
-            'company_loans_to_directors',
-        ];
+        $relatedPartyTypes = Transaction::directorLoanRelatedPartyTypes();
 
         $isSplit = count($lines) > 1;
 

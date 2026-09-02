@@ -178,6 +178,37 @@ class Transaction extends Model
     }
 
     /**
+     * Picker groups for forms, preserving a legacy or current type on edit screens.
+     *
+     * @return array<string, array<string, string>>
+     */
+    public static function typeSelectGroupsForDisplay(?string $currentType = null, ?BankAccount $bankAccount = null): array
+    {
+        $groups = $bankAccount
+            ? self::typeSelectGroupsForBankAccount($bankAccount)
+            : self::typeSelectGroups();
+
+        if ($currentType === null || $currentType === '') {
+            return $groups;
+        }
+
+        foreach ($groups as $types) {
+            if (array_key_exists($currentType, $types)) {
+                return $groups;
+            }
+        }
+
+        $allTypes = self::allTypes();
+        if (! array_key_exists($currentType, $allTypes)) {
+            return $groups;
+        }
+
+        return [
+            'Current' => [$currentType => $allTypes[$currentType]],
+        ] + $groups;
+    }
+
+    /**
      * Grouped options for transaction type select (label => key => display).
      *
      * @return array<string, array<string, string>>
@@ -219,9 +250,6 @@ class Transaction extends Model
                 'director_loan_in' => self::$incomeTypes['director_loan_in'],
                 'director_loan_out' => self::$expenseTypes['director_loan_out'],
                 'director_loan_repayment' => self::$expenseTypes['director_loan_repayment'],
-                'directors_loans_to_company' => self::$incomeTypes['directors_loans_to_company'],
-                'repayment_directors_loans' => self::$expenseTypes['repayment_directors_loans'],
-                'company_loans_to_directors' => self::$expenseTypes['company_loans_to_directors'],
                 'directors_fees' => self::$expenseTypes['directors_fees'],
                 'rent_to_related_party' => self::$expenseTypes['rent_to_related_party'],
                 'purchases_from_related_party' => self::$expenseTypes['purchases_from_related_party'],
@@ -245,6 +273,47 @@ class Transaction extends Model
     }
 
     /**
+     * Legacy import aliases — kept for existing rows and posting; hidden from new-entry pickers.
+     *
+     * @return list<string>
+     */
+    public static function legacyImportDirectorLoanTypes(): array
+    {
+        return [
+            'directors_loans_to_company',
+            'repayment_directors_loans',
+            'company_loans_to_directors',
+        ];
+    }
+
+    /**
+     * Director-loan types shown when creating new transactions.
+     *
+     * @return list<string>
+     */
+    public static function directorLoanPickerTypes(): array
+    {
+        return [
+            'director_loan_in',
+            'director_loan_out',
+            'director_loan_repayment',
+        ];
+    }
+
+    /**
+     * All director-loan types (picker + legacy), for related-entity validation and JS.
+     *
+     * @return list<string>
+     */
+    public static function directorLoanRelatedPartyTypes(): array
+    {
+        return array_merge(
+            self::directorLoanPickerTypes(),
+            self::legacyImportDirectorLoanTypes(),
+        );
+    }
+
+    /**
      * Transaction types intended for the dedicated balance-sheet entry form
      * (capital / asset purchase and director loan movements — not day-to-day P&L).
      *
@@ -258,9 +327,6 @@ class Transaction extends Model
             'director_loan_in' => self::$incomeTypes['director_loan_in'],
             'director_loan_out' => self::$expenseTypes['director_loan_out'],
             'director_loan_repayment' => self::$expenseTypes['director_loan_repayment'],
-            'directors_loans_to_company' => self::$incomeTypes['directors_loans_to_company'],
-            'repayment_directors_loans' => self::$expenseTypes['repayment_directors_loans'],
-            'company_loans_to_directors' => self::$expenseTypes['company_loans_to_directors'],
         ];
     }
 
@@ -280,9 +346,6 @@ class Transaction extends Model
                 'director_loan_in' => $types['director_loan_in'],
                 'director_loan_out' => $types['director_loan_out'],
                 'director_loan_repayment' => $types['director_loan_repayment'],
-                'directors_loans_to_company' => $types['directors_loans_to_company'],
-                'repayment_directors_loans' => $types['repayment_directors_loans'],
-                'company_loans_to_directors' => $types['company_loans_to_directors'],
             ],
         ];
     }

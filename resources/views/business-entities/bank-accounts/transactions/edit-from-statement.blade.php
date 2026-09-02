@@ -8,23 +8,8 @@
     @php
         $statementEntry = $transaction->bankStatementEntries->first();
         $isLoanActivity = (bool) ($bankAccount?->isLoanLedgerAccount());
-        $typeGroups = $bankAccount
-            ? \App\Models\Transaction::typeSelectGroupsForBankAccount($bankAccount)
-            : \App\Models\Transaction::typeSelectGroups();
-        $allTypes = \App\Models\Transaction::allTypes();
         $currentType = (string) $transaction->transaction_type;
-        $typeInGroups = false;
-        foreach ($typeGroups as $types) {
-            if (array_key_exists($currentType, $types)) {
-                $typeInGroups = true;
-                break;
-            }
-        }
-        if ($currentType !== '' && ! $typeInGroups && array_key_exists($currentType, $allTypes)) {
-            $typeGroups = [
-                'Current' => [$currentType => $allTypes[$currentType]],
-            ] + $typeGroups;
-        }
+        $typeGroups = \App\Models\Transaction::typeSelectGroupsForDisplay($currentType, $bankAccount);
         $oldType = old('transaction_type', $transaction->transaction_type);
         $cancelHref = request('return_to') === 'bank-account' && $transaction->bank_account_id
             ? route('business-entities.show', ['business_entity' => $businessEntity->id, 'open_bank_transactions' => $transaction->bank_account_id]).'#tab_bank_accounts'
@@ -124,7 +109,7 @@
                             @error('counterpart_bank_account_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
-                        <div id="related_entity_field" class="{{ in_array($oldType, ['director_loan_in', 'director_loan_out', 'director_loan_repayment', 'directors_loans_to_company', 'repayment_directors_loans', 'company_loans_to_directors'], true) ? '' : 'hidden' }}">
+                        <div id="related_entity_field" class="{{ in_array($oldType, \App\Models\Transaction::directorLoanRelatedPartyTypes(), true) ? '' : 'hidden' }}">
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Related Entity</label>
                             <x-tom-select name="related_entity_id" class="mt-1 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Select Related Entity</option>
@@ -164,14 +149,7 @@
             const transactionTypeSelect = document.getElementById('transaction_type');
             const relatedEntityField = document.getElementById('related_entity_field');
             const counterpartField = document.getElementById('counterpart_account_field');
-            const relatedPartyTypes = [
-                'director_loan_in',
-                'director_loan_out',
-                'director_loan_repayment',
-                'directors_loans_to_company',
-                'repayment_directors_loans',
-                'company_loans_to_directors',
-            ];
+            const relatedPartyTypes = @json(\App\Models\Transaction::directorLoanRelatedPartyTypes());
 
             function syncTypeDependentFields(clearHidden) {
                 if (!transactionTypeSelect) return;

@@ -330,14 +330,7 @@
             syncPaidByOther();
 
             if (transactionTypeSelect && relatedEntityField) {
-                const relatedPartyTypes = [
-                    'director_loan_in',
-                    'director_loan_out',
-                    'director_loan_repayment',
-                    'directors_loans_to_company',
-                    'repayment_directors_loans',
-                    'company_loans_to_directors',
-                ];
+                const relatedPartyTypes = @json(\App\Models\Transaction::directorLoanRelatedPartyTypes());
                 const counterpartField = document.getElementById('counterpart_account_field');
                 function syncTypeDependentFields() {
                     const type = transactionTypeSelect.value;

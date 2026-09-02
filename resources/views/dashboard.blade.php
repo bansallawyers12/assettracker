@@ -147,14 +147,7 @@
                         'vendors' => $dashboardVendorsJson->all(),
                         'relatedEntities' => $dashboardRelatedEntitiesJson->all(),
                         'maxLines' => 20,
-                        'relatedPartyTypes' => [
-                            'director_loan_in',
-                            'director_loan_out',
-                            'director_loan_repayment',
-                            'directors_loans_to_company',
-                            'repayment_directors_loans',
-                            'company_loans_to_directors',
-                        ],
+                        'relatedPartyTypes' => \App\Models\Transaction::directorLoanRelatedPartyTypes(),
                     ];
                 @endphp
                 <script>
