@@ -114,6 +114,33 @@ it('suggests loan fees and repayments from macquarie subcategory', function (str
     'transfer' => ['Transfer', 'loan_repayments'],
 ]);
 
+it('suggests director loan in when money is received on the loan ledger', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => 15000,
+        'description' => 'Director loan from AJ',
+    ]);
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_LOAN]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect());
+
+    expect($suggestion['action'])->toBe('create_transaction')
+        ->and($suggestion['transaction_type'])->toBe('director_loan_in');
+});
+
+it('does not suggest operating income types on the loan ledger', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => 500,
+        'description' => 'Invoice payment received',
+    ]);
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_LOAN]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect());
+
+    expect($suggestion['action'])->toBe('none');
+});
+
 it('flags dishonour lines as low confidence none', function () {
     $suggester = new BankStatementMatchSuggester;
     $entry = makeEntry([
@@ -240,8 +267,8 @@ it('enforces loan activity create types in apply service', function () {
     $source = file_get_contents(app_path('Services/BankStatementApplyService.php'));
 
     expect($source)->toContain('$bankAccount->isLoanLedgerAccount()')
-        ->and($source)->toContain('Transaction::loanActivityTypes()')
-        ->and($source)->toContain('Loan activity must use Loan Interest, Loan Fees, or Loan Repayment');
+        ->and($source)->toContain('Transaction::loanLedgerAllowedTypes()')
+        ->and($source)->toContain('Loan activity must use Loan Interest, Loan Fees, Loan Repayment, or Director Loan In/Out');
 });
 
 it('exposes loan types and interest expense posting map', function () {

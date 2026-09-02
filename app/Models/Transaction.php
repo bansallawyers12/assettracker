@@ -154,6 +154,19 @@ class Transaction extends Model
     }
 
     /**
+     * Types allowed when creating or classifying activity on a loan-purpose account.
+     *
+     * @return array<string, string>
+     */
+    public static function loanLedgerAllowedTypes(): array
+    {
+        return self::loanActivityTypes() + array_intersect_key(
+            self::allTypes(),
+            array_flip(self::directorLoanPickerTypes())
+        );
+    }
+
+    /**
      * Create-type options when importing a loan-purpose account statement.
      *
      * @return array<string, array<string, string>>
@@ -162,6 +175,10 @@ class Transaction extends Model
     {
         return [
             'Loan activity' => self::loanActivityTypes(),
+            'Director & related party' => array_intersect_key(
+                self::allTypes(),
+                array_flip(self::directorLoanPickerTypes())
+            ),
         ];
     }
 

@@ -27,6 +27,7 @@ use Illuminate\Support\Str;
  *
  * Loan ledger accounts are not cash: loan_interest/loan_fees capitalise to 4000;
  * loan_repayments on the loan account do not post (cash left via offset).
+ * director_loan_in/out on the loan account post 4000 ↔ 2500 (not 1100).
  * Offset↔loan internal_transfer posts on the cash/offset side only (1100 ↔ 4000).
  * Cash↔cash internal transfers remain a wash (no journal).
  *
@@ -601,9 +602,14 @@ class TransactionPostingService
 
         // Funded outside the company bank (director funds / cash / no bank chosen): both legs are
         // 2500, so the entry is recorded without moving cash and nets to nil on the loan account.
+        // Money received or paid on a loan-purpose account is the bank loan (4000), not cash.
         [$fundingAccount, $fundingLabel] = match (true) {
             $useIntercompany => [$receivable, 'Receivable from related entity'],
             $this->shouldFundOperatingSideViaDirectorLoan($transaction) => [$directorLoan, 'Director funds (no bank movement)'],
+            $transaction->bankAccount?->isLoanLedgerAccount() => [
+                $accounts['long_term_loans'],
+                $isIncome ? 'Loan liability reduced' : 'Loan liability increased',
+            ],
             default => [$accounts['cash'], $isIncome ? 'Cash received' : 'Cash paid'],
         };
 

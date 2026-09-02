@@ -86,11 +86,20 @@ it('uses modern director loan types for bank account picker groups', function ()
     }
 });
 
-it('keeps loan ledger pickers on loan activity types', function () {
+it('keeps loan ledger pickers on loan activity and director loan types', function () {
     $loanAccount = new BankAccount(['account_purpose' => BankAccount::PURPOSE_LOAN]);
 
     $groups = Transaction::typeSelectGroupsForDisplay(null, $loanAccount);
 
     expect($groups)->toHaveKey('Loan activity')
-        ->and($groups)->not->toHaveKey('Director & related party');
+        ->and($groups['Loan activity'])->toHaveKeys(['loan_interest', 'loan_fees', 'loan_repayments'])
+        ->and($groups['Director & related party'])->toHaveKeys(['director_loan_in', 'director_loan_out'])
+        ->and($groups)->not->toHaveKey('Income')
+        ->and(Transaction::loanLedgerAllowedTypes())->toHaveKeys([
+            'loan_interest',
+            'loan_fees',
+            'loan_repayments',
+            'director_loan_in',
+            'director_loan_out',
+        ]);
 });

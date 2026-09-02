@@ -204,6 +204,52 @@ it('keeps bank cash out of a director loan funded outside the bank', function ()
         ]);
 });
 
+it('posts director loan in on a loan ledger to long-term loans not cash', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $transaction = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $loan->id,
+        'date' => '2026-08-12',
+        'paid_at' => '2026-08-12',
+        'amount' => 15000,
+        'description' => 'Director put money into the loan account',
+        'transaction_type' => 'director_loan_in',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    expect(ledgerLines($transaction))->toEqual([
+        '4000' => [15000.0, 0.0],
+        '2500' => [0.0, 15000.0],
+    ]);
+});
+
+it('posts director loan out on a loan ledger as a redraw not cash', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $transaction = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $loan->id,
+        'date' => '2026-08-13',
+        'paid_at' => '2026-08-13',
+        'amount' => 2000,
+        'description' => 'Redraw to director from the loan account',
+        'transaction_type' => 'director_loan_out',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    expect(ledgerLines($transaction))->toEqual([
+        '2500' => [2000.0, 0.0],
+        '4000' => [0.0, 2000.0],
+    ]);
+});
+
 it('posts explicit director loan types to account 2500 via the bank', function (string $type, array $expected) {
     $this->seed(ChartOfAccountSeeder::class);
 

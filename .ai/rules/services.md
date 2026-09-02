@@ -27,7 +27,7 @@ P&L and the balance sheet only read journals where is_posted is true AND total_d
 - `persistJournalEntry()` returns false and saves nothing when debits and credits differ by more than half a cent. Callers must return null on false.
 
 ## Explicit director-loan types follow the payment channel, not always 1100
-`director_loan_in` / `director_loan_out` (and the other explicit director-loan types) fund from Bank/Cash 1100 ONLY when the transaction has a bank account with the bank_account channel.
+`director_loan_in` / `director_loan_out` (and the other explicit director-loan types) fund from Bank/Cash 1100 ONLY when the transaction has a non-loan bank account with the bank_account channel. On a loan-purpose account they fund from Long Term Loans 4000 (in reduces the bank loan; out is a redraw). Never debit 1100 for director_loan_* on a loan ledger.
 
 Funded outside the bank (director_funds / cash channel, or bank_account with a null bank_account_id) both legs post to 2500: the entry is visible on the account listing but moves neither cash nor the loan balance. This is deliberate — such an entry has no real second side, and debiting 1100 used to inflate Bank/Cash for money that never entered the bank. Money the director actually paid on the entity's behalf should be booked with the real expense or `asset_purchase` type plus `director_funds`, which credits 2500 properly.
 
@@ -49,3 +49,6 @@ Manual journals (source_type null) are edited in place on the same id. Reverse p
 
 ## Director loan BS closing includes in-period 2500 GL
 Director loan 2500 is stripped from the normal liability GL loop and rebuilt in buildDirectorEntityLoanAccountBlock. Opening is explicit/manual 2500 GL as of the day before start plus synthetics before start. Closing must also add in-period explicit/manual 2500 journal lines (directorLoanManualGlReportLines). Do not rely on opening alone when the balance-sheet start is 1970-01-01 — that zeros in-period director_loan_in/out. Do not add synthetics for explicit director_loan_* types.
+
+## Director loan on loan ledger posts 4000
+director_loan_in/out on a loan-purpose bank account post Long Term Loans 4000 ↔ Director Loan 2500. Do not use Bank/Cash 1100 — the money never hit an operating/offset account. In reduces 4000; out is a redraw that increases 4000.

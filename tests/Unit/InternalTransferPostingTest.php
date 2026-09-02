@@ -49,7 +49,9 @@ it('limits loan ledger import types to loan activity', function () {
         ->and($offsetAccount->isLoanLedgerAccount())->toBeFalse()
         ->and(Transaction::loanActivityTypeSelectGroups())->toHaveKey('Loan activity')
         ->and(Transaction::loanActivityTypeSelectGroups()['Loan activity'])->toHaveKeys(['loan_interest', 'loan_fees', 'loan_repayments'])
+        ->and(Transaction::loanActivityTypeSelectGroups())->toHaveKey('Director & related party')
         ->and(Transaction::typeSelectGroupsForBankAccount($loanAccount))->toHaveKey('Loan activity')
+        ->and(Transaction::typeSelectGroupsForBankAccount($loanAccount))->toHaveKey('Director & related party')
         ->and(Transaction::typeSelectGroupsForBankAccount($offsetAccount))->toHaveKey('Banking');
 });
 

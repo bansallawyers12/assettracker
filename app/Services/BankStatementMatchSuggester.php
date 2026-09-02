@@ -63,6 +63,11 @@ class BankStatementMatchSuggester
         );
 
         if ($keywordType !== null && $keywordType !== 'unknown') {
+            if ($bankAccount->isLoanLedgerAccount()
+                && ! array_key_exists($keywordType, Transaction::loanLedgerAllowedTypes())) {
+                return $none;
+            }
+
             if ($bankAccount->account_purpose === BankAccount::PURPOSE_OFFSET
                 && in_array($keywordType, LoanOffsetTransactionGuard::LOAN_ECONOMIC_TYPES, true)) {
                 return $this->createSuggestion(
@@ -236,6 +241,15 @@ class BankStatementMatchSuggester
         $subcategory = strtolower(trim((string) ($meta['subcategory'] ?? '')));
         $description = strtolower((string) ($entry->description ?? ''));
         $combined = trim($subcategory.' '.$description);
+        $amount = (float) $entry->amount;
+
+        if ($amount > 0 && preg_match('/director loan|loan from director/i', $description)) {
+            return $this->createSuggestion('director_loan_in', 'high', 'Keyword: director loan in', $defaultAssetId);
+        }
+
+        if ($amount < 0 && preg_match('/director loan repayment|repay director|loan to director|advance to director/i', $description)) {
+            return $this->createSuggestion('director_loan_out', 'high', 'Keyword: director loan out', $defaultAssetId);
+        }
 
         if ($subcategory !== '' || ($meta['bank_profile'] ?? null) === 'macquarie') {
             if (str_contains($combined, 'dishonour')) {

@@ -60,13 +60,13 @@ class BankStatementApplyService
 
                 if ($bankAccount->isLoanLedgerAccount() && $chartAccountId !== null) {
                     throw ValidationException::withMessages([
-                        'matches' => 'Loan activity must use Loan Interest, Loan Fees, or Loan Repayment rather than a chart account.',
+                        'matches' => 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, or Director Loan In/Out rather than a chart account.',
                     ]);
                 }
 
                 if ($bankAccount->isLoanLedgerAccount()
                     && $transactionType !== null
-                    && ! array_key_exists($transactionType, Transaction::loanActivityTypes())) {
+                    && ! array_key_exists($transactionType, Transaction::loanLedgerAllowedTypes())) {
                     throw ValidationException::withMessages([
                         'matches' => "Transaction type [{$transactionType}] is not valid for loan activity.",
                     ]);

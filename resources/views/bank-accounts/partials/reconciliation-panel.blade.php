@@ -21,7 +21,7 @@
             @if($isLoanActivityImport)
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Update loan activity</h3>
                 <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                    This is the loan ledger, not cash. Interest and fees capitalise to the loan. Repayments reduce the loan and cash once — keep offset “to loan” lines as internal transfers.
+                    This is the loan ledger, not cash. Interest and fees capitalise to the loan. Repayments reduce the loan and cash once — keep offset “to loan” lines as internal transfers. Director money received on this account is Director Loan In (reduces the bank loan, increases the director loan).
                 </p>
             @else
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reconcile statement</h3>
