@@ -204,6 +204,39 @@ it('keeps bank cash out of a director loan funded outside the bank', function ()
         ]);
 });
 
+it('posts explicit director loan types to account 2500 via the bank', function (string $type, array $expected) {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $bank = ledgerBankAccount($entity);
+    $transaction = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $bank->id,
+        'date' => '2026-08-12',
+        'paid_at' => '2026-08-12',
+        'amount' => 1000,
+        'description' => 'Director loan '.$type,
+        'transaction_type' => $type,
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    expect(ledgerLines($transaction))->toEqual($expected);
+})->with([
+    'in' => ['director_loan_in', [
+        '1100' => [1000.0, 0.0],
+        '2500' => [0.0, 1000.0],
+    ]],
+    'out' => ['director_loan_out', [
+        '2500' => [1000.0, 0.0],
+        '1100' => [0.0, 1000.0],
+    ]],
+    'repayment' => ['director_loan_repayment', [
+        '2500' => [1000.0, 0.0],
+        '1100' => [0.0, 1000.0],
+    ]],
+]);
+
 it('refuses to persist an unbalanced journal and leaves no partial entry', function () {
     $this->seed(ChartOfAccountSeeder::class);
 

@@ -317,3 +317,12 @@ it('documents create-vs-match duplicate transaction handling in services', funct
         ->and($suggester)->toContain('claiming each matched transaction at most once')
         ->and($apply)->toContain('Selected transaction is already matched to a statement line');
 });
+
+it('maps director loan repayment keywords to director_loan_out', function () {
+    $suggester = new BankStatementMatchSuggester;
+
+    expect($suggester->determineTransactionType('Director loan repayment', -5000))->toBe('director_loan_out')
+        ->and($suggester->determineTransactionType('Repay director', -250))->toBe('director_loan_out')
+        ->and($suggester->determineTransactionType('Loan to director', -1000))->toBe('director_loan_out')
+        ->and($suggester->determineTransactionType('Loan from director', 25000))->toBe('director_loan_in');
+});

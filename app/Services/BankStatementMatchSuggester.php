@@ -442,6 +442,9 @@ class BankStatementMatchSuggester
             if (preg_match('/travel|flight|hotel|accommodation|uber|taxi/i', $description)) {
                 return 'travel_expenses';
             }
+            if (preg_match('/director loan repayment|repay director|loan to director|advance to director/i', $description)) {
+                return 'director_loan_out';
+            }
             if (preg_match('/loan repayment|mortgage payment/i', $description)) {
                 return 'loan_repayments';
             }
@@ -453,12 +456,6 @@ class BankStatementMatchSuggester
             }
             if (preg_match('/\basic\b|asic annual|annual review fee|payment to asic/i', $description)) {
                 return 'asic_payment';
-            }
-            if (preg_match('/director loan repayment|repay director/i', $description)) {
-                return 'director_loan_repayment';
-            }
-            if (preg_match('/loan to director|advance to director/i', $description)) {
-                return 'director_loan_out';
             }
             if (preg_match('/director fee|directors fee/i', $description)) {
                 return 'directors_fees';

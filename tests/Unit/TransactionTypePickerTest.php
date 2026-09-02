@@ -12,9 +12,8 @@ it('hides legacy import director loan types from new entry pickers', function ()
     expect($directorGroup)->toHaveKeys([
         'director_loan_in',
         'director_loan_out',
-        'director_loan_repayment',
         'directors_fees',
-    ]);
+    ])->and($directorGroup)->not->toHaveKey('director_loan_repayment');
 
     foreach (Transaction::legacyImportDirectorLoanTypes() as $type) {
         expect($directorGroup)->not->toHaveKey($type);
@@ -27,8 +26,7 @@ it('hides legacy import director loan types from balance sheet entry pickers', f
     expect($directorGroup)->toHaveKeys([
         'director_loan_in',
         'director_loan_out',
-        'director_loan_repayment',
-    ]);
+    ])->and($directorGroup)->not->toHaveKey('director_loan_repayment');
 
     foreach (Transaction::legacyImportDirectorLoanTypes() as $type) {
         expect($directorGroup)->not->toHaveKey($type);
@@ -53,8 +51,11 @@ it('does not add Current group when type is already in picker list', function ()
         ->and($groups['Director & related party'])->toHaveKey('director_loan_in');
 });
 
-it('includes legacy types in related party validation list', function () {
-    expect(Transaction::directorLoanRelatedPartyTypes())->toEqual([
+it('includes hidden repayment and import aliases in related party validation list', function () {
+    expect(Transaction::directorLoanPickerTypes())->toEqual([
+        'director_loan_in',
+        'director_loan_out',
+    ])->and(Transaction::directorLoanRelatedPartyTypes())->toEqual([
         'director_loan_in',
         'director_loan_out',
         'director_loan_repayment',
@@ -62,6 +63,16 @@ it('includes legacy types in related party validation list', function () {
         'repayment_directors_loans',
         'company_loans_to_directors',
     ]);
+});
+
+it('preserves hidden director loan repayment on edit pickers under Current group', function () {
+    $groups = Transaction::typeSelectGroupsForDisplay('director_loan_repayment');
+
+    expect($groups)->toHaveKey('Current')
+        ->and($groups['Current'])->toBe([
+            'director_loan_repayment' => Transaction::$expenseTypes['director_loan_repayment'],
+        ])
+        ->and($groups['Director & related party'])->not->toHaveKey('director_loan_repayment');
 });
 
 it('uses modern director loan types for bank account picker groups', function () {

@@ -249,7 +249,6 @@ class Transaction extends Model
             'Director & related party' => [
                 'director_loan_in' => self::$incomeTypes['director_loan_in'],
                 'director_loan_out' => self::$expenseTypes['director_loan_out'],
-                'director_loan_repayment' => self::$expenseTypes['director_loan_repayment'],
                 'directors_fees' => self::$expenseTypes['directors_fees'],
                 'rent_to_related_party' => self::$expenseTypes['rent_to_related_party'],
                 'purchases_from_related_party' => self::$expenseTypes['purchases_from_related_party'],
@@ -273,13 +272,15 @@ class Transaction extends Model
     }
 
     /**
-     * Legacy import aliases — kept for existing rows and posting; hidden from new-entry pickers.
+     * Hidden director-loan aliases — kept for existing rows and posting; not shown on new-entry pickers.
+     * director_loan_repayment posts the same as director_loan_out (Dr 2500).
      *
      * @return list<string>
      */
     public static function legacyImportDirectorLoanTypes(): array
     {
         return [
+            'director_loan_repayment',
             'directors_loans_to_company',
             'repayment_directors_loans',
             'company_loans_to_directors',
@@ -287,7 +288,7 @@ class Transaction extends Model
     }
 
     /**
-     * Director-loan types shown when creating new transactions.
+     * Director-loan types shown when creating new transactions (in vs out only).
      *
      * @return list<string>
      */
@@ -296,7 +297,6 @@ class Transaction extends Model
         return [
             'director_loan_in',
             'director_loan_out',
-            'director_loan_repayment',
         ];
     }
 
@@ -326,7 +326,6 @@ class Transaction extends Model
             'capital_expenditure' => self::$expenseTypes['capital_expenditure'],
             'director_loan_in' => self::$incomeTypes['director_loan_in'],
             'director_loan_out' => self::$expenseTypes['director_loan_out'],
-            'director_loan_repayment' => self::$expenseTypes['director_loan_repayment'],
         ];
     }
 
@@ -345,7 +344,6 @@ class Transaction extends Model
             'Director & related party' => [
                 'director_loan_in' => $types['director_loan_in'],
                 'director_loan_out' => $types['director_loan_out'],
-                'director_loan_repayment' => $types['director_loan_repayment'],
             ],
         ];
     }

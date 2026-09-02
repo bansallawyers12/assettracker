@@ -12,6 +12,8 @@ it('exposes balance sheet entry types and non-bank payment channels', function (
     expect($types)->toHaveKey('asset_purchase')
         ->and($types)->toHaveKey('capital_expenditure')
         ->and($types)->toHaveKey('director_loan_in')
+        ->and($types)->toHaveKey('director_loan_out')
+        ->and($types)->not->toHaveKey('director_loan_repayment')
         ->and($types)->not->toHaveKey('deposit_paid')
         ->and($types)->not->toHaveKey('asic_payment')
         ->and($types)->not->toHaveKey(Transaction::TYPE_INTERNAL_TRANSFER)
