@@ -38,6 +38,20 @@ class ChartOfAccount extends Model
             ->get(['id', 'account_code', 'account_name']);
     }
 
+    /**
+     * Active income accounts for invoice line pickers.
+     *
+     * @return Collection<int, self>
+     */
+    public static function activeIncomeForSelect(): Collection
+    {
+        return static::query()
+            ->where('is_active', true)
+            ->where('account_type', 'income')
+            ->orderBy('account_code')
+            ->get(['id', 'account_code', 'account_name']);
+    }
+
     public static $accountTypes = [
         'asset' => 'Asset',
         'liability' => 'Liability',

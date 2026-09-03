@@ -4,18 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Mail\InvoiceReminderMail;
+use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
+use App\Models\ChartOfAccount;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
+use App\Models\Lease;
 use App\Services\BankStatementMatchSuggester;
 use App\Services\InvoicePaymentService;
 use App\Services\InvoicePostingService;
 use App\Support\TableSort;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class InvoiceController extends Controller
 {
@@ -77,7 +82,54 @@ class InvoiceController extends Controller
         $this->authorize('view', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
 
-        return view('invoices.create', compact('businessEntity'));
+        $issueDate = old('issue_date', now()->toDateString());
+        $suggestedInvoiceNumber = old('invoice_number', Invoice::suggestNumber($businessEntity, $issueDate));
+        $defaultDueDate = old('due_date', Carbon::parse($issueDate)->addDays(30)->toDateString());
+
+        $incomeAccounts = ChartOfAccount::activeIncomeForSelect();
+        $defaultAccountCode = old(
+            'lines.0.account_code',
+            $incomeAccounts->firstWhere('account_code', '4100')?->account_code
+                ?? $incomeAccounts->first()?->account_code
+        );
+
+        $assets = Asset::query()
+            ->where('business_entity_id', $businessEntity->id)
+            ->where('status', 'Active')
+            ->with([
+                'leases' => fn ($query) => $query->with('tenant')->orderByDesc('start_date'),
+            ])
+            ->orderBy('name')
+            ->get();
+
+        $assetsForForm = $assets->map(function (Asset $asset) {
+            return [
+                'id' => $asset->id,
+                'name' => $asset->name,
+                'leases' => $asset->leases->map(function (Lease $lease) use ($asset) {
+                    $tenantName = $lease->tenant?->name ?: 'No tenant';
+                    $start = optional($lease->start_date)->format('d/m/Y') ?? '—';
+                    $end = $lease->end_date ? $lease->end_date->format('d/m/Y') : 'ongoing';
+
+                    return [
+                        'id' => $lease->id,
+                        'label' => "{$tenantName} ({$start} – {$end})",
+                        'tenant_name' => $lease->tenant?->name,
+                        'asset_name' => $asset->name,
+                    ];
+                })->values(),
+            ];
+        })->values();
+
+        return view('invoices.create', [
+            'businessEntity' => $businessEntity,
+            'suggestedInvoiceNumber' => $suggestedInvoiceNumber,
+            'defaultDueDate' => $defaultDueDate,
+            'issueDate' => $issueDate,
+            'incomeAccounts' => $incomeAccounts,
+            'defaultAccountCode' => $defaultAccountCode,
+            'assetsForForm' => $assetsForForm,
+        ]);
     }
 
     public function store(Request $request, BusinessEntity $businessEntity)
@@ -85,66 +137,149 @@ class InvoiceController extends Controller
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
 
+        $incomeAccountCodes = ChartOfAccount::activeIncomeForSelect()->pluck('account_code')->all();
+
         $data = $request->validate([
             'invoice_number' => [
                 'required',
                 'max:50',
                 Rule::unique('invoices', 'invoice_number')->where('business_entity_id', $businessEntity->id),
             ],
-            'issue_date' => 'required|date',
-            'due_date' => 'nullable|date',
-            'customer_name' => 'required|string|max:255',
-            'reference' => 'nullable|string|max:255',
-            'currency' => 'nullable|string|size:3',
-            'notes' => 'nullable|string',
-            'lines' => 'required|array|min:1',
-            'lines.*.description' => 'required|string',
-            'lines.*.quantity' => 'required|numeric|min:0.0001',
-            'lines.*.unit_price' => 'required|numeric|min:0',
-            'lines.*.gst_rate' => 'nullable|numeric|min:0',
-            'lines.*.account_code' => 'nullable|string|max:20',
+            'issue_date' => ['required', 'date'],
+            'due_date' => ['nullable', 'date', 'after_or_equal:issue_date'],
+            'asset_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('assets', 'id')->where(fn ($query) => $query->where('business_entity_id', $businessEntity->id)),
+            ],
+            'lease_id' => ['nullable', 'integer', 'exists:leases,id'],
+            'customer_name' => ['required', 'string', 'max:255'],
+            'reference' => ['nullable', 'string', 'max:255'],
+            'currency' => ['nullable', 'string', 'size:3'],
+            'notes' => ['nullable', 'string'],
+            'gst_basis' => ['required', Rule::in(['inclusive', 'exclusive'])],
+            'gst_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'lines' => ['required', 'array', 'min:1'],
+            'lines.*.description' => ['required', 'string', 'max:255'],
+            'lines.*.quantity' => ['required', 'numeric', 'min:0.0001'],
+            'lines.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'lines.*.account_code' => ['required', 'string', Rule::in($incomeAccountCodes)],
         ]);
 
+        $assetId = isset($data['asset_id']) ? (int) $data['asset_id'] : null;
+        $leaseId = isset($data['lease_id']) ? (int) $data['lease_id'] : null;
+        $lease = null;
+
+        if ($leaseId) {
+            $lease = Lease::query()->with(['asset', 'tenant'])->findOrFail($leaseId);
+            if ((int) $lease->asset->business_entity_id !== (int) $businessEntity->id) {
+                throw ValidationException::withMessages([
+                    'lease_id' => 'The selected lease does not belong to this entity.',
+                ]);
+            }
+            if ($assetId !== null && (int) $lease->asset_id !== $assetId) {
+                throw ValidationException::withMessages([
+                    'lease_id' => 'The selected lease does not belong to the selected asset.',
+                ]);
+            }
+            $assetId = (int) $lease->asset_id;
+        }
+
+        $gstRate = round(((float) $data['gst_percent']) / 100, 4);
+        $gstBasis = $data['gst_basis'];
+
         $invoice = new Invoice;
-        $invoice->fill($data);
+        $invoice->fill([
+            'invoice_number' => $data['invoice_number'],
+            'issue_date' => $data['issue_date'],
+            'due_date' => $data['due_date'] ?? Carbon::parse($data['issue_date'])->addDays(30)->toDateString(),
+            'customer_name' => $data['customer_name'],
+            'reference' => $data['reference'] ?? null,
+            'notes' => $data['notes'] ?? null,
+            'currency' => $data['currency'] ?? 'AUD',
+        ]);
         $invoice->business_entity_id = $businessEntity->id;
+        $invoice->asset_id = $assetId;
+        $invoice->lease_id = $leaseId;
         $invoice->status = 'draft';
+        $invoice->is_posted = false;
         $invoice->subtotal = 0;
         $invoice->gst_amount = 0;
         $invoice->total_amount = 0;
-        $invoice->currency = $data['currency'] ?? 'AUD';
         $invoice->save();
 
-        $subtotal = 0;
-        $gstTotal = 0;
-        $grand = 0;
+        $subtotal = 0.0;
+        $gstTotal = 0.0;
+        $grand = 0.0;
+
         foreach ($data['lines'] as $line) {
-            $qty = (float) $line['quantity'];
-            $price = (float) $line['unit_price'];
-            $gstRate = isset($line['gst_rate']) ? (float) $line['gst_rate'] : 0.1;
-            $lineTotal = round($qty * $price * (1 + $gstRate), 2);
+            $amounts = $this->calculateInvoiceLineAmounts(
+                (float) $line['quantity'],
+                (float) $line['unit_price'],
+                $gstRate,
+                $gstBasis
+            );
+
             InvoiceLine::create([
                 'invoice_id' => $invoice->id,
                 'description' => $line['description'],
-                'quantity' => $qty,
-                'unit_price' => $price,
-                'line_total' => $lineTotal,
+                'quantity' => $line['quantity'],
+                'unit_price' => $line['unit_price'],
+                'line_total' => $amounts['line_total'],
                 'gst_rate' => $gstRate,
-                'account_code' => $line['account_code'] ?? null,
+                'account_code' => $line['account_code'],
             ]);
-            $net = round($qty * $price, 2);
-            $gst = round($net * $gstRate, 2);
-            $subtotal += $net;
-            $gstTotal += $gst;
-            $grand += $net + $gst;
+
+            $subtotal += $amounts['net'];
+            $gstTotal += $amounts['gst'];
+            $grand += $amounts['line_total'];
         }
-        $invoice->subtotal = $subtotal;
-        $invoice->gst_amount = $gstTotal;
-        $invoice->total_amount = $grand;
+
+        $invoice->subtotal = round($subtotal, 2);
+        $invoice->gst_amount = round($gstTotal, 2);
+        $invoice->total_amount = round($grand, 2);
         $invoice->save();
 
         return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
             ->with('success', 'Invoice created');
+    }
+
+    /**
+     * @return array{net: float, gst: float, line_total: float}
+     */
+    private function calculateInvoiceLineAmounts(float $quantity, float $unitPrice, float $gstRate, string $gstBasis): array
+    {
+        if ($gstRate <= 0) {
+            $lineTotal = round($quantity * $unitPrice, 2);
+
+            return [
+                'net' => $lineTotal,
+                'gst' => 0.0,
+                'line_total' => $lineTotal,
+            ];
+        }
+
+        if ($gstBasis === 'inclusive') {
+            $lineTotal = round($quantity * $unitPrice, 2);
+            $net = round($lineTotal / (1 + $gstRate), 2);
+            $gst = round($lineTotal - $net, 2);
+
+            return [
+                'net' => $net,
+                'gst' => $gst,
+                'line_total' => $lineTotal,
+            ];
+        }
+
+        $net = round($quantity * $unitPrice, 2);
+        $gst = round($net * $gstRate, 2);
+        $lineTotal = round($net + $gst, 2);
+
+        return [
+            'net' => $net,
+            'gst' => $gst,
+            'line_total' => $lineTotal,
+        ];
     }
 
     public function show(BusinessEntity $businessEntity, Invoice $invoice)
