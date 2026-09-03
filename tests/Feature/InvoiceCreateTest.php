@@ -164,6 +164,20 @@ it('stores exclusive gst as net plus gst on total', function () {
         ->and($invoice->due_date->toDateString())->toBe('2026-10-03');
 });
 
+it('creates a default rental income account when the chart is empty', function () {
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    expect(ChartOfAccount::query()->where('account_code', '4100')->exists())->toBeFalse();
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.create', $entity))
+        ->assertSuccessful()
+        ->assertSee('4100 — Rental Income', false);
+
+    expect(ChartOfAccount::query()->where('account_code', '4100')->exists())->toBeTrue();
+});
+
 it('rejects a lease that does not belong to the selected asset', function () {
     $this->seed(ChartOfAccountSeeder::class);
     $user = User::factory()->create();

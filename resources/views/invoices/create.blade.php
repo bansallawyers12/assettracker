@@ -84,14 +84,15 @@
                     <select name="asset_id" x-model="assetId" @change="onAssetChange()"
                             class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm">
                         <option value="">— Optional —</option>
-                        <template x-for="asset in assets" :key="asset.id">
-                            <option :value="String(asset.id)" x-text="asset.name"></option>
-                        </template>
+                        @foreach ($assetsForForm as $asset)
+                            <option value="{{ $asset['id'] }}" @selected((string) old('asset_id') === (string) $asset['id'])>{{ $asset['name'] }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lease / tenant</label>
-                    <select name="lease_id" x-model="leaseId" @change="onLeaseChange()" :disabled="!assetId || leasesForAsset.length === 0"
+                    <input type="hidden" name="lease_id" :value="leaseId">
+                    <select x-model="leaseId" @change="onLeaseChange()" :disabled="!assetId || leasesForAsset.length === 0"
                             class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm disabled:opacity-60">
                         <option value="">— Optional —</option>
                         <template x-for="lease in leasesForAsset" :key="lease.id">
