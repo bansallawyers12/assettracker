@@ -355,6 +355,106 @@ it('shows bank-matched director loan in on the balance sheet and 2500 account ac
         ->and($activityBlock['lines'][0]['credit'])->toBe(824329.38);
 });
 
+it('does not list bank-received rental income on the 2500 director loan account', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $trust = ledgerEntity('SK Bansal Family Trust Test');
+    $holdings = ledgerEntity('SK Bansal Holdings Test');
+    $offset = ledgerBankAccount($holdings, BankAccount::PURPOSE_OFFSET);
+
+    Transaction::create([
+        'business_entity_id' => $trust->id,
+        'bank_account_id' => $offset->id,
+        'date' => '2026-06-09',
+        'paid_at' => '2026-06-09',
+        'amount' => 16500,
+        'description' => 'RANJEET SINGH Invoice rent August',
+        'transaction_type' => 'rental_income',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'gst_status' => 'gst_free',
+    ]);
+
+    Transaction::create([
+        'business_entity_id' => $trust->id,
+        'bank_account_id' => $offset->id,
+        'paid_by' => 'be:'.$holdings->id,
+        'date' => '2026-06-10',
+        'paid_at' => '2026-06-10',
+        'amount' => 16500,
+        'description' => 'Rent tagged paid_by bank owner',
+        'transaction_type' => 'rental_income',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'gst_status' => 'gst_free',
+    ]);
+
+    Transaction::create([
+        'business_entity_id' => $trust->id,
+        'bank_account_id' => $offset->id,
+        'date' => '2026-06-11',
+        'paid_at' => '2026-06-11',
+        'amount' => 16500,
+        'description' => 'Rent via third-party channel into bank',
+        'transaction_type' => 'rental_income',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_EXTERNAL_THIRD_PARTY,
+        'gst_status' => 'gst_free',
+    ]);
+
+    $reports = app(FinancialReportService::class);
+    $directorLoanAccount = ChartOfAccount::query()->where('account_code', '2500')->firstOrFail();
+
+    foreach ([$trust->id, $holdings->id] as $entityId) {
+        $activity = $reports->generateAccountTransactions(
+            $entityId,
+            '2025-07-01',
+            '2026-06-30',
+            [$directorLoanAccount->id]
+        );
+        $block = collect($activity['accounts'])
+            ->firstWhere(fn (array $row) => ($row['account']->account_code ?? null) === '2500');
+
+        expect($block)->not->toBeNull()
+            ->and($block['lines'])->toBeEmpty();
+    }
+});
+
+it('still lists director-funded operating expenses on the 2500 director loan account', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => null,
+        'date' => '2026-06-15',
+        'paid_at' => '2026-06-15',
+        'amount' => 20339.99,
+        'description' => 'Land tax paid by director',
+        'transaction_type' => 'other_expenses',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+        'gst_status' => 'gst_free',
+    ]);
+
+    $reports = app(FinancialReportService::class);
+    $directorLoanAccount = ChartOfAccount::query()->where('account_code', '2500')->firstOrFail();
+    $activity = $reports->generateAccountTransactions(
+        $entity->id,
+        '2025-07-01',
+        '2026-06-30',
+        [$directorLoanAccount->id]
+    );
+    $block = collect($activity['accounts'])
+        ->firstWhere(fn (array $row) => ($row['account']->account_code ?? null) === '2500');
+
+    expect($block)->not->toBeNull()
+        ->and($block['lines'])->toHaveCount(1)
+        ->and($block['lines'][0]['credit'])->toBe(20339.99)
+        ->and($block['lines'][0]['debit'])->toBeNull();
+});
+
 it('keeps the balance sheet on posted 2500 GL when a loan-ledger director loan sits next to a director-funded expense', function () {
     $this->seed(ChartOfAccountSeeder::class);
 

@@ -591,8 +591,10 @@ class FinancialReportService
 
     /**
      * Director / entity loan (2500) activity for reports:
-     * - Intercompany paid_by be:{other} and cross-bank income (two mirrored lines)
+     * - Intercompany paid_by be:{other} (two mirrored lines)
      * - Same-entity director_funds / cash (and orphan bank_account with no bank) operating posts (one line)
+     * Bank-received operating income (rent etc.) is never synthesised here, even when the bank
+     * is owned by another entity — that cash is not a director loan.
      * Explicit director_loan_* types stay on the manual GL path (opening + in-period journal lines).
      *
      * @param  array<int>  $ids
@@ -610,7 +612,6 @@ class FinancialReportService
         $incomeTypeKeys = array_keys(Transaction::$incomeTypes);
         // Explicit director-loan types use manual GL; synthetic lines cover operating funding via 2500.
         $excludeSyntheticDirectorLoan = $this->directorLoanExplicitTransactionTypes();
-        $incomeTypesForCrossBank = array_values(array_diff($incomeTypeKeys, $excludeSyntheticDirectorLoan));
 
         // Include flows where the booking entity is in scope OR the paying entity (paid_by be:{id}) is in scope.
         $candidates = Transaction::query()
@@ -640,46 +641,6 @@ class FinancialReportService
             })
             ->values();
 
-        // Income (incl. net-income split remittances) booked to one entity but cash in another's bank.
-        $crossBankIncome = Transaction::query()
-            ->where('payment_status', 'paid')
-            ->whereNotNull('bank_account_id')
-            ->where(function ($q) use ($incomeTypesForCrossBank) {
-                $q->whereIn('transaction_type', $incomeTypesForCrossBank)
-                    ->orWhere('transaction_type', Transaction::TYPE_SPLIT);
-            })
-            ->where(function ($q) use ($ids) {
-                $q->whereIn('business_entity_id', $ids)
-                    ->orWhereHas('bankAccount', function ($q2) use ($ids) {
-                        $q2->whereIn('business_entity_id', $ids);
-                    })
-                    ->orWhereIn('related_entity_id', $ids);
-            })
-            ->with(['businessEntity', 'bankAccount.businessEntity', 'asset', 'lines'])
-            ->get()
-            ->filter(function (Transaction $t) {
-                // Director-funds / cash funding posts to 2500 directly — handled as single-leg synthetics.
-                if (Transaction::usesDirectorLoanFundingChannel($t->payment_channel)) {
-                    return false;
-                }
-
-                $ba = $t->bankAccount;
-                if (! $ba) {
-                    return false;
-                }
-                if ((int) $ba->business_entity_id === (int) $t->business_entity_id) {
-                    return false;
-                }
-
-                // Splits: only net-income remittances behave like operating income for this report.
-                if ($t->transaction_type === Transaction::TYPE_SPLIT) {
-                    return $t->direction === 'income';
-                }
-
-                return true;
-            })
-            ->values();
-
         // Same-entity director_funds / cash (and bank_account with null bank) that post Dr/Cr 2500.
         $directorFundsFunded = $this->directorFundsOperatingTransactionsForLoanReport($ids, $excludeSyntheticDirectorLoan);
 
@@ -688,14 +649,6 @@ class FinancialReportService
         })->values();
 
         $throughEndPaidByIds = $throughEndPaidBy->pluck('id')->all();
-
-        $throughEndCrossBank = $crossBankIncome->filter(function (Transaction $t) use ($endDate, $throughEndPaidByIds) {
-            if (in_array($t->id, $throughEndPaidByIds, true)) {
-                return false;
-            }
-
-            return $this->transactionEffectivePaymentAt($t)->toDateString() <= $endDate;
-        })->values();
 
         $throughEndDirectorFunds = $directorFundsFunded->filter(function (Transaction $t) use ($endDate, $throughEndPaidByIds) {
             if (in_array($t->id, $throughEndPaidByIds, true)) {
@@ -713,7 +666,6 @@ class FinancialReportService
         };
 
         $throughEnd = $throughEndPaidBy
-            ->merge($throughEndCrossBank)
             ->merge($throughEndDirectorFunds)
             ->unique('id')
             ->sortBy($sortKey)
@@ -724,6 +676,13 @@ class FinancialReportService
         $lenderIds = [];
         foreach ($throughEnd as $t) {
             if (in_array($t->id, $directorFundsIds, true)) {
+                continue;
+            }
+            if ($this->isBankReceivedOperatingIncomeForDirectorLoanReport(
+                $t,
+                $incomeTypeKeys,
+                $excludeSyntheticDirectorLoan
+            )) {
                 continue;
             }
             $cid = $this->counterpartyBusinessEntityIdForDirectorLoanReport($t);
@@ -780,6 +739,14 @@ class FinancialReportService
                     'credit' => $isOperatingIncome ? null : $gross,
                 ]);
 
+                continue;
+            }
+
+            if ($this->isBankReceivedOperatingIncomeForDirectorLoanReport(
+                $t,
+                $incomeTypeKeys,
+                $excludeSyntheticDirectorLoan
+            )) {
                 continue;
             }
 
@@ -1255,8 +1222,8 @@ class FinancialReportService
     }
 
     /**
-     * Counterparty for synthetic director / entity loan lines: paid_by be:{id} (expense paid by, or income received into that entity's bank),
-     * else for operating income only, the bank-account holder when bank_account.business_entity_id differs from the transaction entity.
+     * Counterparty for synthetic director / entity loan lines: paid_by be:{other} only.
+     * Bank-account ownership is not a director-loan counterparty (shared offset / HO bank).
      */
     private function counterpartyBusinessEntityIdForDirectorLoanReport(Transaction $t): ?int
     {
@@ -1265,23 +1232,27 @@ class FinancialReportService
             return $fromBe;
         }
 
-        $incomeTypeKeys = array_keys(Transaction::$incomeTypes);
-        if (! $this->isOperatingIncomeForDirectorLoanReport(
-            $t,
-            $incomeTypeKeys,
-            $this->directorLoanExplicitTransactionTypes()
-        )) {
-            return null;
-        }
-        if (! $t->bankAccount) {
-            return null;
-        }
-        $bankEntityId = (int) $t->bankAccount->business_entity_id;
-        if ($bankEntityId === (int) $t->business_entity_id) {
-            return null;
+        return null;
+    }
+
+    /**
+     * Rent and other operating income that already hit a bank is not a director-loan synthetic,
+     * even when paid_by is another entity or payment_channel is third party.
+     *
+     * @param  list<string>  $incomeTypeKeys
+     * @param  list<string>  $excludeTypes
+     */
+    private function isBankReceivedOperatingIncomeForDirectorLoanReport(
+        Transaction $t,
+        array $incomeTypeKeys,
+        array $excludeTypes
+    ): bool {
+        if (! $this->isOperatingIncomeForDirectorLoanReport($t, $incomeTypeKeys, $excludeTypes)) {
+            return false;
         }
 
-        return $bankEntityId;
+        return $t->bank_account_id !== null
+            && ! Transaction::usesDirectorLoanFundingChannel($t->payment_channel);
     }
 
     /**

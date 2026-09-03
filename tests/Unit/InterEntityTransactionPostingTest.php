@@ -66,8 +66,10 @@ it('includes same-entity director funds operating posts in the 2500 account acti
         ->and($source)->toContain('PAYMENT_CHANNEL_DIRECTOR_FUNDS')
         ->and($source)->toContain('PAYMENT_CHANNEL_CASH')
         ->and($source)->toContain('Same-entity director funds / cash')
-        ->and($source)->toContain('usesDirectorLoanFundingChannel($t->payment_channel)')
-        ->and($source)->toContain('Director funds movement');
+        ->and($source)->toContain('Director funds movement')
+        ->and($source)->toContain('Bank-received operating income')
+        ->and($source)->toContain('isBankReceivedOperatingIncomeForDirectorLoanReport')
+        ->and($source)->toContain('usesDirectorLoanFundingChannel');
 });
 
 it('reposts when paid_by, payment_channel, or paid_at changes and unposts unpaid updates', function () {

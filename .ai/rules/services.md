@@ -48,10 +48,13 @@ The earlier memo note saying it is transaction-entity scoped, hidden in comparis
 Manual journals (source_type null) are edited in place on the same id. Reverse posts a new posted journal with flipped D/C, user-chosen date, and reverses_journal_entry_id pointing at the original — do not set source_type to JournalEntry or the offset drops out of the manual register. Void is a reverse on the original date plus voided_at on the original; both stay posted so the GL nets to zero. Do not delete. Cannot edit/reverse/void if already reversed or voided; cannot void a reversal (void the original). Opening-balance OPEN- references stay on edit.
 
 ## Director loan account-transactions rebuild
-Account transactions for 2500 still use `buildDirectorEntityLoanAccountBlock`: opening is explicit/manual 2500 GL as of the day before start plus synthetics before start; closing adds in-period explicit/manual 2500 journal lines (`directorLoanManualGlReportLines`). Do not add synthetics for explicit `director_loan_*` types. Do not feed this rebuild into balance sheet totals.
+Account transactions for 2500 still use `buildDirectorEntityLoanAccountBlock`: opening is explicit/manual 2500 GL as of the day before start plus synthetics before start; closing adds in-period explicit/manual 2500 journal lines (`directorLoanManualGlReportLines`). Do not add synthetics for explicit `director_loan_*` types. Do not synthesise bank-received operating income (rent in an offset/bank) onto 2500, even when the bank owner differs from the booking entity. Do not feed this rebuild into balance sheet totals.
 
 ## Director loan on loan ledger posts 4000
 director_loan_in/out on a loan-purpose bank account post Long Term Loans 4000 ↔ Director Loan 2500. Do not use Bank/Cash 1100 — the money never hit an operating/offset account. In reduces 4000; out is a redraw that increases 4000.
 
 ## Balance sheet 2500 is posted GL
 Balance sheet 2500 is posted GL (debit−credit as-of), same as 4000/1100. Do not strip 2500 or replace it with buildDirectorEntityLoanAccountBlock synthetics — that rebuild is only for the 2500 account-transactions listing. Entity-summary director loan figures also use getAccountBalanceAsOf.
+
+## Bank rent is not a 2500 synthetic
+Do not put bank-received operating income (rent, etc.) on the 2500 account-transactions listing. Skip when the row has a bank_account_id and is not director_funds/cash — including third-party payment_channel and paid_by be:{other}. Synthetics stay director_funds/cash/orphan-bank operating posts and explicit paid_by be:{other} expenses (and income that never hit a bank). Never treat a different bank owner as a director-loan counterparty.
