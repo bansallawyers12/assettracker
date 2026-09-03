@@ -58,7 +58,7 @@ it('avoids double-counting director loan GL that was auto-posted from transactio
         ->and($source)->toContain('buildDirectorEntityLoanAccountBlock');
 });
 
-it('includes same-entity director funds operating posts in the 2500 balance sheet rebuild', function () {
+it('includes same-entity director funds operating posts in the 2500 account activity rebuild', function () {
     $source = file_get_contents(app_path('Services/FinancialReportService.php'));
 
     expect($source)->toContain('directorFundsOperatingTransactionsForLoanReport')
@@ -105,5 +105,6 @@ it('scopes entity P&L and balance sheet by reporting entity ids', function () {
     expect($source)->toContain('function generateProfitLoss')
         ->and($source)->toContain('function generateBalanceSheet')
         ->and($source)->toContain('normalizeEntityIds')
-        ->and($source)->toContain("whereIn('business_entity_id'");
+        ->and($source)->toContain("whereIn('business_entity_id'")
+        ->and($source)->not->toContain('appendDirectorEntityLoanToBalanceSheet');
 });

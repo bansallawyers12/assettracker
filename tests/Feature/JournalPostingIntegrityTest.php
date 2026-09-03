@@ -355,6 +355,54 @@ it('shows bank-matched director loan in on the balance sheet and 2500 account ac
         ->and($activityBlock['lines'][0]['credit'])->toBe(824329.38);
 });
 
+it('keeps the balance sheet on posted 2500 GL when a loan-ledger director loan sits next to a director-funded expense', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $loan->id,
+        'date' => '2024-08-01',
+        'paid_at' => '2024-08-01',
+        'amount' => 740024.74,
+        'description' => 'Director loan in on loan facility',
+        'transaction_type' => 'director_loan_in',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'gst_status' => 'gst_free',
+    ]);
+
+    Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => null,
+        'date' => '2024-08-15',
+        'paid_at' => '2024-08-15',
+        'amount' => 20339.99,
+        'description' => 'Rates paid by director',
+        'transaction_type' => 'other_expenses',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+        'gst_status' => 'gst_free',
+    ]);
+
+    $balanceSheet = app(FinancialReportService::class)->generateBalanceSheet($entity->id, '2024-09-30');
+    $directorLoanRow = collect($balanceSheet['liabilities']['by_category'])
+        ->flatMap(fn (array $category) => $category['accounts'])
+        ->firstWhere(fn (array $row) => ($row['account']->account_code ?? null) === '2500');
+    $loanRow = collect($balanceSheet['liabilities']['by_category'])
+        ->flatMap(fn (array $category) => $category['accounts'])
+        ->firstWhere(fn (array $row) => ($row['account']->account_code ?? null) === '4000');
+
+    expect($directorLoanRow)->not->toBeNull()
+        ->and($loanRow)->not->toBeNull()
+        ->and(round((float) $loanRow['balance'], 2))->toBe(740024.74)
+        ->and(round((float) $directorLoanRow['balance'], 2))->toBe(-760364.73)
+        ->and(round((float) $balanceSheet['total_assets'] + $balanceSheet['liabilities']['total'] + $balanceSheet['equity']['total'], 2))->toBe(0.0)
+        ->and(round((float) $balanceSheet['total_assets'], 2))->toBe(round((float) $balanceSheet['total_liabilities_equity'], 2));
+});
+
 it('refuses to persist an unbalanced journal and leaves no partial entry', function () {
     $this->seed(ChartOfAccountSeeder::class);
 

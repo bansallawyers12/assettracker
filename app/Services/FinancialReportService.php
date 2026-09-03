@@ -19,13 +19,6 @@ use Illuminate\Support\Collection;
 
 class FinancialReportService
 {
-    /**
-     * Start date for cumulative director / entity loan activity on the balance sheet.
-     * Opening = explicit/manual 2500 GL as of the prior day + synthetic pre-period lines.
-     * Closing also includes in-period explicit/manual 2500 journal lines.
-     */
-    private const DIRECTOR_LOAN_BALANCE_SHEET_START_DATE = '1970-01-01';
-
     public function __construct(private BankAccountBalanceSnapshotService $bankBalanceSnapshots) {}
 
     /**
@@ -128,13 +121,6 @@ class FinancialReportService
             $includeBankBreakdown
         );
         $liabilities = $this->getAccountBalancesByTypeGrouped($ids, 'liability', $asOfDate, $categoryLabels);
-        [$assets, $liabilities] = $this->appendDirectorEntityLoanToBalanceSheet(
-            $assets,
-            $liabilities,
-            $ids,
-            $asOfDate,
-            $categoryLabels
-        );
         $equity = $this->getAccountBalancesByTypeGrouped($ids, 'equity', $asOfDate, $categoryLabels);
         $equity = $this->appendAccumulatedEarningsToEquity($equity, $ids, $asOfDate);
 
@@ -1418,10 +1404,6 @@ class FinancialReportService
         $total = 0;
 
         foreach ($accounts as $account) {
-            if ($accountType === 'liability' && $this->isDirectorEntityLoanAccount($account)) {
-                continue;
-            }
-
             $excludeCrossEntityBankCash = $accountType === 'asset'
                 && $this->isBankOrCashChartAccount($account);
             $balance = $this->getAccountBalanceAsOf(
@@ -1565,133 +1547,6 @@ class FinancialReportService
             ->sum('credit_amount');
 
         return (float) $debits - (float) $credits;
-    }
-
-    /**
-     * Director / entity loan (2500): same scoped closing balance as account transactions.
-     * Lender positions settled through bank GL are not duplicated as a separate receivable.
-     *
-     * @param  array<string, mixed>  $assets
-     * @param  array<string, mixed>  $liabilities
-     * @return array{0: array<string, mixed>, 1: array<string, mixed>}
-     */
-    private function appendDirectorEntityLoanToBalanceSheet(
-        array $assets,
-        array $liabilities,
-        array $entityIds,
-        string $asOfDate,
-        array $categoryLabels
-    ): array {
-        $directorAccounts = ChartOfAccount::query()
-            ->where('account_type', 'liability')
-            ->where('is_active', true)
-            ->orderBy('account_code')
-            ->get()
-            ->filter(fn (ChartOfAccount $a) => $this->isDirectorEntityLoanAccount($a))
-            ->values();
-
-        foreach ($directorAccounts as $account) {
-            $block = $this->buildDirectorEntityLoanAccountBlock(
-                $account,
-                $entityIds,
-                self::DIRECTOR_LOAN_BALANCE_SHEET_START_DATE,
-                $asOfDate
-            );
-
-            $closingOwed = (float) ($block['closing_balance'] ?? 0);
-            if (abs($closingOwed) < 0.00001) {
-                continue;
-            }
-
-            $balanceDc = -$closingOwed;
-
-            if ($balanceDc < 0) {
-                $catKey = $account->account_category ?? 'liability';
-                $catLabel = $categoryLabels[$catKey] ?? ucwords(str_replace('_', ' ', $catKey));
-                if (! isset($liabilities['by_category'][$catKey])) {
-                    $liabilities['by_category'][$catKey] = ['label' => $catLabel, 'accounts' => [], 'subtotal' => 0];
-                }
-                $liabilities['by_category'][$catKey]['accounts'][] = [
-                    'account' => $account,
-                    'balance' => $balanceDc,
-                ];
-            } elseif ($balanceDc > 0 && ! $this->directorLoanLenderPositionSettledInBankGl($entityIds, -$balanceDc, $asOfDate)) {
-                $catKey = 'current_asset';
-                $catLabel = $categoryLabels[$catKey] ?? 'Current Assets';
-                if (! isset($assets['by_category'][$catKey])) {
-                    $assets['by_category'][$catKey] = ['label' => $catLabel, 'accounts' => [], 'subtotal' => 0];
-                }
-                $assets['by_category'][$catKey]['accounts'][] = [
-                    'account' => $account,
-                    'balance' => $balanceDc,
-                ];
-            }
-        }
-
-        $assets = $this->recalculateBalanceSheetSectionTotals($assets);
-        $liabilities = $this->recalculateBalanceSheetSectionTotals($liabilities);
-
-        return [$assets, $liabilities];
-    }
-
-    /**
-     * When another entity paid this entity's flows, bank & income/expense journals may already
-     * reflect settlement; skip a separate 2500 receivable that would double-count cash.
-     *
-     * @param  array<int>  $entityIds
-     */
-    private function directorLoanLenderPositionSettledInBankGl(array $entityIds, float $closingOwed, string $asOfDate): bool
-    {
-        if ($closingOwed >= 0) {
-            return false;
-        }
-
-        $receivable = abs($closingOwed);
-        $bankNet = $this->sumBankCashBalanceDc($entityIds, $asOfDate);
-
-        return $bankNet > 0 && abs($bankNet - $receivable) < 0.01;
-    }
-
-    /**
-     * @param  array<int>  $entityIds
-     */
-    private function sumBankCashBalanceDc(array $entityIds, string $asOfDate): float
-    {
-        $bankNet = 0.0;
-        foreach (ChartOfAccount::query()->where('account_type', 'asset')->where('is_active', true)->get() as $account) {
-            if (! $this->isBankOrCashChartAccount($account)) {
-                continue;
-            }
-            $bankNet += $this->getAccountBalanceAsOf(
-                $account->id,
-                $asOfDate,
-                $entityIds,
-                $account
-            );
-        }
-
-        return $bankNet;
-    }
-
-    /**
-     * @param  array{by_category: array<string, array{label: string, accounts: array, subtotal: float}>, total: float}  $section
-     * @return array{by_category: array<string, array{label: string, accounts: array, subtotal: float}>, total: float}
-     */
-    private function recalculateBalanceSheetSectionTotals(array $section): array
-    {
-        $total = 0.0;
-        foreach ($section['by_category'] as &$cat) {
-            $sub = 0.0;
-            foreach ($cat['accounts'] as $row) {
-                $sub += (float) ($row['balance'] ?? 0);
-            }
-            $cat['subtotal'] = $sub;
-            $total += $sub;
-        }
-        unset($cat);
-        $section['total'] = $total;
-
-        return $section;
     }
 
     /**
@@ -2166,21 +2021,15 @@ class FinancialReportService
             return ['asset' => 0.0, 'liability' => 0.0, 'net' => 0.0];
         }
 
-        $block = $this->buildDirectorEntityLoanAccountBlock(
-            $account,
-            [$entityId],
-            self::DIRECTOR_LOAN_BALANCE_SHEET_START_DATE,
-            $asOfDate
-        );
+        $balanceDc = $this->getAccountBalanceAsOf($account->id, $asOfDate, [$entityId]);
+        $owed = $this->liabilityOwedFromGl($balanceDc);
 
-        $closing = (float) ($block['closing_balance'] ?? 0);
-
-        // closing > 0 = entity owes (liability); closing < 0 = entity is owed (asset).
+        // owed > 0 = entity owes (liability); owed < 0 = entity is owed (asset).
         // Net sign convention: positive = net asset position (director owes entity).
         return [
-            'asset' => round(max(0.0, -$closing), 2),
-            'liability' => round(max(0.0, $closing), 2),
-            'net' => round(-$closing, 2),
+            'asset' => round(max(0.0, -$owed), 2),
+            'liability' => round(max(0.0, $owed), 2),
+            'net' => round(-$owed, 2),
         ];
     }
 

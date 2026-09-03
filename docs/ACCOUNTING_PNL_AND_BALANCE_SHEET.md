@@ -215,18 +215,12 @@ Period is journal `entry_date` (`paid_at` / `date` of the transaction), not the 
 
 `generateBalanceSheet($entityIds, $asOfDate)`:
 
-1. **Assets** (except special-cased 2500): cumulative GL to as-of date. Bank/cash (**1100**, and any current asset whose name contains “bank” or “cash”) **drops** cash lines that were posted on the **booking** entity when `paid_by` is another entity (cash actually sits on the payer’s `TXN-…-PAY` journal). If that PAY journal is missing, a **synthetic** payer cash amount is added so the BS still moves.
-2. **Liabilities** skip raw **2500**, then **2500 is appended** from `buildDirectorEntityLoanAccountBlock` (see below).
+1. **Assets**: cumulative GL to as-of date. Bank/cash (**1100**, and any current asset whose name contains “bank” or “cash”) **drops** cash lines that were posted on the **booking** entity when `paid_by` is another entity (cash actually sits on the payer’s `TXN-…-PAY` journal). If that PAY journal is missing, a **synthetic** payer cash amount is added so the BS still moves.
+2. **Liabilities** including **2500** from posted GL (`getAccountBalanceAsOf`), same as 4000.
 3. **Equity** from GL, plus **Accumulated Earnings** = all-time income + expense GL through as-of (same basis as lifetime P&L).
 4. Display check: `total_assets` vs `−(liabilities + equity)` (credit balances are negative in D−C). The Blade view flags an imbalance if those differ by more than 1 cent.
 
-Director loan on the BS:
-
-- Closing “amount owed” comes from **synthetic 2500 activity** (cross-entity `be:` flows, income received into another entity’s bank, same-entity director_funds/cash operating posts) **plus** real GL for **explicit** `director_loan_*` types and **manual** journals.
-- Auto-posted operating 2500 lines are **not** double-counted with synthetics.
-- If the reconstructed balance is a **receivable** (entity is owed) **and** bank GL net happens to equal that amount, the receivable line is **omitted** (`directorLoanLenderPositionSettledInBankGl`) to avoid double-counting cash. That heuristic can hide a real 2500 asset when cash just happens to match.
-
-Account 2500 on the **Account transactions** report uses the same reconstructed block, not a raw 2500 GL listing.
+Director loan on the BS is the posted 2500 balance. Account 2500 on the **Account transactions** report still uses `buildDirectorEntityLoanAccountBlock` (synthetics + explicit/manual GL) so the listing can show cross-entity story lines; that rebuild must not feed BS totals.
 
 ---
 
@@ -261,11 +255,9 @@ These were live defects and have been closed in code (covered by `tests/Feature/
 
    The balance sheet instead shows a **memo breakdown** under Bank/Cash: one line per bank account, from `BankAccountBalanceSnapshotService::entityBankBalancesAsOf()`. It is scoped by **bank-account ownership** (so cross-entity payments appear under the entity whose bank actually moved), dated the same way journals are (`paid_at` falling back to `date`), and uses `Transaction::cashParts()['cash']` so GST-exclusive rows use the same amount as posting. Loan-purpose accounts are excluded because they belong to 4000; cash-to-cash transfers allocate both the source and counterpart while leaving 1100 at nil. Because `journal_lines` records a chart account and **not** a bank account, manual journals and rows whose bank cannot be resolved remain under **Unallocated / reconciliation difference**. The breakdown appears in single-period, comparative, and CSV reports; entity-summary generation skips it to avoid repeated all-history scans.
 
-5. **Director loan BS is reconstructed, not raw 2500.** If synthetics disagree with journals (legacy data, missing PAY journal, unpaid_by patterns), 2500 on the BS can differ from 2500 on a generic trial balance. The Account transactions screen for 2500 follows the reconstruction, which hides the discrepancy. The synthetic cash scale now comes from the same `Transaction::cashParts()` helper the posting service funds journals with, so at least GST-exclusive rows cannot drift.
+5. **2500 account transactions is reconstructed, not raw GL.** The balance sheet uses posted 2500. The account listing still rebuilds synthetics for cross-entity / director-funds story lines. Those two views can disagree by design; trust the BS for the closing figure.
 
-6. **`directorLoanLenderPositionSettledInBankGl`.** Omits a 2500 **asset** when bank net ≈ that receivable. Coincidence of cash and loan receivable can drop a real asset and make the sheet look balanced while 2500 is incomplete.
-
-7. **Interest/fees on a non-loan bank** post as cash P&L (Dr expense Cr 1100), not capitalise to 4000. Recording interest on the offset/general account (if the guard is bypassed or type is used on general) **understates the loan** and **overstates cash outflow**.
+6. **Interest/fees on a non-loan bank** post as cash P&L (Dr expense Cr 1100), not capitalise to 4000. Recording interest on the offset/general account (if the guard is bypassed or type is used on general) **understates the loan** and **overstates cash outflow**.
 
 8. **`chart_of_account_id` overrides** can send a P&L type to a BS account (or the reverse), except director-loan types. Imports that stamp a chart account can bypass the type map.
 
