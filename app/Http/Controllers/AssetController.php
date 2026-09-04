@@ -743,9 +743,7 @@ class AssetController extends Controller
             'terms' => 'nullable|string',
         ]);
 
-        $validated['gst_applicable'] = $request->has('gst_applicable')
-            ? $request->boolean('gst_applicable')
-            : true;
+        $validated['gst_applicable'] = $request->boolean('gst_applicable');
 
         return $validated;
     }

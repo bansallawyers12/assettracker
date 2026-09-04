@@ -42,7 +42,7 @@
                             <input type="hidden" name="gst_applicable" value="0">
                             <label class="mt-2 inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
                                 <input type="checkbox" name="gst_applicable" value="1" class="rounded-sm border-gray-300"
-                                       @checked(old('gst_applicable', true))>
+                                       @checked(filter_var(old('gst_applicable', true), FILTER_VALIDATE_BOOLEAN))>
                                 GST applicable (10% inclusive on generated rent invoices)
                             </label>
                         </div>

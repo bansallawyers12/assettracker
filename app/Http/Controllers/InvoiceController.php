@@ -199,7 +199,7 @@ class InvoiceController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return back()->withInput()->with('error', 'Invoice was not saved because posting failed: '.$e->getMessage());
+            return back()->withInput()->with('error', 'Invoice was not saved: '.$e->getMessage());
         }
 
         $message = $saveAndPost ? 'Invoice created and posted to ledger' : 'Invoice created';
@@ -354,7 +354,7 @@ class InvoiceController extends Controller
         } catch (\Throwable $e) {
             report($e);
 
-            return back()->withInput()->with('error', 'Invoice was not saved because posting failed: '.$e->getMessage());
+            return back()->withInput()->with('error', 'Invoice was not saved: '.$e->getMessage());
         }
 
         $invoice->refresh()->load('lines');

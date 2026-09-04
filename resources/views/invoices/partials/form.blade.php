@@ -152,9 +152,10 @@
                 <input name="currency" value="AUD" readonly
                        class="w-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
             </div>
-            <div x-show="gstApplicable">
+            <input type="hidden" name="gst_percent" :value="gstApplicable ? gstPercent : 0">
+            <div x-show="gstApplicable" x-cloak>
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST %</label>
-                <input type="number" name="gst_percent" x-model.number="gstPercent" min="0" max="100" step="0.01" required
+                <input type="number" x-model.number="gstPercent" min="0" max="100" step="0.01"
                        class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
             </div>
 
@@ -203,7 +204,7 @@
             <div class="hidden md:grid md:grid-cols-12 gap-2 mb-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 <div class="md:col-span-4">Description</div>
                 <div class="md:col-span-1">Qty</div>
-                <div class="md:col-span-2" x-text="gstBasis === 'inclusive' ? 'Unit price (inc GST)' : 'Unit price (ex GST)'"></div>
+                <div class="md:col-span-2" x-text="unitPriceLabel"></div>
                 <div class="md:col-span-3">Income account</div>
                 <div class="md:col-span-1 text-right">Line total</div>
                 <div class="md:col-span-1"></div>
@@ -222,7 +223,7 @@
                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
                     </div>
                     <div class="md:col-span-2">
-                        <label class="md:hidden text-xs text-gray-500" x-text="gstBasis === 'inclusive' ? 'Unit price (inc GST)' : 'Unit price (ex GST)'"></label>
+                        <label class="md:hidden text-xs text-gray-500" x-text="unitPriceLabel"></label>
                         <input type="number" step="0.01" min="0" :name="'lines[' + index + '][unit_price]'" x-model.number="line.unit_price" required
                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
                     </div>
@@ -249,7 +250,7 @@
 
         <div class="p-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
             <div class="text-sm space-y-1 text-gray-700 dark:text-gray-300">
-                <div class="flex justify-between gap-8"><span>Subtotal (ex GST)</span><span class="font-medium" x-text="formatMoney(totals.subtotal)"></span></div>
+                <div class="flex justify-between gap-8"><span x-text="gstApplicable ? 'Subtotal (ex GST)' : 'Subtotal'"></span><span class="font-medium" x-text="formatMoney(totals.subtotal)"></span></div>
                 <div class="flex justify-between gap-8"><span>GST</span><span class="font-medium" x-text="formatMoney(totals.gst)"></span></div>
                 <div class="flex justify-between gap-8 text-base font-semibold text-gray-900 dark:text-white pt-1 border-t border-gray-200 dark:border-gray-700">
                     <span>Total</span><span x-text="formatMoney(totals.total)"></span>
@@ -310,7 +311,13 @@
                 return asset ? asset.leases : [];
             },
             get gstApplicable() {
-                return this.gstApplicableRadio === '1';
+                return this.gstApplicableRadio === '1' || this.gstApplicableRadio === 1 || this.gstApplicableRadio === true;
+            },
+            get unitPriceLabel() {
+                if (!this.gstApplicable) {
+                    return 'Unit price';
+                }
+                return this.gstBasis === 'inclusive' ? 'Unit price (inc GST)' : 'Unit price (ex GST)';
             },
             get gstRate() {
                 if (!this.gstApplicable) {
@@ -507,7 +514,8 @@
             },
             initFlatpickrHooks() {
                 this.$watch('gstApplicableRadio', (value) => {
-                    if (value === '0') {
+                    const off = value === '0' || value === 0 || value === false;
+                    if (off) {
                         this.gstPercent = 0;
                     } else if (!this.gstPercent) {
                         this.gstPercent = 10;
