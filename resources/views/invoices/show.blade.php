@@ -53,6 +53,10 @@
                     <div><span class="text-gray-500 dark:text-gray-400">Issue date</span><br><span class="text-gray-900 dark:text-white">{{ $invoice->issue_date->format('d/m/Y') }}</span></div>
                     <div><span class="text-gray-500 dark:text-gray-400">Due date</span><br><span class="text-gray-900 dark:text-white">{{ $invoice->due_date ? $invoice->due_date->format('d/m/Y') : '—' }}</span></div>
                     <div>
+                        <span class="text-gray-500 dark:text-gray-400">GST basis</span><br>
+                        <span class="text-gray-900 dark:text-white">{{ $invoice->gst_basis === 'exclusive' ? 'Exclusive (unit prices ex GST)' : 'Inclusive (unit prices inc GST)' }}</span>
+                    </div>
+                    <div>
                         <span class="text-gray-500 dark:text-gray-400">Status</span><br>
                         @php
                             $invStatusClass = match ($invoice->status) {

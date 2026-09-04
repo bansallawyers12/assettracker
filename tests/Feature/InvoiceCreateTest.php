@@ -107,6 +107,7 @@ it('stores a draft invoice linked to asset and lease with inclusive gst', functi
         'currency' => 'AUD',
         'gst_basis' => 'inclusive',
         'gst_percent' => 10,
+        'notes' => 'Please pay by EFT',
         'lines' => [
             [
                 'description' => 'September rent',
@@ -125,6 +126,8 @@ it('stores a draft invoice linked to asset and lease with inclusive gst', functi
     expect($invoice->asset_id)->toBe($asset->id)
         ->and($invoice->lease_id)->toBe($lease->id)
         ->and($invoice->customer_name)->toBe('Alex Tenant')
+        ->and($invoice->notes)->toBe('Please pay by EFT')
+        ->and($invoice->gst_basis)->toBe('inclusive')
         ->and((float) $invoice->total_amount)->toBe(1100.0)
         ->and((float) $invoice->subtotal)->toBe(1000.0)
         ->and((float) $invoice->gst_amount)->toBe(100.0)
@@ -158,10 +161,82 @@ it('stores exclusive gst as net plus gst on total', function () {
 
     $invoice = Invoice::query()->where('business_entity_id', $entity->id)->firstOrFail();
 
-    expect((float) $invoice->subtotal)->toBe(100.0)
+    expect($invoice->gst_basis)->toBe('exclusive')
+        ->and((float) $invoice->subtotal)->toBe(100.0)
         ->and((float) $invoice->gst_amount)->toBe(10.0)
         ->and((float) $invoice->total_amount)->toBe(110.0)
         ->and($invoice->due_date->toDateString())->toBe('2026-10-03');
+});
+
+it('can save and post a draft in one step', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $this->actingAs($user)->post(route('business-entities.invoices.store', $entity), [
+        'invoice_number' => 'INV'.$entity->id.'-202609001',
+        'issue_date' => '2026-09-03',
+        'customer_name' => 'Posted Now',
+        'currency' => 'AUD',
+        'gst_basis' => 'inclusive',
+        'gst_percent' => 10,
+        'save_and_post' => '1',
+        'lines' => [
+            [
+                'description' => 'Fee',
+                'quantity' => 1,
+                'unit_price' => 110,
+                'account_code' => '4100',
+            ],
+        ],
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->where('business_entity_id', $entity->id)->firstOrFail();
+
+    expect($invoice->is_posted)->toBeTrue()
+        ->and($invoice->status)->toBe('approved')
+        ->and((float) $invoice->total_amount)->toBe(110.0);
+});
+
+it('filters the invoice index to unpaid receivables', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $draft = Invoice::create([
+        'business_entity_id' => $entity->id,
+        'invoice_number' => 'INV'.$entity->id.'-202609001',
+        'issue_date' => '2026-09-01',
+        'customer_name' => 'Draft',
+        'currency' => 'AUD',
+        'status' => 'draft',
+        'is_posted' => false,
+        'gst_basis' => 'inclusive',
+        'subtotal' => 100,
+        'gst_amount' => 10,
+        'total_amount' => 110,
+    ]);
+
+    $receivable = Invoice::create([
+        'business_entity_id' => $entity->id,
+        'invoice_number' => 'INV'.$entity->id.'-202609002',
+        'issue_date' => '2026-09-02',
+        'customer_name' => 'Receivable Customer',
+        'currency' => 'AUD',
+        'status' => 'approved',
+        'is_posted' => true,
+        'gst_basis' => 'inclusive',
+        'subtotal' => 200,
+        'gst_amount' => 20,
+        'total_amount' => 220,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.index', [$entity, 'receivable' => 1]))
+        ->assertSuccessful()
+        ->assertSee('Receivable Customer', false)
+        ->assertSee($receivable->invoice_number, false)
+        ->assertDontSee($draft->invoice_number, false);
 });
 
 it('creates a default rental income account when the chart is empty', function () {

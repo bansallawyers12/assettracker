@@ -3,11 +3,10 @@
 namespace App\Services;
 
 use App\Models\Asset;
-use App\Models\Lease;
+use App\Models\BusinessEntity;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
-use App\Models\BusinessEntity;
-use App\Services\InvoicePostingService;
+use App\Models\Lease;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -42,9 +41,9 @@ class RentInvoiceService
                     }
                 })
                 ->where('start_date', '<=', $date)
-                ->where(function($q) use ($date) {
+                ->where(function ($q) use ($date) {
                     $q->whereNull('end_date')
-                      ->orWhere('end_date', '>=', $date);
+                        ->orWhere('end_date', '>=', $date);
                 });
 
             $leases = $query->get();
@@ -52,8 +51,8 @@ class RentInvoiceService
             foreach ($leases as $lease) {
                 // Check if invoice already exists for this period
                 $existingInvoice = $this->getExistingInvoice($lease, $date);
-                
-                if (!$existingInvoice) {
+
+                if (! $existingInvoice) {
                     $invoice = $this->createRentInvoice($lease, $date);
                     if ($invoice) {
                         $invoicesGenerated++;
@@ -66,17 +65,17 @@ class RentInvoiceService
             return [
                 'success' => true,
                 'invoices_generated' => $invoicesGenerated,
-                'message' => "Generated {$invoicesGenerated} rent invoices for {$date->format('F Y')}"
+                'message' => "Generated {$invoicesGenerated} rent invoices for {$date->format('F Y')}",
             ];
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Rent invoice generation failed: ' . $e->getMessage());
-            
+            Log::error('Rent invoice generation failed: '.$e->getMessage());
+
             return [
                 'success' => false,
                 'invoices_generated' => 0,
-                'message' => 'Failed to generate rent invoices: ' . $e->getMessage()
+                'message' => 'Failed to generate rent invoices: '.$e->getMessage(),
             ];
         }
     }
@@ -98,34 +97,36 @@ class RentInvoiceService
 
                 return [
                     'success' => false,
-                    'message' => 'Invoice already exists for this period'
+                    'message' => 'Invoice already exists for this period',
                 ];
             }
 
             $invoice = $this->createRentInvoice($lease, $date);
-            
+
             if ($invoice) {
                 DB::commit();
+
                 return [
                     'success' => true,
                     'invoice' => $invoice,
-                    'message' => 'Rent invoice generated successfully'
+                    'message' => 'Rent invoice generated successfully',
                 ];
             } else {
                 DB::rollBack();
+
                 return [
                     'success' => false,
-                    'message' => 'Failed to create rent invoice'
+                    'message' => 'Failed to create rent invoice',
                 ];
             }
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Rent invoice generation failed for lease ' . $lease->id . ': ' . $e->getMessage());
-            
+            Log::error('Rent invoice generation failed for lease '.$lease->id.': '.$e->getMessage());
+
             return [
                 'success' => false,
-                'message' => 'Failed to generate rent invoice: ' . $e->getMessage()
+                'message' => 'Failed to generate rent invoice: '.$e->getMessage(),
             ];
         }
     }
@@ -162,10 +163,11 @@ class RentInvoiceService
             'currency' => 'AUD',
             'status' => 'draft',
             'is_posted' => false,
+            'gst_basis' => 'inclusive',
             'notes' => "Rent for {$asset->name} — {$date->format('F Y')}",
         ]);
 
-        // Create invoice line
+        // Create invoice line (unit_price / line_total are GST-inclusive)
         InvoiceLine::create([
             'invoice_id' => $invoice->id,
             'description' => "Rent for {$asset->name} - {$date->format('F Y')}",
@@ -173,19 +175,18 @@ class RentInvoiceService
             'unit_price' => $rentAmount,
             'line_total' => $rentAmount,
             'gst_rate' => 0.10, // 10% GST
-            'account_code' => $this->getRentalIncomeAccountCode()
+            'account_code' => $this->getRentalIncomeAccountCode(),
         ]);
 
         // Update invoice totals using Australian inclusive GST formula
         $net = round($rentAmount / 1.10, 2);
         $gstAmount = round($rentAmount - $net, 2);
-        $subtotal = $net;
-        $total = $rentAmount;
 
         $invoice->update([
-            'subtotal' => $subtotal,
+            'gst_basis' => 'inclusive',
+            'subtotal' => $net,
             'gst_amount' => $gstAmount,
-            'total_amount' => $total
+            'total_amount' => $rentAmount,
         ]);
 
         return $invoice;
@@ -226,7 +227,7 @@ class RentInvoiceService
         $prefix = 'RENT';
         $year = $date->format('Y');
         $month = $date->format('m');
-        
+
         // Get the last invoice number for this business entity with lock
         $lastInvoice = Invoice::where('business_entity_id', $businessEntity->id)
             ->where('invoice_number', 'like', "{$prefix}{$year}{$month}%")
@@ -241,29 +242,31 @@ class RentInvoiceService
             $newNumber = 1;
         }
 
-        return $prefix . $year . $month . str_pad($newNumber, 3, '0', STR_PAD_LEFT);
+        return $prefix.$year.$month.str_pad($newNumber, 3, '0', STR_PAD_LEFT);
     }
 
     /**
      * Calculate rent amount for one invoice period (calendar month) from lease frequency.
+     *
+     * Lease stores rental_amount + payment_frequency (Weekly|Fortnightly|Monthly|Quarterly|Yearly).
+     * Result is the GST-inclusive amount to invoice for the calendar month of $date.
      */
-    public function calculateRentAmount(Lease $lease, Carbon $date)
+    public function calculateRentAmount(Lease $lease, Carbon $date): float
     {
-        $rent = (float) $lease->rent_amount;
-
-        switch ($lease->rent_frequency) {
-            case 'weekly':
-                return round(($rent * 52) / 12, 2);
-            case 'fortnightly':
-                return round(($rent * 26) / 12, 2);
-            case 'quarterly':
-                return round($rent / 3, 2);
-            case 'annually':
-                return round($rent / 12, 2);
-            case 'monthly':
-            default:
-                return $rent;
+        $rent = (float) $lease->rental_amount;
+        if ($rent <= 0) {
+            return 0.0;
         }
+
+        $frequency = strtolower(trim((string) $lease->payment_frequency));
+
+        return match ($frequency) {
+            'weekly' => round(($rent * 52) / 12, 2),
+            'fortnightly' => round(($rent * 26) / 12, 2),
+            'quarterly' => round($rent / 3, 2),
+            'yearly', 'annually', 'annual' => round($rent / 12, 2),
+            default => round($rent, 2), // Monthly (and unknown) — treat as monthly amount
+        };
     }
 
     /**
@@ -289,9 +292,9 @@ class RentInvoiceService
                     ->where('business_entity_id', $businessEntityId);
             })
             ->where('start_date', '<=', $endDate)
-            ->where(function($q) use ($startDate) {
+            ->where(function ($q) use ($startDate) {
                 $q->whereNull('end_date')
-                  ->orWhere('end_date', '>=', $startDate);
+                    ->orWhere('end_date', '>=', $startDate);
             })
             ->get();
 
@@ -308,20 +311,20 @@ class RentInvoiceService
                 if ($lease->end_date !== null && $invoiceDate->gt($lease->end_date->copy()->endOfMonth())) {
                     continue;
                 }
-                
+
                 // Check if invoice already exists
                 $existingInvoice = $this->getExistingInvoice($lease, $invoiceDate);
-                
-                if (!$existingInvoice) {
+
+                if (! $existingInvoice) {
                     $rentAmount = $this->calculateRentAmount($lease, $invoiceDate);
-                    
+
                     $upcomingInvoices[] = [
                         'lease' => $lease,
                         'asset' => $lease->asset,
                         'tenant' => $lease->tenant,
                         'invoice_date' => $invoiceDate,
                         'rent_amount' => $rentAmount,
-                        'status' => 'pending'
+                        'status' => 'pending',
                     ];
                 }
             }

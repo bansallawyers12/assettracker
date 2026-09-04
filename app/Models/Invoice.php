@@ -19,6 +19,7 @@ class Invoice extends Model
         'reference',
         'subtotal',
         'gst_amount',
+        'gst_basis',
         'total_amount',
         'notes',
         'currency',

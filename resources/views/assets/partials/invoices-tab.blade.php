@@ -53,8 +53,14 @@
         @endif
 
         <div class="bg-white dark:bg-gray-900 rounded-lg shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
-            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+            <div class="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Invoice history</h4>
+                @isset($businessEntity)
+                    <a href="{{ route('business-entities.invoices.index', [$businessEntity, 'asset_id' => $asset->id, 'receivable' => 1]) }}"
+                       class="text-xs font-medium text-amber-700 dark:text-amber-400 hover:underline">
+                        View unpaid AR for this asset
+                    </a>
+                @endisset
             </div>
             @if ($assetInvoices->isEmpty())
                 <p class="p-6 text-center text-sm text-gray-500 dark:text-gray-400">No invoices yet for this property.</p>

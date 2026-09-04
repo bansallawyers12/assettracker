@@ -5,6 +5,7 @@
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Rent Invoice Management</h1>
                 <p class="text-gray-600 mt-2">{{ $businessEntity->legal_name }}</p>
+                <p class="text-sm text-gray-500 mt-1">Amounts are GST-inclusive at 10% (same as manual invoices with Inclusive basis). One invoice per lease per calendar month.</p>
             </div>
             <div class="flex space-x-3">
                 <button onclick="document.getElementById('generate-all-modal').classList.remove('hidden')" 

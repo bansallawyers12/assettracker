@@ -2,16 +2,16 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-                Create Invoice — {{ $businessEntity->legal_name }}
+                Edit Invoice {{ $invoice->invoice_number }} — {{ $businessEntity->legal_name }}
             </h2>
             <div class="flex flex-wrap gap-2">
+                <a href="{{ route('business-entities.invoices.show', [$businessEntity, $invoice]) }}"
+                   class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors">
+                    Back to invoice
+                </a>
                 <a href="{{ route('business-entities.invoices.index', $businessEntity) }}"
                    class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors">
                     All invoices
-                </a>
-                <a href="{{ route('business-entities.rent-invoices.index', $businessEntity) }}"
-                   class="inline-flex items-center px-4 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 text-indigo-800 dark:text-indigo-200 rounded-lg text-sm font-medium transition-colors">
-                    Rent invoices
                 </a>
             </div>
         </div>
