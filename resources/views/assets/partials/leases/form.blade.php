@@ -36,6 +36,16 @@
     </div>
 
     <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">GST on rent</label>
+        <input type="hidden" name="gst_applicable" value="0">
+        <label class="mt-2 inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+            <input type="checkbox" name="gst_applicable" value="1" class="rounded-sm border-gray-300"
+                   @checked(old('gst_applicable', $lease->gst_applicable ?? true))>
+            GST applicable (10% inclusive on generated rent invoices)
+        </label>
+    </div>
+
+    <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Start Date</label>
         <x-date-input name="start_date" value="{{ old('start_date', $lease->start_date->format('Y-m-d')) }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm" required />
     </div>

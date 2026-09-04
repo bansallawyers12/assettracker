@@ -159,44 +159,53 @@ class InvoiceController extends Controller
 
         $gstRate = round(((float) $data['gst_percent']) / 100, 4);
         $gstBasis = $data['gst_basis'];
+        if ($gstBasis === 'none') {
+            $gstRate = 0.0;
+        }
         $saveAndPost = $request->boolean('save_and_post');
 
-        $invoice = DB::transaction(function () use ($businessEntity, $data, $assetId, $leaseId, $gstRate, $gstBasis) {
-            $invoice = new Invoice;
-            $invoice->fill([
-                'invoice_number' => $data['invoice_number'],
-                'issue_date' => $data['issue_date'],
-                'due_date' => $data['due_date'] ?? Carbon::parse($data['issue_date'])->addDays(30)->toDateString(),
-                'customer_name' => $data['customer_name'],
-                'reference' => $data['reference'] ?? null,
-                'notes' => $data['notes'] ?? null,
-                'currency' => $data['currency'] ?? 'AUD',
-                'gst_basis' => $gstBasis,
-            ]);
-            $invoice->business_entity_id = $businessEntity->id;
-            $invoice->asset_id = $assetId;
-            $invoice->lease_id = $leaseId;
-            $invoice->status = 'draft';
-            $invoice->is_posted = false;
-            $invoice->subtotal = 0;
-            $invoice->gst_amount = 0;
-            $invoice->total_amount = 0;
-            $invoice->save();
+        try {
+            $invoice = DB::transaction(function () use ($businessEntity, $data, $assetId, $leaseId, $gstRate, $gstBasis, $saveAndPost, $postingService) {
+                $invoice = new Invoice;
+                $invoice->fill([
+                    'invoice_number' => $data['invoice_number'],
+                    'issue_date' => $data['issue_date'],
+                    'due_date' => $data['due_date'] ?? Carbon::parse($data['issue_date'])->addDays(30)->toDateString(),
+                    'customer_name' => $data['customer_name'],
+                    'reference' => $data['reference'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                    'currency' => $data['currency'] ?? 'AUD',
+                    'gst_basis' => $gstBasis,
+                ]);
+                $invoice->business_entity_id = $businessEntity->id;
+                $invoice->asset_id = $assetId;
+                $invoice->lease_id = $leaseId;
+                $invoice->status = 'draft';
+                $invoice->is_posted = false;
+                $invoice->subtotal = 0;
+                $invoice->gst_amount = 0;
+                $invoice->total_amount = 0;
+                $invoice->save();
 
-            $this->syncInvoiceLines($invoice, $data['lines'], $gstRate, $gstBasis);
+                $this->syncInvoiceLines($invoice, $data['lines'], $gstRate, $gstBasis);
 
-            return $invoice->load('lines');
-        });
+                $invoice->load('lines');
+                if ($saveAndPost) {
+                    $postingService->post($invoice);
+                }
 
-        if ($saveAndPost) {
-            $postingService->post($invoice->fresh('lines'));
+                return $invoice;
+            });
+        } catch (\Throwable $e) {
+            report($e);
 
-            return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
-                ->with('success', 'Invoice created and posted to ledger');
+            return back()->withInput()->with('error', 'Invoice was not saved because posting failed: '.$e->getMessage());
         }
 
+        $message = $saveAndPost ? 'Invoice created and posted to ledger' : 'Invoice created';
+
         return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
-            ->with('success', 'Invoice created');
+            ->with('success', $message);
     }
 
     public function show(BusinessEntity $businessEntity, Invoice $invoice)
@@ -313,38 +322,46 @@ class InvoiceController extends Controller
 
         $gstRate = round(((float) $data['gst_percent']) / 100, 4);
         $gstBasis = $data['gst_basis'];
+        if ($gstBasis === 'none') {
+            $gstRate = 0.0;
+        }
         $saveAndPost = $request->boolean('save_and_post');
 
-        DB::transaction(function () use ($invoice, $data, $assetId, $leaseId, $gstRate, $gstBasis) {
-            $invoice->fill([
-                'invoice_number' => $data['invoice_number'],
-                'issue_date' => $data['issue_date'],
-                'due_date' => $data['due_date'] ?? Carbon::parse($data['issue_date'])->addDays(30)->toDateString(),
-                'customer_name' => $data['customer_name'],
-                'reference' => $data['reference'] ?? null,
-                'notes' => $data['notes'] ?? null,
-                'currency' => $data['currency'] ?? $invoice->currency ?? 'AUD',
-                'gst_basis' => $gstBasis,
-            ]);
-            $invoice->asset_id = $assetId;
-            $invoice->lease_id = $leaseId;
-            $invoice->save();
+        try {
+            DB::transaction(function () use ($invoice, $data, $assetId, $leaseId, $gstRate, $gstBasis, $saveAndPost, $postingService) {
+                $invoice->fill([
+                    'invoice_number' => $data['invoice_number'],
+                    'issue_date' => $data['issue_date'],
+                    'due_date' => $data['due_date'] ?? Carbon::parse($data['issue_date'])->addDays(30)->toDateString(),
+                    'customer_name' => $data['customer_name'],
+                    'reference' => $data['reference'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                    'currency' => $data['currency'] ?? $invoice->currency ?? 'AUD',
+                    'gst_basis' => $gstBasis,
+                ]);
+                $invoice->asset_id = $assetId;
+                $invoice->lease_id = $leaseId;
+                $invoice->save();
 
-            $invoice->lines()->delete();
-            $this->syncInvoiceLines($invoice, $data['lines'], $gstRate, $gstBasis);
-        });
+                $invoice->lines()->delete();
+                $this->syncInvoiceLines($invoice, $data['lines'], $gstRate, $gstBasis);
+                $invoice->load('lines');
 
-        $invoice->refresh()->load('lines');
+                if ($saveAndPost) {
+                    $postingService->post($invoice);
+                }
+            });
+        } catch (\Throwable $e) {
+            report($e);
 
-        if ($saveAndPost) {
-            $postingService->post($invoice);
-
-            return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
-                ->with('success', 'Invoice updated and posted to ledger');
+            return back()->withInput()->with('error', 'Invoice was not saved because posting failed: '.$e->getMessage());
         }
 
+        $invoice->refresh()->load('lines');
+        $message = $saveAndPost ? 'Invoice updated and posted to ledger' : 'Invoice updated';
+
         return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
-            ->with('success', 'Invoice updated');
+            ->with('success', $message);
     }
 
     public function destroy(BusinessEntity $businessEntity, Invoice $invoice)
@@ -513,6 +530,7 @@ class InvoiceController extends Controller
                         'label' => "{$tenantName} ({$start} – {$end})",
                         'tenant_name' => $lease->tenant?->name,
                         'asset_name' => $asset->name,
+                        'gst_applicable' => (bool) ($lease->gst_applicable ?? true),
                     ];
                 })->values(),
             ];
@@ -568,7 +586,7 @@ class InvoiceController extends Controller
             $numberRule = $numberRule->ignore($invoice->id);
         }
 
-        return $request->validate([
+        $data = $request->validate([
             'invoice_number' => ['required', 'max:50', $numberRule],
             'issue_date' => ['required', 'date'],
             'due_date' => ['nullable', 'date', 'after_or_equal:issue_date'],
@@ -582,7 +600,7 @@ class InvoiceController extends Controller
             'reference' => ['nullable', 'string', 'max:255'],
             'currency' => ['nullable', 'string', 'size:3'],
             'notes' => ['nullable', 'string'],
-            'gst_basis' => ['required', Rule::in(['inclusive', 'exclusive'])],
+            'gst_basis' => ['required', Rule::in(['inclusive', 'exclusive', 'none'])],
             'gst_percent' => ['required', 'numeric', 'min:0', 'max:100'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.description' => ['required', 'string', 'max:255'],
@@ -591,6 +609,12 @@ class InvoiceController extends Controller
             'lines.*.account_code' => ['required', 'string', Rule::in($incomeAccountCodes)],
             'save_and_post' => ['nullable', 'boolean'],
         ]);
+
+        if ($data['gst_basis'] === 'none') {
+            $data['gst_percent'] = 0;
+        }
+
+        return $data;
     }
 
     /**
@@ -678,7 +702,7 @@ class InvoiceController extends Controller
      */
     private function calculateInvoiceLineAmounts(float $quantity, float $unitPrice, float $gstRate, string $gstBasis): array
     {
-        if ($gstRate <= 0) {
+        if ($gstBasis === 'none' || $gstRate <= 0) {
             $lineTotal = round($quantity * $unitPrice, 2);
 
             return [

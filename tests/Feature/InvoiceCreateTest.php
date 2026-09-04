@@ -7,6 +7,7 @@ use App\Models\Invoice;
 use App\Models\Lease;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\InvoicePostingService;
 use Database\Seeders\ChartOfAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -71,8 +72,8 @@ it('pre-fills create form with suggested number, income accounts, and due date',
         ->assertSuccessful()
         ->assertSee('INV'.$entity->id.'-'.now()->format('Ym').'001', false)
         ->assertSee('4100 — Rental Income', false)
-        ->assertSee('Inclusive', false)
-        ->assertSee('GST %', false);
+        ->assertSee('GST applicable', false)
+        ->assertSee('4100 — Rental Income', false);
 });
 
 it('stores a draft invoice linked to asset and lease with inclusive gst', function () {
@@ -196,6 +197,71 @@ it('can save and post a draft in one step', function () {
     expect($invoice->is_posted)->toBeTrue()
         ->and($invoice->status)->toBe('approved')
         ->and((float) $invoice->total_amount)->toBe(110.0);
+});
+
+it('stores gst not applicable with zero gst', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $this->actingAs($user)->post(route('business-entities.invoices.store', $entity), [
+        'invoice_number' => 'INV'.$entity->id.'-202609001',
+        'issue_date' => '2026-09-03',
+        'customer_name' => 'Residential Tenant',
+        'currency' => 'AUD',
+        'gst_basis' => 'none',
+        'gst_percent' => 10,
+        'lines' => [
+            [
+                'description' => 'Rent',
+                'quantity' => 1,
+                'unit_price' => 1100,
+                'account_code' => '4100',
+            ],
+        ],
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->where('business_entity_id', $entity->id)->firstOrFail();
+
+    expect($invoice->gst_basis)->toBe('none')
+        ->and((float) $invoice->subtotal)->toBe(1100.0)
+        ->and((float) $invoice->gst_amount)->toBe(0.0)
+        ->and((float) $invoice->total_amount)->toBe(1100.0)
+        ->and((float) $invoice->lines->first()->gst_rate)->toBe(0.0);
+});
+
+it('rolls back the invoice when save and post fails', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $this->mock(InvoicePostingService::class, function ($mock) {
+        $mock->shouldReceive('post')->once()->andThrow(new DomainException('unbalanced'));
+    });
+
+    $this->actingAs($user)
+        ->from(route('business-entities.invoices.create', $entity))
+        ->post(route('business-entities.invoices.store', $entity), [
+            'invoice_number' => 'INV'.$entity->id.'-202609001',
+            'issue_date' => '2026-09-03',
+            'customer_name' => 'Fail Post',
+            'currency' => 'AUD',
+            'gst_basis' => 'inclusive',
+            'gst_percent' => 10,
+            'save_and_post' => '1',
+            'lines' => [
+                [
+                    'description' => 'Fee',
+                    'quantity' => 1,
+                    'unit_price' => 110,
+                    'account_code' => '4100',
+                ],
+            ],
+        ])
+        ->assertRedirect(route('business-entities.invoices.create', $entity))
+        ->assertSessionHas('error');
+
+    expect(Invoice::query()->where('business_entity_id', $entity->id)->exists())->toBeFalse();
 });
 
 it('filters the invoice index to unpaid receivables', function () {

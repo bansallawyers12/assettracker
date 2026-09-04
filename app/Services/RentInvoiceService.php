@@ -151,6 +151,10 @@ class RentInvoiceService
         }
 
         // Create invoice
+        $gstApplicable = (bool) ($lease->gst_applicable ?? true);
+        $gstRate = $gstApplicable ? 0.10 : 0.0;
+        $gstBasis = $gstApplicable ? 'inclusive' : 'none';
+
         $invoice = Invoice::create([
             'business_entity_id' => $businessEntity->id,
             'lease_id' => $lease->id,
@@ -163,27 +167,30 @@ class RentInvoiceService
             'currency' => 'AUD',
             'status' => 'draft',
             'is_posted' => false,
-            'gst_basis' => 'inclusive',
+            'gst_basis' => $gstBasis,
             'notes' => "Rent for {$asset->name} — {$date->format('F Y')}",
         ]);
 
-        // Create invoice line (unit_price / line_total are GST-inclusive)
         InvoiceLine::create([
             'invoice_id' => $invoice->id,
             'description' => "Rent for {$asset->name} - {$date->format('F Y')}",
             'quantity' => 1,
             'unit_price' => $rentAmount,
             'line_total' => $rentAmount,
-            'gst_rate' => 0.10, // 10% GST
+            'gst_rate' => $gstRate,
             'account_code' => $this->getRentalIncomeAccountCode(),
         ]);
 
-        // Update invoice totals using Australian inclusive GST formula
-        $net = round($rentAmount / 1.10, 2);
-        $gstAmount = round($rentAmount - $net, 2);
+        if ($gstApplicable) {
+            $net = round($rentAmount / 1.10, 2);
+            $gstAmount = round($rentAmount - $net, 2);
+        } else {
+            $net = round($rentAmount, 2);
+            $gstAmount = 0.0;
+        }
 
         $invoice->update([
-            'gst_basis' => 'inclusive',
+            'gst_basis' => $gstBasis,
             'subtotal' => $net,
             'gst_amount' => $gstAmount,
             'total_amount' => $rentAmount,

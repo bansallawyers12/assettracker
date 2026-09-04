@@ -399,8 +399,8 @@
                                                                 <dd class="text-gray-900 dark:text-gray-200">${{ number_format($lease->rental_amount, 2) }}</dd>
                                                             </div>
                                                             <div>
-                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Payment Frequency</dt>
-                                                                <dd class="text-gray-900 dark:text-gray-200">{{ $lease->payment_frequency }}</dd>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">GST on rent</dt>
+                                                                <dd class="text-gray-900 dark:text-gray-200">{{ $lease->gst_applicable ? 'Applicable (10% inclusive)' : 'Not applicable' }}</dd>
                                                             </div>
                                                             <div>
                                                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Start Date</dt>

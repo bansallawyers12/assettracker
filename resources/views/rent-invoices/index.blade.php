@@ -5,7 +5,7 @@
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Rent Invoice Management</h1>
                 <p class="text-gray-600 mt-2">{{ $businessEntity->legal_name }}</p>
-                <p class="text-sm text-gray-500 mt-1">Amounts are GST-inclusive at 10% (same as manual invoices with Inclusive basis). One invoice per lease per calendar month.</p>
+                <p class="text-sm text-gray-500 mt-1">Taxable leases: GST-inclusive at 10%. GST-not-applicable leases: no GST on the rent amount. One invoice per lease per calendar month.</p>
             </div>
             <div class="flex space-x-3">
                 <button onclick="document.getElementById('generate-all-modal').classList.remove('hidden')" 
@@ -53,6 +53,7 @@
                                                     </p>
                                                     <p class="text-sm text-gray-500">
                                                         ${{ number_format($lease->rental_amount, 2) }} {{ $lease->payment_frequency }}
+                                                        · {{ $lease->gst_applicable ? 'GST 10% inc' : 'GST n/a' }}
                                                     </p>
                                                     <p class="text-xs text-gray-400">
                                                         {{ \Carbon\Carbon::parse($lease->start_date)->format('M j, Y') }} - 

@@ -730,17 +730,24 @@ class AssetController extends Controller
      */
     private function validatedLeaseRequest(Request $request, Asset $asset): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'tenant_id' => [
                 'nullable',
                 Rule::exists('tenants', 'id')->where('asset_id', $asset->id),
             ],
             'rental_amount' => 'required|numeric|min:0',
             'payment_frequency' => 'required|in:Weekly,Fortnightly,Monthly,Quarterly,Yearly',
+            'gst_applicable' => 'nullable|boolean',
             'start_date' => 'required|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'terms' => 'nullable|string',
         ]);
+
+        $validated['gst_applicable'] = $request->has('gst_applicable')
+            ? $request->boolean('gst_applicable')
+            : true;
+
+        return $validated;
     }
 
     private function persistTenantFromRequest(

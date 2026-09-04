@@ -7,12 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 class Lease extends Model
 {
     protected $fillable = [
-        'asset_id', 'tenant_id', 'rental_amount', 'payment_frequency',
+        'asset_id', 'tenant_id', 'rental_amount', 'payment_frequency', 'gst_applicable',
         'start_date', 'end_date', 'terms',
     ];
 
     protected $casts = [
         'rental_amount' => 'decimal:2',
+        'gst_applicable' => 'boolean',
         'start_date' => 'datetime',
         'end_date' => 'datetime',
     ];

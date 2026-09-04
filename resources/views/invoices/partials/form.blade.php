@@ -47,6 +47,10 @@
 <div class="py-8 w-full px-4 sm:px-6 lg:px-8"
      x-data="invoiceForm(@js($formConfig))"
      x-init="initFlatpickrHooks()">
+    @if (session('error'))
+        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">{{ session('error') }}</div>
+    @endif
+
     @if ($errors->any())
         <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
             <ul class="list-disc list-inside space-y-1">
@@ -62,7 +66,7 @@
             For recurring monthly rent, prefer
             <a href="{{ route('business-entities.rent-invoices.index', $businessEntity) }}" class="text-indigo-600 dark:text-indigo-400 underline">Rent invoices</a>
             so amounts and lease links are generated automatically. Use this form for one-off invoices.
-            Rent invoices always treat amounts as GST-inclusive at 10%.
+            Rent invoices follow the lease GST setting (10% inclusive when GST applies, or GST not applicable).
         </p>
     @endunless
 
@@ -148,21 +152,33 @@
                 <input name="currency" value="AUD" readonly
                        class="w-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
             </div>
-            <div>
+            <div x-show="gstApplicable">
                 <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST %</label>
                 <input type="number" name="gst_percent" x-model.number="gstPercent" min="0" max="100" step="0.01" required
                        class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
             </div>
 
             <div class="md:col-span-3">
-                <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GST basis</span>
-                <div class="flex flex-wrap gap-3">
+                <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GST applicable</span>
+                <input type="hidden" name="gst_basis" :value="gstApplicable ? gstBasis : 'none'">
+                <div class="flex flex-wrap gap-3 mb-3">
                     <label class="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                        <input type="radio" name="gst_basis" value="inclusive" x-model="gstBasis" class="rounded-sm border-gray-300" />
-                        Inclusive (unit price includes GST — same as rent invoices)
+                        <input type="radio" name="gst_applicable_ui" value="1" x-model="gstApplicableRadio" class="rounded-sm border-gray-300" />
+                        Yes — GST applies
                     </label>
                     <label class="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                        <input type="radio" name="gst_basis" value="exclusive" x-model="gstBasis" class="rounded-sm border-gray-300" />
+                        <input type="radio" name="gst_applicable_ui" value="0" x-model="gstApplicableRadio" class="rounded-sm border-gray-300" />
+                        No — GST not applicable
+                    </label>
+                </div>
+                <div class="flex flex-wrap gap-3" x-show="gstApplicable" x-cloak>
+                    <span class="block w-full text-sm font-medium text-gray-700 dark:text-gray-300">GST basis</span>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+                        <input type="radio" name="gst_basis_ui" value="inclusive" x-model="gstBasis" class="rounded-sm border-gray-300" />
+                        Inclusive (unit price includes GST — same as taxable rent invoices)
+                    </label>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+                        <input type="radio" name="gst_basis_ui" value="exclusive" x-model="gstBasis" class="rounded-sm border-gray-300" />
                         Exclusive (GST added on top)
                     </label>
                 </div>
@@ -212,11 +228,12 @@
                     </div>
                     <div class="md:col-span-3">
                         <label class="md:hidden text-xs text-gray-500">Income account</label>
-                        <select :name="'lines[' + index + '][account_code]'" x-model="line.account_code" required
+                        <input type="hidden" :name="'lines[' + index + '][account_code]'" :value="line.account_code">
+                        <select x-model="line.account_code"
                                 class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm">
-                            <template x-for="account in incomeAccounts" :key="account.code">
-                                <option :value="account.code" x-text="account.label"></option>
-                            </template>
+                            @foreach ($incomeAccounts as $account)
+                                <option value="{{ $account->account_code }}">{{ $account->account_code }} — {{ $account->account_name }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="md:col-span-1 text-right pt-2 text-sm font-medium text-gray-900 dark:text-gray-100" x-text="formatMoney(lineTotal(line))"></div>
@@ -268,7 +285,8 @@
             customerName: config.customerName || '',
             reference: config.reference || '',
             notes: config.notes || '',
-            gstBasis: config.gstBasis || 'inclusive',
+            gstApplicableRadio: (config.gstBasis && config.gstBasis !== 'none') ? '1' : '0',
+            gstBasis: (config.gstBasis && config.gstBasis !== 'none') ? config.gstBasis : 'inclusive',
             gstPercent: Number(config.gstPercent ?? 10),
             issueDate: config.issueDate || '',
             dueDate: config.dueDate || '',
@@ -291,7 +309,13 @@
                 const asset = this.assets.find((item) => String(item.id) === String(this.assetId));
                 return asset ? asset.leases : [];
             },
+            get gstApplicable() {
+                return this.gstApplicableRadio === '1';
+            },
             get gstRate() {
+                if (!this.gstApplicable) {
+                    return 0;
+                }
                 const percent = Number(this.gstPercent);
                 if (Number.isNaN(percent) || percent <= 0) {
                     return 0;
@@ -368,6 +392,17 @@
                 const assetName = lease.asset_name || '';
                 if (assetName) {
                     this.reference = 'Invoice for ' + assetName + (lease.tenant_name ? ' — ' + lease.tenant_name : '');
+                }
+                if (Object.prototype.hasOwnProperty.call(lease, 'gst_applicable')) {
+                    this.gstApplicableRadio = lease.gst_applicable ? '1' : '0';
+                    if (lease.gst_applicable && this.gstBasis === 'none') {
+                        this.gstBasis = 'inclusive';
+                    }
+                    if (!lease.gst_applicable) {
+                        this.gstPercent = 0;
+                    } else if (!this.gstPercent) {
+                        this.gstPercent = 10;
+                    }
                 }
             },
             addDaysYmd(ymd, days) {
@@ -471,6 +506,13 @@
                 return true;
             },
             initFlatpickrHooks() {
+                this.$watch('gstApplicableRadio', (value) => {
+                    if (value === '0') {
+                        this.gstPercent = 0;
+                    } else if (!this.gstPercent) {
+                        this.gstPercent = 10;
+                    }
+                });
                 if (this.dateHooksBound) {
                     return;
                 }

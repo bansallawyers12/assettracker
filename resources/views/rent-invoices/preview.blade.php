@@ -41,8 +41,8 @@
                                 <dd class="text-sm text-gray-900">{{ $lease->tenant ? $lease->tenant->name : 'No Tenant Assigned' }}</dd>
                             </div>
                             <div>
-                                <dt class="text-sm font-medium text-gray-500">Rental Amount</dt>
-                                <dd class="text-sm text-gray-900">${{ number_format($lease->rental_amount, 2) }} {{ $lease->payment_frequency }}</dd>
+                                <dt class="text-sm font-medium text-gray-500">GST on rent</dt>
+                                <dd class="text-sm text-gray-900">{{ $gstApplicable ? 'Applicable (10% inclusive)' : 'Not applicable' }}</dd>
                             </div>
                             <div>
                                 <dt class="text-sm font-medium text-gray-500">Lease Period</dt>
@@ -95,7 +95,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">1</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${{ number_format($rentAmount, 2) }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">10%</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $gstApplicable ? '10%' : '0%' }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${{ number_format($rentAmount, 2) }}</td>
                                 </tr>
                             </tbody>
@@ -109,11 +109,11 @@
                         <dl class="space-y-2">
                             <div class="flex justify-between">
                                 <dt class="text-sm font-medium text-gray-500">Subtotal:</dt>
-                                <dd class="text-sm text-gray-900">${{ number_format($rentAmount - ($rentAmount * 0.10), 2) }}</dd>
+                                <dd class="text-sm text-gray-900">${{ number_format($rentSubtotal, 2) }}</dd>
                             </div>
                             <div class="flex justify-between">
-                                <dt class="text-sm font-medium text-gray-500">GST (10%):</dt>
-                                <dd class="text-sm text-gray-900">${{ number_format($rentAmount * 0.10, 2) }}</dd>
+                                <dt class="text-sm font-medium text-gray-500">{{ $gstApplicable ? 'GST (10% inclusive):' : 'GST:' }}</dt>
+                                <dd class="text-sm text-gray-900">${{ number_format($rentGst, 2) }}</dd>
                             </div>
                             <div class="flex justify-between border-t border-gray-200 pt-2">
                                 <dt class="text-base font-medium text-gray-900">Total:</dt>

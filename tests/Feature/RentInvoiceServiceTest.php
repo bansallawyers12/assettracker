@@ -85,6 +85,25 @@ it('creates a rent invoice using rental_amount and inclusive gst', function () {
         ->and($invoice->lines)->toHaveCount(1);
 });
 
+it('creates a gst-free rent invoice when the lease is not gst applicable', function () {
+    $service = app(RentInvoiceService::class);
+    $entity = rentInvoiceEntity();
+    $lease = rentInvoiceLease($entity, 1100, 'Monthly');
+    $lease->update(['gst_applicable' => false]);
+
+    $result = $service->generateRentInvoiceForLease($lease->fresh(), Carbon::parse('2026-09-03'));
+
+    expect($result['success'])->toBeTrue();
+
+    $invoice = Invoice::query()->where('lease_id', $lease->id)->first();
+
+    expect($invoice->gst_basis)->toBe('none')
+        ->and((float) $invoice->total_amount)->toBe(1100.0)
+        ->and((float) $invoice->subtotal)->toBe(1100.0)
+        ->and((float) $invoice->gst_amount)->toBe(0.0)
+        ->and((float) $invoice->lines->first()->gst_rate)->toBe(0.0);
+});
+
 it('rejects a duplicate rent invoice for the same lease month', function () {
     $service = app(RentInvoiceService::class);
     $entity = rentInvoiceEntity();
