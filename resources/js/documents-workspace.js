@@ -77,41 +77,6 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
     // ─── Row HTML builder ─────────────────────────────────────────────────────
 
-    function buildRowActionsHtml(docId, hasFile, label, fileAccept) {
-        const uploadBtn = !hasFile
-            ? `<label class="doc-action-btn doc-action-primary cursor-pointer">Upload
-                    <input type="file" class="hidden doc-slot-file"
-                        accept="${escAttr(fileAccept)}"
-                        data-document-id="${docId}"
-                        data-replace="0">
-               </label>`
-            : `<label class="doc-action-btn doc-action-primary cursor-pointer">Reupload
-                    <input type="file" class="hidden doc-slot-file"
-                        accept="${escAttr(fileAccept)}"
-                        data-document-id="${docId}"
-                        data-replace="1">
-               </label>`;
-
-        const clearDisabled = hasFile ? '' : 'doc-action-disabled';
-
-        return `<div class="doc-row-actions">
-                ${uploadBtn}
-                <button type="button"
-                    class="doc-action-btn doc-action-warning doc-clear ${clearDisabled}"
-                    data-doc-id="${docId}">Clear</button>
-                <button type="button"
-                    class="doc-action-btn doc-action-muted doc-rename-slot"
-                    data-doc-id="${docId}"
-                    data-label="${escAttr(label)}">Rename</button>
-                <button type="button"
-                    class="doc-action-btn doc-action-muted doc-move-slot"
-                    data-doc-id="${docId}">Move</button>
-                <button type="button"
-                    class="doc-action-btn doc-action-danger doc-del"
-                    data-doc-id="${docId}">Delete</button>
-            </div>`;
-    }
-
     function buildSlotRow(doc, fileAccept) {
         const hasFile = doc.has_file !== undefined ? doc.has_file : !!doc.path;
         const docId   = doc.id;
@@ -119,6 +84,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
         const type    = capitalize(doc.type || 'other');
         const assetScope = doc.asset_id ?? doc.assetScope ?? '';
         const fileName   = doc.file_name ?? '';
+        const rawLabel   = doc.checklist_label || '';
 
         const fileCell = hasFile
             ? `<button type="button"
@@ -129,13 +95,16 @@ import { setRowUploading } from './workspace-upload-ui.js';
                     title="${escAttr(fileName)}">${escHtml(fileName)}</button>`
             : `<span class="doc-file-empty">No file</span>`;
 
-        return `<tr class="border-t border-gray-200 dark:border-gray-700" data-slot-row="${docId}">
+        return `<tr class="border-t border-gray-200 dark:border-gray-700"
+            data-slot-row="${docId}"
+            data-has-file="${hasFile ? '1' : '0'}"
+            data-label="${escAttr(rawLabel)}"
+            title="Right-click for actions">
             <td class="doc-col-checklist">
                 <span class="font-medium text-gray-900 dark:text-gray-100">${escHtml(label)}</span>
                 <div class="text-xs text-gray-500">${escHtml(type)}</div>
             </td>
             <td class="doc-col-file">${fileCell}</td>
-            <td class="doc-col-actions">${buildRowActionsHtml(docId, hasFile, label, fileAccept)}</td>
         </tr>`;
     }
 
@@ -557,10 +526,9 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
             const assetScope = doc.asset_id ?? doc.assetScope ?? '';
             const fileName   = doc.file_name ?? '';
-            const label      = tr.querySelector('td.doc-col-checklist span.font-medium')?.textContent?.trim() ?? '—';
             const fileCell   = tr.querySelector('td.doc-col-file');
-            const actCell    = tr.querySelector('td.doc-col-actions');
 
+            tr.dataset.hasFile = '1';
             if (fileCell) {
                 fileCell.innerHTML = `<button type="button"
                     class="doc-preview doc-file-name"
@@ -568,9 +536,6 @@ import { setRowUploading } from './workspace-upload-ui.js';
                     data-asset-scope="${escAttr(String(assetScope))}"
                     data-name="${escAttr(fileName)}"
                     title="${escAttr(fileName)}">${escHtml(fileName)}</button>`;
-            }
-            if (actCell) {
-                actCell.innerHTML = buildRowActionsHtml(docId, true, label, fileAccept);
             }
 
             // Update workspace JSON state so bulk map stays accurate
@@ -624,11 +589,9 @@ import { setRowUploading } from './workspace-upload-ui.js';
             }
 
             const fileCell = tr.querySelector('td.doc-col-file');
-            const actCell  = tr.querySelector('td.doc-col-actions');
-            const label    = tr.querySelector('td.doc-col-checklist span.font-medium')?.textContent?.trim() ?? '—';
 
+            tr.dataset.hasFile = '0';
             if (fileCell) fileCell.innerHTML = `<span class="doc-file-empty">No file</span>`;
-            if (actCell) actCell.innerHTML = buildRowActionsHtml(docId, false, label, fileAccept);
 
             // Update workspace JSON state
             if (workspaceCategories) {
@@ -643,6 +606,107 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 clearCategoryPanelPreview(panel);
             }
         }
+
+        // ─── Row context menu ──────────────────────────────────────────────────
+
+        const contextMenu = root.querySelector('.doc-context-menu');
+        const sharedFileInput = root.querySelector('input.doc-slot-file');
+        const menuListenerAbort = new AbortController();
+        const menuListenerOpts = { signal: menuListenerAbort.signal };
+
+        function hideRowContextMenu() {
+            if (!contextMenu) {
+                return;
+            }
+            contextMenu.classList.add('hidden');
+            contextMenu.hidden = true;
+            contextMenu.setAttribute('aria-hidden', 'true');
+        }
+
+        function showRowContextMenu(ev, tr) {
+            if (!contextMenu) {
+                return;
+            }
+
+            const docId = tr.dataset.slotRow;
+            const hasFile = tr.dataset.hasFile === '1';
+            const label = tr.dataset.label || '';
+
+            const uploadBtn = contextMenu.querySelector('.doc-ctx-upload');
+            const clearBtn = contextMenu.querySelector('.doc-clear');
+            const renameBtn = contextMenu.querySelector('.doc-rename-slot');
+            const moveBtn = contextMenu.querySelector('.doc-move-slot');
+            const delBtn = contextMenu.querySelector('.doc-del');
+
+            if (uploadBtn) {
+                uploadBtn.textContent = hasFile ? 'Reupload' : 'Upload';
+                uploadBtn.dataset.docId = docId;
+                uploadBtn.dataset.replace = hasFile ? '1' : '0';
+            }
+            if (clearBtn) {
+                clearBtn.dataset.docId = docId;
+                clearBtn.classList.toggle('doc-action-disabled', !hasFile);
+            }
+            if (renameBtn) {
+                renameBtn.dataset.docId = docId;
+                renameBtn.dataset.label = label;
+            }
+            if (moveBtn) {
+                moveBtn.dataset.docId = docId;
+            }
+            if (delBtn) {
+                delBtn.dataset.docId = docId;
+            }
+
+            // Measure off-cursor first so the initial paint is already positioned.
+            contextMenu.classList.remove('hidden');
+            contextMenu.hidden = false;
+            contextMenu.style.left = '0px';
+            contextMenu.style.top = '0px';
+            contextMenu.setAttribute('aria-hidden', 'false');
+
+            const menuWidth = contextMenu.offsetWidth || 168;
+            const menuHeight = contextMenu.offsetHeight || 160;
+            const maxLeft = window.innerWidth - menuWidth - 8;
+            const maxTop = window.innerHeight - menuHeight - 8;
+            const left = Math.max(8, Math.min(ev.clientX, maxLeft));
+            const top = Math.max(8, Math.min(ev.clientY, maxTop));
+
+            contextMenu.style.left = `${left}px`;
+            contextMenu.style.top = `${top}px`;
+        }
+
+        root.addEventListener('contextmenu', function (ev) {
+            const tr = ev.target.closest('tr[data-slot-row]');
+            if (!tr || !root.contains(tr)) {
+                return;
+            }
+            if (ev.target.closest('a, input, textarea, select, .doc-context-menu')) {
+                return;
+            }
+            ev.preventDefault();
+            ev.stopPropagation();
+            showRowContextMenu(ev, tr);
+        });
+
+        document.addEventListener('click', function (ev) {
+            if (!contextMenu || contextMenu.classList.contains('hidden')) {
+                return;
+            }
+            if (contextMenu.contains(ev.target)) {
+                return;
+            }
+            hideRowContextMenu();
+        }, menuListenerOpts);
+
+        document.addEventListener('keydown', function (ev) {
+            if (ev.key === 'Escape') {
+                hideRowContextMenu();
+            }
+        }, menuListenerOpts);
+
+        window.addEventListener('scroll', hideRowContextMenu, { capture: true, signal: menuListenerAbort.signal });
+        window.addEventListener('resize', hideRowContextMenu, menuListenerOpts);
 
         // ─── Delegated file-input change ───────────────────────────────────────
 
@@ -663,7 +727,6 @@ import { setRowUploading } from './workspace-upload-ui.js';
             if (!docId || !file) { input.value = ''; return; }
             if (fileExceedsLimit(file)) { alertFileTooLarge(); input.value = ''; return; }
 
-            const labelNode = input.closest('label');
             setRowUploading(input, true);
             input.dataset.uploading = '1';
 
@@ -708,6 +771,27 @@ import { setRowUploading } from './workspace-upload-ui.js';
         // ─── Delegated click handler ───────────────────────────────────────────
 
         root.addEventListener('click', async function (ev) {
+
+            // ── Context menu upload / reupload ────────────────────────────────
+            const ctxUpload = ev.target.closest('.doc-ctx-upload');
+            if (ctxUpload && root.contains(ctxUpload)) {
+                if (!sharedFileInput) {
+                    hideRowContextMenu();
+                    return;
+                }
+                sharedFileInput.dataset.documentId = ctxUpload.dataset.docId || '';
+                sharedFileInput.dataset.replace = ctxUpload.dataset.replace === '1' ? '1' : '0';
+                sharedFileInput.value = '';
+                // Open the picker while user activation is still valid, then close the menu.
+                sharedFileInput.click();
+                hideRowContextMenu();
+                return;
+            }
+
+            if (ev.target.closest('.doc-context-menu .doc-ctx-item')) {
+                // Let action handlers below run, then close the menu.
+                hideRowContextMenu();
+            }
 
             // ── Preview ──────────────────────────────────────────────────────
             const previewBtn = ev.target.closest('.doc-preview');
@@ -909,6 +993,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
                     if (tr) {
                         const span = tr.querySelector('td:first-child span.font-medium');
                         if (span) span.textContent = j.document.checklist_label;
+                        tr.dataset.label = j.document.checklist_label ?? '';
                         renameSlotBtn.dataset.label = j.document.checklist_label;
                     }
                     if (workspaceCategories) {

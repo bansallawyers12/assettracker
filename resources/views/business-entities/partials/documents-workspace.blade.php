@@ -67,12 +67,15 @@
                             <tr>
                                 <th class="doc-col-checklist">Checklist</th>
                                 <th class="doc-col-file">File</th>
-                                <th class="doc-col-actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @foreach($category->documents as $doc)
-                                <tr class="border-t border-gray-200 dark:border-gray-700" data-slot-row="{{ $doc->id }}">
+                                <tr class="border-t border-gray-200 dark:border-gray-700"
+                                    data-slot-row="{{ $doc->id }}"
+                                    data-has-file="{{ $doc->path ? '1' : '0' }}"
+                                    data-label="{{ $doc->checklist_label ?? '' }}"
+                                    title="Right-click for actions">
                                     <td class="doc-col-checklist">
                                         <span class="font-medium text-gray-900 dark:text-gray-100">{{ $doc->checklist_label ?: '—' }}</span>
                                         <div class="text-xs text-gray-500">{{ ucfirst($doc->type ?? 'other') }}</div>
@@ -91,27 +94,11 @@
                                             <span class="doc-file-empty">No file</span>
                                         @endif
                                     </td>
-                                    <td class="doc-col-actions">
-                                        <div class="doc-row-actions">
-                                            @if(!$doc->path)
-                                                <label class="doc-action-btn doc-action-primary cursor-pointer">Upload
-                                                    <input type="file" class="hidden doc-slot-file" accept="{{ $wsDocAccept }}" data-document-id="{{ $doc->id }}" data-replace="0">
-                                                </label>
-                                            @else
-                                                <label class="doc-action-btn doc-action-primary cursor-pointer">Reupload
-                                                    <input type="file" class="hidden doc-slot-file" accept="{{ $wsDocAccept }}" data-document-id="{{ $doc->id }}" data-replace="1">
-                                                </label>
-                                            @endif
-                                            <button type="button" class="doc-action-btn doc-action-warning doc-clear {{ $doc->path ? '' : 'doc-action-disabled' }}" data-doc-id="{{ $doc->id }}">Clear</button>
-                                            <button type="button" class="doc-action-btn doc-action-muted doc-rename-slot" data-doc-id="{{ $doc->id }}" data-label="{{ addslashes($doc->checklist_label ?? '') }}">Rename</button>
-                                            <button type="button" class="doc-action-btn doc-action-muted doc-move-slot" data-doc-id="{{ $doc->id }}">Move</button>
-                                            <button type="button" class="doc-action-btn doc-action-danger doc-del" data-doc-id="{{ $doc->id }}">Delete</button>
-                                        </div>
-                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>
                     </table>
+                    <p class="doc-row-hint">Right-click a checklist row for Upload, Clear, Rename, Move, or Delete</p>
                 </div>
                 <div class="doc-preview-card">
                     <div class="doc-preview-header">
@@ -156,5 +143,14 @@
                 <button type="button" id="{{ $prefix }}-bulk-go" class="px-3 py-1 bg-indigo-600 text-white rounded-sm">Upload</button>
             </div>
         </div>
+    </div>
+
+    <input type="file" class="hidden doc-slot-file" accept="{{ $wsDocAccept }}" data-document-id="" data-replace="0">
+    <div class="doc-context-menu hidden" role="menu" hidden aria-hidden="true">
+        <button type="button" class="doc-ctx-item doc-ctx-upload" role="menuitem" data-doc-action="upload">Upload</button>
+        <button type="button" class="doc-ctx-item doc-ctx-warning doc-clear" role="menuitem" data-doc-action="clear">Clear</button>
+        <button type="button" class="doc-ctx-item doc-rename-slot" role="menuitem" data-doc-action="rename">Rename</button>
+        <button type="button" class="doc-ctx-item doc-move-slot" role="menuitem" data-doc-action="move">Move</button>
+        <button type="button" class="doc-ctx-item doc-ctx-danger doc-del" role="menuitem" data-doc-action="delete">Delete</button>
     </div>
 </div>

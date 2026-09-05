@@ -4,7 +4,12 @@ const SPINNER_SVG = `<svg class="workspace-upload-spinner h-3.5 w-3.5 animate-sp
 </svg>`;
 
 export function setRowUploading(input, uploading, label = 'Uploading…') {
-    const tr = input?.closest('tr[data-compliance-row], tr[data-slot-row]');
+    const root = input?.closest('.documents-workspace, .compliance-workspace');
+    const docId = input?.dataset?.documentId;
+    const tr = input?.closest('tr[data-compliance-row], tr[data-slot-row]')
+        || (root && docId
+            ? root.querySelector(`tr[data-slot-row="${docId}"], tr[data-compliance-row="${docId}"]`)
+            : null);
     if (!tr) {
         return;
     }
