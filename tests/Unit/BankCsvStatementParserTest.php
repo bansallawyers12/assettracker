@@ -92,3 +92,29 @@ CSV);
 
     @unlink($path);
 });
+
+it('omits balance_after when the mapped balance cell is blank', function () {
+    $path = writeTempCsv(<<<'CSV'
+Date,Description,Amount,Balance
+01/08/2026,Package fee,-50.00,1000.50
+02/08/2026,ATM,-50.00,
+CSV);
+
+    $parser = new BankCsvStatementParser;
+    $parsed = $parser->parseFile($path, 'Test Bank', [
+        'date' => 'Date',
+        'description' => 'Description',
+        'amount' => 'Amount',
+        'debit' => null,
+        'credit' => null,
+        'reference' => null,
+        'balance' => 'Balance',
+    ]);
+
+    expect($parsed['success'])->toBeTrue()
+        ->and($parsed['entries'])->toHaveCount(2)
+        ->and($parsed['entries'][0]['meta']['balance_after'])->toBe(1000.5)
+        ->and(array_key_exists('balance_after', $parsed['entries'][1]['meta']))->toBeFalse();
+
+    @unlink($path);
+});

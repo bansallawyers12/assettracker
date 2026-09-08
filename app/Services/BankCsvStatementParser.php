@@ -409,7 +409,10 @@ class BankCsvStatementParser
             }
 
             if ($balanceCol !== null) {
-                $meta['balance_after'] = round($this->parseAmount($row[$balanceCol] ?? null), 2);
+                $rawBalance = $row[$balanceCol] ?? null;
+                if ($this->hasCsvValue($rawBalance)) {
+                    $meta['balance_after'] = round($this->parseAmount($rawBalance), 2);
+                }
             }
 
             if ($categoryCol !== null) {
@@ -599,6 +602,17 @@ class BankCsvStatementParser
         }
 
         return 0.0;
+    }
+
+    private function hasCsvValue(mixed $value): bool
+    {
+        if ($value === null) {
+            return false;
+        }
+
+        $trimmed = trim((string) $value);
+
+        return $trimmed !== '' && ! in_array(strtolower($trimmed), ['nan', 'none'], true);
     }
 
     private function parseAmount(mixed $value): float

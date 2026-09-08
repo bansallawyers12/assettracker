@@ -6,6 +6,7 @@ paths:
   - 'app/Services/{FinancialReportService,BankAccountBalanceSnapshotService}.php'
   - app/Services/ManualJournalEntryService.php
   - app/Services/FinancialReportService.php
+  - app/Services/BankStatementParseService.php
 ---
 
 # Services
@@ -58,3 +59,6 @@ Balance sheet 2500 is posted GL (debit−credit as-of), same as 4000/1100. Do no
 
 ## Move-to-trust blocks closed and contact-only entities with inline guidance
 AssetMoveToTrustService::sourceBlockedMessage / targetBlockedMessage explain reopen vs convert. Hide Move to trust on closed/contact-only company asset pages and show data-move-to-trust-blocked; form endpoint returns the same message as JSON 422. Candidate trusts stay operationalEntities() only.
+
+## Statement CSV duplicate key is exact
+CSV statement duplicates use date + amount + description + optional reference + optional balance_after. Matching must use that full key: missing reference/balance must not match stored rows that have them, and vice versa. Blank mapped balance cells must omit balance_after (do not store 0.0). Identical legitimate lines are allowed up to how many times they appear; re-uploading the same file must not create extras.

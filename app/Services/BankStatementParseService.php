@@ -131,17 +131,13 @@ class BankStatementParseService
     public function entryFingerprint(array $entryData, ?array $meta = null): string
     {
         $meta ??= $this->normalizeMeta($entryData);
-        $reference = is_array($meta) ? (string) ($meta['reference'] ?? '') : '';
-        $balance = is_array($meta) && array_key_exists('balance_after', $meta)
-            ? (string) $meta['balance_after']
-            : '';
 
         return implode('|', [
             (string) ($entryData['date'] ?? ''),
             number_format((float) ($entryData['amount'] ?? 0), 2, '.', ''),
             (string) ($entryData['description'] ?? ''),
-            $reference,
-            $balance,
+            $this->fingerprintReference($meta),
+            $this->fingerprintBalance($meta),
         ]);
     }
 
@@ -152,22 +148,53 @@ class BankStatementParseService
     public function countExistingMatches(int $bankAccountId, array $entryData, ?array $meta = null): int
     {
         $meta ??= $this->normalizeMeta($entryData);
+        $fingerprint = $this->entryFingerprint($entryData, $meta);
 
-        $query = BankStatementEntry::query()
+        return BankStatementEntry::query()
             ->where('bank_account_id', $bankAccountId)
-            ->where('date', $entryData['date'] ?? null)
-            ->where('amount', $entryData['amount'] ?? null)
-            ->where('description', $entryData['description'] ?? null);
+            ->whereDate('date', $entryData['date'] ?? null)
+            ->get()
+            ->filter(fn (BankStatementEntry $existing): bool => $this->storedFingerprint($existing) === $fingerprint)
+            ->count();
+    }
 
-        $reference = is_array($meta) ? ($meta['reference'] ?? null) : null;
-        if (is_string($reference) && $reference !== '') {
-            $query->where('meta->reference', $reference);
+    /**
+     * @param  array<string, mixed>|null  $meta
+     */
+    private function fingerprintReference(?array $meta): string
+    {
+        if (! is_array($meta)) {
+            return '';
         }
 
-        if (is_array($meta) && array_key_exists('balance_after', $meta) && $meta['balance_after'] !== null) {
-            $query->where('meta->balance_after', $meta['balance_after']);
+        $reference = $meta['reference'] ?? '';
+
+        return is_string($reference) ? $reference : (string) $reference;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $meta
+     */
+    private function fingerprintBalance(?array $meta): string
+    {
+        if (! is_array($meta) || ! array_key_exists('balance_after', $meta)) {
+            return '';
         }
 
-        return $query->count();
+        $balance = $meta['balance_after'];
+        if ($balance === null || $balance === '') {
+            return '';
+        }
+
+        return number_format((float) $balance, 2, '.', '');
+    }
+
+    private function storedFingerprint(BankStatementEntry $entry): string
+    {
+        return $this->entryFingerprint([
+            'date' => $entry->date?->toDateString() ?? '',
+            'amount' => $entry->amount,
+            'description' => $entry->description ?? '',
+        ], is_array($entry->meta) ? $entry->meta : null);
     }
 }
