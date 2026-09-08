@@ -219,6 +219,9 @@ class InvoicePaymentService
         }
 
         foreach ($lockedInvoices as $invoice) {
+            // Fresh remaining; ignore any stale eager-loaded allocations from candidate lists.
+            $invoice->unsetRelation('paymentAllocations');
+
             if ((int) $invoice->business_entity_id !== (int) $businessEntity->id) {
                 throw ValidationException::withMessages([
                     'matches' => 'Selected invoice does not belong to the booking entity.',

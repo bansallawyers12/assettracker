@@ -7,7 +7,7 @@ import {
     notifyFormFailure,
     notifyFormSuccess,
 } from './workspace-panel.js';
-import { forceActivateTomSelectsIn, refreshTomSelect } from './tomselect-init.js';
+import { forceActivateTomSelectsIn, refreshTomSelect, setSelectValue } from './tomselect-init.js';
 
 export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel) {
     const importPanel = panel.querySelector('[data-bank-import-panel]');
@@ -186,9 +186,26 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         if (!select) {
             return [];
         }
+
+        if (select.tomselect) {
+            const raw = select.tomselect.getValue();
+            const values = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+
+            return values.map(String).filter((value) => value !== '');
+        }
+
         return Array.from(select.selectedOptions || [])
             .map((opt) => opt.value)
             .filter((value) => value !== '');
+    }
+
+    function setInvoiceSelection(select, ids) {
+        if (!select) {
+            return;
+        }
+
+        const values = (ids || []).map(String).filter((value) => value !== '');
+        setSelectValue(select, values.length ? values : '');
     }
 
     function waterfillAmounts(credit, invoices) {
@@ -370,7 +387,15 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     }
 
     function filterInvoiceSelectToPool(select, selectedIds) {
-        if (!select || !invoiceCandidateCache.length) {
+        if (!select) {
+            return;
+        }
+
+        if (!invoiceCandidateCache.length) {
+            seedInvoiceCandidateCacheFromDom();
+        }
+
+        if (!invoiceCandidateCache.length) {
             return;
         }
 
@@ -407,6 +432,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             }
             select.appendChild(option);
         });
+        setInvoiceSelection(select, previous);
         refreshTomSelect(select);
     }
 
@@ -437,11 +463,10 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             });
 
             if (keep.length) {
-                Array.from(select.options).forEach((option) => {
-                    option.selected = keep.includes(option.value);
-                });
+                setInvoiceSelection(select, keep);
                 filterInvoiceSelectToPool(select, keep);
             } else {
+                setInvoiceSelection(select, []);
                 refreshTomSelect(select);
             }
 
@@ -542,12 +567,11 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 const allocationIds = Array.isArray(suggestion.allocations) && suggestion.allocations.length
                     ? suggestion.allocations.map((row) => String(row.invoice_id))
                     : (suggestion.invoice_id ? [String(suggestion.invoice_id)] : []);
-                Array.from(invoiceSelect.options).forEach((option) => {
-                    option.selected = allocationIds.includes(option.value);
-                });
                 if (allocationIds.length) {
                     filterInvoiceSelectToPool(invoiceSelect, allocationIds);
+                    setInvoiceSelection(invoiceSelect, allocationIds);
                 } else {
+                    setInvoiceSelection(invoiceSelect, []);
                     refreshTomSelect(invoiceSelect);
                 }
                 const preferred = {};
@@ -624,13 +648,11 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     if (chartSelect) chartSelect.value = '';
                     if (typeSelect) typeSelect.value = '';
                     if (invoiceSelect) {
-                        Array.from(invoiceSelect.options).forEach((option) => {
-                            option.selected = false;
-                        });
+                        setInvoiceSelection(invoiceSelect, []);
                         filterInvoiceSelectToPool(invoiceSelect, []);
                         renderInvoiceSplit(entryEl, true);
                     }
-                    [chartSelect, typeSelect, invoiceSelect].forEach((select) => {
+                    [chartSelect, typeSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
                 }
@@ -646,6 +668,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                         if (select) refreshTomSelect(select);
                     });
                     filterInvoiceSelectToPool(invoiceSelect, ids);
+                    setInvoiceSelection(invoiceSelect, ids);
                     renderInvoiceSplit(entryEl, true);
                 } else {
                     filterInvoiceSelectToPool(invoiceSelect, []);
@@ -658,13 +681,11 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     if (txSelect) txSelect.value = '';
                     if (typeSelect) typeSelect.value = '';
                     if (invoiceSelect) {
-                        Array.from(invoiceSelect.options).forEach((option) => {
-                            option.selected = false;
-                        });
+                        setInvoiceSelection(invoiceSelect, []);
                         filterInvoiceSelectToPool(invoiceSelect, []);
                         renderInvoiceSplit(entryEl, true);
                     }
-                    [txSelect, typeSelect, invoiceSelect].forEach((select) => {
+                    [txSelect, typeSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
                 }
@@ -675,13 +696,11 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     if (txSelect) txSelect.value = '';
                     if (chartSelect) chartSelect.value = '';
                     if (invoiceSelect) {
-                        Array.from(invoiceSelect.options).forEach((option) => {
-                            option.selected = false;
-                        });
+                        setInvoiceSelection(invoiceSelect, []);
                         filterInvoiceSelectToPool(invoiceSelect, []);
                         renderInvoiceSplit(entryEl, true);
                     }
-                    [txSelect, chartSelect, invoiceSelect].forEach((select) => {
+                    [txSelect, chartSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
                 }
@@ -772,15 +791,42 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
 
             if (changeOpen) {
                 transactionId = txSelect?.value || '';
+                const selectedIds = selectedInvoiceIds(invoiceSelect);
                 allocations = collectSplitAllocations(entryEl);
-                invoiceId = allocations[0]?.invoice_id
-                    ? String(allocations[0].invoice_id)
-                    : (selectedInvoiceIds(invoiceSelect)[0] || '');
+
+                // Ensure the split editor is populated when invoices are selected.
+                if (selectedIds.length && allocations.length === 0) {
+                    renderInvoiceSplit(entryEl, true);
+                    allocations = collectSplitAllocations(entryEl);
+                }
+
+                if (selectedIds.length > 1) {
+                    // Never collapse a multi selection to a single invoice_id.
+                    invoiceId = allocations[0]?.invoice_id ? String(allocations[0].invoice_id) : '';
+                    if (!allocations.length || allocations.length < 2) {
+                        invoiceId = '';
+                        allocations = [];
+                    }
+                } else if (selectedIds.length === 1) {
+                    invoiceId = selectedIds[0];
+                    if (!allocations.length) {
+                        const credit = Math.abs(Number(entryEl.dataset.entryAmount || 0));
+                        const option = Array.from(invoiceSelect?.options || [])
+                            .find((opt) => opt.value === selectedIds[0]);
+                        const remaining = Number(option?.dataset?.amountDue || option?.dataset?.amount || 0);
+                        if (credit > 0 && remaining + 0.01 >= credit) {
+                            allocations = [{ invoice_id: Number(selectedIds[0]), amount: Math.round(credit * 100) / 100 }];
+                        }
+                    }
+                } else {
+                    invoiceId = '';
+                }
+
                 transactionType = typeSelect?.value || '';
                 chartAccountId = chartSelect?.value || '';
 
                 // Opening Change with empty overrides should not discard a valid suggestion.
-                if (!transactionId && !invoiceId && !transactionType && !chartAccountId) {
+                if (!transactionId && !invoiceId && !allocations.length && !transactionType && !chartAccountId) {
                     transactionId = suggestedTransactionId;
                     invoiceId = suggestedInvoiceId;
                     allocations = suggestedAllocations;
@@ -1441,6 +1487,29 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         const matches = collectMatches({ selectedOnly: true });
         if (!matches.length) {
             showImportError('Select at least one row with a match or create suggestion.');
+            return;
+        }
+
+        const invalidSplit = Array.from(importPanel.querySelectorAll('[data-bank-import-entry]'))
+            .filter((entryEl) => {
+                const checkbox = entryEl.querySelector('[data-bank-import-select]');
+                if (checkbox && !checkbox.checked) {
+                    return false;
+                }
+                const changePanel = entryEl.querySelector('[data-bank-import-change]');
+                const changeOpen = Boolean(changePanel && !changePanel.classList.contains('hidden'));
+                if (!changeOpen) {
+                    return false;
+                }
+                const selectedIds = selectedInvoiceIds(entryEl.querySelector('[data-bank-import-invoice]'));
+                if (!selectedIds.length) {
+                    return false;
+                }
+                return !updateInvoiceSplitFooter(entryEl);
+            });
+
+        if (invalidSplit.length) {
+            showImportError('Fix invoice allocation amounts so they equal the statement credit before accepting.');
             return;
         }
 
