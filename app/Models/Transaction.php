@@ -164,24 +164,58 @@ class Transaction extends Model
     }
 
     /**
+     * Interest, fees, and repayments that belong on the loan ledger — not on offset cash.
+     *
+     * @return list<string>
+     */
+    public static function loanEconomicTypes(): array
+    {
+        return [
+            'loan_repayments',
+            'loan_interest',
+            'loan_fees',
+        ];
+    }
+
+    /**
      * Whether this type may be saved on the given bank account.
-     * Loan ledgers only allow loan activity and director loan in/out; an existing
-     * legacy type may be kept on edit so old rows remain saveable.
+     * Loan ledgers only allow loan activity and director loan in/out; offset cash
+     * rejects loan economics. An existing legacy type may be kept on edit.
      */
     public static function isAllowedOnBankAccount(
         ?BankAccount $bankAccount,
         string $type,
         ?string $existingType = null
     ): bool {
-        if ($bankAccount === null || ! $bankAccount->isLoanLedgerAccount()) {
+        if ($bankAccount === null) {
             return true;
         }
 
-        if (array_key_exists($type, self::loanLedgerAllowedTypes())) {
-            return true;
+        if ($bankAccount->isLoanLedgerAccount()) {
+            if (array_key_exists($type, self::loanLedgerAllowedTypes())) {
+                return true;
+            }
+
+            return $existingType !== null && $existingType !== '' && $type === $existingType;
         }
 
-        return $existingType !== null && $existingType !== '' && $type === $existingType;
+        if ($bankAccount->isOffsetCashAccount() && in_array($type, self::loanEconomicTypes(), true)) {
+            return $existingType !== null && $existingType !== '' && $type === $existingType;
+        }
+
+        return true;
+    }
+
+    /**
+     * User-facing reason when {@see isAllowedOnBankAccount()} rejects a type.
+     */
+    public static function bankAccountTypeRestrictionMessage(?BankAccount $bankAccount): string
+    {
+        if ($bankAccount?->isOffsetCashAccount()) {
+            return 'Loan interest, fees, and repayments must be recorded on the loan account, not the offset account. Use Internal transfer for money moved between offset and loan.';
+        }
+
+        return 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, or Director Loan In/Out.';
     }
 
     /**
@@ -206,7 +240,14 @@ class Transaction extends Model
             return self::loanActivityTypeSelectGroups();
         }
 
-        return self::typeSelectGroups();
+        $groups = self::typeSelectGroups();
+
+        // Offset is cash: never offer loan_* types (use Internal transfer + loan ledger).
+        if ($bankAccount->isOffsetCashAccount()) {
+            unset($groups['Loan']);
+        }
+
+        return $groups;
     }
 
     /**

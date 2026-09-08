@@ -25,6 +25,8 @@ class EntityShowWorkspaceController extends Controller
 
     public function profileForm(BusinessEntity $businessEntity): JsonResponse
     {
+        // Profile is loaded on demand (Edit company profile), never during show-page render.
+        // Requires update so viewers get a clear 403 instead of a half-editable form.
         $this->authorize('update', $businessEntity);
 
         $persons = Person::query()->orderBy('id')->get();

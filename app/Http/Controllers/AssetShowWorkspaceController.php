@@ -8,6 +8,7 @@ use App\Models\BusinessEntity;
 use App\Models\Lease;
 use App\Models\RealEstateCompany;
 use App\Models\Tenant;
+use App\Services\AssetMoveToTrustService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -128,13 +129,21 @@ class AssetShowWorkspaceController extends Controller
             abort(404);
         }
 
+        $sourceBlocked = AssetMoveToTrustService::sourceBlockedMessage($businessEntity);
+        if ($sourceBlocked !== null) {
+            return response()->json([
+                'status' => false,
+                'message' => $sourceBlocked,
+            ], 422);
+        }
+
         $linkedTrusts = $businessEntity->trustsWhereCorporateTrustee();
         $moveToTrustTargets = $businessEntity->moveToTrustCandidates($linkedTrusts);
 
         if ($moveToTrustTargets->isEmpty()) {
             return response()->json([
                 'status' => false,
-                'message' => 'No eligible trusts available for this move.',
+                'message' => 'No eligible open trusts are available. Create or reopen an operational trust, then try again.',
             ], 422);
         }
 

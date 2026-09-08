@@ -106,3 +106,25 @@ it('keeps loan ledger pickers on loan activity and director loan types', functio
         ->and(Transaction::isAllowedOnBankAccount($loanAccount, 'sales_revenue'))->toBeFalse()
         ->and(Transaction::isAllowedOnBankAccount($loanAccount, 'directors_loans_to_company', 'directors_loans_to_company'))->toBeTrue();
 });
+
+it('excludes loan economics from offset cash account pickers and validation', function () {
+    $offsetAccount = new BankAccount(['account_purpose' => BankAccount::PURPOSE_OFFSET]);
+
+    $groups = Transaction::typeSelectGroupsForBankAccount($offsetAccount);
+
+    expect($offsetAccount->isOffsetCashAccount())->toBeTrue()
+        ->and($groups)->toHaveKey('Banking')
+        ->and($groups)->not->toHaveKey('Loan')
+        ->and(Transaction::isAllowedOnBankAccount($offsetAccount, 'loan_interest'))->toBeFalse()
+        ->and(Transaction::isAllowedOnBankAccount($offsetAccount, 'loan_fees'))->toBeFalse()
+        ->and(Transaction::isAllowedOnBankAccount($offsetAccount, 'loan_repayments'))->toBeFalse()
+        ->and(Transaction::isAllowedOnBankAccount($offsetAccount, 'internal_transfer'))->toBeTrue()
+        ->and(Transaction::isAllowedOnBankAccount($offsetAccount, 'loan_interest', 'loan_interest'))->toBeTrue()
+        ->and(Transaction::bankAccountTypeRestrictionMessage($offsetAccount))
+        ->toContain('not the offset account')
+        ->and(Transaction::loanEconomicTypes())->toEqual([
+            'loan_repayments',
+            'loan_interest',
+            'loan_fees',
+        ]);
+});

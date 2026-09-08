@@ -60,9 +60,9 @@ Asset Tracker is a mature Laravel portal (entities, assets, banking, accounting,
 | --- | --- | --- | --- | --- | --- | --- |
 | entity-001 | UX | Medium | Tenancy / property-manager contacts (`exclude_from_financial_reports`) | P&L, bank, journals, officer roles hidden; users may not understand missing tabs | `EnsuresOperationalBusinessEntity`, `tests/Feature/EntityAccountingNavTest.php` | **Fixed** — banner lists missing sections + convert CTA; accounting nav chip; Persons tab notice; Contact only badges |
 | entity-002 | Functionality | Medium | Closed entities block mutations (403) | Bank links, transactions, edits fail on closed entities | `EnsuresOperationalBusinessEntity::ensureNotClosed` | **Fixed** — closed banner + reopen CTA; hide mutate buttons; JSON 403 message; profile “Save & reopen” |
-| entity-003 | UX | Low | No separate Bank Import tab | Import lives per bank account under Bank Accounts; `#tab_bank_import` aliased to bank accounts | `.ai/rules/business-entities.md` | Open |
-| entity-004 | Security | Medium | Profile workspace AJAX requires `update` policy | If RBAC added later, profile panel may 403 while show page loads | `EntityShowWorkspaceController.php` | Open |
-| entity-005 | UX | Low | Trust appointor vs `entity_person` roles | Appointor belongs on trust company profile, not as normal officer role | `README.md` | Open |
+| entity-003 | UX | Low | No separate Bank Import tab | Import lives per bank account under Bank Accounts; `#tab_bank_import` aliased to bank accounts | `.ai/rules/business-entities.md` | **Fixed** — Bank Accounts hint + alias landing banner; no separate tab (per settled rule) |
+| entity-004 | Security | Medium | Profile workspace AJAX requires `update` policy | If RBAC added later, profile panel may 403 while show page loads | `EntityShowWorkspaceController.php` | **Fixed** — Edit/reopen CTAs gated with `@can('update')`; profile AJAX stays update-only and on-demand |
+| entity-005 | UX | Low | Trust appointor vs `entity_person` roles | Appointor belongs on trust company profile, not as normal officer role | `README.md` | **Fixed** — profile CTAs for appointor; block edit/update of Appointor officer rows; legacy list cards |
 
 **Recent history:** Entity workspace **403** errors occurred when booking entity context or policy checks did not align with the selected entity (Aug 2026).
 
@@ -70,11 +70,11 @@ Asset Tracker is a mature Laravel portal (entities, assets, banking, accounting,
 
 ## 3. Assets
 
-| ID | Type | Sev | Summary | User impact | Evidence |
-| --- | --- | --- | --- | --- | --- |
-| asset-001 | Functionality | Medium | Loan and offset accounts must be linked and used correctly | `loan_*` types on offset account rejected; loan economics belong on loan-purpose account | `.ai/rules/loan-offset-transfers.md`, `LoanOffsetTransactionGuard` |
-| asset-002 | UX | Medium | Move-to-trust blocked for closed or contact-only entities | Validation error without clear inline guidance | `AssetMoveToTrustService`, tests |
-| asset-003 | UX | Low | Tom Select in tenant/lease modals needs reinit | Real-estate company picker may not search until modal opens | `docs/TECH_UPDATE.md` Track 4 |
+| ID | Type | Sev | Summary | User impact | Evidence | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| asset-001 | Functionality | Medium | Loan and offset accounts must be linked and used correctly | `loan_*` types on offset account rejected; loan economics belong on loan-purpose account | `.ai/rules/loan-offset-transfers.md`, `LoanOffsetTransactionGuard` | **Fixed** — offset pickers hide Loan group; `isAllowedOnBankAccount` + apply/create messages; asset link hints; offset import note |
+| asset-002 | UX | Medium | Move-to-trust blocked for closed or contact-only entities | Validation error without clear inline guidance | `AssetMoveToTrustService`, tests | **Fixed** — actionable source/target messages; hide button + `data-move-to-trust-blocked` banner; form 422 + workspace alert shows payload |
+| asset-003 | UX | Low | Tom Select in tenant/lease modals needs reinit | Real-estate company picker may not search until modal opens | `docs/TECH_UPDATE.md` Track 4 | Open |
 
 ---
 
@@ -152,7 +152,7 @@ Order (cash/offset accounts only):
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | inv-001 | Functionality | Medium | `invoice_payment` type hidden from manual pickers | Must use invoice payment UI | `InvoicePaymentPostingTest` |
-| inv-002 | UX | Low | Rent reminder uses native `confirm()` | Inconsistent dialog pattern | `assets/partials/invoices-tab.blade.php` |
+| inv-002 | UX | Low | Rent reminder uses native `confirm()` | Asset invoices tab still native; invoice show delete/unpost/remind use workspace confirm | `assets/partials/invoices-tab.blade.php`, `form-confirm.js` |
 
 ---
 

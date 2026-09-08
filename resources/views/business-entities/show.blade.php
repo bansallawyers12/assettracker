@@ -25,21 +25,23 @@
                 </div>
             </div>
             <div class="flex flex-wrap gap-2">
-                <button type="button" data-entity-profile-edit class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
-                    <x-lucide-pencil class="h-4 w-4 mr-1.5" />
-                    Edit company profile
-                </button>
-                @unless ($businessEntity->isClosed())
-                    <button
-                        type="button"
-                        x-data=""
-                        x-on:click.prevent="$dispatch('open-modal', 'close-business-entity')"
-                        class="inline-flex items-center px-3 py-1.5 border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-gray-900 dark:hover:bg-rose-950/30 dark:text-rose-300 rounded-md text-sm font-medium transition-colors"
-                    >
-                        <x-lucide-archive class="h-4 w-4 mr-1.5" />
-                        Close entity
+                @can('update', $businessEntity)
+                    <button type="button" data-entity-profile-edit class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
+                        <x-lucide-pencil class="h-4 w-4 mr-1.5" />
+                        Edit company profile
                     </button>
-                @endunless
+                    @unless ($businessEntity->isClosed())
+                        <button
+                            type="button"
+                            x-data=""
+                            x-on:click.prevent="$dispatch('open-modal', 'close-business-entity')"
+                            class="inline-flex items-center px-3 py-1.5 border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-gray-900 dark:hover:bg-rose-950/30 dark:text-rose-300 rounded-md text-sm font-medium transition-colors"
+                        >
+                            <x-lucide-archive class="h-4 w-4 mr-1.5" />
+                            Close entity
+                        </button>
+                    @endunless
+                @endcan
             </div>
         </div>
     </x-slot>
@@ -88,10 +90,14 @@
                         {{ __('To make changes again, edit the company profile and set Status to Active. That clears the closed date and reopens the entity.') }}
                     </p>
                     <div class="mt-3">
-                        <button type="button" data-entity-profile-edit class="inline-flex items-center rounded-md bg-rose-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-800 dark:bg-rose-600 dark:hover:bg-rose-500">
-                            <x-lucide-pencil class="mr-1.5 h-4 w-4" aria-hidden="true" />
-                            {{ __('Reopen via company profile') }}
-                        </button>
+                        @can('update', $businessEntity)
+                            <button type="button" data-entity-profile-edit class="inline-flex items-center rounded-md bg-rose-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-800 dark:bg-rose-600 dark:hover:bg-rose-500">
+                                <x-lucide-pencil class="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                {{ __('Reopen via company profile') }}
+                            </button>
+                        @else
+                            <p class="text-xs text-rose-700 dark:text-rose-300">{{ __('Ask a staff user to reopen this entity from the company profile.') }}</p>
+                        @endcan
                     </div>
                 </div>
             @endif
@@ -110,10 +116,12 @@
                         {{ __('Prefer linking agencies when you add a tenant on a property asset. To treat this record as an operating entity instead, edit the company profile and turn off “Tenancy / property manager contact only”.') }}
                     </p>
                     <div class="mt-3">
-                        <button type="button" data-entity-profile-edit class="inline-flex items-center rounded-md bg-amber-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500">
-                            <x-lucide-pencil class="mr-1.5 h-4 w-4" aria-hidden="true" />
-                            {{ __('Edit company profile') }}
-                        </button>
+                        @can('update', $businessEntity)
+                            <button type="button" data-entity-profile-edit class="inline-flex items-center rounded-md bg-amber-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500">
+                                <x-lucide-pencil class="mr-1.5 h-4 w-4" aria-hidden="true" />
+                                {{ __('Edit company profile') }}
+                            </button>
+                        @endcan
                     </div>
                 </div>
             @endif
@@ -561,17 +569,34 @@
                                                 Portfolio registry
                                             </a>
                                             @unless ($businessEntity->isClosed())
-                                                <button
-                                                    type="button"
-                                                    data-open-add-bank-account
-                                                    class="entity-btn-primary"
-                                                >
-                                                    <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
-                                                    Add Account
-                                                </button>
+                                                @can('update', $businessEntity)
+                                                    <button
+                                                        type="button"
+                                                        data-open-add-bank-account
+                                                        class="entity-btn-primary"
+                                                    >
+                                                        <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
+                                                        Add Account
+                                                    </button>
+                                                @endcan
                                             @endunless
                                         </div>
                                     </div>
+
+                                    <div
+                                        class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200"
+                                        data-bank-import-hint
+                                        hidden
+                                    >
+                                        <p class="font-medium">{{ __('Looking for Bank Import?') }}</p>
+                                        <p class="mt-1 text-slate-600 dark:text-slate-300">
+                                            {{ __('CSV import and matching live on each bank account. Open an account below, then use Import / reconciliation on its transactions panel.') }}
+                                        </p>
+                                    </div>
+
+                                    <p class="text-xs text-gray-500 dark:text-gray-400" data-bank-import-static-hint>
+                                        {{ __('Statement import is per account: open a bank account → transactions → Import.') }}
+                                    </p>
 
                                     <div data-bank-accounts-list>
                                         @include('business-entities.partials.bank-accounts.list', [
@@ -626,6 +651,13 @@
                     }
                 } else if (aliasedFrom && window.location.hash === '#' + aliasedFrom) {
                     history.replaceState(null, '', '#' + resolvedId);
+                }
+
+                if (aliasedFrom === 'tab_bank_import') {
+                    const importHint = document.querySelector('[data-bank-import-hint]');
+                    if (importHint) {
+                        importHint.hidden = false;
+                    }
                 }
 
                 tabContents.forEach(content => {

@@ -19,6 +19,9 @@
             <strong>{{ $businessEntity->legal_name }}</strong> onto a trust (record correction, not a sale).
             Bank links that are not valid for the trust will be removed.
         </p>
+        <p class="mt-2 text-xs text-amber-800 dark:text-amber-200" data-move-to-trust-eligibility-hint>
+            Destination trusts must be open and operational. Closed or contact-only entities cannot send or receive assets.
+        </p>
     </div>
 
     <div>

@@ -82,7 +82,11 @@
                     </form>
                 @elseif (!$invoice->payment_transaction_id)
                     <form method="POST" action="{{ route('business-entities.invoices.unpost', [$businessEntity, $invoice]) }}" class="inline"
-                          onsubmit="return confirm('Unpost this invoice and remove its ledger entry?');">
+                          data-confirm
+                          data-confirm-title="Unpost invoice?"
+                          data-confirm-message="Unpost this invoice and remove its ledger entry?"
+                          data-confirm-button="Unpost"
+                          data-confirm-variant="danger">
                         @csrf
                         <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-amber-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-amber-500">
                             Unpost
@@ -406,7 +410,11 @@
                         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-700 dark:bg-gray-900">
                             <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Follow up</h3>
                             @if ($invoice->lease?->tenant?->email)
-                                <form method="POST" action="{{ route('business-entities.invoices.remind', [$businessEntity, $invoice]) }}" class="mt-3" onsubmit="return confirm('Send reminder email?');">
+                                <form method="POST" action="{{ route('business-entities.invoices.remind', [$businessEntity, $invoice]) }}" class="mt-3"
+                                      data-confirm
+                                      data-confirm-title="Send reminder?"
+                                      data-confirm-message="Send reminder email?"
+                                      data-confirm-button="Send reminder">
                                     @csrf
                                     <p class="text-sm text-gray-600 dark:text-gray-400">Send a payment reminder to <strong class="text-gray-900 dark:text-white">{{ $invoice->lease->tenant->email }}</strong>.</p>
                                     @if ($invoice->last_reminder_sent_at)
@@ -432,7 +440,12 @@
                         <x-lucide-pencil class="h-4 w-4" aria-hidden="true" />
                         Edit
                     </a>
-                    <form method="POST" action="{{ route('business-entities.invoices.destroy', [$businessEntity, $invoice]) }}" onsubmit="return confirm('Delete this invoice?');">
+                    <form method="POST" action="{{ route('business-entities.invoices.destroy', [$businessEntity, $invoice]) }}"
+                          data-confirm
+                          data-confirm-title="Delete invoice?"
+                          data-confirm-message="Delete this invoice? This cannot be undone."
+                          data-confirm-button="Delete"
+                          data-confirm-variant="danger">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-4 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-50 dark:border-rose-900 dark:bg-gray-900 dark:text-rose-300 dark:hover:bg-rose-950/40">

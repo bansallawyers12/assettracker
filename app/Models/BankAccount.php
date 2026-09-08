@@ -477,6 +477,14 @@ class BankAccount extends Model
     }
 
     /**
+     * Offset-purpose accounts are cash; loan economics belong on the linked loan account.
+     */
+    public function isOffsetCashAccount(): bool
+    {
+        return $this->account_purpose === self::PURPOSE_OFFSET;
+    }
+
+    /**
      * Count of imported statement lines not yet linked to a transaction.
      */
     public function unmatchedStatementEntryCount(): int

@@ -1259,7 +1259,7 @@ class BusinessEntityController extends Controller
 
         if (! Transaction::isAllowedOnBankAccount($bankAccount, (string) $request->transaction_type)) {
             throw ValidationException::withMessages([
-                'transaction_type' => 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, or Director Loan In/Out.',
+                'transaction_type' => Transaction::bankAccountTypeRestrictionMessage($bankAccount),
             ]);
         }
 
@@ -1617,7 +1617,7 @@ class BusinessEntityController extends Controller
                     (string) $transaction->transaction_type
                 )) {
                     throw ValidationException::withMessages([
-                        'transaction_type' => 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, or Director Loan In/Out.',
+                        'transaction_type' => Transaction::bankAccountTypeRestrictionMessage($bankAccountForGuard),
                     ]);
                 }
             }

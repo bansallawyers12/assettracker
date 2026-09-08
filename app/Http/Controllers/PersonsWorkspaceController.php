@@ -57,6 +57,10 @@ class PersonsWorkspaceController extends Controller
         $this->authorize('update', $businessEntity);
         $this->ensureBelongsToEntity($businessEntity, $entityPerson);
 
+        if ($entityPerson->role === 'Appointor') {
+            return $this->errorResponse('Appointor is managed on the trust company profile, not as an officer role.');
+        }
+
         $entityPerson->load(['person', 'trusteeEntity', 'appointorEntity']);
 
         return $this->formResponse('business-entities.partials.persons.form', [
@@ -132,7 +136,7 @@ class PersonsWorkspaceController extends Controller
     private function loadPersons(BusinessEntity $businessEntity)
     {
         return $businessEntity->persons()
-            ->with(['person', 'trusteeEntity'])
+            ->with(['person', 'trusteeEntity', 'appointorEntity'])
             ->orderBy('role')
             ->orderBy('id')
             ->get();

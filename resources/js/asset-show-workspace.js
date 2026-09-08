@@ -18,12 +18,23 @@ import { initTenantFormFields } from './tenant-form-fields.js';
 
 const panelFormHandlers = [];
 
-function alertHttpError(status) {
+function alertHttpError(status, payload) {
     if (status === 419) {
         showWorkspaceAlert({ title: 'Session expired', message: 'Refresh the page and try again.' });
         return;
     }
-    showWorkspaceAlert({ message: 'Request failed. Please try again.' });
+
+    if (status === 403 || status === 422) {
+        showWorkspaceAlert({
+            title: 'Action not allowed',
+            message: payload?.message || 'This asset cannot be moved in its current state.',
+        });
+        return;
+    }
+
+    showWorkspaceAlert({
+        message: payload?.message || 'Request failed. Please try again.',
+    });
 }
 
 function initFormPlugins(root) {
@@ -86,7 +97,7 @@ function initAssetShowWorkspace(root) {
         const payload = parseJson(await response.text());
         if (!response.ok || !payload?.html) {
             closeWorkspacePanel();
-            alertHttpError(response.status);
+            alertHttpError(response.status, payload);
             return;
         }
         setWorkspacePanelContent(payload.html);

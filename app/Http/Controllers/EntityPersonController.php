@@ -153,17 +153,17 @@ class EntityPersonController extends Controller
         $this->authorize('update', $entityPerson->businessEntity);
         $this->ensureNotClosed($entityPerson->businessEntity);
 
-        // Fix #2: Exclude Appointor role unless legacy Appointor row
-        $allowedRoles = 'Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Owner';
         if ($entityPerson->role === 'Appointor') {
-            $allowedRoles .= ',Appointor';
+            return $this->personFormError($request, [
+                'error' => 'Appointor is managed on the trust company profile, not as an officer role.',
+            ]);
         }
 
         $validated = $request->validate([
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'person_id' => 'nullable|exists:persons,id',
             'entity_trustee_id' => ['nullable', BusinessEntity::ruleExistsNonTrustCompany()],
-            'role' => 'required|in:'.$allowedRoles,
+            'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Owner',
             'appointment_date' => 'required|date',
             'resignation_date' => 'nullable|required_if:role_status,Resigned|date|after_or_equal:appointment_date',
             'role_status' => 'required|in:Active,Resigned',
@@ -195,10 +195,8 @@ class EntityPersonController extends Controller
         $personId = $request->filled('person_id') ? $request->person_id : null;
         $entityTrusteeId = $request->filled('entity_trustee_id') ? $request->entity_trustee_id : null;
 
-        if ($request->role !== 'Appointor') {
-            if (($personId && $entityTrusteeId) || (! $personId && ! $entityTrusteeId)) {
-                return $this->personFormError($request, ['error' => 'Either an existing person or a trustee company must be selected, but not both.']);
-            }
+        if (($personId && $entityTrusteeId) || (! $personId && ! $entityTrusteeId)) {
+            return $this->personFormError($request, ['error' => 'Either an existing person or a trustee company must be selected, but not both.']);
         }
 
         $data = [
@@ -210,17 +208,10 @@ class EntityPersonController extends Controller
             'shares_percentage' => $validated['shares_percentage'] ?? null,
             'authority_level' => $validated['authority_level'] ?? null,
             'asic_due_date' => $validated['asic_due_date'] ?? null,
+            'person_id' => $personId,
+            'entity_trustee_id' => $entityTrusteeId,
+            'appointor_entity_id' => null,
         ];
-
-        if ($request->role === 'Appointor') {
-            $data['person_id'] = $personId;
-            $data['appointor_entity_id'] = $request->filled('appointor_entity_id') ? $request->appointor_entity_id : null;
-            $data['entity_trustee_id'] = null;
-        } else {
-            $data['person_id'] = $personId;
-            $data['entity_trustee_id'] = $entityTrusteeId;
-            $data['appointor_entity_id'] = null;
-        }
 
         $entityPerson->update($data);
         $entityPerson->load(['person', 'trusteeEntity']);

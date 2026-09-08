@@ -27,7 +27,7 @@
         'createUrl' => $entityCreate(BankAccount::PURPOSE_LOAN),
         'defaultAccountPurpose' => BankAccount::PURPOSE_LOAN,
         'businessEntity' => $businessEntity,
-        'hint' => 'Loan / lender account for this property — BSB and account number used on reports.',
+        'hint' => 'Loan / lender ledger for this property — interest, fees, and repayments belong here (not on the offset).',
     ])
 
     @include('bank-accounts.partials.account-picker-row', [
@@ -39,6 +39,7 @@
         'createUrl' => $entityCreate(BankAccount::PURPOSE_OFFSET),
         'defaultAccountPurpose' => BankAccount::PURPOSE_OFFSET,
         'businessEntity' => $businessEntity,
+        'hint' => 'Cash account linked to the loan. Money to or from the loan is Internal transfer — do not book loan interest/fees/repayments here.',
     ])
 
     <div id="rent-collection-row" @unless($showRent) style="display:none" @endunless>

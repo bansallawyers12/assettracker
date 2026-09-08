@@ -30,6 +30,16 @@
                 {{ __('Directors, trustees, and other company roles belong on operating entities. This tenancy / property manager contact does not support adding officers.') }}
             </p>
         </div>
+    @elseif ($isTrust)
+        <div class="mb-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-200" role="status" data-trust-appointor-persons-notice>
+            <p class="font-medium">{{ __('Appointor is on the company profile') }}</p>
+            <p class="mt-1 text-slate-700 dark:text-slate-300">
+                {{ __('Trust appointor is not an officer role. Set person or company appointor under Edit company profile.') }}
+                @can('update', $businessEntity)
+                    <button type="button" data-entity-profile-edit class="font-medium underline">{{ __('Open profile') }}</button>
+                @endcan
+            </p>
+        </div>
     @endif
 
     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

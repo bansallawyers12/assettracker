@@ -14,7 +14,11 @@ it('blocks loan economic types on offset purpose accounts', function (string $ty
 
     expect(fn () => $guard->assertAllowed($account, $type))
         ->toThrow(ValidationException::class);
-})->with(LoanOffsetTransactionGuard::LOAN_ECONOMIC_TYPES);
+})->with(Transaction::loanEconomicTypes());
+
+it('keeps guard loan economic types aligned with Transaction', function () {
+    expect(LoanOffsetTransactionGuard::LOAN_ECONOMIC_TYPES)->toEqual(Transaction::loanEconomicTypes());
+});
 
 it('allows loan economic types on loan purpose accounts', function () {
     $guard = new LoanOffsetTransactionGuard;

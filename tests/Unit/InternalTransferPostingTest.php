@@ -52,7 +52,8 @@ it('limits loan ledger import types to loan activity', function () {
         ->and(Transaction::loanActivityTypeSelectGroups())->toHaveKey('Director & related party')
         ->and(Transaction::typeSelectGroupsForBankAccount($loanAccount))->toHaveKey('Loan activity')
         ->and(Transaction::typeSelectGroupsForBankAccount($loanAccount))->toHaveKey('Director & related party')
-        ->and(Transaction::typeSelectGroupsForBankAccount($offsetAccount))->toHaveKey('Banking');
+        ->and(Transaction::typeSelectGroupsForBankAccount($offsetAccount))->toHaveKey('Banking')
+        ->and(Transaction::typeSelectGroupsForBankAccount($offsetAccount))->not->toHaveKey('Loan');
 });
 
 it('excludes internal transfers from property operating reports', function () {

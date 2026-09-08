@@ -32,16 +32,20 @@
     @endif
 
     @if ($isTrust && ! $isAppointor)
-        <div class="rounded-lg border border-green-200/80 bg-green-50/80 px-3 py-2.5 text-sm text-green-800 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-200">
-            <strong>Appointor:</strong> Set on the trust record via
-            <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="underline">Edit company profile</a>.
+        <div class="rounded-lg border border-green-200/80 bg-green-50/80 px-3 py-2.5 text-sm text-green-800 dark:border-green-900/50 dark:bg-green-950/40 dark:text-green-200" data-appointor-profile-hint>
+            <strong>Appointor:</strong> Belongs on the trust company profile (not as an officer role).
+            @can('update', $businessEntity)
+                <button type="button" data-entity-profile-edit class="underline font-medium">{{ __('Edit company profile') }}</button>
+            @endcan
         </div>
     @endif
 
     @if ($isAppointor)
-        <div class="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200">
-            <strong>Legacy appointor record.</strong> Appointor should be managed on the trust record via
-            <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="underline">Edit company profile</a>.
+        <div class="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2.5 text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-200" data-legacy-appointor-notice>
+            <strong>Legacy appointor record.</strong> Appointor is managed on the trust company profile, not here.
+            @can('update', $businessEntity)
+                <button type="button" data-entity-profile-edit class="underline font-medium">{{ __('Edit company profile') }}</button>
+            @endcan
         </div>
     @endif
 

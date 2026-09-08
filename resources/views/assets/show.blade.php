@@ -1,8 +1,14 @@
 @php
     use App\Models\Transaction;
     use App\Models\Asset as AssetModel;
+    use App\Services\AssetMoveToTrustService;
     $isLeasable = in_array($asset->asset_type, AssetModel::LEASABLE_ASSET_TYPES);
-    $canMoveToTrust = $businessEntity->isCompany() && ($moveToTrustTargets ?? collect())->isNotEmpty();
+    $moveToTrustSourceBlocked = $businessEntity->isCompany()
+        ? AssetMoveToTrustService::sourceBlockedMessage($businessEntity)
+        : null;
+    $canMoveToTrust = $businessEntity->isCompany()
+        && $moveToTrustSourceBlocked === null
+        && ($moveToTrustTargets ?? collect())->isNotEmpty();
     $assetShowConfig = [
         'defaultTab' => 'tab_details',
     ];
@@ -55,6 +61,22 @@
                     </a>
                 </div>
             </div>
+
+            @if ($moveToTrustSourceBlocked)
+                <div
+                    class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+                    role="status"
+                    data-move-to-trust-blocked
+                >
+                    <p class="font-medium">{{ __('Move to trust is unavailable') }}</p>
+                    <p class="mt-1">{{ $moveToTrustSourceBlocked }}</p>
+                    <p class="mt-2">
+                        <a href="{{ route('business-entities.show', $businessEntity) }}" class="font-medium underline hover:no-underline">
+                            {{ __('Open company profile') }}
+                        </a>
+                    </p>
+                </div>
+            @endif
 
             @if (session('success'))
                 <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200" role="alert">

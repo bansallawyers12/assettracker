@@ -10,3 +10,6 @@ New-entry pickers show only director_loan_in and director_loan_out. director_loa
 
 ## Loan ledger pickers include director loan in/out
 Loan-purpose accounts use loanActivityTypeSelectGroups(): Loan Interest / Fees / Repayment plus Director Loan In and Out. Validate creates with Transaction::isAllowedOnBankAccount() (loanLedgerAllowedTypes, plus the existing type on edit). Director money received on the loan account is director_loan_in (posts 4000↔2500, never 1100). Create/edit type pickers must pass the bank account into transaction-type-select.
+
+## Offset cash pickers exclude loan economics
+Offset-purpose accounts use typeSelectGroupsForBankAccount() without the Loan group. isAllowedOnBankAccount() rejects loan_interest / loan_fees / loan_repayments on offset (legacy type kept on edit). LoanOffsetTransactionGuard still enforces the same rule when the account is linked as offset on an entity.

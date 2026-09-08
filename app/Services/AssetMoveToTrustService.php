@@ -20,6 +20,50 @@ use Illuminate\Validation\ValidationException;
 class AssetMoveToTrustService
 {
     /**
+     * Why assets cannot leave this entity (closed / contact-only).
+     */
+    public static function sourceBlockedMessage(BusinessEntity $source): ?string
+    {
+        if ($source->isClosed()) {
+            return sprintf(
+                'Cannot move assets while %s is closed. Reopen it from Edit company profile (set Status to Active), then try Move to trust again.',
+                $source->legal_name
+            );
+        }
+
+        if ($source->isTenancyContactOnly()) {
+            return sprintf(
+                'Cannot move assets from a tenancy or property-manager contact (%s). Edit the company profile to treat it as an operating entity first.',
+                $source->legal_name
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * Why a destination trust cannot receive the asset.
+     */
+    public static function targetBlockedMessage(BusinessEntity $target): ?string
+    {
+        if ($target->isClosed()) {
+            return sprintf(
+                'Cannot move to %s because that trust is closed. Reopen it from its company profile, or choose an open trust.',
+                $target->legal_name
+            );
+        }
+
+        if ($target->isTenancyContactOnly()) {
+            return sprintf(
+                'Cannot move to %s because it is a tenancy / property-manager contact, not an operating trust. Choose an operational trust instead.',
+                $target->legal_name
+            );
+        }
+
+        return null;
+    }
+
+    /**
      * Reparent an asset from a trustee company onto a trust (ownership correction).
      *
      * @return array{
@@ -145,15 +189,17 @@ class AssetMoveToTrustService
             ]);
         }
 
-        if ($source->isClosed() || $target->isClosed()) {
+        $sourceBlocked = self::sourceBlockedMessage($source);
+        if ($sourceBlocked !== null) {
             throw ValidationException::withMessages([
-                'target_business_entity_id' => 'Cannot move an asset involving a closed entity.',
+                'target_business_entity_id' => $sourceBlocked,
             ]);
         }
 
-        if ($source->isTenancyContactOnly() || $target->isTenancyContactOnly()) {
+        $targetBlocked = self::targetBlockedMessage($target);
+        if ($targetBlocked !== null) {
             throw ValidationException::withMessages([
-                'target_business_entity_id' => 'Cannot move an asset involving a non-operational contact entity.',
+                'target_business_entity_id' => $targetBlocked,
             ]);
         }
     }

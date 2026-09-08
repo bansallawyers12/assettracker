@@ -42,7 +42,9 @@ class LoanOffsetTransactionGuard
             return;
         }
 
-        if (! in_array($transactionType, self::LOAN_ECONOMIC_TYPES, true)) {
+        $loanEconomicTypes = Transaction::loanEconomicTypes();
+
+        if (! in_array($transactionType, $loanEconomicTypes, true)) {
             return;
         }
 
@@ -51,7 +53,7 @@ class LoanOffsetTransactionGuard
         }
 
         throw ValidationException::withMessages([
-            'transaction_type' => 'Loan interest, fees, and repayments must be recorded on the loan account, not the offset account. Use Internal transfer for money moved between offset and loan.',
+            'transaction_type' => Transaction::bankAccountTypeRestrictionMessage($bankAccount),
         ]);
     }
 
@@ -79,7 +81,7 @@ class LoanOffsetTransactionGuard
 
     public function isOffsetAccount(BankAccount $bankAccount, ?BusinessEntity $entity = null): bool
     {
-        if ($bankAccount->account_purpose === BankAccount::PURPOSE_OFFSET) {
+        if ($bankAccount->isOffsetCashAccount()) {
             return true;
         }
 

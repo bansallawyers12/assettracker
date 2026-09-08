@@ -245,9 +245,9 @@
                         </div>
                     @endif
 
-                    @if ($businessEntity->appointorPerson || $businessEntity->appointorEntity)
-                        <div>
-                            <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Appointor</p>
+                    <div data-trust-appointor-sidebar>
+                        <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">Appointor</p>
+                        @if ($businessEntity->appointorPerson || $businessEntity->appointorEntity)
                             <p class="mt-1 text-sm text-gray-900 dark:text-gray-100">
                                 @if ($businessEntity->appointorPerson)
                                     {{ $businessEntity->appointorPerson->first_name }} {{ $businessEntity->appointorPerson->last_name }}
@@ -255,8 +255,10 @@
                                     {{ $businessEntity->appointorEntity->legal_name }}
                                 @endif
                             </p>
-                        </div>
-                    @endif
+                        @else
+                            <p class="mt-1 text-sm text-amber-700 dark:text-amber-300">{{ __('Not set — use company profile') }}</p>
+                        @endif
+                    </div>
 
                     @php $corporateTrustees = $businessEntity->corporateTrusteeCompanies(); @endphp
                     @if ($corporateTrustees->isNotEmpty())
@@ -284,9 +286,11 @@
                         </div>
                     @endif
 
-                    <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="inline-flex text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
-                        Edit trust details
-                    </a>
+                    @can('update', $businessEntity)
+                        <button type="button" data-entity-profile-edit class="inline-flex text-xs text-indigo-600 dark:text-indigo-400 hover:underline">
+                            Edit trust details
+                        </button>
+                    @endcan
                 </div>
             @endif
 
@@ -312,7 +316,9 @@
                     <p class="text-xs font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wide">{{ BusinessEntity::asicRenewalDateLabel() }}</p>
                     <p class="mt-1 text-sm text-amber-600 dark:text-amber-400">
                         Not set
-                        <a href="{{ route('business-entities.edit', $businessEntity->id) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline ml-1">Add date</a>
+                        @can('update', $businessEntity)
+                            <button type="button" data-entity-profile-edit class="text-indigo-600 dark:text-indigo-400 hover:underline ml-1">Add date</button>
+                        @endcan
                     </p>
                 </div>
             @endif

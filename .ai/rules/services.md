@@ -56,5 +56,5 @@ director_loan_in/out on a loan-purpose bank account post Long Term Loans 4000 �
 ## Balance sheet 2500 is posted GL
 Balance sheet 2500 is posted GL (debit−credit as-of), same as 4000/1100. Do not strip 2500 or replace it with buildDirectorEntityLoanAccountBlock synthetics — that rebuild is only for the 2500 account-transactions listing. Entity-summary director loan figures also use getAccountBalanceAsOf.
 
-## Bank rent is not a 2500 synthetic
-Do not put bank-received operating income (rent, etc.) on the 2500 account-transactions listing. Skip when the row has a bank_account_id and is not director_funds/cash — including third-party payment_channel and paid_by be:{other}. Synthetics stay director_funds/cash/orphan-bank operating posts and explicit paid_by be:{other} expenses (and income that never hit a bank). Never treat a different bank owner as a director-loan counterparty.
+## Move-to-trust blocks closed and contact-only entities with inline guidance
+AssetMoveToTrustService::sourceBlockedMessage / targetBlockedMessage explain reopen vs convert. Hide Move to trust on closed/contact-only company asset pages and show data-move-to-trust-blocked; form endpoint returns the same message as JSON 422. Candidate trusts stay operationalEntities() only.

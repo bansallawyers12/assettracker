@@ -4,10 +4,11 @@
     $transactionTypeGroups = $transactionTypeGroups
         ?? ($isLoanActivityImport
             ? \App\Models\Transaction::loanActivityTypeSelectGroups()
-            : \App\Models\Transaction::typeSelectGroups());
+            : \App\Models\Transaction::typeSelectGroupsForBankAccount($bankAccount));
     $allTypes = \App\Models\Transaction::allTypes();
     $pendingCountLabel = $isLoanActivityImport ? 'to apply' : 'unmatched';
     $matchedEntryCount = (int) ($matchedEntryCount ?? 0);
+    $isOffsetCashAccount = $bankAccount->isOffsetCashAccount();
 @endphp
 
 <div
@@ -15,6 +16,7 @@
     data-bank-import-panel
     data-reconciliation-panel
     data-loan-activity="{{ $isLoanActivityImport ? '1' : '0' }}"
+    @if ($isOffsetCashAccount) data-offset-cash-account="1" @endif
 >
     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -27,6 +29,9 @@
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reconcile statement</h3>
                 <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
                     Upload a CSV, confirm Date / Description / Amount columns (auto-detected; drag to remap), then accept selected rows. Nothing posts until you accept.
+                    @if ($isOffsetCashAccount)
+                        This is the offset (cash) account — book interest, fees, and repayments on the linked loan account; money moved to or from the loan is Internal transfer.
+                    @endif
                 </p>
             @endif
         </div>

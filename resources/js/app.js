@@ -31,6 +31,7 @@ import { initTransactionPaidByBankAccount, refreshTransactionPaidByBankAccount }
 import { initFinancialReportsHub } from './financial-reports-hub.js';
 import { sealOverlayPanels } from './overlay-panels.js';
 import { showToast } from './notify.js';
+import { initConfirmableForms } from './form-confirm.js';
 
 import Alpine from 'alpinejs';
 import { registerAssetShowPage } from './asset-show-page.js';
@@ -104,6 +105,7 @@ function bootApp() {
     sealOverlayPanels();
     initAddressFieldSync();
     initGlobalFormSaving();
+    initConfirmableForms();
     initFlatpickr();
     watchFlatpickr();
     initTomSelect();
