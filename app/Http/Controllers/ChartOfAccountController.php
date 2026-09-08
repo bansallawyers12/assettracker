@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
-use App\Support\TableSort;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,21 +19,22 @@ class ChartOfAccountController extends Controller
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $tableSort = TableSort::resolve($request, ['code', 'name', 'type', 'category', 'journal_lines', 'status'], 'code', 'asc');
+        $accounts = ChartOfAccount::query()
+            ->withCount(['journalLines', 'childAccounts', 'assetsAsDepreciationAccount'])
+            ->orderBy('account_code')
+            ->get()
+            ->map(fn (ChartOfAccount $account) => $this->accountPayload($account))
+            ->values();
 
-        $query = ChartOfAccount::query()->withCount('journalLines');
-        $tableSort->applyToQuery($query, [
-            'code' => 'account_code',
-            'name' => 'account_name',
-            'type' => 'account_type',
-            'category' => 'account_category',
-            'journal_lines' => 'journal_lines_count',
-            'status' => 'is_active',
-        ], 'code');
-
-        $accounts = $query->get();
-
-        return view('chart-of-accounts.index', compact('accounts', 'tableSort'));
+        return view('chart-of-accounts.index', [
+            'accountsPayload' => $accounts,
+            'accountTypes' => ChartOfAccount::$accountTypes,
+            'accountCategories' => ChartOfAccount::$accountCategories,
+            'storeUrl' => route('chart-of-accounts.store'),
+            'indexUrl' => route('chart-of-accounts.index'),
+            'openPanel' => $request->query('panel'),
+            'openAccountId' => $request->query('account'),
+        ]);
     }
 
     /**
@@ -67,19 +67,14 @@ class ChartOfAccountController extends Controller
         return $this->apiIndex();
     }
 
-    public function create(): View
+    public function create(): RedirectResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $parentAccounts = ChartOfAccount::query()
-            ->where('is_active', true)
-            ->orderBy('account_code')
-            ->get();
-
-        return view('chart-of-accounts.create', compact('parentAccounts'));
+        return redirect()->route('chart-of-accounts.index', ['panel' => 'create']);
     }
 
-    public function store(Request $request, ?BusinessEntity $businessEntity = null): RedirectResponse
+    public function store(Request $request, ?BusinessEntity $businessEntity = null): RedirectResponse|JsonResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
         if ($businessEntity) {
@@ -89,7 +84,7 @@ class ChartOfAccountController extends Controller
 
         $this->validateNewAccount($request);
 
-        ChartOfAccount::create([
+        $account = ChartOfAccount::create([
             'account_code' => $request->account_code,
             'account_name' => $request->account_name,
             'account_type' => $request->account_type,
@@ -98,28 +93,34 @@ class ChartOfAccountController extends Controller
             'description' => $request->description,
             'opening_balance' => 0,
             'current_balance' => 0,
+            'is_active' => true,
         ]);
+
+        $account->loadCount(['journalLines', 'childAccounts', 'assetsAsDepreciationAccount']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Chart of account created successfully.',
+                'account' => $this->accountPayload($account),
+            ], 201);
+        }
 
         return redirect()->route('chart-of-accounts.index')
             ->with('success', 'Chart of account created successfully.');
     }
 
-    public function edit(ChartOfAccount $chart_of_account): View
+    public function edit(ChartOfAccount $chart_of_account): RedirectResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
 
-        $parentAccounts = ChartOfAccount::query()
-            ->where('is_active', true)
-            ->where('id', '!=', $chart_of_account->id)
-            ->orderBy('account_code')
-            ->get();
-
-        $chartOfAccount = $chart_of_account;
-
-        return view('chart-of-accounts.edit', compact('chartOfAccount', 'parentAccounts'));
+        return redirect()->route('chart-of-accounts.index', [
+            'panel' => 'edit',
+            'account' => $chart_of_account->id,
+        ]);
     }
 
-    public function update(Request $request, ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): RedirectResponse
+    public function update(Request $request, ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): RedirectResponse|JsonResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
         if ($businessEntity) {
@@ -170,11 +171,22 @@ class ChartOfAccountController extends Controller
             'is_active' => $request->boolean('is_active'),
         ]));
 
+        $chart_of_account->refresh();
+        $chart_of_account->loadCount(['journalLines', 'childAccounts', 'assetsAsDepreciationAccount']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Chart of account updated successfully.',
+                'account' => $this->accountPayload($chart_of_account),
+            ]);
+        }
+
         return redirect()->route('chart-of-accounts.index')
             ->with('success', 'Chart of account updated successfully.');
     }
 
-    public function destroy(ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): RedirectResponse
+    public function destroy(Request $request, ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): RedirectResponse|JsonResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
         if ($businessEntity) {
@@ -183,24 +195,89 @@ class ChartOfAccountController extends Controller
         }
 
         if ($chart_of_account->journalLines()->exists()) {
-            return redirect()->route('chart-of-accounts.index')
-                ->with('error', 'Cannot delete account with existing journal entries. Deactivate instead.');
+            return $this->destroyBlocked(
+                $request,
+                'Cannot delete account with existing journal entries. Deactivate instead.'
+            );
         }
 
         if ($chart_of_account->childAccounts()->exists()) {
-            return redirect()->route('chart-of-accounts.index')
-                ->with('error', 'Cannot delete an account that has sub-accounts. Reassign or remove sub-accounts first.');
+            return $this->destroyBlocked(
+                $request,
+                'Cannot delete an account that has sub-accounts. Reassign or remove sub-accounts first.'
+            );
         }
 
         if ($chart_of_account->assetsAsDepreciationAccount()->exists()) {
-            return redirect()->route('chart-of-accounts.index')
-                ->with('error', 'Cannot delete an account linked as a depreciation account on one or more assets.');
+            return $this->destroyBlocked(
+                $request,
+                'Cannot delete an account linked as a depreciation account on one or more assets.'
+            );
         }
 
+        $id = $chart_of_account->id;
         $chart_of_account->delete();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Chart of account deleted successfully.',
+                'id' => $id,
+            ]);
+        }
 
         return redirect()->route('chart-of-accounts.index')
             ->with('success', 'Chart of account deleted successfully.');
+    }
+
+    /**
+     * @return array{
+     *     id: int,
+     *     account_code: string,
+     *     account_name: string,
+     *     account_type: string,
+     *     account_category: string,
+     *     parent_account_id: int|null,
+     *     description: string|null,
+     *     is_active: bool,
+     *     journal_lines_count: int,
+     *     can_delete: bool,
+     *     update_url: string,
+     *     destroy_url: string
+     * }
+     */
+    private function accountPayload(ChartOfAccount $account): array
+    {
+        $journalLines = (int) ($account->journal_lines_count ?? 0);
+        $children = (int) ($account->child_accounts_count ?? 0);
+        $depreciation = (int) ($account->assets_as_depreciation_account_count ?? 0);
+
+        return [
+            'id' => $account->id,
+            'account_code' => $account->account_code,
+            'account_name' => $account->account_name,
+            'account_type' => $account->account_type,
+            'account_category' => $account->account_category,
+            'parent_account_id' => $account->parent_account_id,
+            'description' => $account->description,
+            'is_active' => (bool) $account->is_active,
+            'journal_lines_count' => $journalLines,
+            'can_delete' => $journalLines === 0 && $children === 0 && $depreciation === 0,
+            'update_url' => route('chart-of-accounts.update', $account),
+            'destroy_url' => route('chart-of-accounts.destroy', $account),
+        ];
+    }
+
+    private function destroyBlocked(Request $request, string $message): RedirectResponse|JsonResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => false,
+                'message' => $message,
+            ], 422);
+        }
+
+        return redirect()->route('chart-of-accounts.index')->with('error', $message);
     }
 
     private function validateNewAccount(Request $request): void
