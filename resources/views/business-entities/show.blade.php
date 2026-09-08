@@ -10,7 +10,19 @@
                 <h2 class="text-2xl font-bold text-gray-900 dark:text-white" data-entity-page-title>
                     {{ $businessEntity->legal_name }}
                 </h2>
-                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1" data-entity-page-type>{{ $businessEntity->entity_type }}</p>
+                <div class="mt-1 flex flex-wrap items-center gap-2">
+                    <p class="text-sm text-gray-600 dark:text-gray-400" data-entity-page-type>{{ $businessEntity->entity_type }}</p>
+                    @if ($businessEntity->isTenancyContactOnly())
+                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+                            {{ __('Contact only') }}
+                        </span>
+                    @endif
+                    @if ($businessEntity->isClosed())
+                        <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-900 dark:bg-rose-900/50 dark:text-rose-100">
+                            {{ __('Closed') }}
+                        </span>
+                    @endif
+                </div>
             </div>
             <div class="flex flex-wrap gap-2">
                 <button type="button" data-entity-profile-edit class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md text-sm font-medium transition-colors">
@@ -32,7 +44,7 @@
         </div>
     </x-slot>
 
-    <div class="entity-show-page py-6 bg-gray-50 dark:bg-gray-800 min-h-screen" data-profile-form-url="{{ route('entities.profile.form', $businessEntity) }}">
+    <div class="entity-show-page py-6 bg-gray-50 dark:bg-gray-800 min-h-screen" data-profile-form-url="{{ route('entities.profile.form', $businessEntity) }}" @if ($businessEntity->isClosed()) data-entity-closed="1" @endif>
         <div class="w-full px-4 sm:px-6 lg:px-8">
             @if (session('success'))
                 <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200" role="alert">
@@ -53,10 +65,56 @@
                     </ul>
                 </div>
             @endif
+            @if ($businessEntity->isClosed())
+                <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-900 dark:text-rose-100" role="status" data-closed-entity-banner>
+                    <p class="font-medium">{{ __('This entity is closed') }}</p>
+                    <p class="mt-1 text-rose-800 dark:text-rose-200">
+                        {{ __('Changes are blocked while it stays closed, including:') }}
+                    </p>
+                    <ul class="mt-2 list-disc space-y-1 pl-5 text-rose-800 dark:text-rose-200">
+                        <li>{{ __('Adding or editing assets, persons, bank accounts, and invoices') }}</li>
+                        <li>{{ __('Bank imports, transactions, and other accounting updates') }}</li>
+                    </ul>
+                    @if ($businessEntity->closed_date)
+                        <p class="mt-2 text-rose-800 dark:text-rose-200">
+                            <span class="font-medium">{{ __('Closed') }}:</span>
+                            {{ $businessEntity->closed_date->format('d/m/Y') }}
+                            @if (filled($businessEntity->closed_reason))
+                                — {{ $businessEntity->closed_reason }}
+                            @endif
+                        </p>
+                    @endif
+                    <p class="mt-2 text-rose-800 dark:text-rose-200">
+                        {{ __('To make changes again, edit the company profile and set Status to Active. That clears the closed date and reopens the entity.') }}
+                    </p>
+                    <div class="mt-3">
+                        <button type="button" data-entity-profile-edit class="inline-flex items-center rounded-md bg-rose-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-800 dark:bg-rose-600 dark:hover:bg-rose-500">
+                            <x-lucide-pencil class="mr-1.5 h-4 w-4" aria-hidden="true" />
+                            {{ __('Reopen via company profile') }}
+                        </button>
+                    </div>
+                </div>
+            @endif
             @if ($businessEntity->isTenancyContactOnly())
-                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-900 dark:text-amber-100" role="status">
+                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-900 dark:text-amber-100" role="status" data-tenancy-contact-banner>
                     <p class="font-medium">{{ __('Tenancy / property manager contact') }}</p>
-                    <p class="mt-1 text-amber-800 dark:text-amber-200">{{ __('This company is treated as a contact for managing rentals, not as one of your operating entities. It is hidden from the main entity list, reports, and accounting pickers. Prefer adding agencies when you add a tenant on an asset.') }}</p>
+                    <p class="mt-1 text-amber-800 dark:text-amber-200">
+                        {{ __('This company is a rental agency / property-manager contact, not one of your operating entities. That is why some sections are missing:') }}
+                    </p>
+                    <ul class="mt-2 list-disc space-y-1 pl-5 text-amber-800 dark:text-amber-200">
+                        <li>{{ __('Profit & Loss, Balance Sheet, and Manual journals') }}</li>
+                        <li>{{ __('Company officer / trustee roles on the Persons tab') }}</li>
+                        <li>{{ __('Main entity list, financial reports, and accounting pickers') }}</li>
+                    </ul>
+                    <p class="mt-2 text-amber-800 dark:text-amber-200">
+                        {{ __('Prefer linking agencies when you add a tenant on a property asset. To treat this record as an operating entity instead, edit the company profile and turn off “Tenancy / property manager contact only”.') }}
+                    </p>
+                    <div class="mt-3">
+                        <button type="button" data-entity-profile-edit class="inline-flex items-center rounded-md bg-amber-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500">
+                            <x-lucide-pencil class="mr-1.5 h-4 w-4" aria-hidden="true" />
+                            {{ __('Edit company profile') }}
+                        </button>
+                    </div>
                 </div>
             @endif
             <div class="flex flex-col lg:flex-row gap-6">
@@ -96,6 +154,15 @@
                                                 <x-lucide-book-open class="w-3.5 h-3.5 text-slate-600 dark:text-slate-400 shrink-0" aria-hidden="true" />
                                                 Manual journals
                                             </a>
+                                        @else
+                                            <span
+                                                class="inline-flex items-center gap-1.5 rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100"
+                                                title="{{ __('Profit & Loss, Balance Sheet, and Manual journals are unavailable because this is a tenancy / property manager contact.') }}"
+                                                data-tenancy-accounting-unavailable
+                                            >
+                                                <x-lucide-info class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                                                {{ __('P&L / journals unavailable') }}
+                                            </span>
                                         @endunless
                                         <a href="#tab_bank_accounts" class="tab-link entity-tab-link inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
                                             <x-lucide-credit-card class="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 shrink-0" aria-hidden="true" />
@@ -148,10 +215,12 @@
                                 <div class="space-y-3">
                                     <div class="flex justify-between items-center">
                                         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Invoices</h3>
-                                        <a href="{{ route('business-entities.invoices.create', $businessEntity->id) }}" class="inline-flex items-center px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
-                                            <x-lucide-plus class="h-4 w-4 mr-1" />
-                                            Create Invoice
-                                        </a>
+                                        @unless ($businessEntity->isClosed())
+                                            <a href="{{ route('business-entities.invoices.create', $businessEntity->id) }}" class="inline-flex items-center px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
+                                                <x-lucide-plus class="h-4 w-4 mr-1" />
+                                                Create Invoice
+                                            </a>
+                                        @endunless
                                     </div>
                                     @if ($invoices->isEmpty())
                                         <p class="text-gray-500 dark:text-gray-400 text-center py-4">No invoices yet.</p>
@@ -200,7 +269,10 @@
                             <div id="tab_financial_reports" class="tab-content hidden">
                                 <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
                                     @if ($businessEntity->isTenancyContactOnly())
-                                        <p class="text-sm text-gray-600 dark:text-gray-400">{{ __('Financial reports are not available for tenancy or property-manager contacts.') }}</p>
+                                        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/40" data-tenancy-financial-reports-notice>
+                                            <p class="text-sm font-medium text-amber-900 dark:text-amber-100">{{ __('Financial reports are not available') }}</p>
+                                            <p class="mt-1 text-sm text-amber-800 dark:text-amber-200">{{ __('Profit & Loss, Balance Sheet, and related reports apply to operating entities only. This record is marked as a tenancy / property manager contact.') }}</p>
+                                        </div>
                                     @else
                                     <div class="flex justify-between items-center mb-4">
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Financial Reports</h3>
@@ -488,14 +560,16 @@
                                             <a href="{{ route('bank-accounts.index') }}" class="inline-flex items-center px-2 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
                                                 Portfolio registry
                                             </a>
-                                            <button
-                                                type="button"
-                                                data-open-add-bank-account
-                                                class="entity-btn-primary"
-                                            >
-                                                <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
-                                                Add Account
-                                            </button>
+                                            @unless ($businessEntity->isClosed())
+                                                <button
+                                                    type="button"
+                                                    data-open-add-bank-account
+                                                    class="entity-btn-primary"
+                                                >
+                                                    <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
+                                                    Add Account
+                                                </button>
+                                            @endunless
                                         </div>
                                     </div>
 

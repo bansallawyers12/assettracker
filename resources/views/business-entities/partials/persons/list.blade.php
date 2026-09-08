@@ -8,13 +8,23 @@
             <x-lucide-users class="h-6 w-6 text-gray-400" aria-hidden="true" />
         </div>
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No persons yet</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
-            Persons are directors, shareholders, trustees, or other roles linked to this entity.
-        </p>
-        <button type="button" data-persons-action="create" class="entity-btn-primary mt-4 inline-flex">
-            <x-lucide-user-plus class="h-4 w-4 mr-1" aria-hidden="true" />
-            {{ $businessEntity->isTrust() ? 'Add your first person or company' : 'Add your first person' }}
-        </button>
+        @if ($businessEntity->isClosed())
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
+                {{ __('This entity is closed, so officers cannot be added.') }}
+            </p>
+        @elseif ($businessEntity->isTenancyContactOnly())
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
+                {{ __('Officer roles are not used on tenancy / property manager contacts.') }}
+            </p>
+        @else
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
+                Persons are directors, shareholders, trustees, or other roles linked to this entity.
+            </p>
+            <button type="button" data-persons-action="create" class="entity-btn-primary mt-4 inline-flex">
+                <x-lucide-user-plus class="h-4 w-4 mr-1" aria-hidden="true" />
+                {{ $businessEntity->isTrust() ? 'Add your first person or company' : 'Add your first person' }}
+            </button>
+        @endif
     </div>
 @else
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">

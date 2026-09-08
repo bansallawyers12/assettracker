@@ -19,12 +19,23 @@ import { initEntityFormFields } from './entity-create-form.js';
 
 const panelFormHandlers = [];
 
-function alertHttpError(status) {
+function alertHttpError(status, payload) {
     if (status === 419) {
         showWorkspaceAlert({ title: 'Session expired', message: 'Refresh the page and try again.' });
         return;
     }
-    showWorkspaceAlert({ message: 'Request failed. Please try again.' });
+
+    if (status === 403) {
+        showWorkspaceAlert({
+            title: 'Action not allowed',
+            message: payload?.message || 'This entity cannot be changed in its current state.',
+        });
+        return;
+    }
+
+    showWorkspaceAlert({
+        message: payload?.message || 'Request failed. Please try again.',
+    });
 }
 
 function initFormPlugins(root) {
@@ -105,7 +116,7 @@ function initAssetsWorkspace(root) {
         const payload = parseJson(await response.text());
         if (!response.ok || !payload?.html) {
             closeWorkspacePanel();
-            alertHttpError(response.status);
+            alertHttpError(response.status, payload);
             return;
         }
         setWorkspacePanelContent(payload.html);
@@ -150,7 +161,7 @@ function initAssetsWorkspace(root) {
             const payload = parseJson(await response.text());
             if (!response.ok || !payload?.html) {
                 closeWorkspacePanel();
-                alertHttpError(response.status);
+                alertHttpError(response.status, payload);
                 return;
             }
             setWorkspacePanelContent(payload.html);
@@ -220,7 +231,7 @@ function initNotesWorkspace(root) {
             const response = await apiFetch(deleteUrl, { method: 'DELETE' });
             const payload = parseJson(await response.text());
             if (!response.ok || !payload?.list_html) {
-                alertHttpError(response.status);
+                alertHttpError(response.status, payload);
                 return;
             }
             if (listEl) {
@@ -269,7 +280,7 @@ function initContactsWorkspace(root) {
         const payload = parseJson(await response.text());
         if (!response.ok || !payload?.html) {
             closeWorkspacePanel();
-            alertHttpError(response.status);
+            alertHttpError(response.status, payload);
             return;
         }
         setWorkspacePanelContent(payload.html);
@@ -312,7 +323,7 @@ function initContactsWorkspace(root) {
             const response = await apiFetch(`/business-entities/${entityId}/contact-lists/${contactId}`, { method: 'DELETE' });
             const payload = parseJson(await response.text());
             if (!response.ok) {
-                alertHttpError(response.status);
+                alertHttpError(response.status, payload);
                 return;
             }
             await refreshList(payload.list_html);
@@ -346,7 +357,7 @@ function initProfileWorkspace(pageRoot) {
         const payload = parseJson(await response.text());
         if (!response.ok || !payload?.html) {
             closeWorkspacePanel();
-            alertHttpError(response.status);
+            alertHttpError(response.status, payload);
             return;
         }
 

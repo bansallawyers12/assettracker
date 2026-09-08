@@ -36,9 +36,11 @@
         <button type="button" data-entity-panel-close class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
             Close
         </button>
-        <button type="button" data-assets-action="edit" data-asset-id="{{ $asset->id }}" class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-            Edit Asset
-        </button>
+        @unless ($businessEntity->isClosed())
+            <button type="button" data-assets-action="edit" data-asset-id="{{ $asset->id }}" class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+                Edit Asset
+            </button>
+        @endunless
         <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $asset->id]) }}" target="_blank" rel="noopener" class="inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200">
             Full asset page
         </a>

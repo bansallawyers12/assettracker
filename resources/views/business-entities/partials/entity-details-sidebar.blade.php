@@ -85,6 +85,11 @@
                     <div class="min-w-0">
                         <h3 class="text-sm font-semibold text-white uppercase tracking-wide">Business Details</h3>
                         <p class="mt-0.5 text-sm text-indigo-100 truncate" title="{{ $businessEntity->legal_name }}">{{ $businessEntity->legal_name }}</p>
+                        @if ($businessEntity->isTenancyContactOnly())
+                            <span class="mt-2 inline-flex items-center rounded-full bg-amber-100/95 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-950">
+                                {{ __('Contact only') }}
+                            </span>
+                        @endif
                     </div>
                 </div>
 
@@ -120,7 +125,15 @@
                         <span class="font-medium">Date:</span>
                         {{ $businessEntity->closed_date->format('d/m/Y') }}
                     </p>
-                    <p class="mt-2 text-sm text-rose-900 dark:text-rose-100 whitespace-pre-line">{{ $businessEntity->closed_reason }}</p>
+                    @if (filled($businessEntity->closed_reason))
+                        <p class="mt-2 text-sm text-rose-900 dark:text-rose-100 whitespace-pre-line">{{ $businessEntity->closed_reason }}</p>
+                    @endif
+                    <p class="mt-2 text-xs text-rose-800 dark:text-rose-200">
+                        {{ __('Mutations are blocked until you set Status to Active in the company profile.') }}
+                    </p>
+                    <button type="button" data-entity-profile-edit class="mt-3 inline-flex items-center text-sm font-medium text-rose-800 underline hover:text-rose-950 dark:text-rose-200 dark:hover:text-rose-50">
+                        {{ __('Reopen via profile') }}
+                    </button>
                 </div>
             @endif
 

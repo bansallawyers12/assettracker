@@ -10,6 +10,15 @@
 
     <div data-ws-form-errors class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200"></div>
 
+    @if ($businessEntity->isClosed())
+        <div class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100" role="status" data-closed-profile-notice>
+            <p class="font-medium">{{ __('Reopen before other edits') }}</p>
+            <p class="mt-1 text-rose-800 dark:text-rose-200">
+                {{ __('Set Status to Active and save to clear the closed date. Other profile changes stay blocked until the entity is reopened.') }}
+            </p>
+        </div>
+    @endif
+
     @include('business-entities.partials.create-form-fields', [
         'businessEntity' => $businessEntity,
         'persons' => $persons,
@@ -18,6 +27,8 @@
 
     <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
         <button type="button" data-entity-panel-close class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">Cancel</button>
-        <button type="submit" data-ws-submit class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">Save Profile</button>
+        <button type="submit" data-ws-submit class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
+            {{ $businessEntity->isClosed() ? __('Save & reopen') : __('Save Profile') }}
+        </button>
     </div>
 </form>

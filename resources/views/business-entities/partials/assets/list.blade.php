@@ -4,11 +4,17 @@
             <x-lucide-package class="h-6 w-6 text-gray-400" />
         </div>
         <p class="text-sm font-medium text-gray-700 dark:text-gray-300">No assets yet</p>
-        <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">Assets are items this entity owns or manages—such as property, vehicles, or equipment.</p>
-        <button type="button" data-assets-action="create" class="entity-btn-primary mt-4 inline-flex">
-            <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
-            Add your first asset
-        </button>
+        @if ($businessEntity->isClosed())
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">
+                {{ __('This entity is closed, so new assets cannot be added.') }}
+            </p>
+        @else
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-md mx-auto">Assets are items this entity owns or manages—such as property, vehicles, or equipment.</p>
+            <button type="button" data-assets-action="create" class="entity-btn-primary mt-4 inline-flex">
+                <x-lucide-plus class="h-4 w-4 mr-1" aria-hidden="true" />
+                Add your first asset
+            </button>
+        @endif
     </div>
 @else
     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">

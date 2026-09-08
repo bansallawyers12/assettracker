@@ -295,7 +295,7 @@
                                 <input type="checkbox" name="exclude_from_financial_reports" value="1" class="mt-1 rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500" {{ old('exclude_from_financial_reports', $businessEntity->exclude_from_financial_reports ?? false) ? 'checked' : '' }}>
                                 <span>
                                     <span class="block text-sm font-medium text-gray-900">{{ __('Tenancy / property manager contact (not our operating entity)') }}</span>
-                                    <span class="block text-xs text-gray-600 mt-1">{{ __('When checked, this record is hidden from the main entity list, financial reports, bank import, and other accounting pickers. Prefer adding rental agencies via Add tenant on an asset when possible.') }}</span>
+                                    <span class="block text-xs text-gray-600 mt-1">{{ __('When checked, this record is hidden from the main entity list, financial reports, bank import, and other accounting pickers. Profit & Loss, Balance Sheet, Manual journals, and company officer roles stay unavailable. Prefer adding rental agencies via Add tenant on an asset when possible.') }}</span>
                                 </span>
                             </label>
                             @error('exclude_from_financial_reports') <span class="text-red-500 text-sm mt-2 block">{{ $message }}</span> @enderror

@@ -56,13 +56,13 @@ Asset Tracker is a mature Laravel portal (entities, assets, banking, accounting,
 
 ## 2. Business entities
 
-| ID | Type | Sev | Summary | User impact | Evidence |
-| --- | --- | --- | --- | --- | --- |
-| entity-001 | UX | Medium | Tenancy / property-manager contacts (`exclude_from_financial_reports`) | P&L, bank, journals, officer roles hidden; users may not understand missing tabs | `EnsuresOperationalBusinessEntity`, `tests/Feature/EntityAccountingNavTest.php` |
-| entity-002 | Functionality | Medium | Closed entities block mutations (403) | Bank links, transactions, edits fail on closed entities | `EnsuresOperationalBusinessEntity::ensureNotClosed` |
-| entity-003 | UX | Low | No separate Bank Import tab | Import lives per bank account under Bank Accounts; `#tab_bank_import` aliased to bank accounts | `.ai/rules/business-entities.md` |
-| entity-004 | Security | Medium | Profile workspace AJAX requires `update` policy | If RBAC added later, profile panel may 403 while show page loads | `EntityShowWorkspaceController.php` |
-| entity-005 | UX | Low | Trust appointor vs `entity_person` roles | Appointor belongs on trust company profile, not as normal officer role | `README.md` |
+| ID | Type | Sev | Summary | User impact | Evidence | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| entity-001 | UX | Medium | Tenancy / property-manager contacts (`exclude_from_financial_reports`) | P&L, bank, journals, officer roles hidden; users may not understand missing tabs | `EnsuresOperationalBusinessEntity`, `tests/Feature/EntityAccountingNavTest.php` | **Fixed** — banner lists missing sections + convert CTA; accounting nav chip; Persons tab notice; Contact only badges |
+| entity-002 | Functionality | Medium | Closed entities block mutations (403) | Bank links, transactions, edits fail on closed entities | `EnsuresOperationalBusinessEntity::ensureNotClosed` | **Fixed** — closed banner + reopen CTA; hide mutate buttons; JSON 403 message; profile “Save & reopen” |
+| entity-003 | UX | Low | No separate Bank Import tab | Import lives per bank account under Bank Accounts; `#tab_bank_import` aliased to bank accounts | `.ai/rules/business-entities.md` | Open |
+| entity-004 | Security | Medium | Profile workspace AJAX requires `update` policy | If RBAC added later, profile panel may 403 while show page loads | `EntityShowWorkspaceController.php` | Open |
+| entity-005 | UX | Low | Trust appointor vs `entity_person` roles | Appointor belongs on trust company profile, not as normal officer role | `README.md` | Open |
 
 **Recent history:** Entity workspace **403** errors occurred when booking entity context or policy checks did not align with the selected entity (Aug 2026).
 

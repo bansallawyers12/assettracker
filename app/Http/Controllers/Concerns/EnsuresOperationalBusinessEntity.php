@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Concerns;
 
 use App\Models\BusinessEntity;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Http\Request;
 
 trait EnsuresOperationalBusinessEntity
 {
@@ -11,8 +13,11 @@ trait EnsuresOperationalBusinessEntity
      */
     protected function ensureOperationalForAccounting(BusinessEntity $businessEntity): void
     {
-        abort_if(
-            $businessEntity->isTenancyContactOnly(),
+        if (! $businessEntity->isTenancyContactOnly()) {
+            return;
+        }
+
+        $this->abortOperationalRestriction(
             403,
             'This action is not available for tenancy or property-manager contacts. Edit the company profile if this should be one of your operating entities.'
         );
@@ -23,10 +28,28 @@ trait EnsuresOperationalBusinessEntity
      */
     protected function ensureNotClosed(BusinessEntity $businessEntity): void
     {
-        abort_if(
-            $businessEntity->isClosed(),
+        if (! $businessEntity->isClosed()) {
+            return;
+        }
+
+        $this->abortOperationalRestriction(
             403,
-            'This action cannot be performed on a closed entity.'
+            'This entity is closed, so bank links, transactions, assets, and other changes are blocked. Reopen it from Edit company profile by setting Status to Active.'
         );
+    }
+
+    protected function abortOperationalRestriction(int $status, string $message): void
+    {
+        /** @var Request|null $request */
+        $request = request();
+
+        if ($request instanceof Request && $request->expectsJson()) {
+            throw new HttpResponseException(response()->json([
+                'status' => false,
+                'message' => $message,
+            ], $status));
+        }
+
+        abort($status, $message);
     }
 }

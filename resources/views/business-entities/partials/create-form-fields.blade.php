@@ -98,6 +98,9 @@
                         <option value="{{ $status }}" @selected($currentStatus === $status)>{{ $status }}</option>
                     @endforeach
                 </select>
+                @if ($entity->isClosed())
+                    <p class="bank-field-hint mt-1">{{ __('Choose Active and save to reopen this closed entity.') }}</p>
+                @endif
                 @error('status') <span class="bank-field-error mt-1 block">{{ $message }}</span> @enderror
             </div>
         @endif
@@ -336,7 +339,7 @@
         >
         <span>
             <span class="block text-sm font-medium text-gray-900 dark:text-gray-100">{{ __('Tenancy / property manager contact only') }}</span>
-            <span class="mt-1 block text-sm text-gray-600 dark:text-gray-400">{{ __('Exclude from your operating entity list, reports, and accounting pickers.') }}</span>
+            <span class="mt-1 block text-sm text-gray-600 dark:text-gray-400">{{ __('Exclude from your operating entity list, reports, and accounting pickers. Profit & Loss, Balance Sheet, Manual journals, and company officer roles stay unavailable while this is checked.') }}</span>
         </span>
     </label>
     @error('exclude_from_financial_reports') <span class="bank-field-error mt-2 block">{{ $message }}</span> @enderror
