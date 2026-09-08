@@ -76,6 +76,7 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($js)->toContain('match_invoice')
         ->and($js)->toContain('data-bank-import-invoice')
         ->and($js)->toContain('invoice_candidates')
+        ->and($js)->toContain('An explicit create choice overrides a preselected invoice/transaction')
         ->and(substr_count($js, "entryEl.querySelector('[data-bank-import-subject-to-bas]')"))->toBeGreaterThanOrEqual(2)
         ->and(substr_count($js, "entryEl.querySelector('[data-bank-import-is-flagged]')"))->toBeGreaterThanOrEqual(2)
         ->and(substr_count($js, "entryEl.querySelector('[data-bank-import-comments]')"))->toBeGreaterThanOrEqual(2)

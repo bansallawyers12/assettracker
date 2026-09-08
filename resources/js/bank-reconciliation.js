@@ -260,15 +260,22 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
             const invoiceSelect = entryEl.querySelector('[data-bank-import-invoice]');
             const typeSelect = entryEl.querySelector('[data-bank-import-create-type]');
-            if (txSelect && suggestion.transaction_id) {
-                txSelect.value = String(suggestion.transaction_id);
+            if (txSelect) {
+                txSelect.value = suggestion.transaction_id ? String(suggestion.transaction_id) : '';
             }
-            if (invoiceSelect && suggestion.invoice_id) {
-                invoiceSelect.value = String(suggestion.invoice_id);
+            if (invoiceSelect) {
+                invoiceSelect.value = suggestion.invoice_id ? String(suggestion.invoice_id) : '';
             }
-            if (typeSelect && action === 'create_transaction' && suggestion.transaction_type) {
-                typeSelect.value = suggestion.transaction_type;
+            if (typeSelect) {
+                typeSelect.value = (action === 'create_transaction' && suggestion.transaction_type)
+                    ? suggestion.transaction_type
+                    : '';
             }
+            [txSelect, invoiceSelect, typeSelect].forEach((select) => {
+                if (select) {
+                    refreshTomSelect(select);
+                }
+            });
         });
     }
 
@@ -327,6 +334,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     if (chartSelect) chartSelect.value = '';
                     if (typeSelect) typeSelect.value = '';
                     if (invoiceSelect) invoiceSelect.value = '';
+                    [chartSelect, typeSelect, invoiceSelect].forEach((select) => {
+                        if (select) refreshTomSelect(select);
+                    });
                 }
             }, { signal });
 
@@ -335,6 +345,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     if (txSelect) txSelect.value = '';
                     if (chartSelect) chartSelect.value = '';
                     if (typeSelect) typeSelect.value = '';
+                    [txSelect, chartSelect, typeSelect].forEach((select) => {
+                        if (select) refreshTomSelect(select);
+                    });
                 }
             }, { signal });
 
@@ -343,6 +356,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     if (txSelect) txSelect.value = '';
                     if (typeSelect) typeSelect.value = '';
                     if (invoiceSelect) invoiceSelect.value = '';
+                    [txSelect, typeSelect, invoiceSelect].forEach((select) => {
+                        if (select) refreshTomSelect(select);
+                    });
                 }
             }, { signal });
 
@@ -351,6 +367,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     if (txSelect) txSelect.value = '';
                     if (chartSelect) chartSelect.value = '';
                     if (invoiceSelect) invoiceSelect.value = '';
+                    [txSelect, chartSelect, invoiceSelect].forEach((select) => {
+                        if (select) refreshTomSelect(select);
+                    });
                 }
             }, { signal });
         });
@@ -446,6 +465,14 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     transactionId = suggestedTransactionId;
                     invoiceId = suggestedInvoiceId;
                     transactionType = suggestedType;
+                } else if (transactionType || chartAccountId) {
+                    // An explicit create choice overrides a preselected invoice/transaction.
+                    transactionId = '';
+                    invoiceId = '';
+                } else if (transactionId) {
+                    invoiceId = '';
+                } else if (invoiceId) {
+                    transactionId = '';
                 }
             } else {
                 transactionId = suggestedTransactionId;

@@ -7,19 +7,35 @@
     $cancelUrl = $isEdit
         ? route('business-entities.invoices.show', [$businessEntity, $invoice])
         : route('business-entities.invoices.index', $businessEntity);
-    $defaultLines = $isEdit
-        ? $invoice->lines->map(fn ($line) => [
-            'description' => $line->description,
+    $collapseLine = function (array $line) use ($defaultAccountCode): array {
+        $quantity = (float) ($line['quantity'] ?? 1);
+        if ($quantity <= 0) {
+            $quantity = 1;
+        }
+        $unitPrice = (float) ($line['unit_price'] ?? 0);
+
+        return [
+            'description' => $line['description'] ?? '',
             'quantity' => 1,
+            // Qty is hidden (always 1); fold existing qty into the unit price so totals stay correct.
+            'unit_price' => round($quantity * $unitPrice, 2),
+            'account_code' => $line['account_code'] ?? $defaultAccountCode,
+        ];
+    };
+    $defaultLines = $isEdit
+        ? $invoice->lines->map(fn ($line) => $collapseLine([
+            'description' => $line->description,
+            'quantity' => (float) $line->quantity,
             'unit_price' => (float) $line->unit_price,
             'account_code' => $line->account_code ?? $defaultAccountCode,
-        ])->values()->all()
-        : [[
+        ]))->values()->all()
+        : [$collapseLine([
             'description' => '',
             'quantity' => 1,
             'unit_price' => 0,
             'account_code' => $defaultAccountCode,
-        ]];
+        ])];
+    $oldLines = old('lines');
     $formConfig = [
         'assets' => $assetsForForm,
         'incomeAccounts' => $incomeAccounts->map(fn ($a) => [
@@ -33,13 +49,14 @@
         'reference' => old('reference', $isEdit ? $invoice->reference : ''),
         'notes' => old('notes', $isEdit ? $invoice->notes : ''),
         'gstBasis' => old('gst_basis', $isEdit ? ($invoice->gst_basis ?: 'inclusive') : 'inclusive'),
-        'gstPercent' => (float) old('gst_percent', $isEdit ? ($defaultGstPercent ?? 10) : 10),
         'issueDate' => $issueDate,
         'dueDate' => $defaultDueDate,
         'invoiceNumber' => $suggestedInvoiceNumber,
         'suggestedInvoiceNumber' => $suggestedInvoiceNumber,
         'suggestNumberUrl' => $suggestNumberUrl,
-        'lines' => old('lines', $defaultLines),
+        'lines' => is_array($oldLines)
+            ? array_values(array_map($collapseLine, $oldLines))
+            : $defaultLines,
         'lockInvoiceNumber' => (bool) ($lockInvoiceNumber ?? false),
         'lockDueDate' => (bool) ($lockDueDate ?? false),
     ];
@@ -48,7 +65,7 @@
 
 <div class="py-8 w-full px-4 sm:px-6 lg:px-8"
      x-data="invoiceForm(@js($formConfig))"
-     x-init="initFlatpickrHooks()">
+     x-init="init()">
     @if (session('error'))
         <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">{{ session('error') }}</div>
     @endif
@@ -79,14 +96,14 @@
         @endif
 
         {{-- Hidden defaults (kept for backend compatibility) --}}
-        <input type="hidden" name="invoice_number" x-model="invoiceNumber">
+        <input type="hidden" name="invoice_number" value="{{ $suggestedInvoiceNumber }}" x-model="invoiceNumber">
         <input type="hidden" name="currency" value="AUD">
-        <input type="hidden" name="reference" x-model="reference">
-        <input type="hidden" name="notes" x-model="notes">
-        <input type="hidden" name="asset_id" :value="assetId">
-        <input type="hidden" name="lease_id" :value="leaseId">
-        <input type="hidden" name="gst_percent" :value="gstApplicable ? 10 : 0">
-        <input type="hidden" name="gst_basis" :value="gstApplicable ? 'inclusive' : 'none'">
+        <input type="hidden" name="reference" value="{{ $formConfig['reference'] }}" x-model="reference">
+        <input type="hidden" name="notes" value="{{ $formConfig['notes'] }}" x-model="notes">
+        <input type="hidden" name="asset_id" value="{{ $formConfig['assetId'] }}" :value="assetId">
+        <input type="hidden" name="lease_id" value="{{ $formConfig['leaseId'] }}" :value="leaseId">
+        <input type="hidden" name="gst_percent" value="{{ ($formConfig['gstBasis'] ?? 'inclusive') === 'none' ? 0 : 10 }}" :value="gstPercent">
+        <input type="hidden" name="gst_basis" value="{{ $formConfig['gstBasis'] ?? 'inclusive' }}" :value="gstBasis">
 
         {{-- Invoice details --}}
         <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
@@ -137,7 +154,7 @@
         <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">GST</h3>
-                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">10% inclusive when GST applies</p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400" x-text="gstHint"></p>
             </div>
             <div class="p-5">
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -264,6 +281,8 @@
             reference: config.reference || '',
             notes: config.notes || '',
             gstApplicableRadio: (config.gstBasis && config.gstBasis !== 'none') ? '1' : '0',
+            // Preserve exclusive on existing drafts; new invoices always use inclusive.
+            gstBasisWhenApplicable: config.gstBasis === 'exclusive' ? 'exclusive' : 'inclusive',
             issueDate: config.issueDate || '',
             dueDate: config.dueDate || '',
             invoiceNumber: config.invoiceNumber || '',
@@ -291,13 +310,24 @@
                 return this.gstApplicableRadio === '1' || this.gstApplicableRadio === 1 || this.gstApplicableRadio === true;
             },
             get gstBasis() {
-                return this.gstApplicable ? 'inclusive' : 'none';
+                return this.gstApplicable ? this.gstBasisWhenApplicable : 'none';
             },
             get gstPercent() {
                 return this.gstApplicable ? 10 : 0;
             },
+            get gstHint() {
+                if (!this.gstApplicable) {
+                    return 'GST not charged on this invoice';
+                }
+                return this.gstBasisWhenApplicable === 'exclusive'
+                    ? '10% exclusive (GST added on top) — kept from this draft'
+                    : '10% inclusive when GST applies';
+            },
             get unitPriceLabel() {
-                return this.gstApplicable ? 'Unit price (inc GST)' : 'Unit price';
+                if (!this.gstApplicable) {
+                    return 'Unit price';
+                }
+                return this.gstBasisWhenApplicable === 'exclusive' ? 'Unit price (ex GST)' : 'Unit price (inc GST)';
             },
             get gstRate() {
                 if (!this.gstApplicable) {
@@ -322,6 +352,12 @@
                     const total = Math.round(qty * price * 100) / 100;
                     return { net: total, gst: 0, lineTotal: total };
                 }
+                if (this.gstBasisWhenApplicable === 'exclusive') {
+                    const net = Math.round(qty * price * 100) / 100;
+                    const gst = Math.round(net * rate * 100) / 100;
+                    const lineTotal = Math.round((net + gst) * 100) / 100;
+                    return { net, gst, lineTotal };
+                }
                 const lineTotal = Math.round(qty * price * 100) / 100;
                 const net = Math.round((lineTotal / (1 + rate)) * 100) / 100;
                 const gst = Math.round((lineTotal - net) * 100) / 100;
@@ -343,9 +379,18 @@
                     this.lines.splice(index, 1);
                 }
             },
-            onLeaseChange() {
+            syncLeaseAsset() {
+                if (!this.leaseId) {
+                    this.assetId = '';
+                    return;
+                }
                 const lease = this.allLeases.find((item) => String(item.id) === String(this.leaseId));
-                this.assetId = lease ? String(lease.asset_id) : '';
+                if (lease) {
+                    this.assetId = String(lease.asset_id);
+                }
+            },
+            onLeaseChange() {
+                this.syncLeaseAsset();
                 this.applyLeaseDefaults();
             },
             applyLeaseDefaults() {
@@ -362,7 +407,15 @@
                 }
                 if (Object.prototype.hasOwnProperty.call(lease, 'gst_applicable')) {
                     this.gstApplicableRadio = lease.gst_applicable ? '1' : '0';
+                    if (lease.gst_applicable) {
+                        // Lease-driven GST always follows the create default (inclusive).
+                        this.gstBasisWhenApplicable = 'inclusive';
+                    }
                 }
+            },
+            init() {
+                this.syncLeaseAsset();
+                this.initFlatpickrHooks();
             },
             addDaysYmd(ymd, days) {
                 const parts = String(ymd).split('-').map(Number);

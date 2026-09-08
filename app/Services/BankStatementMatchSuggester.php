@@ -165,6 +165,14 @@ class BankStatementMatchSuggester
         $ranked = [];
 
         foreach ($invoices as $invoice) {
+            if (($invoice->status ?? null) !== null && $invoice->status !== 'approved') {
+                continue;
+            }
+
+            if ($invoice->paid_at || $invoice->payment_transaction_id) {
+                continue;
+            }
+
             if (abs($entryAmount - (float) $invoice->total_amount) > self::AMOUNT_TOLERANCE) {
                 continue;
             }

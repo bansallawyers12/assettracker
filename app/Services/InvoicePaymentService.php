@@ -106,7 +106,10 @@ class InvoicePaymentService
             $paidAt,
             null,
             $reference !== '' ? $reference : null,
-            (int) $statementEntry->id
+            (int) $statementEntry->id,
+            null,
+            'matches',
+            'matches'
         );
     }
 
@@ -118,7 +121,9 @@ class InvoicePaymentService
         ?string $paymentMethod,
         ?string $paymentReference,
         ?int $statementEntryId,
-        ?Request $request = null
+        ?Request $request = null,
+        string $invoiceErrorKey = 'paid_at',
+        string $statementErrorKey = 'bank_statement_entry_id'
     ): Transaction {
         $lockedInvoice = Invoice::query()
             ->whereKey($invoice->id)
@@ -127,19 +132,19 @@ class InvoicePaymentService
 
         if (! $lockedInvoice || (int) $lockedInvoice->business_entity_id !== (int) $businessEntity->id) {
             throw ValidationException::withMessages([
-                'paid_at' => 'Invoice could not be found for payment.',
+                $invoiceErrorKey => 'Invoice could not be found for payment.',
             ]);
         }
 
         if ($lockedInvoice->status !== 'approved') {
             throw ValidationException::withMessages([
-                'paid_at' => 'Only approved (posted) invoices can be marked paid.',
+                $invoiceErrorKey => 'Only approved (posted) invoices can be marked paid.',
             ]);
         }
 
         if ($lockedInvoice->paid_at || $lockedInvoice->payment_transaction_id) {
             throw ValidationException::withMessages([
-                'paid_at' => 'This invoice is already recorded as paid.',
+                $invoiceErrorKey => 'This invoice is already recorded as paid.',
             ]);
         }
 
@@ -154,19 +159,19 @@ class InvoicePaymentService
                 || (int) $statementEntry->bank_account_id !== (int) $bankAccount->id
                 || $statementEntry->transaction_id !== null) {
                 throw ValidationException::withMessages([
-                    'bank_statement_entry_id' => 'The selected statement line is not available on this account.',
+                    $statementErrorKey => 'The selected statement line is not available on this account.',
                 ]);
             }
 
-            if (abs(abs((float) $statementEntry->amount) - (float) $lockedInvoice->total_amount) > 0.005) {
+            if (abs(abs((float) $statementEntry->amount) - (float) $lockedInvoice->total_amount) > BankStatementMatchSuggester::AMOUNT_TOLERANCE) {
                 throw ValidationException::withMessages([
-                    'bank_statement_entry_id' => 'Statement line amount does not match the invoice total.',
+                    $statementErrorKey => 'Statement line amount does not match the invoice total.',
                 ]);
             }
 
             if ((float) $statementEntry->amount < 0) {
                 throw ValidationException::withMessages([
-                    'bank_statement_entry_id' => 'Invoice payments must match an incoming (credit) statement line.',
+                    $statementErrorKey => 'Invoice payments must match an incoming (credit) statement line.',
                 ]);
             }
         }

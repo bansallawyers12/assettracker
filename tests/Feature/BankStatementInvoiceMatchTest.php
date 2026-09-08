@@ -164,7 +164,8 @@ it('rejects matching a statement credit to an invoice with a different total', f
                 ],
             ],
         ])
-        ->assertUnprocessable();
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('matches');
 
     expect($invoice->fresh()->status)->toBe('approved')
         ->and($entry->fresh()->transaction_id)->toBeNull();

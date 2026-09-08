@@ -49,7 +49,7 @@ class BankStatementApplyService
 
                 if ($transactionId !== null && ($invoiceId !== null || $chartAccountId !== null || $transactionType !== null)) {
                     throw ValidationException::withMessages([
-                        'matches' => 'Choose either an existing transaction or a create action for each line, not both.',
+                        'matches' => 'Choose either an existing transaction, an invoice, or a create action for each line, not more than one.',
                     ]);
                 }
 

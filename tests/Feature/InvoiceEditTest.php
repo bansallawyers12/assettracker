@@ -187,6 +187,72 @@ it('blocks editing a posted invoice', function () {
         ->assertRedirect(route('business-entities.invoices.show', [$entity, $invoice]));
 });
 
+it('folds multi-quantity lines into unit price on the edit form', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceEditEntity();
+    $invoice = invoiceEditDraft($entity);
+    $invoice->lines()->first()->update([
+        'quantity' => 2,
+        'unit_price' => 55,
+        'line_total' => 110,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.edit', [$entity, $invoice]))
+        ->assertSuccessful()
+        ->assertSee('\u0022unit_price\u0022:110', false)
+        ->assertDontSee('\u0022quantity\u0022:2', false);
+});
+
+it('preserves exclusive gst basis on the edit form for existing drafts', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceEditEntity();
+    $invoice = invoiceEditDraft($entity);
+    $invoice->update(['gst_basis' => 'exclusive']);
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.edit', [$entity, $invoice]))
+        ->assertSuccessful()
+        ->assertSee('value="exclusive"', false)
+        ->assertSee('\u0022gstBasis\u0022:\u0022exclusive\u0022', false);
+});
+
+it('derives asset from lease when asset_id is omitted', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceEditEntity();
+    $invoice = invoiceEditDraft($entity);
+    $leaseId = $invoice->lease_id;
+    $assetId = $invoice->asset_id;
+
+    $this->actingAs($user)->put(route('business-entities.invoices.update', [$entity, $invoice]), [
+        'invoice_number' => $invoice->invoice_number,
+        'issue_date' => '2026-09-05',
+        'due_date' => '2026-10-05',
+        'lease_id' => $leaseId,
+        'customer_name' => 'Lease Only Customer',
+        'currency' => 'AUD',
+        'gst_basis' => 'inclusive',
+        'gst_percent' => 10,
+        'lines' => [
+            [
+                'description' => 'Rent',
+                'quantity' => 1,
+                'unit_price' => 1100,
+                'account_code' => '4100',
+            ],
+        ],
+    ])->assertRedirect(route('business-entities.invoices.show', [$entity, $invoice]));
+
+    $invoice->refresh();
+
+    expect($invoice->lease_id)->toBe($leaseId)
+        ->and($invoice->asset_id)->toBe($assetId)
+        ->and($invoice->customer_name)->toBe('Lease Only Customer');
+});
+
 it('keeps an ended lease available when editing an invoice linked to it', function () {
     $this->seed(ChartOfAccountSeeder::class);
     $user = User::factory()->create();
