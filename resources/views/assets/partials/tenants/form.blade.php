@@ -1,4 +1,5 @@
 @php
+    $isTenantEdit = $tenant->exists;
     $defaultContacts = $tenant->realEstateCompany?->contacts
         ->map(fn ($contact) => [
             'contact_person_name' => $contact->contact_person_name,
@@ -14,12 +15,16 @@
 <form
     class="tenants-ws-form space-y-4"
     method="POST"
-    action="{{ route('business-entities.assets.tenants.update', [$businessEntity->id, $asset->id, $tenant->id]) }}"
+    action="{{ $isTenantEdit
+        ? route('business-entities.assets.tenants.update', [$businessEntity->id, $asset->id, $tenant->id])
+        : route('business-entities.assets.tenants.store', [$businessEntity->id, $asset->id]) }}"
     data-tenant-form
-    data-tenant-id="{{ $tenant->id }}"
+    @if ($isTenantEdit) data-tenant-id="{{ $tenant->id }}" @endif
 >
     @csrf
-    @method('PATCH')
+    @if ($isTenantEdit)
+        @method('PATCH')
+    @endif
 
     <div data-ws-form-errors class="hidden rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200"></div>
 
@@ -185,14 +190,14 @@
                 Cancel
             </button>
             <button type="submit" data-ws-submit class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-                Update Tenant
+                {{ $isTenantEdit ? 'Update Tenant' : 'Add Tenant' }}
             </button>
         @else
             <a href="{{ route('business-entities.assets.show', [$businessEntity->id, $asset->id]) }}#tab_tenants" class="inline-flex items-center justify-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
                 Cancel
             </a>
             <button type="submit" class="inline-flex items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500">
-                Update Tenant
+                {{ $isTenantEdit ? 'Update Tenant' : 'Add Tenant' }}
             </button>
         @endif
     </div>

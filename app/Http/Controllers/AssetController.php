@@ -480,6 +480,14 @@ class AssetController extends Controller
             ]);
         }
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Tenant added successfully!',
+                'redirect_hash' => 'tab_tenants',
+            ]);
+        }
+
         return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])->with('success', 'Tenant added successfully!');
     }
 
@@ -558,6 +566,14 @@ class AssetController extends Controller
         $validated = $this->validatedLeaseRequest($request, $asset);
 
         $asset->leases()->create($validated);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => 'Lease added successfully!',
+                'redirect_hash' => 'tab_leases',
+            ]);
+        }
 
         return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])->with('success', 'Lease added successfully!');
     }

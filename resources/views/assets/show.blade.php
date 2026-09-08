@@ -96,14 +96,14 @@
                                     <x-lucide-bar-chart-3 class="h-4 w-4" />
                                     Financials
                                 </button>
-                                <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="asset-quick-action bg-emerald-600 hover:bg-emerald-700 text-white">
+                                <button type="button" data-tenant-create class="asset-quick-action bg-emerald-600 hover:bg-emerald-700 text-white">
                                     <x-lucide-user-plus class="h-4 w-4" />
                                     Add Tenant
-                                </a>
-                                <a href="{{ route('business-entities.assets.leases.create', [$businessEntity->id, $asset->id]) }}" class="asset-quick-action bg-blue-600 hover:bg-blue-700 text-white">
+                                </button>
+                                <button type="button" data-lease-create class="asset-quick-action bg-blue-600 hover:bg-blue-700 text-white">
                                     <x-lucide-file-text class="h-4 w-4" />
                                     Add Lease
-                                </a>
+                                </button>
                                 <button type="button" @click="setTab('tab_documents')" class="asset-quick-action bg-violet-600 hover:bg-violet-700 text-white">
                                     <x-lucide-upload class="h-4 w-4" />
                                     Documents
@@ -283,10 +283,10 @@
                                                         Sync to Leases tab
                                                     </button>
                                                 </form>
-                                                <a href="{{ route('business-entities.assets.tenants.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
+                                                <button type="button" data-tenant-create class="inline-flex items-center px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-lg text-sm shadow-md transition-all duration-200">
                                                     <x-lucide-user-plus class="h-4 w-4 mr-1" />
                                                     Add Tenant
-                                                </a>
+                                                </button>
                                             </div>
                                         </div>
                                         @if ($asset->tenants->isEmpty())
@@ -397,10 +397,10 @@
                                     <div class="asset-panel">
                                         <div class="flex justify-between items-center mb-4">
                                             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Leases</h3>
-                                            <a href="{{ route('business-entities.assets.leases.create', [$businessEntity->id, $asset->id]) }}" class="inline-flex items-center px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
+                                            <button type="button" data-lease-create class="inline-flex items-center px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm shadow-md transition-all duration-200">
                                                 <x-lucide-file-text class="h-4 w-4 mr-1" />
                                                 Add Lease
-                                            </a>
+                                            </button>
                                         </div>
                                         @if ($asset->leases->isEmpty())
                                             <p class="text-gray-500 dark:text-gray-400 text-center py-4">No leases yet.</p>
@@ -900,97 +900,6 @@
 
     @push('scripts')
     <script>
-        function assetShowPage(config) {
-            return {
-                activeTab: config.defaultTab || 'tab_details',
-                showMoveToTrust: Boolean(config.openMoveToTrust),
-                showNoteForm: false,
-                showReminderForm: false,
-                init() {
-                    this.syncFromHash({ replaceInvalid: true });
-
-                    window.addEventListener('popstate', () => this.syncFromHash());
-                    window.addEventListener('hashchange', () => this.syncFromHash());
-
-                    this.$watch('activeTab', (tab) => {
-                        if (tab === 'tab_compliance') {
-                            window.dispatchEvent(new CustomEvent('compliance-tab-activated'));
-                        }
-                    });
-
-                    this.initReminderLogic();
-                },
-                availableTabIds() {
-                    return Array.from(this.$root.querySelectorAll('.tab-content-container > .tab-content'))
-                        .map((el) => el.id)
-                        .filter(Boolean);
-                },
-                syncFromHash(options = {}) {
-                    const hash = window.location.hash ? window.location.hash.substring(1) : '';
-                    if (hash === 'move-to-trust') {
-                        this.showMoveToTrust = true;
-                        if (!this.activeTab || !this.availableTabIds().includes(this.activeTab)) {
-                            this.activeTab = config.defaultTab || 'tab_details';
-                        }
-                        return;
-                    }
-
-                    const tabs = this.availableTabIds();
-                    const fallback = tabs[0] || config.defaultTab || 'tab_details';
-                    if (hash && tabs.includes(hash)) {
-                        this.activeTab = hash;
-                        return;
-                    }
-
-                    this.activeTab = fallback;
-                    if (options.replaceInvalid && window.location.hash !== '#' + fallback) {
-                        history.replaceState(null, '', '#' + fallback);
-                    }
-                },
-                setTab(tabId) {
-                    const tabs = this.availableTabIds();
-                    const next = tabs.includes(tabId) ? tabId : (tabs[0] || config.defaultTab || 'tab_details');
-                    this.activeTab = next;
-                    if (window.location.hash !== '#' + next) {
-                        history.pushState(null, '', '#' + next);
-                    }
-                },
-                toggleMoveToTrust() {
-                    this.showMoveToTrust = !this.showMoveToTrust;
-                    if (this.showMoveToTrust) {
-                        history.replaceState(null, '', '#move-to-trust');
-                        this.$nextTick(() => {
-                            document.getElementById('move-to-trust')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                        });
-                    } else if (window.location.hash === '#move-to-trust') {
-                        history.replaceState(null, '', '#' + this.activeTab);
-                    }
-                },
-                openMoveToTrust() {
-                    this.showMoveToTrust = true;
-                    history.replaceState(null, '', '#move-to-trust');
-                },
-                closeMoveToTrust() {
-                    this.showMoveToTrust = false;
-                    if (window.location.hash === '#move-to-trust') {
-                        history.replaceState(null, '', '#' + this.activeTab);
-                    }
-                },
-                initReminderLogic() {
-                    const repeatTypeSelect = document.getElementById('repeat_type');
-                    const repeatEndDateContainer = document.getElementById('repeat_end_date_container');
-                    if (!repeatTypeSelect || !repeatEndDateContainer) {
-                        return;
-                    }
-                    const sync = () => {
-                        repeatEndDateContainer.style.display = repeatTypeSelect.value !== 'none' ? 'block' : 'none';
-                    };
-                    sync();
-                    repeatTypeSelect.addEventListener('change', sync);
-                },
-            };
-        }
-
         function confirmDeleteTransaction(form, hasLinkedReceiptDoc) {
             if (!confirm('Delete this transaction?')) {
                 return false;

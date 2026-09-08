@@ -87,9 +87,29 @@ function initAssetShowWorkspace(root) {
     }
 
     async function handleClick(event) {
+        const tenantCreate = event.target.closest('[data-tenant-create]');
+        const leaseCreate = event.target.closest('[data-lease-create]');
         const tenantEdit = event.target.closest('[data-tenant-edit]');
         const leaseEdit = event.target.closest('[data-lease-edit]');
         const loanBankingEdit = event.target.closest('[data-loan-banking-edit]');
+
+        if (tenantCreate) {
+            event.preventDefault();
+            await loadForm(
+                `/business-entities/${entityId}/assets/${assetId}/tenants/form/create`,
+                'Add Tenant',
+            );
+            return;
+        }
+
+        if (leaseCreate) {
+            event.preventDefault();
+            await loadForm(
+                `/business-entities/${entityId}/assets/${assetId}/leases/form/create`,
+                'Add Lease',
+            );
+            return;
+        }
 
         if (tenantEdit) {
             event.preventDefault();
@@ -128,21 +148,25 @@ function initAssetShowWorkspace(root) {
 
     root.addEventListener('click', handleClick);
 
-    registerPanelFormHandler('.tenants-ws-form', async (payload) => {
+    function softReloadWithHash(hash) {
         closeWorkspacePanel();
-        showToast(payload.message || 'Tenant updated successfully!', 'success');
+        window.location.hash = hash;
+        window.location.reload();
+    }
+
+    registerPanelFormHandler('.tenants-ws-form', async (payload) => {
+        showToast(payload.message || 'Tenant saved successfully!', 'success');
+        softReloadWithHash(payload.redirect_hash || 'tab_tenants');
     });
 
     registerPanelFormHandler('.leases-ws-form', async (payload) => {
-        closeWorkspacePanel();
-        showToast(payload.message || 'Lease updated successfully!', 'success');
+        showToast(payload.message || 'Lease saved successfully!', 'success');
+        softReloadWithHash(payload.redirect_hash || 'tab_leases');
     });
 
     registerPanelFormHandler('.loan-banking-ws-form', async () => {
-        closeWorkspacePanel();
         // Flash is set server-side; reload so Details shows updated values + session success banner.
-        window.location.hash = 'tab_details';
-        window.location.reload();
+        softReloadWithHash('tab_details');
     });
 }
 

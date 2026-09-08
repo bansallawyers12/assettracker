@@ -14,6 +14,54 @@ use Illuminate\Http\Request;
 class AssetShowWorkspaceController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
+
+    public function createTenantForm(BusinessEntity $businessEntity, Asset $asset): JsonResponse
+    {
+        $this->authorize('view', $businessEntity);
+        $this->ensureAssetBelongs($businessEntity, $asset);
+
+        $realEstateCompanies = RealEstateCompany::query()->orderBy('name')->get();
+        $tenant = new Tenant([
+            'is_real_estate_managed' => false,
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'html' => view('assets.partials.tenants.form', [
+                'businessEntity' => $businessEntity,
+                'asset' => $asset,
+                'tenant' => $tenant,
+                'realEstateCompanies' => $realEstateCompanies,
+                'workspacePanel' => true,
+            ])->render(),
+        ]);
+    }
+
+    public function createLeaseForm(BusinessEntity $businessEntity, Asset $asset): JsonResponse
+    {
+        $this->authorize('view', $businessEntity);
+        $this->ensureAssetBelongs($businessEntity, $asset);
+
+        $tenants = $asset->tenants()->orderBy('name')->get();
+        $lease = new Lease([
+            'rental_amount' => 0,
+            'payment_frequency' => 'Monthly',
+            'gst_applicable' => true,
+            'start_date' => now()->format('Y-m-d'),
+        ]);
+
+        return response()->json([
+            'status' => true,
+            'html' => view('assets.partials.leases.form', [
+                'businessEntity' => $businessEntity,
+                'asset' => $asset,
+                'lease' => $lease,
+                'tenants' => $tenants,
+                'workspacePanel' => true,
+            ])->render(),
+        ]);
+    }
+
     public function editTenantForm(BusinessEntity $businessEntity, Asset $asset, Tenant $tenant): JsonResponse
     {
         $this->authorize('view', $businessEntity);

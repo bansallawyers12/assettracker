@@ -243,11 +243,13 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Tenant and Lease Routes
     Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/create', [AssetController::class, 'createTenant'])->name('business-entities.assets.tenants.create');
+    Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/form/create', [AssetShowWorkspaceController::class, 'createTenantForm'])->name('business-entities.assets.tenants.form.create');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/tenants', [AssetController::class, 'storeTenant'])->name('business-entities.assets.tenants.store');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/{tenant}/edit', [AssetController::class, 'editTenant'])->name('business-entities.assets.tenants.edit');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/tenants/{tenant}/form/edit', [AssetShowWorkspaceController::class, 'editTenantForm'])->name('business-entities.assets.tenants.form.edit');
     Route::patch('/business-entities/{businessEntity}/assets/{asset}/tenants/{tenant}', [AssetController::class, 'updateTenant'])->name('business-entities.assets.tenants.update');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/leases/create', [AssetController::class, 'createLease'])->name('business-entities.assets.leases.create');
+    Route::get('/business-entities/{businessEntity}/assets/{asset}/leases/form/create', [AssetShowWorkspaceController::class, 'createLeaseForm'])->name('business-entities.assets.leases.form.create');
     Route::post('/business-entities/{businessEntity}/assets/{asset}/leases', [AssetController::class, 'storeLease'])->name('business-entities.assets.leases.store');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/leases/{lease}/edit', [AssetController::class, 'editLease'])->name('business-entities.assets.leases.edit');
     Route::get('/business-entities/{businessEntity}/assets/{asset}/leases/{lease}/form/edit', [AssetShowWorkspaceController::class, 'editLeaseForm'])->name('business-entities.assets.leases.form.edit');

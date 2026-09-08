@@ -33,8 +33,10 @@ import { sealOverlayPanels } from './overlay-panels.js';
 import { showToast } from './notify.js';
 
 import Alpine from 'alpinejs';
+import { registerAssetShowPage } from './asset-show-page.js';
 
 window.Alpine = Alpine;
+registerAssetShowPage(Alpine);
 window.initTomSelect = initTomSelect;
 window.destroyTomSelect = destroyTomSelect;
 window.refreshTomSelect = refreshTomSelect;
@@ -121,7 +123,8 @@ function bootApp() {
 
     window.initRichTextEditors?.();
 
-    if (!document.getElementById('entity-tabs')) {
+    // Entity show and asset show manage their own hash tabs (do not run the legacy global switcher).
+    if (!document.getElementById('entity-tabs') && !document.querySelector('.asset-show-page')) {
         const tabLinks = document.querySelectorAll('.tab-link');
         const tabContents = document.querySelectorAll('.tab-content');
 
