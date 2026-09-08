@@ -15,6 +15,8 @@ it('renders the chart of accounts page as an alpine spa', function () {
         ->and($index)->toContain('confirmDelete(account)')
         ->and($index)->toContain('Add account')
         ->and($index)->toContain('Filters')
+        ->and($index)->toContain('filtersOpen')
+        ->and($index)->toContain('coa-filters-panel')
         ->and($index)->toContain('filteredAccounts')
         ->and($controller)->toContain('expectsJson()')
         ->and($controller)->toContain('accountPayload')

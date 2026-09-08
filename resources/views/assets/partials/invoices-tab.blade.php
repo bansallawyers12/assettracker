@@ -1,4 +1,4 @@
-<div id="tab_invoices" class="tab-content hidden">
+<div id="tab_invoices" class="tab-content" x-show="activeTab === $el.id" style="display: none;">
     <div class="asset-panel space-y-6">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Invoices</h3>

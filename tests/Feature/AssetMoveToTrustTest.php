@@ -31,11 +31,13 @@ it('shows move to trust UI on company asset pages', function () {
     expect($show)->toContain('Move to trust')
         ->and($show)->toContain('move-to-trust-form')
         ->and($show)->toContain('isCompany()')
-        ->and($show)->toContain('#move-to-trust')
+        ->and($show)->toContain('toggleMoveToTrust')
+        ->and($show)->toContain('assetShowPage')
         ->and($partial)->toContain('business-entities.assets.move-to-trust')
         ->and($partial)->toContain('target_business_entity_id')
         ->and($partial)->toContain('record correction')
-        ->and($partial)->toContain('Confirm move');
+        ->and($partial)->toContain('Confirm move')
+        ->and($partial)->toContain('x-show="showMoveToTrust"');
 });
 
 it('reparents the full cascade list inside a database transaction', function () {

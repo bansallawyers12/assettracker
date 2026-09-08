@@ -41,59 +41,101 @@
                 : 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200'"
              x-text="toast"></div>
 
-        <div class="mb-5 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div class="border-b border-gray-200 px-4 py-3 dark:border-gray-800">
-                <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Filters</h2>
-                <p class="text-xs text-gray-500 dark:text-gray-400">Search and filter without leaving this page</p>
-            </div>
-            <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-4">
-                <div class="sm:col-span-2">
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Search</label>
-                    <div class="relative">
-                        <x-lucide-search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
-                        <input type="search" x-model.debounce.200ms="search"
-                               placeholder="Code, name, or description…"
-                               class="w-full rounded-lg border-gray-300 py-2 pl-9 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
-                    </div>
-                </div>
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Type</label>
-                    <select x-model="typeFilter" class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
-                        <option value="">All types</option>
-                        <template x-for="item in Object.entries(accountTypes)" :key="item[0]">
-                            <option :value="item[0]" x-text="item[1]"></option>
-                        </template>
-                    </select>
-                </div>
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Status</label>
-                    <select x-model="statusFilter" class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
-                        <option value="all">All</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                </div>
-            </div>
-            <div class="flex flex-wrap gap-2 border-t border-gray-100 px-4 py-3 dark:border-gray-800">
-                <template x-for="chip in typeChips" :key="chip.key">
-                    <button type="button"
-                            @click="typeFilter = typeFilter === chip.key ? '' : chip.key"
-                            class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset transition-colors"
-                            :class="typeFilter === chip.key ? chip.activeClass : chip.idleClass">
-                        <span x-text="chip.label"></span>
-                        <span class="tabular-nums opacity-80" x-text="chip.count"></span>
-                    </button>
-                </template>
-            </div>
-        </div>
-
         <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div class="flex flex-col gap-2 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
+            <div class="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
                 <div>
                     <h2 class="text-sm font-semibold text-gray-900 dark:text-white">Accounts</h2>
                     <p class="text-xs text-gray-500 dark:text-gray-400">
                         <span x-text="filteredAccounts.length"></span> of <span x-text="accounts.length"></span> shown
+                        <span x-show="hasActiveFilters" class="text-indigo-600 dark:text-indigo-400"> · filtered</span>
                     </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="button"
+                            @click="filtersOpen = !filtersOpen"
+                            class="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium shadow-xs transition-colors"
+                            :class="filtersOpen || hasActiveFilters
+                                ? 'border-indigo-200 bg-indigo-50 text-indigo-800 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200'
+                                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800'"
+                            :aria-expanded="filtersOpen"
+                            aria-controls="coa-filters-panel">
+                        <x-lucide-filter class="h-4 w-4" aria-hidden="true" />
+                        Filters
+                        <span x-show="hasActiveFilters"
+                              class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-600 px-1.5 text-[10px] font-bold text-white"
+                              x-text="activeFilterCount"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div id="coa-filters-panel"
+                 x-show="filtersOpen"
+                 x-cloak
+                 x-transition:enter="transition ease-out duration-150"
+                 x-transition:enter-start="opacity-0 -translate-y-1"
+                 x-transition:enter-end="opacity-100 translate-y-0"
+                 x-transition:leave="transition ease-in duration-100"
+                 x-transition:leave-start="opacity-100 translate-y-0"
+                 x-transition:leave-end="opacity-0 -translate-y-1"
+                 class="border-b border-gray-200 bg-gray-50/80 dark:border-gray-800 dark:bg-gray-800/40">
+                <div class="flex items-center justify-between gap-3 px-4 pt-3">
+                    <div>
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Filters</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Search and narrow the list without leaving this page</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button type="button"
+                                x-show="hasActiveFilters"
+                                @click="clearFilters()"
+                                class="text-xs font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                            Clear
+                        </button>
+                        <button type="button"
+                                @click="filtersOpen = false"
+                                class="rounded-lg p-1.5 text-gray-400 hover:bg-white hover:text-gray-700 dark:hover:bg-gray-900 dark:hover:text-gray-200"
+                                aria-label="Hide filters">
+                            <x-lucide-x class="h-4 w-4" aria-hidden="true" />
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2 lg:grid-cols-12 lg:items-end">
+                    <div class="lg:col-span-6">
+                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Search</label>
+                        <div class="relative">
+                            <x-lucide-search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+                            <input type="search" x-model.debounce.200ms="search" x-ref="filterSearch"
+                                   placeholder="Code, name, or description…"
+                                   class="w-full rounded-lg border-gray-300 bg-white py-2 pl-9 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
+                        </div>
+                    </div>
+                    <div class="lg:col-span-3">
+                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Type</label>
+                        <select x-model="typeFilter" class="w-full rounded-lg border-gray-300 bg-white text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                            <option value="">All types</option>
+                            <template x-for="item in Object.entries(accountTypes)" :key="item[0]">
+                                <option :value="item[0]" x-text="item[1]"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="lg:col-span-3">
+                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Status</label>
+                        <select x-model="statusFilter" class="w-full rounded-lg border-gray-300 bg-white text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                            <option value="all">All</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex flex-wrap gap-2 px-4 pb-4">
+                    <template x-for="chip in typeChips" :key="chip.key">
+                        <button type="button"
+                                @click="typeFilter = typeFilter === chip.key ? '' : chip.key"
+                                class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset transition-colors"
+                                :class="typeFilter === chip.key ? chip.activeClass : chip.idleClass">
+                            <span x-text="chip.label"></span>
+                            <span class="tabular-nums opacity-80" x-text="chip.count"></span>
+                        </button>
+                    </template>
                 </div>
             </div>
 
@@ -302,6 +344,7 @@
                 search: '',
                 typeFilter: '',
                 statusFilter: 'all',
+                filtersOpen: false,
                 sortColumn: 'account_code',
                 sortDir: 'asc',
                 panelOpen: false,
@@ -329,6 +372,11 @@
                     if (config.flashError) {
                         this.showToast(config.flashError, 'error');
                     }
+                    this.$watch('filtersOpen', (open) => {
+                        if (open) {
+                            this.$nextTick(() => this.$refs.filterSearch?.focus());
+                        }
+                    });
                     if (config.openPanel === 'create') {
                         this.openCreate();
                     } else if (config.openPanel === 'edit' && config.openAccountId) {
@@ -337,6 +385,27 @@
                             this.openEdit(account);
                         }
                     }
+                },
+                get hasActiveFilters() {
+                    return this.search.trim() !== '' || this.typeFilter !== '' || this.statusFilter !== 'all';
+                },
+                get activeFilterCount() {
+                    let count = 0;
+                    if (this.search.trim() !== '') {
+                        count += 1;
+                    }
+                    if (this.typeFilter !== '') {
+                        count += 1;
+                    }
+                    if (this.statusFilter !== 'all') {
+                        count += 1;
+                    }
+                    return count;
+                },
+                clearFilters() {
+                    this.search = '';
+                    this.typeFilter = '';
+                    this.statusFilter = 'all';
                 },
                 get typeChips() {
                     const styles = {
