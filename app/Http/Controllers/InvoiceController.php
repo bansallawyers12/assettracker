@@ -18,12 +18,15 @@ use App\Services\InvoicePaymentService;
 use App\Services\InvoicePostingService;
 use App\Support\TableSort;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class InvoiceController extends Controller
 {
@@ -268,6 +271,26 @@ class InvoiceController extends Controller
             'suggestedStatementEntryId',
             'suggestedPaymentBankAccountId'
         ));
+    }
+
+    /**
+     * Printable invoice page (use browser Print → Save as PDF).
+     */
+    public function download(BusinessEntity $businessEntity, Invoice $invoice): View|Response
+    {
+        $this->authorize('view', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
+        $invoice->load(['lines', 'lease.tenant', 'asset', 'businessEntity']);
+
+        $filename = Str::of($invoice->invoice_number)
+            ->replaceMatches('/[^\w.\-]+/', '-')
+            ->trim('-')
+            ->append('.html')
+            ->toString();
+
+        return response()
+            ->view('invoices.print', compact('businessEntity', 'invoice'))
+            ->header('Content-Disposition', 'inline; filename="'.$filename.'"');
     }
 
     public function edit(Request $request, BusinessEntity $businessEntity, Invoice $invoice)

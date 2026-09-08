@@ -397,6 +397,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('business-entities/{businessEntity}/invoices/suggest-number', [InvoiceController::class, 'suggestNumber'])
         ->name('business-entities.invoices.suggest-number');
     Route::resource('business-entities.invoices', InvoiceController::class);
+    Route::get('business-entities/{businessEntity}/invoices/{invoice}/download', [InvoiceController::class, 'download'])->name('business-entities.invoices.download');
     Route::get('business-entities/{businessEntity}/invoices/{invoice}/post', [InvoiceController::class, 'postRedirect'])->name('business-entities.invoices.post.get');
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/post', [InvoiceController::class, 'post'])->name('business-entities.invoices.post');
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/unpost', [InvoiceController::class, 'unpost'])->name('business-entities.invoices.unpost');

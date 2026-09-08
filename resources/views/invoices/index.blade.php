@@ -1,20 +1,26 @@
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
-                @isset($businessEntity)
-                    Invoices — {{ $businessEntity->legal_name }}
-                @else
-                    All invoices
-                @endisset
-            </h2>
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div class="min-w-0">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Invoices</p>
+                <h2 class="mt-1 text-2xl font-bold text-gray-900 dark:text-white truncate">
+                    @isset($businessEntity)
+                        {{ $businessEntity->legal_name }}
+                    @else
+                        All entities
+                    @endisset
+                </h2>
+            </div>
             @isset($businessEntity)
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap items-center gap-2">
                     <a href="{{ route('business-entities.invoices.index', [$businessEntity, 'receivable' => 1]) }}"
-                       class="inline-flex items-center px-4 py-2 {{ !empty($receivableOnly) ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-amber-50 hover:bg-amber-100 text-amber-900 dark:bg-amber-900/30 dark:text-amber-200' }} rounded-lg text-sm font-medium transition-colors">
-                        Rent receivable (unpaid AR)
+                       class="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-medium transition-colors {{ !empty($receivableOnly) ? 'bg-amber-600 text-white hover:bg-amber-500 shadow-xs' : 'border border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-900/40' }}">
+                        <x-lucide-circle-dollar-sign class="h-4 w-4" aria-hidden="true" />
+                        Unpaid AR
                     </a>
-                    <a href="{{ route('business-entities.invoices.create', $businessEntity) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-medium shadow-xs transition-colors">
+                    <a href="{{ route('business-entities.invoices.create', $businessEntity) }}"
+                       class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
+                        <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
                         New invoice
                     </a>
                 </div>
@@ -36,95 +42,164 @@
                 'asset_id' => $assetIdFilter ?? null,
                 'lease_id' => $leaseIdFilter ?? null,
             ], fn ($v) => $v !== null && $v !== '');
+            $statusBadge = function (string $status): string {
+                return match ($status) {
+                    'draft' => 'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700',
+                    'approved' => 'bg-sky-50 text-sky-800 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900',
+                    'paid' => 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-900',
+                    'void' => 'bg-rose-50 text-rose-800 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-900',
+                    default => 'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700',
+                };
+            };
         @endphp
 
         <form method="GET" action="{{ isset($businessEntity) ? route('business-entities.invoices.index', $businessEntity) : route('invoices.index') }}"
-              class="mb-4 flex flex-wrap items-end gap-3 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-4">
-            <div>
-                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Status</label>
-                <select name="status" class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm" @disabled(!empty($receivableOnly))>
-                    <option value="">All</option>
-                    @foreach (\App\Models\Invoice::$statuses as $code => $label)
-                        <option value="{{ $code }}" @selected(($statusFilter ?? '') === $code)>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="flex items-center gap-2 pb-1">
-                <label class="inline-flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                    <input type="checkbox" name="receivable" value="1" @checked(!empty($receivableOnly)) class="rounded-sm border-gray-300" />
-                    Unpaid AR only
-                </label>
-            </div>
-            @isset($businessEntity)
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Asset</label>
-                    <select name="asset_id" class="rounded-lg border-gray-300 dark:border-gray-600 dark:bg-gray-800 dark:text-white text-sm min-w-[12rem]">
-                        <option value="">All assets</option>
-                        @foreach ($filterAssets ?? [] as $asset)
-                            <option value="{{ $asset->id }}" @selected((int) ($assetIdFilter ?? 0) === (int) $asset->id)>{{ $asset->name }}</option>
-                        @endforeach
-                    </select>
+              class="mb-5 rounded-xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div class="flex flex-wrap items-end gap-3">
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Status</label>
+                        <select name="status" class="min-w-[9rem] rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white" @disabled(!empty($receivableOnly))>
+                            <option value="">All</option>
+                            @foreach (\App\Models\Invoice::$statuses as $code => $label)
+                                <option value="{{ $code }}" @selected(($statusFilter ?? '') === $code)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <label class="inline-flex items-center gap-2 pb-2 text-sm text-gray-700 dark:text-gray-300">
+                        <input type="checkbox" name="receivable" value="1" @checked(!empty($receivableOnly)) class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        Unpaid AR only
+                    </label>
+                    @isset($businessEntity)
+                        <div>
+                            <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Asset</label>
+                            <select name="asset_id" class="min-w-[14rem] rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                                <option value="">All assets</option>
+                                @foreach ($filterAssets ?? [] as $asset)
+                                    <option value="{{ $asset->id }}" @selected((int) ($assetIdFilter ?? 0) === (int) $asset->id)>{{ $asset->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    @endisset
                 </div>
-            @endisset
-            <button type="submit" class="inline-flex items-center px-3 py-2 bg-gray-800 hover:bg-gray-900 text-white text-sm font-medium rounded-lg">Filter</button>
-            @if (!empty($filterQuery))
-                <a href="{{ isset($businessEntity) ? route('business-entities.invoices.index', $businessEntity) : route('invoices.index') }}"
-                   class="text-sm text-indigo-600 dark:text-indigo-400 hover:underline pb-1">Clear</a>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="submit" class="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3.5 py-2 text-sm font-semibold text-white hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-white">
+                        <x-lucide-filter class="h-4 w-4" aria-hidden="true" />
+                        Apply filters
+                    </button>
+                    @if (!empty($filterQuery))
+                        <a href="{{ isset($businessEntity) ? route('business-entities.invoices.index', $businessEntity) : route('invoices.index') }}"
+                           class="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">Clear</a>
+                    @endif
+                </div>
+            </div>
+            @if (!empty($receivableOnly))
+                <p class="mt-3 text-xs text-amber-800 dark:text-amber-200">Showing unpaid rent receivable (approved, not paid).</p>
             @endif
         </form>
 
-        <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
+        <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3 dark:border-gray-800">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Invoice list</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ $invoices->total() }} {{ \Illuminate\Support\Str::plural('invoice', $invoices->total()) }}</p>
+                </div>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm">
-                    <thead class="bg-gray-50 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700">
-                        <tr>
-                            <x-sortable-table-header :label="__('Number')" column="number" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                    <thead class="bg-gray-50/90 dark:bg-gray-800/60">
+                        <tr class="border-b border-gray-200 dark:border-gray-800">
+                            <x-sortable-table-header :label="__('Number')" column="number" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" />
                             @unless(isset($businessEntity))
-                                <x-sortable-table-header :label="__('Entity')" column="entity" :sort="$tableSort->column" :order="$tableSort->order" route="invoices.index" :route-params="$filterQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
+                                <x-sortable-table-header :label="__('Entity')" column="entity" :sort="$tableSort->column" :order="$tableSort->order" route="invoices.index" :route-params="$filterQuery" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" />
                             @endunless
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{{ __('Asset') }}</th>
-                            <x-sortable-table-header :label="__('Customer')" column="customer" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
-                            <x-sortable-table-header :label="__('Issue')" column="issue" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
-                            <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">Due</th>
-                            <x-sortable-table-header :label="__('Total')" column="total" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" align="right" class="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300" />
-                            <x-sortable-table-header :label="__('Status')" column="status" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
-                            <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300"></th>
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('Asset') }}</th>
+                            <x-sortable-table-header :label="__('Customer')" column="customer" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" />
+                            <x-sortable-table-header :label="__('Issue')" column="issue" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" />
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Due</th>
+                            <x-sortable-table-header :label="__('Total')" column="total" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" align="right" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" />
+                            <x-sortable-table-header :label="__('Status')" column="status" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" />
+                            <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @forelse($invoices as $inv)
-                            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40">
-                                <td class="px-4 py-3 font-mono text-xs">{{ $inv->invoice_number }}</td>
+                            @php
+                                $isOverdue = $inv->status === 'approved' && $inv->due_date && $inv->due_date->isPast();
+                            @endphp
+                            <tr class="transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20">
+                                <td class="px-4 py-3.5">
+                                    <a href="{{ route('business-entities.invoices.show', [$inv->business_entity_id, $inv]) }}" class="font-mono text-xs font-semibold text-gray-900 hover:text-indigo-600 dark:text-gray-100 dark:hover:text-indigo-300">
+                                        {{ $inv->invoice_number }}
+                                    </a>
+                                </td>
                                 @unless(isset($businessEntity))
-                                    <td class="px-4 py-3 text-gray-700 dark:text-gray-300">{{ $inv->businessEntity->legal_name ?? '—' }}</td>
+                                    <td class="px-4 py-3.5 text-gray-700 dark:text-gray-300">{{ $inv->businessEntity->legal_name ?? '—' }}</td>
                                 @endunless
-                                <td class="px-4 py-3">
+                                <td class="px-4 py-3.5">
                                     @if ($inv->asset_id && ($beId = $inv->business_entity_id))
-                                        <a href="{{ route('business-entities.assets.show', [$beId, $inv->asset_id]) }}#tab_invoices" class="text-indigo-600 dark:text-indigo-400 hover:underline">{{ $inv->asset?->name ?? 'Property #'.$inv->asset_id }}</a>
+                                        <a href="{{ route('business-entities.assets.show', [$beId, $inv->asset_id]) }}#tab_invoices" class="text-indigo-600 hover:underline dark:text-indigo-400">{{ $inv->asset?->name ?? 'Property #'.$inv->asset_id }}</a>
                                     @else
                                         <span class="text-gray-400">—</span>
                                     @endif
                                 </td>
-                                <td class="px-4 py-3 text-gray-900 dark:text-gray-100">{{ $inv->customer_name }}</td>
-                                <td class="px-4 py-3 whitespace-nowrap">{{ $inv->issue_date->format('Y-m-d') }}</td>
-                                <td class="px-4 py-3 whitespace-nowrap {{ $inv->status === 'approved' && $inv->due_date && $inv->due_date->isPast() ? 'text-red-600 dark:text-red-400 font-medium' : '' }}">
-                                    {{ $inv->due_date ? $inv->due_date->format('Y-m-d') : '—' }}
+                                <td class="px-4 py-3.5 font-medium text-gray-900 dark:text-gray-100">{{ $inv->customer_name }}</td>
+                                <td class="px-4 py-3.5 whitespace-nowrap text-gray-600 dark:text-gray-300">{{ $inv->issue_date->format('d/m/Y') }}</td>
+                                <td class="px-4 py-3.5 whitespace-nowrap {{ $isOverdue ? 'font-semibold text-rose-600 dark:text-rose-400' : 'text-gray-600 dark:text-gray-300' }}">
+                                    {{ $inv->due_date ? $inv->due_date->format('d/m/Y') : '—' }}
+                                    @if ($isOverdue)
+                                        <span class="ml-1 inline-flex rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-rose-700 ring-1 ring-inset ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900">Overdue</span>
+                                    @endif
                                 </td>
-                                <td class="px-4 py-3 text-right font-medium">${{ number_format($inv->total_amount, 2) }}</td>
-                                <td class="px-4 py-3">{{ ucfirst($inv->status) }}</td>
-                                <td class="px-4 py-3 text-right">
-                                    <a href="{{ route('business-entities.invoices.show', [$inv->business_entity_id, $inv]) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">View</a>
+                                <td class="px-4 py-3.5 text-right font-semibold tabular-nums text-gray-900 dark:text-white">${{ number_format($inv->total_amount, 2) }}</td>
+                                <td class="px-4 py-3.5">
+                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ring-inset {{ $statusBadge($inv->status) }}">
+                                        {{ \App\Models\Invoice::$statuses[$inv->status] ?? ucfirst($inv->status) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3.5">
+                                    <div class="flex items-center justify-end gap-1.5">
+                                        <a href="{{ route('business-entities.invoices.show', [$inv->business_entity_id, $inv]) }}"
+                                           class="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800"
+                                           title="View invoice">
+                                            <x-lucide-eye class="h-3.5 w-3.5" aria-hidden="true" />
+                                            View
+                                        </a>
+                                        <a href="{{ route('business-entities.invoices.download', [$inv->business_entity_id, $inv]) }}"
+                                           target="_blank"
+                                           rel="noopener"
+                                           class="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200 dark:hover:bg-indigo-900/50"
+                                           title="Download / print invoice">
+                                            <x-lucide-download class="h-3.5 w-3.5" aria-hidden="true" />
+                                            Download
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ isset($businessEntity) ? 8 : 9 }}" class="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No invoices found.</td>
+                                <td colspan="{{ isset($businessEntity) ? 8 : 9 }}" class="px-4 py-14 text-center">
+                                    <div class="mx-auto flex max-w-sm flex-col items-center">
+                                        <div class="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800">
+                                            <x-lucide-file-text class="h-6 w-6 text-gray-400" aria-hidden="true" />
+                                        </div>
+                                        <p class="text-sm font-semibold text-gray-900 dark:text-white">No invoices found</p>
+                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Try clearing filters{{ isset($businessEntity) ? ' or create a new invoice' : '' }}.</p>
+                                        @isset($businessEntity)
+                                            <a href="{{ route('business-entities.invoices.create', $businessEntity) }}" class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500">
+                                                <x-lucide-plus class="h-3.5 w-3.5" aria-hidden="true" />
+                                                New invoice
+                                            </a>
+                                        @endisset
+                                    </div>
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
-            <div class="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            <div class="border-t border-gray-200 px-4 py-3 dark:border-gray-800">
                 {{ $invoices->links() }}
             </div>
         </div>

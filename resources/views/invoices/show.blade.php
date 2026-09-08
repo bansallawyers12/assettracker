@@ -13,6 +13,13 @@
                 <a href="{{ route('business-entities.invoices.index', $businessEntity) }}" class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors">
                     All invoices
                 </a>
+                <a href="{{ route('business-entities.invoices.download', [$businessEntity, $invoice]) }}"
+                   target="_blank"
+                   rel="noopener"
+                   class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-medium shadow-xs transition-colors">
+                    <x-lucide-download class="h-4 w-4" aria-hidden="true" />
+                    Download
+                </a>
                 @if (!$invoice->is_posted)
                     <form method="POST" action="{{ route('business-entities.invoices.post', [$businessEntity, $invoice]) }}" class="inline">
                         @csrf
