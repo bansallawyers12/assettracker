@@ -93,9 +93,12 @@ it('renders the edit form for a draft invoice', function () {
         ->get(route('business-entities.invoices.edit', [$entity, $invoice]))
         ->assertSuccessful()
         ->assertSee('Edit Invoice', false)
-        ->assertSee('Original notes', false)
-        ->assertSee('Inclusive', false)
-        ->assertSee('Save &amp; post', false);
+        ->assertSee('Edit Tenant', false)
+        ->assertSee('Yes — GST applies', false)
+        ->assertSee('Income account', false)
+        ->assertSee('Save &amp; post', false)
+        ->assertDontSee('GST basis', false)
+        ->assertDontSee('Include ended leases', false);
 });
 
 it('updates a draft invoice with exclusive gst, asset, lease, and notes', function () {

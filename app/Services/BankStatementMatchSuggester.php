@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
+use App\Models\Invoice;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class BankStatementMatchSuggester
 {
@@ -18,6 +20,7 @@ class BankStatementMatchSuggester
 
     /**
      * @param  Collection<int, Transaction>  $candidates
+     * @param  Collection<int, Invoice>  $invoices
      * @return array{
      *     action: string,
      *     confidence: string,
@@ -27,20 +30,28 @@ class BankStatementMatchSuggester
      *     chart_account_id: int|null,
      *     asset_id: int|null,
      *     invoice_id: int|null,
-     *     alternates: list<array{transaction_id: int, confidence: string, reason: string}>
+     *     invoice_number: string|null,
+     *     alternates: list<array{transaction_id?: int, invoice_id?: int, confidence: string, reason: string}>
      * }
      */
     public function suggest(
         BankStatementEntry $entry,
         BankAccount $bankAccount,
         Collection $candidates,
-        ?int $defaultAssetId = null
+        ?int $defaultAssetId = null,
+        ?Collection $invoices = null
     ): array {
         $none = $this->none();
+        $invoices ??= collect();
 
         $match = $this->suggestMatch($entry, $candidates);
         if ($match !== null) {
             return $match;
+        }
+
+        $invoiceMatch = $this->suggestInvoiceMatch($entry, $bankAccount, $invoices);
+        if ($invoiceMatch !== null) {
+            return $invoiceMatch;
         }
 
         if ($bankAccount->isLoanLedgerAccount()) {
@@ -87,6 +98,7 @@ class BankStatementMatchSuggester
                 'chart_account_id' => null,
                 'asset_id' => $defaultAssetId,
                 'invoice_id' => null,
+                'invoice_number' => null,
                 'alternates' => [],
             ];
         }
@@ -99,19 +111,22 @@ class BankStatementMatchSuggester
      *
      * @param  Collection<int, BankStatementEntry>  $entries
      * @param  Collection<int, Transaction>  $candidates
+     * @param  Collection<int, Invoice>  $invoices
      * @return array<int, array<string, mixed>>
      */
     public function suggestMany(
         Collection $entries,
         BankAccount $bankAccount,
         Collection $candidates,
-        ?int $defaultAssetId = null
+        ?int $defaultAssetId = null,
+        ?Collection $invoices = null
     ): array {
         $out = [];
         $available = $candidates->values();
+        $availableInvoices = ($invoices ?? collect())->values();
 
         foreach ($entries as $entry) {
-            $suggestion = $this->suggest($entry, $bankAccount, $available, $defaultAssetId);
+            $suggestion = $this->suggest($entry, $bankAccount, $available, $defaultAssetId, $availableInvoices);
             $out[(int) $entry->id] = $suggestion;
 
             if (($suggestion['action'] ?? null) === 'match_transaction'
@@ -121,9 +136,118 @@ class BankStatementMatchSuggester
                     ->reject(fn (Transaction $transaction) => (int) $transaction->id === $claimedId)
                     ->values();
             }
+
+            if (($suggestion['action'] ?? null) === 'match_invoice'
+                && ! empty($suggestion['invoice_id'])) {
+                $claimedInvoiceId = (int) $suggestion['invoice_id'];
+                $availableInvoices = $availableInvoices
+                    ->reject(fn (Invoice $invoice) => (int) $invoice->id === $claimedInvoiceId)
+                    ->values();
+            }
         }
 
         return $out;
+    }
+
+    /**
+     * @param  Collection<int, Invoice>  $invoices
+     * @return array<string, mixed>|null
+     */
+    private function suggestInvoiceMatch(BankStatementEntry $entry, BankAccount $bankAccount, Collection $invoices): ?array
+    {
+        if ($bankAccount->isLoanLedgerAccount() || (float) $entry->amount <= 0 || $invoices->isEmpty()) {
+            return null;
+        }
+
+        $entryAmount = abs((float) $entry->amount);
+        $description = Str::lower((string) ($entry->description ?? ''));
+        $entryDate = $this->asDate($entry->date);
+        $ranked = [];
+
+        foreach ($invoices as $invoice) {
+            if (abs($entryAmount - (float) $invoice->total_amount) > self::AMOUNT_TOLERANCE) {
+                continue;
+            }
+
+            $customerName = trim((string) $invoice->customer_name);
+            $nameMatch = $customerName !== '' && Str::contains($description, Str::lower($customerName));
+
+            $days = 999;
+            $issueDate = $this->asDate($invoice->issue_date);
+            if ($entryDate && $issueDate) {
+                $days = (int) abs(
+                    $entryDate->copy()->startOfDay()
+                        ->diffInDays($issueDate->copy()->startOfDay())
+                );
+            }
+
+            $confidence = $nameMatch ? 'high' : 'medium';
+            $reason = $nameMatch
+                ? 'Invoice amount and customer name match'
+                : 'Invoice amount match';
+
+            $ranked[] = [
+                'invoice' => $invoice,
+                'confidence' => $confidence,
+                'reason' => $reason,
+                'name_match' => $nameMatch ? 0 : 1,
+                'days' => $days,
+            ];
+        }
+
+        if ($ranked === []) {
+            return null;
+        }
+
+        usort($ranked, function (array $a, array $b): int {
+            $confRank = ['high' => 0, 'medium' => 1, 'low' => 2];
+            $byConf = ($confRank[$a['confidence']] ?? 9) <=> ($confRank[$b['confidence']] ?? 9);
+            if ($byConf !== 0) {
+                return $byConf;
+            }
+
+            $byName = $a['name_match'] <=> $b['name_match'];
+            if ($byName !== 0) {
+                return $byName;
+            }
+
+            return $a['days'] <=> $b['days'];
+        });
+
+        $best = $ranked[0];
+        $confidence = $best['confidence'];
+        $reason = $best['reason'];
+        if (count($ranked) > 1 && $confidence === 'high') {
+            $confidence = 'medium';
+            $reason = 'Multiple invoice amount matches; best by customer name';
+        } elseif (count($ranked) > 1) {
+            $reason = 'Multiple invoice amount matches; closest issue date';
+        }
+
+        $alternates = [];
+        foreach (array_slice($ranked, 1, 5) as $alt) {
+            $alternates[] = [
+                'invoice_id' => (int) $alt['invoice']->id,
+                'confidence' => $alt['confidence'],
+                'reason' => $alt['reason'],
+            ];
+        }
+
+        /** @var Invoice $invoice */
+        $invoice = $best['invoice'];
+
+        return [
+            'action' => 'match_invoice',
+            'confidence' => $confidence,
+            'reason' => $reason,
+            'transaction_id' => null,
+            'transaction_type' => null,
+            'chart_account_id' => null,
+            'asset_id' => $invoice->asset_id ? (int) $invoice->asset_id : null,
+            'invoice_id' => (int) $invoice->id,
+            'invoice_number' => $invoice->invoice_number,
+            'alternates' => $alternates,
+        ];
     }
 
     /**
@@ -228,6 +352,7 @@ class BankStatementMatchSuggester
             'chart_account_id' => null,
             'asset_id' => $best['transaction']->asset_id ? (int) $best['transaction']->asset_id : null,
             'invoice_id' => null,
+            'invoice_number' => null,
             'alternates' => $alternates,
         ];
     }
@@ -262,6 +387,7 @@ class BankStatementMatchSuggester
                     'chart_account_id' => null,
                     'asset_id' => $defaultAssetId,
                     'invoice_id' => null,
+                    'invoice_number' => null,
                     'alternates' => [],
                 ];
             }
@@ -328,6 +454,7 @@ class BankStatementMatchSuggester
                 'chart_account_id' => null,
                 'asset_id' => $defaultAssetId,
                 'invoice_id' => null,
+                'invoice_number' => null,
                 'alternates' => [],
             ];
         }
@@ -371,6 +498,7 @@ class BankStatementMatchSuggester
             'chart_account_id' => null,
             'asset_id' => $assetId,
             'invoice_id' => null,
+            'invoice_number' => null,
             'alternates' => [],
         ];
     }
@@ -389,6 +517,7 @@ class BankStatementMatchSuggester
             'chart_account_id' => null,
             'asset_id' => null,
             'invoice_id' => null,
+            'invoice_number' => null,
             'alternates' => [],
         ];
     }

@@ -62,3 +62,6 @@ AssetMoveToTrustService::sourceBlockedMessage / targetBlockedMessage explain reo
 
 ## Statement CSV duplicate key is exact
 CSV statement duplicates use date + amount + description + optional reference + optional balance_after. Matching must use that full key: missing reference/balance must not match stored rows that have them, and vice versa. Blank mapped balance cells must omit balance_after (do not store 0.0). Identical legitimate lines are allowed up to how many times they appear; re-uploading the same file must not create extras.
+
+## Reconcile can match unpaid invoices
+Reconcile Match invoice is a separate picker from Match existing (transactions). Accept creates an invoice_payment via InvoicePaymentService (Dr 1100 / Cr 1130). Do not create rental_income for a statement credit that matches an unpaid posted invoice of the same amount. Hidden on loan ledgers.

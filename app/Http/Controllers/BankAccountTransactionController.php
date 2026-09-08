@@ -6,6 +6,7 @@ use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
+use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Services\BankAccountBalanceSnapshotService;
 use App\Services\BankStatementMatchSuggester;
@@ -111,12 +112,14 @@ class BankAccountTransactionController extends Controller
                 ->count();
 
         $matchCandidates = $this->matchCandidates($bankAccount, $contextEntityId ?? $defaultEntityId);
+        $invoiceCandidates = $this->invoiceCandidates($bankAccount, $contextEntityId ?? $defaultEntityId);
         $defaultAssetId = $this->defaultLoanAssetId($bankAccount);
         $suggestions = $this->suggester->suggestMany(
             $unmatchedEntries,
             $bankAccount,
             $matchCandidates,
-            $defaultAssetId
+            $defaultAssetId,
+            $invoiceCandidates
         );
 
         $filtersActive = TransactionListFilters::isActive($filters);
@@ -139,6 +142,7 @@ class BankAccountTransactionController extends Controller
             'unmatchedEntries' => $unmatchedEntries,
             'matchedEntryCount' => $matchedEntryCount,
             'matchCandidates' => $matchCandidates,
+            'invoiceCandidates' => $invoiceCandidates,
             'suggestions' => $suggestions,
             'transactionTypeGroups' => Transaction::typeSelectGroupsForBankAccount($bankAccount),
             'isLoanActivityImport' => $bankAccount->isLoanLedgerAccount(),
@@ -216,6 +220,22 @@ class BankAccountTransactionController extends Controller
 
             return (int) $transaction->bank_account_id === (int) $bankAccount->id;
         })->values();
+    }
+
+    /**
+     * @return Collection<int, Invoice>
+     */
+    private function invoiceCandidates(BankAccount $bankAccount, ?int $businessEntityId): Collection
+    {
+        if ($bankAccount->isLoanLedgerAccount()) {
+            return collect();
+        }
+
+        $entityIds = $businessEntityId
+            ? [$businessEntityId]
+            : $bankAccount->eligibleTransactionEntities()->pluck('id')->all();
+
+        return Invoice::unpaidPostedForMatching($entityIds);
     }
 
     private function defaultLoanAssetId(BankAccount $bankAccount): ?int

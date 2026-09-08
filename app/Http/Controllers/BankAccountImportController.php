@@ -7,6 +7,7 @@ use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
+use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Services\BankStatementApplyService;
 use App\Services\BankStatementMatchSuggester;
@@ -221,8 +222,15 @@ class BankAccountImportController extends Controller
             ->get();
 
         $candidates = $this->matchCandidates($bankAccount, $businessEntityId);
+        $invoiceCandidates = $this->invoiceCandidates($bankAccount, $businessEntityId);
         $defaultAssetId = $this->defaultLoanAssetId($bankAccount);
-        $suggestions = $this->suggester->suggestMany($entries, $bankAccount, $candidates, $defaultAssetId);
+        $suggestions = $this->suggester->suggestMany(
+            $entries,
+            $bankAccount,
+            $candidates,
+            $defaultAssetId,
+            $invoiceCandidates
+        );
 
         $entryPayloads = $entries->map(function (BankStatementEntry $entry) use ($suggestions) {
             $payload = $this->entryPayload($entry);
@@ -235,6 +243,7 @@ class BankAccountImportController extends Controller
                 'chart_account_id' => null,
                 'asset_id' => null,
                 'invoice_id' => null,
+                'invoice_number' => null,
                 'alternates' => [],
             ];
 
@@ -245,6 +254,7 @@ class BankAccountImportController extends Controller
             'success' => true,
             'entries' => $entryPayloads,
             'candidates' => $candidates->map(fn (Transaction $transaction) => $this->candidatePayload($transaction)),
+            'invoice_candidates' => $invoiceCandidates->map(fn (Invoice $invoice) => $this->invoicePayload($invoice)),
             'transaction_types' => Transaction::typeSelectGroupsForBankAccount($bankAccount),
             'chart_accounts' => $bankAccount->isLoanLedgerAccount()
                 ? []
@@ -269,8 +279,9 @@ class BankAccountImportController extends Controller
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
             'matches' => 'required|array|min:1',
             'matches.*.bank_entry_id' => 'required|integer|exists:bank_statement_entries,id',
-            'matches.*.action' => ['nullable', 'string', Rule::in(['match_transaction', 'create_transaction', 'none'])],
+            'matches.*.action' => ['nullable', 'string', Rule::in(['match_transaction', 'match_invoice', 'create_transaction', 'none'])],
             'matches.*.transaction_id' => 'nullable|integer|exists:transactions,id',
+            'matches.*.invoice_id' => 'nullable|integer|exists:invoices,id',
             'matches.*.chart_account_id' => 'nullable|integer|exists:chart_of_accounts,id',
             'matches.*.transaction_type' => 'nullable|string|max:100',
             'matches.*.asset_id' => 'nullable|integer|exists:assets,id',
@@ -290,6 +301,7 @@ class BankAccountImportController extends Controller
                 'message' => 'Matches applied successfully',
                 'matchedExisting' => $result['matchedExisting'],
                 'transactionsCreated' => $result['transactionsCreated'],
+                'invoicesMatched' => $result['invoicesMatched'],
                 'skipped' => $result['skipped'],
             ]);
         } catch (ValidationException $e) {
@@ -439,6 +451,22 @@ class BankAccountImportController extends Controller
         })->values();
     }
 
+    /**
+     * @return Collection<int, Invoice>
+     */
+    private function invoiceCandidates(BankAccount $bankAccount, ?int $businessEntityId): Collection
+    {
+        if ($bankAccount->isLoanLedgerAccount()) {
+            return collect();
+        }
+
+        $entityIds = $businessEntityId
+            ? [$businessEntityId]
+            : $bankAccount->eligibleTransactionEntities()->pluck('id')->all();
+
+        return Invoice::unpaidPostedForMatching($entityIds);
+    }
+
     private function defaultLoanAssetId(BankAccount $bankAccount): ?int
     {
         if ($bankAccount->account_purpose !== BankAccount::PURPOSE_LOAN) {
@@ -485,6 +513,20 @@ class BankAccountImportController extends Controller
             'entity_name' => $transaction->businessEntity?->legal_name,
             'transaction_type' => $transaction->transaction_type,
             'payment_status' => $transaction->payment_status,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function invoicePayload(Invoice $invoice): array
+    {
+        return [
+            'id' => $invoice->id,
+            'invoice_number' => $invoice->invoice_number,
+            'issue_date' => $invoice->issue_date?->format('Y-m-d'),
+            'total_amount' => (float) $invoice->total_amount,
+            'customer_name' => $invoice->customer_name,
         ];
     }
 }

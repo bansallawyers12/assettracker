@@ -11,6 +11,7 @@ use App\Support\DocumentUploadValidation;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class InvoicePaymentService
@@ -70,112 +71,160 @@ class InvoicePaymentService
             $bankAccount,
             $statementEntryId
         ) {
-            $lockedInvoice = Invoice::query()
-                ->whereKey($invoice->id)
+            return $this->persistPayment(
+                $businessEntity,
+                $invoice,
+                $bankAccount,
+                (string) $data['paid_at'],
+                $data['payment_method'] ?? null,
+                $data['payment_reference'] ?? null,
+                $statementEntryId,
+                $request
+            );
+        });
+    }
+
+    public function recordFromStatementEntry(
+        BusinessEntity $businessEntity,
+        Invoice $invoice,
+        BankAccount $bankAccount,
+        BankStatementEntry $statementEntry
+    ): Transaction {
+        if (! $bankAccount->canUseForTransaction($businessEntity)) {
+            throw ValidationException::withMessages([
+                'matches' => 'The selected bank account is not linked to this entity.',
+            ]);
+        }
+
+        $paidAt = $statementEntry->date?->toDateString() ?? now()->toDateString();
+        $reference = Str::limit(trim((string) $statementEntry->description), 255, '');
+
+        return $this->persistPayment(
+            $businessEntity,
+            $invoice,
+            $bankAccount,
+            $paidAt,
+            null,
+            $reference !== '' ? $reference : null,
+            (int) $statementEntry->id
+        );
+    }
+
+    private function persistPayment(
+        BusinessEntity $businessEntity,
+        Invoice $invoice,
+        BankAccount $bankAccount,
+        string $paidAt,
+        ?string $paymentMethod,
+        ?string $paymentReference,
+        ?int $statementEntryId,
+        ?Request $request = null
+    ): Transaction {
+        $lockedInvoice = Invoice::query()
+            ->whereKey($invoice->id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $lockedInvoice || (int) $lockedInvoice->business_entity_id !== (int) $businessEntity->id) {
+            throw ValidationException::withMessages([
+                'paid_at' => 'Invoice could not be found for payment.',
+            ]);
+        }
+
+        if ($lockedInvoice->status !== 'approved') {
+            throw ValidationException::withMessages([
+                'paid_at' => 'Only approved (posted) invoices can be marked paid.',
+            ]);
+        }
+
+        if ($lockedInvoice->paid_at || $lockedInvoice->payment_transaction_id) {
+            throw ValidationException::withMessages([
+                'paid_at' => 'This invoice is already recorded as paid.',
+            ]);
+        }
+
+        $statementEntry = null;
+        if ($statementEntryId) {
+            $statementEntry = BankStatementEntry::query()
+                ->where('id', $statementEntryId)
                 ->lockForUpdate()
                 ->first();
 
-            if (! $lockedInvoice || (int) $lockedInvoice->business_entity_id !== (int) $businessEntity->id) {
+            if (! $statementEntry
+                || (int) $statementEntry->bank_account_id !== (int) $bankAccount->id
+                || $statementEntry->transaction_id !== null) {
                 throw ValidationException::withMessages([
-                    'paid_at' => 'Invoice could not be found for payment.',
+                    'bank_statement_entry_id' => 'The selected statement line is not available on this account.',
                 ]);
             }
 
-            if ($lockedInvoice->status !== 'approved') {
+            if (abs(abs((float) $statementEntry->amount) - (float) $lockedInvoice->total_amount) > 0.005) {
                 throw ValidationException::withMessages([
-                    'paid_at' => 'Only approved (posted) invoices can be marked paid.',
+                    'bank_statement_entry_id' => 'Statement line amount does not match the invoice total.',
                 ]);
             }
 
-            if ($lockedInvoice->paid_at || $lockedInvoice->payment_transaction_id) {
+            if ((float) $statementEntry->amount < 0) {
                 throw ValidationException::withMessages([
-                    'paid_at' => 'This invoice is already recorded as paid.',
+                    'bank_statement_entry_id' => 'Invoice payments must match an incoming (credit) statement line.',
                 ]);
             }
+        }
 
-            $statementEntry = null;
-            if ($statementEntryId) {
-                $statementEntry = BankStatementEntry::query()
-                    ->where('id', $statementEntryId)
-                    ->lockForUpdate()
-                    ->first();
+        $paymentDocumentId = null;
+        if ($request?->hasFile('payment_document')) {
+            $lockedInvoice->loadMissing('asset');
+            /** @var UploadedFile $payFile */
+            $payFile = $request->file('payment_document');
+            $displayName = $request->filled('payment_document_name')
+                ? trim((string) $request->input('payment_document_name'))
+                : $payFile->getClientOriginalName();
+            $labelBase = $request->filled('payment_document_name')
+                ? trim((string) $request->input('payment_document_name'))
+                : (pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME) ?: 'Payment Receipt');
 
-                if (! $statementEntry
-                    || (int) $statementEntry->bank_account_id !== (int) $bankAccount->id
-                    || $statementEntry->transaction_id !== null) {
-                    throw ValidationException::withMessages([
-                        'bank_statement_entry_id' => 'The selected statement line is not available on this account.',
-                    ]);
-                }
+            $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                $businessEntity,
+                $lockedInvoice->asset,
+                $payFile,
+                $displayName,
+                $labelBase ?: 'Payment Receipt',
+                'Payment receipt for Invoice '.$lockedInvoice->invoice_number
+            );
+            $paymentDocumentId = $document->id;
+        }
 
-                if (abs(abs((float) $statementEntry->amount) - (float) $lockedInvoice->total_amount) > 0.005) {
-                    throw ValidationException::withMessages([
-                        'bank_statement_entry_id' => 'Statement line amount does not match the invoice total.',
-                    ]);
-                }
+        $transaction = Transaction::create([
+            'business_entity_id' => $businessEntity->id,
+            'asset_id' => $lockedInvoice->asset_id,
+            'bank_account_id' => $bankAccount->id,
+            'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+            'date' => $paidAt,
+            'amount' => $lockedInvoice->total_amount,
+            'description' => 'Payment received for Invoice '.$lockedInvoice->invoice_number,
+            'transaction_type' => Transaction::TYPE_INVOICE_PAYMENT,
+            'invoice_number' => $lockedInvoice->invoice_number,
+            'payment_status' => 'paid',
+            'paid_at' => $paidAt,
+            'payment_method' => $paymentMethod,
+            'payment_document_id' => $paymentDocumentId,
+            'gst_amount' => null,
+            'gst_status' => 'gst_free',
+            'gst_basis' => null,
+        ]);
 
-                if ((float) $statementEntry->amount < 0) {
-                    throw ValidationException::withMessages([
-                        'bank_statement_entry_id' => 'Invoice payments must match an incoming (credit) statement line.',
-                    ]);
-                }
-            }
+        if ($statementEntry) {
+            $statementEntry->update(['transaction_id' => $transaction->id]);
+        }
 
-            $paymentDocumentId = null;
-            if ($request->hasFile('payment_document')) {
-                $lockedInvoice->loadMissing('asset');
-                /** @var UploadedFile $payFile */
-                $payFile = $request->file('payment_document');
-                $displayName = $request->filled('payment_document_name')
-                    ? trim((string) $request->input('payment_document_name'))
-                    : $payFile->getClientOriginalName();
-                $labelBase = $request->filled('payment_document_name')
-                    ? trim((string) $request->input('payment_document_name'))
-                    : (pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME) ?: 'Payment Receipt');
+        $lockedInvoice->update([
+            'paid_at' => $paidAt,
+            'payment_method' => $paymentMethod,
+            'payment_reference' => $paymentReference,
+            'status' => 'paid',
+            'payment_transaction_id' => $transaction->id,
+        ]);
 
-                $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                    $businessEntity,
-                    $lockedInvoice->asset,
-                    $payFile,
-                    $displayName,
-                    $labelBase ?: 'Payment Receipt',
-                    'Payment receipt for Invoice '.$lockedInvoice->invoice_number
-                );
-                $paymentDocumentId = $document->id;
-            }
-
-            $transaction = Transaction::create([
-                'business_entity_id' => $businessEntity->id,
-                'asset_id' => $lockedInvoice->asset_id,
-                'bank_account_id' => $bankAccount->id,
-                'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
-                'date' => $data['paid_at'],
-                'amount' => $lockedInvoice->total_amount,
-                'description' => 'Payment received for Invoice '.$lockedInvoice->invoice_number,
-                'transaction_type' => Transaction::TYPE_INVOICE_PAYMENT,
-                'invoice_number' => $lockedInvoice->invoice_number,
-                'payment_status' => 'paid',
-                'paid_at' => $data['paid_at'],
-                'payment_method' => $data['payment_method'] ?? null,
-                'payment_document_id' => $paymentDocumentId,
-                'gst_amount' => null,
-                'gst_status' => 'gst_free',
-                'gst_basis' => null,
-            ]);
-
-            if ($statementEntry) {
-                $statementEntry->update(['transaction_id' => $transaction->id]);
-            }
-
-            $lockedInvoice->update([
-                'paid_at' => $data['paid_at'],
-                'payment_method' => $data['payment_method'] ?? null,
-                'payment_reference' => $data['payment_reference'] ?? null,
-                'status' => 'paid',
-                'payment_transaction_id' => $transaction->id,
-            ]);
-
-            return $transaction;
-        });
+        return $transaction;
     }
 }

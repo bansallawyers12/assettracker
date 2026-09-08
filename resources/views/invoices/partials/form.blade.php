@@ -10,7 +10,7 @@
     $defaultLines = $isEdit
         ? $invoice->lines->map(fn ($line) => [
             'description' => $line->description,
-            'quantity' => (float) $line->quantity,
+            'quantity' => 1,
             'unit_price' => (float) $line->unit_price,
             'account_code' => $line->account_code ?? $defaultAccountCode,
         ])->values()->all()
@@ -22,7 +22,6 @@
         ]];
     $formConfig = [
         'assets' => $assetsForForm,
-        'tenants' => $tenantsForForm ?? [],
         'incomeAccounts' => $incomeAccounts->map(fn ($a) => [
             'code' => $a->account_code,
             'label' => $a->account_code.' — '.$a->account_name,
@@ -79,28 +78,23 @@
             @method('PUT')
         @endif
 
+        {{-- Hidden defaults (kept for backend compatibility) --}}
+        <input type="hidden" name="invoice_number" x-model="invoiceNumber">
+        <input type="hidden" name="currency" value="AUD">
+        <input type="hidden" name="reference" x-model="reference">
+        <input type="hidden" name="notes" x-model="notes">
+        <input type="hidden" name="asset_id" :value="assetId">
+        <input type="hidden" name="lease_id" :value="leaseId">
+        <input type="hidden" name="gst_percent" :value="gstApplicable ? 10 : 0">
+        <input type="hidden" name="gst_basis" :value="gstApplicable ? 'inclusive' : 'none'">
+
         {{-- Invoice details --}}
         <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div class="flex flex-col gap-3 border-b border-gray-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
-                <div>
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Invoice details</h3>
-                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Number, dates, and currency</p>
-                </div>
-                <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-                    <input type="checkbox" value="1" @checked(!empty($includeEnded))
-                           onchange="const u = new URL(window.location.href); if (this.checked) { u.searchParams.set('include_ended', '1'); } else { u.searchParams.delete('include_ended'); } window.location = u.toString();"
-                           class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                    Include ended leases in the lease picker
-                </label>
+            <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Invoice details</h3>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Dates for this invoice</p>
             </div>
-            <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-3">
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Invoice number</label>
-                    <input name="invoice_number" x-model="invoiceNumber" required
-                           @input="invoiceNumberTouched = true"
-                           class="{{ $fieldClass }}" />
-                    <p class="mt-1 text-xs text-gray-500">Includes entity id {{ $businessEntity->id }} (INV{{ $businessEntity->id }}-YYYYMM###).</p>
-                </div>
+            <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
                 <div>
                     <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Issue date</label>
                     <x-date-input name="issue_date" value="{{ $issueDate }}" data-invoice-issue-date
@@ -110,60 +104,29 @@
                     <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Due date</label>
                     <x-date-input name="due_date" value="{{ $defaultDueDate }}" data-invoice-due-date
                                   class="{{ $fieldClass }}" />
-                    <p class="mt-1 text-xs text-gray-500">Defaults to issue date + 30 days (until you change it).</p>
-                </div>
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Currency</label>
-                    <input name="currency" value="AUD" readonly
-                           class="{{ $fieldClass }} bg-gray-50 dark:bg-gray-800/80" />
-                </div>
-                <div class="md:col-span-2">
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Reference</label>
-                    <input name="reference" x-model="reference"
-                           class="{{ $fieldClass }}" placeholder="Optional reference shown on the invoice" />
                 </div>
             </div>
         </section>
 
-        {{-- Customer & property --}}
+        {{-- Customer & lease --}}
         <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Customer &amp; property</h3>
-                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Optional asset/lease links fill customer and reference</p>
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Customer &amp; lease</h3>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Optional lease fills customer automatically</p>
             </div>
-            <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-3">
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Asset</label>
-                    <select name="asset_id" x-model="assetId" @change="onAssetChange()"
-                            class="{{ $fieldClass }}">
-                        <option value="">— Optional —</option>
-                        @foreach ($assetsForForm as $asset)
-                            <option value="{{ $asset['id'] }}">{{ $asset['name'] }}</option>
-                        @endforeach
-                    </select>
-                </div>
+            <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
                 <div>
                     <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Lease / tenant</label>
-                    <input type="hidden" name="lease_id" :value="leaseId">
-                    <select x-model="leaseId" @change="onLeaseChange()" :disabled="!assetId || leasesForAsset.length === 0"
-                            class="{{ $fieldClass }} disabled:opacity-60">
+                    <select x-model="leaseId" @change="onLeaseChange()"
+                            class="{{ $fieldClass }}">
                         <option value="">— Optional —</option>
-                        <template x-for="lease in leasesForAsset" :key="lease.id">
-                            <option :value="String(lease.id)" x-text="lease.label"></option>
+                        <template x-for="lease in allLeases" :key="lease.id">
+                            <option :value="String(lease.id)" x-text="lease.fullLabel"></option>
                         </template>
                     </select>
                 </div>
                 <div>
                     <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Customer</label>
-                    @if (($tenantsForForm ?? collect())->isNotEmpty())
-                        <select @change="onTenantPick($event.target.value)"
-                                class="mb-2 {{ $fieldClass }}">
-                            <option value="">— Pick from tenants (optional) —</option>
-                            @foreach ($tenantsForForm as $tenant)
-                                <option value="{{ $tenant['name'] }}">{{ $tenant['name'] }}</option>
-                            @endforeach
-                        </select>
-                    @endif
                     <input name="customer_name" x-model="customerName" required
                            class="{{ $fieldClass }}" placeholder="Customer / bill-to name" />
                 </div>
@@ -174,71 +137,19 @@
         <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">GST</h3>
-                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Applies to all line items on this invoice</p>
-            </div>
-            <div class="space-y-4 p-5">
-                <input type="hidden" name="gst_percent" :value="gstApplicable ? gstPercent : 0">
-                <input type="hidden" name="gst_basis" :value="gstApplicable ? gstBasis : 'none'">
-
-                <div>
-                    <span class="mb-2 block text-xs font-medium text-gray-600 dark:text-gray-400">GST applicable</span>
-                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
-                            <input type="radio" name="gst_applicable_ui" value="1" x-model="gstApplicableRadio" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span>
-                                <span class="block font-medium text-gray-900 dark:text-white">Yes — GST applies</span>
-                                <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Taxable supply</span>
-                            </span>
-                        </label>
-                        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
-                            <input type="radio" name="gst_applicable_ui" value="0" x-model="gstApplicableRadio" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                            <span>
-                                <span class="block font-medium text-gray-900 dark:text-white">No — GST not applicable</span>
-                                <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">GST-free / out of scope</span>
-                            </span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-4 md:grid-cols-3" x-show="gstApplicable" x-cloak>
-                    <div class="md:col-span-2">
-                        <span class="mb-2 block text-xs font-medium text-gray-600 dark:text-gray-400">GST basis</span>
-                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
-                                <input type="radio" name="gst_basis_ui" value="inclusive" x-model="gstBasis" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                                <span>
-                                    <span class="block font-medium text-gray-900 dark:text-white">Inclusive</span>
-                                    <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Unit price includes GST — same as taxable rent invoices</span>
-                                </span>
-                            </label>
-                            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
-                                <input type="radio" name="gst_basis_ui" value="exclusive" x-model="gstBasis" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                                <span>
-                                    <span class="block font-medium text-gray-900 dark:text-white">Exclusive</span>
-                                    <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">GST added on top of unit price</span>
-                                </span>
-                            </label>
-                        </div>
-                    </div>
-                    <div>
-                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">GST %</label>
-                        <input type="number" x-model.number="gstPercent" min="0" max="100" step="0.01"
-                               class="{{ $fieldClass }}" />
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        {{-- Notes --}}
-        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Notes</h3>
-                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Shown on the invoice when present</p>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">10% inclusive when GST applies</p>
             </div>
             <div class="p-5">
-                <textarea name="notes" x-model="notes" rows="3"
-                          class="{{ $fieldClass }}"
-                          placeholder="Optional notes for the customer"></textarea>
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
+                        <input type="radio" name="gst_applicable_ui" value="1" x-model="gstApplicableRadio" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        <span class="block font-medium text-gray-900 dark:text-white">Yes — GST applies</span>
+                    </label>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
+                        <input type="radio" name="gst_applicable_ui" value="0" x-model="gstApplicableRadio" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        <span class="block font-medium text-gray-900 dark:text-white">No — GST not applicable</span>
+                    </label>
+                </div>
             </div>
         </section>
 
@@ -260,32 +171,26 @@
 
             <div class="p-5">
                 <div class="hidden md:grid md:grid-cols-12 gap-2 mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                    <div class="md:col-span-4">Description</div>
-                    <div class="md:col-span-1">Qty</div>
+                    <div class="md:col-span-5">Description</div>
                     <div class="md:col-span-2" x-text="unitPriceLabel"></div>
-                    <div class="md:col-span-3">Income account</div>
-                    <div class="md:col-span-1 text-right">Line total</div>
+                    <div class="md:col-span-4">Income account</div>
                     <div class="md:col-span-1"></div>
                 </div>
 
                 <template x-for="(line, index) in lines" :key="index">
                     <div class="mb-3 grid grid-cols-1 items-start gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 md:grid-cols-12 md:border-0 md:bg-transparent md:p-0 dark:border-gray-800 dark:bg-gray-800/30 md:dark:bg-transparent">
-                        <div class="md:col-span-4">
+                        <div class="md:col-span-5">
                             <label class="mb-1 block text-xs text-gray-500 md:hidden">Description</label>
                             <input :name="'lines[' + index + '][description]'" x-model="line.description" required
                                    class="{{ $fieldClass }}" />
-                        </div>
-                        <div class="md:col-span-1">
-                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Qty</label>
-                            <input type="number" step="0.0001" min="0.0001" :name="'lines[' + index + '][quantity]'" x-model.number="line.quantity" required
-                                   class="{{ $fieldClass }}" />
+                            <input type="hidden" :name="'lines[' + index + '][quantity]'" value="1">
                         </div>
                         <div class="md:col-span-2">
                             <label class="mb-1 block text-xs text-gray-500 md:hidden" x-text="unitPriceLabel"></label>
                             <input type="number" step="0.01" min="0" :name="'lines[' + index + '][unit_price]'" x-model.number="line.unit_price" required
                                    class="{{ $fieldClass }}" />
                         </div>
-                        <div class="md:col-span-3">
+                        <div class="md:col-span-4">
                             <label class="mb-1 block text-xs text-gray-500 md:hidden">Income account</label>
                             <input type="hidden" :name="'lines[' + index + '][account_code]'" :value="line.account_code">
                             <select x-model="line.account_code"
@@ -294,10 +199,6 @@
                                     <option value="{{ $account->account_code }}">{{ $account->account_code }} — {{ $account->account_name }}</option>
                                 @endforeach
                             </select>
-                        </div>
-                        <div class="md:col-span-1 flex items-center justify-between gap-2 pt-1 md:justify-end md:pt-2">
-                            <span class="text-xs text-gray-500 md:hidden">Line total</span>
-                            <span class="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100" x-text="formatMoney(lineTotal(line))"></span>
                         </div>
                         <div class="md:col-span-1 flex md:justify-end">
                             <button type="button" @click="removeLine(index)" x-show="lines.length > 1"
@@ -355,7 +256,6 @@
     function invoiceForm(config) {
         return {
             assets: config.assets || [],
-            tenants: config.tenants || [],
             incomeAccounts: config.incomeAccounts || [],
             defaultAccountCode: config.defaultAccountCode || '',
             assetId: config.assetId ? String(config.assetId) : '',
@@ -364,8 +264,6 @@
             reference: config.reference || '',
             notes: config.notes || '',
             gstApplicableRadio: (config.gstBasis && config.gstBasis !== 'none') ? '1' : '0',
-            gstBasis: (config.gstBasis && config.gstBasis !== 'none') ? config.gstBasis : 'inclusive',
-            gstPercent: Number(config.gstPercent ?? 10),
             issueDate: config.issueDate || '',
             dueDate: config.dueDate || '',
             invoiceNumber: config.invoiceNumber || '',
@@ -376,35 +274,36 @@
             dateHooksBound: false,
             lines: (config.lines || []).map((line) => ({
                 description: line.description || '',
-                quantity: Number(line.quantity ?? 1),
+                quantity: 1,
                 unit_price: Number(line.unit_price ?? 0),
                 account_code: line.account_code || config.defaultAccountCode || '',
             })),
-            get leasesForAsset() {
-                if (!this.assetId) {
-                    return [];
-                }
-                const asset = this.assets.find((item) => String(item.id) === String(this.assetId));
-                return asset ? asset.leases : [];
+            get allLeases() {
+                return this.assets.flatMap((asset) =>
+                    (asset.leases || []).map((lease) => ({
+                        ...lease,
+                        asset_id: asset.id,
+                        fullLabel: `${asset.name} — ${lease.label}`,
+                    }))
+                );
             },
             get gstApplicable() {
                 return this.gstApplicableRadio === '1' || this.gstApplicableRadio === 1 || this.gstApplicableRadio === true;
             },
+            get gstBasis() {
+                return this.gstApplicable ? 'inclusive' : 'none';
+            },
+            get gstPercent() {
+                return this.gstApplicable ? 10 : 0;
+            },
             get unitPriceLabel() {
-                if (!this.gstApplicable) {
-                    return 'Unit price';
-                }
-                return this.gstBasis === 'inclusive' ? 'Unit price (inc GST)' : 'Unit price (ex GST)';
+                return this.gstApplicable ? 'Unit price (inc GST)' : 'Unit price';
             },
             get gstRate() {
                 if (!this.gstApplicable) {
                     return 0;
                 }
-                const percent = Number(this.gstPercent);
-                if (Number.isNaN(percent) || percent <= 0) {
-                    return 0;
-                }
-                return percent / 100;
+                return 0.1;
             },
             get totals() {
                 return this.lines.reduce((carry, line) => {
@@ -416,26 +315,17 @@
                 }, { subtotal: 0, gst: 0, total: 0 });
             },
             lineAmounts(line) {
-                const qty = Number(line.quantity) || 0;
+                const qty = 1;
                 const price = Number(line.unit_price) || 0;
                 const rate = this.gstRate;
                 if (rate <= 0) {
                     const total = Math.round(qty * price * 100) / 100;
                     return { net: total, gst: 0, lineTotal: total };
                 }
-                if (this.gstBasis === 'inclusive') {
-                    const lineTotal = Math.round(qty * price * 100) / 100;
-                    const net = Math.round((lineTotal / (1 + rate)) * 100) / 100;
-                    const gst = Math.round((lineTotal - net) * 100) / 100;
-                    return { net, gst, lineTotal };
-                }
-                const net = Math.round(qty * price * 100) / 100;
-                const gst = Math.round(net * rate * 100) / 100;
-                const lineTotal = Math.round((net + gst) * 100) / 100;
+                const lineTotal = Math.round(qty * price * 100) / 100;
+                const net = Math.round((lineTotal / (1 + rate)) * 100) / 100;
+                const gst = Math.round((lineTotal - net) * 100) / 100;
                 return { net, gst, lineTotal };
-            },
-            lineTotal(line) {
-                return this.lineAmounts(line).lineTotal;
             },
             formatMoney(value) {
                 return '$' + (Number(value) || 0).toFixed(2);
@@ -453,20 +343,13 @@
                     this.lines.splice(index, 1);
                 }
             },
-            onAssetChange() {
-                this.leaseId = '';
-                this.applyLeaseDefaults();
-            },
             onLeaseChange() {
+                const lease = this.allLeases.find((item) => String(item.id) === String(this.leaseId));
+                this.assetId = lease ? String(lease.asset_id) : '';
                 this.applyLeaseDefaults();
-            },
-            onTenantPick(name) {
-                if (name) {
-                    this.customerName = name;
-                }
             },
             applyLeaseDefaults() {
-                const lease = this.leasesForAsset.find((item) => String(item.id) === String(this.leaseId));
+                const lease = this.allLeases.find((item) => String(item.id) === String(this.leaseId));
                 if (!lease) {
                     return;
                 }
@@ -479,14 +362,6 @@
                 }
                 if (Object.prototype.hasOwnProperty.call(lease, 'gst_applicable')) {
                     this.gstApplicableRadio = lease.gst_applicable ? '1' : '0';
-                    if (lease.gst_applicable && this.gstBasis === 'none') {
-                        this.gstBasis = 'inclusive';
-                    }
-                    if (!lease.gst_applicable) {
-                        this.gstPercent = 0;
-                    } else if (!this.gstPercent) {
-                        this.gstPercent = 10;
-                    }
                 }
             },
             addDaysYmd(ymd, days) {
@@ -533,7 +408,7 @@
                         this.suggestedInvoiceNumber = data.invoice_number;
                     }
                 } catch (e) {
-                    // ignore network errors; user can edit number manually
+                    // ignore network errors; server will still validate uniqueness
                 }
             },
             onIssueDateChanged(value) {
@@ -590,14 +465,6 @@
                 return true;
             },
             initFlatpickrHooks() {
-                this.$watch('gstApplicableRadio', (value) => {
-                    const off = value === '0' || value === 0 || value === false;
-                    if (off) {
-                        this.gstPercent = 0;
-                    } else if (!this.gstPercent) {
-                        this.gstPercent = 10;
-                    }
-                });
                 if (this.dateHooksBound) {
                     return;
                 }

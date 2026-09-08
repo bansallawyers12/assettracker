@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 class Invoice extends Model
 {
@@ -68,6 +69,31 @@ class Invoice extends Model
     public function lines()
     {
         return $this->hasMany(InvoiceLine::class);
+    }
+
+    /**
+     * Posted invoices that still sit on AR and can be matched to a bank credit.
+     *
+     * @param  list<int>  $businessEntityIds
+     * @return Collection<int, self>
+     */
+    public static function unpaidPostedForMatching(array $businessEntityIds): Collection
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $businessEntityIds))));
+        if ($ids === []) {
+            return collect();
+        }
+
+        return static::query()
+            ->whereIn('business_entity_id', $ids)
+            ->where('is_posted', true)
+            ->where('status', 'approved')
+            ->whereNull('paid_at')
+            ->whereNull('payment_transaction_id')
+            ->orderByDesc('issue_date')
+            ->orderByDesc('id')
+            ->limit(200)
+            ->get();
     }
 
     /**

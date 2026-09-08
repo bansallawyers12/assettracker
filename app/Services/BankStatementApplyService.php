@@ -6,6 +6,7 @@ use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
+use App\Models\Invoice;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -13,42 +14,60 @@ use Illuminate\Validation\ValidationException;
 
 class BankStatementApplyService
 {
-    public function __construct(private TransactionPostingService $postingService) {}
+    public function __construct(
+        private TransactionPostingService $postingService,
+        private InvoicePaymentService $invoicePaymentService,
+    ) {}
 
     /**
      * @param  list<array<string, mixed>>  $matches
-     * @return array{matchedExisting: int, transactionsCreated: int, skipped: int}
+     * @return array{matchedExisting: int, transactionsCreated: int, invoicesMatched: int, skipped: int}
      */
     public function apply(BankAccount $bankAccount, BusinessEntity $businessEntity, array $matches): array
     {
         return DB::transaction(function () use ($bankAccount, $businessEntity, $matches) {
             $matchedExisting = 0;
             $created = 0;
+            $invoicesMatched = 0;
             $skipped = 0;
             $claimedTransactionIds = [];
+            $claimedInvoiceIds = [];
 
             foreach ($matches as $match) {
                 $transactionId = ! empty($match['transaction_id']) ? (int) $match['transaction_id'] : null;
+                $invoiceId = ! empty($match['invoice_id']) ? (int) $match['invoice_id'] : null;
                 $chartAccountId = ! empty($match['chart_account_id']) ? (int) $match['chart_account_id'] : null;
                 $transactionType = ! empty($match['transaction_type']) ? (string) $match['transaction_type'] : null;
                 $assetId = ! empty($match['asset_id']) ? (int) $match['asset_id'] : null;
                 $action = ! empty($match['action']) ? (string) $match['action'] : null;
 
-                if ($transactionId === null && $chartAccountId === null && $transactionType === null) {
+                if ($transactionId === null && $invoiceId === null && $chartAccountId === null && $transactionType === null) {
                     $skipped++;
 
                     continue;
                 }
 
-                if ($transactionId !== null && ($chartAccountId !== null || $transactionType !== null)) {
+                if ($transactionId !== null && ($invoiceId !== null || $chartAccountId !== null || $transactionType !== null)) {
                     throw ValidationException::withMessages([
                         'matches' => 'Choose either an existing transaction or a create action for each line, not both.',
+                    ]);
+                }
+
+                if ($invoiceId !== null && ($chartAccountId !== null || $transactionType !== null)) {
+                    throw ValidationException::withMessages([
+                        'matches' => 'Choose either an invoice or a create action for each line, not both.',
                     ]);
                 }
 
                 if ($action === 'match_transaction' && $transactionId === null) {
                     throw ValidationException::withMessages([
                         'matches' => 'Match action requires a transaction id.',
+                    ]);
+                }
+
+                if ($action === 'match_invoice' && $invoiceId === null) {
+                    throw ValidationException::withMessages([
+                        'matches' => 'Invoice match requires an invoice id.',
                     ]);
                 }
 
@@ -74,6 +93,12 @@ class BankStatementApplyService
                 if ($transactionId !== null && isset($claimedTransactionIds[$transactionId])) {
                     throw ValidationException::withMessages([
                         'matches' => "Transaction #{$transactionId} is selected for more than one statement line.",
+                    ]);
+                }
+
+                if ($invoiceId !== null && isset($claimedInvoiceIds[$invoiceId])) {
+                    throw ValidationException::withMessages([
+                        'matches' => "Invoice #{$invoiceId} is selected for more than one statement line.",
                     ]);
                 }
 
@@ -104,6 +129,19 @@ class BankStatementApplyService
                     );
                     $claimedTransactionIds[$transactionId] = true;
                     $matchedExisting++;
+
+                    continue;
+                }
+
+                if ($invoiceId !== null) {
+                    $this->matchInvoice(
+                        $bankEntry,
+                        $bankAccount,
+                        $businessEntity,
+                        $invoiceId
+                    );
+                    $claimedInvoiceIds[$invoiceId] = true;
+                    $invoicesMatched++;
 
                     continue;
                 }
@@ -171,15 +209,16 @@ class BankStatementApplyService
                 $created++;
             }
 
-            if ($matchedExisting === 0 && $created === 0) {
+            if ($matchedExisting === 0 && $created === 0 && $invoicesMatched === 0) {
                 throw ValidationException::withMessages([
-                    'matches' => 'No matches were applied. Choose an existing transaction or create type for at least one line.',
+                    'matches' => 'No matches were applied. Choose an existing transaction, invoice, or create type for at least one line.',
                 ]);
             }
 
             return [
                 'matchedExisting' => $matchedExisting,
                 'transactionsCreated' => $created,
+                'invoicesMatched' => $invoicesMatched,
                 'skipped' => $skipped,
             ];
         });
@@ -233,6 +272,37 @@ class BankStatementApplyService
 
         $bankEntry->update(['transaction_id' => $transaction->id]);
         $this->postAfterStatementLinked($transaction);
+    }
+
+    private function matchInvoice(
+        BankStatementEntry $bankEntry,
+        BankAccount $bankAccount,
+        BusinessEntity $businessEntity,
+        int $invoiceId
+    ): void {
+        if ($bankAccount->isLoanLedgerAccount()) {
+            throw ValidationException::withMessages([
+                'matches' => 'Invoice matching is not available on loan activity accounts.',
+            ]);
+        }
+
+        $invoice = Invoice::query()
+            ->whereKey($invoiceId)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $invoice || (int) $invoice->business_entity_id !== (int) $businessEntity->id) {
+            throw ValidationException::withMessages([
+                'matches' => 'Selected invoice does not belong to the booking entity.',
+            ]);
+        }
+
+        $this->invoicePaymentService->recordFromStatementEntry(
+            $businessEntity,
+            $invoice,
+            $bankAccount,
+            $bankEntry
+        );
     }
 
     private function postAfterStatementLinked(Transaction $transaction): void

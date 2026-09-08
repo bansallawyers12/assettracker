@@ -72,8 +72,12 @@ it('pre-fills create form with suggested number, income accounts, and due date',
         ->assertSuccessful()
         ->assertSee('INV'.$entity->id.'-'.now()->format('Ym').'001', false)
         ->assertSee('4100 — Rental Income', false)
-        ->assertSee('GST applicable', false)
-        ->assertSee('4100 — Rental Income', false);
+        ->assertSee('Yes — GST applies', false)
+        ->assertSee('Income account', false)
+        ->assertDontSee('Include ended leases', false)
+        ->assertDontSee('GST basis', false)
+        ->assertDontSee('Pick from tenants', false)
+        ->assertDontSee('Line total', false);
 });
 
 it('stores a draft invoice linked to asset and lease with inclusive gst', function () {

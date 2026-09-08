@@ -12,4 +12,4 @@ Label loan-purpose CSV imports as "loan activity", not cash reconciliation. Offe
 For offset-purpose accounts, build create-type options with typeSelectGroupsForBankAccount() (no Loan group). Surface a short note that interest/fees/repayments belong on the linked loan account and offset↔loan cash moves are Internal transfer.
 
 ## Reconciliation Change panel order
-Match existing | Or create as type, then Or create from chart account (cash/offset only), then Create markers. Keep labels and layout stable — do not move chart accounts above Match existing.
+Cash/offset: Match existing | Match invoice, then Or create as type, then Or create from chart account, then Create markers. Loan activity hides Match invoice and chart-account creates. Do not merge invoices into Match existing. Keep labels stable — do not move chart accounts above Match existing.

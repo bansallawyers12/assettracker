@@ -2,6 +2,7 @@
 
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
+use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Services\BankStatementMatchSuggester;
 use App\Services\BankStatementParseService;
@@ -253,6 +254,106 @@ it('matches internal transfer candidates regardless of default expense direction
 
     expect($suggestion['action'])->toBe('match_transaction')
         ->and($suggestion['transaction_id'])->toBe(88);
+});
+
+it('suggests a high-confidence invoice match when amount and customer name align', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => 10000,
+        'date' => '2026-08-09',
+        'description' => 'RANJEET SINGH Rent Melbourne',
+    ]);
+    $invoice = new Invoice([
+        'invoice_number' => 'INV64-202604001',
+        'customer_name' => 'Ranjeet Singh',
+        'total_amount' => 10000,
+        'issue_date' => '2026-04-01',
+        'status' => 'approved',
+        'is_posted' => true,
+    ]);
+    $invoice->id = 81;
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect(), null, collect([$invoice]));
+
+    expect($suggestion['action'])->toBe('match_invoice')
+        ->and($suggestion['confidence'])->toBe('high')
+        ->and($suggestion['invoice_id'])->toBe(81)
+        ->and($suggestion['invoice_number'])->toBe('INV64-202604001');
+});
+
+it('suggests a medium-confidence invoice match on amount only', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => 10000,
+        'date' => '2026-08-09',
+        'description' => 'DEPOSIT INTERNET',
+    ]);
+    $invoice = new Invoice([
+        'invoice_number' => 'INV1-202604001',
+        'customer_name' => 'Ranjeet Singh',
+        'total_amount' => 10000,
+        'issue_date' => '2026-04-01',
+        'status' => 'approved',
+        'is_posted' => true,
+    ]);
+    $invoice->id = 82;
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect(), null, collect([$invoice]));
+
+    expect($suggestion['action'])->toBe('match_invoice')
+        ->and($suggestion['confidence'])->toBe('medium')
+        ->and($suggestion['invoice_id'])->toBe(82);
+});
+
+it('prefers an existing transaction match over an unpaid invoice', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry(['amount' => 500, 'date' => '2026-08-01', 'description' => 'Alex Tenant rent']);
+    $candidate = makeTransaction([
+        'id' => 44,
+        'amount' => 500,
+        'date' => '2026-08-01',
+        'transaction_type' => Transaction::TYPE_INVOICE_PAYMENT,
+        'payment_status' => 'paid',
+    ]);
+    $invoice = new Invoice([
+        'invoice_number' => 'INV1-202608001',
+        'customer_name' => 'Alex Tenant',
+        'total_amount' => 500,
+        'issue_date' => '2026-08-01',
+    ]);
+    $invoice->id = 90;
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect([$candidate]), null, collect([$invoice]));
+
+    expect($suggestion['action'])->toBe('match_transaction')
+        ->and($suggestion['transaction_id'])->toBe(44)
+        ->and($suggestion['invoice_id'])->toBeNull();
+});
+
+it('does not suggest rental income when an unpaid invoice amount matches', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => 1100,
+        'date' => '2026-09-01',
+        'description' => 'Rental income received',
+    ]);
+    $invoice = new Invoice([
+        'invoice_number' => 'RENT202609001',
+        'customer_name' => 'Sam Tenant',
+        'total_amount' => 1100,
+        'issue_date' => '2026-09-01',
+    ]);
+    $invoice->id = 91;
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect(), null, collect([$invoice]));
+
+    expect($suggestion['action'])->toBe('match_invoice')
+        ->and($suggestion['invoice_id'])->toBe(91)
+        ->and($suggestion['transaction_type'])->toBeNull();
 });
 
 it('only stores counterpart fields for internal transfers in apply service', function () {

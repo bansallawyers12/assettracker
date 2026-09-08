@@ -158,6 +158,37 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         });
     }
 
+    function populateInvoiceSelects(invoices) {
+        importPanel.querySelectorAll('[data-bank-import-invoice]').forEach((select) => {
+            const keep = select.value;
+            select.innerHTML = '';
+            const empty = document.createElement('option');
+            empty.value = '';
+            empty.textContent = '— None —';
+            select.appendChild(empty);
+
+            invoices.forEach((invoice) => {
+                const option = document.createElement('option');
+                option.value = String(invoice.id);
+                option.dataset.amount = String(invoice.total_amount ?? '');
+                option.dataset.date = String(invoice.issue_date ?? '');
+                const dateLabel = invoice.issue_date
+                    ? String(invoice.issue_date).split('-').reverse().join('/')
+                    : '—';
+                const amountLabel = Number(invoice.total_amount || 0).toFixed(2);
+                const customer = String(invoice.customer_name || 'No customer').slice(0, 30);
+                option.textContent = `${invoice.invoice_number || ('#' + invoice.id)} · $${amountLabel} · ${customer} · ${dateLabel}`;
+                select.appendChild(option);
+            });
+
+            if (keep && invoices.some((invoice) => String(invoice.id) === String(keep))) {
+                select.value = String(keep);
+            }
+
+            refreshTomSelect(select);
+        });
+    }
+
     function populateCreateTypeSelects(groups) {
         if (!groups || typeof groups !== 'object') {
             return;
@@ -217,17 +248,23 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
 
             const actionInput = entryEl.querySelector('[data-bank-import-suggested-action]');
             const txInput = entryEl.querySelector('[data-bank-import-suggested-transaction]');
+            const invoiceInput = entryEl.querySelector('[data-bank-import-suggested-invoice]');
             const typeInput = entryEl.querySelector('[data-bank-import-suggested-type]');
             const assetInput = entryEl.querySelector('[data-bank-import-suggested-asset]');
             if (actionInput) actionInput.value = action;
             if (txInput) txInput.value = suggestion.transaction_id ? String(suggestion.transaction_id) : '';
+            if (invoiceInput) invoiceInput.value = suggestion.invoice_id ? String(suggestion.invoice_id) : '';
             if (typeInput) typeInput.value = suggestion.transaction_type || '';
             if (assetInput) assetInput.value = suggestion.asset_id ? String(suggestion.asset_id) : '';
 
             const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
+            const invoiceSelect = entryEl.querySelector('[data-bank-import-invoice]');
             const typeSelect = entryEl.querySelector('[data-bank-import-create-type]');
             if (txSelect && suggestion.transaction_id) {
                 txSelect.value = String(suggestion.transaction_id);
+            }
+            if (invoiceSelect && suggestion.invoice_id) {
+                invoiceSelect.value = String(suggestion.invoice_id);
             }
             if (typeSelect && action === 'create_transaction' && suggestion.transaction_type) {
                 typeSelect.value = suggestion.transaction_type;
@@ -255,6 +292,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             }
 
             populateCandidateSelects(Array.isArray(payload.candidates) ? payload.candidates : []);
+            populateInvoiceSelects(Array.isArray(payload.invoice_candidates) ? payload.invoice_candidates : []);
             populateCreateTypeSelects(payload.transaction_types || null);
             populateChartAccountSelects(Array.isArray(payload.chart_accounts) ? payload.chart_accounts : []);
             applySuggestionDefaults(Array.isArray(payload.entries) ? payload.entries : []);
@@ -277,6 +315,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     function bindEntrySelectGuards(scope = importPanel) {
         scope.querySelectorAll('[data-bank-import-entry]').forEach((entryEl) => {
             const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
+            const invoiceSelect = entryEl.querySelector('[data-bank-import-invoice]');
             const chartSelect = entryEl.querySelector('[data-bank-import-chart-account]');
             const subjectToBasCheckbox = entryEl.querySelector('[data-bank-import-subject-to-bas]');
             const isFlaggedCheckbox = entryEl.querySelector('[data-bank-import-is-flagged]');
@@ -287,6 +326,15 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 if (txSelect.value) {
                     if (chartSelect) chartSelect.value = '';
                     if (typeSelect) typeSelect.value = '';
+                    if (invoiceSelect) invoiceSelect.value = '';
+                }
+            }, { signal });
+
+            invoiceSelect?.addEventListener('change', () => {
+                if (invoiceSelect.value) {
+                    if (txSelect) txSelect.value = '';
+                    if (chartSelect) chartSelect.value = '';
+                    if (typeSelect) typeSelect.value = '';
                 }
             }, { signal });
 
@@ -294,6 +342,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 if (chartSelect.value) {
                     if (txSelect) txSelect.value = '';
                     if (typeSelect) typeSelect.value = '';
+                    if (invoiceSelect) invoiceSelect.value = '';
                 }
             }, { signal });
 
@@ -301,6 +350,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 if (typeSelect.value) {
                     if (txSelect) txSelect.value = '';
                     if (chartSelect) chartSelect.value = '';
+                    if (invoiceSelect) invoiceSelect.value = '';
                 }
             }, { signal });
         });
@@ -368,6 +418,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             const changePanel = entryEl.querySelector('[data-bank-import-change]');
             const changeOpen = Boolean(changePanel && !changePanel.classList.contains('hidden'));
             const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
+            const invoiceSelect = entryEl.querySelector('[data-bank-import-invoice]');
             const typeSelect = entryEl.querySelector('[data-bank-import-create-type]');
             const chartSelect = entryEl.querySelector('[data-bank-import-chart-account]');
             const subjectToBasCheckbox = entryEl.querySelector('[data-bank-import-subject-to-bas]');
@@ -375,29 +426,47 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             const commentsInput = entryEl.querySelector('[data-bank-import-comments]');
 
             let transactionId = '';
+            let invoiceId = '';
             let transactionType = '';
             let chartAccountId = '';
             let assetId = entryEl.querySelector('[data-bank-import-suggested-asset]')?.value || '';
 
             const suggestedTransactionId = entryEl.querySelector('[data-bank-import-suggested-transaction]')?.value || '';
+            const suggestedInvoiceId = entryEl.querySelector('[data-bank-import-suggested-invoice]')?.value || '';
             const suggestedType = entryEl.querySelector('[data-bank-import-suggested-type]')?.value || '';
 
             if (changeOpen) {
                 transactionId = txSelect?.value || '';
+                invoiceId = invoiceSelect?.value || '';
                 transactionType = typeSelect?.value || '';
                 chartAccountId = chartSelect?.value || '';
 
                 // Opening Change with empty overrides should not discard a valid suggestion.
-                if (!transactionId && !transactionType && !chartAccountId) {
+                if (!transactionId && !invoiceId && !transactionType && !chartAccountId) {
                     transactionId = suggestedTransactionId;
+                    invoiceId = suggestedInvoiceId;
                     transactionType = suggestedType;
                 }
             } else {
                 transactionId = suggestedTransactionId;
+                invoiceId = suggestedInvoiceId;
                 transactionType = suggestedType;
             }
 
-            if (!transactionId && !transactionType && !chartAccountId) {
+            if (!transactionId && !invoiceId && !transactionType && !chartAccountId) {
+                return;
+            }
+
+            if (invoiceId) {
+                matches.push({
+                    bank_entry_id: Number(entryId),
+                    action: 'match_invoice',
+                    invoice_id: Number(invoiceId),
+                    transaction_id: null,
+                    transaction_type: null,
+                    chart_account_id: null,
+                    asset_id: null,
+                });
                 return;
             }
 
