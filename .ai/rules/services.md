@@ -73,3 +73,6 @@ Invoice receipts always create invoice_payment (Dr 1100 / Cr 1130) for the alloc
 
 ## Partial invoice auto-suggest needs name match
 Auto-suggest partial invoice matches only when customer name appears in the statement description. Exact remaining-balance matches still suggest without a name. suggestMany depletes remaining so multiple partials can target one invoice.
+
+## Reconcile Match invoice(s) supports multi-allocation splits
+Credits can apply to N invoices via matches.*.allocations (sum must equal the statement credit; each amount ≤ remaining; same lease pool or else same customer name + entity). One invoice_payment TX for the full credit (Dr 1100 / Cr 1130); N allocation rows. Single invoice_id without allocations still means 100% of the credit to that bill. Leftover credit with incomplete selection stays unmatched — no unallocated credit liability. Suggest multi only for unique waterfill (name→one pool, depletes entire credit, no two invoices share the same remaining within 1¢); Accept still required. Keep this in InvoicePaymentService + InvoicePaymentAllocator; Record payment multi-apply is out of scope for now.

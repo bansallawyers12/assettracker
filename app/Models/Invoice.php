@@ -180,6 +180,7 @@ class Invoice extends Model
             })
             ->whereRaw('(invoices.total_amount - COALESCE(alloc_totals.amount_paid, 0)) > 0.005')
             ->select('invoices.*')
+            ->with('paymentAllocations')
             ->orderByDesc('invoices.issue_date')
             ->orderByDesc('invoices.id')
             ->limit(200)

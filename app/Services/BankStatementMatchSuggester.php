@@ -6,6 +6,7 @@ use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\Invoice;
 use App\Models\Transaction;
+use App\Support\InvoicePaymentAllocator;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -17,6 +18,10 @@ class BankStatementMatchSuggester
     public const HIGH_DATE_DAYS = 3;
 
     public const MEDIUM_DATE_DAYS = 14;
+
+    public function __construct(
+        private InvoicePaymentAllocator $allocator = new InvoicePaymentAllocator,
+    ) {}
 
     /**
      * @param  Collection<int, Transaction>  $candidates
@@ -32,6 +37,7 @@ class BankStatementMatchSuggester
      *     asset_id: int|null,
      *     invoice_id: int|null,
      *     invoice_number: string|null,
+     *     allocations: list<array{invoice_id: int, amount: float}>,
      *     alternates: list<array{transaction_id?: int, invoice_id?: int, confidence: string, reason: string}>
      * }
      */
@@ -101,6 +107,7 @@ class BankStatementMatchSuggester
                 'asset_id' => $defaultAssetId,
                 'invoice_id' => null,
                 'invoice_number' => null,
+                'allocations' => [],
                 'alternates' => [],
             ];
         }
@@ -110,7 +117,7 @@ class BankStatementMatchSuggester
 
     /**
      * Suggest for many entries, claiming each matched transaction at most once.
-     * Invoice matches deplete remaining balance so multiple partials can target one invoice.
+     * Invoice matches deplete remaining balance so splits and partials cannot over-claim.
      *
      * @param  Collection<int, BankStatementEntry>  $entries
      * @param  Collection<int, Transaction>  $candidates
@@ -152,20 +159,36 @@ class BankStatementMatchSuggester
                     ->values();
             }
 
-            if (($suggestion['action'] ?? null) === 'match_invoice'
-                && ! empty($suggestion['invoice_id'])) {
-                $claimedInvoiceId = (int) $suggestion['invoice_id'];
-                $applied = round(abs((float) $entry->amount), 2);
-                $remainingByInvoiceId[$claimedInvoiceId] = round(
-                    ($remainingByInvoiceId[$claimedInvoiceId] ?? 0) - $applied,
-                    2
-                );
+            if (($suggestion['action'] ?? null) === 'match_invoice') {
+                $rows = ! empty($suggestion['allocations']) && is_array($suggestion['allocations'])
+                    ? $suggestion['allocations']
+                    : (
+                        ! empty($suggestion['invoice_id'])
+                            ? [[
+                                'invoice_id' => (int) $suggestion['invoice_id'],
+                                'amount' => round(abs((float) $entry->amount), 2),
+                            ]]
+                            : []
+                    );
 
-                if (($remainingByInvoiceId[$claimedInvoiceId] ?? 0) <= self::AMOUNT_TOLERANCE) {
-                    unset($remainingByInvoiceId[$claimedInvoiceId]);
-                    $availableInvoices = $availableInvoices
-                        ->reject(fn (Invoice $invoice) => (int) $invoice->id === $claimedInvoiceId)
-                        ->values();
+                foreach ($rows as $row) {
+                    $claimedInvoiceId = (int) ($row['invoice_id'] ?? 0);
+                    if ($claimedInvoiceId <= 0) {
+                        continue;
+                    }
+
+                    $applied = round((float) ($row['amount'] ?? 0), 2);
+                    $remainingByInvoiceId[$claimedInvoiceId] = round(
+                        ($remainingByInvoiceId[$claimedInvoiceId] ?? 0) - $applied,
+                        2
+                    );
+
+                    if (($remainingByInvoiceId[$claimedInvoiceId] ?? 0) <= self::AMOUNT_TOLERANCE) {
+                        unset($remainingByInvoiceId[$claimedInvoiceId]);
+                        $availableInvoices = $availableInvoices
+                            ->reject(fn (Invoice $invoice) => (int) $invoice->id === $claimedInvoiceId)
+                            ->values();
+                    }
                 }
             }
         }
@@ -188,6 +211,26 @@ class BankStatementMatchSuggester
             return null;
         }
 
+        $single = $this->suggestSingleInvoiceMatch($entry, $invoices, $remainingByInvoiceId);
+        if ($single !== null) {
+            return $single;
+        }
+
+        return $this->suggestMultiInvoiceMatch($entry, $invoices, $remainingByInvoiceId);
+    }
+
+    /**
+     * Exact remaining or partial-on-one (name required for partial). Credit must fit on one bill.
+     *
+     * @param  Collection<int, Invoice>  $invoices
+     * @param  array<int, float>|null  $remainingByInvoiceId
+     * @return array<string, mixed>|null
+     */
+    private function suggestSingleInvoiceMatch(
+        BankStatementEntry $entry,
+        Collection $invoices,
+        ?array $remainingByInvoiceId = null
+    ): ?array {
         $entryAmount = abs((float) $entry->amount);
         $description = Str::lower((string) ($entry->description ?? ''));
         $entryDate = $this->asDate($entry->date);
@@ -311,7 +354,93 @@ class BankStatementMatchSuggester
             'asset_id' => $invoice->asset_id ? (int) $invoice->asset_id : null,
             'invoice_id' => (int) $invoice->id,
             'invoice_number' => $invoice->invoice_number,
+            'allocations' => [[
+                'invoice_id' => (int) $invoice->id,
+                'amount' => round(abs((float) $entry->amount), 2),
+            ]],
             'alternates' => $alternates,
+        ];
+    }
+
+    /**
+     * Unique waterfill across one tenant/lease pool when no single invoice can take the credit.
+     *
+     * @param  Collection<int, Invoice>  $invoices
+     * @param  array<int, float>|null  $remainingByInvoiceId
+     * @return array<string, mixed>|null
+     */
+    private function suggestMultiInvoiceMatch(
+        BankStatementEntry $entry,
+        Collection $invoices,
+        ?array $remainingByInvoiceId = null
+    ): ?array {
+        $entryAmount = round(abs((float) $entry->amount), 2);
+        $description = Str::lower((string) ($entry->description ?? ''));
+
+        $named = $invoices->filter(function (Invoice $invoice) use ($description, $remainingByInvoiceId) {
+            $status = $invoice->status ?? null;
+            if ($status !== null && ! in_array($status, ['approved', 'partial'], true)) {
+                return false;
+            }
+
+            $customerName = trim((string) $invoice->customer_name);
+            if ($customerName === '' || ! Str::contains($description, Str::lower($customerName))) {
+                return false;
+            }
+
+            $invoiceId = (int) $invoice->id;
+            $remaining = array_key_exists($invoiceId, $remainingByInvoiceId ?? [])
+                ? round((float) $remainingByInvoiceId[$invoiceId], 2)
+                : $invoice->amountDue();
+
+            return $remaining > self::AMOUNT_TOLERANCE;
+        })->values();
+
+        if ($named->count() < 2) {
+            return null;
+        }
+
+        $pools = $named->groupBy(fn (Invoice $invoice) => $this->allocator->poolKey($invoice));
+        if ($pools->count() !== 1) {
+            return null;
+        }
+
+        /** @var Collection<int, Invoice> $pool */
+        $pool = $pools->first()->values();
+        if ($this->allocator->hasAmbiguousRemainings($pool, $remainingByInvoiceId)) {
+            return null;
+        }
+
+        $proposal = $this->allocator->propose($entryAmount, $pool, $remainingByInvoiceId);
+        if ($proposal['leftover'] > self::AMOUNT_TOLERANCE || $proposal['allocations'] === []) {
+            return null;
+        }
+
+        if (count($proposal['allocations']) < 2) {
+            return null;
+        }
+
+        $allocatedSum = round(array_sum(array_column($proposal['allocations'], 'amount')), 2);
+        if (abs($allocatedSum - $entryAmount) > self::AMOUNT_TOLERANCE) {
+            return null;
+        }
+
+        $firstInvoiceId = (int) $proposal['allocations'][0]['invoice_id'];
+        /** @var Invoice $firstInvoice */
+        $firstInvoice = $pool->first(fn (Invoice $invoice) => (int) $invoice->id === $firstInvoiceId) ?? $pool->first();
+
+        return [
+            'action' => 'match_invoice',
+            'confidence' => 'medium',
+            'reason' => 'Unique multi-invoice waterfill for customer pool',
+            'transaction_id' => null,
+            'transaction_type' => null,
+            'chart_account_id' => null,
+            'asset_id' => $firstInvoice->asset_id ? (int) $firstInvoice->asset_id : null,
+            'invoice_id' => $firstInvoiceId,
+            'invoice_number' => null,
+            'allocations' => $proposal['allocations'],
+            'alternates' => [],
         ];
     }
 
@@ -418,6 +547,7 @@ class BankStatementMatchSuggester
             'asset_id' => $best['transaction']->asset_id ? (int) $best['transaction']->asset_id : null,
             'invoice_id' => null,
             'invoice_number' => null,
+            'allocations' => [],
             'alternates' => $alternates,
         ];
     }
@@ -453,6 +583,7 @@ class BankStatementMatchSuggester
                     'asset_id' => $defaultAssetId,
                     'invoice_id' => null,
                     'invoice_number' => null,
+                    'allocations' => [],
                     'alternates' => [],
                 ];
             }
@@ -520,6 +651,7 @@ class BankStatementMatchSuggester
                 'asset_id' => $defaultAssetId,
                 'invoice_id' => null,
                 'invoice_number' => null,
+                'allocations' => [],
                 'alternates' => [],
             ];
         }
@@ -564,6 +696,7 @@ class BankStatementMatchSuggester
             'asset_id' => $assetId,
             'invoice_id' => null,
             'invoice_number' => null,
+            'allocations' => [],
             'alternates' => [],
         ];
     }
@@ -583,6 +716,7 @@ class BankStatementMatchSuggester
             'asset_id' => null,
             'invoice_id' => null,
             'invoice_number' => null,
+            'allocations' => [],
             'alternates' => [],
         ];
     }

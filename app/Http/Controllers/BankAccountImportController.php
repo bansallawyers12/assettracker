@@ -244,6 +244,7 @@ class BankAccountImportController extends Controller
                 'asset_id' => null,
                 'invoice_id' => null,
                 'invoice_number' => null,
+                'allocations' => [],
                 'alternates' => [],
             ];
 
@@ -282,6 +283,9 @@ class BankAccountImportController extends Controller
             'matches.*.action' => ['nullable', 'string', Rule::in(['match_transaction', 'match_invoice', 'create_transaction', 'none'])],
             'matches.*.transaction_id' => 'nullable|integer|exists:transactions,id',
             'matches.*.invoice_id' => 'nullable|integer|exists:invoices,id',
+            'matches.*.allocations' => 'nullable|array|min:1',
+            'matches.*.allocations.*.invoice_id' => 'required_with:matches.*.allocations|integer|exists:invoices,id',
+            'matches.*.allocations.*.amount' => 'required_with:matches.*.allocations|numeric|min:0.01',
             'matches.*.chart_account_id' => 'nullable|integer|exists:chart_of_accounts,id',
             'matches.*.transaction_type' => 'nullable|string|max:100',
             'matches.*.asset_id' => 'nullable|integer|exists:assets,id',
@@ -525,7 +529,10 @@ class BankAccountImportController extends Controller
             'id' => $invoice->id,
             'invoice_number' => $invoice->invoice_number,
             'issue_date' => $invoice->issue_date?->format('Y-m-d'),
+            'due_date' => $invoice->due_date?->format('Y-m-d'),
             'total_amount' => (float) $invoice->total_amount,
+            'amount_due' => $invoice->amountDue(),
+            'lease_id' => $invoice->lease_id ? (int) $invoice->lease_id : null,
             'customer_name' => $invoice->customer_name,
         ];
     }

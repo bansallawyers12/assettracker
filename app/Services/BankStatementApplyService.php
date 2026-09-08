@@ -35,24 +35,26 @@ class BankStatementApplyService
             foreach ($matches as $match) {
                 $transactionId = ! empty($match['transaction_id']) ? (int) $match['transaction_id'] : null;
                 $invoiceId = ! empty($match['invoice_id']) ? (int) $match['invoice_id'] : null;
+                $allocations = $this->normalizeMatchAllocations($match['allocations'] ?? null);
+                $hasInvoiceMatch = $invoiceId !== null || $allocations !== [];
                 $chartAccountId = ! empty($match['chart_account_id']) ? (int) $match['chart_account_id'] : null;
                 $transactionType = ! empty($match['transaction_type']) ? (string) $match['transaction_type'] : null;
                 $assetId = ! empty($match['asset_id']) ? (int) $match['asset_id'] : null;
                 $action = ! empty($match['action']) ? (string) $match['action'] : null;
 
-                if ($transactionId === null && $invoiceId === null && $chartAccountId === null && $transactionType === null) {
+                if ($transactionId === null && ! $hasInvoiceMatch && $chartAccountId === null && $transactionType === null) {
                     $skipped++;
 
                     continue;
                 }
 
-                if ($transactionId !== null && ($invoiceId !== null || $chartAccountId !== null || $transactionType !== null)) {
+                if ($transactionId !== null && ($hasInvoiceMatch || $chartAccountId !== null || $transactionType !== null)) {
                     throw ValidationException::withMessages([
                         'matches' => 'Choose either an existing transaction, an invoice, or a create action for each line, not more than one.',
                     ]);
                 }
 
-                if ($invoiceId !== null && ($chartAccountId !== null || $transactionType !== null)) {
+                if ($hasInvoiceMatch && ($chartAccountId !== null || $transactionType !== null)) {
                     throw ValidationException::withMessages([
                         'matches' => 'Choose either an invoice or a create action for each line, not both.',
                     ]);
@@ -64,9 +66,9 @@ class BankStatementApplyService
                     ]);
                 }
 
-                if ($action === 'match_invoice' && $invoiceId === null) {
+                if ($action === 'match_invoice' && ! $hasInvoiceMatch) {
                     throw ValidationException::withMessages([
-                        'matches' => 'Invoice match requires an invoice id.',
+                        'matches' => 'Invoice match requires an invoice id or allocations.',
                     ]);
                 }
 
@@ -126,12 +128,13 @@ class BankStatementApplyService
                     continue;
                 }
 
-                if ($invoiceId !== null) {
+                if ($hasInvoiceMatch) {
                     $this->matchInvoice(
                         $bankEntry,
                         $bankAccount,
                         $businessEntity,
-                        $invoiceId
+                        $invoiceId,
+                        $allocations
                     );
                     $invoicesMatched++;
 
@@ -266,11 +269,15 @@ class BankStatementApplyService
         $this->postAfterStatementLinked($transaction);
     }
 
+    /**
+     * @param  list<array{invoice_id: int, amount: float}>  $allocations
+     */
     private function matchInvoice(
         BankStatementEntry $bankEntry,
         BankAccount $bankAccount,
         BusinessEntity $businessEntity,
-        int $invoiceId
+        ?int $invoiceId,
+        array $allocations = []
     ): void {
         if ($bankAccount->isLoanLedgerAccount()) {
             throw ValidationException::withMessages([
@@ -278,23 +285,77 @@ class BankStatementApplyService
             ]);
         }
 
-        $invoice = Invoice::query()
-            ->whereKey($invoiceId)
-            ->lockForUpdate()
-            ->first();
+        if ($allocations === []) {
+            if ($invoiceId === null) {
+                throw ValidationException::withMessages([
+                    'matches' => 'Invoice match requires an invoice id or allocations.',
+                ]);
+            }
 
-        if (! $invoice || (int) $invoice->business_entity_id !== (int) $businessEntity->id) {
+            $invoice = Invoice::query()
+                ->whereKey($invoiceId)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $invoice || (int) $invoice->business_entity_id !== (int) $businessEntity->id) {
+                throw ValidationException::withMessages([
+                    'matches' => 'Selected invoice does not belong to the booking entity.',
+                ]);
+            }
+
+            $this->invoicePaymentService->recordFromStatementEntry(
+                $businessEntity,
+                $invoice,
+                $bankAccount,
+                $bankEntry
+            );
+
+            return;
+        }
+
+        if ($invoiceId !== null
+            && ! collect($allocations)->contains(fn (array $row) => (int) $row['invoice_id'] === $invoiceId)) {
             throw ValidationException::withMessages([
-                'matches' => 'Selected invoice does not belong to the booking entity.',
+                'matches' => 'Invoice id must be included in the allocation split.',
             ]);
         }
 
-        $this->invoicePaymentService->recordFromStatementEntry(
+        $this->invoicePaymentService->recordAllocatedFromStatementEntry(
             $businessEntity,
-            $invoice,
             $bankAccount,
-            $bankEntry
+            $bankEntry,
+            $allocations
         );
+    }
+
+    /**
+     * @return list<array{invoice_id: int, amount: float}>
+     */
+    private function normalizeMatchAllocations(mixed $allocations): array
+    {
+        if (! is_array($allocations) || $allocations === []) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($allocations as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $invoiceId = (int) ($row['invoice_id'] ?? 0);
+            $amount = round((float) ($row['amount'] ?? 0), 2);
+            if ($invoiceId <= 0 || $amount <= 0) {
+                continue;
+            }
+
+            $normalized[] = [
+                'invoice_id' => $invoiceId,
+                'amount' => $amount,
+            ];
+        }
+
+        return $normalized;
     }
 
     private function postAfterStatementLinked(Transaction $transaction): void

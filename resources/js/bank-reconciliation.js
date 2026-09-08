@@ -158,34 +158,297 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         });
     }
 
-    function populateInvoiceSelects(invoices) {
-        importPanel.querySelectorAll('[data-bank-import-invoice]').forEach((select) => {
-            const keep = select.value;
-            select.innerHTML = '';
-            const empty = document.createElement('option');
-            empty.value = '';
-            empty.textContent = '— None —';
-            select.appendChild(empty);
+    let invoiceCandidateCache = [];
 
-            invoices.forEach((invoice) => {
+    function money(value) {
+        return Number(value || 0).toFixed(2);
+    }
+
+    function parseSuggestedAllocations(entryEl) {
+        const raw = entryEl.querySelector('[data-bank-import-suggested-allocations]')?.value || '[]';
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch {
+            return [];
+        }
+    }
+
+    function invoicePoolKey(invoice) {
+        if (invoice?.lease_id) {
+            return `lease:${invoice.lease_id}`;
+        }
+        const name = String(invoice?.customer_name || '').trim().toLowerCase();
+        return `name:${name}`;
+    }
+
+    function selectedInvoiceIds(select) {
+        if (!select) {
+            return [];
+        }
+        return Array.from(select.selectedOptions || [])
+            .map((opt) => opt.value)
+            .filter((value) => value !== '');
+    }
+
+    function waterfillAmounts(credit, invoices) {
+        const ordered = [...invoices].sort((a, b) => {
+            const dueA = a.due_date || '9999-12-31';
+            const dueB = b.due_date || '9999-12-31';
+            if (dueA !== dueB) {
+                return dueA.localeCompare(dueB);
+            }
+            const issueA = a.issue_date || '9999-12-31';
+            const issueB = b.issue_date || '9999-12-31';
+            if (issueA !== issueB) {
+                return issueA.localeCompare(issueB);
+            }
+            return Number(a.id) - Number(b.id);
+        });
+
+        let remainingCredit = Math.round(Number(credit) * 100) / 100;
+        const allocations = [];
+        ordered.forEach((invoice) => {
+            if (remainingCredit <= 0.01) {
+                return;
+            }
+            const remaining = Math.round(Number(invoice.amount_due || invoice.remaining || 0) * 100) / 100;
+            if (remaining <= 0.01) {
+                return;
+            }
+            const apply = Math.round(Math.min(remaining, remainingCredit) * 100) / 100;
+            if (apply <= 0) {
+                return;
+            }
+            allocations.push({ invoice_id: Number(invoice.id), amount: apply });
+            remainingCredit = Math.round((remainingCredit - apply) * 100) / 100;
+        });
+
+        return { allocations, leftover: Math.max(0, remainingCredit) };
+    }
+
+    function invoiceMetaFromOption(option) {
+        return {
+            id: Number(option.value),
+            invoice_number: String(option.textContent || '').split('·')[0].trim() || (`#${option.value}`),
+            amount_due: Number(option.dataset.amountDue || option.dataset.amount || 0),
+            issue_date: option.dataset.date || '',
+            due_date: option.dataset.dueDate || '',
+            lease_id: option.dataset.leaseId ? Number(option.dataset.leaseId) : null,
+            customer_name: option.dataset.customerName || '',
+        };
+    }
+
+    function renderInvoiceSplit(entryEl, preferredAmounts = null) {
+        const split = entryEl.querySelector('[data-bank-import-invoice-split]');
+        const rowsEl = entryEl.querySelector('[data-bank-import-invoice-split-rows]');
+        const footer = entryEl.querySelector('[data-bank-import-invoice-split-footer]');
+        const errorEl = entryEl.querySelector('[data-bank-import-invoice-split-error]');
+        const invoiceSelect = entryEl.querySelector('[data-bank-import-invoice]');
+        if (!split || !rowsEl || !invoiceSelect) {
+            return;
+        }
+
+        const credit = Math.abs(Number(entryEl.dataset.entryAmount || 0));
+        const selectedIds = selectedInvoiceIds(invoiceSelect);
+        if (!selectedIds.length) {
+            split.classList.add('hidden');
+            rowsEl.innerHTML = '';
+            if (footer) {
+                footer.textContent = `Allocated $0.00 / credit $${money(credit)}`;
+            }
+            if (errorEl) {
+                errorEl.textContent = '';
+                errorEl.classList.add('hidden');
+            }
+            return;
+        }
+
+        const invoices = selectedIds
+            .map((id) => Array.from(invoiceSelect.options).find((opt) => opt.value === String(id)))
+            .filter(Boolean)
+            .map((opt) => invoiceMetaFromOption(opt));
+
+        const amountById = new Map();
+        if (preferredAmounts && typeof preferredAmounts === 'object') {
+            Object.entries(preferredAmounts).forEach(([id, amount]) => {
+                amountById.set(String(id), Number(amount));
+            });
+        } else {
+            rowsEl.querySelectorAll('[data-bank-import-invoice-split-amount]').forEach((input) => {
+                amountById.set(String(input.dataset.invoiceId), Number(input.value || 0));
+            });
+        }
+
+        const needsWaterfill = preferredAmounts === true
+            || selectedIds.some((id) => !amountById.has(String(id)));
+        if (needsWaterfill || preferredAmounts === true) {
+            const proposal = waterfillAmounts(credit, invoices);
+            proposal.allocations.forEach((row) => {
+                amountById.set(String(row.invoice_id), row.amount);
+            });
+            selectedIds.forEach((id) => {
+                if (!amountById.has(String(id))) {
+                    amountById.set(String(id), 0);
+                }
+            });
+        }
+
+        rowsEl.innerHTML = '';
+        invoices.forEach((invoice) => {
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-[1fr_auto_auto] items-center gap-2 text-xs';
+            const label = document.createElement('div');
+            label.className = 'min-w-0 truncate text-gray-700 dark:text-gray-300';
+            label.textContent = `${invoice.invoice_number} · rem $${money(invoice.amount_due)}`;
+            const amountInput = document.createElement('input');
+            amountInput.type = 'number';
+            amountInput.step = '0.01';
+            amountInput.min = '0.01';
+            amountInput.className = 'w-24 rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100';
+            amountInput.dataset.bankImportInvoiceSplitAmount = '';
+            amountInput.dataset.invoiceId = String(invoice.id);
+            amountInput.dataset.remaining = String(invoice.amount_due);
+            amountInput.value = money(amountById.get(String(invoice.id)) ?? 0);
+            amountInput.addEventListener('input', () => updateInvoiceSplitFooter(entryEl));
+            const rem = document.createElement('div');
+            rem.className = 'tabular-nums text-[11px] text-gray-500 dark:text-gray-400';
+            rem.textContent = `≤ $${money(invoice.amount_due)}`;
+            row.appendChild(label);
+            row.appendChild(amountInput);
+            row.appendChild(rem);
+            rowsEl.appendChild(row);
+        });
+
+        split.classList.remove('hidden');
+        updateInvoiceSplitFooter(entryEl);
+    }
+
+    function collectSplitAllocations(entryEl) {
+        const rows = entryEl.querySelectorAll('[data-bank-import-invoice-split-amount]');
+        return Array.from(rows).map((input) => ({
+            invoice_id: Number(input.dataset.invoiceId),
+            amount: Math.round(Number(input.value || 0) * 100) / 100,
+        })).filter((row) => row.invoice_id > 0 && row.amount > 0);
+    }
+
+    function updateInvoiceSplitFooter(entryEl) {
+        const credit = Math.abs(Number(entryEl.dataset.entryAmount || 0));
+        const allocations = collectSplitAllocations(entryEl);
+        const allocated = Math.round(allocations.reduce((sum, row) => sum + row.amount, 0) * 100) / 100;
+        const footer = entryEl.querySelector('[data-bank-import-invoice-split-footer]');
+        const errorEl = entryEl.querySelector('[data-bank-import-invoice-split-error]');
+        if (footer) {
+            footer.textContent = `Allocated $${money(allocated)} / credit $${money(credit)}`;
+        }
+
+        let error = '';
+        if (allocations.length === 0) {
+            error = 'Select invoices and amounts';
+        } else if (Math.abs(allocated - credit) > 0.01) {
+            error = 'Must equal credit';
+        } else {
+            for (const input of entryEl.querySelectorAll('[data-bank-import-invoice-split-amount]')) {
+                const amount = Number(input.value || 0);
+                const remaining = Number(input.dataset.remaining || 0);
+                if (amount <= 0) {
+                    error = 'Each amount must be > 0';
+                    break;
+                }
+                if (amount - remaining > 0.01) {
+                    error = 'Amount exceeds remaining';
+                    break;
+                }
+            }
+        }
+
+        if (errorEl) {
+            errorEl.textContent = error;
+            errorEl.classList.toggle('hidden', !error);
+        }
+        return !error;
+    }
+
+    function filterInvoiceSelectToPool(select, selectedIds) {
+        if (!select || !invoiceCandidateCache.length) {
+            return;
+        }
+
+        const keep = selectedIds.map(String);
+        let poolKey = null;
+        if (keep.length > 0) {
+            const anchor = invoiceCandidateCache.find((invoice) => String(invoice.id) === keep[0]);
+            poolKey = anchor ? invoicePoolKey(anchor) : null;
+        }
+
+        const previous = keep.slice();
+        select.innerHTML = '';
+        invoiceCandidateCache.forEach((invoice) => {
+            if (poolKey && invoicePoolKey(invoice) !== poolKey && !previous.includes(String(invoice.id))) {
+                return;
+            }
+            const option = document.createElement('option');
+            option.value = String(invoice.id);
+            option.dataset.amount = String(invoice.amount_due ?? invoice.total_amount ?? '');
+            option.dataset.amountDue = String(invoice.amount_due ?? invoice.total_amount ?? '');
+            option.dataset.total = String(invoice.total_amount ?? '');
+            option.dataset.date = String(invoice.issue_date ?? '');
+            option.dataset.dueDate = String(invoice.due_date ?? '');
+            option.dataset.leaseId = invoice.lease_id ? String(invoice.lease_id) : '';
+            option.dataset.customerName = String(invoice.customer_name || '');
+            const dateLabel = invoice.issue_date
+                ? String(invoice.issue_date).split('-').reverse().join('/')
+                : '—';
+            const amountLabel = money(invoice.amount_due ?? invoice.total_amount ?? 0);
+            const customer = String(invoice.customer_name || 'No customer').slice(0, 30);
+            option.textContent = `${invoice.invoice_number || (`#${invoice.id}`)} · due $${amountLabel} · ${customer} · ${dateLabel}`;
+            if (previous.includes(String(invoice.id))) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        refreshTomSelect(select);
+    }
+
+    function populateInvoiceSelects(invoices) {
+        invoiceCandidateCache = Array.isArray(invoices) ? invoices : [];
+
+        importPanel.querySelectorAll('[data-bank-import-invoice]').forEach((select) => {
+            const keep = selectedInvoiceIds(select);
+            select.innerHTML = '';
+
+            invoiceCandidateCache.forEach((invoice) => {
                 const option = document.createElement('option');
                 option.value = String(invoice.id);
-                option.dataset.amount = String(invoice.total_amount ?? '');
+                option.dataset.amount = String(invoice.amount_due ?? invoice.total_amount ?? '');
+                option.dataset.amountDue = String(invoice.amount_due ?? invoice.total_amount ?? '');
+                option.dataset.total = String(invoice.total_amount ?? '');
                 option.dataset.date = String(invoice.issue_date ?? '');
+                option.dataset.dueDate = String(invoice.due_date ?? '');
+                option.dataset.leaseId = invoice.lease_id ? String(invoice.lease_id) : '';
+                option.dataset.customerName = String(invoice.customer_name || '');
                 const dateLabel = invoice.issue_date
                     ? String(invoice.issue_date).split('-').reverse().join('/')
                     : '—';
-                const amountLabel = Number(invoice.total_amount || 0).toFixed(2);
+                const amountLabel = money(invoice.amount_due ?? invoice.total_amount ?? 0);
                 const customer = String(invoice.customer_name || 'No customer').slice(0, 30);
-                option.textContent = `${invoice.invoice_number || ('#' + invoice.id)} · $${amountLabel} · ${customer} · ${dateLabel}`;
+                option.textContent = `${invoice.invoice_number || (`#${invoice.id}`)} · due $${amountLabel} · ${customer} · ${dateLabel}`;
                 select.appendChild(option);
             });
 
-            if (keep && invoices.some((invoice) => String(invoice.id) === String(keep))) {
-                select.value = String(keep);
+            if (keep.length) {
+                Array.from(select.options).forEach((option) => {
+                    option.selected = keep.includes(option.value);
+                });
+                filterInvoiceSelectToPool(select, keep);
+            } else {
+                refreshTomSelect(select);
             }
 
-            refreshTomSelect(select);
+            const entryEl = select.closest('[data-bank-import-entry]');
+            if (entryEl) {
+                renderInvoiceSplit(entryEl);
+            }
         });
     }
 
@@ -249,13 +512,25 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             const actionInput = entryEl.querySelector('[data-bank-import-suggested-action]');
             const txInput = entryEl.querySelector('[data-bank-import-suggested-transaction]');
             const invoiceInput = entryEl.querySelector('[data-bank-import-suggested-invoice]');
+            const allocationsInput = entryEl.querySelector('[data-bank-import-suggested-allocations]');
             const typeInput = entryEl.querySelector('[data-bank-import-suggested-type]');
             const assetInput = entryEl.querySelector('[data-bank-import-suggested-asset]');
             if (actionInput) actionInput.value = action;
             if (txInput) txInput.value = suggestion.transaction_id ? String(suggestion.transaction_id) : '';
             if (invoiceInput) invoiceInput.value = suggestion.invoice_id ? String(suggestion.invoice_id) : '';
+            if (allocationsInput) {
+                allocationsInput.value = JSON.stringify(Array.isArray(suggestion.allocations) ? suggestion.allocations : []);
+            }
             if (typeInput) typeInput.value = suggestion.transaction_type || '';
             if (assetInput) assetInput.value = suggestion.asset_id ? String(suggestion.asset_id) : '';
+
+            const label = entryEl.querySelector('[data-bank-import-suggestion-label]');
+            if (label && hasSuggestion && action === 'match_invoice') {
+                const allocCount = Array.isArray(suggestion.allocations) ? suggestion.allocations.length : 0;
+                label.textContent = allocCount > 1
+                    ? `Match · ${allocCount} invoices`
+                    : `Match · Invoice · ${suggestion.invoice_number || (`#${suggestion.invoice_id}`)}`;
+            }
 
             const txSelect = entryEl.querySelector('[data-bank-import-transaction]');
             const invoiceSelect = entryEl.querySelector('[data-bank-import-invoice]');
@@ -264,14 +539,29 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 txSelect.value = suggestion.transaction_id ? String(suggestion.transaction_id) : '';
             }
             if (invoiceSelect) {
-                invoiceSelect.value = suggestion.invoice_id ? String(suggestion.invoice_id) : '';
+                const allocationIds = Array.isArray(suggestion.allocations) && suggestion.allocations.length
+                    ? suggestion.allocations.map((row) => String(row.invoice_id))
+                    : (suggestion.invoice_id ? [String(suggestion.invoice_id)] : []);
+                Array.from(invoiceSelect.options).forEach((option) => {
+                    option.selected = allocationIds.includes(option.value);
+                });
+                if (allocationIds.length) {
+                    filterInvoiceSelectToPool(invoiceSelect, allocationIds);
+                } else {
+                    refreshTomSelect(invoiceSelect);
+                }
+                const preferred = {};
+                (suggestion.allocations || []).forEach((row) => {
+                    preferred[String(row.invoice_id)] = row.amount;
+                });
+                renderInvoiceSplit(entryEl, Object.keys(preferred).length ? preferred : true);
             }
             if (typeSelect) {
                 typeSelect.value = (action === 'create_transaction' && suggestion.transaction_type)
                     ? suggestion.transaction_type
                     : '';
             }
-            [txSelect, invoiceSelect, typeSelect].forEach((select) => {
+            [txSelect, typeSelect].forEach((select) => {
                 if (select) {
                     refreshTomSelect(select);
                 }
@@ -333,7 +623,13 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 if (txSelect.value) {
                     if (chartSelect) chartSelect.value = '';
                     if (typeSelect) typeSelect.value = '';
-                    if (invoiceSelect) invoiceSelect.value = '';
+                    if (invoiceSelect) {
+                        Array.from(invoiceSelect.options).forEach((option) => {
+                            option.selected = false;
+                        });
+                        filterInvoiceSelectToPool(invoiceSelect, []);
+                        renderInvoiceSplit(entryEl, true);
+                    }
                     [chartSelect, typeSelect, invoiceSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
@@ -341,13 +637,19 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             }, { signal });
 
             invoiceSelect?.addEventListener('change', () => {
-                if (invoiceSelect.value) {
+                const ids = selectedInvoiceIds(invoiceSelect);
+                if (ids.length) {
                     if (txSelect) txSelect.value = '';
                     if (chartSelect) chartSelect.value = '';
                     if (typeSelect) typeSelect.value = '';
                     [txSelect, chartSelect, typeSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
+                    filterInvoiceSelectToPool(invoiceSelect, ids);
+                    renderInvoiceSplit(entryEl, true);
+                } else {
+                    filterInvoiceSelectToPool(invoiceSelect, []);
+                    renderInvoiceSplit(entryEl, true);
                 }
             }, { signal });
 
@@ -355,7 +657,13 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 if (chartSelect.value) {
                     if (txSelect) txSelect.value = '';
                     if (typeSelect) typeSelect.value = '';
-                    if (invoiceSelect) invoiceSelect.value = '';
+                    if (invoiceSelect) {
+                        Array.from(invoiceSelect.options).forEach((option) => {
+                            option.selected = false;
+                        });
+                        filterInvoiceSelectToPool(invoiceSelect, []);
+                        renderInvoiceSplit(entryEl, true);
+                    }
                     [txSelect, typeSelect, invoiceSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
@@ -366,7 +674,13 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 if (typeSelect.value) {
                     if (txSelect) txSelect.value = '';
                     if (chartSelect) chartSelect.value = '';
-                    if (invoiceSelect) invoiceSelect.value = '';
+                    if (invoiceSelect) {
+                        Array.from(invoiceSelect.options).forEach((option) => {
+                            option.selected = false;
+                        });
+                        filterInvoiceSelectToPool(invoiceSelect, []);
+                        renderInvoiceSplit(entryEl, true);
+                    }
                     [txSelect, chartSelect, invoiceSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
@@ -446,17 +760,22 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
 
             let transactionId = '';
             let invoiceId = '';
+            let allocations = [];
             let transactionType = '';
             let chartAccountId = '';
             let assetId = entryEl.querySelector('[data-bank-import-suggested-asset]')?.value || '';
 
             const suggestedTransactionId = entryEl.querySelector('[data-bank-import-suggested-transaction]')?.value || '';
             const suggestedInvoiceId = entryEl.querySelector('[data-bank-import-suggested-invoice]')?.value || '';
+            const suggestedAllocations = parseSuggestedAllocations(entryEl);
             const suggestedType = entryEl.querySelector('[data-bank-import-suggested-type]')?.value || '';
 
             if (changeOpen) {
                 transactionId = txSelect?.value || '';
-                invoiceId = invoiceSelect?.value || '';
+                allocations = collectSplitAllocations(entryEl);
+                invoiceId = allocations[0]?.invoice_id
+                    ? String(allocations[0].invoice_id)
+                    : (selectedInvoiceIds(invoiceSelect)[0] || '');
                 transactionType = typeSelect?.value || '';
                 chartAccountId = chartSelect?.value || '';
 
@@ -464,36 +783,44 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 if (!transactionId && !invoiceId && !transactionType && !chartAccountId) {
                     transactionId = suggestedTransactionId;
                     invoiceId = suggestedInvoiceId;
+                    allocations = suggestedAllocations;
                     transactionType = suggestedType;
                 } else if (transactionType || chartAccountId) {
                     // An explicit create choice overrides a preselected invoice/transaction.
                     transactionId = '';
                     invoiceId = '';
+                    allocations = [];
                 } else if (transactionId) {
                     invoiceId = '';
-                } else if (invoiceId) {
+                    allocations = [];
+                } else if (invoiceId || allocations.length) {
                     transactionId = '';
                 }
             } else {
                 transactionId = suggestedTransactionId;
                 invoiceId = suggestedInvoiceId;
+                allocations = suggestedAllocations;
                 transactionType = suggestedType;
             }
 
-            if (!transactionId && !invoiceId && !transactionType && !chartAccountId) {
+            if (!transactionId && !invoiceId && !allocations.length && !transactionType && !chartAccountId) {
                 return;
             }
 
-            if (invoiceId) {
-                matches.push({
+            if (invoiceId || allocations.length) {
+                const payload = {
                     bank_entry_id: Number(entryId),
                     action: 'match_invoice',
-                    invoice_id: Number(invoiceId),
+                    invoice_id: Number(invoiceId || allocations[0]?.invoice_id),
                     transaction_id: null,
                     transaction_type: null,
                     chart_account_id: null,
                     asset_id: null,
-                });
+                };
+                if (allocations.length) {
+                    payload.allocations = allocations;
+                }
+                matches.push(payload);
                 return;
             }
 
@@ -526,7 +853,40 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         return matches;
     }
 
+    function optionToInvoiceCandidate(option) {
+        return {
+            id: Number(option.value),
+            invoice_number: String(option.textContent || '').split('·')[0].trim(),
+            amount_due: Number(option.dataset.amountDue || option.dataset.amount || 0),
+            total_amount: Number(option.dataset.total || option.dataset.amount || 0),
+            issue_date: option.dataset.date || '',
+            due_date: option.dataset.dueDate || '',
+            lease_id: option.dataset.leaseId ? Number(option.dataset.leaseId) : null,
+            customer_name: option.dataset.customerName || '',
+        };
+    }
+
+    function seedInvoiceCandidateCacheFromDom() {
+        const select = importPanel.querySelector('[data-bank-import-invoice]');
+        if (!select || invoiceCandidateCache.length) {
+            return;
+        }
+        invoiceCandidateCache = Array.from(select.options)
+            .filter((option) => option.value)
+            .map((option) => optionToInvoiceCandidate(option));
+    }
+
     bindEntrySelectGuards();
+    seedInvoiceCandidateCacheFromDom();
+    importPanel.querySelectorAll('[data-bank-import-entry]').forEach((entryEl) => {
+        const preferred = {};
+        parseSuggestedAllocations(entryEl).forEach((row) => {
+            preferred[String(row.invoice_id)] = row.amount;
+        });
+        if (Object.keys(preferred).length || selectedInvoiceIds(entryEl.querySelector('[data-bank-import-invoice]')).length) {
+            renderInvoiceSplit(entryEl, Object.keys(preferred).length ? preferred : true);
+        }
+    });
 
     importPanel.querySelectorAll('[data-bank-import-toggle-change]').forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -540,6 +900,14 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 forceActivateTomSelectsIn(change);
                 // Re-sync chart options after Tom Select activates inside the previously-hidden panel.
                 loadChartAccounts();
+                const entryEl = btn.closest('[data-bank-import-entry]');
+                if (entryEl) {
+                    const preferred = {};
+                    parseSuggestedAllocations(entryEl).forEach((row) => {
+                        preferred[String(row.invoice_id)] = row.amount;
+                    });
+                    renderInvoiceSplit(entryEl, Object.keys(preferred).length ? preferred : true);
+                }
             }
         }, { signal });
     });

@@ -41,7 +41,7 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($panel)->toContain('Remove selected')
         ->and($panel)->toContain('Or create from chart account')
         ->and($panel)->toContain('Match existing')
-        ->and($panel)->toContain('Match invoice')
+        ->and($panel)->toContain('Match invoice(s)')
         ->and($panel)->toContain('data-bank-import-invoice')
         ->and($panel)->toContain('data-bank-import-chart-account')
         ->and($panel)->toContain('$chartAccounts')

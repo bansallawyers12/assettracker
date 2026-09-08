@@ -9,8 +9,10 @@ use App\Models\Invoice;
 use App\Models\InvoicePaymentAllocation;
 use App\Models\Transaction;
 use App\Support\DocumentUploadValidation;
+use App\Support\InvoicePaymentAllocator;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +20,8 @@ use Illuminate\Validation\ValidationException;
 class InvoicePaymentService
 {
     public function __construct(
-        private DocumentUploadService $documentUploadService
+        private DocumentUploadService $documentUploadService,
+        private InvoicePaymentAllocator $allocator,
     ) {}
 
     /**
@@ -98,6 +101,27 @@ class InvoicePaymentService
         BankAccount $bankAccount,
         BankStatementEntry $statementEntry
     ): Transaction {
+        $amount = round(abs((float) $statementEntry->amount), 2);
+
+        return $this->recordAllocatedFromStatementEntry(
+            $businessEntity,
+            $bankAccount,
+            $statementEntry,
+            [['invoice_id' => (int) $invoice->id, 'amount' => $amount]]
+        );
+    }
+
+    /**
+     * One invoice_payment for the full statement credit; N allocation rows.
+     *
+     * @param  list<array{invoice_id: int|string, amount: float|int|string}>  $allocations
+     */
+    public function recordAllocatedFromStatementEntry(
+        BusinessEntity $businessEntity,
+        BankAccount $bankAccount,
+        BankStatementEntry $statementEntry,
+        array $allocations
+    ): Transaction {
         if (! $bankAccount->canUseForTransaction($businessEntity)) {
             throw ValidationException::withMessages([
                 'matches' => 'The selected bank account is not linked to this entity.',
@@ -106,31 +130,226 @@ class InvoicePaymentService
 
         $paidAt = $statementEntry->date?->toDateString() ?? now()->toDateString();
         $reference = Str::limit(trim((string) $statementEntry->description), 255, '');
-        $amount = round(abs((float) $statementEntry->amount), 2);
+        $credit = round(abs((float) $statementEntry->amount), 2);
 
         return DB::transaction(function () use (
             $businessEntity,
-            $invoice,
             $bankAccount,
+            $statementEntry,
+            $allocations,
             $paidAt,
             $reference,
-            $statementEntry,
-            $amount
+            $credit
         ) {
-            return $this->persistPayment(
+            return $this->persistAllocatedPayment(
                 $businessEntity,
-                $invoice,
                 $bankAccount,
+                $statementEntry,
+                $allocations,
                 $paidAt,
-                null,
                 $reference !== '' ? $reference : null,
-                (int) $statementEntry->id,
-                $amount,
-                null,
-                'matches',
-                'matches'
+                $credit
             );
         });
+    }
+
+    /**
+     * @param  list<array{invoice_id: int|string, amount: float|int|string}>  $allocations
+     */
+    private function persistAllocatedPayment(
+        BusinessEntity $businessEntity,
+        BankAccount $bankAccount,
+        BankStatementEntry $statementEntry,
+        array $allocations,
+        string $paidAt,
+        ?string $paymentReference,
+        float $credit
+    ): Transaction {
+        $normalized = $this->normalizeAllocations($allocations);
+
+        $lockedEntry = BankStatementEntry::query()
+            ->whereKey($statementEntry->id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $lockedEntry
+            || (int) $lockedEntry->bank_account_id !== (int) $bankAccount->id
+            || $lockedEntry->transaction_id !== null) {
+            throw ValidationException::withMessages([
+                'matches' => 'The selected statement line is not available on this account.',
+            ]);
+        }
+
+        if ((float) $lockedEntry->amount < 0) {
+            throw ValidationException::withMessages([
+                'matches' => 'Invoice payments must match an incoming (credit) statement line.',
+            ]);
+        }
+
+        $entryCredit = round(abs((float) $lockedEntry->amount), 2);
+        if (abs($entryCredit - $credit) > BankStatementMatchSuggester::AMOUNT_TOLERANCE) {
+            $credit = $entryCredit;
+        }
+
+        $allocationSum = round(array_sum(array_column($normalized, 'amount')), 2);
+        if (abs($allocationSum - $credit) > BankStatementMatchSuggester::AMOUNT_TOLERANCE) {
+            throw ValidationException::withMessages([
+                'matches' => 'Allocated amounts must sum exactly to the statement credit ('.$credit.').',
+            ]);
+        }
+
+        $invoiceIds = array_values(array_unique(array_map(
+            static fn (array $row): int => (int) $row['invoice_id'],
+            $normalized
+        )));
+        sort($invoiceIds);
+
+        /** @var Collection<int, Invoice> $lockedInvoices */
+        $lockedInvoices = Invoice::query()
+            ->whereIn('id', $invoiceIds)
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        if ($lockedInvoices->count() !== count($invoiceIds)) {
+            throw ValidationException::withMessages([
+                'matches' => 'One or more invoices could not be found for payment.',
+            ]);
+        }
+
+        foreach ($lockedInvoices as $invoice) {
+            if ((int) $invoice->business_entity_id !== (int) $businessEntity->id) {
+                throw ValidationException::withMessages([
+                    'matches' => 'Selected invoice does not belong to the booking entity.',
+                ]);
+            }
+
+            if (! in_array($invoice->status, ['approved', 'partial'], true)) {
+                throw ValidationException::withMessages([
+                    'matches' => 'Only approved or partially paid invoices can receive a payment.',
+                ]);
+            }
+        }
+
+        if (! $this->allocator->invoicesSharePool($lockedInvoices->values())) {
+            throw ValidationException::withMessages([
+                'matches' => 'All invoices in a split must belong to the same lease or customer pool.',
+            ]);
+        }
+
+        foreach ($normalized as $row) {
+            $invoice = $lockedInvoices->get((int) $row['invoice_id']);
+            $remaining = $invoice->amountDue();
+            if ($row['amount'] - $remaining > BankStatementMatchSuggester::AMOUNT_TOLERANCE) {
+                throw ValidationException::withMessages([
+                    'matches' => 'Payment amount cannot exceed the invoice balance remaining ('.$remaining.').',
+                ]);
+            }
+        }
+
+        /** @var Invoice $primaryInvoice */
+        $primaryInvoice = $lockedInvoices->get((int) $normalized[0]['invoice_id']);
+        $invoiceNumbers = $lockedInvoices
+            ->sortBy('id')
+            ->pluck('invoice_number')
+            ->filter()
+            ->values()
+            ->all();
+
+        $description = count($normalized) === 1
+            ? (
+                ($normalized[0]['amount'] >= ($primaryInvoice->amountDue() - BankStatementMatchSuggester::AMOUNT_TOLERANCE)
+                    ? 'Payment received for Invoice '
+                    : 'Partial payment for Invoice ')
+                .$primaryInvoice->invoice_number
+            )
+            : 'Payment received for invoices '.implode(', ', $invoiceNumbers);
+
+        $transaction = Transaction::create([
+            'business_entity_id' => $businessEntity->id,
+            'asset_id' => $primaryInvoice->asset_id,
+            'bank_account_id' => $bankAccount->id,
+            'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+            'date' => $paidAt,
+            'amount' => $credit,
+            'description' => $description,
+            'transaction_type' => Transaction::TYPE_INVOICE_PAYMENT,
+            'invoice_number' => $primaryInvoice->invoice_number,
+            'payment_status' => 'paid',
+            'paid_at' => $paidAt,
+            'payment_method' => null,
+            'payment_document_id' => null,
+            'gst_amount' => null,
+            'gst_status' => 'gst_free',
+            'gst_basis' => null,
+        ]);
+
+        $lockedEntry->update(['transaction_id' => $transaction->id]);
+
+        foreach ($normalized as $row) {
+            InvoicePaymentAllocation::create([
+                'transaction_id' => $transaction->id,
+                'invoice_id' => (int) $row['invoice_id'],
+                'amount' => $row['amount'],
+            ]);
+        }
+
+        foreach ($invoiceIds as $invoiceId) {
+            /** @var Invoice $invoice */
+            $invoice = $lockedInvoices->get($invoiceId);
+            $invoice->unsetRelation('paymentAllocations');
+            $invoice->syncPaymentStateFromAllocations($paidAt, null, $paymentReference);
+        }
+
+        return $transaction;
+    }
+
+    /**
+     * @param  list<array{invoice_id: int|string, amount: float|int|string}>  $allocations
+     * @return list<array{invoice_id: int, amount: float}>
+     */
+    private function normalizeAllocations(array $allocations): array
+    {
+        if ($allocations === []) {
+            throw ValidationException::withMessages([
+                'matches' => 'Invoice match requires at least one allocation.',
+            ]);
+        }
+
+        $normalized = [];
+        $seen = [];
+
+        foreach ($allocations as $row) {
+            $invoiceId = (int) ($row['invoice_id'] ?? 0);
+            $amount = round((float) ($row['amount'] ?? 0), 2);
+
+            if ($invoiceId <= 0) {
+                throw ValidationException::withMessages([
+                    'matches' => 'Each allocation requires an invoice id.',
+                ]);
+            }
+
+            if ($amount <= 0) {
+                throw ValidationException::withMessages([
+                    'matches' => 'Each allocation amount must be greater than zero.',
+                ]);
+            }
+
+            if (isset($seen[$invoiceId])) {
+                throw ValidationException::withMessages([
+                    'matches' => 'Duplicate invoice in allocation split.',
+                ]);
+            }
+
+            $seen[$invoiceId] = true;
+            $normalized[] = [
+                'invoice_id' => $invoiceId,
+                'amount' => $amount,
+            ];
+        }
+
+        return $normalized;
     }
 
     private function persistPayment(

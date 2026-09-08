@@ -272,9 +272,19 @@
                     $suggestedTxId = $suggestion['transaction_id'] ?? null;
                     $suggestedInvoiceId = $suggestion['invoice_id'] ?? null;
                     $suggestedInvoiceNumber = $suggestion['invoice_number'] ?? null;
+                    $suggestedAllocations = is_array($suggestion['allocations'] ?? null) ? $suggestion['allocations'] : [];
+                    $suggestedAllocationCount = count($suggestedAllocations);
                     $typeLabel = $suggestedType ? ($allTypes[$suggestedType] ?? $suggestedType) : null;
                     $balanceAfter = is_array($entry->meta) ? ($entry->meta['balance_after'] ?? null) : null;
                     $hasSuggestion = in_array($confidence, ['high', 'medium'], true) && $action !== 'none';
+                    $suggestedAllocationIds = collect($suggestedAllocations)
+                        ->pluck('invoice_id')
+                        ->map(fn ($id) => (int) $id)
+                        ->filter()
+                        ->all();
+                    if ($suggestedAllocationIds === [] && $suggestedInvoiceId) {
+                        $suggestedAllocationIds = [(int) $suggestedInvoiceId];
+                    }
                 @endphp
                 <div
                     class="rounded-md border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900"
@@ -314,7 +324,11 @@
                                     </span>
                                 @elseif($hasSuggestion && $action === 'match_invoice')
                                     <span class="rounded bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200" data-bank-import-suggestion-label>
-                                        Match · Invoice · {{ $suggestedInvoiceNumber ?: ('#'.$suggestedInvoiceId) }}
+                                        @if($suggestedAllocationCount > 1)
+                                            Match · {{ $suggestedAllocationCount }} invoices
+                                        @else
+                                            Match · Invoice · {{ $suggestedInvoiceNumber ?: ('#'.$suggestedInvoiceId) }}
+                                        @endif
                                     </span>
                                 @elseif($hasSuggestion && $action === 'create_transaction')
                                     <span class="rounded bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-800 dark:bg-sky-950/40 dark:text-sky-200" data-bank-import-suggestion-label>
@@ -366,27 +380,42 @@
                                     </x-tom-select>
                                 </div>
                                 @unless($isLoanActivityImport)
-                                    <div>
-                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Match invoice</label>
+                                    <div class="sm:col-span-2">
+                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Match invoice(s)</label>
                                         <x-tom-select
+                                            multiple
                                             data-bank-import-invoice
                                             class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                         >
-                                            <option value="">— None —</option>
                                             @foreach($invoiceCandidates as $invoiceCandidate)
+                                                @php
+                                                    $amountDue = $invoiceCandidate->amountDue();
+                                                @endphp
                                                 <option
                                                     value="{{ $invoiceCandidate->id }}"
-                                                    data-amount="{{ $invoiceCandidate->total_amount }}"
+                                                    data-amount="{{ $amountDue }}"
+                                                    data-amount-due="{{ $amountDue }}"
+                                                    data-total="{{ $invoiceCandidate->total_amount }}"
                                                     data-date="{{ $invoiceCandidate->issue_date?->format('Y-m-d') }}"
-                                                    @selected((int) ($suggestedInvoiceId ?? 0) === (int) $invoiceCandidate->id)
+                                                    data-due-date="{{ $invoiceCandidate->due_date?->format('Y-m-d') }}"
+                                                    data-lease-id="{{ $invoiceCandidate->lease_id ?? '' }}"
+                                                    data-customer-name="{{ $invoiceCandidate->customer_name }}"
+                                                    @selected(in_array((int) $invoiceCandidate->id, $suggestedAllocationIds, true))
                                                 >
                                                     {{ $invoiceCandidate->invoice_number }}
-                                                    · ${{ number_format((float) $invoiceCandidate->total_amount, 2) }}
+                                                    · due ${{ number_format((float) $amountDue, 2) }}
                                                     · {{ \Illuminate\Support\Str::limit($invoiceCandidate->customer_name ?: 'No customer', 30) }}
                                                     · {{ $invoiceCandidate->issue_date?->format('d/m/Y') }}
                                                 </option>
                                             @endforeach
                                         </x-tom-select>
+                                        <div class="mt-2 hidden space-y-1.5 rounded-md border border-gray-200 p-2 dark:border-gray-700" data-bank-import-invoice-split>
+                                            <div class="space-y-1.5" data-bank-import-invoice-split-rows></div>
+                                            <div class="flex items-center justify-between gap-2 border-t border-gray-200 pt-1.5 text-[11px] dark:border-gray-700">
+                                                <span class="text-gray-600 dark:text-gray-400" data-bank-import-invoice-split-footer>Allocated $0.00 / credit $0.00</span>
+                                                <span class="font-medium text-red-600 dark:text-red-400 hidden" data-bank-import-invoice-split-error></span>
+                                            </div>
+                                        </div>
                                     </div>
                                 @endunless
                                 <div>
@@ -445,6 +474,7 @@
                             <input type="hidden" data-bank-import-suggested-action value="{{ $action }}">
                             <input type="hidden" data-bank-import-suggested-transaction value="{{ $suggestedTxId ?? '' }}">
                             <input type="hidden" data-bank-import-suggested-invoice value="{{ $suggestedInvoiceId ?? '' }}">
+                            <input type="hidden" data-bank-import-suggested-allocations value="{{ e(json_encode($suggestedAllocations)) }}">
                             <input type="hidden" data-bank-import-suggested-type value="{{ $suggestedType ?? '' }}">
                             <input type="hidden" data-bank-import-suggested-asset value="{{ $suggestion['asset_id'] ?? '' }}">
                         </div>
