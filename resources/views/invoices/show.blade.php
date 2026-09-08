@@ -3,11 +3,15 @@
         $statusBadge = match ($invoice->status) {
             'draft' => 'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700',
             'approved' => 'bg-sky-50 text-sky-800 ring-sky-200 dark:bg-sky-950/50 dark:text-sky-200 dark:ring-sky-900',
+            'partial' => 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-950/50 dark:text-amber-200 dark:ring-amber-900',
             'paid' => 'bg-emerald-50 text-emerald-800 ring-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-200 dark:ring-emerald-900',
             'void' => 'bg-rose-50 text-rose-800 ring-rose-200 dark:bg-rose-950/50 dark:text-rose-200 dark:ring-rose-900',
             default => 'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700',
         };
-        $isOverdue = $invoice->status === 'approved' && $invoice->due_date && $invoice->due_date->isPast();
+        $amountDue = $amountDue ?? $invoice->amountDue();
+        $amountPaid = round((float) $invoice->total_amount - $amountDue, 2);
+        $isOverdue = in_array($invoice->status, ['approved', 'partial'], true) && $invoice->due_date && $invoice->due_date->isPast();
+        $canRecordPayment = $canRecordPayment ?? (in_array($invoice->status, ['approved', 'partial'], true) && $amountDue > 0.005);
         $gstBasisLabel = match ($invoice->gst_basis) {
             'none' => 'GST not applicable',
             'exclusive' => 'Exclusive (unit prices ex GST)',
@@ -80,7 +84,7 @@
                             Post to ledger
                         </button>
                     </form>
-                @elseif (!$invoice->payment_transaction_id)
+                @elseif (! $invoice->hasPaymentAllocations() && ! $invoice->payment_transaction_id)
                     <form method="POST" action="{{ route('business-entities.invoices.unpost', [$businessEntity, $invoice]) }}" class="inline"
                           data-confirm
                           data-confirm-title="Unpost invoice?"
@@ -160,10 +164,20 @@
                                 {{ $invoice->status === 'paid' ? 'Amount paid' : 'Amount due' }}
                             </p>
                             <p class="mt-2 text-3xl font-bold tracking-tight text-gray-900 dark:text-white">
-                                ${{ number_format($invoice->total_amount, 2) }}
+                                ${{ number_format($invoice->status === 'paid' ? (float) $invoice->total_amount : $amountDue, 2) }}
                             </p>
                             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ $invoice->currency }}</p>
                             <dl class="mt-4 space-y-1.5 border-t border-gray-100 pt-3 text-sm dark:border-gray-700">
+                                <div class="flex justify-between gap-3">
+                                    <dt class="text-gray-500 dark:text-gray-400">Invoice total</dt>
+                                    <dd class="font-medium text-gray-900 dark:text-white">${{ number_format($invoice->total_amount, 2) }}</dd>
+                                </div>
+                                @if ($amountPaid > 0)
+                                    <div class="flex justify-between gap-3">
+                                        <dt class="text-gray-500 dark:text-gray-400">Paid to date</dt>
+                                        <dd class="font-medium text-emerald-700 dark:text-emerald-300">${{ number_format($amountPaid, 2) }}</dd>
+                                    </div>
+                                @endif
                                 <div class="flex justify-between gap-3">
                                     <dt class="text-gray-500 dark:text-gray-400">Subtotal</dt>
                                     <dd class="font-medium text-gray-900 dark:text-white">${{ number_format($invoice->subtotal, 2) }}</dd>
@@ -178,34 +192,46 @@
                 </div>
             </div>
 
-            @if ($invoice->status === 'paid' && $invoice->paid_at)
+            @if ($invoice->paymentAllocations->isNotEmpty())
                 <div class="border-b border-emerald-100 bg-emerald-50 px-6 py-4 dark:border-emerald-900/40 dark:bg-emerald-950/30">
-                    <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="flex flex-col gap-3">
                         <div>
-                            <h3 class="text-sm font-semibold text-emerald-900 dark:text-emerald-200">Payment recorded</h3>
-                            <p class="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
-                                Paid on {{ $invoice->paid_at->format('d/m/Y') }}
-                                @if ($invoice->payment_method)
-                                    — {{ \App\Models\Transaction::$paymentMethods[$invoice->payment_method] ?? $invoice->payment_method }}
-                                @endif
-                                @if ($invoice->payment_reference) ({{ $invoice->payment_reference }}) @endif
-                            </p>
-                            @if ($invoice->paymentTransaction)
-                                @php $payTx = $invoice->paymentTransaction; @endphp
-                                <p class="mt-2 text-sm text-emerald-800 dark:text-emerald-300">
-                                    Accounting receipt #{{ $payTx->id }}
-                                    @if ($payTx->bankAccount)
-                                        on {{ $payTx->bankAccount->account_name ?: $payTx->bankAccount->bank_name }}
+                            <h3 class="text-sm font-semibold text-emerald-900 dark:text-emerald-200">
+                                {{ $invoice->status === 'paid' ? 'Payment recorded' : 'Payments received' }}
+                            </h3>
+                            @if ($invoice->status === 'paid' && $invoice->paid_at)
+                                <p class="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
+                                    Fully paid on {{ $invoice->paid_at->format('d/m/Y') }}
+                                    @if ($invoice->payment_method)
+                                        — {{ \App\Models\Transaction::$paymentMethods[$invoice->payment_method] ?? $invoice->payment_method }}
                                     @endif
-                                    —
-                                    @if ($payTx->bankStatementEntries->isNotEmpty())
-                                        matched to bank statement
-                                    @else
-                                        unmatched (statement line can be linked later)
-                                    @endif
+                                    @if ($invoice->payment_reference) ({{ $invoice->payment_reference }}) @endif
+                                </p>
+                            @elseif ($invoice->status === 'partial')
+                                <p class="mt-1 text-sm text-emerald-800 dark:text-emerald-300">
+                                    ${{ number_format($amountPaid, 2) }} paid · ${{ number_format($amountDue, 2) }} remaining
                                 </p>
                             @endif
                         </div>
+                        <ul class="space-y-2">
+                            @foreach ($invoice->paymentAllocations->sortBy('id') as $allocation)
+                                @php $payTx = $allocation->transaction; @endphp
+                                <li class="rounded-lg border border-emerald-100/80 bg-white/70 px-3 py-2 text-sm text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200">
+                                    <div class="flex flex-wrap items-center justify-between gap-2">
+                                        <span class="font-medium tabular-nums">${{ number_format((float) $allocation->amount, 2) }}</span>
+                                        <span class="text-xs text-emerald-700 dark:text-emerald-300">
+                                            {{ $payTx?->paid_at?->format('d/m/Y') ?? $payTx?->date?->format('d/m/Y') ?? '—' }}
+                                            @if ($payTx)
+                                                · receipt #{{ $payTx->id }}
+                                                @if ($payTx->bankStatementEntries->isNotEmpty())
+                                                    · matched to bank
+                                                @endif
+                                            @endif
+                                        </span>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
                         @if ($invoice->paymentTransaction?->bank_account_id)
                             <a
                                 href="{{ route('business-entities.show', [
@@ -278,13 +304,13 @@
                 </div>
             @endif
 
-            @if ($invoice->status === 'approved' && !$invoice->paid_at)
+            @if ($canRecordPayment)
                 <div class="border-t border-gray-200 bg-gray-50 px-6 py-6 dark:border-gray-800 dark:bg-gray-800/40">
                     <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
                         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-700 dark:bg-gray-900">
                             <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Record payment</h3>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                Clears Accounts Receivable (does not re-book revenue). Optionally match a bank statement line now, or leave unmatched until the statement arrives.
+                                Clears Accounts Receivable for the amount paid (does not re-book revenue). Partial payments leave the invoice open until the balance is zero.
                             </p>
                             @if (($paymentBankAccounts ?? collect())->isEmpty())
                                 <p class="mt-3 text-sm text-amber-700 dark:text-amber-300">
@@ -297,6 +323,22 @@
                                         <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Paid date <span class="text-red-500">*</span></label>
                                         <x-date-input name="paid_at" value="{{ old('paid_at', now()->format('Y-m-d')) }}" required class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
                                         @error('paid_at') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Amount <span class="text-red-500">*</span></label>
+                                        <input
+                                            type="number"
+                                            name="amount"
+                                            id="invoice_payment_amount"
+                                            step="0.01"
+                                            min="0.01"
+                                            max="{{ number_format($amountDue, 2, '.', '') }}"
+                                            value="{{ old('amount', number_format($amountDue, 2, '.', '')) }}"
+                                            required
+                                            class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                        />
+                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Balance remaining: ${{ number_format($amountDue, 2) }}</p>
+                                        @error('amount') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                     </div>
                                     <div>
                                         <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Bank account <span class="text-red-500">*</span></label>
@@ -368,12 +410,14 @@
                                     document.addEventListener('DOMContentLoaded', function () {
                                         const accountSelect = document.getElementById('invoice_payment_bank_account_id');
                                         const entrySelect = document.getElementById('invoice_payment_statement_entry_id');
+                                        const amountInput = document.getElementById('invoice_payment_amount');
                                         if (!accountSelect || !entrySelect) return;
 
-                                        const invoiceTotal = {{ json_encode((float) $invoice->total_amount) }};
+                                        const amountDue = {{ json_encode((float) $amountDue) }};
 
                                         function syncStatementOptions() {
                                             const accountId = accountSelect.value;
+                                            const paymentAmount = Math.abs(parseFloat(amountInput?.value || String(amountDue)) || amountDue);
                                             Array.from(entrySelect.options).forEach((opt) => {
                                                 if (!opt.value) {
                                                     opt.hidden = false;
@@ -381,9 +425,10 @@
                                                 }
                                                 const matchesAccount = !accountId || String(opt.dataset.bankAccountId) === String(accountId);
                                                 const amount = Math.abs(parseFloat(opt.dataset.amount || '0'));
-                                                const matchesAmount = Math.abs(amount - invoiceTotal) <= 0.005;
                                                 const amountPositive = parseFloat(opt.dataset.amount || '0') >= 0;
-                                                opt.hidden = !(matchesAccount && matchesAmount && amountPositive);
+                                                const withinBalance = amount <= amountDue + 0.01;
+                                                const matchesSelectedAmount = Math.abs(amount - paymentAmount) <= 0.01;
+                                                opt.hidden = !(matchesAccount && amountPositive && withinBalance && matchesSelectedAmount);
                                                 if (opt.hidden && opt.selected) {
                                                     entrySelect.value = '';
                                                 }
@@ -391,6 +436,14 @@
                                         }
 
                                         accountSelect.addEventListener('change', syncStatementOptions);
+                                        amountInput?.addEventListener('input', syncStatementOptions);
+                                        entrySelect.addEventListener('change', function () {
+                                            const selected = entrySelect.options[entrySelect.selectedIndex];
+                                            if (selected?.value && amountInput) {
+                                                amountInput.value = Math.abs(parseFloat(selected.dataset.amount || '0')).toFixed(2);
+                                                syncStatementOptions();
+                                            }
+                                        });
 
                                         // Keep suggested statement + its bank account aligned on first paint.
                                         const suggestedOpt = entrySelect.querySelector('option[selected]');
@@ -402,6 +455,9 @@
 
                                         if (suggestedOpt?.value && !suggestedOpt.hidden) {
                                             entrySelect.value = suggestedOpt.value;
+                                            if (amountInput) {
+                                                amountInput.value = Math.abs(parseFloat(suggestedOpt.dataset.amount || String(amountDue))).toFixed(2);
+                                            }
                                         }
                                     });
                                 </script>

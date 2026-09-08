@@ -31,7 +31,6 @@ class BankStatementApplyService
             $invoicesMatched = 0;
             $skipped = 0;
             $claimedTransactionIds = [];
-            $claimedInvoiceIds = [];
 
             foreach ($matches as $match) {
                 $transactionId = ! empty($match['transaction_id']) ? (int) $match['transaction_id'] : null;
@@ -96,12 +95,6 @@ class BankStatementApplyService
                     ]);
                 }
 
-                if ($invoiceId !== null && isset($claimedInvoiceIds[$invoiceId])) {
-                    throw ValidationException::withMessages([
-                        'matches' => "Invoice #{$invoiceId} is selected for more than one statement line.",
-                    ]);
-                }
-
                 $entryId = (int) $match['bank_entry_id'];
                 $bankEntry = BankStatementEntry::query()
                     ->where('id', $entryId)
@@ -140,7 +133,6 @@ class BankStatementApplyService
                         $businessEntity,
                         $invoiceId
                     );
-                    $claimedInvoiceIds[$invoiceId] = true;
                     $invoicesMatched++;
 
                     continue;

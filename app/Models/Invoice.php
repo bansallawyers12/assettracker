@@ -4,8 +4,11 @@ namespace App\Models;
 
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class Invoice extends Model
 {
@@ -46,29 +49,109 @@ class Invoice extends Model
         'reminder_count' => 'integer',
     ];
 
-    public function businessEntity()
+    public function businessEntity(): BelongsTo
     {
         return $this->belongsTo(BusinessEntity::class);
     }
 
-    public function lease()
+    public function lease(): BelongsTo
     {
         return $this->belongsTo(Lease::class);
     }
 
-    public function asset()
+    public function asset(): BelongsTo
     {
         return $this->belongsTo(Asset::class);
     }
 
-    public function paymentTransaction()
+    public function paymentTransaction(): BelongsTo
     {
         return $this->belongsTo(Transaction::class, 'payment_transaction_id');
     }
 
-    public function lines()
+    public function paymentAllocations(): HasMany
+    {
+        return $this->hasMany(InvoicePaymentAllocation::class);
+    }
+
+    public function lines(): HasMany
     {
         return $this->hasMany(InvoiceLine::class);
+    }
+
+    public function amountPaid(): float
+    {
+        if ($this->relationLoaded('paymentAllocations')) {
+            return round((float) $this->paymentAllocations->sum('amount'), 2);
+        }
+
+        return round((float) $this->paymentAllocations()->sum('amount'), 2);
+    }
+
+    public function amountDue(): float
+    {
+        return round(max(0, (float) $this->total_amount - $this->amountPaid()), 2);
+    }
+
+    public function isFullyPaid(): bool
+    {
+        return $this->amountDue() <= 0.0001;
+    }
+
+    public function hasPaymentAllocations(): bool
+    {
+        if ($this->relationLoaded('paymentAllocations')) {
+            return $this->paymentAllocations->isNotEmpty();
+        }
+
+        return $this->paymentAllocations()->exists();
+    }
+
+    /**
+     * Refresh status / paid_at / last payment FK from current allocations.
+     */
+    public function syncPaymentStateFromAllocations(?string $paidAt = null, ?string $paymentMethod = null, ?string $paymentReference = null): void
+    {
+        // Always re-query allocations; callers may have just inserted/deleted rows.
+        $this->unsetRelation('paymentAllocations');
+
+        $paid = $this->amountPaid();
+        $due = round(max(0, (float) $this->total_amount - $paid), 2);
+        $lastAllocation = $this->paymentAllocations()
+            ->orderByDesc('id')
+            ->first();
+
+        $updates = [
+            'payment_transaction_id' => $lastAllocation?->transaction_id,
+        ];
+
+        if ($due <= 0.0001 && $paid > 0) {
+            $updates['status'] = 'paid';
+            $updates['paid_at'] = $paidAt ?? $this->paid_at ?? now();
+            if ($paymentMethod !== null) {
+                $updates['payment_method'] = $paymentMethod;
+            }
+            if ($paymentReference !== null) {
+                $updates['payment_reference'] = $paymentReference;
+            }
+        } elseif ($paid > 0) {
+            $updates['status'] = 'partial';
+            $updates['paid_at'] = null;
+            if ($paymentMethod !== null) {
+                $updates['payment_method'] = $paymentMethod;
+            }
+            if ($paymentReference !== null) {
+                $updates['payment_reference'] = $paymentReference;
+            }
+        } else {
+            $updates['status'] = 'approved';
+            $updates['paid_at'] = null;
+            $updates['payment_method'] = null;
+            $updates['payment_reference'] = null;
+            $updates['payment_transaction_id'] = null;
+        }
+
+        $this->update($updates);
     }
 
     /**
@@ -84,14 +167,21 @@ class Invoice extends Model
             return collect();
         }
 
+        $paidSub = DB::table('invoice_payment_allocations')
+            ->select('invoice_id', DB::raw('COALESCE(SUM(amount), 0) as amount_paid'))
+            ->groupBy('invoice_id');
+
         return static::query()
             ->whereIn('business_entity_id', $ids)
             ->where('is_posted', true)
-            ->where('status', 'approved')
-            ->whereNull('paid_at')
-            ->whereNull('payment_transaction_id')
-            ->orderByDesc('issue_date')
-            ->orderByDesc('id')
+            ->whereIn('status', ['approved', 'partial'])
+            ->leftJoinSub($paidSub, 'alloc_totals', function ($join) {
+                $join->on('invoices.id', '=', 'alloc_totals.invoice_id');
+            })
+            ->whereRaw('(invoices.total_amount - COALESCE(alloc_totals.amount_paid, 0)) > 0.005')
+            ->select('invoices.*')
+            ->orderByDesc('invoices.issue_date')
+            ->orderByDesc('invoices.id')
             ->limit(200)
             ->get();
     }
@@ -124,6 +214,7 @@ class Invoice extends Model
     public static $statuses = [
         'draft' => 'Draft',
         'approved' => 'Approved',
+        'partial' => 'Partially paid',
         'paid' => 'Paid',
         'void' => 'Void',
     ];

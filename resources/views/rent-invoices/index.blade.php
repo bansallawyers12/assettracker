@@ -132,9 +132,10 @@
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                                 @if($invoice->status === 'paid') bg-green-100 text-green-800
+                                                @elseif($invoice->status === 'partial') bg-amber-100 text-amber-800
                                                 @elseif($invoice->status === 'approved') bg-blue-100 text-blue-800
                                                 @else bg-yellow-100 text-yellow-800 @endif">
-                                                {{ ucfirst($invoice->status) }}
+                                                {{ \App\Models\Invoice::$statuses[$invoice->status] ?? ucfirst($invoice->status) }}
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">

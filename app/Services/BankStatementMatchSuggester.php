@@ -21,6 +21,7 @@ class BankStatementMatchSuggester
     /**
      * @param  Collection<int, Transaction>  $candidates
      * @param  Collection<int, Invoice>  $invoices
+     * @param  array<int, float>|null  $remainingByInvoiceId  In-batch remaining balances (suggestMany).
      * @return array{
      *     action: string,
      *     confidence: string,
@@ -39,7 +40,8 @@ class BankStatementMatchSuggester
         BankAccount $bankAccount,
         Collection $candidates,
         ?int $defaultAssetId = null,
-        ?Collection $invoices = null
+        ?Collection $invoices = null,
+        ?array $remainingByInvoiceId = null
     ): array {
         $none = $this->none();
         $invoices ??= collect();
@@ -49,7 +51,7 @@ class BankStatementMatchSuggester
             return $match;
         }
 
-        $invoiceMatch = $this->suggestInvoiceMatch($entry, $bankAccount, $invoices);
+        $invoiceMatch = $this->suggestInvoiceMatch($entry, $bankAccount, $invoices, $remainingByInvoiceId);
         if ($invoiceMatch !== null) {
             return $invoiceMatch;
         }
@@ -108,6 +110,7 @@ class BankStatementMatchSuggester
 
     /**
      * Suggest for many entries, claiming each matched transaction at most once.
+     * Invoice matches deplete remaining balance so multiple partials can target one invoice.
      *
      * @param  Collection<int, BankStatementEntry>  $entries
      * @param  Collection<int, Transaction>  $candidates
@@ -124,9 +127,21 @@ class BankStatementMatchSuggester
         $out = [];
         $available = $candidates->values();
         $availableInvoices = ($invoices ?? collect())->values();
+        /** @var array<int, float> $remainingByInvoiceId */
+        $remainingByInvoiceId = [];
+        foreach ($availableInvoices as $invoice) {
+            $remainingByInvoiceId[(int) $invoice->id] = $invoice->amountDue();
+        }
 
         foreach ($entries as $entry) {
-            $suggestion = $this->suggest($entry, $bankAccount, $available, $defaultAssetId, $availableInvoices);
+            $suggestion = $this->suggest(
+                $entry,
+                $bankAccount,
+                $available,
+                $defaultAssetId,
+                $availableInvoices,
+                $remainingByInvoiceId
+            );
             $out[(int) $entry->id] = $suggestion;
 
             if (($suggestion['action'] ?? null) === 'match_transaction'
@@ -140,9 +155,18 @@ class BankStatementMatchSuggester
             if (($suggestion['action'] ?? null) === 'match_invoice'
                 && ! empty($suggestion['invoice_id'])) {
                 $claimedInvoiceId = (int) $suggestion['invoice_id'];
-                $availableInvoices = $availableInvoices
-                    ->reject(fn (Invoice $invoice) => (int) $invoice->id === $claimedInvoiceId)
-                    ->values();
+                $applied = round(abs((float) $entry->amount), 2);
+                $remainingByInvoiceId[$claimedInvoiceId] = round(
+                    ($remainingByInvoiceId[$claimedInvoiceId] ?? 0) - $applied,
+                    2
+                );
+
+                if (($remainingByInvoiceId[$claimedInvoiceId] ?? 0) <= self::AMOUNT_TOLERANCE) {
+                    unset($remainingByInvoiceId[$claimedInvoiceId]);
+                    $availableInvoices = $availableInvoices
+                        ->reject(fn (Invoice $invoice) => (int) $invoice->id === $claimedInvoiceId)
+                        ->values();
+                }
             }
         }
 
@@ -151,10 +175,15 @@ class BankStatementMatchSuggester
 
     /**
      * @param  Collection<int, Invoice>  $invoices
+     * @param  array<int, float>|null  $remainingByInvoiceId
      * @return array<string, mixed>|null
      */
-    private function suggestInvoiceMatch(BankStatementEntry $entry, BankAccount $bankAccount, Collection $invoices): ?array
-    {
+    private function suggestInvoiceMatch(
+        BankStatementEntry $entry,
+        BankAccount $bankAccount,
+        Collection $invoices,
+        ?array $remainingByInvoiceId = null
+    ): ?array {
         if ($bankAccount->isLoanLedgerAccount() || (float) $entry->amount <= 0 || $invoices->isEmpty()) {
             return null;
         }
@@ -165,20 +194,36 @@ class BankStatementMatchSuggester
         $ranked = [];
 
         foreach ($invoices as $invoice) {
-            if (($invoice->status ?? null) !== null && $invoice->status !== 'approved') {
+            $status = $invoice->status ?? null;
+            if ($status !== null && ! in_array($status, ['approved', 'partial'], true)) {
                 continue;
             }
 
-            if ($invoice->paid_at || $invoice->payment_transaction_id) {
+            $invoiceId = (int) $invoice->id;
+            $remaining = array_key_exists($invoiceId, $remainingByInvoiceId ?? [])
+                ? round((float) $remainingByInvoiceId[$invoiceId], 2)
+                : $invoice->amountDue();
+
+            if ($remaining <= self::AMOUNT_TOLERANCE) {
                 continue;
             }
 
-            if (abs($entryAmount - (float) $invoice->total_amount) > self::AMOUNT_TOLERANCE) {
+            // Exact remaining due, or a partial credit that does not exceed the balance.
+            if ($entryAmount - $remaining > self::AMOUNT_TOLERANCE) {
                 continue;
             }
+
+            $settlesRemaining = abs($entryAmount - $remaining) <= self::AMOUNT_TOLERANCE;
+            $isPartial = ! $settlesRemaining;
 
             $customerName = trim((string) $invoice->customer_name);
             $nameMatch = $customerName !== '' && Str::contains($description, Str::lower($customerName));
+
+            // Partial auto-suggest needs a customer-name signal; bare amount-under-balance is too greedy
+            // (any small credit would attach to any open larger invoice).
+            if ($isPartial && ! $nameMatch) {
+                continue;
+            }
 
             $days = 999;
             $issueDate = $this->asDate($invoice->issue_date);
@@ -189,10 +234,15 @@ class BankStatementMatchSuggester
                 );
             }
 
-            $confidence = $nameMatch ? 'high' : 'medium';
-            $reason = $nameMatch
-                ? 'Invoice amount and customer name match'
-                : 'Invoice amount match';
+            if ($settlesRemaining) {
+                $confidence = $nameMatch ? 'high' : 'medium';
+                $reason = $nameMatch
+                    ? 'Invoice balance and customer name match'
+                    : 'Invoice balance match';
+            } else {
+                $confidence = 'medium';
+                $reason = 'Partial payment toward invoice balance (customer name match)';
+            }
 
             $ranked[] = [
                 'invoice' => $invoice,
@@ -200,6 +250,7 @@ class BankStatementMatchSuggester
                 'reason' => $reason,
                 'name_match' => $nameMatch ? 0 : 1,
                 'days' => $days,
+                'is_partial' => $isPartial ? 1 : 0,
             ];
         }
 
@@ -212,6 +263,12 @@ class BankStatementMatchSuggester
             $byConf = ($confRank[$a['confidence']] ?? 9) <=> ($confRank[$b['confidence']] ?? 9);
             if ($byConf !== 0) {
                 return $byConf;
+            }
+
+            // Prefer settling the balance over a partial toward a larger invoice.
+            $byPartial = ($a['is_partial'] ?? 0) <=> ($b['is_partial'] ?? 0);
+            if ($byPartial !== 0) {
+                return $byPartial;
             }
 
             $byName = $a['name_match'] <=> $b['name_match'];
@@ -227,9 +284,9 @@ class BankStatementMatchSuggester
         $reason = $best['reason'];
         if (count($ranked) > 1 && $confidence === 'high') {
             $confidence = 'medium';
-            $reason = 'Multiple invoice amount matches; best by customer name';
+            $reason = 'Multiple invoice balance matches; best by customer name';
         } elseif (count($ranked) > 1) {
-            $reason = 'Multiple invoice amount matches; closest issue date';
+            $reason = 'Multiple invoice matches; closest issue date';
         }
 
         $alternates = [];

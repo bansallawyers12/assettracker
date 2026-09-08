@@ -215,13 +215,24 @@ class InvoiceController extends Controller
     {
         $this->authorize('view', $businessEntity);
         $this->authorizeInvoice($businessEntity, $invoice);
-        $invoice->load(['lines', 'lease.tenant', 'asset', 'paymentTransaction.bankAccount', 'paymentTransaction.bankStatementEntries']);
+        $invoice->load([
+            'lines',
+            'lease.tenant',
+            'asset',
+            'paymentAllocations.transaction.bankAccount',
+            'paymentAllocations.transaction.bankStatementEntries',
+            'paymentTransaction.bankAccount',
+            'paymentTransaction.bankStatementEntries',
+        ]);
 
         $paymentBankAccounts = collect();
         $unmatchedStatementEntries = collect();
         $suggestedStatementEntryId = null;
         $suggestedPaymentBankAccountId = null;
-        if ($invoice->status === 'approved' && ! $invoice->paid_at) {
+        $amountDue = $invoice->amountDue();
+        $canRecordPayment = in_array($invoice->status, ['approved', 'partial'], true) && $amountDue > 0.005;
+
+        if ($canRecordPayment) {
             $paymentBankAccounts = $businessEntity->bankAccountLinksForDisplay()
                 ->map(fn ($link) => $link->bankAccount)
                 ->filter()
@@ -231,31 +242,34 @@ class InvoiceController extends Controller
                 ->values();
 
             if ($paymentBankAccounts->isNotEmpty()) {
-                $invoiceTotal = round((float) $invoice->total_amount, 2);
                 $unmatchedStatementEntries = BankStatementEntry::query()
                     ->whereIn('bank_account_id', $paymentBankAccounts->pluck('id'))
                     ->whereNull('transaction_id')
                     ->orderByDesc('date')
                     ->orderByDesc('id')
                     ->get()
-                    ->sortByDesc(function (BankStatementEntry $entry) use ($invoiceTotal) {
+                    ->sortByDesc(function (BankStatementEntry $entry) use ($amountDue) {
                         $amount = (float) $entry->amount;
                         if ($amount <= 0) {
                             return -1;
                         }
 
-                        return abs($amount - $invoiceTotal) <= BankStatementMatchSuggester::AMOUNT_TOLERANCE
-                            ? 2
+                        if (abs($amount - $amountDue) <= BankStatementMatchSuggester::AMOUNT_TOLERANCE) {
+                            return 2;
+                        }
+
+                        return $amount <= $amountDue + BankStatementMatchSuggester::AMOUNT_TOLERANCE
+                            ? 1
                             : 0;
                     })
                     ->values();
 
                 $suggestedEntry = $unmatchedStatementEntries
-                    ->first(function (BankStatementEntry $entry) use ($invoiceTotal) {
+                    ->first(function (BankStatementEntry $entry) use ($amountDue) {
                         $amount = (float) $entry->amount;
 
                         return $amount > 0
-                            && abs($amount - $invoiceTotal) <= BankStatementMatchSuggester::AMOUNT_TOLERANCE;
+                            && abs($amount - $amountDue) <= BankStatementMatchSuggester::AMOUNT_TOLERANCE;
                     });
 
                 $suggestedStatementEntryId = $suggestedEntry?->id;
@@ -269,7 +283,9 @@ class InvoiceController extends Controller
             'paymentBankAccounts',
             'unmatchedStatementEntries',
             'suggestedStatementEntryId',
-            'suggestedPaymentBankAccountId'
+            'suggestedPaymentBankAccountId',
+            'amountDue',
+            'canRecordPayment'
         ));
     }
 
@@ -455,10 +471,15 @@ class InvoiceController extends Controller
         $this->authorizeInvoice($businessEntity, $invoice);
 
         $transaction = $paymentService->record($request, $businessEntity, $invoice);
+        $invoice->refresh();
 
-        $message = 'Payment recorded and AR cleared.';
+        $message = $invoice->status === 'partial'
+            ? 'Partial payment recorded against Accounts Receivable.'
+            : 'Payment recorded and AR cleared.';
         if ($transaction->bankStatementEntries()->exists()) {
-            $message = 'Payment recorded, AR cleared, and matched to the bank statement line.';
+            $message = $invoice->status === 'partial'
+                ? 'Partial payment recorded, AR reduced, and matched to the bank statement line.'
+                : 'Payment recorded, AR cleared, and matched to the bank statement line.';
         } else {
             $message .= ' Match a statement line later from the bank account panel if needed.';
         }
@@ -471,8 +492,8 @@ class InvoiceController extends Controller
         $this->authorize('update', $businessEntity);
         $this->authorizeInvoice($businessEntity, $invoice);
 
-        if ($invoice->status !== 'approved') {
-            return back()->with('error', 'Reminders can only be sent for approved (posted) invoices.');
+        if ($invoice->status !== 'approved' && $invoice->status !== 'partial') {
+            return back()->with('error', 'Reminders can only be sent for approved or partially paid invoices.');
         }
 
         $invoice->loadMissing(['lease.tenant', 'lines']);

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use App\Models\Invoice;
+use App\Models\InvoicePaymentAllocation;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\DB;
 
@@ -23,7 +24,7 @@ class BankAccountTransactionClearService
 
         return [
             'transactions' => count($transactionIds),
-            'linked_invoices' => $this->linkedInvoiceQuery($transactionIds)->count(),
+            'linked_invoices' => count($this->linkedInvoiceIds($transactionIds)),
             'bank_statement_entries' => $this->matchedBankStatementEntryCount($transactionIds),
         ];
     }
@@ -38,8 +39,24 @@ class BankAccountTransactionClearService
     {
         return DB::transaction(function () use ($businessEntity, $bankAccount) {
             $transactionIds = $this->transactionIdsForScope($businessEntity, $bankAccount);
+            $invoiceIds = $this->linkedInvoiceIds($transactionIds);
 
-            $invoicesReset = $this->resetLinkedInvoices($transactionIds);
+            if ($transactionIds !== []) {
+                InvoicePaymentAllocation::query()
+                    ->whereIn('transaction_id', $transactionIds)
+                    ->delete();
+            }
+
+            $invoicesReset = 0;
+            foreach ($invoiceIds as $invoiceId) {
+                $invoice = Invoice::query()->whereKey($invoiceId)->lockForUpdate()->first();
+                if (! $invoice) {
+                    continue;
+                }
+                $invoice->syncPaymentStateFromAllocations();
+                $invoicesReset++;
+            }
+
             $transactionsDeleted = $this->deleteTransactions($transactionIds);
 
             return [
@@ -65,14 +82,27 @@ class BankAccountTransactionClearService
 
     /**
      * @param  list<int>  $transactionIds
+     * @return list<int>
      */
-    private function linkedInvoiceQuery(array $transactionIds)
+    private function linkedInvoiceIds(array $transactionIds): array
     {
         if ($transactionIds === []) {
-            return Invoice::query()->whereRaw('1 = 0');
+            return [];
         }
 
-        return Invoice::query()->whereIn('payment_transaction_id', $transactionIds);
+        $fromAllocations = InvoicePaymentAllocation::query()
+            ->whereIn('transaction_id', $transactionIds)
+            ->pluck('invoice_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $fromLegacyFk = Invoice::query()
+            ->whereIn('payment_transaction_id', $transactionIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return array_values(array_unique(array_merge($fromAllocations, $fromLegacyFk)));
     }
 
     /**
@@ -87,24 +117,6 @@ class BankAccountTransactionClearService
         return (int) DB::table('bank_statement_entries')
             ->whereIn('transaction_id', $transactionIds)
             ->count();
-    }
-
-    /**
-     * @param  list<int>  $transactionIds
-     */
-    private function resetLinkedInvoices(array $transactionIds): int
-    {
-        if ($transactionIds === []) {
-            return 0;
-        }
-
-        return $this->linkedInvoiceQuery($transactionIds)->update([
-            'payment_transaction_id' => null,
-            'paid_at' => null,
-            'payment_method' => null,
-            'payment_reference' => null,
-            'status' => 'approved',
-        ]);
     }
 
     /**

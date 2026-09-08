@@ -71,7 +71,7 @@ it('supports invoice unpost when no payment recorded', function () {
     $controller = file_get_contents(app_path('Http/Controllers/InvoiceController.php'));
 
     expect($service)->toContain('function unpost')
-        ->and($service)->toContain('payment_transaction_id')
+        ->and($service)->toContain('hasPaymentAllocations')
         ->and($controller)->toContain('function unpost');
 });
 

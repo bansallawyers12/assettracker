@@ -174,7 +174,7 @@
                     <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
                         @forelse($invoices as $inv)
                             @php
-                                $isOverdue = $inv->status === 'approved' && $inv->due_date && $inv->due_date->isPast();
+                                $isOverdue = in_array($inv->status, ['approved', 'partial'], true) && $inv->due_date && $inv->due_date->isPast();
                             @endphp
                             <tr class="transition-colors hover:bg-indigo-50/40 dark:hover:bg-indigo-950/20">
                                 <td class="px-4 py-3.5">

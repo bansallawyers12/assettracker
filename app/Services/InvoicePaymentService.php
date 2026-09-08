@@ -6,6 +6,7 @@ use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\Invoice;
+use App\Models\InvoicePaymentAllocation;
 use App\Models\Transaction;
 use App\Support\DocumentUploadValidation;
 use Illuminate\Http\Request;
@@ -36,6 +37,7 @@ class InvoicePaymentService
 
         return [
             'paid_at' => 'required|date',
+            'amount' => 'nullable|numeric|min:0.01',
             'payment_method' => 'nullable|string|max:100',
             'payment_reference' => 'nullable|string|max:255',
             'bank_account_id' => 'required|integer|exists:bank_accounts,id',
@@ -63,13 +65,18 @@ class InvoicePaymentService
             ? (int) $data['bank_statement_entry_id']
             : null;
 
+        $amount = array_key_exists('amount', $data) && $data['amount'] !== null && $data['amount'] !== ''
+            ? round((float) $data['amount'], 2)
+            : null;
+
         return DB::transaction(function () use (
             $request,
             $businessEntity,
             $invoice,
             $data,
             $bankAccount,
-            $statementEntryId
+            $statementEntryId,
+            $amount
         ) {
             return $this->persistPayment(
                 $businessEntity,
@@ -79,6 +86,7 @@ class InvoicePaymentService
                 $data['payment_method'] ?? null,
                 $data['payment_reference'] ?? null,
                 $statementEntryId,
+                $amount,
                 $request
             );
         });
@@ -98,19 +106,31 @@ class InvoicePaymentService
 
         $paidAt = $statementEntry->date?->toDateString() ?? now()->toDateString();
         $reference = Str::limit(trim((string) $statementEntry->description), 255, '');
+        $amount = round(abs((float) $statementEntry->amount), 2);
 
-        return $this->persistPayment(
+        return DB::transaction(function () use (
             $businessEntity,
             $invoice,
             $bankAccount,
             $paidAt,
-            null,
-            $reference !== '' ? $reference : null,
-            (int) $statementEntry->id,
-            null,
-            'matches',
-            'matches'
-        );
+            $reference,
+            $statementEntry,
+            $amount
+        ) {
+            return $this->persistPayment(
+                $businessEntity,
+                $invoice,
+                $bankAccount,
+                $paidAt,
+                null,
+                $reference !== '' ? $reference : null,
+                (int) $statementEntry->id,
+                $amount,
+                null,
+                'matches',
+                'matches'
+            );
+        });
     }
 
     private function persistPayment(
@@ -121,6 +141,7 @@ class InvoicePaymentService
         ?string $paymentMethod,
         ?string $paymentReference,
         ?int $statementEntryId,
+        ?float $requestedAmount = null,
         ?Request $request = null,
         string $invoiceErrorKey = 'paid_at',
         string $statementErrorKey = 'bank_statement_entry_id'
@@ -136,15 +157,16 @@ class InvoicePaymentService
             ]);
         }
 
-        if ($lockedInvoice->status !== 'approved') {
+        if (! in_array($lockedInvoice->status, ['approved', 'partial'], true)) {
             throw ValidationException::withMessages([
-                $invoiceErrorKey => 'Only approved (posted) invoices can be marked paid.',
+                $invoiceErrorKey => 'Only approved or partially paid invoices can receive a payment.',
             ]);
         }
 
-        if ($lockedInvoice->paid_at || $lockedInvoice->payment_transaction_id) {
+        $remaining = $lockedInvoice->amountDue();
+        if ($remaining <= BankStatementMatchSuggester::AMOUNT_TOLERANCE) {
             throw ValidationException::withMessages([
-                $invoiceErrorKey => 'This invoice is already recorded as paid.',
+                $invoiceErrorKey => 'This invoice is already fully paid.',
             ]);
         }
 
@@ -163,17 +185,40 @@ class InvoicePaymentService
                 ]);
             }
 
-            if (abs(abs((float) $statementEntry->amount) - (float) $lockedInvoice->total_amount) > BankStatementMatchSuggester::AMOUNT_TOLERANCE) {
-                throw ValidationException::withMessages([
-                    $statementErrorKey => 'Statement line amount does not match the invoice total.',
-                ]);
-            }
-
             if ((float) $statementEntry->amount < 0) {
                 throw ValidationException::withMessages([
                     $statementErrorKey => 'Invoice payments must match an incoming (credit) statement line.',
                 ]);
             }
+
+            $requestedAmount = round(abs((float) $statementEntry->amount), 2);
+        }
+
+        $paymentAmount = $requestedAmount ?? $remaining;
+        $paymentAmount = round($paymentAmount, 2);
+
+        if ($paymentAmount <= 0) {
+            throw ValidationException::withMessages([
+                $invoiceErrorKey === 'matches' ? $invoiceErrorKey : 'amount' => 'Payment amount must be greater than zero.',
+            ]);
+        }
+
+        if ($paymentAmount - $remaining > BankStatementMatchSuggester::AMOUNT_TOLERANCE) {
+            throw ValidationException::withMessages([
+                $statementEntry
+                    ? $statementErrorKey
+                    : ($invoiceErrorKey === 'matches' ? $invoiceErrorKey : 'amount') => 'Payment amount cannot exceed the invoice balance remaining ('.$remaining.').',
+            ]);
+        }
+
+        $settlesRemaining = $paymentAmount >= ($remaining - BankStatementMatchSuggester::AMOUNT_TOLERANCE);
+        $allocatedAmount = $settlesRemaining ? $remaining : $paymentAmount;
+
+        if ($statementEntry
+            && abs(abs((float) $statementEntry->amount) - $allocatedAmount) > BankStatementMatchSuggester::AMOUNT_TOLERANCE) {
+            throw ValidationException::withMessages([
+                $statementErrorKey => 'Statement line amount does not match the payment amount.',
+            ]);
         }
 
         $paymentDocumentId = null;
@@ -205,8 +250,9 @@ class InvoicePaymentService
             'bank_account_id' => $bankAccount->id,
             'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
             'date' => $paidAt,
-            'amount' => $lockedInvoice->total_amount,
-            'description' => 'Payment received for Invoice '.$lockedInvoice->invoice_number,
+            'amount' => $allocatedAmount,
+            'description' => ($settlesRemaining ? 'Payment received for Invoice ' : 'Partial payment for Invoice ')
+                .$lockedInvoice->invoice_number,
             'transaction_type' => Transaction::TYPE_INVOICE_PAYMENT,
             'invoice_number' => $lockedInvoice->invoice_number,
             'payment_status' => 'paid',
@@ -222,13 +268,18 @@ class InvoicePaymentService
             $statementEntry->update(['transaction_id' => $transaction->id]);
         }
 
-        $lockedInvoice->update([
-            'paid_at' => $paidAt,
-            'payment_method' => $paymentMethod,
-            'payment_reference' => $paymentReference,
-            'status' => 'paid',
-            'payment_transaction_id' => $transaction->id,
+        InvoicePaymentAllocation::create([
+            'transaction_id' => $transaction->id,
+            'invoice_id' => $lockedInvoice->id,
+            'amount' => $allocatedAmount,
         ]);
+
+        $lockedInvoice->unsetRelation('paymentAllocations');
+        $lockedInvoice->syncPaymentStateFromAllocations(
+            $paidAt,
+            $paymentMethod,
+            $paymentReference
+        );
 
         return $transaction;
     }

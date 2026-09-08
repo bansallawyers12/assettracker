@@ -272,6 +272,7 @@ it('suggests a high-confidence invoice match when amount and customer name align
         'is_posted' => true,
     ]);
     $invoice->id = 81;
+    $invoice->setRelation('paymentAllocations', collect());
     $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
 
     $suggestion = $suggester->suggest($entry, $account, collect(), null, collect([$invoice]));
@@ -298,6 +299,7 @@ it('suggests a medium-confidence invoice match on amount only', function () {
         'is_posted' => true,
     ]);
     $invoice->id = 82;
+    $invoice->setRelation('paymentAllocations', collect());
     $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
 
     $suggestion = $suggester->suggest($entry, $account, collect(), null, collect([$invoice]));
@@ -322,8 +324,10 @@ it('prefers an existing transaction match over an unpaid invoice', function () {
         'customer_name' => 'Alex Tenant',
         'total_amount' => 500,
         'issue_date' => '2026-08-01',
+        'status' => 'approved',
     ]);
     $invoice->id = 90;
+    $invoice->setRelation('paymentAllocations', collect());
     $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
 
     $suggestion = $suggester->suggest($entry, $account, collect([$candidate]), null, collect([$invoice]));
@@ -345,8 +349,10 @@ it('does not suggest rental income when an unpaid invoice amount matches', funct
         'customer_name' => 'Sam Tenant',
         'total_amount' => 1100,
         'issue_date' => '2026-09-01',
+        'status' => 'approved',
     ]);
     $invoice->id = 91;
+    $invoice->setRelation('paymentAllocations', collect());
     $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
 
     $suggestion = $suggester->suggest($entry, $account, collect(), null, collect([$invoice]));
@@ -404,12 +410,91 @@ it('claims each candidate transaction at most once across suggestMany', function
         ->and($suggestions[2]['action'])->not->toBe('match_transaction');
 });
 
+it('does not auto-suggest a partial invoice match without a customer name signal', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => 3000,
+        'date' => '2026-08-09',
+        'description' => 'DEPOSIT INTERNET',
+    ]);
+    $invoice = new Invoice([
+        'invoice_number' => 'INV1-202604001',
+        'customer_name' => 'Ranjeet Singh',
+        'total_amount' => 10000,
+        'issue_date' => '2026-04-01',
+        'status' => 'approved',
+        'is_posted' => true,
+    ]);
+    $invoice->id = 83;
+    $invoice->setRelation('paymentAllocations', collect());
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect(), null, collect([$invoice]));
+
+    expect($suggestion['action'])->not->toBe('match_invoice');
+});
+
+it('suggests a partial invoice match when customer name is present', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $entry = makeEntry([
+        'amount' => 3000,
+        'date' => '2026-08-09',
+        'description' => 'RANJEET SINGH Rent',
+    ]);
+    $invoice = new Invoice([
+        'invoice_number' => 'INV1-202604001',
+        'customer_name' => 'Ranjeet Singh',
+        'total_amount' => 10000,
+        'issue_date' => '2026-04-01',
+        'status' => 'approved',
+        'is_posted' => true,
+    ]);
+    $invoice->id = 84;
+    $invoice->setRelation('paymentAllocations', collect());
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
+
+    $suggestion = $suggester->suggest($entry, $account, collect(), null, collect([$invoice]));
+
+    expect($suggestion['action'])->toBe('match_invoice')
+        ->and($suggestion['invoice_id'])->toBe(84)
+        ->and($suggestion['confidence'])->toBe('medium')
+        ->and($suggestion['reason'])->toContain('Partial payment');
+});
+
+it('depletes invoice remaining across suggestMany so two partials can target one invoice', function () {
+    $suggester = new BankStatementMatchSuggester;
+    $account = new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]);
+    $invoice = new Invoice([
+        'invoice_number' => 'INV1-202604001',
+        'customer_name' => 'Ranjeet Singh',
+        'total_amount' => 10000,
+        'issue_date' => '2026-04-01',
+        'status' => 'approved',
+        'is_posted' => true,
+    ]);
+    $invoice->id = 85;
+    $invoice->setRelation('paymentAllocations', collect());
+
+    $entries = collect([
+        makeEntry(['id' => 11, 'amount' => 3000, 'date' => '2026-08-01', 'description' => 'RANJEET SINGH part 1']),
+        makeEntry(['id' => 12, 'amount' => 7000, 'date' => '2026-08-02', 'description' => 'RANJEET SINGH part 2']),
+    ]);
+
+    $suggestions = $suggester->suggestMany($entries, $account, collect(), null, collect([$invoice]));
+
+    expect($suggestions[11]['action'])->toBe('match_invoice')
+        ->and($suggestions[11]['invoice_id'])->toBe(85)
+        ->and($suggestions[12]['action'])->toBe('match_invoice')
+        ->and($suggestions[12]['invoice_id'])->toBe(85);
+});
+
 it('applies matches inside a single database transaction', function () {
     $source = file_get_contents(app_path('Services/BankStatementApplyService.php'));
 
     expect($source)->toContain('return DB::transaction(function () use ($bankAccount, $businessEntity, $matches)')
         ->and($source)->toContain('claimedTransactionIds')
-        ->and($source)->toContain('is selected for more than one statement line');
+        ->and($source)->toContain('is selected for more than one statement line')
+        ->and($source)->not->toContain('claimedInvoiceIds');
 });
 
 it('fingerprints statement lines with reference and balance for duplicate detection', function () {

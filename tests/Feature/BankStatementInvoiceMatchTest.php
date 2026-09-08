@@ -90,6 +90,8 @@ it('applies a statement credit to an unpaid posted invoice and clears AR', funct
 
     expect($invoice->status)->toBe('paid')
         ->and($invoice->payment_transaction_id)->not->toBeNull()
+        ->and($invoice->paymentAllocations)->toHaveCount(1)
+        ->and((float) $invoice->paymentAllocations->first()->amount)->toBe(10000.0)
         ->and($entry->transaction_id)->toBe($invoice->payment_transaction_id);
 
     $transaction = Transaction::query()->findOrFail($invoice->payment_transaction_id);

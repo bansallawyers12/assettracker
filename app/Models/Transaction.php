@@ -698,6 +698,11 @@ class Transaction extends Model
         return $this->hasMany(BankStatementEntry::class);
     }
 
+    public function invoicePaymentAllocations(): HasMany
+    {
+        return $this->hasMany(InvoicePaymentAllocation::class);
+    }
+
     public function trackingCategory()
     {
         return $this->belongsTo(TrackingCategory::class);

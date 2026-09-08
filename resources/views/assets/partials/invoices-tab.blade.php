@@ -84,6 +84,7 @@
                                     $statusStyles = [
                                         'draft' => 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
                                         'approved' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200',
+                                        'partial' => 'bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200',
                                         'paid' => 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200',
                                         'void' => 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200',
                                     ];
@@ -96,19 +97,13 @@
                                     <td class="px-4 py-2 whitespace-nowrap">{{ $inv->due_date ? $inv->due_date->format('d/m/Y') : '—' }}</td>
                                     <td class="px-4 py-2 text-right font-medium">${{ number_format($inv->total_amount, 2) }}</td>
                                     <td class="px-4 py-2">
-                                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium {{ $badge }}">{{ ucfirst($inv->status) }}</span>
+                                        <span class="inline-flex px-2 py-0.5 rounded-full text-xs font-medium {{ $badge }}">{{ \App\Models\Invoice::$statuses[$inv->status] ?? ucfirst($inv->status) }}</span>
                                     </td>
                                     <td class="px-4 py-2">
                                         <div class="flex flex-col gap-2">
                                             <a href="{{ route('business-entities.invoices.show', [$businessEntity, $inv]) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs font-medium">View</a>
-                                            @if ($inv->status === 'approved')
-                                                <form method="POST" action="{{ route('business-entities.invoices.record-payment', [$businessEntity, $inv]) }}" class="flex flex-wrap items-center gap-2">
-                                                    @csrf
-                                                    <x-date-input  name="paid_at" value="{{ now()->format('Y-m-d') }}" required class="rounded-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-32" />
-                                                    <input type="text" name="payment_method" placeholder="Method" class="rounded-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-24" />
-                                                    <input type="text" name="payment_reference" placeholder="Ref" class="rounded-sm border-gray-300 dark:border-gray-600 dark:bg-gray-800 text-xs w-24" />
-                                                    <button type="submit" class="px-2 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded-sm">Mark paid</button>
-                                                </form>
+                                            @if (in_array($inv->status, ['approved', 'partial'], true))
+                                                <a href="{{ route('business-entities.invoices.show', [$businessEntity, $inv]) }}" class="text-xs text-emerald-700 dark:text-emerald-400 hover:underline font-medium">Record payment</a>
                                                 @if ($inv->lease?->tenant?->email)
                                                     <form method="POST" action="{{ route('business-entities.invoices.remind', [$businessEntity, $inv]) }}" onsubmit="return confirm('Send payment reminder email to {{ $inv->lease->tenant->email }}?');">
                                                         @csrf

@@ -78,7 +78,7 @@ class InvoicePostingService
 
     public function unpost(Invoice $invoice): void
     {
-        if ($invoice->payment_transaction_id) {
+        if ($invoice->payment_transaction_id || $invoice->hasPaymentAllocations()) {
             throw new \DomainException('Cannot unpost an invoice that has a recorded payment. Reverse the payment first.');
         }
 
