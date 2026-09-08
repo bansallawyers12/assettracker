@@ -15,29 +15,35 @@ it('registers the move-to-trust route and controller action', function () {
 
     expect(route('business-entities.assets.move-to-trust', [49, 11]))
         ->toContain('/business-entities/49/assets/11/move-to-trust')
+        ->and(route('business-entities.assets.move-to-trust.form', [49, 11]))
+        ->toContain('/business-entities/49/assets/11/move-to-trust/form')
         ->and($routes)->toContain('business-entities.assets.move-to-trust')
         ->and($routes)->toContain('moveToTrust')
+        ->and($routes)->toContain('moveToTrustForm')
         ->and($controller)->toContain('function moveToTrust')
         ->and($controller)->toContain('AssetMoveToTrustService')
         ->and($controller)->toContain('ruleExistsOperationalTrust')
         ->and($controller)->toContain('moveToTrustCandidates')
-        ->and($controller)->toContain('preferredMoveToTrustId');
+        ->and($controller)->toContain('preferredMoveToTrustId')
+        ->and($controller)->toContain('expectsJson()');
 });
 
 it('shows move to trust UI on company asset pages', function () {
     $show = file_get_contents(resource_path('views/assets/show.blade.php'));
     $partial = file_get_contents(resource_path('views/assets/partials/move-to-trust-form.blade.php'));
+    $workspaceJs = file_get_contents(resource_path('js/asset-show-workspace.js'));
 
     expect($show)->toContain('Move to trust')
-        ->and($show)->toContain('move-to-trust-form')
+        ->and($show)->toContain('data-move-to-trust')
         ->and($show)->toContain('isCompany()')
-        ->and($show)->toContain('toggleMoveToTrust')
         ->and($show)->toContain('assetShowPage')
         ->and($partial)->toContain('business-entities.assets.move-to-trust')
         ->and($partial)->toContain('target_business_entity_id')
         ->and($partial)->toContain('record correction')
         ->and($partial)->toContain('Confirm move')
-        ->and($partial)->toContain('x-show="showMoveToTrust"');
+        ->and($partial)->toContain('move-to-trust-ws-form')
+        ->and($workspaceJs)->toContain('move-to-trust/form')
+        ->and($workspaceJs)->toContain('data-move-to-trust');
 });
 
 it('reparents the full cascade list inside a database transaction', function () {

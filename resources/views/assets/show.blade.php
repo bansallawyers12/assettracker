@@ -5,10 +5,6 @@
     $canMoveToTrust = $businessEntity->isCompany() && ($moveToTrustTargets ?? collect())->isNotEmpty();
     $assetShowConfig = [
         'defaultTab' => 'tab_details',
-        'openMoveToTrust' => $canMoveToTrust && (
-            (bool) old('target_business_entity_id')
-            || $errors->has('target_business_entity_id')
-        ),
     ];
 @endphp
 <x-app-layout>
@@ -34,18 +30,16 @@
         <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex flex-wrap gap-2">
-                    <a href="{{ route('business-entities.assets.edit', [$asset->business_entity_id, $asset->id]) }}"
-                       class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
+                    <button type="button"
+                            data-asset-edit
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
                         <x-lucide-pencil class="h-4 w-4" aria-hidden="true" />
                         Edit asset
-                    </a>
+                    </button>
                     @if ($canMoveToTrust)
                         <button type="button"
-                                @click="toggleMoveToTrust()"
-                                class="inline-flex items-center gap-1.5 rounded-lg border px-3.5 py-2 text-sm font-semibold shadow-xs transition-colors"
-                                :class="showMoveToTrust
-                                    ? 'border-amber-300 bg-amber-100 text-amber-900 dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-100'
-                                    : 'border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-900/40'">
+                                data-move-to-trust
+                                class="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-900 shadow-xs transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-900/40">
                             <x-lucide-arrow-left-right class="h-4 w-4" aria-hidden="true" />
                             Move to trust
                         </button>
@@ -67,14 +61,6 @@
                 <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200" role="alert">
                     {{ session('error') }}
                 </div>
-            @endif
-            @if ($canMoveToTrust)
-                @include('assets.partials.move-to-trust-form', [
-                    'businessEntity' => $businessEntity,
-                    'asset' => $asset,
-                    'moveToTrustTargets' => $moveToTrustTargets,
-                    'preferredMoveToTrustId' => $preferredMoveToTrustId ?? null,
-                ])
             @endif
             <div class="flex flex-col lg:flex-row gap-6">
                 @include('assets.partials.asset-details-sidebar', compact('asset'))

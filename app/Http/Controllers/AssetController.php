@@ -15,6 +15,7 @@ use App\Models\RealEstateCompanyContact;
 use App\Models\Tenant;
 use App\Services\AssetMoveToTrustService;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -233,7 +234,7 @@ class AssetController extends Controller
         BusinessEntity $businessEntity,
         Asset $asset,
         AssetMoveToTrustService $moveToTrustService
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $this->ensureAssetBelongsToBusinessEntity($businessEntity, $asset);
         $this->authorize('update', $businessEntity);
         $this->ensureNotClosed($businessEntity);
@@ -268,8 +269,18 @@ class AssetController extends Controller
             $message .= ' Some bank account links were removed; re-link under the trust if needed.';
         }
 
+        $redirectUrl = route('business-entities.assets.show', [$target->id, $asset->id]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => true,
+                'message' => $message,
+                'redirect' => $redirectUrl,
+            ]);
+        }
+
         return redirect()
-            ->route('business-entities.assets.show', [$target->id, $asset->id])
+            ->to($redirectUrl)
             ->with('success', $message);
     }
 

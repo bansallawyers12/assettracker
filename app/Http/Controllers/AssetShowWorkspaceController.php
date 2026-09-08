@@ -119,6 +119,40 @@ class AssetShowWorkspaceController extends Controller
         ]);
     }
 
+    public function moveToTrustForm(BusinessEntity $businessEntity, Asset $asset): JsonResponse
+    {
+        $this->authorize('update', $businessEntity);
+        $this->ensureAssetBelongs($businessEntity, $asset);
+
+        if (! $businessEntity->isCompany()) {
+            abort(404);
+        }
+
+        $linkedTrusts = $businessEntity->trustsWhereCorporateTrustee();
+        $moveToTrustTargets = $businessEntity->moveToTrustCandidates($linkedTrusts);
+
+        if ($moveToTrustTargets->isEmpty()) {
+            return response()->json([
+                'status' => false,
+                'message' => 'No eligible trusts available for this move.',
+            ], 422);
+        }
+
+        $preferredMoveToTrustId = $linkedTrusts->count() === 1
+            ? $linkedTrusts->first()->id
+            : null;
+
+        return response()->json([
+            'status' => true,
+            'html' => view('assets.partials.move-to-trust-form', [
+                'businessEntity' => $businessEntity,
+                'asset' => $asset,
+                'moveToTrustTargets' => $moveToTrustTargets,
+                'preferredMoveToTrustId' => $preferredMoveToTrustId,
+            ])->render(),
+        ]);
+    }
+
     public function updateLoanBanking(Request $request, BusinessEntity $businessEntity, Asset $asset): JsonResponse
     {
         $this->authorize('update', $businessEntity);

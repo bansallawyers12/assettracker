@@ -30,10 +30,13 @@ function initFormPlugins(root) {
     window.initFlatpickr?.(root);
     window.initTomSelect?.(root);
     initTenantFormFields(root);
+    requestAnimationFrame(() => {
+        document.dispatchEvent(new CustomEvent('au:address:refresh'));
+    });
 }
 
-function registerPanelFormHandler(selector, onSuccess) {
-    panelFormHandlers.push({ selector, onSuccess });
+function registerPanelFormHandler(selector, onSuccess, options = {}) {
+    panelFormHandlers.push({ selector, onSuccess, options });
     ensurePanelFormHandlers();
 }
 
@@ -45,13 +48,20 @@ function ensurePanelFormHandlers() {
 
     panel.dataset.assetShowHandlersBound = '1';
     panel.addEventListener('submit', async (event) => {
-        for (const { selector, onSuccess } of panelFormHandlers) {
+        for (const { selector, onSuccess, options } of panelFormHandlers) {
             const form = event.target.closest(selector);
             if (!form) {
                 continue;
             }
 
             event.preventDefault();
+
+            const confirmMessage = options?.confirmMessage
+                || form.querySelector('[data-confirm-message]')?.dataset?.confirmMessage;
+            if (confirmMessage && !window.confirm(confirmMessage)) {
+                return;
+            }
+
             const result = await submitWorkspaceForm(form, { onSuccess });
             if (!result.ok && result.payload) {
                 notifyFormFailure(form, result.payload);
@@ -80,18 +90,38 @@ function initAssetShowWorkspace(root) {
             return;
         }
         setWorkspacePanelContent(payload.html);
-        const form = getWorkspacePanelBody();
-        if (form) {
-            initFormPlugins(form);
+        const panelBody = getWorkspacePanelBody();
+        if (panelBody) {
+            initFormPlugins(panelBody);
         }
     }
 
     async function handleClick(event) {
+        const assetEdit = event.target.closest('[data-asset-edit]');
+        const moveToTrust = event.target.closest('[data-move-to-trust]');
         const tenantCreate = event.target.closest('[data-tenant-create]');
         const leaseCreate = event.target.closest('[data-lease-create]');
         const tenantEdit = event.target.closest('[data-tenant-edit]');
         const leaseEdit = event.target.closest('[data-lease-edit]');
         const loanBankingEdit = event.target.closest('[data-loan-banking-edit]');
+
+        if (assetEdit) {
+            event.preventDefault();
+            await loadForm(
+                `/business-entities/${entityId}/assets/${assetId}/form/edit`,
+                'Edit Asset',
+            );
+            return;
+        }
+
+        if (moveToTrust) {
+            event.preventDefault();
+            await loadForm(
+                `/business-entities/${entityId}/assets/${assetId}/move-to-trust/form`,
+                'Move to trust',
+            );
+            return;
+        }
 
         if (tenantCreate) {
             event.preventDefault();
@@ -154,6 +184,11 @@ function initAssetShowWorkspace(root) {
         window.location.reload();
     }
 
+    registerPanelFormHandler('.assets-ws-form', async (payload) => {
+        showToast(payload.message || 'Asset updated successfully!', 'success');
+        softReloadWithHash('tab_details');
+    });
+
     registerPanelFormHandler('.tenants-ws-form', async (payload) => {
         showToast(payload.message || 'Tenant saved successfully!', 'success');
         softReloadWithHash(payload.redirect_hash || 'tab_tenants');
@@ -167,6 +202,18 @@ function initAssetShowWorkspace(root) {
     registerPanelFormHandler('.loan-banking-ws-form', async () => {
         // Flash is set server-side; reload so Details shows updated values + session success banner.
         softReloadWithHash('tab_details');
+    });
+
+    registerPanelFormHandler('.move-to-trust-ws-form', async (payload) => {
+        showToast(payload.message || 'Asset moved successfully!', 'success');
+        closeWorkspacePanel();
+        if (payload.redirect) {
+            window.location.assign(payload.redirect);
+            return;
+        }
+        softReloadWithHash('tab_details');
+    }, {
+        confirmMessage: 'Move this asset and its related records to the selected trust?',
     });
 }
 
