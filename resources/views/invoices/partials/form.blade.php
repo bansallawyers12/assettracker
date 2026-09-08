@@ -4,7 +4,9 @@
         ? route('business-entities.invoices.update', [$businessEntity, $invoice])
         : route('business-entities.invoices.store', $businessEntity);
     $suggestNumberUrl = route('business-entities.invoices.suggest-number', $businessEntity);
-    $cancelUrl = route('business-entities.invoices.index', $businessEntity);
+    $cancelUrl = $isEdit
+        ? route('business-entities.invoices.show', [$businessEntity, $invoice])
+        : route('business-entities.invoices.index', $businessEntity);
     $defaultLines = $isEdit
         ? $invoice->lines->map(fn ($line) => [
             'description' => $line->description,
@@ -42,6 +44,7 @@
         'lockInvoiceNumber' => (bool) ($lockInvoiceNumber ?? false),
         'lockDueDate' => (bool) ($lockDueDate ?? false),
     ];
+    $fieldClass = 'w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white';
 @endphp
 
 <div class="py-8 w-full px-4 sm:px-6 lg:px-8"
@@ -62,215 +65,289 @@
     @endif
 
     @unless ($isEdit)
-        <p class="mb-4 text-sm text-gray-600 dark:text-gray-400">
+        <div class="mb-5 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-900 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-200">
             For recurring monthly rent, prefer
-            <a href="{{ route('business-entities.rent-invoices.index', $businessEntity) }}" class="text-indigo-600 dark:text-indigo-400 underline">Rent invoices</a>
+            <a href="{{ route('business-entities.rent-invoices.index', $businessEntity) }}" class="font-semibold underline hover:no-underline">Rent invoices</a>
             so amounts and lease links are generated automatically. Use this form for one-off invoices.
             Rent invoices follow the lease GST setting (10% inclusive when GST applies, or GST not applicable).
-        </p>
+        </div>
     @endunless
 
-    <div class="mb-3">
-        <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
-            <input type="checkbox" value="1" @checked(!empty($includeEnded))
-                   onchange="const u = new URL(window.location.href); if (this.checked) { u.searchParams.set('include_ended', '1'); } else { u.searchParams.delete('include_ended'); } window.location = u.toString();"
-                   class="rounded-sm border-gray-300" />
-            Include ended leases in the lease picker
-        </label>
-    </div>
-
-    <form method="POST" action="{{ $formAction }}"
-          class="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
+    <form method="POST" action="{{ $formAction }}" class="space-y-5">
         @csrf
         @if ($isEdit)
             @method('PUT')
         @endif
 
-        <div class="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-200 dark:border-gray-700">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Invoice number</label>
-                <input name="invoice_number" x-model="invoiceNumber" required
-                       @input="invoiceNumberTouched = true"
-                       class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
-                <p class="mt-1 text-xs text-gray-500">Includes entity id {{ $businessEntity->id }} (INV{{ $businessEntity->id }}-YYYYMM###).</p>
+        {{-- Invoice details --}}
+        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div class="flex flex-col gap-3 border-b border-gray-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Invoice details</h3>
+                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Number, dates, and currency</p>
+                </div>
+                <label class="inline-flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
+                    <input type="checkbox" value="1" @checked(!empty($includeEnded))
+                           onchange="const u = new URL(window.location.href); if (this.checked) { u.searchParams.set('include_ended', '1'); } else { u.searchParams.delete('include_ended'); } window.location = u.toString();"
+                           class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                    Include ended leases in the lease picker
+                </label>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Issue date</label>
-                <x-date-input name="issue_date" value="{{ $issueDate }}" data-invoice-issue-date
-                              class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" required />
+            <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-3">
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Invoice number</label>
+                    <input name="invoice_number" x-model="invoiceNumber" required
+                           @input="invoiceNumberTouched = true"
+                           class="{{ $fieldClass }}" />
+                    <p class="mt-1 text-xs text-gray-500">Includes entity id {{ $businessEntity->id }} (INV{{ $businessEntity->id }}-YYYYMM###).</p>
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Issue date</label>
+                    <x-date-input name="issue_date" value="{{ $issueDate }}" data-invoice-issue-date
+                                  class="{{ $fieldClass }}" required />
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Due date</label>
+                    <x-date-input name="due_date" value="{{ $defaultDueDate }}" data-invoice-due-date
+                                  class="{{ $fieldClass }}" />
+                    <p class="mt-1 text-xs text-gray-500">Defaults to issue date + 30 days (until you change it).</p>
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Currency</label>
+                    <input name="currency" value="AUD" readonly
+                           class="{{ $fieldClass }} bg-gray-50 dark:bg-gray-800/80" />
+                </div>
+                <div class="md:col-span-2">
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Reference</label>
+                    <input name="reference" x-model="reference"
+                           class="{{ $fieldClass }}" placeholder="Optional reference shown on the invoice" />
+                </div>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Due date</label>
-                <x-date-input name="due_date" value="{{ $defaultDueDate }}" data-invoice-due-date
-                              class="w-full border border-gray-300 dark:border-gray-600 p-2 rounded-sm" />
-                <p class="mt-1 text-xs text-gray-500">Defaults to issue date + 30 days (until you change it).</p>
-            </div>
+        </section>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset</label>
-                <select name="asset_id" x-model="assetId" @change="onAssetChange()"
-                        class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm">
-                    <option value="">— Optional —</option>
-                    @foreach ($assetsForForm as $asset)
-                        <option value="{{ $asset['id'] }}">{{ $asset['name'] }}</option>
-                    @endforeach
-                </select>
+        {{-- Customer & property --}}
+        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Customer &amp; property</h3>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Optional asset/lease links fill customer and reference</p>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lease / tenant</label>
-                <input type="hidden" name="lease_id" :value="leaseId">
-                <select x-model="leaseId" @change="onLeaseChange()" :disabled="!assetId || leasesForAsset.length === 0"
-                        class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm disabled:opacity-60">
-                    <option value="">— Optional —</option>
-                    <template x-for="lease in leasesForAsset" :key="lease.id">
-                        <option :value="String(lease.id)" x-text="lease.label"></option>
-                    </template>
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer</label>
-                @if (($tenantsForForm ?? collect())->isNotEmpty())
-                    <select @change="onTenantPick($event.target.value)"
-                            class="mb-2 w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm text-sm">
-                        <option value="">— Pick from tenants (optional) —</option>
-                        @foreach ($tenantsForForm as $tenant)
-                            <option value="{{ $tenant['name'] }}">{{ $tenant['name'] }}</option>
+            <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-3">
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Asset</label>
+                    <select name="asset_id" x-model="assetId" @change="onAssetChange()"
+                            class="{{ $fieldClass }}">
+                        <option value="">— Optional —</option>
+                        @foreach ($assetsForForm as $asset)
+                            <option value="{{ $asset['id'] }}">{{ $asset['name'] }}</option>
                         @endforeach
                     </select>
-                @endif
-                <input name="customer_name" x-model="customerName" required
-                       class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Lease / tenant</label>
+                    <input type="hidden" name="lease_id" :value="leaseId">
+                    <select x-model="leaseId" @change="onLeaseChange()" :disabled="!assetId || leasesForAsset.length === 0"
+                            class="{{ $fieldClass }} disabled:opacity-60">
+                        <option value="">— Optional —</option>
+                        <template x-for="lease in leasesForAsset" :key="lease.id">
+                            <option :value="String(lease.id)" x-text="lease.label"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Customer</label>
+                    @if (($tenantsForForm ?? collect())->isNotEmpty())
+                        <select @change="onTenantPick($event.target.value)"
+                                class="mb-2 {{ $fieldClass }}">
+                            <option value="">— Pick from tenants (optional) —</option>
+                            @foreach ($tenantsForForm as $tenant)
+                                <option value="{{ $tenant['name'] }}">{{ $tenant['name'] }}</option>
+                            @endforeach
+                        </select>
+                    @endif
+                    <input name="customer_name" x-model="customerName" required
+                           class="{{ $fieldClass }}" placeholder="Customer / bill-to name" />
+                </div>
             </div>
+        </section>
 
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Reference</label>
-                <input name="reference" x-model="reference"
-                       class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
+        {{-- GST --}}
+        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">GST</h3>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Applies to all line items on this invoice</p>
             </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Currency</label>
-                <input name="currency" value="AUD" readonly
-                       class="w-full border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
-            </div>
-            <input type="hidden" name="gst_percent" :value="gstApplicable ? gstPercent : 0">
-            <div x-show="gstApplicable" x-cloak>
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GST %</label>
-                <input type="number" x-model.number="gstPercent" min="0" max="100" step="0.01"
-                       class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
-            </div>
-
-            <div class="md:col-span-3">
-                <span class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GST applicable</span>
+            <div class="space-y-4 p-5">
+                <input type="hidden" name="gst_percent" :value="gstApplicable ? gstPercent : 0">
                 <input type="hidden" name="gst_basis" :value="gstApplicable ? gstBasis : 'none'">
-                <div class="flex flex-wrap gap-3 mb-3">
-                    <label class="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                        <input type="radio" name="gst_applicable_ui" value="1" x-model="gstApplicableRadio" class="rounded-sm border-gray-300" />
-                        Yes — GST applies
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                        <input type="radio" name="gst_applicable_ui" value="0" x-model="gstApplicableRadio" class="rounded-sm border-gray-300" />
-                        No — GST not applicable
-                    </label>
+
+                <div>
+                    <span class="mb-2 block text-xs font-medium text-gray-600 dark:text-gray-400">GST applicable</span>
+                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
+                            <input type="radio" name="gst_applicable_ui" value="1" x-model="gstApplicableRadio" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                            <span>
+                                <span class="block font-medium text-gray-900 dark:text-white">Yes — GST applies</span>
+                                <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Taxable supply</span>
+                            </span>
+                        </label>
+                        <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
+                            <input type="radio" name="gst_applicable_ui" value="0" x-model="gstApplicableRadio" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                            <span>
+                                <span class="block font-medium text-gray-900 dark:text-white">No — GST not applicable</span>
+                                <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">GST-free / out of scope</span>
+                            </span>
+                        </label>
+                    </div>
                 </div>
-                <div class="flex flex-wrap gap-3" x-show="gstApplicable" x-cloak>
-                    <span class="block w-full text-sm font-medium text-gray-700 dark:text-gray-300">GST basis</span>
-                    <label class="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                        <input type="radio" name="gst_basis_ui" value="inclusive" x-model="gstBasis" class="rounded-sm border-gray-300" />
-                        Inclusive (unit price includes GST — same as taxable rent invoices)
-                    </label>
-                    <label class="inline-flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                        <input type="radio" name="gst_basis_ui" value="exclusive" x-model="gstBasis" class="rounded-sm border-gray-300" />
-                        Exclusive (GST added on top)
-                    </label>
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-3" x-show="gstApplicable" x-cloak>
+                    <div class="md:col-span-2">
+                        <span class="mb-2 block text-xs font-medium text-gray-600 dark:text-gray-400">GST basis</span>
+                        <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
+                                <input type="radio" name="gst_basis_ui" value="inclusive" x-model="gstBasis" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                <span>
+                                    <span class="block font-medium text-gray-900 dark:text-white">Inclusive</span>
+                                    <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">Unit price includes GST — same as taxable rent invoices</span>
+                                </span>
+                            </label>
+                            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
+                                <input type="radio" name="gst_basis_ui" value="exclusive" x-model="gstBasis" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                <span>
+                                    <span class="block font-medium text-gray-900 dark:text-white">Exclusive</span>
+                                    <span class="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">GST added on top of unit price</span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">GST %</label>
+                        <input type="number" x-model.number="gstPercent" min="0" max="100" step="0.01"
+                               class="{{ $fieldClass }}" />
+                    </div>
                 </div>
             </div>
+        </section>
 
-            <div class="md:col-span-3">
-                <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</label>
+        {{-- Notes --}}
+        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Notes</h3>
+                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Shown on the invoice when present</p>
+            </div>
+            <div class="p-5">
                 <textarea name="notes" x-model="notes" rows="3"
-                          class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm"></textarea>
+                          class="{{ $fieldClass }}"
+                          placeholder="Optional notes for the customer"></textarea>
             </div>
-        </div>
+        </section>
 
-        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-            <div class="flex items-center justify-between mb-3">
-                <h3 class="font-semibold text-gray-900 dark:text-white">Lines</h3>
+        {{-- Line items --}}
+        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
+                <div>
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Line items</h3>
+                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
+                        <span x-text="lines.length"></span> <span x-text="lines.length === 1 ? 'line' : 'lines'"></span>
+                    </p>
+                </div>
                 <button type="button" @click="addLine()"
-                        class="inline-flex items-center px-3 py-1.5 text-sm font-medium rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-100">
+                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700">
+                    <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
                     Add line
                 </button>
             </div>
 
-            <div class="hidden md:grid md:grid-cols-12 gap-2 mb-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                <div class="md:col-span-4">Description</div>
-                <div class="md:col-span-1">Qty</div>
-                <div class="md:col-span-2" x-text="unitPriceLabel"></div>
-                <div class="md:col-span-3">Income account</div>
-                <div class="md:col-span-1 text-right">Line total</div>
-                <div class="md:col-span-1"></div>
-            </div>
-
-            <template x-for="(line, index) in lines" :key="index">
-                <div class="grid grid-cols-1 md:grid-cols-12 gap-2 mb-3 items-start">
-                    <div class="md:col-span-4">
-                        <label class="md:hidden text-xs text-gray-500">Description</label>
-                        <input :name="'lines[' + index + '][description]'" x-model="line.description" required
-                               class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
-                    </div>
-                    <div class="md:col-span-1">
-                        <label class="md:hidden text-xs text-gray-500">Qty</label>
-                        <input type="number" step="0.0001" min="0.0001" :name="'lines[' + index + '][quantity]'" x-model.number="line.quantity" required
-                               class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="md:hidden text-xs text-gray-500" x-text="unitPriceLabel"></label>
-                        <input type="number" step="0.01" min="0" :name="'lines[' + index + '][unit_price]'" x-model.number="line.unit_price" required
-                               class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm" />
-                    </div>
-                    <div class="md:col-span-3">
-                        <label class="md:hidden text-xs text-gray-500">Income account</label>
-                        <input type="hidden" :name="'lines[' + index + '][account_code]'" :value="line.account_code">
-                        <select x-model="line.account_code"
-                                class="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-sm">
-                            @foreach ($incomeAccounts as $account)
-                                <option value="{{ $account->account_code }}">{{ $account->account_code }} — {{ $account->account_name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="md:col-span-1 text-right pt-2 text-sm font-medium text-gray-900 dark:text-gray-100" x-text="formatMoney(lineTotal(line))"></div>
-                    <div class="md:col-span-1 flex md:justify-end">
-                        <button type="button" @click="removeLine(index)" x-show="lines.length > 1"
-                                class="text-sm text-red-600 hover:text-red-800 dark:text-red-400 px-2 py-2">
-                            Remove
-                        </button>
-                    </div>
+            <div class="p-5">
+                <div class="hidden md:grid md:grid-cols-12 gap-2 mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    <div class="md:col-span-4">Description</div>
+                    <div class="md:col-span-1">Qty</div>
+                    <div class="md:col-span-2" x-text="unitPriceLabel"></div>
+                    <div class="md:col-span-3">Income account</div>
+                    <div class="md:col-span-1 text-right">Line total</div>
+                    <div class="md:col-span-1"></div>
                 </div>
-            </template>
-        </div>
 
-        <div class="p-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-            <div class="text-sm space-y-1 text-gray-700 dark:text-gray-300">
-                <div class="flex justify-between gap-8"><span x-text="gstApplicable ? 'Subtotal (ex GST)' : 'Subtotal'"></span><span class="font-medium" x-text="formatMoney(totals.subtotal)"></span></div>
-                <div class="flex justify-between gap-8"><span>GST</span><span class="font-medium" x-text="formatMoney(totals.gst)"></span></div>
-                <div class="flex justify-between gap-8 text-base font-semibold text-gray-900 dark:text-white pt-1 border-t border-gray-200 dark:border-gray-700">
-                    <span>Total</span><span x-text="formatMoney(totals.total)"></span>
+                <template x-for="(line, index) in lines" :key="index">
+                    <div class="mb-3 grid grid-cols-1 items-start gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 md:grid-cols-12 md:border-0 md:bg-transparent md:p-0 dark:border-gray-800 dark:bg-gray-800/30 md:dark:bg-transparent">
+                        <div class="md:col-span-4">
+                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Description</label>
+                            <input :name="'lines[' + index + '][description]'" x-model="line.description" required
+                                   class="{{ $fieldClass }}" />
+                        </div>
+                        <div class="md:col-span-1">
+                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Qty</label>
+                            <input type="number" step="0.0001" min="0.0001" :name="'lines[' + index + '][quantity]'" x-model.number="line.quantity" required
+                                   class="{{ $fieldClass }}" />
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="mb-1 block text-xs text-gray-500 md:hidden" x-text="unitPriceLabel"></label>
+                            <input type="number" step="0.01" min="0" :name="'lines[' + index + '][unit_price]'" x-model.number="line.unit_price" required
+                                   class="{{ $fieldClass }}" />
+                        </div>
+                        <div class="md:col-span-3">
+                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Income account</label>
+                            <input type="hidden" :name="'lines[' + index + '][account_code]'" :value="line.account_code">
+                            <select x-model="line.account_code"
+                                    class="{{ $fieldClass }}">
+                                @foreach ($incomeAccounts as $account)
+                                    <option value="{{ $account->account_code }}">{{ $account->account_code }} — {{ $account->account_name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="md:col-span-1 flex items-center justify-between gap-2 pt-1 md:justify-end md:pt-2">
+                            <span class="text-xs text-gray-500 md:hidden">Line total</span>
+                            <span class="text-sm font-semibold tabular-nums text-gray-900 dark:text-gray-100" x-text="formatMoney(lineTotal(line))"></span>
+                        </div>
+                        <div class="md:col-span-1 flex md:justify-end">
+                            <button type="button" @click="removeLine(index)" x-show="lines.length > 1"
+                                    class="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
+                                <x-lucide-trash-2 class="h-4 w-4" aria-hidden="true" />
+                                <span class="md:hidden">Remove</span>
+                            </button>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </section>
+
+        {{-- Totals & actions --}}
+        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div class="flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:justify-between">
+                <div class="w-full max-w-xs rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/20">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">Totals</p>
+                    <dl class="mt-3 space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
+                        <div class="flex justify-between gap-6">
+                            <dt x-text="gstApplicable ? 'Subtotal (ex GST)' : 'Subtotal'"></dt>
+                            <dd class="font-medium tabular-nums text-gray-900 dark:text-white" x-text="formatMoney(totals.subtotal)"></dd>
+                        </div>
+                        <div class="flex justify-between gap-6">
+                            <dt>GST</dt>
+                            <dd class="font-medium tabular-nums text-gray-900 dark:text-white" x-text="formatMoney(totals.gst)"></dd>
+                        </div>
+                        <div class="flex justify-between gap-6 border-t border-indigo-100 pt-2 text-base font-semibold text-gray-900 dark:border-indigo-900/60 dark:text-white">
+                            <dt>Total</dt>
+                            <dd class="tabular-nums text-indigo-600 dark:text-indigo-300" x-text="formatMoney(totals.total)"></dd>
+                        </div>
+                    </dl>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                    <a href="{{ $cancelUrl }}"
+                       class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        Cancel
+                    </a>
+                    <button type="submit" name="save_and_post" value="0"
+                            class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
+                        Save draft
+                    </button>
+                    <button type="submit" name="save_and_post" value="1"
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-emerald-500">
+                        <x-lucide-book-check class="h-4 w-4" aria-hidden="true" />
+                        Save &amp; post
+                    </button>
                 </div>
             </div>
-            <div class="flex flex-wrap gap-2">
-                <a href="{{ $cancelUrl }}"
-                   class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors">
-                    Cancel
-                </a>
-                <button type="submit" name="save_and_post" value="0"
-                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
-                    Save draft
-                </button>
-                <button type="submit" name="save_and_post" value="1"
-                        class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors">
-                    Save &amp; post
-                </button>
-            </div>
-        </div>
+        </section>
     </form>
 </div>
 
