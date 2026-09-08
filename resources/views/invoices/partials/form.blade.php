@@ -55,7 +55,10 @@
         'suggestedInvoiceNumber' => $suggestedInvoiceNumber,
         'suggestNumberUrl' => $suggestNumberUrl,
         'lines' => is_array($oldLines)
-            ? array_values(array_map($collapseLine, $oldLines))
+            ? array_values(array_map(
+                fn ($line) => $collapseLine(is_array($line) ? $line : []),
+                $oldLines
+            ))
             : $defaultLines,
         'lockInvoiceNumber' => (bool) ($lockInvoiceNumber ?? false),
         'lockDueDate' => (bool) ($lockDueDate ?? false),
@@ -138,7 +141,9 @@
                             class="{{ $fieldClass }}">
                         <option value="">— Optional —</option>
                         <template x-for="lease in allLeases" :key="lease.id">
-                            <option :value="String(lease.id)" x-text="lease.fullLabel"></option>
+                            <option :value="String(lease.id)"
+                                    :selected="String(lease.id) === String(leaseId)"
+                                    x-text="lease.fullLabel"></option>
                         </template>
                     </select>
                 </div>
@@ -407,14 +412,20 @@
                 }
                 if (Object.prototype.hasOwnProperty.call(lease, 'gst_applicable')) {
                     this.gstApplicableRadio = lease.gst_applicable ? '1' : '0';
-                    if (lease.gst_applicable) {
-                        // Lease-driven GST always follows the create default (inclusive).
-                        this.gstBasisWhenApplicable = 'inclusive';
-                    }
+                    // Do not force inclusive here — that would wipe exclusive on existing drafts
+                    // when the lease dropdown is changed or re-selected.
                 }
             },
             init() {
                 this.syncLeaseAsset();
+                // Re-apply after x-for options render so the selected lease sticks.
+                const selectedLeaseId = this.leaseId;
+                this.$nextTick(() => {
+                    if (selectedLeaseId) {
+                        this.leaseId = selectedLeaseId;
+                        this.syncLeaseAsset();
+                    }
+                });
                 this.initFlatpickrHooks();
             },
             addDaysYmd(ymd, days) {
