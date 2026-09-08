@@ -11,6 +11,7 @@ class AssetPolicy
     {
         return true;
     }
+
     public function view(User $user, Asset $asset): bool
     {
         $asset->loadMissing('businessEntity');
@@ -20,7 +21,7 @@ class AssetPolicy
 
     public function create(User $user): bool
     {
-        return true;
+        return $user->canMutatePortfolio();
     }
 
     public function update(User $user, Asset $asset): bool

@@ -151,7 +151,46 @@ export function apiFetch(path, options = {}) {
         headers['Content-Type'] = 'application/json';
     }
 
-    return fetch(path, Object.assign({}, options, { headers }));
+    return fetch(path, Object.assign({}, options, { headers })).then(async (response) => {
+        if (response.status !== 401 && response.status !== 419) {
+            return response;
+        }
+
+        let payload = null;
+        try {
+            payload = parseJson(await response.clone().text());
+        } catch (_) {
+            payload = null;
+        }
+
+        const returnUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+        try {
+            sessionStorage.setItem('workspace_return_url', returnUrl);
+        } catch (_) {
+            // Ignore storage failures (private mode / quota).
+        }
+
+        if (response.status === 419) {
+            showToast('Session expired. Refresh the page and try again.', 'error', { title: 'Session expired' });
+            return response;
+        }
+
+        const redirect = payload?.redirect || '/two-factor/challenge';
+        const separator = redirect.includes('?') ? '&' : '?';
+        const target = `${redirect}${separator}return=${encodeURIComponent(returnUrl)}`;
+
+        showToast(
+            payload?.message || 'Please verify your identity to continue. Your place on this page was saved.',
+            'error',
+            { title: 'Authentication required' },
+        );
+
+        window.setTimeout(() => {
+            window.location.assign(target);
+        }, 350);
+
+        return response;
+    });
 }
 
 export function parseJson(text) {

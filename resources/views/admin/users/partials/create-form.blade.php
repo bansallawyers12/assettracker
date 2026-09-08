@@ -10,7 +10,7 @@
 
     <div class="bank-form-section">
         <p class="bank-form-section-title">{{ __('Account details') }}</p>
-        <p class="bank-form-section-desc">{{ __('New users can sign in immediately with the email and password you set.') }}</p>
+        <p class="bank-form-section-desc">{{ __('There is no public registration. Create staff accounts here and share the email and password securely.') }}</p>
 
         <div class="bank-form-grid mt-4">
             <div class="bank-field bank-form-grid-full">
@@ -37,6 +37,20 @@
                     class="bank-field-control"
                     value="{{ old('email') }}"
                 />
+            </div>
+
+            <div class="bank-field bank-form-grid-full">
+                <label for="admin_user_app_role" class="bank-field-label">{{ __('Access role') }}</label>
+                <select id="admin_user_app_role" name="app_role" required class="bank-field-control">
+                    @foreach (\App\Enums\AppRole::assignable() as $role)
+                        <option value="{{ $role->value }}" @selected(old('app_role', 'staff') === $role->value)>
+                            {{ $role->label() }}
+                        </option>
+                    @endforeach
+                </select>
+                <p class="bank-field-hint mt-1">
+                    {{ __('Staff can edit the shared portfolio. Viewers can browse entities and reports but cannot change records.') }}
+                </p>
             </div>
 
             <div class="bank-field">

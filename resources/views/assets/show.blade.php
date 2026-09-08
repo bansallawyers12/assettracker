@@ -30,19 +30,23 @@
         <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div class="flex flex-wrap gap-2">
+                    @can('update', $asset)
                     <button type="button"
                             data-asset-edit
                             class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
                         <x-lucide-pencil class="h-4 w-4" aria-hidden="true" />
                         Edit asset
                     </button>
+                    @endcan
                     @if ($canMoveToTrust)
+                        @can('update', $businessEntity)
                         <button type="button"
                                 data-move-to-trust
                                 class="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2 text-sm font-semibold text-amber-900 shadow-xs transition-colors hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200 dark:hover:bg-amber-900/40">
                             <x-lucide-arrow-left-right class="h-4 w-4" aria-hidden="true" />
                             Move to trust
                         </button>
+                        @endcan
                     @endif
                     <a href="{{ route('business-entities.show', $asset->business_entity_id) }}"
                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">

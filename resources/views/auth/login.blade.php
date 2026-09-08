@@ -2,6 +2,7 @@
     <div class="text-center mb-6">
         <h2 class="text-xl font-bold text-gray-900 dark:text-white">Sign in to your account</h2>
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Welcome back — enter your credentials below.</p>
+        <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">Need an account? Ask your administrator — public registration is disabled.</p>
     </div>
 
     <x-auth-session-status class="mb-4" :status="session('status')" />

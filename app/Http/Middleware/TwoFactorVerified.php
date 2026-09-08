@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\TwoFactorService;
 use Closure;
 use Illuminate\Http\Request;
-use App\Services\TwoFactorService;
 use Symfony\Component\HttpFoundation\Response;
 
 class TwoFactorVerified
@@ -20,11 +20,18 @@ class TwoFactorVerified
     {
         $user = $request->user();
 
-        if (!$user) {
+        if (! $user) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => __('Unauthenticated.'),
+                    'redirect' => route('login'),
+                ], 401);
+            }
+
             return redirect()->route('login');
         }
 
-        if (!$this->twoFactorService->isTwoFactorRequired($user)) {
+        if (! $this->twoFactorService->isTwoFactorRequired($user)) {
             return $next($request);
         }
 
@@ -33,7 +40,19 @@ class TwoFactorVerified
             return $next($request);
         }
 
-        // Redirect to 2FA verification page
-        return redirect()->route('two-factor.totp-challenge');
+        $challengeUrl = route('two-factor.totp-challenge');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => __('Two-factor authentication is required to continue.'),
+                'redirect' => $challengeUrl,
+            ], 401);
+        }
+
+        if (! $request->session()->has('url.intended') && $request->isMethodSafe()) {
+            $request->session()->put('url.intended', $request->fullUrl());
+        }
+
+        return redirect()->to($challengeUrl);
     }
 }

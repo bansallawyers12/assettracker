@@ -11,6 +11,7 @@ class CommitmentPolicy
     {
         return true;
     }
+
     public function view(User $user, Commitment $commitment): bool
     {
         $commitment->loadMissing('businessEntity');
@@ -20,7 +21,7 @@ class CommitmentPolicy
 
     public function create(User $user): bool
     {
-        return true;
+        return $user->canMutatePortfolio();
     }
 
     public function update(User $user, Commitment $commitment): bool

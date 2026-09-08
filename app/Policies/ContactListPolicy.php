@@ -2,9 +2,9 @@
 
 namespace App\Policies;
 
+use App\Models\BusinessEntity;
 use App\Models\ContactList;
 use App\Models\User;
-use App\Models\BusinessEntity;
 
 class ContactListPolicy
 {
@@ -13,7 +13,7 @@ class ContactListPolicy
      */
     public function viewAny(User $user, BusinessEntity $businessEntity)
     {
-        return true;
+        return $user->can('view', $businessEntity);
     }
 
     /**
@@ -21,7 +21,8 @@ class ContactListPolicy
      */
     public function view(User $user, BusinessEntity $businessEntity, ContactList $contactList)
     {
-        return $contactList->business_entity_id === $businessEntity->id;
+        return $contactList->business_entity_id === $businessEntity->id
+            && $user->can('view', $businessEntity);
     }
 
     /**
@@ -29,7 +30,7 @@ class ContactListPolicy
      */
     public function create(User $user, BusinessEntity $businessEntity)
     {
-        return true;
+        return $user->can('update', $businessEntity);
     }
 
     /**
@@ -37,7 +38,8 @@ class ContactListPolicy
      */
     public function update(User $user, BusinessEntity $businessEntity, ContactList $contactList)
     {
-        return $contactList->business_entity_id === $businessEntity->id;
+        return $contactList->business_entity_id === $businessEntity->id
+            && $user->can('update', $businessEntity);
     }
 
     /**
@@ -45,6 +47,7 @@ class ContactListPolicy
      */
     public function delete(User $user, BusinessEntity $businessEntity, ContactList $contactList)
     {
-        return $contactList->business_entity_id === $businessEntity->id;
+        return $contactList->business_entity_id === $businessEntity->id
+            && $user->can('update', $businessEntity);
     }
-} 
+}

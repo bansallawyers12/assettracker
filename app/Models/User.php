@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
+use App\Enums\AppRole;
+use App\Traits\EncryptsAttributes;
+use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use App\Traits\EncryptsAttributes;
 
 class User extends Authenticatable
 {
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, EncryptsAttributes {
+    /** @use HasFactory<UserFactory> */
+    use EncryptsAttributes, HasFactory, Notifiable {
         EncryptsAttributes::setAttribute as setEncryptedAttribute;
     }
 
@@ -25,6 +27,7 @@ class User extends Authenticatable
         'email_hash',
         'email_verified_at',
         'is_active',
+        'app_role',
         'password',
         'phone',
         'address',
@@ -73,6 +76,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'app_role' => AppRole::class,
             'two_factor_enabled' => 'boolean',
             'logins_without_two_factor_count' => 'integer',
             'password_changed_at' => 'datetime',
@@ -87,7 +91,7 @@ class User extends Authenticatable
      */
     public function setAttribute($key, $value): mixed
     {
-        if ($key === 'email' && !empty($value) && !$this->isAlreadyEncrypted($value)) {
+        if ($key === 'email' && ! empty($value) && ! $this->isAlreadyEncrypted($value)) {
             $this->attributes['email_hash'] = hash_hmac('sha256', strtolower(trim((string) $value)), config('app.key'));
         }
 
@@ -127,6 +131,29 @@ class User extends Authenticatable
             'last_login_ip' => $ip,
         ]);
         $this->syncOriginalAttributes(['last_login_at', 'last_login_ip']);
+    }
+
+    /**
+     * Application role for portfolio RBAC (not entity_person corporate roles).
+     */
+    public function appRole(): AppRole
+    {
+        if ($this->isPrimaryAdministrator()) {
+            return AppRole::Administrator;
+        }
+
+        $role = $this->app_role;
+
+        return $role instanceof AppRole ? $role : AppRole::Staff;
+    }
+
+    /**
+     * Whether the user may create/update/delete shared portfolio records.
+     * Viewers retain firm-wide read access.
+     */
+    public function canMutatePortfolio(): bool
+    {
+        return $this->appRole()->canMutatePortfolio();
     }
 
     /**

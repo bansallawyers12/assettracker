@@ -62,6 +62,17 @@ class EnsureTwoFactorEnrolled
             return $next($request);
         }
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => __('You must enable two-factor authentication to continue.'),
+                'redirect' => route('two-factor.setup'),
+            ], 401);
+        }
+
+        if (! $request->session()->has('url.intended') && $request->isMethodSafe()) {
+            $request->session()->put('url.intended', $request->fullUrl());
+        }
+
         return redirect()->route('two-factor.setup')
             ->with('status', __('You must enable two-factor authentication to continue. You have exceeded the allowed logins without 2FA.'));
     }

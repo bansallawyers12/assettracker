@@ -63,7 +63,7 @@ class TwoFactorController extends Controller
     {
         $secret = $request->session()->get('2fa_setup_secret');
 
-        if (!$secret) {
+        if (! $secret) {
             return redirect()->route('two-factor.setup')
                 ->withErrors(['code' => 'Setup session expired. Please start again.']);
         }
@@ -85,6 +85,7 @@ class TwoFactorController extends Controller
             $request->session()->forget('2fa_setup_secret');
             // Mark 2FA as verified for this session immediately after setup
             $request->session()->put('2fa_verified', true);
+
             return redirect()->route('profile.edit')->with('status', 'two-factor-enabled');
         }
 
@@ -109,6 +110,7 @@ class TwoFactorController extends Controller
 
         if ($this->twoFactorService->disableTwoFactor($user, $code)) {
             $request->session()->forget('2fa_verified');
+
             return redirect()->route('profile.edit')->with('status', 'two-factor-disabled');
         }
 
@@ -132,7 +134,7 @@ class TwoFactorController extends Controller
 
         $user = Auth::user();
 
-        if (!$user->two_factor_enabled) {
+        if (! $user->two_factor_enabled) {
             return back()->withErrors(['error' => 'Two-factor authentication is not enabled.'], 'regenerate')
                 ->with('open_regenerate_form', true);
         }
@@ -143,7 +145,7 @@ class TwoFactorController extends Controller
         $valid = $this->twoFactorService->verifyCode($user, $code)
             || $this->twoFactorService->verifyBackupCode($user, $codeNormalised);
 
-        if (!$valid) {
+        if (! $valid) {
             return back()->withErrors(['code' => 'Invalid verification code or backup code.'], 'regenerate')
                 ->with('open_regenerate_form', true);
         }
@@ -180,15 +182,33 @@ class TwoFactorController extends Controller
     public function showChallenge(Request $request): View|RedirectResponse
     {
         if ($request->user() && $request->session()->has('2fa_verified')) {
-            return redirect()->route('dashboard');
+            return redirect()->intended(route('dashboard'));
         }
 
-        if ($request->user() && !$request->session()->has('2fa_pending_user')) {
+        if ($request->user() && ! $request->session()->has('2fa_pending_user')) {
             $request->session()->put('2fa_pending_user', $request->user()->id);
         }
 
-        if (!$request->session()->has('2fa_pending_user')) {
+        if (! $request->session()->has('2fa_pending_user')) {
             return redirect()->route('login');
+        }
+
+        $return = $request->query('return');
+        if (is_string($return) && $return !== '') {
+            $path = parse_url($return, PHP_URL_PATH);
+            $query = parse_url($return, PHP_URL_QUERY);
+            $fragment = parse_url($return, PHP_URL_FRAGMENT);
+
+            if (is_string($path) && str_starts_with($path, '/') && ! str_starts_with($path, '//')) {
+                $intended = $path;
+                if (is_string($query) && $query !== '') {
+                    $intended .= '?'.$query;
+                }
+                if (is_string($fragment) && $fragment !== '') {
+                    $intended .= '#'.$fragment;
+                }
+                $request->session()->put('url.intended', $intended);
+            }
         }
 
         return view('auth.two-factor.challenge');
@@ -203,7 +223,7 @@ class TwoFactorController extends Controller
         $userId = $request->session()->get('2fa_pending_user')
             ?? optional($request->user())->id;
 
-        if (!$userId) {
+        if (! $userId) {
             return redirect()->route('login');
         }
 
@@ -220,8 +240,9 @@ class TwoFactorController extends Controller
 
         $user = User::find($userId);
 
-        if (!$user) {
+        if (! $user) {
             $request->session()->forget('2fa_pending_user');
+
             return redirect()->route('login');
         }
 
@@ -231,7 +252,7 @@ class TwoFactorController extends Controller
         $valid = $this->twoFactorService->verifyCode($user, $code)
             || $this->twoFactorService->verifyBackupCode($user, $codeNormalised);
 
-        if (!$valid) {
+        if (! $valid) {
             RateLimiter::hit($throttleKey);
 
             return back()
@@ -244,7 +265,7 @@ class TwoFactorController extends Controller
         $request->session()->forget('2fa_pending_user');
         $request->session()->put('2fa_verified', true);
 
-        if (!$alreadyLoggedIn) {
+        if (! $alreadyLoggedIn) {
             $remember = $request->session()->pull('2fa_remember', false);
             Auth::loginUsingId($userId, $remember);
             $request->session()->regenerate();
@@ -258,7 +279,7 @@ class TwoFactorController extends Controller
     /**
      * Ensure the 2FA challenge is not rate limited (same 5-attempt bar as login).
      *
-     * @throws \Illuminate\Validation\ValidationException
+     * @throws ValidationException
      */
     protected function ensureChallengeIsNotRateLimited(Request $request, string $throttleKey): void
     {

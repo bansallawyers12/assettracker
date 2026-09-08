@@ -7,6 +7,7 @@
             <tr>
                 <x-sortable-table-header :label="__('Name')" column="name" :sort="$tableSort->column" :order="$tableSort->order" route="admin.users.index" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider" />
                 <x-sortable-table-header :label="__('Email')" column="email" :sort="$tableSort->column" :order="$tableSort->order" route="admin.users.index" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider" />
+                <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ __('Role') }}</th>
                 <x-sortable-table-header :label="__('Status')" column="status" :sort="$tableSort->column" :order="$tableSort->order" route="admin.users.index" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider" />
                 <x-sortable-table-header :label="__('Last login')" column="last_login" :sort="$tableSort->column" :order="$tableSort->order" route="admin.users.index" class="px-4 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider" />
                 <th scope="col" class="px-4 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">{{ __('Actions') }}</th>
@@ -22,6 +23,9 @@
                         @endif
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ $u->email }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">
+                        {{ $u->appRole()->label() }}
+                    </td>
                     <td class="px-4 py-3 text-sm">
                         @if ($u->isAccountActive())
                             <span class="inline-flex items-center rounded-full bg-emerald-100 dark:bg-emerald-900/40 px-2 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">{{ __('Active') }}</span>
@@ -45,7 +49,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">{{ __('No users found.') }}</td>
+                    <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">{{ __('No users found.') }}</td>
                 </tr>
             @endforelse
         </tbody>

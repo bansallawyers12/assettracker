@@ -46,7 +46,7 @@ Laravel-based **Australian business entity, asset, and accounting portal**. It h
 - Security headers, CSRF, and Eloquent parameterized queries
 - Primary administrator controlled by `ADMIN_EMAIL` / `ADMIN_PASSWORD_HASH` (see `config/admin.php`)
 
-**Access model today:** authenticated users share the portfolio (entity/asset policies are permissive). App-level RBAC / multi-tenant isolation is **not** implemented yet. “Roles” in the product mean corporate roles on `entity_person`, not permission roles for login users.
+**Access model today:** authenticated users share the portfolio for **read** access. Application RBAC uses `users.app_role` (`administrator` / `staff` / `viewer`): staff and administrators may mutate entities, assets, and related records; viewers are read-only. The configured primary admin (`ADMIN_EMAIL`) is always treated as administrator. Per-entity ACL is **not** implemented — isolation is firm-wide, not per-client. “Roles” on people/entities still mean corporate roles on `entity_person`, not login permissions. Public self-registration remains disabled; staff accounts are created under Admin → Users.
 
 ## Architecture
 
@@ -283,7 +283,7 @@ php artisan db:seed --class=ComplianceDocumentTypeSeeder
 - `mail_messages`, `mail_attachments`, `mail_labels`
 - `email_templates`, `email_drafts`
 
-There is **no** application `roles` permissions table. Corporate roles live on `entity_person.role`.
+Login permissions use `users.app_role` (`administrator` / `staff` / `viewer`). Corporate roles still live on `entity_person.role`.
 
 ## API
 

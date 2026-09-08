@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\AppRole;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\View\View;
 
@@ -64,6 +67,10 @@ class UserManagementController extends Controller
                 },
             ],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
+            'app_role' => ['required', Rule::in(array_map(
+                static fn (AppRole $role) => $role->value,
+                AppRole::assignable()
+            ))],
         ]);
 
         if (strcasecmp($email, strtolower(trim((string) config('admin.email')))) === 0) {
@@ -86,6 +93,7 @@ class UserManagementController extends Controller
                 'email_verified_at' => now(),
                 'password_changed_at' => now(),
                 'is_active' => true,
+                'app_role' => $request->input('app_role'),
             ]);
         } catch (UniqueConstraintViolationException) {
             if ($request->expectsJson()) {
@@ -197,7 +205,7 @@ class UserManagementController extends Controller
 
         try {
             $user->delete();
-        } catch (\Illuminate\Database\QueryException $e) {
+        } catch (QueryException $e) {
             return $this->actionError(
                 $request,
                 __('This user cannot be deleted because related records still exist. Reassign owned data or deactivate the user instead.')

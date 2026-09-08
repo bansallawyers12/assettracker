@@ -18,10 +18,10 @@ class BusinessEntityPolicy
     /**
      * Determine whether the user can view the business entity.
      *
-     * Portfolio is firm-shared: any authenticated user may open any entity.
-     * user_id is creator metadata, not an ACL boundary (see README access model).
+     * Portfolio remains firm-shared for all app roles: any authenticated user may open any entity.
+     * Mutations are gated by app role (see update/create/delete).
      */
-    public function view(User $user, BusinessEntity $businessEntity)
+    public function view(User $user, BusinessEntity $businessEntity): bool
     {
         return true;
     }
@@ -29,24 +29,24 @@ class BusinessEntityPolicy
     /**
      * Determine whether the user can create business entities.
      */
-    public function create(User $user)
+    public function create(User $user): bool
     {
-        return true;
+        return $user->canMutatePortfolio();
     }
 
     /**
      * Determine whether the user can update the business entity.
      */
-    public function update(User $user, BusinessEntity $businessEntity)
+    public function update(User $user, BusinessEntity $businessEntity): bool
     {
-        return true;
+        return $user->canMutatePortfolio();
     }
 
     /**
      * Determine whether the user can delete the business entity.
      */
-    public function delete(User $user, BusinessEntity $businessEntity)
+    public function delete(User $user, BusinessEntity $businessEntity): bool
     {
-        return true;
+        return $user->canMutatePortfolio();
     }
 }
