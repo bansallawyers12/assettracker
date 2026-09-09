@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
@@ -7,6 +8,8 @@ use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\InvoicePaymentAllocation;
 use App\Models\JournalLine;
+use App\Models\Lease;
+use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\BankStatementMatchSuggester;
@@ -313,4 +316,111 @@ it('does not suggest a lump split when two invoices share the same remaining', f
     );
 
     expect($suggestion['action'])->not->toBe('match_invoice');
+});
+
+function createLeaseForMultiInvoice(BusinessEntity $entity, string $street = '12 Test Street'): Lease
+{
+    $asset = Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Rented',
+        'name' => $street,
+        'acquisition_date' => '2025-01-01',
+        'acquisition_cost' => 400000,
+        'current_value' => 420000,
+        'status' => 'Active',
+    ]);
+
+    $tenant = Tenant::create([
+        'asset_id' => $asset->id,
+        'name' => 'Alex Tenant',
+        'email' => 'alex-'.$asset->id.'@example.test',
+    ]);
+
+    return Lease::create([
+        'asset_id' => $asset->id,
+        'tenant_id' => $tenant->id,
+        'rental_amount' => 7000,
+        'payment_frequency' => 'Monthly',
+        'start_date' => '2026-01-01',
+        'end_date' => null,
+    ]);
+}
+
+it('applies a lump credit across invoices on the same lease', function () {
+    [$user, $entity, $bank, $invoices] = createMultiInvoiceFixture([7000, 7000, 9000]);
+    [$a, $b, $c] = $invoices;
+    $lease = createLeaseForMultiInvoice($entity);
+
+    foreach ($invoices as $invoice) {
+        $invoice->update([
+            'lease_id' => $lease->id,
+            'asset_id' => $lease->asset_id,
+        ]);
+    }
+
+    $entry = BankStatementEntry::create([
+        'bank_account_id' => $bank->id,
+        'date' => '2026-08-09',
+        'amount' => 23000,
+        'description' => 'ALEX TENANT Rent',
+        'transaction_type' => 'credit',
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('bank-accounts.import.apply', $bank), [
+            'business_entity_id' => $entity->id,
+            'matches' => [[
+                'bank_entry_id' => $entry->id,
+                'action' => 'match_invoice',
+                'allocations' => [
+                    ['invoice_id' => $a->id, 'amount' => 7000],
+                    ['invoice_id' => $b->id, 'amount' => 7000],
+                    ['invoice_id' => $c->id, 'amount' => 9000],
+                ],
+            ]],
+        ])
+        ->assertSuccessful()
+        ->assertJsonPath('success', true);
+
+    expect($a->fresh()->status)->toBe('paid')
+        ->and($b->fresh()->status)->toBe('paid')
+        ->and($c->fresh()->status)->toBe('paid')
+        ->and(InvoicePaymentAllocation::query()->where('transaction_id', $entry->fresh()->transaction_id)->count())->toBe(3);
+});
+
+it('rejects a lump split across invoices on different leases', function () {
+    [$user, $entity, $bank, $invoices] = createMultiInvoiceFixture([7000, 7000]);
+    [$a, $b] = $invoices;
+    $leaseA = createLeaseForMultiInvoice($entity, '10 First Street');
+    $leaseB = createLeaseForMultiInvoice($entity, '20 Second Street');
+
+    $a->update(['lease_id' => $leaseA->id, 'asset_id' => $leaseA->asset_id]);
+    $b->update(['lease_id' => $leaseB->id, 'asset_id' => $leaseB->asset_id]);
+
+    $entry = BankStatementEntry::create([
+        'bank_account_id' => $bank->id,
+        'date' => '2026-08-09',
+        'amount' => 14000,
+        'description' => 'ALEX TENANT Rent',
+        'transaction_type' => 'credit',
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('bank-accounts.import.apply', $bank), [
+            'business_entity_id' => $entity->id,
+            'matches' => [[
+                'bank_entry_id' => $entry->id,
+                'action' => 'match_invoice',
+                'allocations' => [
+                    ['invoice_id' => $a->id, 'amount' => 7000],
+                    ['invoice_id' => $b->id, 'amount' => 7000],
+                ],
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('matches');
+
+    expect($entry->fresh()->transaction_id)->toBeNull()
+        ->and($a->fresh()->status)->toBe('approved')
+        ->and($b->fresh()->status)->toBe('approved');
 });
