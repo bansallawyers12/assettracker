@@ -309,7 +309,7 @@ class InvoiceController extends Controller
             ->header('Content-Disposition', 'inline; filename="'.$filename.'"');
     }
 
-    public function edit(Request $request, BusinessEntity $businessEntity, Invoice $invoice)
+    public function edit(BusinessEntity $businessEntity, Invoice $invoice)
     {
         $this->authorize('update', $businessEntity);
         $this->authorizeInvoice($businessEntity, $invoice);
