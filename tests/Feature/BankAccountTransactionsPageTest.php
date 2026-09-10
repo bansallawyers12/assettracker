@@ -80,6 +80,8 @@ it('includes transaction filter controls in the transactions panel partial', fun
         ->and($sharedJs)->toContain('initTransactionListFilters')
         ->and($controller)->toContain('TransactionListFilters::apply')
         ->and($controller)->toContain('TransactionListFilters::fromRequest')
+        ->and($controller)->toContain("havingRaw('count(*) > 1')")
+        ->and($controller)->not->toContain("having('sibling_count'")
         ->and($controller)->not->toContain("where('subject_to_bas',")
         ->and($filtersSupport)->toContain('.subject_to_bas')
         ->and($filtersSupport)->toContain('.is_flagged');

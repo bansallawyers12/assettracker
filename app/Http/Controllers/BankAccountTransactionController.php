@@ -14,6 +14,7 @@ use App\Support\TransactionListFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class BankAccountTransactionController extends Controller
@@ -90,12 +91,11 @@ class BankAccountTransactionController extends Controller
 
         $transferGroupsWithSiblings = $transferGroupIds === []
             ? []
-            : Transaction::query()
+            : DB::table('transactions')
                 ->whereIn('transfer_group_id', $transferGroupIds)
                 ->select('transfer_group_id')
-                ->selectRaw('count(*) as sibling_count')
                 ->groupBy('transfer_group_id')
-                ->having('sibling_count', '>', 1)
+                ->havingRaw('count(*) > 1')
                 ->pluck('transfer_group_id')
                 ->mapWithKeys(fn ($id) => [(string) $id => true])
                 ->all();
