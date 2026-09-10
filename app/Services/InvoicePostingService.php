@@ -138,7 +138,8 @@ class InvoicePostingService
             }
             $net = (float) $line->line_total / (1 + (float) $line->gst_rate);
             $gst = (float) $line->line_total - $net;
-            $lines[] = $this->signedAmountLine($account->id, round($net, 2), normalCredit: true, description: 'Revenue');
+            $lineDescription = $account->account_type === 'expense' ? 'Expense' : 'Revenue';
+            $lines[] = $this->signedAmountLine($account->id, round($net, 2), normalCredit: true, description: $lineDescription);
             if (abs(round($gst, 2)) >= 0.01 && $gstPayable) {
                 $lines[] = $this->signedAmountLine(
                     $gstPayable->id,

@@ -728,7 +728,7 @@ class InvoiceController extends Controller
 
     private function ensureDefaultRentalIncomeAccount(): ChartOfAccount
     {
-        return ChartOfAccount::firstOrCreate(
+        $account = ChartOfAccount::firstOrCreate(
             ['account_code' => '4100'],
             [
                 'account_name' => 'Rental Income',
@@ -739,6 +739,20 @@ class InvoiceController extends Controller
                 'current_balance' => 0,
             ]
         );
+
+        if (! $account->is_active
+            || $account->account_type !== 'income'
+            || $account->account_name !== 'Rental Income') {
+            $account->fill([
+                'account_name' => 'Rental Income',
+                'account_type' => 'income',
+                'account_category' => 'operating_income',
+                'is_active' => true,
+            ]);
+            $account->save();
+        }
+
+        return $account->refresh();
     }
 
     /**

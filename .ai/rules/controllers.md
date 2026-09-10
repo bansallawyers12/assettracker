@@ -18,3 +18,6 @@ Manual invoice lines accept negative unit_price (fee/deduction lines that reduce
 
 ## Invoice line accounts use full chart
 Manual invoice line account pickers and validation use ChartOfAccount::activeForSelect() (all active accounts), not income-only. Default remains 4100. UI label is Account. Do not re-restrict lines.*.account_code to income.
+
+## Reactivate inactive 4100 for invoice defaults
+ensureDefaultRentalIncomeAccount() must reactivate an existing inactive 4100 (firstOrCreate alone is not enough). Invoice form defaultAccountCode must stay 4100, never fall back to Bank/Cash just because 4100 was inactive.

@@ -327,6 +327,38 @@ it('creates a default rental income account when the chart is empty', function (
     expect(ChartOfAccount::query()->where('account_code', '4100')->exists())->toBeTrue();
 });
 
+it('reactivates inactive rental income and keeps it as the default account', function () {
+    ChartOfAccount::create([
+        'account_code' => '1100',
+        'account_name' => 'Bank / Cash',
+        'account_type' => 'asset',
+        'account_category' => 'current_asset',
+        'is_active' => true,
+        'opening_balance' => 0,
+        'current_balance' => 0,
+    ]);
+    ChartOfAccount::create([
+        'account_code' => '4100',
+        'account_name' => 'Rental Income',
+        'account_type' => 'income',
+        'account_category' => 'operating_income',
+        'is_active' => false,
+        'opening_balance' => 0,
+        'current_balance' => 0,
+    ]);
+
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.create', $entity))
+        ->assertSuccessful()
+        ->assertSee('4100 — Rental Income', false)
+        ->assertSee('\u0022defaultAccountCode\u0022:\u00224100\u0022', false);
+
+    expect(ChartOfAccount::query()->where('account_code', '4100')->value('is_active'))->toBeTrue();
+});
+
 it('stores and posts invoices with negative fee lines that reduce the total', function () {
     $this->seed(ChartOfAccountSeeder::class);
     $user = User::factory()->create();
