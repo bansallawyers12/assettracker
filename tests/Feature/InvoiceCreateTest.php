@@ -63,7 +63,7 @@ it('suggests an invoice number that includes the entity id', function () {
         ->toBe('INV'.$entity->id.'-202609002');
 });
 
-it('pre-fills create form with suggested number, income accounts, and due date', function () {
+it('pre-fills create form with suggested number, line accounts, and due date', function () {
     $this->seed(ChartOfAccountSeeder::class);
     $user = User::factory()->create();
     $entity = invoiceCreateEntity();
@@ -73,8 +73,10 @@ it('pre-fills create form with suggested number, income accounts, and due date',
         ->assertSuccessful()
         ->assertSee('INV'.$entity->id.'-'.now()->format('Ym').'001', false)
         ->assertSee('4100 — Rental Income', false)
+        ->assertSee('5110 — Management Fees', false)
         ->assertSee('Yes — GST applies', false)
-        ->assertSee('Income account', false)
+        ->assertSee('>Account</div>', false)
+        ->assertDontSee('Income account', false)
         ->assertDontSee('min="0"', false)
         ->assertDontSee('Include ended leases', false)
         ->assertDontSee('GST basis', false)
@@ -401,6 +403,67 @@ it('stores and posts invoices with negative fee lines that reduce the total', fu
 
     expect((float) $incomeCredits)->toBe(3200.0)
         ->and((float) $incomeDebits)->toBe(1745.45);
+});
+
+it('stores and posts fee lines against expense accounts', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $this->actingAs($user)->post(route('business-entities.invoices.store', $entity), [
+        'invoice_number' => 'OWN01516 Statement #2',
+        'issue_date' => '2025-05-01',
+        'due_date' => '2025-05-01',
+        'customer_name' => 'Goldtrack Property',
+        'currency' => 'AUD',
+        'gst_basis' => 'none',
+        'gst_percent' => 0,
+        'save_and_post' => '1',
+        'lines' => [
+            [
+                'description' => 'Rent',
+                'quantity' => 1,
+                'unit_price' => 3200,
+                'account_code' => '4100',
+            ],
+            [
+                'description' => 'Advertising Fee',
+                'quantity' => 1,
+                'unit_price' => -500,
+                'account_code' => '5900',
+            ],
+            [
+                'description' => 'Management Fee',
+                'quantity' => 1,
+                'unit_price' => -140.8,
+                'account_code' => '5110',
+            ],
+        ],
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->where('business_entity_id', $entity->id)->firstOrFail();
+
+    expect($invoice->is_posted)->toBeTrue()
+        ->and((float) $invoice->total_amount)->toBe(2559.2)
+        ->and($invoice->lines->pluck('account_code')->all())->toBe(['4100', '5900', '5110']);
+
+    $entry = JournalEntry::query()
+        ->where('source_type', Invoice::class)
+        ->where('source_id', $invoice->id)
+        ->with('journalLines.chartOfAccount')
+        ->firstOrFail();
+
+    expect((float) $entry->total_debit)->toBe((float) $entry->total_credit);
+
+    $managementDebit = (float) $entry->journalLines
+        ->filter(fn ($line) => $line->chartOfAccount?->account_code === '5110')
+        ->sum('debit_amount');
+    $otherExpenseDebit = (float) $entry->journalLines
+        ->filter(fn ($line) => $line->chartOfAccount?->account_code === '5900')
+        ->sum('debit_amount');
+
+    expect($managementDebit)->toBe(140.8)
+        ->and($otherExpenseDebit)->toBe(500.0);
 });
 
 it('posts when the first line is a fee debit and keeps journal sides non-negative', function () {

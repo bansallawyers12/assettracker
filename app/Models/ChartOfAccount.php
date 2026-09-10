@@ -39,7 +39,7 @@ class ChartOfAccount extends Model
     }
 
     /**
-     * Active income accounts for invoice line pickers.
+     * Active income accounts (legacy helper; invoice lines use activeForSelect).
      *
      * @return Collection<int, self>
      */

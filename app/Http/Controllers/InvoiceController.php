@@ -156,8 +156,8 @@ class InvoiceController extends Controller
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
 
-        $incomeAccountCodes = $this->incomeAccountCodes();
-        $data = $this->validateInvoicePayload($request, $businessEntity, $incomeAccountCodes);
+        $lineAccountCodes = $this->lineAccountCodes();
+        $data = $this->validateInvoicePayload($request, $businessEntity, $lineAccountCodes);
         [$assetId, $leaseId] = $this->resolveAssetAndLease($businessEntity, $data);
 
         $gstRate = round(((float) $data['gst_percent']) / 100, 4);
@@ -355,8 +355,8 @@ class InvoiceController extends Controller
             return back()->with('error', 'Posted invoices cannot be edited.');
         }
 
-        $incomeAccountCodes = $this->incomeAccountCodes();
-        $data = $this->validateInvoicePayload($request, $businessEntity, $incomeAccountCodes, $invoice);
+        $lineAccountCodes = $this->lineAccountCodes();
+        $data = $this->validateInvoicePayload($request, $businessEntity, $lineAccountCodes, $invoice);
         [$assetId, $leaseId] = $this->resolveAssetAndLease($businessEntity, $data);
 
         $gstRate = round(((float) $data['gst_percent']) / 100, 4);
@@ -522,19 +522,19 @@ class InvoiceController extends Controller
     }
 
     /**
-     * @return array{incomeAccounts: Collection, defaultAccountCode: string|null, assetsForForm: Collection, tenantsForForm: Collection, includeEnded: bool}
+     * @return array{lineAccounts: Collection, defaultAccountCode: string|null, assetsForForm: Collection, tenantsForForm: Collection, includeEnded: bool}
      */
     private function invoiceFormContext(BusinessEntity $businessEntity, bool $includeEnded = false, ?Invoice $invoice = null): array
     {
-        $incomeAccounts = ChartOfAccount::activeIncomeForSelect();
-        if ($incomeAccounts->isEmpty()) {
+        $lineAccounts = ChartOfAccount::activeForSelect();
+        if ($lineAccounts->isEmpty() || $lineAccounts->firstWhere('account_code', '4100') === null) {
             $this->ensureDefaultRentalIncomeAccount();
-            $incomeAccounts = ChartOfAccount::activeIncomeForSelect();
+            $lineAccounts = ChartOfAccount::activeForSelect();
         }
         $defaultAccountCode = old(
             'lines.0.account_code',
-            $incomeAccounts->firstWhere('account_code', '4100')?->account_code
-                ?? $incomeAccounts->first()?->account_code
+            $lineAccounts->firstWhere('account_code', '4100')?->account_code
+                ?? $lineAccounts->first()?->account_code
         );
 
         $asOf = now()->startOfDay();
@@ -593,7 +593,7 @@ class InvoiceController extends Controller
             ->values();
 
         return [
-            'incomeAccounts' => $incomeAccounts,
+            'lineAccounts' => $lineAccounts,
             'defaultAccountCode' => $defaultAccountCode,
             'assetsForForm' => $assetsForForm,
             'tenantsForForm' => $tenantsForForm,
@@ -604,25 +604,25 @@ class InvoiceController extends Controller
     /**
      * @return list<string>
      */
-    private function incomeAccountCodes(): array
+    private function lineAccountCodes(): array
     {
-        $codes = ChartOfAccount::activeIncomeForSelect()->pluck('account_code')->all();
-        if ($codes === []) {
+        $codes = ChartOfAccount::activeForSelect()->pluck('account_code')->all();
+        if ($codes === [] || ! in_array('4100', $codes, true)) {
             $this->ensureDefaultRentalIncomeAccount();
-            $codes = ChartOfAccount::activeIncomeForSelect()->pluck('account_code')->all();
+            $codes = ChartOfAccount::activeForSelect()->pluck('account_code')->all();
         }
 
         return $codes;
     }
 
     /**
-     * @param  list<string>  $incomeAccountCodes
+     * @param  list<string>  $lineAccountCodes
      * @return array<string, mixed>
      */
     private function validateInvoicePayload(
         Request $request,
         BusinessEntity $businessEntity,
-        array $incomeAccountCodes,
+        array $lineAccountCodes,
         ?Invoice $invoice = null
     ): array {
         $numberRule = Rule::unique('invoices', 'invoice_number')->where('business_entity_id', $businessEntity->id);
@@ -650,7 +650,7 @@ class InvoiceController extends Controller
             'lines.*.description' => ['required', 'string', 'max:255'],
             'lines.*.quantity' => ['required', 'numeric', 'min:0.0001'],
             'lines.*.unit_price' => ['required', 'numeric'],
-            'lines.*.account_code' => ['required', 'string', Rule::in($incomeAccountCodes)],
+            'lines.*.account_code' => ['required', 'string', Rule::in($lineAccountCodes)],
             'save_and_post' => ['nullable', 'boolean'],
         ]);
 

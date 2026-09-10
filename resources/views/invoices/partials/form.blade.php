@@ -38,7 +38,7 @@
     $oldLines = old('lines');
     $formConfig = [
         'assets' => $assetsForForm,
-        'incomeAccounts' => $incomeAccounts->map(fn ($a) => [
+        'lineAccounts' => $lineAccounts->map(fn ($a) => [
             'code' => $a->account_code,
             'label' => $a->account_code.' — '.$a->account_name,
         ])->values(),
@@ -195,7 +195,7 @@
                 <div class="hidden md:grid md:grid-cols-12 gap-2 mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                     <div class="md:col-span-5">Description</div>
                     <div class="md:col-span-2" x-text="unitPriceLabel"></div>
-                    <div class="md:col-span-4">Income account</div>
+                    <div class="md:col-span-4">Account</div>
                     <div class="md:col-span-1"></div>
                 </div>
 
@@ -213,11 +213,11 @@
                                    class="{{ $fieldClass }}" />
                         </div>
                         <div class="md:col-span-4">
-                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Income account</label>
+                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Account</label>
                             <input type="hidden" :name="'lines[' + index + '][account_code]'" :value="line.account_code">
                             <select x-model="line.account_code"
                                     class="{{ $fieldClass }}">
-                                @foreach ($incomeAccounts as $account)
+                                @foreach ($lineAccounts as $account)
                                     <option value="{{ $account->account_code }}">{{ $account->account_code }} — {{ $account->account_name }}</option>
                                 @endforeach
                             </select>
@@ -278,7 +278,7 @@
     function invoiceForm(config) {
         return {
             assets: config.assets || [],
-            incomeAccounts: config.incomeAccounts || [],
+            lineAccounts: config.lineAccounts || [],
             defaultAccountCode: config.defaultAccountCode || '',
             assetId: config.assetId ? String(config.assetId) : '',
             leaseId: config.leaseId ? String(config.leaseId) : '',
@@ -378,7 +378,7 @@
                     description: '',
                     quantity: 1,
                     unit_price: 0,
-                    account_code: this.defaultAccountCode || (this.incomeAccounts[0]?.code ?? ''),
+                    account_code: this.defaultAccountCode || (this.lineAccounts[0]?.code ?? ''),
                 });
             },
             removeLine(index) {
