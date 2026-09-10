@@ -84,6 +84,35 @@ it('pre-fills create form with suggested number, line accounts, and due date', f
         ->assertDontSee('Line total', false);
 });
 
+it('includes leases whose planned end date is in the past on the create form', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+    $asset = invoiceCreateAsset($entity);
+    $tenant = Tenant::create([
+        'asset_id' => $asset->id,
+        'name' => 'Shubam Kumar and Krishma Prashar',
+        'email' => null,
+        'move_in_date' => '2025-04-04',
+        'lease_expiry_date' => '2026-04-04',
+    ]);
+    Lease::create([
+        'asset_id' => $asset->id,
+        'tenant_id' => $tenant->id,
+        'rental_amount' => 3200,
+        'payment_frequency' => 'Monthly',
+        'start_date' => '2025-04-04',
+        'end_date' => '2026-04-04',
+    ]);
+
+    $this->travelTo('2026-09-10');
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.create', $entity))
+        ->assertSuccessful()
+        ->assertSee('Shubam Kumar and Krishma Prashar', false);
+});
+
 it('stores a draft invoice linked to asset and lease with inclusive gst', function () {
     $this->seed(ChartOfAccountSeeder::class);
     $user = User::factory()->create();

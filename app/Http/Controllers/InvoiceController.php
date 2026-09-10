@@ -124,7 +124,7 @@ class InvoiceController extends Controller
         $defaultDueDate = old('due_date', Carbon::parse($issueDate)->addDays(30)->toDateString());
 
         return view('invoices.create', array_merge(
-            $this->invoiceFormContext($businessEntity, request()->boolean('include_ended')),
+            $this->invoiceFormContext($businessEntity),
             [
                 'businessEntity' => $businessEntity,
                 'suggestedInvoiceNumber' => $suggestedInvoiceNumber,
@@ -332,7 +332,7 @@ class InvoiceController extends Controller
         );
 
         return view('invoices.edit', array_merge(
-            $this->invoiceFormContext($businessEntity, $request->boolean('include_ended'), $invoice),
+            $this->invoiceFormContext($businessEntity),
             [
                 'businessEntity' => $businessEntity,
                 'invoice' => $invoice,
@@ -522,9 +522,9 @@ class InvoiceController extends Controller
     }
 
     /**
-     * @return array{lineAccounts: Collection, defaultAccountCode: string|null, assetsForForm: Collection, tenantsForForm: Collection, includeEnded: bool}
+     * @return array{lineAccounts: Collection, defaultAccountCode: string|null, assetsForForm: Collection, tenantsForForm: Collection}
      */
-    private function invoiceFormContext(BusinessEntity $businessEntity, bool $includeEnded = false, ?Invoice $invoice = null): array
+    private function invoiceFormContext(BusinessEntity $businessEntity): array
     {
         $lineAccounts = ChartOfAccount::activeForSelect();
         if ($lineAccounts->isEmpty() || $lineAccounts->firstWhere('account_code', '4100') === null) {
@@ -537,26 +537,12 @@ class InvoiceController extends Controller
                 ?? $lineAccounts->first()?->account_code
         );
 
-        $asOf = now()->startOfDay();
-        $preserveLeaseId = $invoice?->lease_id ? (int) $invoice->lease_id : null;
-
+        // Lease end_date is the planned term/expiry, not "closed". Keep all leases on Active
+        // assets in the picker; removing the lease (or inactivating the asset) is what drops it.
         $assets = Asset::query()
             ->where('business_entity_id', $businessEntity->id)
             ->where('status', 'Active')
-            ->with([
-                'leases' => function ($query) use ($includeEnded, $asOf, $preserveLeaseId) {
-                    $query->with('tenant')->orderByDesc('start_date');
-                    if (! $includeEnded) {
-                        $query->where(function ($q) use ($asOf, $preserveLeaseId) {
-                            $q->whereNull('end_date')
-                                ->orWhereDate('end_date', '>=', $asOf->toDateString());
-                            if ($preserveLeaseId) {
-                                $q->orWhere('leases.id', $preserveLeaseId);
-                            }
-                        });
-                    }
-                },
-            ])
+            ->with(['leases' => fn ($query) => $query->with('tenant')->orderByDesc('start_date')])
             ->orderBy('name')
             ->get();
 
@@ -597,7 +583,6 @@ class InvoiceController extends Controller
             'defaultAccountCode' => $defaultAccountCode,
             'assetsForForm' => $assetsForForm,
             'tenantsForForm' => $tenantsForForm,
-            'includeEnded' => $includeEnded,
         ];
     }
 
