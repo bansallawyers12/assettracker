@@ -209,7 +209,7 @@
                         </div>
                         <div class="md:col-span-2">
                             <label class="mb-1 block text-xs text-gray-500 md:hidden" x-text="unitPriceLabel"></label>
-                            <input type="number" step="0.01" min="0" :name="'lines[' + index + '][unit_price]'" x-model.number="line.unit_price" required
+                            <input type="number" step="0.01" :name="'lines[' + index + '][unit_price]'" x-model.number="line.unit_price" required
                                    class="{{ $fieldClass }}" />
                         </div>
                         <div class="md:col-span-4">
@@ -369,7 +369,9 @@
                 return { net, gst, lineTotal };
             },
             formatMoney(value) {
-                return '$' + (Number(value) || 0).toFixed(2);
+                const amount = Number(value) || 0;
+                const formatted = Math.abs(amount).toFixed(2);
+                return (amount < 0 ? '-$' : '$') + formatted;
             },
             addLine() {
                 this.lines.push({

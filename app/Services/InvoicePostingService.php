@@ -35,20 +35,16 @@ class InvoicePostingService
             $entry->source_id = $invoice->id;
 
             $lines = $this->buildLines($invoice);
-
-            $totalDebit = 0;
-            $totalCredit = 0;
-            foreach ($lines as $line) {
-                $totalDebit += $line['debit'];
-                $totalCredit += $line['credit'];
-            }
+            [$totalDebit, $totalCredit] = $this->sumDebitCredit($lines);
 
             $diff = round($totalDebit - $totalCredit, 2);
             if (abs($diff) > 0.0001) {
                 if (abs($diff) <= 0.05 && count($lines) > 1) {
-                    $lines[1]['credit'] = round($lines[1]['credit'] + $diff, 2);
-                    $totalCredit = round($totalCredit + $diff, 2);
-                } else {
+                    $this->applyPennyRounding($lines, $diff);
+                    [$totalDebit, $totalCredit] = $this->sumDebitCredit($lines);
+                }
+
+                if (abs($totalDebit - $totalCredit) > 0.0001) {
                     throw new \DomainException("Unbalanced journal posting: Total debits ({$totalDebit}) do not equal total credits ({$totalCredit}).");
                 }
             }
@@ -58,6 +54,10 @@ class InvoicePostingService
             $entry->save();
 
             foreach ($lines as $line) {
+                if (round($line['debit'], 2) == 0.0 && round($line['credit'], 2) == 0.0) {
+                    continue;
+                }
+
                 JournalLine::create([
                     'journal_entry_id' => $entry->id,
                     'chart_of_account_id' => $line['account_id'],
@@ -112,10 +112,15 @@ class InvoicePostingService
 
         $lines = [];
 
-        // Debit AR for total
-        $lines[] = $this->line($receivables->id, (float) $invoice->total_amount, 0, 'Invoice total');
+        // Positive total → debit AR; negative total (credit note) → credit AR.
+        $lines[] = $this->signedAmountLine(
+            $receivables->id,
+            (float) $invoice->total_amount,
+            normalCredit: false,
+            description: 'Invoice total'
+        );
 
-        // For each line: credit income by net, credit GST by gst
+        // For each line: positive net/gst credit income/GST; negatives flip to debits.
         foreach ($invoice->lines as $line) {
             $account = null;
             if ($line->account_code) {
@@ -133,13 +138,86 @@ class InvoicePostingService
             }
             $net = (float) $line->line_total / (1 + (float) $line->gst_rate);
             $gst = (float) $line->line_total - $net;
-            $lines[] = $this->line($account->id, 0, round($net, 2), 'Revenue');
-            if ($gst > 0 && $gstPayable) {
-                $lines[] = $this->line($gstPayable->id, 0, round($gst, 2), 'GST Payable');
+            $lines[] = $this->signedAmountLine($account->id, round($net, 2), normalCredit: true, description: 'Revenue');
+            if (abs(round($gst, 2)) >= 0.01 && $gstPayable) {
+                $lines[] = $this->signedAmountLine(
+                    $gstPayable->id,
+                    round($gst, 2),
+                    normalCredit: true,
+                    description: 'GST Payable'
+                );
             }
         }
 
         return $lines;
+    }
+
+    /**
+     * @param  list<array{account_id: int, debit: float, credit: float, description: ?string}>  $lines
+     * @return array{0: float, 1: float}
+     */
+    private function sumDebitCredit(array $lines): array
+    {
+        $totalDebit = 0.0;
+        $totalCredit = 0.0;
+        foreach ($lines as $line) {
+            $totalDebit += $line['debit'];
+            $totalCredit += $line['credit'];
+        }
+
+        return [round($totalDebit, 2), round($totalCredit, 2)];
+    }
+
+    /**
+     * Nudge the first revenue/GST line after AR so pennies balance without writing negative sides.
+     *
+     * @param  list<array{account_id: int, debit: float, credit: float, description: ?string}>  $lines
+     */
+    private function applyPennyRounding(array &$lines, float $diff): void
+    {
+        $index = 1;
+        if ($lines[$index]['credit'] >= $lines[$index]['debit']) {
+            $newCredit = round($lines[$index]['credit'] + $diff, 2);
+            if ($newCredit >= 0) {
+                $lines[$index]['credit'] = $newCredit;
+            } else {
+                $lines[$index]['debit'] = round($lines[$index]['debit'] - $newCredit, 2);
+                $lines[$index]['credit'] = 0.0;
+            }
+
+            return;
+        }
+
+        $newDebit = round($lines[$index]['debit'] - $diff, 2);
+        if ($newDebit >= 0) {
+            $lines[$index]['debit'] = $newDebit;
+        } else {
+            $lines[$index]['credit'] = round($lines[$index]['credit'] - $newDebit, 2);
+            $lines[$index]['debit'] = 0.0;
+        }
+    }
+
+    /**
+     * Build a journal line with non-negative debit/credit sides.
+     * When $normalCredit is true, a positive amount credits the account (income/GST);
+     * a negative amount debits it. When false (AR), positive debits and negative credits.
+     */
+    private function signedAmountLine(int $accountId, float $amount, bool $normalCredit, ?string $description = null): array
+    {
+        $amount = round($amount, 2);
+        if (abs($amount) < 0.005) {
+            return $this->line($accountId, 0, 0, $description);
+        }
+
+        if ($normalCredit) {
+            return $amount > 0
+                ? $this->line($accountId, 0, $amount, $description)
+                : $this->line($accountId, abs($amount), 0, $description);
+        }
+
+        return $amount > 0
+            ? $this->line($accountId, $amount, 0, $description)
+            : $this->line($accountId, 0, abs($amount), $description);
     }
 
     private function line(int $accountId, float $debit, float $credit, ?string $description = null): array

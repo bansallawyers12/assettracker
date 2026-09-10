@@ -649,7 +649,7 @@ class InvoiceController extends Controller
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.description' => ['required', 'string', 'max:255'],
             'lines.*.quantity' => ['required', 'numeric', 'min:0.0001'],
-            'lines.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'lines.*.unit_price' => ['required', 'numeric'],
             'lines.*.account_code' => ['required', 'string', Rule::in($incomeAccountCodes)],
             'save_and_post' => ['nullable', 'boolean'],
         ]);

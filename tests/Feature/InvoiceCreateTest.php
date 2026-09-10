@@ -4,6 +4,7 @@ use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use App\Models\Invoice;
+use App\Models\JournalEntry;
 use App\Models\Lease;
 use App\Models\Tenant;
 use App\Models\User;
@@ -74,6 +75,7 @@ it('pre-fills create form with suggested number, income accounts, and due date',
         ->assertSee('4100 — Rental Income', false)
         ->assertSee('Yes — GST applies', false)
         ->assertSee('Income account', false)
+        ->assertDontSee('min="0"', false)
         ->assertDontSee('Include ended leases', false)
         ->assertDontSee('GST basis', false)
         ->assertDontSee('Pick from tenants', false)
@@ -321,6 +323,200 @@ it('creates a default rental income account when the chart is empty', function (
         ->assertSee('4100 — Rental Income', false);
 
     expect(ChartOfAccount::query()->where('account_code', '4100')->exists())->toBeTrue();
+});
+
+it('stores and posts invoices with negative fee lines that reduce the total', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $this->actingAs($user)->post(route('business-entities.invoices.store', $entity), [
+        'invoice_number' => 'OWN01516 Statement #1',
+        'issue_date' => '2025-05-01',
+        'due_date' => '2025-05-01',
+        'customer_name' => 'Goldtrack Property',
+        'currency' => 'AUD',
+        'gst_basis' => 'none',
+        'gst_percent' => 0,
+        'save_and_post' => '1',
+        'lines' => [
+            [
+                'description' => 'Rent for 3 Faulkiner Street Clayton - September 2026',
+                'quantity' => 1,
+                'unit_price' => 3200,
+                'account_code' => '4100',
+            ],
+            [
+                'description' => 'Advertising Fee',
+                'quantity' => 1,
+                'unit_price' => -500,
+                'account_code' => '4100',
+            ],
+            [
+                'description' => 'Letting Fee',
+                'quantity' => 1,
+                'unit_price' => -1104.65,
+                'account_code' => '4100',
+            ],
+            [
+                'description' => 'Management Fee',
+                'quantity' => 1,
+                'unit_price' => -140.8,
+                'account_code' => '4100',
+            ],
+        ],
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->where('business_entity_id', $entity->id)->firstOrFail();
+
+    expect($invoice->is_posted)->toBeTrue()
+        ->and($invoice->status)->toBe('approved')
+        ->and((float) $invoice->total_amount)->toBe(1454.55)
+        ->and((float) $invoice->subtotal)->toBe(1454.55)
+        ->and((float) $invoice->gst_amount)->toBe(0.0)
+        ->and($invoice->lines)->toHaveCount(4)
+        ->and((float) $invoice->lines[1]->unit_price)->toBe(-500.0)
+        ->and((float) $invoice->lines[2]->unit_price)->toBe(-1104.65)
+        ->and((float) $invoice->lines[3]->unit_price)->toBe(-140.8);
+
+    $entry = JournalEntry::query()
+        ->where('source_type', Invoice::class)
+        ->where('source_id', $invoice->id)
+        ->firstOrFail();
+
+    expect((float) $entry->total_debit)->toBe((float) $entry->total_credit);
+
+    $arLine = $entry->journalLines()
+        ->whereHas('chartOfAccount', fn ($q) => $q->where('account_code', '1130'))
+        ->firstOrFail();
+    expect((float) $arLine->debit_amount)->toBe(1454.55)
+        ->and((float) $arLine->credit_amount)->toBe(0.0);
+
+    $incomeDebits = $entry->journalLines()
+        ->whereHas('chartOfAccount', fn ($q) => $q->where('account_code', '4100'))
+        ->sum('debit_amount');
+    $incomeCredits = $entry->journalLines()
+        ->whereHas('chartOfAccount', fn ($q) => $q->where('account_code', '4100'))
+        ->sum('credit_amount');
+
+    expect((float) $incomeCredits)->toBe(3200.0)
+        ->and((float) $incomeDebits)->toBe(1745.45);
+});
+
+it('posts when the first line is a fee debit and keeps journal sides non-negative', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $this->actingAs($user)->post(route('business-entities.invoices.store', $entity), [
+        'invoice_number' => 'INV'.$entity->id.'-202609098',
+        'issue_date' => '2026-09-03',
+        'customer_name' => 'Fee First',
+        'currency' => 'AUD',
+        'gst_basis' => 'none',
+        'gst_percent' => 0,
+        'save_and_post' => '1',
+        'lines' => [
+            [
+                'description' => 'Advertising Fee',
+                'quantity' => 1,
+                'unit_price' => -500,
+                'account_code' => '4100',
+            ],
+            [
+                'description' => 'Rent',
+                'quantity' => 1,
+                'unit_price' => 3200,
+                'account_code' => '4100',
+            ],
+        ],
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->where('business_entity_id', $entity->id)->firstOrFail();
+    expect((float) $invoice->total_amount)->toBe(2700.0)
+        ->and($invoice->is_posted)->toBeTrue();
+
+    $entry = JournalEntry::query()
+        ->where('source_type', Invoice::class)
+        ->where('source_id', $invoice->id)
+        ->firstOrFail();
+
+    expect((float) $entry->total_debit)->toBe((float) $entry->total_credit);
+
+    $entry->journalLines->each(function ($line) {
+        expect((float) $line->debit_amount)->toBeGreaterThanOrEqual(0)
+            ->and((float) $line->credit_amount)->toBeGreaterThanOrEqual(0);
+    });
+
+    $incomeDebit = (float) $entry->journalLines()
+        ->whereHas('chartOfAccount', fn ($q) => $q->where('account_code', '4100'))
+        ->sum('debit_amount');
+    $incomeCredit = (float) $entry->journalLines()
+        ->whereHas('chartOfAccount', fn ($q) => $q->where('account_code', '4100'))
+        ->sum('credit_amount');
+
+    expect($incomeDebit)->toBe(500.0)
+        ->and($incomeCredit)->toBe(3200.0);
+});
+
+it('stores and posts mixed positive and negative lines with inclusive gst', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $this->actingAs($user)->post(route('business-entities.invoices.store', $entity), [
+        'invoice_number' => 'INV'.$entity->id.'-202609099',
+        'issue_date' => '2026-09-03',
+        'customer_name' => 'GST Mixed',
+        'currency' => 'AUD',
+        'gst_basis' => 'inclusive',
+        'gst_percent' => 10,
+        'save_and_post' => '1',
+        'lines' => [
+            [
+                'description' => 'Rent',
+                'quantity' => 1,
+                'unit_price' => 1100,
+                'account_code' => '4100',
+            ],
+            [
+                'description' => 'Fee deduction',
+                'quantity' => 1,
+                'unit_price' => -110,
+                'account_code' => '4100',
+            ],
+        ],
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->where('business_entity_id', $entity->id)->firstOrFail();
+
+    expect($invoice->is_posted)->toBeTrue()
+        ->and((float) $invoice->total_amount)->toBe(990.0)
+        ->and((float) $invoice->subtotal)->toBe(900.0)
+        ->and((float) $invoice->gst_amount)->toBe(90.0);
+
+    $entry = JournalEntry::query()
+        ->where('source_type', Invoice::class)
+        ->where('source_id', $invoice->id)
+        ->with('journalLines.chartOfAccount')
+        ->firstOrFail();
+
+    expect((float) $entry->total_debit)->toBe((float) $entry->total_credit);
+
+    $gstCredits = (float) $entry->journalLines
+        ->filter(fn ($line) => in_array($line->chartOfAccount?->account_code, ['2100', '2200'], true))
+        ->sum('credit_amount');
+    $gstDebits = (float) $entry->journalLines
+        ->filter(fn ($line) => in_array($line->chartOfAccount?->account_code, ['2100', '2200'], true))
+        ->sum('debit_amount');
+
+    expect($gstCredits)->toBe(100.0)
+        ->and($gstDebits)->toBe(10.0);
+
+    $entry->journalLines->each(function ($line) {
+        expect((float) $line->debit_amount)->toBeGreaterThanOrEqual(0)
+            ->and((float) $line->credit_amount)->toBeGreaterThanOrEqual(0);
+    });
 });
 
 it('rejects a lease that does not belong to the selected asset', function () {

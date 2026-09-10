@@ -269,9 +269,9 @@
                                 <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-800/40">
                                     <td class="px-4 py-3.5 text-gray-900 dark:text-gray-100">{{ $line->description }}</td>
                                     <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ number_format((float) $line->quantity, 4) }}</td>
-                                    <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">${{ number_format($line->unit_price, 2) }}</td>
+                                    <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ (float) $line->unit_price < 0 ? '-' : '' }}${{ number_format(abs((float) $line->unit_price), 2) }}</td>
                                     <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ (float) $line->gst_rate * 100 }}%</td>
-                                    <td class="px-4 py-3.5 text-right tabular-nums font-semibold text-gray-900 dark:text-white">${{ number_format($line->line_total, 2) }}</td>
+                                    <td class="px-4 py-3.5 text-right tabular-nums font-semibold text-gray-900 dark:text-white">{{ (float) $line->line_total < 0 ? '-' : '' }}${{ number_format(abs((float) $line->line_total), 2) }}</td>
                                 </tr>
                             @empty
                                 <tr>
