@@ -80,6 +80,26 @@ class BankAccountTransactionController extends Controller
         TransactionListFilters::apply($query, $filters, $contextEntityId);
 
         $transactions = $query->get();
+
+        $transferGroupIds = $transactions
+            ->pluck('transfer_group_id')
+            ->filter(fn ($id) => $id !== null && $id !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        $transferGroupsWithSiblings = $transferGroupIds === []
+            ? []
+            : Transaction::query()
+                ->whereIn('transfer_group_id', $transferGroupIds)
+                ->select('transfer_group_id')
+                ->selectRaw('count(*) as sibling_count')
+                ->groupBy('transfer_group_id')
+                ->having('sibling_count', '>', 1)
+                ->pluck('transfer_group_id')
+                ->mapWithKeys(fn ($id) => [(string) $id => true])
+                ->all();
+
         $eligibleEntities = $this->bookableEntities($bankAccount);
         $importEntities = $this->importableEntities($bankAccount);
         $defaultEntityId = null;
@@ -132,6 +152,7 @@ class BankAccountTransactionController extends Controller
         return [
             'bankAccount' => $bankAccount,
             'transactions' => $transactions,
+            'transferGroupsWithSiblings' => $transferGroupsWithSiblings,
             'eligibleEntities' => $eligibleEntities,
             'importEntities' => $importEntities,
             'contextEntityId' => $contextEntityId,

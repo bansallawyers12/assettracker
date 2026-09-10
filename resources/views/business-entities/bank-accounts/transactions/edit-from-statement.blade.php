@@ -133,11 +133,55 @@
                         @include('partials.transaction-marker-fields', ['transaction' => $transaction])
                     </div>
 
-                    <div class="flex gap-4 mt-5">
+                    <div class="flex flex-wrap gap-4 mt-5">
                         <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-xs transition duration-200">Update Transaction</button>
                         <a href="{{ $cancelHref }}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200 font-semibold py-2 px-4 rounded-md shadow-xs transition duration-200">Cancel</a>
                     </div>
                 </form>
+
+                @if ($statementEntry && $bankAccount)
+                    @php
+                        $hasTransferSibling = filled($transaction->transfer_group_id)
+                            && \App\Models\Transaction::query()
+                                ->where('transfer_group_id', $transaction->transfer_group_id)
+                                ->where('id', '!=', $transaction->id)
+                                ->exists();
+                        $bankPanelHref = route('business-entities.show', [
+                            'business_entity' => $businessEntity->id,
+                            'open_bank_transactions' => $bankAccount->id,
+                        ]).'#tab_bank_accounts';
+                    @endphp
+                    <div class="mt-6 border-t border-gray-200 pt-5 dark:border-gray-700">
+                        <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
+                            Wrong bank match or wrong kind of booking? Unmatch keeps this transaction; Remove &amp; Redo deletes it and returns the statement line to unmatched.
+                        </p>
+                        <div class="flex flex-wrap gap-3">
+                            <button
+                                type="button"
+                                data-statement-unmatch
+                                data-unmatch-url="{{ route('bank-accounts.import.unmatch', $bankAccount) }}"
+                                data-business-entity-id="{{ $businessEntity->id }}"
+                                data-transaction-id="{{ $transaction->id }}"
+                                data-redirect="{{ $bankPanelHref }}"
+                                class="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                            >
+                                Unmatch
+                            </button>
+                            <button
+                                type="button"
+                                data-statement-remove-and-redo
+                                data-remove-url="{{ route('bank-accounts.import.remove-and-redo', $bankAccount) }}"
+                                data-business-entity-id="{{ $businessEntity->id }}"
+                                data-transaction-id="{{ $transaction->id }}"
+                                data-redirect="{{ $bankPanelHref }}"
+                                @if ($hasTransferSibling) data-has-transfer-sibling="1" @endif
+                                class="inline-flex items-center rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+                            >
+                                Remove &amp; Redo
+                            </button>
+                        </div>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -149,6 +193,81 @@
             const relatedEntityField = document.getElementById('related_entity_field');
             const counterpartField = document.getElementById('counterpart_account_field');
             const relatedPartyTypes = @json(\App\Models\Transaction::directorLoanRelatedPartyTypes());
+
+            function csrfToken() {
+                return document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            }
+
+            function correctionErrorMessage(payload, fallback) {
+                const fieldErrors = payload?.errors ? Object.values(payload.errors).flat().filter(Boolean) : [];
+                return fieldErrors[0] || payload?.message || fallback;
+            }
+
+            async function postCorrection(url, body) {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Accept: 'application/json',
+                        'X-CSRF-TOKEN': csrfToken(),
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify(body),
+                    credentials: 'same-origin',
+                });
+                const payload = await response.json().catch(() => ({}));
+                return { response, payload };
+            }
+
+            document.querySelector('[data-statement-unmatch]')?.addEventListener('click', async (event) => {
+                const button = event.currentTarget;
+                if (!window.confirm('Unlink this bank line. The transaction stays so you can match it again.')) {
+                    return;
+                }
+                button.disabled = true;
+                try {
+                    const { response, payload } = await postCorrection(button.dataset.unmatchUrl, {
+                        business_entity_id: Number(button.dataset.businessEntityId),
+                        transaction_id: Number(button.dataset.transactionId),
+                    });
+                    if (!response.ok || !payload?.success) {
+                        window.alert(correctionErrorMessage(payload, 'Could not unmatch.'));
+                        return;
+                    }
+                    window.location.assign(button.dataset.redirect);
+                } catch (error) {
+                    window.alert(error?.message || 'Could not unmatch.');
+                } finally {
+                    button.disabled = false;
+                }
+            });
+
+            document.querySelector('[data-statement-remove-and-redo]')?.addEventListener('click', async (event) => {
+                const button = event.currentTarget;
+                let message = 'Delete this booking and return the bank line to unmatched. If this paid invoices, they go back to unpaid/partial.';
+                if (button.dataset.hasTransferSibling === '1') {
+                    message += ' The other side of this internal transfer will stay booked.';
+                }
+                if (!window.confirm(message)) {
+                    return;
+                }
+                button.disabled = true;
+                try {
+                    const { response, payload } = await postCorrection(button.dataset.removeUrl, {
+                        business_entity_id: Number(button.dataset.businessEntityId),
+                        transaction_id: Number(button.dataset.transactionId),
+                    });
+                    if (!response.ok || !payload?.success) {
+                        window.alert(correctionErrorMessage(payload, 'Could not remove booking.'));
+                        return;
+                    }
+                    window.location.assign(button.dataset.redirect);
+                } catch (error) {
+                    window.alert(error?.message || 'Could not remove booking.');
+                } finally {
+                    button.disabled = false;
+                }
+            });
 
             function syncTypeDependentFields(clearHidden) {
                 if (!transactionTypeSelect) return;

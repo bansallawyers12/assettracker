@@ -63,6 +63,8 @@
     $importProcessUrl = route('bank-accounts.import.process', $bankAccount);
     $importUnmatchedUrl = route('bank-accounts.import.unmatched', $bankAccount);
     $importApplyUrl = route('bank-accounts.import.apply', $bankAccount);
+    $importUnmatchUrl = route('bank-accounts.import.unmatch', $bankAccount);
+    $importRemoveAndRedoUrl = route('bank-accounts.import.remove-and-redo', $bankAccount);
     $importClearEntriesUrl = route('bank-accounts.import.clear-entries', $bankAccount);
     $chartAccountsUrl = route('chart-of-accounts.api');
     $canImport = $canImport ?? false;
@@ -85,6 +87,8 @@
     data-bank-import-process-url="{{ $importProcessUrl }}"
     data-bank-import-unmatched-url="{{ $importUnmatchedUrl }}"
     data-bank-import-apply-url="{{ $importApplyUrl }}"
+    data-bank-import-unmatch-url="{{ $importUnmatchUrl }}"
+    data-bank-import-remove-and-redo-url="{{ $importRemoveAndRedoUrl }}"
     data-bank-import-clear-entries-url="{{ $importClearEntriesUrl }}"
     data-chart-accounts-url="{{ $chartAccountsUrl }}"
 >
@@ -211,6 +215,7 @@
                 'transactions' => $transactions,
                 'bankAccount' => $bankAccount,
                 'filtersActive' => $filtersActive,
+                'transferGroupsWithSiblings' => $transferGroupsWithSiblings ?? [],
             ])
         </div>
     </div>

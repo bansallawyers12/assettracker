@@ -155,6 +155,128 @@ function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
 
     bindCollapsibleFilters(root, signal);
     bindReconciliationPanel(panel, signal, refreshTransactionsPanel);
+    bindMatchCorrectionActions(panel, signal, refreshTransactionsPanel);
+}
+
+async function postMatchCorrection(url, body) {
+    const response = await apiFetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+        },
+        body: JSON.stringify(body),
+    });
+    const payload = parseJson(await response.text());
+
+    return { response, payload };
+}
+
+function bindMatchCorrectionActions(panel, signal, refreshTransactionsPanel) {
+    const unmatchUrl = panel.dataset.bankImportUnmatchUrl;
+    const removeAndRedoUrl = panel.dataset.bankImportRemoveAndRedoUrl;
+
+    panel.querySelectorAll('[data-bank-tx-unmatch]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            if (!unmatchUrl) {
+                return;
+            }
+
+            const transactionId = Number(button.dataset.transactionId || 0);
+            const businessEntityId = Number(button.dataset.businessEntityId || 0);
+            if (!transactionId || !businessEntityId) {
+                return;
+            }
+
+            const ok = await showWorkspaceConfirm({
+                title: 'Unmatch bank line',
+                message: 'Unlink this bank line. The transaction stays so you can match it again.',
+                confirmText: 'Unmatch',
+                cancelText: 'Cancel',
+            });
+            if (!ok) {
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const { response, payload } = await postMatchCorrection(unmatchUrl, {
+                    business_entity_id: businessEntityId,
+                    transaction_id: transactionId,
+                });
+
+                if (!response.ok || !payload?.success) {
+                    notifyFormFailure(null, payload, { title: 'Unmatch failed' });
+                    return;
+                }
+
+                notifyFormSuccess(payload.message || 'Bank line unmatched.', 'Unmatched');
+                await refreshTransactionsPanel();
+            } catch (error) {
+                showWorkspaceAlert({
+                    title: 'Unmatch failed',
+                    message: error?.message || 'Could not unmatch this line.',
+                    variant: 'error',
+                });
+            } finally {
+                button.disabled = false;
+            }
+        }, { signal });
+    });
+
+    panel.querySelectorAll('[data-bank-tx-remove-and-redo]').forEach((button) => {
+        button.addEventListener('click', async () => {
+            if (!removeAndRedoUrl) {
+                return;
+            }
+
+            const transactionId = Number(button.dataset.transactionId || 0);
+            const businessEntityId = Number(button.dataset.businessEntityId || 0);
+            if (!transactionId || !businessEntityId) {
+                return;
+            }
+
+            let message = 'Delete this booking and return the bank line to unmatched. If this paid invoices, they go back to unpaid/partial.';
+            if (button.dataset.hasTransferSibling === '1') {
+                message += ' The other side of this internal transfer will stay booked.';
+            }
+
+            const ok = await showWorkspaceConfirm({
+                title: 'Remove & Redo',
+                message,
+                confirmText: 'Remove & Redo',
+                cancelText: 'Cancel',
+                variant: 'danger',
+            });
+            if (!ok) {
+                return;
+            }
+
+            button.disabled = true;
+            try {
+                const { response, payload } = await postMatchCorrection(removeAndRedoUrl, {
+                    business_entity_id: businessEntityId,
+                    transaction_id: transactionId,
+                });
+
+                if (!response.ok || !payload?.success) {
+                    notifyFormFailure(null, payload, { title: 'Remove & Redo failed' });
+                    return;
+                }
+
+                notifyFormSuccess(payload.message || 'Booking removed.', 'Removed');
+                await refreshTransactionsPanel();
+            } catch (error) {
+                showWorkspaceAlert({
+                    title: 'Remove & Redo failed',
+                    message: error?.message || 'Could not remove this booking.',
+                    variant: 'error',
+                });
+            } finally {
+                button.disabled = false;
+            }
+        }, { signal });
+    });
 }
 
 export function initBankTransactionsPage() {

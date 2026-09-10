@@ -10,6 +10,7 @@ use App\Models\ChartOfAccount;
 use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Services\BankStatementApplyService;
+use App\Services\BankStatementMatchCorrectionService;
 use App\Services\BankStatementMatchSuggester;
 use App\Services\BankStatementParseService;
 use Illuminate\Http\JsonResponse;
@@ -29,6 +30,7 @@ class BankAccountImportController extends Controller
     public function __construct(
         private BankStatementParseService $parseService,
         private BankStatementApplyService $applyService,
+        private BankStatementMatchCorrectionService $matchCorrectionService,
         private BankStatementMatchSuggester $suggester
     ) {}
 
@@ -316,6 +318,78 @@ class BankAccountImportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while applying matches.',
+            ], 500);
+        }
+    }
+
+    public function unmatch(Request $request, BankAccount $bankAccount): JsonResponse
+    {
+        $this->ensureAccessible($bankAccount);
+
+        $validated = $request->validate([
+            'business_entity_id' => ['required', 'integer', 'exists:business_entities,id'],
+            'transaction_id' => ['required', 'integer', 'exists:transactions,id'],
+        ]);
+
+        $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
+        $this->authorizeImportEntity($bankAccount, $businessEntity);
+
+        $transaction = Transaction::query()->findOrFail((int) $validated['transaction_id']);
+
+        try {
+            $result = $this->matchCorrectionService->unmatch($bankAccount, $businessEntity, $transaction);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Bank line unlinked. The transaction is unmatched so you can match it again.',
+                'unlinked_entries' => $result['unlinked_entries'],
+                'transaction_id' => $result['transaction_id'],
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('Bank account unmatch error: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while unmatching.',
+            ], 500);
+        }
+    }
+
+    public function removeAndRedo(Request $request, BankAccount $bankAccount): JsonResponse
+    {
+        $this->ensureAccessible($bankAccount);
+
+        $validated = $request->validate([
+            'business_entity_id' => ['required', 'integer', 'exists:business_entities,id'],
+            'transaction_id' => ['required', 'integer', 'exists:transactions,id'],
+        ]);
+
+        $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
+        $this->authorizeImportEntity($bankAccount, $businessEntity);
+
+        $transaction = Transaction::query()->findOrFail((int) $validated['transaction_id']);
+
+        try {
+            $result = $this->matchCorrectionService->removeAndRedo($bankAccount, $businessEntity, $transaction);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Booking removed. The bank line is unmatched again.',
+                'transaction_id' => $result['transaction_id'],
+                'invoices_reset' => $result['invoices_reset'],
+                'unlinked_entries' => $result['unlinked_entries'],
+                'had_transfer_sibling' => $result['had_transfer_sibling'],
+            ]);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (\Throwable $e) {
+            Log::error('Bank account remove-and-redo error: '.$e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while removing the booking.',
             ], 500);
         }
     }

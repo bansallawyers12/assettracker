@@ -97,7 +97,7 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
-                            <div class="flex justify-end gap-1">
+                            <div class="flex justify-end flex-wrap gap-1">
                                 @if ($txEntity && $transaction->bank_account_id)
                                     <a
                                         href="{{ route('business-entities.bank-accounts.transactions.show', [$txEntityId, $bankAccount->id, $transaction->id]) }}"
@@ -111,6 +111,31 @@
                                     >
                                         Edit
                                     </a>
+                                    @if ($transaction->bankStatementEntries->isNotEmpty())
+                                        @php
+                                            $hasTransferSibling = filled($transaction->transfer_group_id)
+                                                && ! empty(($transferGroupsWithSiblings ?? [])[(string) $transaction->transfer_group_id]);
+                                        @endphp
+                                        <button
+                                            type="button"
+                                            data-bank-tx-unmatch
+                                            data-transaction-id="{{ $transaction->id }}"
+                                            data-business-entity-id="{{ $txEntityId }}"
+                                            class="inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+                                        >
+                                            Unmatch
+                                        </button>
+                                        <button
+                                            type="button"
+                                            data-bank-tx-remove-and-redo
+                                            data-transaction-id="{{ $transaction->id }}"
+                                            data-business-entity-id="{{ $txEntityId }}"
+                                            @if ($hasTransferSibling) data-has-transfer-sibling="1" @endif
+                                            class="inline-flex items-center rounded-md border border-red-300 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+                                        >
+                                            Remove &amp; Redo
+                                        </button>
+                                    @endif
                                 @endif
                             </div>
                         </td>
