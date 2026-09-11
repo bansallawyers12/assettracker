@@ -13,6 +13,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\Lease;
 use App\Models\Tenant;
+use App\Models\Transaction;
 use App\Services\BankStatementMatchSuggester;
 use App\Services\InvoicePaymentService;
 use App\Services\InvoicePostingService;
@@ -476,7 +477,12 @@ class InvoiceController extends Controller
         $message = $invoice->status === 'partial'
             ? 'Partial payment recorded against Accounts Receivable.'
             : 'Payment recorded and AR cleared.';
-        if ($transaction->bankStatementEntries()->exists()) {
+
+        if ($transaction->payment_channel === Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS) {
+            $message = $invoice->status === 'partial'
+                ? 'Partial payment recorded via director funds (AR reduced, director loan updated).'
+                : 'Payment recorded via director funds (AR cleared against director loan).';
+        } elseif ($transaction->bankStatementEntries()->exists()) {
             $message = $invoice->status === 'partial'
                 ? 'Partial payment recorded, AR reduced, and matched to the bank statement line.'
                 : 'Payment recorded, AR cleared, and matched to the bank statement line.';

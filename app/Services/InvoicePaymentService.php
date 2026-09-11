@@ -15,6 +15,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class InvoicePaymentService
@@ -43,8 +44,27 @@ class InvoicePaymentService
             'amount' => 'nullable|numeric|min:0.01',
             'payment_method' => 'nullable|string|max:100',
             'payment_reference' => 'nullable|string|max:255',
-            'bank_account_id' => 'required|integer|exists:bank_accounts,id',
-            'bank_statement_entry_id' => 'nullable|integer|exists:bank_statement_entries,id',
+            'payment_channel' => [
+                'nullable',
+                'string',
+                Rule::in([
+                    Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+                    Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+                ]),
+            ],
+            'bank_account_id' => [
+                'nullable',
+                'integer',
+                'exists:bank_accounts,id',
+                'required_if:payment_channel,'.Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+                'prohibited_if:payment_channel,'.Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+            ],
+            'bank_statement_entry_id' => [
+                'nullable',
+                'integer',
+                'exists:bank_statement_entries,id',
+                'prohibited_if:payment_channel,'.Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+            ],
             'payment_document_name' => 'nullable|string|max:255',
             'payment_document' => $paymentDocumentRules,
         ];
@@ -55,18 +75,30 @@ class InvoicePaymentService
         BusinessEntity $businessEntity,
         Invoice $invoice
     ): Transaction {
-        $data = $request->validate($this->validationRules());
-
-        $bankAccount = BankAccount::query()->findOrFail((int) $data['bank_account_id']);
-        if (! $bankAccount->canUseForTransaction($businessEntity)) {
-            throw ValidationException::withMessages([
-                'bank_account_id' => 'The selected bank account is not linked to this entity.',
+        if (! $request->filled('payment_channel')) {
+            $request->merge([
+                'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
             ]);
         }
 
-        $statementEntryId = ! empty($data['bank_statement_entry_id'])
-            ? (int) $data['bank_statement_entry_id']
-            : null;
+        $data = $request->validate($this->validationRules());
+        $channel = (string) ($data['payment_channel'] ?? Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT);
+
+        $bankAccount = null;
+        $statementEntryId = null;
+
+        if ($channel === Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT) {
+            $bankAccount = BankAccount::query()->findOrFail((int) $data['bank_account_id']);
+            if (! $bankAccount->canUseForTransaction($businessEntity)) {
+                throw ValidationException::withMessages([
+                    'bank_account_id' => 'The selected bank account is not linked to this entity.',
+                ]);
+            }
+
+            $statementEntryId = ! empty($data['bank_statement_entry_id'])
+                ? (int) $data['bank_statement_entry_id']
+                : null;
+        }
 
         $amount = array_key_exists('amount', $data) && $data['amount'] !== null && $data['amount'] !== ''
             ? round((float) $data['amount'], 2)
@@ -78,6 +110,7 @@ class InvoicePaymentService
             $invoice,
             $data,
             $bankAccount,
+            $channel,
             $statementEntryId,
             $amount
         ) {
@@ -85,6 +118,7 @@ class InvoicePaymentService
                 $businessEntity,
                 $invoice,
                 $bankAccount,
+                $channel,
                 (string) $data['paid_at'],
                 $data['payment_method'] ?? null,
                 $data['payment_reference'] ?? null,
@@ -358,7 +392,8 @@ class InvoicePaymentService
     private function persistPayment(
         BusinessEntity $businessEntity,
         Invoice $invoice,
-        BankAccount $bankAccount,
+        ?BankAccount $bankAccount,
+        string $paymentChannel,
         string $paidAt,
         ?string $paymentMethod,
         ?string $paymentReference,
@@ -368,6 +403,15 @@ class InvoicePaymentService
         string $invoiceErrorKey = 'paid_at',
         string $statementErrorKey = 'bank_statement_entry_id'
     ): Transaction {
+        if ($paymentChannel === Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS) {
+            $bankAccount = null;
+            $statementEntryId = null;
+        } elseif ($bankAccount === null) {
+            throw ValidationException::withMessages([
+                'bank_account_id' => 'A bank account is required for bank payments.',
+            ]);
+        }
+
         $lockedInvoice = Invoice::query()
             ->whereKey($invoice->id)
             ->lockForUpdate()
@@ -394,6 +438,12 @@ class InvoicePaymentService
 
         $statementEntry = null;
         if ($statementEntryId) {
+            if ($bankAccount === null) {
+                throw ValidationException::withMessages([
+                    $statementErrorKey => 'Statement matching requires a bank account payment.',
+                ]);
+            }
+
             $statementEntry = BankStatementEntry::query()
                 ->where('id', $statementEntryId)
                 ->lockForUpdate()
@@ -469,8 +519,8 @@ class InvoicePaymentService
         $transaction = Transaction::create([
             'business_entity_id' => $businessEntity->id,
             'asset_id' => $lockedInvoice->asset_id,
-            'bank_account_id' => $bankAccount->id,
-            'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+            'bank_account_id' => $bankAccount?->id,
+            'payment_channel' => $paymentChannel,
             'date' => $paidAt,
             'amount' => $allocatedAmount,
             'description' => ($settlesRemaining ? 'Payment received for Invoice ' : 'Partial payment for Invoice ')

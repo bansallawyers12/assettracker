@@ -310,41 +310,68 @@
                         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-700 dark:bg-gray-900">
                             <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Record payment</h3>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                Clears Accounts Receivable for the amount paid (does not re-book revenue). Partial payments leave the invoice open until the balance is zero.
+                                Clears Accounts Receivable for the amount paid (does not re-book revenue). Partial payments leave the invoice open until the balance is zero. Use <span class="font-medium">Director funds</span> when the customer paid the director (or the director settled it) and money did not enter the entity bank.
                             </p>
-                            @if (($paymentBankAccounts ?? collect())->isEmpty())
-                                <p class="mt-3 text-sm text-amber-700 dark:text-amber-300">
-                                    Link an operating bank account to this entity before recording payment.
-                                </p>
-                            @else
-                                <form method="POST" action="{{ route('business-entities.invoices.record-payment', [$businessEntity, $invoice]) }}" class="mt-4 space-y-3" enctype="multipart/form-data" id="invoice-record-payment-form">
-                                    @csrf
-                                    <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Paid date <span class="text-red-500">*</span></label>
-                                        <x-date-input name="paid_at" value="{{ old('paid_at', now()->format('Y-m-d')) }}" required class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
-                                        @error('paid_at') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Amount <span class="text-red-500">*</span></label>
-                                        <input
-                                            type="number"
-                                            name="amount"
-                                            id="invoice_payment_amount"
-                                            step="0.01"
-                                            min="0.01"
-                                            max="{{ number_format($amountDue, 2, '.', '') }}"
-                                            value="{{ old('amount', number_format($amountDue, 2, '.', '')) }}"
-                                            required
-                                            class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-                                        />
-                                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Balance remaining: ${{ number_format($amountDue, 2) }}</p>
-                                        @error('amount') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                                    </div>
+                            <form method="POST" action="{{ route('business-entities.invoices.record-payment', [$businessEntity, $invoice]) }}" class="mt-4 space-y-3" enctype="multipart/form-data" id="invoice-record-payment-form">
+                                @csrf
+                                @php
+                                    $hasPaymentBanks = ($paymentBankAccounts ?? collect())->isNotEmpty();
+                                    $selectedChannel = old(
+                                        'payment_channel',
+                                        $hasPaymentBanks
+                                            ? \App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT
+                                            : \App\Models\Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS
+                                    );
+                                    if (! $hasPaymentBanks) {
+                                        $selectedChannel = \App\Models\Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS;
+                                    }
+                                    $isBankChannel = $selectedChannel === \App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT;
+                                @endphp
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Paid via <span class="text-red-500">*</span></label>
+                                    <select name="payment_channel" id="invoice_payment_channel" required class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                                        <option value="{{ \App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT }}" @selected($isBankChannel) @disabled(! $hasPaymentBanks)>
+                                            Bank account
+                                        </option>
+                                        <option value="{{ \App\Models\Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS }}" @selected(! $isBankChannel)>
+                                            Director funds (no bank)
+                                        </option>
+                                    </select>
+                                    @unless ($hasPaymentBanks)
+                                        <p class="mt-1 text-xs text-amber-700 dark:text-amber-300">No operating bank linked — use director funds, or link a bank account first.</p>
+                                    @endunless
+                                    @error('payment_channel') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Paid date <span class="text-red-500">*</span></label>
+                                    <x-date-input name="paid_at" value="{{ old('paid_at', now()->format('Y-m-d')) }}" required class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
+                                    @error('paid_at') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Amount <span class="text-red-500">*</span></label>
+                                    <input
+                                        type="number"
+                                        name="amount"
+                                        id="invoice_payment_amount"
+                                        step="0.01"
+                                        min="0.01"
+                                        max="{{ number_format($amountDue, 2, '.', '') }}"
+                                        value="{{ old('amount', number_format($amountDue, 2, '.', '')) }}"
+                                        required
+                                        class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                    />
+                                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Balance remaining: ${{ number_format($amountDue, 2) }}</p>
+                                    @error('amount') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                                <div id="invoice_payment_bank_fields" class="space-y-3" @if(! $isBankChannel) style="display: none" @endif>
                                     <div>
                                         <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Bank account <span class="text-red-500">*</span></label>
-                                        <select name="bank_account_id" id="invoice_payment_bank_account_id" required class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                                        <select name="bank_account_id" id="invoice_payment_bank_account_id"
+                                                class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                                @disabled(! $isBankChannel)
+                                                @if($isBankChannel) required @endif>
                                             <option value="">Select account…</option>
-                                            @foreach ($paymentBankAccounts as $account)
+                                            @foreach ($paymentBankAccounts ?? [] as $account)
                                                 @php
                                                     $accountSelected = old('bank_account_id') !== null
                                                         ? (string) old('bank_account_id') === (string) $account->id
@@ -359,7 +386,9 @@
                                     </div>
                                     <div>
                                         <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Match statement line <span class="font-normal text-gray-400">(optional)</span></label>
-                                        <select name="bank_statement_entry_id" id="invoice_payment_statement_entry_id" class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                                        <select name="bank_statement_entry_id" id="invoice_payment_statement_entry_id"
+                                                class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                                                @disabled(! $isBankChannel)>
                                             <option value="">— Leave unmatched —</option>
                                             @foreach (($unmatchedStatementEntries ?? collect()) as $entry)
                                                 @php
@@ -380,88 +409,119 @@
                                         </select>
                                         @error('bank_statement_entry_id') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                     </div>
-                                    <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Payment method</label>
-                                        <select name="payment_method" class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white">
-                                            <option value="">Select method…</option>
-                                            @foreach (\App\Models\Transaction::$paymentMethods as $val => $lbl)
-                                                <option value="{{ $val }}" @selected(old('payment_method') === $val)>{{ $lbl }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('payment_method') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Reference</label>
-                                        <input type="text" name="payment_reference" value="{{ old('payment_reference') }}" placeholder="Receipt / transaction ID" class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
-                                        @error('payment_reference') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Payment receipt <span class="font-normal text-gray-400">(optional)</span></label>
-                                        <input type="file" name="payment_document" accept="{{ config('documents.transaction_file_accept') }}" class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-emerald-700 dark:file:bg-gray-700 dark:file:text-emerald-300" />
-                                        @error('payment_document') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                                    </div>
-                                    <div>
-                                        <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Receipt name</label>
-                                        <input type="text" name="payment_document_name" value="{{ old('payment_document_name') }}" placeholder="e.g. Bank transfer confirmation" class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
-                                    </div>
-                                    <button type="submit" class="inline-flex w-full justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-500 sm:w-auto">Record payment</button>
-                                </form>
-                                <script>
-                                    document.addEventListener('DOMContentLoaded', function () {
-                                        const accountSelect = document.getElementById('invoice_payment_bank_account_id');
-                                        const entrySelect = document.getElementById('invoice_payment_statement_entry_id');
-                                        const amountInput = document.getElementById('invoice_payment_amount');
-                                        if (!accountSelect || !entrySelect) return;
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Payment method</label>
+                                    <select name="payment_method" class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white">
+                                        <option value="">Select method…</option>
+                                        @foreach (\App\Models\Transaction::$paymentMethods as $val => $lbl)
+                                            <option value="{{ $val }}" @selected(old('payment_method') === $val)>{{ $lbl }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('payment_method') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Reference</label>
+                                    <input type="text" name="payment_reference" value="{{ old('payment_reference') }}" placeholder="Receipt / transaction ID" class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
+                                    @error('payment_reference') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Payment receipt <span class="font-normal text-gray-400">(optional)</span></label>
+                                    <input type="file" name="payment_document" accept="{{ config('documents.transaction_file_accept') }}" class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-emerald-700 dark:file:bg-gray-700 dark:file:text-emerald-300" />
+                                    @error('payment_document') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                                <div>
+                                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Receipt name</label>
+                                    <input type="text" name="payment_document_name" value="{{ old('payment_document_name') }}" placeholder="e.g. Bank transfer confirmation" class="w-full rounded-lg border-gray-300 text-sm shadow-xs dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
+                                </div>
+                                <button type="submit" class="inline-flex w-full justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-xs hover:bg-emerald-500 sm:w-auto">Record payment</button>
+                            </form>
+                            <script>
+                                document.addEventListener('DOMContentLoaded', function () {
+                                    const channelSelect = document.getElementById('invoice_payment_channel');
+                                    const bankFields = document.getElementById('invoice_payment_bank_fields');
+                                    const accountSelect = document.getElementById('invoice_payment_bank_account_id');
+                                    const entrySelect = document.getElementById('invoice_payment_statement_entry_id');
+                                    const amountInput = document.getElementById('invoice_payment_amount');
+                                    if (!channelSelect || !bankFields) return;
 
-                                        const amountDue = {{ json_encode((float) $amountDue) }};
+                                    const bankChannel = @json(\App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT);
+                                    const amountDue = {{ json_encode((float) $amountDue) }};
 
-                                        function syncStatementOptions() {
-                                            const accountId = accountSelect.value;
-                                            const paymentAmount = Math.abs(parseFloat(amountInput?.value || String(amountDue)) || amountDue);
-                                            Array.from(entrySelect.options).forEach((opt) => {
-                                                if (!opt.value) {
-                                                    opt.hidden = false;
-                                                    return;
-                                                }
-                                                const matchesAccount = !accountId || String(opt.dataset.bankAccountId) === String(accountId);
-                                                const amount = Math.abs(parseFloat(opt.dataset.amount || '0'));
-                                                const amountPositive = parseFloat(opt.dataset.amount || '0') >= 0;
-                                                const withinBalance = amount <= amountDue + 0.01;
-                                                const matchesSelectedAmount = Math.abs(amount - paymentAmount) <= 0.01;
-                                                opt.hidden = !(matchesAccount && amountPositive && withinBalance && matchesSelectedAmount);
-                                                if (opt.hidden && opt.selected) {
-                                                    entrySelect.value = '';
-                                                }
-                                            });
-                                        }
-
-                                        accountSelect.addEventListener('change', syncStatementOptions);
-                                        amountInput?.addEventListener('input', syncStatementOptions);
-                                        entrySelect.addEventListener('change', function () {
-                                            const selected = entrySelect.options[entrySelect.selectedIndex];
-                                            if (selected?.value && amountInput) {
-                                                amountInput.value = Math.abs(parseFloat(selected.dataset.amount || '0')).toFixed(2);
-                                                syncStatementOptions();
+                                    function syncChannelUi() {
+                                        const isBank = channelSelect.value === bankChannel;
+                                        bankFields.style.display = isBank ? '' : 'none';
+                                        if (accountSelect) {
+                                            accountSelect.required = isBank;
+                                            accountSelect.disabled = !isBank;
+                                            if (!isBank) {
+                                                accountSelect.value = '';
                                             }
-                                        });
-
-                                        // Keep suggested statement + its bank account aligned on first paint.
-                                        const suggestedOpt = entrySelect.querySelector('option[selected]');
-                                        if (suggestedOpt?.dataset?.bankAccountId && !accountSelect.value) {
-                                            accountSelect.value = String(suggestedOpt.dataset.bankAccountId);
                                         }
-
-                                        syncStatementOptions();
-
-                                        if (suggestedOpt?.value && !suggestedOpt.hidden) {
-                                            entrySelect.value = suggestedOpt.value;
-                                            if (amountInput) {
-                                                amountInput.value = Math.abs(parseFloat(suggestedOpt.dataset.amount || String(amountDue))).toFixed(2);
+                                        if (entrySelect) {
+                                            entrySelect.disabled = !isBank;
+                                            if (!isBank) {
+                                                entrySelect.value = '';
                                             }
+                                        }
+                                    }
+
+                                    channelSelect.addEventListener('change', function () {
+                                        syncChannelUi();
+                                        if (channelSelect.value === bankChannel) {
+                                            syncStatementOptions();
                                         }
                                     });
-                                </script>
-                            @endif
+                                    syncChannelUi();
+
+                                    if (!accountSelect || !entrySelect) return;
+
+                                    function syncStatementOptions() {
+                                        if (channelSelect.value !== bankChannel) return;
+                                        const accountId = accountSelect.value;
+                                        const paymentAmount = Math.abs(parseFloat(amountInput?.value || String(amountDue)) || amountDue);
+                                        Array.from(entrySelect.options).forEach((opt) => {
+                                            if (!opt.value) {
+                                                opt.hidden = false;
+                                                return;
+                                            }
+                                            const matchesAccount = !accountId || String(opt.dataset.bankAccountId) === String(accountId);
+                                            const amount = Math.abs(parseFloat(opt.dataset.amount || '0'));
+                                            const amountPositive = parseFloat(opt.dataset.amount || '0') >= 0;
+                                            const withinBalance = amount <= amountDue + 0.01;
+                                            const matchesSelectedAmount = Math.abs(amount - paymentAmount) <= 0.01;
+                                            opt.hidden = !(matchesAccount && amountPositive && withinBalance && matchesSelectedAmount);
+                                            if (opt.hidden && opt.selected) {
+                                                entrySelect.value = '';
+                                            }
+                                        });
+                                    }
+
+                                    accountSelect.addEventListener('change', syncStatementOptions);
+                                    amountInput?.addEventListener('input', syncStatementOptions);
+                                    entrySelect.addEventListener('change', function () {
+                                        const selected = entrySelect.options[entrySelect.selectedIndex];
+                                        if (selected?.value && amountInput) {
+                                            amountInput.value = Math.abs(parseFloat(selected.dataset.amount || '0')).toFixed(2);
+                                            syncStatementOptions();
+                                        }
+                                    });
+
+                                    const suggestedOpt = entrySelect.querySelector('option[selected]');
+                                    if (suggestedOpt?.dataset?.bankAccountId && !accountSelect.value) {
+                                        accountSelect.value = String(suggestedOpt.dataset.bankAccountId);
+                                    }
+
+                                    syncStatementOptions();
+
+                                    if (suggestedOpt?.value && !suggestedOpt.hidden && channelSelect.value === bankChannel) {
+                                        entrySelect.value = suggestedOpt.value;
+                                        if (amountInput) {
+                                            amountInput.value = Math.abs(parseFloat(suggestedOpt.dataset.amount || String(amountDue))).toFixed(2);
+                                        }
+                                    }
+                                });
+                            </script>
                         </div>
                         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-700 dark:bg-gray-900">
                             <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Follow up</h3>

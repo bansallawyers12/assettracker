@@ -69,7 +69,7 @@ CSV statement duplicates use date + amount + description + optional reference + 
 Reconcile Match invoice is a separate picker from Match existing (transactions). Accepts credits ≤ remaining invoice balance (exact remaining or partial). Accept creates invoice_payment via InvoicePaymentService with an allocation (Dr 1100 / Cr 1130). Do not create rental_income for a statement credit that belongs on open AR. Hidden on loan ledgers.
 
 ## Invoice payments use allocations, not rental_income
-Invoice receipts always create invoice_payment (Dr 1100 / Cr 1130) for the allocated amount via invoice_payment_allocations. Never book rental_income for a credit that belongs on open AR. Never change invoice totals or GST on part-pay. Status: approved → partial → paid; match when credit ≤ remaining balance.
+Invoice receipts always create invoice_payment via invoice_payment_allocations (never rental_income). Bank receipts: Dr 1100 / Cr 1130. Director-funded Record payment (`payment_channel=director_funds`, no bank): Dr 2500 / Cr 1130. Never change invoice totals or GST on part-pay. Status: approved → partial → paid; match when credit ≤ remaining balance. Statement Match invoice stays bank-only.
 
 ## Partial invoice auto-suggest needs name match
 Auto-suggest partial invoice matches only when customer name appears in the statement description. Exact remaining-balance matches still suggest without a name. suggestMany depletes remaining so multiple partials can target one invoice.

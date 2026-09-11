@@ -239,3 +239,98 @@ it('applies two statement credits to the same invoice in one batch', function ()
         ->and($first->fresh()->transaction_id)->not->toBeNull()
         ->and($second->fresh()->transaction_id)->not->toBeNull();
 });
+
+it('records a director-funded invoice payment against AR and director loan', function () {
+    [$user, $entity, $bank, $invoice] = createPartialPaymentFixture(1100);
+
+    $this->actingAs($user)
+        ->post(route('business-entities.invoices.record-payment', [$entity, $invoice]), [
+            'paid_at' => '2026-08-15',
+            'amount' => 1100,
+            'payment_channel' => Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+        ])
+        ->assertRedirect();
+
+    $invoice->refresh();
+
+    expect($invoice->status)->toBe('paid')
+        ->and($invoice->amountDue())->toBe(0.0)
+        ->and($invoice->paymentAllocations)->toHaveCount(1);
+
+    $transaction = Transaction::query()->findOrFail($invoice->payment_transaction_id);
+
+    expect($transaction->transaction_type)->toBe(Transaction::TYPE_INVOICE_PAYMENT)
+        ->and($transaction->payment_channel)->toBe(Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS)
+        ->and($transaction->bank_account_id)->toBeNull()
+        ->and((float) $transaction->amount)->toBe(1100.0);
+
+    $lines = JournalLine::query()
+        ->whereHas('journalEntry', fn ($q) => $q
+            ->where('source_type', Transaction::class)
+            ->where('source_id', $transaction->id)
+            ->where('is_posted', true))
+        ->with('chartOfAccount')
+        ->get();
+
+    $byCode = $lines->keyBy(fn (JournalLine $line) => $line->chartOfAccount->account_code);
+
+    expect((float) $byCode->get('1130')->credit_amount)->toBe(1100.0)
+        ->and((float) $byCode->get('2500')->debit_amount)->toBe(1100.0)
+        ->and($byCode->has('1100'))->toBeFalse();
+});
+
+it('records director-funded payment when the entity has no bank account', function () {
+    [$user, $entity, $bank, $invoice] = createPartialPaymentFixture(550);
+    $bank->delete();
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.show', [$entity, $invoice]))
+        ->assertSuccessful()
+        ->assertSee('Director funds (no bank)', false)
+        ->assertSee('No operating bank linked', false)
+        ->assertDontSee('Link an operating bank account to this entity before recording payment', false);
+
+    $this->actingAs($user)
+        ->post(route('business-entities.invoices.record-payment', [$entity, $invoice]), [
+            'paid_at' => '2026-08-15',
+            'amount' => 550,
+            'payment_channel' => Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+        ])
+        ->assertRedirect();
+
+    expect($invoice->fresh()->status)->toBe('paid')
+        ->and($invoice->fresh()->amountDue())->toBe(0.0);
+});
+
+it('rejects director-funded payment when a bank account is also submitted', function () {
+    [$user, $entity, $bank, $invoice] = createPartialPaymentFixture(500);
+
+    $this->actingAs($user)
+        ->from(route('business-entities.invoices.show', [$entity, $invoice]))
+        ->post(route('business-entities.invoices.record-payment', [$entity, $invoice]), [
+            'paid_at' => '2026-08-15',
+            'amount' => 500,
+            'payment_channel' => Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS,
+            'bank_account_id' => $bank->id,
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('bank_account_id');
+
+    expect($invoice->fresh()->status)->toBe('approved');
+});
+
+it('shows director funds payment option on the invoice page', function () {
+    [$user, $entity, $bank, $invoice] = createPartialPaymentFixture(500);
+
+    $html = $this->actingAs($user)
+        ->get(route('business-entities.invoices.show', [$entity, $invoice]))
+        ->assertSuccessful()
+        ->assertSee('Director funds (no bank)', false)
+        ->assertSee('name="payment_channel"', false)
+        ->assertSee(Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS, false)
+        ->assertSee('Follow up', false)
+        ->getContent();
+
+    expect(substr_count($html, 'rounded-xl border border-gray-200 bg-white p-5 shadow-xs'))
+        ->toBeGreaterThanOrEqual(2);
+});

@@ -19,3 +19,6 @@ Lease picker must not set gstBasisWhenApplicable=inclusive on change — that wi
 
 ## Invoice form account column uses full chart
 Line item account column label is Account (not Income account). Options come from all active chart accounts.
+
+## Record payment supports director funds
+Invoice show Record payment offers Paid via: Bank account or Director funds (no bank). Director funds clears AR against 2500 (no statement match). Bank path unchanged. Do not hide the form when the entity has no operating bank — default to director funds instead.
