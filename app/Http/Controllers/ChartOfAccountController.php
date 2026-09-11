@@ -30,6 +30,7 @@ class ChartOfAccountController extends Controller
             'accountsPayload' => $accounts,
             'accountTypes' => ChartOfAccount::$accountTypes,
             'accountCategories' => ChartOfAccount::$accountCategories,
+            'reportPlacementHints' => ChartOfAccount::reportPlacementHints(),
             'storeUrl' => route('chart-of-accounts.store'),
             'indexUrl' => route('chart-of-accounts.index'),
             'openPanel' => $request->query('panel'),
@@ -134,10 +135,36 @@ class ChartOfAccountController extends Controller
                 'string',
                 'max:20',
                 Rule::unique('chart_of_accounts', 'account_code')->ignore($chart_of_account->id),
+                function ($attribute, $value, $fail) use ($chart_of_account) {
+                    if ($chart_of_account->isSystemAccount()
+                        && trim((string) $value) !== trim((string) $chart_of_account->account_code)) {
+                        $fail(__('System account code cannot be changed.'));
+                    }
+                },
             ],
             'account_name' => 'required|string|max:255',
-            'account_type' => 'required|in:'.implode(',', array_keys(ChartOfAccount::$accountTypes)),
-            'account_category' => ['required', 'string', 'max:50', Rule::in(array_keys(ChartOfAccount::$accountCategories))],
+            'account_type' => [
+                'required',
+                'in:'.implode(',', array_keys(ChartOfAccount::$accountTypes)),
+                function ($attribute, $value, $fail) use ($chart_of_account) {
+                    if ($chart_of_account->isSystemAccount()
+                        && (string) $value !== (string) $chart_of_account->account_type) {
+                        $fail(__('System account type cannot be changed.'));
+                    }
+                },
+            ],
+            'account_category' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::in(array_keys(ChartOfAccount::$accountCategories)),
+                function ($attribute, $value, $fail) use ($chart_of_account) {
+                    if ($chart_of_account->isSystemAccount()
+                        && (string) $value !== (string) $chart_of_account->account_category) {
+                        $fail(__('System account category cannot be changed.'));
+                    }
+                },
+            ],
             'parent_account_id' => [
                 'nullable',
                 'exists:chart_of_accounts,id',
@@ -160,16 +187,20 @@ class ChartOfAccountController extends Controller
             'is_active' => 'nullable|in:0,1',
         ]);
 
-        $chart_of_account->update(array_merge($request->only([
-            'account_code',
-            'account_name',
-            'account_type',
-            'account_category',
-            'parent_account_id',
-            'description',
-        ]), [
+        $attributes = [
+            'account_name' => $request->account_name,
+            'parent_account_id' => $request->parent_account_id ?: null,
+            'description' => $request->description,
             'is_active' => $request->boolean('is_active'),
-        ]));
+        ];
+
+        if (! $chart_of_account->isSystemAccount()) {
+            $attributes['account_code'] = $request->account_code;
+            $attributes['account_type'] = $request->account_type;
+            $attributes['account_category'] = $request->account_category;
+        }
+
+        $chart_of_account->update($attributes);
 
         $chart_of_account->refresh();
         $chart_of_account->loadCount(['journalLines', 'childAccounts', 'assetsAsDepreciationAccount']);
@@ -240,6 +271,7 @@ class ChartOfAccountController extends Controller
      *     parent_account_id: int|null,
      *     description: string|null,
      *     is_active: bool,
+     *     is_system_account: bool,
      *     journal_lines_count: int,
      *     can_delete: bool,
      *     update_url: string,
@@ -261,6 +293,7 @@ class ChartOfAccountController extends Controller
             'parent_account_id' => $account->parent_account_id,
             'description' => $account->description,
             'is_active' => (bool) $account->is_active,
+            'is_system_account' => $account->isSystemAccount(),
             'journal_lines_count' => $journalLines,
             'can_delete' => $journalLines === 0 && $children === 0 && $depreciation === 0,
             'update_url' => route('chart-of-accounts.update', $account),

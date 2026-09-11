@@ -43,4 +43,21 @@ return [
         'interest_expense' => '7500',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Extra system chart accounts (merged with report_accounts)
+    |--------------------------------------------------------------------------
+    |
+    | ChartOfAccount::systemAccountCodes() merges report_accounts with this list.
+    | Keep codes here that posting needs but entity-summary report_accounts omits
+    | (AR 1130, Director / Entity Loan 2500). Code, type, and category are locked
+    | on edit; name, description, parent, and active stay editable.
+    |
+    */
+
+    'system_account_codes' => [
+        '1130',
+        '2500',
+    ],
+
 ];

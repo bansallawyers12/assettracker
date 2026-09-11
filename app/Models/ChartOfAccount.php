@@ -73,6 +73,65 @@ class ChartOfAccount extends Model
         'other_expense' => 'Other Expense',
     ];
 
+    /**
+     * Codes whose code / type / category must not change (posting / report lookups).
+     * Always includes report_accounts plus any explicit system_account_codes extras.
+     *
+     * @return list<string>
+     */
+    public static function systemAccountCodes(): array
+    {
+        $codes = array_merge(
+            array_values(config('financial.report_accounts', [])),
+            config('financial.system_account_codes', [])
+        );
+
+        $normalized = array_map(
+            static fn (mixed $code): string => trim((string) $code),
+            $codes
+        );
+
+        return array_values(array_unique(array_filter(
+            $normalized,
+            static fn (string $code): bool => $code !== ''
+        )));
+    }
+
+    public function isSystemAccount(): bool
+    {
+        return in_array(trim((string) $this->account_code), self::systemAccountCodes(), true);
+    }
+
+    /**
+     * Short UI hint for where an account lands on P&L or the balance sheet.
+     *
+     * @return array<string, string>
+     */
+    public static function reportPlacementHints(): array
+    {
+        return [
+            'current_asset' => 'Appears on Balance Sheet → Current assets',
+            'fixed_asset' => 'Appears on Balance Sheet → Fixed assets',
+            'intangible_asset' => 'Appears on Balance Sheet → Non-current assets',
+            'current_liability' => 'Appears on Balance Sheet → Current liabilities',
+            'long_term_liability' => 'Appears on Balance Sheet → Long-term liabilities',
+            'equity' => 'Appears on Balance Sheet → Equity',
+            'operating_income' => 'Appears on Profit & Loss → Operating income',
+            'other_income' => 'Appears on Profit & Loss → Other income',
+            'operating_expense' => 'Appears on Profit & Loss → Operating expenses',
+            'other_expense' => 'Appears on Profit & Loss → Other expenses',
+        ];
+    }
+
+    public static function reportPlacementHint(?string $category): ?string
+    {
+        if ($category === null || $category === '') {
+            return null;
+        }
+
+        return self::reportPlacementHints()[$category] ?? null;
+    }
+
     public function parentAccount()
     {
         return $this->belongsTo(ChartOfAccount::class, 'parent_account_id');

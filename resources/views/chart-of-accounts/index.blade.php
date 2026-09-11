@@ -4,6 +4,7 @@
             'accounts' => $accountsPayload,
             'accountTypes' => $accountTypes,
             'accountCategories' => $accountCategories,
+            'reportPlacementHints' => $reportPlacementHints,
             'storeUrl' => $storeUrl,
             'indexUrl' => $indexUrl,
             'openPanel' => $openPanel,
@@ -253,7 +254,8 @@
                             <div>
                                 <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Account code</label>
                                 <input type="text" x-model="form.account_code" required maxlength="20"
-                                       class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white" />
+                                       :disabled="isSystemAccount"
+                                       class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:disabled:bg-gray-800/60" />
                                 <p class="mt-1 text-xs text-rose-600" x-show="errors.account_code" x-text="errors.account_code"></p>
                             </div>
                             <div>
@@ -265,7 +267,8 @@
                             <div>
                                 <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Account type</label>
                                 <select x-model="form.account_type" required
-                                        class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                                        :disabled="isSystemAccount"
+                                        class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:disabled:bg-gray-800/60">
                                     <option value="">Select type</option>
                                     <template x-for="item in Object.entries(accountTypes)" :key="item[0]">
                                         <option :value="item[0]" x-text="item[1]"></option>
@@ -276,7 +279,8 @@
                             <div>
                                 <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Account category</label>
                                 <select x-model="form.account_category" required
-                                        class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white">
+                                        :disabled="isSystemAccount"
+                                        class="w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-70 dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:disabled:bg-gray-800/60">
                                     <option value="">Select category</option>
                                     <template x-for="item in Object.entries(accountCategories)" :key="item[0]">
                                         <option :value="item[0]" x-text="item[1]"></option>
@@ -311,6 +315,13 @@
                                       placeholder="Optional notes"></textarea>
                             <p class="mt-1 text-xs text-rose-600" x-show="errors.description" x-text="errors.description"></p>
                         </div>
+                        <p x-show="reportPlacementHint" x-cloak
+                           class="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200"
+                           x-text="reportPlacementHint"></p>
+                        <p x-show="isSystemAccount" x-cloak
+                           class="text-xs text-gray-500 dark:text-gray-400">
+                            System account — code, type, and category are fixed for posting and reports.
+                        </p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
                             Per-entity opening balances are posted via
                             <a href="{{ route('financial-reports.journal-entries.index') }}" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">Journal entries</a>.
@@ -339,6 +350,7 @@
                 accounts: config.accounts || [],
                 accountTypes: config.accountTypes || {},
                 accountCategories: config.accountCategories || {},
+                reportPlacementHints: config.reportPlacementHints || {},
                 storeUrl: config.storeUrl,
                 csrfToken: config.csrfToken,
                 search: '',
@@ -442,6 +454,20 @@
                         .filter((account) => account.is_active && Number(account.id) !== Number(this.editingId || 0))
                         .slice()
                         .sort((a, b) => String(a.account_code).localeCompare(String(b.account_code), undefined, { numeric: true }));
+                },
+                get isSystemAccount() {
+                    if (this.panelMode !== 'edit' || !this.editingId) {
+                        return false;
+                    }
+                    const current = this.accounts.find((item) => Number(item.id) === Number(this.editingId));
+                    return Boolean(current?.is_system_account);
+                },
+                get reportPlacementHint() {
+                    const category = this.form.account_category;
+                    if (!category) {
+                        return '';
+                    }
+                    return this.reportPlacementHints[category] || '';
                 },
                 get filteredAccounts() {
                     const q = this.search.trim().toLowerCase();
