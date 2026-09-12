@@ -11,6 +11,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/views/invoices/** | .ai/rules/invoices.md |
 | app/Models/Transaction.php | .ai/rules/models.md |
 | resources/views/bank-accounts/partials/** | .ai/rules/partials.md |
+| routes/ai.php | .ai/rules/routes.md |
 | database/seeders/** | .ai/rules/seeders.md |
 | app/Services/TransactionPostingService.php, app/Services/BankStatementApplyService.php, app/Services/**, app/Services/{FinancialReportService,BankAccountBalanceSnapshotService}.php, app/Services/ManualJournalEntryService.php, app/Services/FinancialReportService.php, app/Services/BankStatementParseService.php, app/Services/InvoicePaymentService.php, app/Services/BankStatementMatchSuggester.php | .ai/rules/services.md |
 | app/Support/TransactionGstResolver.php | .ai/rules/support.md |

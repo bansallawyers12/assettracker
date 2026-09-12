@@ -15,13 +15,21 @@ class EnsureAccountActive
         $user = $request->user();
 
         if ($user instanceof User && ! $user->isAccountActive()) {
+            $message = __('This account has been deactivated.');
+
+            if ($request->bearerToken() || $request->expectsJson()) {
+                return response()->json(['message' => $message], 401);
+            }
+
             Auth::logout();
 
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
+            if ($request->hasSession()) {
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+            }
 
             return redirect()->route('login')->withErrors([
-                'email' => __('This account has been deactivated.'),
+                'email' => $message,
             ]);
         }
 
