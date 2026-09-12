@@ -2,6 +2,11 @@
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Tools\GetContactTool;
+use App\Mcp\Tools\ListOverdueFollowUpsTool;
+use App\Mcp\Tools\LogFollowUpTool;
+use App\Mcp\Tools\LogNoteTool;
+use App\Mcp\Tools\SearchContactsTool;
 use Laravel\Mcp\Server;
 use Laravel\Mcp\Server\Attributes\Instructions;
 use Laravel\Mcp\Server\Attributes\Name;
@@ -20,7 +25,11 @@ class CrmServer extends Server
      * @var array<int, class-string<Tool>>
      */
     protected array $tools = [
-        //
+        SearchContactsTool::class,
+        GetContactTool::class,
+        ListOverdueFollowUpsTool::class,
+        LogNoteTool::class,
+        LogFollowUpTool::class,
     ];
 
     /**
