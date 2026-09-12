@@ -33,7 +33,7 @@ class ListOverdueFollowUpsTool extends Tool
             ->with(['businessEntity:id,legal_name', 'asset:id,name'])
             ->overdue()
             ->when(
-                isset($validated['business_entity_id']),
+                filled($validated['business_entity_id'] ?? null),
                 fn ($query) => $query->where('business_entity_id', $validated['business_entity_id'])
             )
             ->orderBy('next_due_date')

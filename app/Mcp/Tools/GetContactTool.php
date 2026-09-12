@@ -130,7 +130,7 @@ class GetContactTool extends Tool
                 'business_entity' => $asset->businessEntity?->legal_name,
             ],
             'activity' => $this->activity->for(
-                $entityId ? [$entityId] : [],
+                [],
                 [$asset->id],
                 null,
                 $limit,

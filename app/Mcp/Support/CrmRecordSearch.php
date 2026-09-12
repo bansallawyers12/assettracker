@@ -20,18 +20,17 @@ final class CrmRecordSearch
             return [];
         }
 
+        $types = $type === 'all' ? ['entity', 'asset', 'person'] : [$type];
+        $perType = max(1, (int) ceil($limit / count($types)));
         $results = [];
 
-        if (in_array($type, ['all', 'entity'], true)) {
-            $results = array_merge($results, $this->searchEntities($needle, $limit));
-        }
-
-        if (in_array($type, ['all', 'asset'], true)) {
-            $results = array_merge($results, $this->searchAssets($needle, $limit));
-        }
-
-        if (in_array($type, ['all', 'person'], true)) {
-            $results = array_merge($results, $this->searchPersons($needle, $limit));
+        foreach ($types as $selectedType) {
+            $results = array_merge($results, match ($selectedType) {
+                'entity' => $this->searchEntities($needle, $perType),
+                'asset' => $this->searchAssets($needle, $perType),
+                'person' => $this->searchPersons($needle, $perType),
+                default => [],
+            });
         }
 
         return array_slice($results, 0, $limit);
@@ -42,13 +41,12 @@ final class CrmRecordSearch
      */
     private function searchEntities(string $needle, int $limit): array
     {
-        $like = '%'.$needle.'%';
-
         return BusinessEntity::query()
             ->operationalEntities()
-            ->where(function ($query) use ($like): void {
-                $query->whereRaw('LOWER(legal_name) LIKE ?', [$like])
-                    ->orWhereRaw('LOWER(COALESCE(trading_name, \'\')) LIKE ?', [$like]);
+            ->where(function ($query) use ($needle): void {
+                $like = $this->escapedLike($needle);
+                $query->whereRaw('LOWER(legal_name) LIKE ? ESCAPE \'\\\'', [$like])
+                    ->orWhereRaw('LOWER(COALESCE(trading_name, \'\')) LIKE ? ESCAPE \'\\\'', [$like]);
             })
             ->orderBy('legal_name')
             ->limit($limit)
@@ -72,15 +70,14 @@ final class CrmRecordSearch
      */
     private function searchAssets(string $needle, int $limit): array
     {
-        $like = '%'.$needle.'%';
-
         return Asset::query()
             ->with('businessEntity')
             ->whereHas('businessEntity', fn ($query) => $query->operationalEntities())
-            ->where(function ($query) use ($like): void {
-                $query->whereRaw('LOWER(name) LIKE ?', [$like])
-                    ->orWhereRaw('LOWER(COALESCE(address, \'\')) LIKE ?', [$like])
-                    ->orWhereRaw('LOWER(COALESCE(registration_number, \'\')) LIKE ?', [$like]);
+            ->where(function ($query) use ($needle): void {
+                $like = $this->escapedLike($needle);
+                $query->whereRaw('LOWER(name) LIKE ? ESCAPE \'\\\'', [$like])
+                    ->orWhereRaw('LOWER(COALESCE(address, \'\')) LIKE ? ESCAPE \'\\\'', [$like])
+                    ->orWhereRaw('LOWER(COALESCE(registration_number, \'\')) LIKE ? ESCAPE \'\\\'', [$like]);
             })
             ->orderBy('name')
             ->limit($limit)
@@ -107,7 +104,7 @@ final class CrmRecordSearch
     {
         $matches = [];
 
-        foreach (Person::query()->with(['businessEntities' => fn ($query) => $query->operationalEntities()])->cursor() as $person) {
+        foreach (Person::query()->linkedToOperationalEntities()->with(['businessEntities' => fn ($query) => $query->operationalEntities()])->cursor() as $person) {
             if (! $this->personMatches($person, $needle)) {
                 continue;
             }
@@ -150,5 +147,10 @@ final class CrmRecordSearch
         }
 
         return mb_stripos($haystack, $needle) !== false;
+    }
+
+    private function escapedLike(string $needle): string
+    {
+        return '%'.addcslashes($needle, '%_\\').'%';
     }
 }

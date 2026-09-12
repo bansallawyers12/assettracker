@@ -127,7 +127,7 @@ final class CrmActivityFeed
                 if (filled($email)) {
                     $normalized = mb_strtolower(trim($email));
                     $query->orWhereRaw('LOWER(sender_email) = ?', [$normalized])
-                        ->orWhereRaw('LOWER(COALESCE(recipients, \'\')) LIKE ?', ['%'.$normalized.'%']);
+                        ->orWhereRaw('LOWER(COALESCE(recipients, \'\')) LIKE ? ESCAPE \'\\\'', ['%'.addcslashes($normalized, '%_\\').'%']);
                 }
             })
             ->orderByDesc('sent_date')

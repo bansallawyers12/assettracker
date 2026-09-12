@@ -191,3 +191,48 @@ it('does not let viewers log notes', function () {
 
     expect(Note::query()->count())->toBe(0);
 });
+
+it('does not let viewers log follow-ups', function () {
+    $user = User::factory()->viewer()->create();
+    $due = now()->addDay()->toDateString();
+
+    CrmServer::actingAs($user)
+        ->tool(LogFollowUpTool::class, [
+            'content' => 'Should be blocked',
+            'reminder_date' => $due,
+        ])
+        ->assertHasErrors();
+
+    expect(Reminder::query()->count())->toBe(0);
+});
+
+it('attaches an asset follow-up to the asset entity', function () {
+    $user = User::factory()->create();
+    $entity = crmMcpEntity();
+    $asset = crmMcpAsset($entity);
+    $due = now()->addDays(2)->toDateString();
+
+    CrmServer::actingAs($user)
+        ->tool(LogFollowUpTool::class, [
+            'content' => 'Inspect the roof',
+            'reminder_date' => $due,
+            'asset_id' => $asset->id,
+        ])
+        ->assertOk()
+        ->assertSee('Inspect the roof');
+
+    $reminder = Reminder::query()->sole();
+
+    expect($reminder->asset_id)->toBe($asset->id)
+        ->and($reminder->business_entity_id)->toBe($entity->id);
+});
+
+it('treats percent signs in search as literal text', function () {
+    $user = User::factory()->create();
+    crmMcpEntity();
+
+    CrmServer::actingAs($user)
+        ->tool(SearchContactsTool::class, ['query' => '%', 'type' => 'entity'])
+        ->assertOk()
+        ->assertDontSee('Acme Holdings Pty Ltd');
+});

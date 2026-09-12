@@ -26,7 +26,7 @@ class LogFollowUpTool extends Tool
             return Response::error('Authentication is required.');
         }
 
-        if (! $user->can('create', Reminder::class)) {
+        if (! $user->canMutatePortfolio()) {
             return Response::error('You are not allowed to create follow-ups.');
         }
 
@@ -35,22 +35,31 @@ class LogFollowUpTool extends Tool
             'reminder_date' => ['required', 'date', 'after_or_equal:today'],
             'title' => ['nullable', 'string', 'max:255'],
             'repeat_type' => ['nullable', 'in:none,monthly,quarterly,annual'],
-            'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
+            'business_entity_id' => ['nullable', 'integer', BusinessEntity::ruleExistsOperational()],
             'asset_id' => ['nullable', 'integer', 'exists:assets,id'],
             'priority' => ['nullable', 'in:low,medium,high'],
         ]);
 
-        if (! empty($validated['asset_id']) && ! empty($validated['business_entity_id'])) {
-            $asset = Asset::query()->find($validated['asset_id']);
-            if ($asset === null || (int) $asset->business_entity_id !== (int) $validated['business_entity_id']) {
+        $entityId = $validated['business_entity_id'] ?? null;
+        $assetId = $validated['asset_id'] ?? null;
+
+        if ($assetId !== null) {
+            $asset = Asset::query()->find($assetId);
+            if ($asset === null) {
+                return Response::error('The selected asset was not found.');
+            }
+
+            if ($entityId !== null && (int) $asset->business_entity_id !== (int) $entityId) {
                 return Response::error('The selected asset does not belong to the selected business entity.');
             }
+
+            $entityId = (int) $asset->business_entity_id;
         }
 
-        if (! empty($validated['business_entity_id'])) {
-            $entity = BusinessEntity::query()->findOrFail($validated['business_entity_id']);
-            if ($entity->isClosed()) {
-                return Response::error('This entity is closed, so follow-ups cannot be added.');
+        if ($entityId !== null) {
+            $entity = BusinessEntity::query()->findOrFail($entityId);
+            if ($entity->isClosed() || ! $entity->isOperationalEntity()) {
+                return Response::error('Follow-ups cannot be added for this entity.');
             }
         }
 
@@ -68,8 +77,8 @@ class LogFollowUpTool extends Tool
             'reminder_date' => $due,
             'next_due_date' => $due,
             'repeat_type' => $validated['repeat_type'] ?? 'none',
-            'business_entity_id' => $validated['business_entity_id'] ?? null,
-            'asset_id' => $validated['asset_id'] ?? null,
+            'business_entity_id' => $entityId,
+            'asset_id' => $assetId,
             'priority' => $validated['priority'] ?? 'medium',
             'user_id' => $user->id,
         ]);
