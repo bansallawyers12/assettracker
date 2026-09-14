@@ -22,3 +22,6 @@ Line item account column label is Account (not Income account). Options come fro
 
 ## Record payment supports director funds
 Invoice show Record payment offers Paid via: Bank account or Director funds (no bank). Director funds clears AR against 2500 (no statement match). Bank path unchanged. Do not hide the form when the entity has no operating bank — default to director funds instead.
+
+## Invoice index filters collapse behind a Filters button
+Portfolio and entity invoice lists keep filters hidden by default. Toggle with a Filters control that shows the lucide-filter icon plus the word Filters (badge when active). Expand automatically when any filter query is present. When open, keep Status / Asset / Unpaid AR / Apply on one compact horizontal row (wrap on narrow screens). Do not restore a always-visible filter card above the table.
