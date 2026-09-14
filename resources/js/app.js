@@ -9,6 +9,7 @@ import { initTenantFormFields } from './tenant-form-fields.js';
 import './person-show-workspace.js';
 import './admin-users-workspace.js';
 import './email-templates-workspace.js';
+import './vendors-workspace.js';
 import './entity-create-form.js';
 import './asset-create-form.js';
 import { initBankAccountModal, initBankTransactionsPage } from './bank-account-modal.js';

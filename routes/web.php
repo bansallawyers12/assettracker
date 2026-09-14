@@ -46,6 +46,7 @@ use App\Http\Controllers\RentInvoiceController;
 use App\Http\Controllers\TrackingCategoryController;
 use App\Http\Controllers\TrackingSubCategoryController;
 use App\Http\Controllers\VendorController;
+use App\Http\Controllers\VendorsWorkspaceController;
 use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -421,6 +422,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Global chart of accounts (single shared GL for all entities)
     Route::resource('chart-of-accounts', ChartOfAccountController::class)->except(['show']);
+    Route::get('/vendors/workspace', [VendorsWorkspaceController::class, 'workspace'])->name('vendors.workspace');
+    Route::get('/vendors/form/create', [VendorsWorkspaceController::class, 'createForm'])->name('vendors.form.create');
+    Route::get('/vendors/{vendor}/form/edit', [VendorsWorkspaceController::class, 'editForm'])->name('vendors.form.edit');
     Route::resource('vendors', VendorController::class)->except(['show']);
     Route::post('vendors/auto-link-all', [VendorController::class, 'autoLinkAll'])->name('vendors.auto-link-all');
     Route::post('vendors/sync-all-names', [VendorController::class, 'syncAllNames'])->name('vendors.sync-all-names');

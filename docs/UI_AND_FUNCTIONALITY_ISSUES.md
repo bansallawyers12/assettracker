@@ -211,7 +211,7 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| vendor-001 | UI | Low | Duplicate session error flash on vendors index | Same error banner rendered twice | `resources/views/vendors/index.blade.php` lines 22–31 |
+| vendor-001 | UI | Low | ~~Duplicate session error flash on vendors index~~ **Fixed** | Same error banner rendered twice | SPA index renders a single error flash |
 
 ---
 

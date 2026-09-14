@@ -46,6 +46,7 @@ it('keeps active replacement routes registered', function (string $name) {
     'entities.persons.workspace',
     'bills-tasks.index',
     'email-templates.workspace',
+    'vendors.workspace',
     'reminders.store',
     'reminders.show',
     'business-entities.transactions.store',

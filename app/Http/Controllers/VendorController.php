@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\BusinessEntity;
 use App\Models\Vendor;
 use App\Services\VendorSyncService;
-use App\Support\TableSort;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\View\View;
 
 class VendorController extends Controller
 {
@@ -14,46 +17,29 @@ class VendorController extends Controller
         private readonly VendorSyncService $vendorSync
     ) {}
 
-    public function index(Request $request)
+    public function index(Request $request): View
     {
-        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+        $this->authorize('viewAny', BusinessEntity::class);
 
-        $tableSort = TableSort::resolve($request, ['name', 'email', 'phone', 'abn', 'transactions'], 'name', 'asc');
-        $unlinkedSort = TableSort::resolve($request, ['label', 'count'], 'label', 'asc');
-
-        $query = Vendor::query()->withCount('transactions');
-        $tableSort->applyToQuery($query, [
-            'name' => 'name',
-            'email' => 'email',
-            'phone' => 'phone',
-            'abn' => 'abn',
-            'transactions' => 'transactions_count',
-        ], 'name');
-        $vendors = $query->get();
-
-        $unlinkedGroups = $this->vendorSync->unlinkedVendorNameGroups();
-        $unlinkedGroups = $unlinkedSort->sortCollection($unlinkedGroups, function ($group, string $column) {
-            return match ($column) {
-                'count' => (int) $group->transaction_count,
-                default => $group->label,
-            };
-        });
-
+        $vendors = VendorsWorkspaceController::sortedVendors($request);
+        $unlinkedGroups = VendorsWorkspaceController::sortedUnlinkedGroups($request, $this->vendorSync);
+        $tableSort = VendorsWorkspaceController::tableSort($request);
+        $unlinkedSort = VendorsWorkspaceController::unlinkedSort($request);
         $referenceAreas = $this->vendorSync->referenceAreas();
 
         return view('vendors.index', compact('vendors', 'unlinkedGroups', 'referenceAreas', 'tableSort', 'unlinkedSort'));
     }
 
-    public function create()
+    public function create(): RedirectResponse
     {
-        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+        $this->authorize('viewAny', BusinessEntity::class);
 
-        return view('vendors.create');
+        return redirect()->route('vendors.index', ['panel' => 'create']);
     }
 
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+        $this->authorize('viewAny', BusinessEntity::class);
 
         $validated = $request->validate($this->validationRules(null, $request));
         $validated['name'] = trim($validated['name']);
@@ -66,31 +52,23 @@ class VendorController extends Controller
             $message .= " Linked {$linked} existing transaction(s) that used this vendor name.";
         }
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, $message);
+        }
+
         return redirect()->route('vendors.index')->with('success', $message);
     }
 
-    public function edit(Vendor $vendor)
+    public function edit(Vendor $vendor): RedirectResponse
     {
-        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+        $this->authorize('viewAny', BusinessEntity::class);
 
-        $vendor->loadCount('transactions');
-
-        $usage = $this->vendorSync->usageFor($vendor);
-        $recentTransactions = $vendor->transactions()
-            ->with(['businessEntity', 'asset'])
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->limit(10)
-            ->get();
-
-        $referenceAreas = $this->vendorSync->referenceAreas();
-
-        return view('vendors.edit', compact('vendor', 'usage', 'recentTransactions', 'referenceAreas'));
+        return redirect()->route('vendors.index', ['panel' => 'edit', 'vendor' => $vendor->id]);
     }
 
-    public function update(Request $request, Vendor $vendor)
+    public function update(Request $request, Vendor $vendor): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+        $this->authorize('viewAny', BusinessEntity::class);
 
         $validated = $request->validate($this->validationRules($vendor, $request));
         $validated['name'] = trim($validated['name']);
@@ -105,12 +83,16 @@ class VendorController extends Controller
             }
         }
 
-        return redirect()->route('vendors.edit', $vendor)->with('success', $message);
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, $message);
+        }
+
+        return redirect()->route('vendors.index')->with('success', $message);
     }
 
-    public function destroy(Vendor $vendor)
+    public function destroy(Request $request, Vendor $vendor): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+        $this->authorize('viewAny', BusinessEntity::class);
 
         $linkedCount = $vendor->transactions()->count();
         $vendor->delete();
@@ -120,17 +102,21 @@ class VendorController extends Controller
             $message .= " {$linkedCount} transaction(s) kept the vendor name but are no longer linked to this record.";
         }
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, $message);
+        }
+
         return redirect()->route('vendors.index')->with('success', $message);
     }
 
-    public function linkTransactions(Vendor $vendor)
+    public function linkTransactions(Request $request, Vendor $vendor): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+        $this->authorize('viewAny', BusinessEntity::class);
 
         $linked = $this->vendorSync->linkTransactionsMatchingName($vendor);
         $alsoLinkedPrevious = 0;
 
-        if ($previous = request('previous_name')) {
+        if ($previous = $request->input('previous_name')) {
             $previous = trim((string) $previous);
             if ($previous !== '' && strcasecmp($previous, $vendor->name) !== 0) {
                 $alsoLinkedPrevious = $this->vendorSync->linkTransactionsMatchingName($vendor, $previous);
@@ -142,12 +128,16 @@ class VendorController extends Controller
             ? "Linked {$total} transaction(s) to this vendor. Future edits here will update them automatically."
             : 'No unlinked transactions matched this vendor name.';
 
-        return redirect()->route('vendors.edit', $vendor)->with('success', $message);
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, $message);
+        }
+
+        return redirect()->route('vendors.index')->with('success', $message);
     }
 
-    public function resolveUnlinked(Request $request)
+    public function resolveUnlinked(Request $request): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+        $this->authorize('viewAny', BusinessEntity::class);
 
         $data = $request->validate([
             'vendor_id' => ['required', 'integer', Rule::exists('vendors', 'id')],
@@ -161,18 +151,27 @@ class VendorController extends Controller
             ? "Linked {$linked} transaction(s) for \"{$data['vendor_name_label']}\" to {$vendor->name}."
             : 'No matching unlinked transactions were found.';
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, $message, $linked > 0);
+        }
+
         return redirect()->route('vendors.index')->with($linked > 0 ? 'success' : 'error', $message);
     }
 
-    public function autoLinkAll(Request $request)
+    public function autoLinkAll(Request $request): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+        $this->authorize('viewAny', BusinessEntity::class);
 
         $result = $this->vendorSync->autoLinkAllExactMatches();
 
         if ($result['linked'] === 0) {
-            return redirect()->route('vendors.index')
-                ->with('error', 'No unlinked transactions were found to link.');
+            $message = 'No unlinked transactions were found to link.';
+
+            if ($request->expectsJson()) {
+                return $this->workspaceJsonResponse($request, $message, false);
+            }
+
+            return redirect()->route('vendors.index')->with('error', $message);
         }
 
         $message = "Auto-linked {$result['linked']} transaction(s) across {$result['vendors_touched']} vendor(s).";
@@ -180,22 +179,41 @@ class VendorController extends Controller
             $message .= " Created {$result['vendors_created']} new vendor(s).";
         }
 
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, $message);
+        }
+
         return redirect()->route('vendors.index')->with('success', $message);
     }
 
-    public function syncAllNames()
+    public function syncAllNames(Request $request): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', \App\Models\BusinessEntity::class);
+        $this->authorize('viewAny', BusinessEntity::class);
 
         $result = $this->vendorSync->syncAllLinkedTransactionNames();
 
-        if ($result['transactions_updated'] === 0) {
-            return redirect()->route('vendors.index')
-                ->with('success', 'All linked transactions already use the current vendor names.');
+        $message = $result['transactions_updated'] === 0
+            ? 'All linked transactions already use the current vendor names.'
+            : "Refreshed vendor names on {$result['transactions_updated']} transaction(s) for {$result['vendors_processed']} vendor(s).";
+
+        if ($request->expectsJson()) {
+            return $this->workspaceJsonResponse($request, $message);
         }
 
-        return redirect()->route('vendors.index')
-            ->with('success', "Refreshed vendor names on {$result['transactions_updated']} transaction(s) for {$result['vendors_processed']} vendor(s).");
+        return redirect()->route('vendors.index')->with('success', $message);
+    }
+
+    private function workspaceJsonResponse(Request $request, string $message, bool $ok = true): JsonResponse
+    {
+        $vendors = VendorsWorkspaceController::sortedVendors($request);
+        $unlinkedGroups = VendorsWorkspaceController::sortedUnlinkedGroups($request, $this->vendorSync);
+
+        return response()->json([
+            'status' => $ok,
+            'message' => $message,
+            'list_html' => VendorsWorkspaceController::listHtml($vendors, $request, $unlinkedGroups),
+            'unlinked_html' => VendorsWorkspaceController::unlinkedHtml($unlinkedGroups, $vendors, $request),
+        ]);
     }
 
     /**
