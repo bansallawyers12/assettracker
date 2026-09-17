@@ -50,7 +50,21 @@ it('keeps active replacement routes registered', function (string $name) {
     'reminders.store',
     'reminders.show',
     'business-entities.transactions.store',
+    'business-entities.chart-of-accounts.index',
+    'chart-of-accounts.index',
 ]);
+
+it('redirects legacy entity chart-of-accounts urls to the shared chart with guidance', function () {
+    $routes = file_get_contents(base_path('routes/web.php'));
+
+    expect($routes)->toContain("route('chart-of-accounts.index')")
+        ->and($routes)->toContain("route('chart-of-accounts.create')")
+        ->and($routes)->toContain("route('chart-of-accounts.edit', \$chartOfAccount)")
+        ->and($routes)->toContain('The chart of accounts is firm-wide')
+        ->and(Route::has('business-entities.chart-of-accounts.store'))->toBeFalse()
+        ->and(Route::has('business-entities.chart-of-accounts.update'))->toBeFalse()
+        ->and(Route::has('business-entities.chart-of-accounts.destroy'))->toBeFalse();
+});
 
 it('posts dashboard transactions to the named store route', function () {
     $dashboard = file_get_contents(resource_path('views/dashboard.blade.php'));

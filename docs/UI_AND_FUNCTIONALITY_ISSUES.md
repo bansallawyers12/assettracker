@@ -127,10 +127,10 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| coa-001 | Data | Medium | List `current_balance` / opening fields unused in reports | CoA screen balances ≠ P&L/BS | Accounting doc §2 |
-| coa-002 | UX | Medium | 1150 Deposits Paid not in transaction pickers | Property deposits use `asset_purchase` → 1500 | `.ai/rules/balance-sheet-entries.md` |
-| coa-003 | Data | Low | Many expense types map to 5900 Other Expenses | Coarse P&L granularity | Accounting doc §9 |
-| coa-004 | Functionality | Low | Per-entity CoA CRUD routes removed | Global chart only | `RemovedLegacyRoutesTest` |
+| coa-001 | Data | Medium | List `current_balance` / opening fields unused in reports | CoA screen balances ≠ P&L/BS | Accounting doc §2 | **Fixed** — CoA list shows journal counts; copy states opening/current columns unused; validation no longer accepts opening_balance |
+| coa-002 | UX | Medium | 1150 Deposits Paid not in transaction pickers | Property deposits use `asset_purchase` → 1500 | `.ai/rules/balance-sheet-entries.md` | **Fixed** — clarified by design: Asset Purchase → 1500; 1150 manual-journal only (seeder + BS entry copy); not wired into txn pickers |
+| coa-003 | Data | Low | Many expense types map to 5900 Other Expenses | Coarse P&L granularity | Accounting doc §9 | **Fixed** — dedicated CoA codes 5200–5240 / 7510 + type map (marketing, travel, rent/utilities, COGS, related-party, loan fees) |
+| coa-004 | Functionality | Low | Per-entity CoA CRUD routes removed | Global chart only | `RemovedLegacyRoutesTest` | **Fixed** — entity CoA URLs redirect to shared chart with firm-wide flash; SPA copy explains global scope |
 
 ---
 

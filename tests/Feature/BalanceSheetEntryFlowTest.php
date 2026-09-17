@@ -108,6 +108,10 @@ it('defaults balance sheet entries to asset_purchase and posts to capital COA', 
 
     expect($controller)->toContain("'transaction_type' => 'asset_purchase'")
         ->and($form)->toContain("'asset_purchase'")
+        ->and($form)->toContain('Asset Purchase')
+        ->and($form)->toContain('1500')
+        ->and($form)->toContain('1150 Deposits Paid')
+        ->and($form)->toContain('manual journal')
         ->and($source)->toContain("'asset_purchase' => \$this->findByName('Property & Assets (Capital)')")
         ->and($source)->not->toContain('TYPE_DEPOSIT_PAID')
         ->and($source)->not->toContain("findByName('Deposits Paid')");

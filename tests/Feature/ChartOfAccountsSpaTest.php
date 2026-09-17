@@ -23,12 +23,17 @@ it('renders the chart of accounts page as an alpine spa', function () {
         ->and($index)->toContain('isSystemAccount')
         ->and($index)->toContain('is_system_account')
         ->and($index)->toContain('System account — code, type, and category are fixed for posting and reports.')
+        ->and($index)->toContain('journal line counts')
+        ->and($index)->toContain('current_balance')
+        ->and($index)->toContain('Firm-wide')
+        ->and($index)->toContain('1150 Deposits Paid')
         ->and($index)->toContain('canMutate')
         ->and($controller)->toContain('expectsJson()')
         ->and($controller)->toContain('accountPayload')
         ->and($controller)->toContain('is_system_account')
         ->and($controller)->toContain('reportPlacementHints')
         ->and($controller)->toContain('isSystemAccount')
+        ->and($controller)->not->toContain("'opening_balance' => 'nullable|numeric'")
         ->and($controller)->toContain("['panel' => 'create']")
         ->and($controller)->toContain("'panel' => 'edit'")
         ->and($controller)->toContain('can_delete');
@@ -39,4 +44,15 @@ it('keeps create and edit named routes while funneling into the spa', function (
         ->and(route('chart-of-accounts.edit', 1))->toContain('/chart-of-accounts/1/edit')
         ->and(route('chart-of-accounts.store'))->toContain('/chart-of-accounts')
         ->and(route('chart-of-accounts.destroy', 1))->toContain('/chart-of-accounts/1');
+});
+
+it('does not expose stored balances in the SPA account payload keys', function () {
+    $controller = file_get_contents(app_path('Http/Controllers/ChartOfAccountController.php'));
+    $payloadStart = strpos($controller, 'private function accountPayload');
+    expect($payloadStart)->not->toBeFalse();
+    $payload = substr($controller, $payloadStart, 900);
+
+    expect($payload)->toContain("'journal_lines_count' => \$journalLines")
+        ->and($payload)->not->toContain('current_balance')
+        ->and($payload)->not->toContain('opening_balance');
 });

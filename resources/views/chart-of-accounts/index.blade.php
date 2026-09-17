@@ -25,7 +25,9 @@
                 <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Accounting</p>
                 <h1 class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Chart of Accounts</h1>
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Shared by all business entities. Balances by entity appear on financial reports.
+                    Firm-wide chart shared by every entity (legacy per-entity CoA URLs redirect here).
+                    This list shows journal line counts — not stored opening/current balances.
+                    Entity P&amp;L and balance sheet figures come from posted journals only.
                 </p>
             </div>
             @can('create', \App\Models\BusinessEntity::class)
@@ -326,8 +328,11 @@
                             System account — code, type, and category are fixed for posting and reports.
                         </p>
                         <p class="text-xs text-gray-500 dark:text-gray-400">
-                            Per-entity opening balances are posted via
-                            <a href="{{ route('financial-reports.journal-entries.index') }}" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">Journal entries</a>.
+                            Opening positions are posted via
+                            <a href="{{ route('financial-reports.journal-entries.index') }}" class="font-medium text-indigo-600 hover:underline dark:text-indigo-400">Journal entries</a>
+                            (offset 3190 Opening Balance Equity). Chart <code class="text-[11px]">opening_balance</code> /
+                            <code class="text-[11px]">current_balance</code> columns are unused and never drive reports.
+                            Property deposits use Asset Purchase → 1500; account 1150 Deposits Paid is manual-journal only.
                         </p>
                         <p class="text-xs text-rose-600" x-show="formError" x-text="formError"></p>
                     </div>

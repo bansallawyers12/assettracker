@@ -20,10 +20,11 @@
             <div class="bg-white dark:bg-gray-800 shadow-md rounded-lg p-6 border-t-4 border-indigo-400 dark:border-indigo-600">
                 <p class="mb-4 text-sm text-gray-600 dark:text-gray-300">
                     Record capital and director-loan items not paid through a bank account
-                    (for example a property deposit from director funds — use Asset Purchase).
+                    (for example a property deposit from director funds — use <strong>Asset Purchase</strong>, which posts to Property &amp; Assets 1500).
+                    Account 1150 Deposits Paid is not on this form; use a
+                    <a href="{{ route('business-entities.financial-reports.journal-entries.create', $businessEntity) }}" class="text-indigo-600 hover:underline dark:text-indigo-400">manual journal</a>
+                    only when committed-but-unsettled deposits must stay visible separately.
                     For day-to-day income and expenses, use Add transaction on the dashboard.
-                    For advanced journals, use
-                    <a href="{{ route('business-entities.financial-reports.journal-entries.create', $businessEntity) }}" class="text-indigo-600 hover:underline dark:text-indigo-400">manual journal</a>.
                 </p>
 
                 @if (session('success'))

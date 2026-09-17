@@ -374,13 +374,19 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Accounting System Routes — chart of accounts is global; legacy nested URLs redirect
     Route::get('/business-entities/{businessEntity}/chart-of-accounts', function () {
-        return redirect()->route('chart-of-accounts.index');
+        return redirect()
+            ->route('chart-of-accounts.index')
+            ->with('success', 'The chart of accounts is firm-wide — not per entity. Showing the shared chart.');
     })->name('business-entities.chart-of-accounts.index');
     Route::get('/business-entities/{businessEntity}/chart-of-accounts/create', function () {
-        return redirect()->route('chart-of-accounts.create');
+        return redirect()
+            ->route('chart-of-accounts.create')
+            ->with('success', 'The chart of accounts is firm-wide — not per entity. Add accounts on the shared chart.');
     })->name('business-entities.chart-of-accounts.create');
     Route::get('/business-entities/{businessEntity}/chart-of-accounts/{chartOfAccount}/edit', function (ChartOfAccount $chartOfAccount) {
-        return redirect()->route('chart-of-accounts.edit', $chartOfAccount);
+        return redirect()
+            ->route('chart-of-accounts.edit', $chartOfAccount)
+            ->with('success', 'The chart of accounts is firm-wide — not per entity. Editing the shared account.');
     })->name('business-entities.chart-of-accounts.edit');
     Route::get('business-entities/{businessEntity}/financial-reports/account-transactions', [FinancialReportController::class, 'accountTransactions'])->name('business-entities.financial-reports.account-transactions');
     Route::get('business-entities/{businessEntity}/financial-reports/profit-loss', [FinancialReportController::class, 'profitLoss'])->name('business-entities.financial-reports.profit-loss');

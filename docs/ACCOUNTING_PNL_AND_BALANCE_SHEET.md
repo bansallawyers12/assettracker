@@ -35,7 +35,7 @@ Invoices have a separate posting path (`InvoicePostingService`). Receipt of an i
 | `transactions` | Source document. Journals date from `paid_at`, else `date`. |
 | `bank_accounts` | Operational accounts. Purpose (`general`, `loan`, `offset`, rent, …) changes **which journals are allowed**, not which CoA cash account is used. **All cash-like banks post to the same GL 1100.** |
 
-`chart_of_accounts.opening_balance` and `current_balance` are **not** used by P&L/BS. Opening positions belong in **manual opening-balance journals** (offset **3190** Opening Balance Equity). `current_balance` is unused stale storage.
+`chart_of_accounts.opening_balance` and `current_balance` are **not** used by P&L/BS. Opening positions belong in **manual opening-balance journals** (offset **3190** Opening Balance Equity). `current_balance` is unused stale storage. The Chart of Accounts SPA lists **journal line counts** (not those columns) and states this explicitly so the screen cannot be mistaken for report balances.
 
 Reports ignore journals where `is_posted` is false **or** `total_debit ≠ total_credit`. Because such an entry would silently vanish from both reports, `persistJournalEntry` **refuses to save an unbalanced set of lines** (logs an error and removes any existing entry instead). Posting also **creates** 1100, 2500, 4000, 2100, and 1140 when the chart is missing them, so a journal is never written one line short.
 
@@ -60,7 +60,7 @@ Canonical codes (from `ChartOfAccountSeeder` / `config/financial.php`):
 | 3200 | Share Capital | BS (`equity_contribution`) |
 | 4000 | Long Term Loans | BS; bank mortgages / offset↔loan transfers |
 | 4100–4900 | Income | P&L |
-| 5100–5900, 7500 | Expenses | P&L (`loan_interest` → **7500**) |
+| 5100–5240, 5900, 7500–7510 | Expenses | P&L (`loan_interest` → **7500**, `loan_fees` → **7510**) |
 
 P&L groups by `account_category` (operating vs other income/expense). The balance sheet groups assets / liabilities / equity the same way, then **injects**:
 
@@ -263,13 +263,13 @@ These were live defects and have been closed in code (covered by `tests/Feature/
 
 9. **Drawings vs P&L.** `directors_fees` and `other_personal_expenses` post to **3100** equity. They never appear on P&L. If users classify personal costs as “other expenses” (5900) instead, P&L is overstated.
 
-10. **CoA `current_balance` is unused**; opening CoA field is unused. Anyone reading those columns will not match reports.
+10. **CoA `current_balance` is unused**; opening CoA field is unused. Anyone reading those columns will not match reports. The CoA UI no longer surfaces them as balances.
 
-11. **1150 Deposits Paid** is intentionally unreachable from the transaction forms. `.ai/rules/balance-sheet-entries.md` settles deposits on `asset_purchase` → **1500** (a deposit and a settlement payment are the same gesture here — capital spent on an asset — and the asset link identifies the property), and `tests/Feature/BalanceSheetEntryFlowTest.php` asserts the posting service references neither `TYPE_DEPOSIT_PAID` nor `findByName('Deposits Paid')`. The account stays **active** for the occasional manual journal (Dr 1150 / Cr 2500 on exchange, Dr 1500 / Cr 1150 at settlement) when committed-but-unsettled funds need to be visible. Automating it was rejected: it needs a deposit marker the form rule bans, and it adds a settlement reclass that silently understates the property whenever someone forgets it. Not a defect.
+11. **1150 Deposits Paid** is intentionally unreachable from the transaction forms. `.ai/rules/balance-sheet-entries.md` settles deposits on `asset_purchase` → **1500** (a deposit and a settlement payment are the same gesture here — capital spent on an asset — and the asset link identifies the property), and `tests/Feature/BalanceSheetEntryFlowTest.php` asserts the posting service references neither `TYPE_DEPOSIT_PAID` nor `findByName('Deposits Paid')`. The account stays **active** for the occasional manual journal (Dr 1150 / Cr 2500 on exchange, Dr 1500 / Cr 1150 at settlement) when committed-but-unsettled funds need to be visible. Automating it was rejected: it needs a deposit marker the form rule bans, and it adds a settlement reclass that silently understates the property whenever someone forgets it. Not a defect — balance-sheet entry and CoA copy now say so.
 
 ### Low
 
-12. Many miscellaneous expense types collapse to **5900**. P&L granularity is coarse for those.
+12. Many miscellaneous expense types no longer collapse only to **5900**: marketing → **5200**, travel → **5210**, rent/office utilities → **5220**, COGS → **5230**, related-party expenses → **5240**, loan fees → **7510** (with 5900 still the fallback and the home for `other_expenses`). Re-seed the chart (`php artisan db:seed --class=ChartOfAccountSeeder`) so production has the new codes.
 
 13. `wages_superannuation` maps entirely to **5170**, not 5180.
 

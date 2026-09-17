@@ -862,30 +862,51 @@ class TransactionPostingService
             'payg_payment' => $this->findByName('PAYG Payable') ?? $this->findAccount('2120'),
             'bas_payments' => $this->findByName('GST Clearing') ?? $this->findAccount('2100'),
             'asic_payment' => $this->findByName('ASIC Fees')
+                ?? $this->findAccount('5125')
                 ?? $this->findByName('Other Expenses')
                 ?? $this->findByName('Other Expense')
                 ?? $this->findAccount('5900'),
             'other_expenses' => $this->findByName('Other Expenses') ?? $this->findByName('Other Expense') ?? $this->findAccount('5900'),
             'asset_purchase' => $this->findByName('Property & Assets (Capital)') ?? $this->findByName('Property & Equipment') ?? $this->findAccount('1500'),
             'capital_expenditure' => $this->findByName('Property & Assets (Capital)') ?? $this->findAccount('1500'),
-            'cogs' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
-            'rent_utilities' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
-            'marketing_advertising' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
-            'travel_expenses' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'cogs' => $this->findByName('Cost of Goods Sold')
+                ?? $this->findAccount('5230')
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findAccount('5900'),
+            'rent_utilities' => $this->findByName('Rent & Office Utilities')
+                ?? $this->findAccount('5220')
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findAccount('5900'),
+            'marketing_advertising' => $this->findByName('Marketing & Advertising')
+                ?? $this->findAccount('5200')
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findAccount('5900'),
+            'travel_expenses' => $this->findByName('Travel Expenses')
+                ?? $this->findAccount('5210')
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findAccount('5900'),
             'loan_repayments' => $this->ensureLongTermLoansAccount(),
             'loan_interest' => $this->findByName('Interest Expense')
                 ?? $this->findAccount((string) config('financial.report_accounts.interest_expense', '7500'))
                 ?? $this->findByName('Other Expenses')
                 ?? $this->findAccount('5900'),
-            'loan_fees' => $this->findByName('Other Expenses')
+            'loan_fees' => $this->findByName('Loan Fees')
+                ?? $this->findAccount('7510')
+                ?? $this->findByName('Other Expenses')
                 ?? $this->findByName('Other Expense')
                 ?? $this->findAccount('5900'),
             'directors_fees' => $this->findByName('Owner Drawings (Personal)')
                 ?? $this->findAccount((string) config('financial.report_accounts.owner_drawings', '3100'))
                 ?? $this->findByName('Other Expenses')
                 ?? $this->findAccount('5900'),
-            'rent_to_related_party' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
-            'purchases_from_related_party' => $this->findByName('Other Expenses') ?? $this->findAccount('5900'),
+            'rent_to_related_party' => $this->findByName('Related Party Expenses')
+                ?? $this->findAccount('5240')
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findAccount('5900'),
+            'purchases_from_related_party' => $this->findByName('Related Party Expenses')
+                ?? $this->findAccount('5240')
+                ?? $this->findByName('Other Expenses')
+                ?? $this->findAccount('5900'),
             'other_personal_expenses' => $this->findByName('Owner Drawings (Personal)')
                 ?? $this->findAccount((string) config('financial.report_accounts.owner_drawings', '3100'))
                 ?? $this->findByName('Other Expenses')

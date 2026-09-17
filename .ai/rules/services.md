@@ -29,6 +29,7 @@ When creating transactions from chart-account reconciliation: account 2500 maps 
 P&L and the balance sheet only read journals where is_posted is true AND total_debit = total_credit, so a journal that is short one line disappears from both reports instead of failing loudly.
 
 - Any new `Transaction` type added to `$incomeTypes` / `$expenseTypes` MUST get an entry in `TransactionPostingService::counterAccountMapping()`, otherwise paid rows never post. `tests/Feature/JournalPostingIntegrityTest.php` fails if a type is unmapped.
+- Prefer dedicated expense codes over dumping everything into 5900: marketing 5200, travel 5210, rent/office utilities 5220, COGS 5230, related-party 5240, loan fees 7510, ASIC 5125. Keep 5900 for `other_expenses` and as fallback when a code is missing.
 - The GL accounts posting depends on (1100 cash, 1130 AR, 2500 director loan, 4000 long-term loans, 2100 GST payable, 1140 GST receivable) are created on demand by `ensure*Account()` helpers. Do not reintroduce nullable lookups for them or `if ($accounts['x'])` guards — the array shape is non-nullable.
 - `persistJournalEntry()` returns false and saves nothing when debits and credits differ by more than half a cent. Callers must return null on false.
 

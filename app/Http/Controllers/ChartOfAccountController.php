@@ -339,7 +339,6 @@ class ChartOfAccountController extends Controller
                 },
             ],
             'description' => 'nullable|string',
-            'opening_balance' => 'nullable|numeric',
         ]);
     }
 

@@ -61,6 +61,7 @@ class ChartOfAccountSeeder extends Seeder
             ['1100', 'Bank / Cash Account', 'asset', 'current_asset', 'Operating bank and cash accounts'],
             ['1130', 'Accounts Receivable', 'asset', 'current_asset', 'Amounts owed by customers for invoiced sales'],
             ['1140', 'GST Receivable', 'asset', 'current_asset', 'GST credits on purchases awaiting BAS refund or offset'],
+            ['1150', 'Deposits Paid', 'asset', 'current_asset', 'Manual-journal only for committed-but-unsettled deposits (Dr 1150 / Cr 2500 on exchange; Dr 1500 / Cr 1150 at settlement). Property deposits on transactions use Asset Purchase → 1500 — not this account.'],
             ['1500', 'Property & Assets (Capital)', 'asset', 'fixed_asset', 'Investment properties and capital assets held by the entity'],
             ['1590', 'Accumulated Depreciation', 'asset', 'fixed_asset', 'Contra-asset — accumulated depreciation on capital assets'],
 
@@ -95,7 +96,13 @@ class ChartOfAccountSeeder extends Seeder
             ['5170', 'Wages & Salaries', 'expense', 'operating_expense', 'Employee wages and salaries (excludes super)'],
             ['5180', 'Superannuation', 'expense', 'operating_expense', 'Superannuation contributions paid or accrued'],
             ['5195', 'Depreciation Expense', 'expense', 'operating_expense', 'Depreciation on capital assets'],
+            ['5200', 'Marketing & Advertising', 'expense', 'operating_expense', 'Marketing, advertising, and listing promotion costs'],
+            ['5210', 'Travel Expenses', 'expense', 'operating_expense', 'Travel and accommodation related to the business'],
+            ['5220', 'Rent & Office Utilities', 'expense', 'operating_expense', 'Office rent and non-property utilities (property water uses 5100)'],
+            ['5230', 'Cost of Goods Sold', 'expense', 'operating_expense', 'Direct costs of goods or services sold'],
+            ['5240', 'Related Party Expenses', 'expense', 'operating_expense', 'Rent paid to or purchases from related parties'],
             ['7500', 'Interest Expense', 'expense', 'operating_expense', 'Interest on mortgages and other borrowings'],
+            ['7510', 'Loan Fees', 'expense', 'operating_expense', 'Loan establishment, package, and other borrowing fees (cash path); on a loan ledger these still capitalise vs 4000'],
             ['5900', 'Other Expenses', 'expense', 'other_expense', 'Miscellaneous expenses not classified elsewhere'],
         ];
     }
