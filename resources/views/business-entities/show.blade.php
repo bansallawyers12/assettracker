@@ -109,6 +109,7 @@
                     </p>
                     <ul class="mt-2 list-disc space-y-1 pl-5 text-amber-800 dark:text-amber-200">
                         <li>{{ __('Profit & Loss, Balance Sheet, and Manual journals') }}</li>
+                        <li>{{ __('Creating invoices and linking bank accounts') }}</li>
                         <li>{{ __('Company officer / trustee roles on the Persons tab') }}</li>
                         <li>{{ __('Main entity list, financial reports, and accounting pickers') }}</li>
                     </ul>
@@ -221,9 +222,24 @@
                             <!-- Invoices Tab -->
                             <div id="tab_invoices" class="tab-content hidden">
                                 <div class="space-y-3">
+                                    @if ($businessEntity->isClosed())
+                                        <div class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100" role="status" data-closed-invoices-notice>
+                                            <p class="font-medium">{{ __('Invoices cannot be created') }}</p>
+                                            <p class="mt-1 text-rose-800 dark:text-rose-200">
+                                                {{ __('This entity is closed. Reopen it from Edit company profile before creating invoices.') }}
+                                            </p>
+                                        </div>
+                                    @elseif ($businessEntity->isTenancyContactOnly())
+                                        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="status" data-tenancy-invoices-notice>
+                                            <p class="font-medium">{{ __('Invoices are not available') }}</p>
+                                            <p class="mt-1 text-amber-800 dark:text-amber-200">
+                                                {{ __('Invoicing applies to operating entities only. This record is a tenancy / property manager contact.') }}
+                                            </p>
+                                        </div>
+                                    @endif
                                     <div class="flex justify-between items-center">
                                         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Invoices</h3>
-                                        @unless ($businessEntity->isClosed())
+                                        @unless ($businessEntity->isClosed() || $businessEntity->isTenancyContactOnly())
                                             <a href="{{ route('business-entities.invoices.create', $businessEntity->id) }}" class="inline-flex items-center px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-sm shadow-md transition-all duration-200 transform hover:scale-105">
                                                 <x-lucide-plus class="h-4 w-4 mr-1" />
                                                 Create Invoice
@@ -562,13 +578,29 @@
                                     data-entity-id="{{ $businessEntity->id }}"
                                     data-list-url="{{ route('entities.bank-accounts.workspace', $businessEntity) }}"
                                 >
+                                    @if ($businessEntity->isClosed())
+                                        <div class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100" role="status" data-closed-bank-accounts-notice>
+                                            <p class="font-medium">{{ __('Bank accounts cannot be changed') }}</p>
+                                            <p class="mt-1 text-rose-800 dark:text-rose-200">
+                                                {{ __('This entity is closed. Reopen it from Edit company profile before linking or editing bank accounts.') }}
+                                            </p>
+                                        </div>
+                                    @elseif ($businessEntity->isTenancyContactOnly())
+                                        <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="status" data-tenancy-bank-accounts-notice>
+                                            <p class="font-medium">{{ __('Bank linking is limited') }}</p>
+                                            <p class="mt-1 text-amber-800 dark:text-amber-200">
+                                                {{ __('Adding or linking bank accounts applies to operating entities. This tenancy / property manager contact is read-only for accounting bank tools.') }}
+                                            </p>
+                                        </div>
+                                    @endif
+
                                     <div class="flex flex-wrap justify-between items-center gap-2">
                                         <h3 class="text-base font-semibold text-gray-900 dark:text-gray-100">Bank Accounts</h3>
                                         <div class="flex flex-wrap gap-2">
                                             <a href="{{ route('bank-accounts.index') }}" class="inline-flex items-center px-2 py-1 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200">
                                                 Portfolio registry
                                             </a>
-                                            @unless ($businessEntity->isClosed())
+                                            @unless ($businessEntity->isClosed() || $businessEntity->isTenancyContactOnly())
                                                 @can('update', $businessEntity)
                                                     <button
                                                         type="button"

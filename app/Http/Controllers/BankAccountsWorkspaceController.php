@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use App\Models\BusinessEntityBankAccount;
 use App\Models\Person;
 use App\Services\BankAccountAssetLinkService;
+use App\Support\SecurityAuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BankAccountsWorkspaceController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     public function __construct(
         private BankAccountAssetLinkService $bankAccountAssetLinkService
     ) {}
@@ -38,6 +42,7 @@ class BankAccountsWorkspaceController extends Controller
     public function attachForm(Request $request, BusinessEntity $businessEntity): JsonResponse
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         $defaultPurpose = $request->query('default_purpose');
         if ($defaultPurpose && ! in_array($defaultPurpose, BankAccount::ENTITY_PURPOSES, true)) {
@@ -69,6 +74,7 @@ class BankAccountsWorkspaceController extends Controller
     public function createForm(Request $request, BusinessEntity $businessEntity): JsonResponse
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $persons = Person::query()
@@ -94,6 +100,7 @@ class BankAccountsWorkspaceController extends Controller
     public function editForm(BusinessEntity $businessEntity, BankAccount $bankAccount): JsonResponse
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         if (! $bankAccount->hasLinkOnEntity($businessEntity) && (int) $bankAccount->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
@@ -107,7 +114,7 @@ class BankAccountsWorkspaceController extends Controller
             ->sortBy(fn (Person $person) => $person->displayName(), SORT_NATURAL | SORT_FLAG_CASE)
             ->values();
 
-        \App\Support\SecurityAuditLogger::bankAccountNumberViewed(auth()->user(), $bankAccount, 'edit_form');
+        SecurityAuditLogger::bankAccountNumberViewed(auth()->user(), $bankAccount, 'edit_form');
 
         return response()->json([
             'status' => true,
@@ -123,6 +130,7 @@ class BankAccountsWorkspaceController extends Controller
     public function rentAssetsForm(BusinessEntity $businessEntity, BusinessEntityBankAccount $bankAccountLink): JsonResponse
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         if ((int) $bankAccountLink->business_entity_id !== (int) $businessEntity->id) {
             abort(403);
@@ -157,6 +165,7 @@ class BankAccountsWorkspaceController extends Controller
     public function editLinkForm(BusinessEntity $businessEntity, BusinessEntityBankAccount $bankAccountLink): JsonResponse
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
 
         if ((int) $bankAccountLink->business_entity_id !== (int) $businessEntity->id) {
             abort(403);

@@ -10,9 +10,12 @@ trait EnsuresOperationalBusinessEntity
 {
     /**
      * Block accounting, invoices, rent tools, and tracking categories for tenancy/property-manager contacts.
+     * Closed entities are blocked first — accounting tools stay read-only while closed.
      */
     protected function ensureOperationalForAccounting(BusinessEntity $businessEntity): void
     {
+        $this->ensureNotClosed($businessEntity);
+
         if (! $businessEntity->isTenancyContactOnly()) {
             return;
         }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Http\Resources\ContactListResource;
 use App\Models\BusinessEntity;
 use App\Models\ContactList;
@@ -9,6 +10,8 @@ use Illuminate\Http\JsonResponse;
 
 class ContactListsWorkspaceController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     public function index(BusinessEntity $businessEntity): JsonResponse
     {
         $this->authorize('view', $businessEntity);
@@ -28,6 +31,7 @@ class ContactListsWorkspaceController extends Controller
     public function createForm(BusinessEntity $businessEntity): JsonResponse
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
         return response()->json([
             'status' => true,
@@ -42,6 +46,7 @@ class ContactListsWorkspaceController extends Controller
     public function editForm(BusinessEntity $businessEntity, ContactList $contactList): JsonResponse
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
         $this->ensureBelongs($businessEntity, $contactList);
 
         return response()->json([

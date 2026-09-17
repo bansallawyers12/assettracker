@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
 use App\Http\Resources\ComplianceCategoryResource;
 use App\Http\Resources\ComplianceDocumentFileResource;
 use App\Http\Resources\ComplianceYearWorkspaceResource;
@@ -12,17 +13,25 @@ use App\Models\ComplianceDocumentFile;
 use App\Models\ComplianceYearRecord;
 use App\Rules\UniqueComplianceLabelInCategory;
 use App\Services\ComplianceYearService;
+use App\Support\DocumentStorage;
 use App\Support\FinancialYear;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ComplianceWorkspaceController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     public function __construct(
         private ComplianceYearService $yearService
     ) {}
+
+    private function authorizeOpenMutation(BusinessEntity $businessEntity): void
+    {
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+    }
 
     public function indexWorkspace(Request $request, BusinessEntity $businessEntity)
     {
@@ -41,7 +50,7 @@ class ComplianceWorkspaceController extends Controller
 
     public function updateBasReporting(Request $request, BusinessEntity $businessEntity): JsonResponse
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
 
         $data = $request->validate([
             'bas_reporting_frequency' => 'required|in:annual,quarterly',
@@ -63,7 +72,7 @@ class ComplianceWorkspaceController extends Controller
 
     public function storeCategory(Request $request, BusinessEntity $businessEntity, ComplianceYearRecord $record)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureYearRecordBelongs($businessEntity, $record);
 
         if ($locked = $this->lockedResponse($record)) {
@@ -101,7 +110,7 @@ class ComplianceWorkspaceController extends Controller
 
     public function updateCategory(Request $request, BusinessEntity $businessEntity, ComplianceCategory $category)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureCategoryBelongs($businessEntity, $category);
 
         if ($locked = $this->lockedResponse($category->yearRecord)) {
@@ -130,7 +139,7 @@ class ComplianceWorkspaceController extends Controller
 
     public function destroyCategory(BusinessEntity $businessEntity, ComplianceCategory $category)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureCategoryBelongs($businessEntity, $category);
 
         if ($locked = $this->lockedResponse($category->yearRecord)) {
@@ -151,7 +160,7 @@ class ComplianceWorkspaceController extends Controller
 
     public function storeSlot(Request $request, BusinessEntity $businessEntity, ComplianceCategory $category)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureCategoryBelongs($businessEntity, $category);
 
         if ($locked = $this->lockedResponse($category->yearRecord)) {
@@ -184,7 +193,7 @@ class ComplianceWorkspaceController extends Controller
 
     public function updateFile(Request $request, BusinessEntity $businessEntity, ComplianceDocumentFile $complianceFile)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureFileBelongs($businessEntity, $complianceFile);
 
         if ($locked = $this->lockedResponse($complianceFile->yearRecord)) {
@@ -210,7 +219,7 @@ class ComplianceWorkspaceController extends Controller
 
     public function moveFile(Request $request, BusinessEntity $businessEntity, ComplianceDocumentFile $complianceFile)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureFileBelongs($businessEntity, $complianceFile);
 
         if ($locked = $this->lockedResponse($complianceFile->yearRecord)) {
@@ -260,7 +269,7 @@ class ComplianceWorkspaceController extends Controller
 
     public function destroyFile(BusinessEntity $businessEntity, ComplianceDocumentFile $complianceFile)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureFileBelongs($businessEntity, $complianceFile);
 
         if ($locked = $this->lockedResponse($complianceFile->yearRecord)) {
@@ -274,8 +283,8 @@ class ComplianceWorkspaceController extends Controller
             ], 422);
         }
 
-        if ($complianceFile->path && \App\Support\DocumentStorage::exists($complianceFile->path)) {
-            \App\Support\DocumentStorage::delete($complianceFile->path);
+        if ($complianceFile->path && DocumentStorage::exists($complianceFile->path)) {
+            DocumentStorage::delete($complianceFile->path);
         }
 
         $complianceFile->delete();
@@ -285,7 +294,7 @@ class ComplianceWorkspaceController extends Controller
 
     public function updateYearNotes(Request $request, BusinessEntity $businessEntity, ComplianceYearRecord $record)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureYearRecordBelongs($businessEntity, $record);
 
         if ($record->isLocked()) {
@@ -303,7 +312,7 @@ class ComplianceWorkspaceController extends Controller
 
     public function updateFileStatus(Request $request, BusinessEntity $businessEntity, ComplianceDocumentFile $complianceFile)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->authorize('update', $complianceFile);
         $this->ensureFileBelongs($businessEntity, $complianceFile);
 
@@ -312,9 +321,9 @@ class ComplianceWorkspaceController extends Controller
         }
 
         $data = $request->validate([
-            'status'      => 'required|in:not_started,uploaded,lodged,paid',
+            'status' => 'required|in:not_started,uploaded,lodged,paid',
             'lodged_date' => 'nullable|date',
-            'paid_date'   => 'nullable|date',
+            'paid_date' => 'nullable|date',
         ]);
 
         if (! $complianceFile->hasFile() && in_array($data['status'], ['lodged', 'paid'], true)) {
@@ -341,13 +350,13 @@ class ComplianceWorkspaceController extends Controller
 
         return response()->json([
             'status' => true,
-            'file'   => new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])),
+            'file' => new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'yearRecord'])),
         ]);
     }
 
     public function copyCustomRowsFromPrior(BusinessEntity $businessEntity, ComplianceYearRecord $record)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureYearRecordBelongs($businessEntity, $record);
 
         if ($locked = $this->lockedResponse($record)) {
@@ -366,7 +375,7 @@ class ComplianceWorkspaceController extends Controller
 
         if (! $prior) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'No prior financial year record found.',
             ], 422);
         }
@@ -391,9 +400,9 @@ class ComplianceWorkspaceController extends Controller
 
                 $currentCat = ComplianceCategory::query()->create([
                     'compliance_year_record_id' => $record->id,
-                    'title'                     => $priorCat->title,
-                    'sort_order'                => $maxSort + 1,
-                    'is_system'                 => false,
+                    'title' => $priorCat->title,
+                    'sort_order' => $maxSort + 1,
+                    'is_system' => false,
                 ]);
             }
 
@@ -414,18 +423,18 @@ class ComplianceWorkspaceController extends Controller
 
                 ComplianceDocumentFile::query()->create([
                     'compliance_year_record_id' => $record->id,
-                    'compliance_category_id'    => $currentCat->id,
-                    'checklist_label'           => $label,
-                    'custom_label'              => true,
-                    'status'                    => 'not_started',
+                    'compliance_category_id' => $currentCat->id,
+                    'checklist_label' => $label,
+                    'custom_label' => true,
+                    'status' => 'not_started',
                 ]);
                 $copied++;
             }
         }
 
         return response()->json([
-            'status'  => true,
-            'copied'  => $copied,
+            'status' => true,
+            'copied' => $copied,
             'message' => $copied > 0
                 ? "Copied {$copied} custom row(s) from prior year."
                 : 'No new custom rows to copy (prior year had none, or labels already exist).',
@@ -458,9 +467,14 @@ class ComplianceWorkspaceController extends Controller
 
         $record = $this->yearService->findOrCreateYearRecord($businessEntity, $asset, $normalized);
 
+        $workspace = (new ComplianceYearWorkspaceResource($record))->resolve();
+        if ($businessEntity->isClosed()) {
+            $workspace['locked'] = true;
+        }
+
         return response()->json([
             'status' => true,
-            'workspace' => (new ComplianceYearWorkspaceResource($record))->resolve(),
+            'workspace' => $workspace,
         ]);
     }
 

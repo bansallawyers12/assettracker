@@ -13,15 +13,21 @@ use App\Rules\UniqueChecklistLabelInCategory;
 use App\Services\DocumentUploadService;
 use App\Support\DocumentStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class DocumentWorkspaceController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
+
     public function __construct(
         private DocumentUploadService $uploadService
     ) {}
+
+    private function authorizeOpenMutation(BusinessEntity $businessEntity): void
+    {
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+    }
 
     /**
      * Return JSON workspace state for the given entity (entity-scoped).
@@ -58,8 +64,8 @@ class DocumentWorkspaceController extends Controller
         return response()->json([
             'status' => true,
             'workspace' => [
-                'entity_id'  => $businessEntity->id,
-                'asset_id'   => $assetId,
+                'entity_id' => $businessEntity->id,
+                'asset_id' => $assetId,
                 'categories' => DocumentCategoryResource::collection($categories)->resolve(),
             ],
         ]);
@@ -67,10 +73,10 @@ class DocumentWorkspaceController extends Controller
 
     public function storeCategory(Request $request, BusinessEntity $businessEntity)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
 
         $data = $request->validate([
-            'title'    => 'required|string|max:255',
+            'title' => 'required|string|max:255',
             'asset_id' => 'nullable|integer|exists:assets,id',
         ]);
 
@@ -86,9 +92,9 @@ class DocumentWorkspaceController extends Controller
 
         $category = DocumentCategory::query()->create([
             'business_entity_id' => $businessEntity->id,
-            'asset_id'           => $assetId,
-            'title'              => $data['title'],
-            'sort_order'         => $maxSort + 1,
+            'asset_id' => $assetId,
+            'title' => $data['title'],
+            'sort_order' => $maxSort + 1,
         ]);
 
         return response()->json(['status' => true, 'category' => new DocumentCategoryResource($category->load('documents'))]);
@@ -96,7 +102,7 @@ class DocumentWorkspaceController extends Controller
 
     public function updateCategory(Request $request, BusinessEntity $businessEntity, DocumentCategory $category)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureCategoryBelongs($businessEntity, $category);
 
         $data = $request->validate(['title' => 'required|string|max:255']);
@@ -107,12 +113,12 @@ class DocumentWorkspaceController extends Controller
 
     public function destroyCategory(BusinessEntity $businessEntity, DocumentCategory $category)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureCategoryBelongs($businessEntity, $category);
 
         if ($category->documents()->exists()) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'Remove or move all checklist items before deleting this category.',
             ], 422);
         }
@@ -124,25 +130,25 @@ class DocumentWorkspaceController extends Controller
 
     public function storeSlot(Request $request, BusinessEntity $businessEntity, DocumentCategory $category)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureCategoryBelongs($businessEntity, $category);
 
         $data = $request->validate([
             'checklist_label' => ['required', 'string', 'max:255', new UniqueChecklistLabelInCategory($category->id)],
-            'document_type'   => ['required', Rule::in(['legal', 'financial', 'other'])],
-            'description'     => 'nullable|string|max:500',
+            'document_type' => ['required', Rule::in(['legal', 'financial', 'other'])],
+            'description' => 'nullable|string|max:500',
         ]);
 
         $doc = Document::query()->create([
-            'business_entity_id'  => $businessEntity->id,
-            'asset_id'            => $category->asset_id,
-            'document_category_id'=> $category->id,
-            'checklist_label'     => trim($data['checklist_label']),
-            'type'                => $data['document_type'],
-            'description'         => $data['description'] ?? null,
-            'path'                => null,
-            'file_name'           => null,
-            'user_id'             => auth()->id(),
+            'business_entity_id' => $businessEntity->id,
+            'asset_id' => $category->asset_id,
+            'document_category_id' => $category->id,
+            'checklist_label' => trim($data['checklist_label']),
+            'type' => $data['document_type'],
+            'description' => $data['description'] ?? null,
+            'path' => null,
+            'file_name' => null,
+            'user_id' => auth()->id(),
         ]);
 
         return response()->json(['status' => true, 'document' => new DocumentSlotResource($doc)]);
@@ -150,7 +156,7 @@ class DocumentWorkspaceController extends Controller
 
     public function updateSlotLabel(Request $request, BusinessEntity $businessEntity, Document $document)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureDocumentBelongs($businessEntity, $document);
 
         $data = $request->validate([
@@ -169,9 +175,7 @@ class DocumentWorkspaceController extends Controller
 
     public function destroySlot(BusinessEntity $businessEntity, Document $document)
     {
-        $this->authorize('update', $businessEntity);
-        $this->ensureNotClosed($businessEntity);
-        $this->ensureOperationalForAccounting($businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureDocumentBelongs($businessEntity, $document);
 
         $this->uploadService->clearTransactionLinksForDocument($document);
@@ -186,7 +190,7 @@ class DocumentWorkspaceController extends Controller
 
     public function moveSlot(Request $request, BusinessEntity $businessEntity, Document $document)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureDocumentBelongs($businessEntity, $document);
 
         $data = $request->validate([
@@ -198,7 +202,7 @@ class DocumentWorkspaceController extends Controller
 
         if ((int) $document->asset_id !== (int) $target->asset_id) {
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => 'Cannot move between entity and asset workspaces.',
             ], 422);
         }
@@ -213,9 +217,9 @@ class DocumentWorkspaceController extends Controller
 
             if ($collision) {
                 return response()->json([
-                    'status'   => false,
+                    'status' => false,
                     'conflict' => true,
-                    'message'  => "A row named \"{$document->checklist_label}\" already exists in \"{$target->title}\". Rename it first.",
+                    'message' => "A row named \"{$document->checklist_label}\" already exists in \"{$target->title}\". Rename it first.",
                 ], 422);
             }
         }
@@ -227,7 +231,7 @@ class DocumentWorkspaceController extends Controller
 
     public function clearFile(BusinessEntity $businessEntity, Document $document)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorizeOpenMutation($businessEntity);
         $this->ensureDocumentBelongs($businessEntity, $document);
 
         if (! $document->path) {

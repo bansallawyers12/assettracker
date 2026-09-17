@@ -3,6 +3,7 @@
     $wsAsset = $asset ?? null;
     $wsAssetId = $wsAsset?->id;
     $entityId = $businessEntity->id;
+    $isClosed = $businessEntity->isClosed();
     $uploadAction = $wsAssetId
         ? route('business-entities.assets.documents.store', [$entityId, $wsAssetId])
         : route('business-entities.upload-document', $entityId);
@@ -26,7 +27,17 @@
      data-auto-match-url="{{ $autoMatchUrl }}"
      data-csrf="{{ csrf_token() }}"
      data-max-file-bytes="{{ $wsDocMaxKb * 1024 }}"
-     data-file-accept="{{ $wsDocAccept }}">
+     data-file-accept="{{ $wsDocAccept }}"
+     @if ($isClosed) data-entity-closed="1" @endif>
+
+    @if ($isClosed)
+        <div class="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100" role="status" data-closed-documents-notice>
+            <p class="font-medium">{{ __('Documents cannot be changed') }}</p>
+            <p class="mt-1 text-rose-800 dark:text-rose-200">
+                {{ __('This entity is closed. Reopen it from Edit company profile before uploading or editing checklist documents.') }}
+            </p>
+        </div>
+    @endif
 
     <div class="flex flex-wrap gap-2 mb-4 items-center border-b border-gray-200 dark:border-gray-700 pb-3" id="{{ $prefix }}-category-tabs">
         @forelse($documentCategories as $index => $cat)
@@ -36,14 +47,16 @@
                 {{ $cat->title }}
             </button>
         @empty
-            <p class="text-sm text-gray-500 dark:text-gray-400">No categories yet. Add one to start a checklist.</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400">No categories yet.@unless ($isClosed) Add one to start a checklist.@endunless</p>
         @endforelse
-        <button type="button" id="{{ $prefix }}-add-category" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white">
-            + Category
-        </button>
-        <button type="button" id="{{ $prefix }}-bulk-btn" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-sky-600 hover:bg-sky-700 text-white {{ $documentCategories->isEmpty() ? 'opacity-50 pointer-events-none' : '' }}">
-            Bulk upload
-        </button>
+        @unless ($isClosed)
+            <button type="button" id="{{ $prefix }}-add-category" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-green-600 hover:bg-green-700 text-white">
+                + Category
+            </button>
+            <button type="button" id="{{ $prefix }}-bulk-btn" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-sky-600 hover:bg-sky-700 text-white {{ $documentCategories->isEmpty() ? 'opacity-50 pointer-events-none' : '' }}">
+                Bulk upload
+            </button>
+        @endunless
     </div>
     <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2 mb-4">
         Up to {{ number_format($wsDocMaxKb / 1024, 1) }} MB per file (set <span class="font-mono">DOCUMENTS_MAX_KB</span> in <span class="font-mono">.env</span> to change).
@@ -54,11 +67,13 @@
         <div class="doc-cat-panel {{ $index === 0 ? '' : 'hidden' }}" data-category-panel="{{ $category->id }}">
             <div class="flex justify-between items-center mb-3">
                 <h4 class="text-md font-semibold text-gray-900 dark:text-gray-100">{{ $category->title }} — checklist</h4>
-                <div class="flex gap-2">
-                    <button type="button" class="doc-add-slot text-sm px-2 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-sm" data-category-id="{{ $category->id }}">+ Checklist</button>
-                    <button type="button" class="doc-rename-cat text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-sm dark:text-gray-300" data-category-id="{{ $category->id }}" data-title="{{ $category->title }}">Rename</button>
-                    <button type="button" class="doc-delete-cat text-xs px-2 py-1 border border-red-300 text-red-600 rounded-sm" data-category-id="{{ $category->id }}">Delete</button>
-                </div>
+                @unless ($isClosed)
+                    <div class="flex gap-2">
+                        <button type="button" class="doc-add-slot text-sm px-2 py-1 bg-indigo-500 hover:bg-indigo-600 text-white rounded-sm" data-category-id="{{ $category->id }}">+ Checklist</button>
+                        <button type="button" class="doc-rename-cat text-xs px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-sm dark:text-gray-300" data-category-id="{{ $category->id }}" data-title="{{ $category->title }}">Rename</button>
+                        <button type="button" class="doc-delete-cat text-xs px-2 py-1 border border-red-300 text-red-600 rounded-sm" data-category-id="{{ $category->id }}">Delete</button>
+                    </div>
+                @endunless
             </div>
             <div class="doc-checklist-layout">
                 <div class="doc-table-wrap">

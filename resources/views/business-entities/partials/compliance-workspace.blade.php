@@ -50,7 +50,17 @@
      data-file-accept="{{ $wsDocAccept }}"
      data-default-fy-start="{{ $defaultFyStart }}"
      data-default-fy-label="{{ $defaultFyLabel }}"
-     data-loaded="0">
+     data-loaded="0"
+     @if ($businessEntity->isClosed()) data-entity-closed="1" @endif>
+
+    @if ($businessEntity->isClosed())
+        <div class="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100" role="status" data-closed-compliance-notice>
+            <p class="font-medium">{{ __('Compliance cannot be changed') }}</p>
+            <p class="mt-1 text-rose-800 dark:text-rose-200">
+                {{ __('This entity is closed. Reopen it from Edit company profile before updating compliance checklists or uploading files.') }}
+            </p>
+        </div>
+    @endif
 
     {{-- Toolbar --}}
     <div class="compliance-toolbar">

@@ -1,5 +1,15 @@
+@php
+    $canMutateNotes = ! $businessEntity->isClosed();
+@endphp
+
 @if ($notes->isEmpty())
-    <p class="text-gray-500 dark:text-gray-400 text-sm">No notes yet.</p>
+    <p class="text-gray-500 dark:text-gray-400 text-sm">
+        @if ($businessEntity->isClosed())
+            {{ __('This entity is closed, so notes cannot be added.') }}
+        @else
+            No notes yet.
+        @endif
+    </p>
 @else
     <div class="space-y-3">
         @foreach ($notes as $note)
@@ -11,15 +21,17 @@
                             Added by {{ $note->user?->name ?? 'Unknown' }} on {{ $note->created_at?->format('d/m/Y H:i') }}
                         </p>
                     </div>
-                    <button
-                        type="button"
-                        data-notes-action="delete"
-                        data-note-id="{{ $note->id }}"
-                        class="shrink-0 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                        title="Delete note"
-                    >
-                        <x-lucide-trash-2 class="h-5 w-5" />
-                    </button>
+                    @if ($canMutateNotes)
+                        <button
+                            type="button"
+                            data-notes-action="delete"
+                            data-note-id="{{ $note->id }}"
+                            class="shrink-0 text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                            title="Delete note"
+                        >
+                            <x-lucide-trash-2 class="h-5 w-5" />
+                        </button>
+                    @endif
                 </div>
             </div>
         @endforeach

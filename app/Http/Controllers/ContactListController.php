@@ -2,13 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ContactList;
+use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
+use App\Http\Resources\ContactListResource;
 use App\Models\BusinessEntity;
+use App\Models\ContactList;
 use App\Support\TableSort;
 use Illuminate\Http\Request;
 
 class ContactListController extends Controller
 {
+    use EnsuresOperationalBusinessEntity;
+
     /**
      * Display a listing of the contacts for a specific business entity.
      */
@@ -40,6 +44,8 @@ class ContactListController extends Controller
     public function create(BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+
         return view('contact-lists.create', compact('businessEntity'));
     }
 
@@ -49,6 +55,7 @@ class ContactListController extends Controller
     public function store(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
@@ -67,7 +74,7 @@ class ContactListController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Contact created successfully.',
-                'contact' => (new \App\Http\Resources\ContactListResource($contact))->resolve(),
+                'contact' => (new ContactListResource($contact))->resolve(),
                 'list_html' => view('business-entities.partials.contact-lists.list', [
                     'businessEntity' => $businessEntity,
                     'contactLists' => $businessEntity->contactLists()->latest()->get(),
@@ -90,6 +97,7 @@ class ContactListController extends Controller
         if ((int) $contactList->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
         }
+
         return view('contact-lists.show', compact('businessEntity', 'contactList'));
     }
 
@@ -99,10 +107,12 @@ class ContactListController extends Controller
     public function edit(BusinessEntity $businessEntity, ContactList $contactList)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
         // Ensure the contact belongs to the business entity
         if ((int) $contactList->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
         }
+
         return view('contact-lists.edit', compact('businessEntity', 'contactList'));
     }
 
@@ -112,6 +122,7 @@ class ContactListController extends Controller
     public function update(Request $request, BusinessEntity $businessEntity, ContactList $contactList)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
         // Ensure the contact belongs to the business entity
         if ((int) $contactList->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
@@ -134,7 +145,7 @@ class ContactListController extends Controller
             return response()->json([
                 'status' => true,
                 'message' => 'Contact updated successfully.',
-                'contact' => (new \App\Http\Resources\ContactListResource($contactList))->resolve(),
+                'contact' => (new ContactListResource($contactList))->resolve(),
                 'list_html' => view('business-entities.partials.contact-lists.list', [
                     'businessEntity' => $businessEntity,
                     'contactLists' => $businessEntity->contactLists()->latest()->get(),
@@ -153,11 +164,12 @@ class ContactListController extends Controller
     public function destroy(BusinessEntity $businessEntity, ContactList $contactList)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
         // Ensure the contact belongs to the business entity
         if ((int) $contactList->business_entity_id !== (int) $businessEntity->id) {
             abort(404);
         }
-        
+
         $contactList->delete();
 
         if (request()->expectsJson()) {
@@ -175,4 +187,4 @@ class ContactListController extends Controller
             ->withFragment('tab_contact_lists')
             ->with('success', 'Contact deleted successfully.');
     }
-} 
+}

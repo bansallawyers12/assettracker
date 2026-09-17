@@ -677,6 +677,9 @@ import { setRowUploading } from './workspace-upload-ui.js';
         }
 
         root.addEventListener('contextmenu', function (ev) {
+            if (root.getAttribute('data-entity-closed') === '1') {
+                return;
+            }
             const tr = ev.target.closest('tr[data-slot-row]');
             if (!tr || !root.contains(tr)) {
                 return;

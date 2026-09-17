@@ -20,6 +20,7 @@ use Illuminate\Validation\Rule;
 class DocumentController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
+
     public function __construct(
         private DocumentUploadService $uploadService,
         private ChecklistFilenameMatcher $filenameMatcher
@@ -35,13 +36,14 @@ class DocumentController extends Controller
     public function uploadDocument(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
         $wantsJson = $request->expectsJson();
 
         $rules = array_merge(
             [
-                'document_id'   => 'required|exists:documents,id',
-                'file_name'     => 'nullable|string|max:255',
+                'document_id' => 'required|exists:documents,id',
+                'file_name' => 'nullable|string|max:255',
                 'document_type' => ['nullable', Rule::in(['legal', 'financial', 'other'])],
             ],
             $this->fileValidationRules('document')
@@ -77,8 +79,8 @@ class DocumentController extends Controller
 
             if ($wantsJson) {
                 return response()->json([
-                    'status'   => true,
-                    'message'  => 'Document uploaded successfully!',
+                    'status' => true,
+                    'message' => 'Document uploaded successfully!',
                     'document' => new DocumentSlotResource($document->fresh()),
                 ]);
             }
@@ -105,14 +107,15 @@ class DocumentController extends Controller
     public function uploadAssetDocument(Request $request, BusinessEntity $businessEntity, Asset $asset)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
         $this->authorize('update', $asset);
 
         $wantsJson = $request->expectsJson();
 
         $rules = array_merge(
             [
-                'document_id'   => 'required|exists:documents,id',
-                'file_name'     => 'nullable|string|max:255',
+                'document_id' => 'required|exists:documents,id',
+                'file_name' => 'nullable|string|max:255',
                 'document_type' => ['nullable', Rule::in(['legal', 'financial', 'other'])],
             ],
             $this->fileValidationRules('document')
@@ -149,8 +152,8 @@ class DocumentController extends Controller
 
             if ($wantsJson) {
                 return response()->json([
-                    'status'   => true,
-                    'message'  => 'Document uploaded successfully!',
+                    'status' => true,
+                    'message' => 'Document uploaded successfully!',
                     'document' => new DocumentSlotResource($document->fresh()),
                 ]);
             }
@@ -177,11 +180,12 @@ class DocumentController extends Controller
     public function bulkUpload(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
         $request->validate([
             'category_id' => 'required|exists:document_categories,id',
-            'asset_id'    => 'nullable|exists:assets,id',
-            'mappings'    => 'present|array',
+            'asset_id' => 'nullable|exists:assets,id',
+            'mappings' => 'present|array',
         ]);
 
         $category = DocumentCategory::findOrFail($request->category_id);
@@ -213,7 +217,7 @@ class DocumentController extends Controller
 
         // Decode mappings
         $mappingsInput = $request->input('mappings', []);
-        $mappings      = [];
+        $mappings = [];
         foreach ($mappingsInput as $raw) {
             if (is_string($raw)) {
                 $decoded = json_decode($raw, true);
@@ -226,7 +230,7 @@ class DocumentController extends Controller
         }
 
         $uploaded = 0;
-        $errors   = [];
+        $errors = [];
         $patchedDocuments = [];
 
         foreach ($files as $index => $file) {
@@ -235,18 +239,20 @@ class DocumentController extends Controller
                 $fileValidator = validator(['file' => $file], $this->fileValidationRules('file'));
                 if ($fileValidator->fails()) {
                     $errors[] = ($file?->getClientOriginalName() ?? 'file').': '.$fileValidator->errors()->first('file');
+
                     continue;
                 }
 
                 $mapping = $mappings[$index] ?? null;
                 if (! is_array($mapping) || empty($mapping['name'])) {
                     $errors[] = 'No checklist mapping for file '.($file->getClientOriginalName() ?? $index);
+
                     continue;
                 }
 
                 $checklistName = trim($mapping['name']);
-                $type          = $mapping['type'] ?? 'existing';
-                $replace       = (bool) ($mapping['replace'] ?? false);
+                $type = $mapping['type'] ?? 'existing';
+                $replace = (bool) ($mapping['replace'] ?? false);
 
                 $slot = DB::transaction(function () use ($businessEntity, $category, $checklistName, $asset, $type, $replace, $file, &$errors) {
                     $emptySlot = Document::query()
@@ -278,6 +284,7 @@ class DocumentController extends Controller
                     if (! $slot && $filledSlot) {
                         if (! $replace) {
                             $errors[] = "Checklist \"{$checklistName}\" already has a file. Enable the 'Replace existing file' toggle to overwrite it. ({$file->getClientOriginalName()})";
+
                             return null;
                         }
                         $slot = $filledSlot;
@@ -294,16 +301,17 @@ class DocumentController extends Controller
 
                         if ($labelConflict) {
                             $errors[] = "Checklist \"{$checklistName}\" already exists. ({$file->getClientOriginalName()})";
+
                             return null;
                         }
 
                         $slot = Document::query()->create([
-                            'business_entity_id'   => $businessEntity->id,
-                            'asset_id'             => $asset?->id,
+                            'business_entity_id' => $businessEntity->id,
+                            'asset_id' => $asset?->id,
                             'document_category_id' => $category->id,
-                            'checklist_label'      => $checklistName,
-                            'type'                 => 'other',
-                            'user_id'              => auth()->id(),
+                            'checklist_label' => $checklistName,
+                            'type' => 'other',
+                            'user_id' => auth()->id(),
                         ]);
                     }
 
@@ -312,6 +320,7 @@ class DocumentController extends Controller
 
                 if (! $slot) {
                     $errors[] = "No checklist row named \"{$checklistName}\" found. ({$file->getClientOriginalName()})";
+
                     continue;
                 }
 
@@ -325,10 +334,10 @@ class DocumentController extends Controller
         }
 
         return response()->json([
-            'status'    => $uploaded > 0,
-            'message'   => $uploaded > 0 ? "Uploaded {$uploaded} file(s)" : 'No files uploaded',
-            'uploaded'  => $uploaded,
-            'errors'    => $errors,
+            'status' => $uploaded > 0,
+            'message' => $uploaded > 0 ? "Uploaded {$uploaded} file(s)" : 'No files uploaded',
+            'uploaded' => $uploaded,
+            'errors' => $errors,
             'documents' => $patchedDocuments,
         ]);
     }
@@ -338,11 +347,12 @@ class DocumentController extends Controller
     public function autoMatch(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
 
         $request->validate([
-            'category_id'      => 'required|exists:document_categories,id',
-            'files'            => 'required|array',
-            'files.*.name'     => 'required|string',
+            'category_id' => 'required|exists:document_categories,id',
+            'files' => 'required|array',
+            'files.*.name' => 'required|string',
         ]);
 
         $category = DocumentCategory::findOrFail($request->category_id);
@@ -410,16 +420,17 @@ class DocumentController extends Controller
             );
         }
 
-        $name    = $this->safeContentDispositionFilename($document->file_name, $document->path);
-        $mime    = $this->resolveDocumentMimeType($document);
+        $name = $this->safeContentDispositionFilename($document->file_name, $document->path);
+        $mime = $this->resolveDocumentMimeType($document);
         $headers = [
-            'Content-Type'  => $mime,
+            'Content-Type' => $mime,
             'Cache-Control' => 'private, max-age=120',
         ];
 
         try {
             if ($request->boolean('download') || strtolower($mime) === 'image/svg+xml' || str_ends_with(strtolower($document->path), '.svg')) {
                 $headers['Content-Security-Policy'] = "default-src 'none'; script-src 'none'";
+
                 return DocumentStorage::disk()->download($document->path, $name, $headers);
             }
 
@@ -448,8 +459,8 @@ class DocumentController extends Controller
 
     private function safeContentDispositionFilename(?string $fileName, string $storagePath): string
     {
-        $raw  = ($fileName !== null && $fileName !== '') ? $fileName : basename($storagePath);
-        $raw  = str_replace(["\r", "\n", "\0"], '', $raw);
+        $raw = ($fileName !== null && $fileName !== '') ? $fileName : basename($storagePath);
+        $raw = str_replace(["\r", "\n", "\0"], '', $raw);
         $base = basename($raw);
 
         return $base !== '' ? $base : 'document';
@@ -465,18 +476,18 @@ class DocumentController extends Controller
 
         $ext = strtolower((string) pathinfo($document->path, PATHINFO_EXTENSION));
         $map = [
-            'pdf'  => 'application/pdf',
-            'jpg'  => 'image/jpeg',
+            'pdf' => 'application/pdf',
+            'jpg' => 'image/jpeg',
             'jpeg' => 'image/jpeg',
-            'png'  => 'image/png',
-            'gif'  => 'image/gif',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
             'webp' => 'image/webp',
-            'svg'  => 'image/svg+xml',
-            'bmp'  => 'image/bmp',
+            'svg' => 'image/svg+xml',
+            'bmp' => 'image/bmp',
             'heic' => 'image/heic',
             'heif' => 'image/heif',
-            'txt'  => 'text/plain',
-            'csv'  => 'text/csv',
+            'txt' => 'text/plain',
+            'csv' => 'text/csv',
         ];
 
         if (isset($map[$ext])) {
