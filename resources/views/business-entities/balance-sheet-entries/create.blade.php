@@ -136,6 +136,7 @@
                                         <option value="{{ $value }}" @selected($oldChannel === $value)>{{ $label }}</option>
                                     @endforeach
                                 </select>
+                                @include('partials.payment-channel-funding-hint')
                                 @error('payment_channel') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             </div>
                             @php

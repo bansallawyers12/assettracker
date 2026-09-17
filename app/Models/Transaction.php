@@ -446,8 +446,8 @@ class Transaction extends Model
 
     /**
      * Label for the Account column when no bank account is linked.
-     * Cross-entity paid_by shows the paying entity; otherwise "Director funds"
-     * (covers director_funds, cash, and legacy null-bank channels).
+     * Cross-entity paid_by shows the paying entity; otherwise director-funds style
+     * funding (covers director_funds, cash, and legacy null-bank channels) with GL 2500.
      */
     public function nonBankFundingAccountLabel(): string
     {
@@ -457,7 +457,15 @@ class Transaction extends Model
             return $label !== '' ? $label : 'Related entity';
         }
 
-        return self::$paymentChannels[self::PAYMENT_CHANNEL_DIRECTOR_FUNDS];
+        return 'Director funds (2500)';
+    }
+
+    /**
+     * Short hint that director_funds / cash fund via Director / Entity Loan 2500.
+     */
+    public static function nonBankFundingGlHint(): string
+    {
+        return 'Director funds and Cash post to Director / Entity Loan (2500), not Bank/Cash 1100.';
     }
 
     /**
@@ -498,9 +506,9 @@ class Transaction extends Model
     /** Payment channel options */
     public static $paymentChannels = [
         self::PAYMENT_CHANNEL_BANK_ACCOUNT => 'Bank account',
-        self::PAYMENT_CHANNEL_DIRECTOR_FUNDS => 'Director funds',
+        self::PAYMENT_CHANNEL_DIRECTOR_FUNDS => 'Director funds (loan 2500)',
         self::PAYMENT_CHANNEL_EXTERNAL_THIRD_PARTY => 'External third party',
-        self::PAYMENT_CHANNEL_CASH => 'Cash',
+        self::PAYMENT_CHANNEL_CASH => 'Cash (loan 2500)',
     ];
 
     /** GST status display labels */

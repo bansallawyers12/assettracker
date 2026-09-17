@@ -22,6 +22,9 @@ All explicit director-loan transaction types (`director_loan_in`, out, repayment
 ## Keep imported funding types distinct
 When creating transactions from chart-account reconciliation: account 2500 maps to director_loan_in/out; other liability inflows map to loan_drawdown; equity inflows map to equity_contribution. Do not use director_loan_in as a generic positive liability/equity type. The Change panel must preview that resolved type (`data-bank-import-chart-type-preview`) so the mapping is not invisible.
 
+## chart_of_account_id cannot flip P&L ↔ balance sheet
+`TransactionPostingService` may refine the type→CoA map with `chart_of_account_id` only when the override stays in the same class as the mapped account (income/expense vs asset/liability/equity). Incompatible overrides are ignored and logged. Explicit director-loan types still always post to 2500.
+
 ## Journal posting invariants: every type maps, every GL account exists, no unbalanced entries
 P&L and the balance sheet only read journals where is_posted is true AND total_debit = total_credit, so a journal that is short one line disappears from both reports instead of failing loudly.
 

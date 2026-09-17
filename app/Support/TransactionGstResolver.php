@@ -37,6 +37,16 @@ class TransactionGstResolver
         }
 
         if ($manualGst !== null && $manualGst > 0) {
+            // Explicit GST that does not match single-rate 10% auto-calc is mixed-rate → store as manual.
+            if ($basis === 'inclusive' || $basis === 'exclusive') {
+                $autoGst = $basis === 'inclusive'
+                    ? round($amount - ($amount / 1.1), 2)
+                    : round($amount * 0.1, 2);
+                if (abs($autoGst - $manualGst) > 0.02) {
+                    $basis = 'manual';
+                }
+            }
+
             return [
                 'gst_amount' => $manualGst,
                 'gst_basis' => $basis,

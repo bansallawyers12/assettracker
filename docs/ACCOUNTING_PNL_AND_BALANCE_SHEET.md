@@ -247,7 +247,7 @@ These were live defects and have been closed in code (covered by `tests/Feature/
 
    Posting is deliberately left alone: blocking the row fights bank imports (one side routinely arrives before the other), and auto-posting the cash side has to un-post itself when the offset row appears, which double-counts the repayment whenever matching is imperfect. Instead `php artisan loans:audit-unmatched-repayments` lists loan-ledger repayments with no matching outgoing cash-side transfer. Matching is one-to-one within the same entity, amount, resolved loan counterpart, and `--days` window; the counterpart may be explicit or inferred from the offset account's asset-linked loan when an import omitted it. It writes nothing and exits non-zero when it finds gaps, so it can be scheduled as a check.
 
-3. **Paid-basis P&L.** Unpaid supplier bills never hit expenses. That is consistent with the observer, but it is **not** accrual accounting. Period P&L can be wrong for management/tax if bills are left unpaid.
+3. **Paid-basis P&L.** Unpaid supplier bills never hit expenses. That is consistent with the observer, but it is **not** accrual accounting. Period P&L can be wrong for management/tax if bills are left unpaid. The P&L report banner (`data-pnl-paid-basis-notice`) states this and links to unpaid transactions.
 
 ### Medium
 
@@ -259,7 +259,7 @@ These were live defects and have been closed in code (covered by `tests/Feature/
 
 6. **Interest/fees on a non-loan bank** post as cash P&L (Dr expense Cr 1100), not capitalise to 4000. Recording interest on the offset/general account (if the guard is bypassed or type is used on general) **understates the loan** and **overstates cash outflow**.
 
-8. **`chart_of_account_id` overrides** can send a P&L type to a BS account (or the reverse), except director-loan types. Imports that stamp a chart account can bypass the type map.
+8. **`chart_of_account_id` overrides** can no longer flip a P&L type onto a BS account (or the reverse): incompatible overrides are ignored at post time. Same-class refinements (e.g. expense→expense) still apply. Explicit director-loan types remain hard-locked to 2500.
 
 9. **Drawings vs P&L.** `directors_fees` and `other_personal_expenses` post to **3100** equity. They never appear on P&L. If users classify personal costs as “other expenses” (5900) instead, P&L is overstated.
 

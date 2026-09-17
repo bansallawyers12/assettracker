@@ -286,7 +286,7 @@ it('records director-funded payment when the entity has no bank account', functi
     $this->actingAs($user)
         ->get(route('business-entities.invoices.show', [$entity, $invoice]))
         ->assertSuccessful()
-        ->assertSee('Director funds (no bank)', false)
+        ->assertSee('Director funds (loan 2500, no bank)', false)
         ->assertSee('No operating bank linked', false)
         ->assertDontSee('Link an operating bank account to this entity before recording payment', false);
 
@@ -325,7 +325,7 @@ it('shows director funds payment option on the invoice page', function () {
     $html = $this->actingAs($user)
         ->get(route('business-entities.invoices.show', [$entity, $invoice]))
         ->assertSuccessful()
-        ->assertSee('Director funds (no bank)', false)
+        ->assertSee('Director funds (loan 2500, no bank)', false)
         ->assertSee('name="payment_channel"', false)
         ->assertSee(Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS, false)
         ->assertSee('Follow up', false)

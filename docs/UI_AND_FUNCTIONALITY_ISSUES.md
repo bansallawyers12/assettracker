@@ -114,12 +114,12 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| txn-001 | Functionality | Medium | Statement-linked edit uses reduced form | Date/amount locked; full edit path not obvious | `.ai/rules/transactions.md` |
-| txn-002 | UX | Medium | Director funds / cash channel labelling | “Director funds” label; GL posts to 2500 — not obvious | `.ai/rules/director-funds-posting.md` |
-| txn-003 | Data | High | Paid-basis P&L — unpaid bills excluded | Expenses understated until marked paid | `docs/ACCOUNTING_PNL_AND_BALANCE_SHEET.md` §9 |
-| txn-004 | Data | Medium | `chart_of_account_id` override bypasses type map | Misclassification on P&L/BS except director-loan types | Accounting doc §9 |
-| txn-005 | Functionality | Medium | Mixed-GST invoices need manual GST | Auto 10% wrong for mixed-rate lines | `.ai/rules/support.md` |
-| txn-006 | UX | Low | Global transactions index vs entity tab | Two entry points with slightly different filters | `routes/web.php` |
+| txn-001 | Functionality | Medium | Statement-linked edit uses reduced form | Date/amount locked; full edit path not obvious | `.ai/rules/transactions.md` | **Fixed** — Locked badges + notice; Unmatch called out as path to full Edit form |
+| txn-002 | UX | Medium | Director funds / cash channel labelling | “Director funds” label; GL posts to 2500 — not obvious | `.ai/rules/director-funds-posting.md` | **Fixed** — “(loan 2500)” channel labels + funding hint partial; list label “Director funds (2500)” |
+| txn-003 | Data | High | Paid-basis P&L — unpaid bills excluded | Expenses understated until marked paid | `docs/ACCOUNTING_PNL_AND_BALANCE_SHEET.md` §9 | **Fixed** — P&L paid-basis banner + unpaid transactions link (accounting stays paid-basis) |
+| txn-004 | Data | Medium | `chart_of_account_id` override bypasses type map | Misclassification on P&L/BS except director-loan types | Accounting doc §9 | **Fixed** — ignore P&L↔BS-incompatible overrides at post time |
+| txn-005 | Functionality | Medium | Mixed-GST invoices need manual GST | Auto 10% wrong for mixed-rate lines | `.ai/rules/support.md` | **Fixed** — invoice Mixed rates + manual GST; resolver promotes mismatched overrides to manual |
+| txn-006 | UX | Low | Global transactions index vs entity tab | Two entry points with slightly different filters | `routes/web.php` | **Fixed** — entity tab links to filtered All transactions; scope hint on global index |
 
 ---
 

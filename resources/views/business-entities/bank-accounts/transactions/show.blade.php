@@ -120,6 +120,10 @@
                     <div>
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Payment Channel</p>
                         <p class="text-sm text-gray-900 dark:text-gray-100">{{ \App\Models\Transaction::$paymentChannels[$transaction->payment_channel ?? \App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT] ?? '—' }}</p>
+                        @if (\App\Models\Transaction::usesDirectorLoanFundingChannel($transaction->payment_channel ?? null)
+                            || (($transaction->payment_channel ?? null) === \App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT && ! $transaction->bank_account_id))
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ \App\Models\Transaction::nonBankFundingGlHint() }}</p>
+                        @endif
                     </div>
                     <div>
                         <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">

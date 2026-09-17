@@ -43,17 +43,33 @@
                         <input type="hidden" name="return_to" value="{{ request('return_to') }}">
                     @endif
 
+                    <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50/80 px-4 py-3 text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100" data-statement-edit-locked-notice>
+                        <p class="font-medium">This is the statement classify form — not the full Add / Edit transaction form.</p>
+                        <p class="mt-1 text-amber-900/90 dark:text-amber-100/90">
+                            Date and amount are locked to the bank statement. Type, asset, and markers can be changed here.
+                            For GST, vendor, invoice number, payment docs, or to change date/amount:
+                            use <span class="font-semibold">Unmatch</span> below (keeps this transaction), then open
+                            <span class="font-semibold">Edit</span> again for the full form.
+                        </p>
+                    </div>
+
                     <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                        Date, amount, and the bank narrative come from the statement. Change the type, asset, and markers the same way as when the line was accepted.
+                        Statement narrative is shown for reference. Updating description here does not change the bank line itself.
                     </p>
 
                     <dl class="mb-5 grid grid-cols-1 sm:grid-cols-3 gap-3 rounded-lg border border-amber-200 bg-amber-50/70 p-4 text-sm dark:border-amber-900/50 dark:bg-amber-950/20">
                         <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Date</dt>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                Date
+                                <span class="ml-1 rounded bg-amber-200/80 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">Locked</span>
+                            </dt>
                             <dd class="mt-1 font-medium text-gray-900 dark:text-gray-100">{{ ($statementEntry?->date ?? $transaction->date)->format('d/m/Y') }}</dd>
                         </div>
                         <div>
-                            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Amount</dt>
+                            <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                Amount
+                                <span class="ml-1 rounded bg-amber-200/80 px-1.5 py-0.5 text-[10px] font-semibold normal-case tracking-normal text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">Locked</span>
+                            </dt>
                             <dd class="mt-1 font-semibold tabular-nums {{ $signedAmount >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400' }}">
                                 {{ $signedAmount >= 0 ? '+' : '−' }}${{ number_format(abs($signedAmount), 2) }}
                             </dd>
@@ -151,9 +167,12 @@
                             'open_bank_transactions' => $bankAccount->id,
                         ]).'#tab_bank_accounts';
                     @endphp
-                    <div class="mt-6 border-t border-gray-200 pt-5 dark:border-gray-700">
-                        <p class="mb-3 text-sm text-gray-600 dark:text-gray-400">
-                            Wrong bank match or wrong kind of booking? Unmatch keeps this transaction; Remove &amp; Redo deletes it and returns the statement line to unmatched.
+                    <div class="mt-6 border-t border-gray-200 pt-5 dark:border-gray-700" data-statement-edit-full-form-path>
+                        <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Need the full edit form?</h3>
+                        <p class="mb-3 mt-1 text-sm text-gray-600 dark:text-gray-400">
+                            Wrong bank match or need GST / vendor / payment docs / date or amount changes?
+                            <span class="font-medium text-gray-800 dark:text-gray-200">Unmatch</span> keeps this transaction and unlocks the full Edit screen on the next open.
+                            <span class="font-medium text-gray-800 dark:text-gray-200">Remove &amp; Redo</span> deletes the booking and returns the statement line to unmatched.
                         </p>
                         <div class="flex flex-wrap gap-3">
                             <button

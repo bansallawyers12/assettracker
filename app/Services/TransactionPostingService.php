@@ -463,8 +463,17 @@ class TransactionPostingService
 
         if ($transaction->chart_of_account_id) {
             $override = ChartOfAccount::query()->find($transaction->chart_of_account_id);
-            if ($override) {
+            if ($override && $this->chartOverrideCompatibleWithMappedAccount($counterAccount, $override)) {
                 $counterAccount = $override;
+            } elseif ($override) {
+                Log::warning('TransactionPostingService: ignoring chart_of_account_id override that flips P&L/BS class', [
+                    'transaction_id' => $transaction->id,
+                    'transaction_type' => $transaction->transaction_type,
+                    'mapped_account_id' => $counterAccount?->id,
+                    'mapped_account_type' => $counterAccount?->account_type,
+                    'override_account_id' => $override->id,
+                    'override_account_type' => $override->account_type,
+                ]);
             }
         }
 
@@ -911,5 +920,22 @@ class TransactionPostingService
     private function shouldUseDirectorLoanBookingLines(Transaction $transaction): bool
     {
         return $this->isDirectorLoanTransactionType($transaction->transaction_type);
+    }
+
+    /**
+     * chart_of_account_id may refine the mapped counter account, but must not flip a P&L
+     * type onto a balance-sheet account (or the reverse). Same-class refinements stay allowed.
+     */
+    private function chartOverrideCompatibleWithMappedAccount(?ChartOfAccount $mapped, ChartOfAccount $override): bool
+    {
+        if ($mapped === null) {
+            return true;
+        }
+
+        $pnlTypes = ['income', 'expense'];
+        $mappedIsPnl = in_array((string) $mapped->account_type, $pnlTypes, true);
+        $overrideIsPnl = in_array((string) $override->account_type, $pnlTypes, true);
+
+        return $mappedIsPnl === $overrideIsPnl;
     }
 }

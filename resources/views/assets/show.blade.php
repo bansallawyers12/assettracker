@@ -669,7 +669,7 @@
                                                                         {{ $tx->bankAccount->transactionAccountLabel() }}
                                                                     </a>
                                                                 @else
-                                                                    <span class="text-gray-500 dark:text-gray-400" title="No company bank account — funded outside bank">{{ $tx->nonBankFundingAccountLabel() }}</span>
+                                                                    <span class="text-gray-500 dark:text-gray-400" title="{{ \App\Models\Transaction::nonBankFundingGlHint() }}">{{ $tx->nonBankFundingAccountLabel() }}</span>
                                                                 @endif
                                                             </td>
                                                             <td class="px-4 py-2 text-sm text-gray-700 dark:text-gray-300">{{ Transaction::allTypes()[$tx->transaction_type] ?? $tx->transaction_type }}</td>

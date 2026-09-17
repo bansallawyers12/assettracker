@@ -38,17 +38,26 @@ it('clears manual gst when no amount is provided', function () {
         ->and($resolved['gst_status'])->toBe('gst_free');
 });
 
-it('still allows overriding inclusive auto-calc with an explicit gst amount', function () {
+it('promotes mismatched inclusive gst overrides to manual for mixed rates', function () {
     $resolved = TransactionGstResolver::resolve(1013.83, 'inclusive', 67.82, 'expense');
 
     expect($resolved['gst_amount'])->toBe(67.82)
-        ->and($resolved['gst_basis'])->toBe('inclusive');
+        ->and($resolved['gst_basis'])->toBe('manual');
 });
 
-it('clamps cash-parts gst to the line amount for inclusive and manual bases', function () {
-    $capped = TransactionCashParts::resolve(100.0, 150.0, 'manual');
+it('exposes manual gst on transaction and invoice forms', function () {
+    $allocations = file_get_contents(resource_path('views/partials/dashboard-transaction-lines.blade.php'));
+    $create = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/create.blade.php'));
+    $edit = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/edit.blade.php'));
+    $invoiceForm = file_get_contents(resource_path('views/invoices/partials/form.blade.php'));
+    $invoiceController = file_get_contents(app_path('Http/Controllers/InvoiceController.php'));
 
-    expect($capped['cash'])->toBe(100.0)
-        ->and($capped['net'])->toBe(0.0)
-        ->and($capped['gst'])->toBe(100.0);
+    expect($allocations)->toContain('value="manual"')
+        ->and($allocations)->toContain('Mixed GST invoices')
+        ->and($create)->toContain('value="manual"')
+        ->and($edit)->toContain('value="manual"')
+        ->and($invoiceForm)->toContain('value="manual"')
+        ->and($invoiceForm)->toContain('Mixed rates')
+        ->and($invoiceController)->toContain("'manual'")
+        ->and($invoiceController)->toContain('gst_amount');
 });

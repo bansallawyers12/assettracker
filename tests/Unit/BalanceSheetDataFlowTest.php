@@ -104,3 +104,18 @@ it('keeps explicit director loan types on account 2500 despite a stale chart acc
 
     expect($method->invoke($service, $transaction))->toBeTrue();
 });
+
+it('ignores chart_of_account_id overrides that flip P&L types onto balance-sheet accounts', function () {
+    $service = app(TransactionPostingService::class);
+    $method = (new ReflectionClass($service))->getMethod('chartOverrideCompatibleWithMappedAccount');
+    $method->setAccessible(true);
+
+    $expense = new ChartOfAccount(['account_type' => 'expense']);
+    $asset = new ChartOfAccount(['account_type' => 'asset']);
+    $income = new ChartOfAccount(['account_type' => 'income']);
+
+    expect($method->invoke($service, $expense, $income))->toBeTrue()
+        ->and($method->invoke($service, $expense, $asset))->toBeFalse()
+        ->and($method->invoke($service, $asset, $expense))->toBeFalse()
+        ->and($method->invoke($service, null, $asset))->toBeTrue();
+});

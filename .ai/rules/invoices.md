@@ -6,7 +6,7 @@ paths:
 # Invoices
 
 ## Invoice create/edit UI is simplified
-Manual invoice form shows only: issue/due dates, lease picker, customer, GST yes/no, line description + unit price + account (full chart), totals. Hidden defaults: AUD currency, auto invoice number, auto reference from lease, qty=1, GST 10% inclusive (or none/0), preserve notes on edit. Do not reintroduce Currency, GST %, GST basis, Asset picker, tenant pick dropdown, Notes, Qty, or Line total columns without product approval. Backend still accepts exclusive GST and other fields via POST.
+Manual invoice form shows: issue/due dates, lease picker, customer, GST mode (10% inclusive / 10% exclusive / mixed-rates manual total / none), line description + unit price + account (full chart), totals. Hidden defaults: AUD currency, auto invoice number, auto reference from lease, qty=1. Mixed rates requires gst_amount (invoice TOTAL GST); line prices stay cash totals. Do not reintroduce Currency, GST %, Asset picker, tenant pick dropdown, Notes, Qty, or Line total columns without product approval. Backend still accepts exclusive GST and other fields via POST.
 
 ## Lease picker shows past-expiry leases
 Lease / tenant options include leases with past end_date. end_date is expiry/term, not closed. Do not re-add an end_date filter or "Include ended leases" toggle on this form.
@@ -21,7 +21,7 @@ Lease picker must not set gstBasisWhenApplicable=inclusive on change — that wi
 Line item account column label is Account (not Income account). Options come from all active chart accounts.
 
 ## Record payment supports director funds
-Invoice show Record payment offers Paid via: Bank account or Director funds (no bank). Director funds clears AR against 2500 (no statement match). Bank path unchanged. Do not hide the form when the entity has no operating bank — default to director funds instead.
+Invoice show Record payment offers Paid via: Bank account or Director funds (loan 2500, no bank). Director funds clears AR against 2500 (no statement match). Bank path unchanged. Do not hide the form when the entity has no operating bank — default to director funds instead.
 
 ## Invoice index filters collapse behind a Filters button
 Portfolio and entity invoice lists keep filters hidden by default. Toggle with a Filters control that shows the lucide-filter icon plus the word Filters (badge when active). Expand automatically when any filter query is present. When open, keep Status / Asset / Unpaid AR / Apply on one compact horizontal row (wrap on narrow screens). Do not restore a always-visible filter card above the table.

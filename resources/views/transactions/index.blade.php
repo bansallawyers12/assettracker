@@ -4,6 +4,9 @@
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">
                 All Transactions
             </h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400" data-global-transactions-scope-hint>
+                Portfolio-wide list with shared filters. Entity pages show a compact summary and link here with <code class="text-xs">entity_id</code> pre-selected.
+            </p>
             <a href="{{ route('dashboard') }}" class="inline-flex items-center px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-100 rounded-lg text-sm font-medium shadow-xs transition-colors">
                 Back to Dashboard
             </a>

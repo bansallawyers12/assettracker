@@ -15,6 +15,7 @@
         $gstBasisLabel = match ($invoice->gst_basis) {
             'none' => 'GST not applicable',
             'exclusive' => 'Exclusive (unit prices ex GST)',
+            'manual' => 'Mixed rates (manual GST total)',
             default => 'Inclusive (unit prices inc GST)',
         };
     @endphp
@@ -310,7 +311,7 @@
                         <div class="rounded-xl border border-gray-200 bg-white p-5 shadow-xs dark:border-gray-700 dark:bg-gray-900">
                             <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Record payment</h3>
                             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                                Clears Accounts Receivable for the amount paid (does not re-book revenue). Partial payments leave the invoice open until the balance is zero. Use <span class="font-medium">Director funds</span> when the customer paid the director (or the director settled it) and money did not enter the entity bank.
+                                Clears Accounts Receivable for the amount paid (does not re-book revenue). Partial payments leave the invoice open until the balance is zero. Use <span class="font-medium">Director funds (loan 2500)</span> when the customer paid the director (or the director settled it) and money did not enter the entity bank — that clears AR against Director / Entity Loan, not Bank/Cash.
                             </p>
                             <form method="POST" action="{{ route('business-entities.invoices.record-payment', [$businessEntity, $invoice]) }}" class="mt-4 space-y-3" enctype="multipart/form-data" id="invoice-record-payment-form">
                                 @csrf
@@ -334,7 +335,7 @@
                                             Bank account
                                         </option>
                                         <option value="{{ \App\Models\Transaction::PAYMENT_CHANNEL_DIRECTOR_FUNDS }}" @selected(! $isBankChannel)>
-                                            Director funds (no bank)
+                                            Director funds (loan 2500, no bank)
                                         </option>
                                     </select>
                                     @unless ($hasPaymentBanks)

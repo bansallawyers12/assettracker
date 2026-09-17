@@ -147,6 +147,12 @@
     <div class="px-6 pt-4 text-xs text-gray-600 leading-relaxed border-b border-gray-100">
         Amounts come from <strong>posted journal entries</strong> on income and expense accounts (paid bank transactions,
         posted invoices, manual journals, depreciation). GST is excluded from income and expense lines.
+        <span class="block mt-1.5 text-amber-800 dark:text-amber-200" data-pnl-paid-basis-notice>
+            <strong>Paid basis:</strong> unpaid supplier bills and unpaid expenses are excluded until marked paid.
+            Accrual-style unpaid costs will not appear here — mark them paid (or filter
+            <a href="{{ ($entity && ! $isConsolidated) ? route('transactions.index', ['entity_id' => $entity->id, 'payment_status' => 'unpaid']) : route('transactions.index', ['payment_status' => 'unpaid']) }}" class="underline hover:no-underline">unpaid transactions</a>)
+            so period P&amp;L is not understated.
+        </span>
         @if($comparing)
             <strong>Prior year</strong> compares the same date range shifted back one year.
         @endif

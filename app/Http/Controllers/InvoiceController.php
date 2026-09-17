@@ -191,7 +191,13 @@ class InvoiceController extends Controller
                 $invoice->total_amount = 0;
                 $invoice->save();
 
-                $this->syncInvoiceLines($invoice, $data['lines'], $gstRate, $gstBasis);
+                $this->syncInvoiceLines(
+                    $invoice,
+                    $data['lines'],
+                    $gstRate,
+                    $gstBasis,
+                    isset($data['gst_amount']) ? (float) $data['gst_amount'] : null
+                );
 
                 $invoice->load('lines');
                 if ($saveAndPost) {
@@ -384,7 +390,13 @@ class InvoiceController extends Controller
                 $invoice->save();
 
                 $invoice->lines()->delete();
-                $this->syncInvoiceLines($invoice, $data['lines'], $gstRate, $gstBasis);
+                $this->syncInvoiceLines(
+                    $invoice,
+                    $data['lines'],
+                    $gstRate,
+                    $gstBasis,
+                    isset($data['gst_amount']) ? (float) $data['gst_amount'] : null
+                );
                 $invoice->load('lines');
 
                 if ($saveAndPost) {
@@ -635,8 +647,9 @@ class InvoiceController extends Controller
             'reference' => ['nullable', 'string', 'max:255'],
             'currency' => ['nullable', 'string', 'size:3'],
             'notes' => ['nullable', 'string'],
-            'gst_basis' => ['required', Rule::in(['inclusive', 'exclusive', 'none'])],
+            'gst_basis' => ['required', Rule::in(['inclusive', 'exclusive', 'none', 'manual'])],
             'gst_percent' => ['required', 'numeric', 'min:0', 'max:100'],
+            'gst_amount' => ['nullable', 'numeric', 'min:0.01'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.description' => ['required', 'string', 'max:255'],
             'lines.*.quantity' => ['required', 'numeric', 'min:0.0001'],
@@ -646,6 +659,16 @@ class InvoiceController extends Controller
         ]);
 
         if ($data['gst_basis'] === 'none') {
+            $data['gst_percent'] = 0;
+        }
+
+        if ($data['gst_basis'] === 'manual') {
+            $manualGst = isset($data['gst_amount']) ? (float) $data['gst_amount'] : 0.0;
+            if ($manualGst <= 0) {
+                throw ValidationException::withMessages([
+                    'gst_amount' => 'Enter the invoice TOTAL GST when using mixed rates / manual GST.',
+                ]);
+            }
             $data['gst_percent'] = 0;
         }
 
@@ -682,8 +705,13 @@ class InvoiceController extends Controller
     /**
      * @param  list<array<string, mixed>>  $lines
      */
-    private function syncInvoiceLines(Invoice $invoice, array $lines, float $gstRate, string $gstBasis): void
-    {
+    private function syncInvoiceLines(
+        Invoice $invoice,
+        array $lines,
+        float $gstRate,
+        string $gstBasis,
+        ?float $manualGstAmount = null
+    ): void {
         $subtotal = 0.0;
         $gstTotal = 0.0;
         $grand = 0.0;
@@ -702,13 +730,24 @@ class InvoiceController extends Controller
                 'quantity' => $line['quantity'],
                 'unit_price' => $line['unit_price'],
                 'line_total' => $amounts['line_total'],
-                'gst_rate' => $gstRate,
+                'gst_rate' => $gstBasis === 'manual' ? 0.0 : $gstRate,
                 'account_code' => $line['account_code'],
             ]);
 
             $subtotal += $amounts['net'];
             $gstTotal += $amounts['gst'];
             $grand += $amounts['line_total'];
+        }
+
+        if ($gstBasis === 'manual') {
+            $grand = round($grand, 2);
+            $gstTotal = round((float) $manualGstAmount, 2);
+            if ($gstTotal > $grand) {
+                throw ValidationException::withMessages([
+                    'gst_amount' => 'Manual GST cannot exceed the invoice total.',
+                ]);
+            }
+            $subtotal = round($grand - $gstTotal, 2);
         }
 
         $invoice->subtotal = round($subtotal, 2);
@@ -751,7 +790,7 @@ class InvoiceController extends Controller
      */
     private function calculateInvoiceLineAmounts(float $quantity, float $unitPrice, float $gstRate, string $gstBasis): array
     {
-        if ($gstBasis === 'none' || $gstRate <= 0) {
+        if ($gstBasis === 'none' || $gstRate <= 0 || $gstBasis === 'manual') {
             $lineTotal = round($quantity * $unitPrice, 2);
 
             return [

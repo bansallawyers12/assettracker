@@ -17,6 +17,13 @@
                 Entity summary for reporting. Add, match, and reconcile from the linked
                 <a href="#tab_bank_accounts" class="js-entity-tab-jump text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300">bank accounts</a>
                 workspace.
+                For filtered search across payment status, match, BAS, and flags, use
+                <a
+                    href="{{ route('transactions.index', ['entity_id' => $businessEntity->id]) }}"
+                    class="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                    data-entity-transactions-global-link
+                >All transactions</a>
+                (same filters as the portfolio list, scoped to this entity).
             </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
@@ -118,7 +125,7 @@
                                         {{ $accountLabel }}
                                     </button>
                                 @else
-                                    <span class="text-gray-500 dark:text-gray-400" title="No company bank account — funded outside bank">{{ $transaction->nonBankFundingAccountLabel() }}</span>
+                                    <span class="text-gray-500 dark:text-gray-400" title="{{ \App\Models\Transaction::nonBankFundingGlHint() }}">{{ $transaction->nonBankFundingAccountLabel() }}</span>
                                 @endif
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-600 dark:text-gray-300">{{ Transaction::allTypes()[$transaction->transaction_type] ?? 'Unknown' }}</td>

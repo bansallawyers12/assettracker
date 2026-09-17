@@ -49,6 +49,7 @@
         'reference' => old('reference', $isEdit ? $invoice->reference : ''),
         'notes' => old('notes', $isEdit ? $invoice->notes : ''),
         'gstBasis' => old('gst_basis', $isEdit ? ($invoice->gst_basis ?: 'inclusive') : 'inclusive'),
+        'gstAmount' => old('gst_amount', $isEdit ? $invoice->gst_amount : null),
         'issueDate' => $issueDate,
         'dueDate' => $defaultDueDate,
         'invoiceNumber' => $suggestedInvoiceNumber,
@@ -105,7 +106,7 @@
         <input type="hidden" name="notes" value="{{ $formConfig['notes'] }}" x-model="notes">
         <input type="hidden" name="asset_id" value="{{ $formConfig['assetId'] }}" :value="assetId">
         <input type="hidden" name="lease_id" value="{{ $formConfig['leaseId'] }}" :value="leaseId">
-        <input type="hidden" name="gst_percent" value="{{ ($formConfig['gstBasis'] ?? 'inclusive') === 'none' ? 0 : 10 }}" :value="gstPercent">
+        <input type="hidden" name="gst_percent" value="{{ in_array(($formConfig['gstBasis'] ?? 'inclusive'), ['none', 'manual'], true) ? 0 : 10 }}" :value="gstPercent">
         <input type="hidden" name="gst_basis" value="{{ $formConfig['gstBasis'] ?? 'inclusive' }}" :value="gstBasis">
 
         {{-- Invoice details --}}
@@ -161,16 +162,33 @@
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-white">GST</h3>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400" x-text="gstHint"></p>
             </div>
-            <div class="p-5">
-                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div class="space-y-3 p-5">
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
-                        <input type="radio" name="gst_applicable_ui" value="1" x-model="gstApplicableRadio" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        <span class="block font-medium text-gray-900 dark:text-white">Yes — GST applies</span>
+                        <input type="radio" name="gst_mode_ui" value="inclusive" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        <span class="block font-medium text-gray-900 dark:text-white">Yes — 10% inclusive</span>
                     </label>
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
-                        <input type="radio" name="gst_applicable_ui" value="0" x-model="gstApplicableRadio" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        <input type="radio" name="gst_mode_ui" value="exclusive" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        <span class="block font-medium text-gray-900 dark:text-white">Yes — 10% exclusive</span>
+                    </label>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
+                        <input type="radio" name="gst_mode_ui" value="manual" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                        <span class="block font-medium text-gray-900 dark:text-white">Mixed rates — enter total GST</span>
+                    </label>
+                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
+                        <input type="radio" name="gst_mode_ui" value="none" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
                         <span class="block font-medium text-gray-900 dark:text-white">No — GST not applicable</span>
                     </label>
+                </div>
+                <div x-show="gstMode === 'manual'" x-cloak class="max-w-xs">
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Invoice TOTAL GST <span class="text-red-500">*</span></label>
+                    <input type="number" step="0.01" min="0.01" name="gst_amount" x-model.number="manualGstAmount"
+                           class="{{ $fieldClass }}" :required="gstMode === 'manual'" />
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Use when some lines are GST-free or use a non-10% rate. Line prices are cash totals; enter the GST from the tax invoice.
+                    </p>
+                    @error('gst_amount') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                 </div>
             </div>
         </section>
@@ -285,9 +303,10 @@
             customerName: config.customerName || '',
             reference: config.reference || '',
             notes: config.notes || '',
-            gstApplicableRadio: (config.gstBasis && config.gstBasis !== 'none') ? '1' : '0',
-            // Preserve exclusive on existing drafts; new invoices always use inclusive.
-            gstBasisWhenApplicable: config.gstBasis === 'exclusive' ? 'exclusive' : 'inclusive',
+            gstMode: config.gstBasis === 'none'
+                ? 'none'
+                : (config.gstBasis === 'manual' ? 'manual' : (config.gstBasis === 'exclusive' ? 'exclusive' : 'inclusive')),
+            manualGstAmount: Number(config.gstAmount ?? 0) || null,
             issueDate: config.issueDate || '',
             dueDate: config.dueDate || '',
             invoiceNumber: config.invoiceNumber || '',
@@ -312,52 +331,68 @@
                 );
             },
             get gstApplicable() {
-                return this.gstApplicableRadio === '1' || this.gstApplicableRadio === 1 || this.gstApplicableRadio === true;
+                return this.gstMode !== 'none';
             },
             get gstBasis() {
-                return this.gstApplicable ? this.gstBasisWhenApplicable : 'none';
+                return this.gstMode;
             },
             get gstPercent() {
-                return this.gstApplicable ? 10 : 0;
+                return this.gstMode === 'inclusive' || this.gstMode === 'exclusive' ? 10 : 0;
             },
             get gstHint() {
-                if (!this.gstApplicable) {
+                if (this.gstMode === 'none') {
                     return 'GST not charged on this invoice';
                 }
-                return this.gstBasisWhenApplicable === 'exclusive'
-                    ? '10% exclusive (GST added on top) — kept from this draft'
-                    : '10% inclusive when GST applies';
+                if (this.gstMode === 'manual') {
+                    return 'Mixed rates: line prices are cash totals; enter the invoice TOTAL GST below';
+                }
+                if (this.gstMode === 'exclusive') {
+                    return '10% exclusive (GST added on top) — kept from this draft';
+                }
+                return '10% inclusive when GST applies';
             },
             get unitPriceLabel() {
-                if (!this.gstApplicable) {
+                if (this.gstMode === 'none') {
                     return 'Unit price';
                 }
-                return this.gstBasisWhenApplicable === 'exclusive' ? 'Unit price (ex GST)' : 'Unit price (inc GST)';
+                if (this.gstMode === 'exclusive') {
+                    return 'Unit price (ex GST)';
+                }
+                return 'Unit price (inc GST)';
             },
             get gstRate() {
-                if (!this.gstApplicable) {
-                    return 0;
-                }
-                return 0.1;
+                return (this.gstMode === 'inclusive' || this.gstMode === 'exclusive') ? 0.1 : 0;
             },
             get totals() {
-                return this.lines.reduce((carry, line) => {
+                const carry = this.lines.reduce((acc, line) => {
                     const amounts = this.lineAmounts(line);
-                    carry.subtotal += amounts.net;
-                    carry.gst += amounts.gst;
-                    carry.total += amounts.lineTotal;
-                    return carry;
+                    acc.subtotal += amounts.net;
+                    acc.gst += amounts.gst;
+                    acc.total += amounts.lineTotal;
+                    return acc;
                 }, { subtotal: 0, gst: 0, total: 0 });
+
+                if (this.gstMode === 'manual') {
+                    const total = Math.round(carry.total * 100) / 100;
+                    const gst = Math.round((Number(this.manualGstAmount) || 0) * 100) / 100;
+                    return {
+                        subtotal: Math.round((total - gst) * 100) / 100,
+                        gst,
+                        total,
+                    };
+                }
+
+                return carry;
             },
             lineAmounts(line) {
                 const qty = 1;
                 const price = Number(line.unit_price) || 0;
                 const rate = this.gstRate;
-                if (rate <= 0) {
+                if (rate <= 0 || this.gstMode === 'manual') {
                     const total = Math.round(qty * price * 100) / 100;
                     return { net: total, gst: 0, lineTotal: total };
                 }
-                if (this.gstBasisWhenApplicable === 'exclusive') {
+                if (this.gstMode === 'exclusive') {
                     const net = Math.round(qty * price * 100) / 100;
                     const gst = Math.round(net * rate * 100) / 100;
                     const lineTotal = Math.round((net + gst) * 100) / 100;
@@ -413,9 +448,12 @@
                     this.reference = 'Invoice for ' + assetName + (lease.tenant_name ? ' — ' + lease.tenant_name : '');
                 }
                 if (Object.prototype.hasOwnProperty.call(lease, 'gst_applicable')) {
-                    this.gstApplicableRadio = lease.gst_applicable ? '1' : '0';
-                    // Do not force inclusive here — that would wipe exclusive on existing drafts
-                    // when the lease dropdown is changed or re-selected.
+                    if (!lease.gst_applicable) {
+                        this.gstMode = 'none';
+                    } else if (this.gstMode === 'none') {
+                        this.gstMode = 'inclusive';
+                    }
+                    // Do not force inclusive over exclusive/manual drafts.
                 }
             },
             init() {

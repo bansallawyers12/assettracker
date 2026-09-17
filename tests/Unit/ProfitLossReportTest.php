@@ -54,7 +54,9 @@ it('defaults profit and loss to hide zero balances unless show_zeros is set', fu
 
     expect($controller)->toContain('$hideZeroBalances = ! $request->boolean(\'show_zeros\');')
         ->and($view)->toContain('name="show_zeros"')
-        ->and($view)->toContain('posted journal entries');
+        ->and($view)->toContain('posted journal entries')
+        ->and($view)->toContain('data-pnl-paid-basis-notice')
+        ->and($view)->toContain('Paid basis');
 });
 
 it('supports consolidated profit and loss drill-down', function () {

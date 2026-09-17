@@ -451,6 +451,7 @@
                                         <option value="{{ $value }}" @selected($oldChannel === $value)>{{ $label }}</option>
                                     @endforeach
                                 </x-tom-select>
+                                @include('partials.payment-channel-funding-hint', ['hintClass' => 'mt-1 text-xs text-gray-500 dark:text-gray-400'])
                                 @error('payment_channel') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                             <div class="md:col-span-2 lg:col-span-1">

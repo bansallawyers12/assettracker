@@ -10,12 +10,16 @@ it('registers the global transactions index route', function () {
 
 it('uses shared collapsible filters on the global transactions page', function () {
     $html = file_get_contents(resource_path('views/transactions/index.blade.php'));
+    $entitySummary = file_get_contents(resource_path('views/business-entities/partials/transactions-summary.blade.php'));
 
     expect($html)->toContain('transactions.partials.collapsible-filters')
         ->and($html)->toContain('global-tx-filters-expanded')
         ->and($html)->toContain("'mode' => 'page'")
         ->and($html)->toContain('No transactions match these filters.')
-        ->and($html)->toContain('$transactions->links()');
+        ->and($html)->toContain('$transactions->links()')
+        ->and($html)->toContain('data-global-transactions-scope-hint')
+        ->and($entitySummary)->toContain('data-entity-transactions-global-link')
+        ->and($entitySummary)->toContain("route('transactions.index'");
 });
 
 it('wires global transaction list filters through the shared filter support class', function () {
