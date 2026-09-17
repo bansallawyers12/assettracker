@@ -16,8 +16,14 @@ Cash/offset: Match existing | Match invoice, then Or create as type, then Or cre
 
 Visually group Match vs Create in the Change panel with short hints so users do not confuse Match existing (booked transactions) with Or create from chart account (GL). Keep pickers mutually exclusive in JS (`bindEntrySelectGuards` / `collectMatches`).
 
+## Chart-account create shows resolved transaction type
+When Or create from chart account is selected, surface `data-bank-import-chart-type-preview` using the same rules as `BankStatementApplyService::mapTransactionType` (2500 → director loan in/out; liability → loan_drawdown/repayments; etc.). Include `account_type` on chart options/API payloads. Clear matched/unmatched removals use `showWorkspaceConfirm`, not native `confirm()`.
+
 ## Change panel Tom Select activation
 Change stays `hidden` until **Change ▾**. On open, use `scheduleForceActivateTomSelectsIn` then refresh selects after `loadChartAccounts()` so deferred Tom Selects are not empty/broken. Toggle `aria-expanded` and the ▾/▴ label.
+
+## Column mapping auto-match banner
+After CSV/XLSX upload, Step 2 shows `data-bank-import-automap-banner` summarizing auto-matched Date/Description/Amount (or partial). Prefer confirm-when-ready copy when `mapping_complete`; keep click-to-assign remap for misses.
 
 ## Match invoice(s) is multi-select with split editor
 Reconcile Change panel label is Match invoice(s): multi-select filtered to the selected/suggested tenant pool, remaining due shown, waterfill amounts auto-filled after tick (editable), footer allocated/credit. Suggestion chip is Match · N invoices for multi splits. Loan ledgers still hide Match invoice.

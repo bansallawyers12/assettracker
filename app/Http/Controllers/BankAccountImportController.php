@@ -77,10 +77,13 @@ class BankAccountImportController extends Controller
                 'headers' => $inspect['headers'] ?? [],
                 'sample_rows' => $inspect['sample_rows'] ?? [],
                 'suggested_mapping' => $inspect['suggested_mapping'] ?? [],
+                'mapping_complete' => (bool) ($inspect['mapping_complete'] ?? false),
                 'profile' => $inspect['profile'] ?? 'generic',
                 'row_count' => $inspect['row_count'] ?? 0,
                 'required_fields' => ['date', 'description', 'amount'],
-                'message' => 'Review the column mapping, then confirm import. Date, Description, and Amount are required.',
+                'message' => ($inspect['mapping_complete'] ?? false)
+                    ? 'Columns were auto-matched. Confirm import, or adjust Date / Description / Amount below.'
+                    : 'Review the column mapping, then confirm import. Date, Description, and Amount are required.',
             ]);
         } catch (\Throwable $e) {
             Log::error('Bank account import preview error: '.$e->getMessage());
@@ -266,6 +269,7 @@ class BankAccountImportController extends Controller
                         'id' => $account->id,
                         'account_code' => $account->account_code,
                         'account_name' => $account->account_name,
+                        'account_type' => $account->account_type,
                     ])
                     ->values()
                     ->all(),

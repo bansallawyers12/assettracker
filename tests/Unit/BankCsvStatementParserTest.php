@@ -118,3 +118,42 @@ CSV);
 
     @unlink($path);
 });
+
+it('auto-maps common non-Macquarie bank headers and reports mapping_complete', function () {
+    $path = writeTempCsv(<<<'CSV'
+Processed Date,Payment Details,Money Out,Money In,Running Balance
+03/09/2026,Council rates,120.50,,4521.10
+04/09/2026,Rental income,,1800.00,6321.10
+CSV);
+
+    $parser = new BankCsvStatementParser;
+    $inspect = $parser->inspectFile($path);
+
+    expect($inspect['success'])->toBeTrue()
+        ->and($inspect['mapping_complete'])->toBeTrue()
+        ->and($inspect['suggested_mapping']['date'])->toBe('Processed Date')
+        ->and($inspect['suggested_mapping']['description'])->toBe('Payment Details')
+        ->and($inspect['suggested_mapping']['debit'])->toBe('Money Out')
+        ->and($inspect['suggested_mapping']['credit'])->toBe('Money In')
+        ->and($inspect['suggested_mapping']['balance'])->toBe('Running Balance');
+
+    @unlink($path);
+});
+
+it('fuzzy-matches headers that contain known aliases', function () {
+    $path = writeTempCsv(<<<'CSV'
+Transaction Date (AEST),Transaction Narrative,AUD Amount
+05/09/2026,Interest,12.50
+CSV);
+
+    $parser = new BankCsvStatementParser;
+    $inspect = $parser->inspectFile($path);
+
+    expect($inspect['success'])->toBeTrue()
+        ->and($inspect['mapping_complete'])->toBeTrue()
+        ->and($inspect['suggested_mapping']['date'])->toBe('Transaction Date (AEST)')
+        ->and($inspect['suggested_mapping']['description'])->toBe('Transaction Narrative')
+        ->and($inspect['suggested_mapping']['amount'])->toBe('AUD Amount');
+
+    @unlink($path);
+});

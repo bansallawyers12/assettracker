@@ -8,6 +8,7 @@ import {
     notifyFormSuccess,
 } from './workspace-panel.js';
 import { scheduleForceActivateTomSelectsIn, refreshTomSelect, setSelectValue } from './tomselect-init.js';
+import { showWorkspaceConfirm } from './workspace-dialog.js';
 
 export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel) {
     const importPanel = panel.querySelector('[data-bank-import-panel]');
@@ -30,6 +31,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     const mappingReadyHint = importPanel.querySelector('[data-bank-import-mapping-ready-hint]');
     const confirmMappingBtn = importPanel.querySelector('[data-bank-import-confirm-mapping]');
     const cancelPreviewBtn = importPanel.querySelector('[data-bank-import-cancel-preview]');
+    const automapBanner = importPanel.querySelector('[data-bank-import-automap-banner]');
 
     let importPreviewToken = null;
     let importPreviewHeaders = [];
@@ -96,7 +98,14 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 ? 'Remove all unmatched statement lines on this account? Booked transactions are not deleted.'
                 : `Remove ${entryIds.length} selected unmatched statement line(s)? Booked transactions are not deleted.`);
 
-        if (!window.confirm(confirmMessage)) {
+        const ok = await showWorkspaceConfirm({
+            title: matchStatus === 'matched' ? 'Remove matched lines?' : 'Remove unmatched lines?',
+            message: confirmMessage,
+            confirmText: 'Remove',
+            cancelText: 'Cancel',
+            variant: 'danger',
+        });
+        if (!ok) {
             return;
         }
 
@@ -655,6 +664,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     [chartSelect, typeSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
+                    updateChartTypePreview(entryEl);
                 }
             }, { signal });
 
@@ -670,6 +680,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     filterInvoiceSelectToPool(invoiceSelect, ids);
                     setInvoiceSelection(invoiceSelect, ids);
                     renderInvoiceSplit(entryEl, true);
+                    updateChartTypePreview(entryEl);
                 } else {
                     filterInvoiceSelectToPool(invoiceSelect, []);
                     renderInvoiceSplit(entryEl, true);
@@ -689,6 +700,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                         if (select) refreshTomSelect(select);
                     });
                 }
+                updateChartTypePreview(entryEl);
             }, { signal });
 
             typeSelect?.addEventListener('change', () => {
@@ -703,9 +715,75 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     [txSelect, chartSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
+                    updateChartTypePreview(entryEl);
                 }
             }, { signal });
+
+            updateChartTypePreview(entryEl);
         });
+    }
+
+    const CHART_CREATE_TYPE_LABELS = {
+        director_loan_in: 'Director Loan In',
+        director_loan_out: 'Director Loan Out',
+        sales_revenue: 'Sales Revenue',
+        cogs: 'Cost of Goods Sold',
+        capital_expenditure: 'Capital Expenditure',
+        asset_purchase: 'Asset Purchase',
+        loan_drawdown: 'Loan Drawdown',
+        loan_repayments: 'Loan Repayment',
+        equity_contribution: 'Equity Contribution',
+        directors_fees: 'Directors Fees',
+    };
+
+    /**
+     * Mirrors BankStatementApplyService::mapTransactionType for Change-panel preview.
+     */
+    function mapChartAccountToTransactionType(accountCode, accountType, amount) {
+        const isIncome = Number(amount) >= 0;
+        if (String(accountCode) === '2500') {
+            return isIncome ? 'director_loan_in' : 'director_loan_out';
+        }
+
+        switch (String(accountType || '')) {
+            case 'income':
+                return isIncome ? 'sales_revenue' : 'cogs';
+            case 'expense':
+                return isIncome ? 'sales_revenue' : 'cogs';
+            case 'asset':
+                return isIncome ? 'capital_expenditure' : 'asset_purchase';
+            case 'liability':
+                return isIncome ? 'loan_drawdown' : 'loan_repayments';
+            case 'equity':
+                return isIncome ? 'equity_contribution' : 'directors_fees';
+            default:
+                return isIncome ? 'sales_revenue' : 'cogs';
+        }
+    }
+
+    function updateChartTypePreview(entryEl) {
+        const preview = entryEl.querySelector('[data-bank-import-chart-type-preview]');
+        const chartSelect = entryEl.querySelector('[data-bank-import-chart-account]');
+        if (!preview || !chartSelect) {
+            return;
+        }
+
+        const option = chartSelect.selectedOptions?.[0]
+            || chartSelect.querySelector(`option[value="${CSS.escape(chartSelect.value)}"]`);
+        const accountCode = option?.dataset?.accountCode || '';
+        const accountType = option?.dataset?.accountType || '';
+        if (!chartSelect.value || !accountCode) {
+            preview.classList.add('hidden');
+            preview.textContent = '';
+            return;
+        }
+
+        const amount = Number(entryEl.dataset.entryAmount || 0);
+        const typeKey = mapChartAccountToTransactionType(accountCode, accountType, amount);
+        const typeLabel = CHART_CREATE_TYPE_LABELS[typeKey] || typeKey;
+        const direction = amount >= 0 ? 'credit (money in)' : 'debit (money out)';
+        preview.textContent = `Creates as ${typeLabel} · ${direction} from GL ${accountCode}`;
+        preview.classList.remove('hidden');
     }
 
     function populateChartAccountSelects(accounts) {
@@ -724,12 +802,18 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 const option = document.createElement('option');
                 option.value = String(account.id);
                 option.textContent = `${account.account_code} - ${account.account_name}`;
+                option.dataset.accountCode = String(account.account_code ?? '');
+                option.dataset.accountType = String(account.account_type ?? '');
                 select.appendChild(option);
             });
             if (keep && accounts.some((account) => String(account.id) === String(keep))) {
                 select.value = String(keep);
             }
             refreshTomSelect(select);
+            const entryEl = select.closest('[data-bank-import-entry]');
+            if (entryEl) {
+                updateChartTypePreview(entryEl);
+            }
         });
     }
 
@@ -1017,6 +1101,13 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         if (pickHint) {
             pickHint.textContent = 'Click a column, then click a target field';
         }
+        if (automapBanner) {
+            automapBanner.classList.add('hidden');
+            automapBanner.textContent = '';
+        }
+        if (confirmMappingBtn) {
+            confirmMappingBtn.textContent = 'Confirm import';
+        }
         importPanel.querySelectorAll('[data-bank-import-map-field]').forEach((select) => {
             select.innerHTML = '<option value="">— Choose column —</option>';
             select.value = '';
@@ -1167,6 +1258,10 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             mappingReadyHint.classList.toggle('text-emerald-700', !mappingError);
             mappingReadyHint.classList.toggle('dark:text-emerald-300', !mappingError);
         }
+
+        if (automapBanner && !mappingPreview?.classList.contains('hidden')) {
+            updateAutomapBanner({ mapping_complete: !mappingError });
+        }
     }
 
     function populateMappingSelects(headers, suggested = {}) {
@@ -1270,6 +1365,54 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         });
     }
 
+    function fieldLabel(field) {
+        return ({
+            date: 'Date',
+            description: 'Description',
+            amount: 'Amount',
+            debit: 'Debit',
+            credit: 'Credit',
+            reference: 'Reference',
+            balance: 'Balance',
+        })[field] || field;
+    }
+
+    function updateAutomapBanner(payload = {}) {
+        if (!automapBanner) {
+            return;
+        }
+
+        const mapping = currentMapping();
+        const mappingError = validateMappingClient(mapping);
+        const complete = payload.mapping_complete === true || !mappingError;
+        const parts = PRIMARY_FIELDS
+            .map((field) => {
+                const column = mapping[field];
+                return column ? `${fieldLabel(field)} → ${column}` : null;
+            })
+            .filter(Boolean);
+
+        if (parts.length === 0 && mappingError) {
+            automapBanner.classList.add('hidden');
+            automapBanner.textContent = '';
+            return;
+        }
+
+        automapBanner.classList.remove('hidden');
+        if (complete) {
+            automapBanner.className = 'rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-900 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-100';
+            automapBanner.textContent = parts.length
+                ? `Auto-matched: ${parts.join(' · ')}. Confirm import, or adjust a field below if wrong.`
+                : 'Required columns are mapped. Confirm import, or adjust below if wrong.';
+            return;
+        }
+
+        automapBanner.className = 'rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-100';
+        automapBanner.textContent = parts.length
+            ? `Partial match: ${parts.join(' · ')}. Map the remaining required fields (Date, Description, Amount or Debit/Credit).`
+            : 'Could not auto-match this file. Map Date, Description, and Amount (or Debit/Credit) below.';
+    }
+
     function showMappingPreview(payload) {
         importPreviewToken = payload.preview_token || null;
         importPreviewHeaders = Array.isArray(payload.headers) ? payload.headers : [];
@@ -1279,11 +1422,27 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         populateMappingSelects(importPreviewHeaders, payload.suggested_mapping || {});
         renderSourceColumnChips(importPreviewHeaders);
         refreshMappingUi();
+        updateAutomapBanner(payload);
 
         if (previewMeta) {
             const name = payload.original_name || 'CSV';
             const count = payload.row_count ?? 0;
-            previewMeta.textContent = `${name} · ${count} data row(s)`;
+            const profile = payload.profile && payload.profile !== 'generic'
+                ? ` · ${payload.profile} profile`
+                : '';
+            previewMeta.textContent = `${name} · ${count} data row(s)${profile}`;
+        }
+
+        if (pickHint) {
+            pickHint.textContent = payload.mapping_complete
+                ? 'Auto-matched — adjust only if a column looks wrong'
+                : 'Click a column, then click a target field';
+        }
+
+        if (confirmMappingBtn && payload.mapping_complete) {
+            confirmMappingBtn.textContent = 'Confirm auto-matched import';
+        } else if (confirmMappingBtn) {
+            confirmMappingBtn.textContent = 'Confirm import';
         }
 
         mappingPreview?.classList.remove('hidden');

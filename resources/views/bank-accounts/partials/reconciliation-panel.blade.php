@@ -147,9 +147,8 @@
             <div>
                 <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Step 2 — Match columns</h4>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                    1) Click a <span class="font-medium text-gray-700 dark:text-gray-200">file column</span> below,
-                    2) click Date / Description / Amount to assign it.
-                    Or use the dropdown. The preview table reorders to match.
+                    We try to auto-match Date / Description / Amount from common bank headers.
+                    Adjust only if a field looks wrong — click a file column, then a target, or use the dropdown.
                 </p>
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" data-bank-import-preview-meta></p>
             </div>
@@ -161,6 +160,12 @@
                 Cancel preview
             </button>
         </div>
+
+        <div
+            data-bank-import-automap-banner
+            class="hidden rounded-lg border px-3 py-2 text-xs"
+            role="status"
+        ></div>
 
         <div class="rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/40">
             <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -505,7 +510,7 @@
                                             <div class="sm:col-span-2">
                                                 <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-300">Or create from chart account</label>
                                                 <p class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400" data-bank-import-chart-account-hint>
-                                                    Active GL accounts (chart of accounts codes) — not the Match existing list.
+                                                    Active GL accounts — the type that will be created is shown below (e.g. 2500 → Director Loan).
                                                 </p>
                                                 <x-tom-select
                                                     data-bank-import-chart-account
@@ -513,11 +518,20 @@
                                                 >
                                                     <option value="">— None —</option>
                                                     @foreach(($chartAccounts ?? collect()) as $chartAccount)
-                                                        <option value="{{ $chartAccount->id }}">
+                                                        <option
+                                                            value="{{ $chartAccount->id }}"
+                                                            data-account-code="{{ $chartAccount->account_code }}"
+                                                            data-account-type="{{ $chartAccount->account_type }}"
+                                                        >
                                                             {{ $chartAccount->account_code }} - {{ $chartAccount->account_name }}
                                                         </option>
                                                     @endforeach
                                                 </x-tom-select>
+                                                <p
+                                                    class="mt-1.5 hidden text-[11px] leading-snug text-indigo-700 dark:text-indigo-300"
+                                                    data-bank-import-chart-type-preview
+                                                    role="status"
+                                                ></p>
                                             </div>
                                         @endunless
                                     </div>

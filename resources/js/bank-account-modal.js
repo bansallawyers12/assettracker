@@ -39,8 +39,32 @@ function bindTransactionsPanel(root, signal, refreshUrl, options = {}) {
     const panel = root.querySelector('[data-bank-transactions-panel]') || root;
     const addButton = root.querySelector('[data-bank-transactions-add]');
     const entityPicker = root.querySelector('[data-bank-transactions-entity-picker]');
+    const addTransactionLink = root.querySelector('[data-bank-transactions-add-transaction]');
     const filterForm = root.querySelector('[data-tx-filters]') || root.querySelector('[data-bank-transactions-filters]');
     const filterKeys = ['q', 'date_from', 'date_to', 'entity_id', 'type', 'direction', 'payment_status', 'match_status', 'subject_to_bas', 'is_flagged'];
+
+    function syncAddTransactionLink() {
+        if (!addTransactionLink) {
+            return;
+        }
+
+        const template = addTransactionLink.dataset.addTransactionUrlTemplate;
+        const entityId = (entityPicker?.value || addButton?.dataset.defaultEntityId || '').trim();
+        if (template && entityId) {
+            addTransactionLink.href = template.replaceAll('ENTITY_ID', encodeURIComponent(entityId));
+            return;
+        }
+
+        if (entityId) {
+            const url = new URL(addTransactionLink.href, window.location.origin);
+            url.searchParams.set('open_add_transaction', '1');
+            url.searchParams.set('business_entity_id', entityId);
+            addTransactionLink.href = `${url.pathname}${url.search}`;
+        }
+    }
+
+    syncAddTransactionLink();
+    entityPicker?.addEventListener('change', syncAddTransactionLink, { signal });
     function buildIndexUrl(fromForm = filterForm) {
         const baseUrl = panel.dataset.bankTransactionsIndexUrl || refreshUrl;
         if (!baseUrl) {

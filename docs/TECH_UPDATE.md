@@ -166,7 +166,7 @@ Priority order by traffic/complexity:
 | Pattern | Count (approx) | Notes |
 |---------|----------------|-------|
 | Duplicated `session('success')` / `session('error')` blocks | **27 views** | Inconsistent Tailwind markup |
-| Native `confirm()` | **~34** (excl. CLI) | Blade forms + workspace JS |
+| Native `confirm()` | **~34** (excl. CLI) | Blade forms + workspace JS; bank reconcile clear matched/unmatched uses `showWorkspaceConfirm` |
 | `alert()` | **~86** | Mostly `documents-workspace.js`, `compliance-workspace.js`, `emails/reply.blade.php` |
 | Alpine modal component | Exists | `<x-modal>` — not used for confirms |
 

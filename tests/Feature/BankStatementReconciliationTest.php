@@ -50,6 +50,9 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($panel)->toContain('data-bank-import-change-hint')
         ->and($panel)->toContain('data-bank-import-match-existing-hint')
         ->and($panel)->toContain('data-bank-import-chart-account-hint')
+        ->and($panel)->toContain('data-bank-import-chart-type-preview')
+        ->and($panel)->toContain('data-account-code')
+        ->and($panel)->toContain('data-account-type')
         ->and($panel)->toContain('data-bank-import-match-existing-empty')
         ->and($panel)->toContain('aria-expanded="false"')
         ->and($panel)->not->toContain('Create from chart of accounts')
@@ -62,6 +65,8 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($panel)->toContain('data-bank-import-comments')
         ->and($transactions)->toContain('bank-accounts.partials.reconciliation-panel')
         ->and($transactions)->toContain('isLoanActivityImport')
+        ->and($transactions)->toContain('data-bank-transactions-add-transaction')
+        ->and($transactions)->toContain('not the full Add transaction flow')
         ->and($controller)->toContain("'chartAccounts'")
         ->and($controller)->toContain('ChartOfAccount::activeForSelect')
         ->and($js)->toContain('export function bindReconciliationPanel')
@@ -77,8 +82,15 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($js)->toContain('scheduleForceActivateTomSelectsIn')
         ->and($js)->toContain("btn.textContent = open ? 'Change ▴' : 'Change ▾'")
         ->and($js)->toContain('aria-expanded')
+        ->and($js)->toContain('showWorkspaceConfirm')
+        ->and($js)->toContain('mapChartAccountToTransactionType')
+        ->and($js)->toContain('updateChartTypePreview')
+        ->and($js)->toContain('data-bank-import-chart-type-preview')
+        ->and($js)->not->toContain('window.confirm')
         ->and($modal)->toContain("from './bank-reconciliation.js'")
         ->and($modal)->toContain('bindReconciliationPanel')
+        ->and($modal)->toContain('data-bank-transactions-add-transaction')
+        ->and($modal)->toContain('syncAddTransactionLink')
         ->and($js)->toContain('subject_to_bas')
         ->and($js)->toContain('is_flagged')
         ->and($js)->toContain('comments')
@@ -114,6 +126,7 @@ it('enriches unmatched endpoint with suggestions in controller source', function
         ->and($source)->toContain("Rule::in(['selected', 'all'])")
         ->and($source)->toContain("'matched_count'")
         ->and($source)->toContain("'chart_accounts'")
+        ->and($source)->toContain("'account_type'")
         ->and($source)->toContain('ChartOfAccount::activeForSelect')
         ->and($source)->toContain("whereNull('transaction_id')")
         ->and($source)->toContain('whereNotNull');
@@ -143,7 +156,7 @@ it('parses macquarie csv profile and aug-26 dates', function () {
         ->and($result['entries'][1]['amount'])->toBe(1500.0);
 });
 
-it('rejects non-csv bank statement files', function () {
+it('rejects invalid xlsx bank statement files', function () {
     $parser = new BankCsvStatementParser;
     $fixture = base_path('tests/fixtures/macquarie-bank-statement.csv');
     $xlsxPath = sys_get_temp_dir().DIRECTORY_SEPARATOR.'statement.xlsx';
@@ -153,7 +166,7 @@ it('rejects non-csv bank statement files', function () {
         $result = $parser->parseFile($xlsxPath);
 
         expect($result['success'])->toBeFalse()
-            ->and($result['error'])->toContain('Only CSV bank statements are supported');
+            ->and($result['error'])->toContain('Could not open Excel workbook');
     } finally {
         @unlink($xlsxPath);
     }

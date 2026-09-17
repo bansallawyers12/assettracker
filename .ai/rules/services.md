@@ -20,7 +20,7 @@ loan_repayments on a loan-purpose account unpost (no 1100). Offset↔loan intern
 All explicit director-loan transaction types (`director_loan_in`, out, repayment, and legacy aliases) post to Director / Entity Loan account 2500. Ignore stale `chart_of_account_id` overrides for these types; re-post affected paid rows after deployment.
 
 ## Keep imported funding types distinct
-When creating transactions from chart-account reconciliation: account 2500 maps to director_loan_in/out; other liability inflows map to loan_drawdown; equity inflows map to equity_contribution. Do not use director_loan_in as a generic positive liability/equity type.
+When creating transactions from chart-account reconciliation: account 2500 maps to director_loan_in/out; other liability inflows map to loan_drawdown; equity inflows map to equity_contribution. Do not use director_loan_in as a generic positive liability/equity type. The Change panel must preview that resolved type (`data-bank-import-chart-type-preview`) so the mapping is not invisible.
 
 ## Journal posting invariants: every type maps, every GL account exists, no unbalanced entries
 P&L and the balance sheet only read journals where is_posted is true AND total_debit = total_credit, so a journal that is short one line disappears from both reports instead of failing loudly.
@@ -67,6 +67,9 @@ CSV/XLSX statement duplicates use date + amount + description + optional referen
 
 ## Bank statement uploads accept CSV and XLSX
 `BankAccountImportController` validates `mimes:csv,txt,xlsx`. `BankCsvStatementParser` reads CSV/TXT natively and `.xlsx` via `BankStatementXlsxReader` (first sheet, ZipArchive — no PhpSpreadsheet). Reject legacy `.xls` with a re-save message.
+
+## Statement column auto-map covers AU bank aliases
+`BankCsvStatementParser::suggestMapping` matches Date/Description/Amount (and Debit/Credit/Balance) via exact and contains aliases (Processed Date, Payment Details, Money In/Out, AUD Amount, etc.) plus content scoring. Inspect responses include `mapping_complete` so the UI can show an auto-match banner; users still confirm or adjust before import.
 
 ## Reconcile can match unpaid invoices including partials
 Reconcile Match invoice is a separate picker from Match existing (transactions). Accepts credits ≤ remaining invoice balance (exact remaining or partial). Accept creates invoice_payment via InvoicePaymentService with an allocation (Dr 1100 / Cr 1130). Do not create rental_income for a statement credit that belongs on open AR. Hidden on loan ledgers.

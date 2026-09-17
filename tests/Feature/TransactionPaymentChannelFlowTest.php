@@ -19,7 +19,11 @@ it('keeps bank transactions panel balance sheet entry separate from dashboard ad
         ->and($panel)->toContain('balance-sheet-entries/create')
         ->and($panel)->toContain('payment_channel')
         ->and($panel)->toContain('PAYMENT_CHANNEL_DIRECTOR_FUNDS')
-        ->and($panel)->not->toContain('open_add_transaction');
+        ->and($panel)->toContain('data-bank-transactions-add-transaction')
+        ->and($panel)->toContain('not the full Add transaction flow')
+        ->and($panel)->toContain('data-create-url-template="{{ $createUrlTemplate }}"')
+        ->and($panel)->toMatch('/\$createUrlTemplate = url\(\'\/business-entities\/BUSINESS_ENTITY\/balance-sheet-entries\/create\'/')
+        ->and($panel)->not->toMatch('/\$createUrlTemplate = .*open_add_transaction/');
 });
 
 it('stores bank-originated transactions with bank-account payment channel', function () {

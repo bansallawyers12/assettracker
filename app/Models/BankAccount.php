@@ -1042,6 +1042,26 @@ class BankAccount extends Model
             }
         }
 
+        // Person-held accounts appear on firm-shared person pages; grant access when the
+        // holder is linked to any entity the user may view (same portfolio model as entities).
+        if ($this->holder_type === self::HOLDER_PERSON && $this->holder_person_id) {
+            $person = $this->relationLoaded('holderPerson')
+                ? $this->holderPerson
+                : $this->holderPerson()->first();
+
+            if ($person !== null) {
+                $linkedEntities = $person->relationLoaded('businessEntities')
+                    ? $person->businessEntities
+                    : $person->businessEntities()->get();
+
+                foreach ($linkedEntities as $entity) {
+                    if ($canViewEntity($entity)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
         return false;
     }
 
@@ -1095,6 +1115,24 @@ class BankAccount extends Model
 
             if ($holder !== null && $canUpdateEntity($holder)) {
                 return true;
+            }
+        }
+
+        if ($this->holder_type === self::HOLDER_PERSON && $this->holder_person_id) {
+            $person = $this->relationLoaded('holderPerson')
+                ? $this->holderPerson
+                : $this->holderPerson()->first();
+
+            if ($person !== null) {
+                $linkedEntities = $person->relationLoaded('businessEntities')
+                    ? $person->businessEntities
+                    : $person->businessEntities()->get();
+
+                foreach ($linkedEntities as $entity) {
+                    if ($canUpdateEntity($entity)) {
+                        return true;
+                    }
+                }
             }
         }
 

@@ -1,6 +1,7 @@
 ---
 paths:
   - app/Models/Transaction.php
+  - app/Models/BankAccount.php
 ---
 
 # Models
@@ -13,3 +14,6 @@ Loan-purpose accounts use loanActivityTypeSelectGroups(): Loan Interest / Fees /
 
 ## Offset cash pickers exclude loan economics
 Offset-purpose accounts use typeSelectGroupsForBankAccount() without the Loan group. isAllowedOnBankAccount() rejects loan_interest / loan_fees / loan_repayments on offset (legacy type kept on edit). LoanOffsetTransactionGuard still enforces the same rule when the account is linked as offset on an entity.
+
+## Person-held bank accounts follow linked entity permissions
+`BankAccount::isAccessibleBy` / `isEditableBy` grant access for `holder_type=person` when any linked `Person::businessEntities` passes the view/update callback (firm-shared portfolio). Owner `user_id` still wins. Do not 403 person workspace bank edit solely because `user_id` differs from the current user.

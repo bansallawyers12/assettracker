@@ -11,30 +11,46 @@ class BankCsvStatementParser
     /** @var list<string> */
     private const DATE_COLUMNS = [
         'date', 'transaction date', 'trans date', 'value date', 'posting date', 'post date',
-        'txn date', 'tran date', 'processed date',
+        'txn date', 'tran date', 'processed date', 'effective date', 'posted date',
+        'accounting date', 'settlement date', 'booking date', 'activity date',
     ];
 
     /** @var list<string> */
     private const DESCRIPTION_COLUMNS = [
         'description', 'details', 'particulars', 'narration', 'memo', 'payee', 'payer',
         'original description', 'narrative', 'transaction description', 'transaction details',
-        'merchant', 'transaction narrative',
+        'merchant', 'transaction narrative', 'payment details', 'tran description',
+        'merchant name', 'transaction particulars', 'commentary', 'notes', 'reference details',
     ];
 
     /** @var list<string> */
-    private const DEBIT_COLUMNS = ['debit', 'debit amount', 'withdrawal', 'out', 'dr', 'expense'];
+    private const DEBIT_COLUMNS = [
+        'debit', 'debit amount', 'withdrawal', 'withdrawals', 'out', 'dr', 'expense',
+        'money out', 'spent', 'debited',
+    ];
 
     /** @var list<string> */
-    private const CREDIT_COLUMNS = ['credit', 'credit amount', 'deposit', 'in', 'cr', 'income'];
+    private const CREDIT_COLUMNS = [
+        'credit', 'credit amount', 'deposit', 'deposits', 'in', 'cr', 'income',
+        'money in', 'received', 'receipts', 'credited',
+    ];
 
     /** @var list<string> */
-    private const AMOUNT_COLUMNS = ['amount', 'transaction amount', 'net amount', 'value', 'txn amount'];
+    private const AMOUNT_COLUMNS = [
+        'amount', 'transaction amount', 'net amount', 'value', 'txn amount',
+        'aud amount', 'amount (aud)', 'amount aud', 'transaction value', 'aud$',
+    ];
 
     /** @var list<string> */
-    private const REFERENCE_COLUMNS = ['reference', 'ref', 'transaction id', 'cheque no', 'cheque number'];
+    private const REFERENCE_COLUMNS = [
+        'reference', 'ref', 'transaction id', 'cheque no', 'cheque number',
+        'receipt number', 'serial', 'trace id', 'bank reference',
+    ];
 
     /** @var list<string> */
-    private const BALANCE_COLUMNS = ['balance', 'running balance', 'account balance'];
+    private const BALANCE_COLUMNS = [
+        'balance', 'running balance', 'account balance', 'available balance', 'closing balance',
+    ];
 
     /** @var list<string> */
     private const CATEGORY_COLUMNS = ['category'];
@@ -98,6 +114,7 @@ class BankCsvStatementParser
                 'headers' => $headers,
                 'sample_rows' => array_slice($rows, 0, 8),
                 'suggested_mapping' => $suggested,
+                'mapping_complete' => $this->validateMapping($suggested, $headers) === null,
                 'profile' => $profile,
                 'row_count' => count($rows),
             ];
@@ -436,7 +453,8 @@ class BankCsvStatementParser
         $subcategoryCol = $this->findColumn($headers, self::SUBCATEGORY_COLUMNS);
         $originalDescCol = $this->findColumn($headers, self::ORIGINAL_DESCRIPTION_COLUMNS);
 
-        if ($profile === 'macquarie' && $originalDescCol !== null && empty($mapping['description'])) {
+        if ($profile === 'macquarie' && $originalDescCol !== null) {
+            // Prefer Original Description over the shortened Details column.
             $descCol = $originalDescCol;
         }
 
@@ -534,6 +552,22 @@ class BankCsvStatementParser
         foreach ($candidates as $candidate) {
             if (isset($lookup[$candidate])) {
                 return $lookup[$candidate];
+            }
+        }
+
+        // Longer aliases first so "transaction date" wins over bare "date" substrings.
+        $ordered = $candidates;
+        usort($ordered, static fn (string $a, string $b): int => strlen($b) <=> strlen($a));
+
+        foreach ($ordered as $candidate) {
+            if (strlen($candidate) < 5) {
+                continue;
+            }
+
+            foreach ($lookup as $normalized => $original) {
+                if (str_contains($normalized, $candidate) || str_contains($candidate, $normalized)) {
+                    return $original;
+                }
             }
         }
 

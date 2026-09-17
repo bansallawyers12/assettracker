@@ -28,8 +28,11 @@ it('routes bank transactions panel to dedicated balance sheet entry form', funct
     expect($panel)->toContain('Add balance sheet entry')
         ->and($panel)->toContain('balance-sheet-entries/create')
         ->and($panel)->toContain('return_bank_account_id')
-        ->and($panel)->not->toContain('open_add_transaction')
-        ->and($panel)->not->toContain("route('dashboard')");
+        ->and($panel)->toContain('not the full Add transaction flow')
+        ->and($panel)->toContain('data-bank-transactions-add-transaction')
+        ->and($panel)->toContain('open_add_transaction')
+        ->and($panel)->toContain("route('dashboard'")
+        ->and($panel)->not->toContain("data-create-url-template=\"{{ route('dashboard'");
 });
 
 it('registers balance sheet entry routes and controller actions', function () {

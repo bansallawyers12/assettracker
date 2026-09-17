@@ -87,11 +87,11 @@ Asset Tracker is a mature Laravel portal (entities, assets, banking, accounting,
 | bank-003 | Functionality | High | Loan-purpose CSV = loan activity, not cash reconciliation | Limited types, no chart-account create, different labels/counts | `.ai/rules/partials.md`, `.ai/rules/loan-offset-transfers.md` | **Fixed** — loan activity guidance bullets; “to apply” vs unmatched explained; chart/invoice still hidden |
 | bank-004 | Data | High | Loan repayments on loan account post no GL alone | Cash movement expected via offset `internal_transfer`; silent under-reporting if missing | `docs/ACCOUNTING_PNL_AND_BALANCE_SHEET.md` §9, `AuditUnmatchedLoanRepayments` | **Fixed** — `UnmatchedLoanRepaymentAuditor` + loan panel banner; artisan command still read-only |
 | bank-005 | Functionality | Medium | CSV/TXT only — Excel rejected | Users uploading `.xlsx` exports get validation error | `BankAccountImportController`, tests | **Fixed** — accept `.xlsx` via `BankStatementXlsxReader`; `.xls` still needs re-save |
-| bank-006 | UX | Medium | Column mapping step after upload | Non-Macquarie banks may need manual Date/Description/Amount remap | `bank-reconciliation.js`, CSV mapping UI (Aug 2026) | Open |
-| bank-007 | Security | Medium | Person-held bank accounts 403 for non-owner users | Account visible in portfolio list but edit returns Unauthorized | `BankAccount::isAccessibleBy`, `PersonShowWorkspaceController` | Open |
-| bank-008 | UX | Medium | Balance sheet entry CTA ≠ Add transaction | Capital/deposits use minimal balance-sheet form; full P&L flow is separate | `.ai/rules/balance-sheet-entries.md` | Open |
-| bank-009 | Functionality | Medium | Chart-account create maps to transaction types invisibly | e.g. 2500 → director loan in/out; liability → loan_drawdown | `.ai/rules/services.md`, `BankStatementApplyService` | Open |
-| bank-010 | UX | Low | Clear matched/unmatched uses native `confirm()` | Inconsistent with workspace styled confirm dialogs | `bank-reconciliation.js`, `docs/TECH_UPDATE.md` | Open |
+| bank-006 | UX | Medium | Column mapping step after upload | Non-Macquarie banks may need manual Date/Description/Amount remap | `bank-reconciliation.js`, CSV mapping UI (Aug 2026) | **Fixed** — broader AU header synonyms + fuzzy contains match; `mapping_complete` + auto-match banner |
+| bank-007 | Security | Medium | Person-held bank accounts 403 for non-owner users | Account visible in portfolio list but edit returns Unauthorized | `BankAccount::isAccessibleBy`, `PersonShowWorkspaceController` | **Fixed** — person-held access via linked entity `view`/`update` (same as person-001) |
+| bank-008 | UX | Medium | Balance sheet entry CTA ≠ Add transaction | Capital/deposits use minimal balance-sheet form; full P&L flow is separate | `.ai/rules/balance-sheet-entries.md` | **Fixed** — clearer non-bank copy + secondary dashboard Add transaction link |
+| bank-009 | Functionality | Medium | Chart-account create maps to transaction types invisibly | e.g. 2500 → director loan in/out; liability → loan_drawdown | `.ai/rules/services.md`, `BankStatementApplyService` | **Fixed** — live `data-bank-import-chart-type-preview` mirrors `mapTransactionType` |
+| bank-010 | UX | Low | Clear matched/unmatched uses native `confirm()` | Inconsistent with workspace styled confirm dialogs | `bank-reconciliation.js`, `docs/TECH_UPDATE.md` | **Fixed** — `showWorkspaceConfirm` for clear matched/unmatched/selected |
 
 ### Reconciliation Change panel — intended layout (Aug 2026)
 
@@ -201,7 +201,7 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| person-001 | Security | Medium | Person bank account edit 403 when not accessible to user | Multi-user firms: created-by-other-user accounts fail edit | `PersonShowWorkspaceController`, `BankAccountAccessTest` |
+| person-001 | Security | Medium | Person bank account edit 403 when not accessible to user | Multi-user firms: created-by-other-user accounts fail edit | `PersonShowWorkspaceController`, `BankAccountAccessTest` | **Fixed** — same as bank-007: linked-entity view/update grants access |
 | person-002 | UX | Low | Officer roles rejected for tenancy-only entities | JSON error, not inline explanation | `PersonsWorkspaceController` |
 | person-003 | UX | Low | Person form Tom Select clips without `dropdownParent=body` | Dropdown clipped in slide-over | `PersonsWorkspaceFormTest`, `tomselect-init.js` |
 

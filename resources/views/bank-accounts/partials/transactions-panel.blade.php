@@ -97,10 +97,19 @@
     ])
 
     @if($canManageTransactions)
-        <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60">
+        @php
+            $addTransactionBaseQuery = array_filter([
+                'open_add_transaction' => 1,
+                'business_entity_id' => $defaultEntityId ?? $contextEntityId ?? null,
+            ], fn ($value) => $value !== null && $value !== '');
+            $addTransactionUrl = route('dashboard', $addTransactionBaseQuery);
+            $addTransactionUrlTemplate = route('dashboard', ['open_add_transaction' => 1, 'business_entity_id' => 'ENTITY_ID']);
+        @endphp
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/60" data-bank-transactions-entry-actions>
             <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Add balance sheet entry</h3>
             <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                Record capital and other balance-sheet items not paid through this bank account (use Asset Purchase for property deposits/purchases).
+                Capital, property deposits (Asset Purchase), and director-loan movements <span class="font-medium text-gray-700 dark:text-gray-200">not paid through this bank account</span>
+                (director funds / cash / third party). This is a short form — not the full Add transaction flow.
             </p>
 
             <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -147,6 +156,17 @@
                     Add balance sheet entry
                 </button>
             </div>
+
+            <p class="mt-3 text-xs text-gray-500 dark:text-gray-400">
+                For rent, bills, GST, vendors, or anything paid through the bank, use
+                <a
+                    href="{{ $addTransactionUrl }}"
+                    data-bank-transactions-add-transaction
+                    data-add-transaction-url-template="{{ $addTransactionUrlTemplate }}"
+                    class="font-medium text-indigo-600 hover:underline dark:text-indigo-400"
+                >Add transaction</a>
+                on the dashboard (full P&amp;L form).
+            </p>
         </div>
     @endif
 
