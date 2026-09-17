@@ -35,10 +35,44 @@ it('maps loan repayments to long term loans account config', function () {
 
 it('includes director loan transaction GL on balance sheet manual 2500 balance', function () {
     $source = file_get_contents(app_path('Services/FinancialReportService.php'));
+    $accountTx = file_get_contents(resource_path('views/financial-reports/account-transactions.blade.php'));
 
     expect($source)->toContain('directorLoanExplicitTransactionTypes')
         ->and($source)->toContain('whereHasMorph(\'source\', [Transaction::class]')
-        ->and($source)->toContain('directorFundsOperatingTransactionsForLoanReport');
+        ->and($source)->toContain('directorFundsOperatingTransactionsForLoanReport')
+        ->and($source)->toContain("'is_director_entity_loan' => true")
+        ->and($accountTx)->toContain('data-director-loan-rebuild-notice')
+        ->and($accountTx)->toContain('is_director_entity_loan')
+        ->and($accountTx)->toContain('trust the BS figure')
+        ->and($accountTx)->toContain('Bank-received income is never synthesised')
+        ->and($source)->toContain('isBankReceivedOperatingIncomeForDirectorLoanReport');
+});
+
+it('explains cash flow is GL-derived and capitalised loan charges are non-cash', function () {
+    $view = file_get_contents(resource_path('views/financial-reports/cash-flow.blade.php'));
+    $service = file_get_contents(app_path('Services/FinancialReportService.php'));
+
+    expect($view)->toContain('data-cash-flow-capitalisation-notice')
+        ->and($view)->toContain('data-cash-flow-offset-notice')
+        ->and($view)->toContain('derived from posted journal movements')
+        ->and($view)->toContain('capitalise')
+        ->and($view)->toContain('Offset ↔ loan')
+        ->and($view)->toContain('consolidated-drill-down-banner')
+        ->and($service)->toContain('function generateCashFlow')
+        ->and($service)->toContain("'operating_activities'")
+        ->and($service)->toContain("'financing_activities'");
+});
+
+it('anchors report entity scope Tom Select dropdowns to body to avoid clipping', function () {
+    $picker = file_get_contents(resource_path('views/components/report-entity-scope-picker.blade.php'));
+    $shell = file_get_contents(resource_path('views/components/report-shell.blade.php'));
+    $tom = file_get_contents(resource_path('js/tomselect-init.js'));
+
+    expect($picker)->toContain('data-tomselect-dropdown-parent="body"')
+        ->and(substr_count($picker, 'data-tomselect-dropdown-parent="body"'))->toBeGreaterThanOrEqual(2)
+        ->and($shell)->toContain('overflow-visible')
+        ->and($tom)->toContain('[data-report-entity-scope-picker]')
+        ->and($tom)->toContain("return 'body'");
 });
 
 it('documents manual journal entry service and routes', function () {

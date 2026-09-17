@@ -138,12 +138,12 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| report-001 | Data | High | Director loan BS line reconstructed, not raw 2500 GL | Account transactions vs BS may differ | `FinancialReportService`, accounting doc §9 |
-| report-002 | Data | Medium | Bank/Cash 1100 memo + Unallocated line | Manual journals appear as reconciliation difference | `.ai/rules/services.md`, balance sheet view |
-| report-003 | Data | Medium | Heuristic may hide 2500 receivable when bank GL coincidentally matches | Sheet looks balanced but incomplete | Accounting doc §9 Medium #6 |
-| report-004 | Data | Medium | Cash flow derived from GL; loan/offset flows non-obvious | Loan interest capitalises without cash movement | Cash flow view, loan-offset rules |
-| report-005 | Functionality | Low | Consolidated reports do not eliminate intercompany | Multi-entity consolidation may double-count | Accounting doc §9 |
-| report-006 | UX | Low | Report entity scope Tom Select clipping workaround | Dropdown needs body parent positioning | `tomselect-init.js`, `financial-reports-hub.js` |
+| report-001 | Data | High | Director loan BS line reconstructed, not raw 2500 GL | Account transactions vs BS may differ | `FinancialReportService`, accounting doc §9 | **Fixed** — BS uses posted 2500 GL (unchanged); Account Transactions + BS notices explain reconstructed listing vs GL |
+| report-002 | Data | Medium | Bank/Cash 1100 memo + Unallocated line | Manual journals appear as reconciliation difference | `.ai/rules/services.md`, balance sheet view | **Fixed** — clearer Bank/Cash memo + Unallocated notices (manual journals expected in remainder; parent 1100 stays GL) |
+| report-003 | Data | Medium | Heuristic may hide 2500 receivable when bank GL coincidentally matches | Sheet looks balanced but incomplete | Accounting doc §9 Medium #6 | **Fixed** — BS/Account Transactions notices: bank-received income not synthesised as 2500; cross-entity 1100 omit/PAY can balance without a 2500 receivable |
+| report-004 | Data | Medium | Cash flow derived from GL; loan/offset flows non-obvious | Loan interest capitalises without cash movement | Cash flow view, loan-offset rules | **Fixed** — Cash Flow banner: GL-category basis; capitalised loan interest/fees; offset↔loan vs cash↔cash wash |
+| report-005 | Functionality | Low | Consolidated reports do not eliminate intercompany | Multi-entity consolidation may double-count | Accounting doc §9 | **Fixed** — consolidated banner states no intercompany elimination (2500 can inflate); shown on P&L/BS/cash flow/account txns |
+| report-006 | UX | Low | Report entity scope Tom Select clipping workaround | Dropdown needs body parent positioning | `tomselect-init.js`, `financial-reports-hub.js` | **Fixed** — explicit `data-tomselect-dropdown-parent=body` on report scope Tom Selects; report-shell filter bar `overflow-visible` |
 
 ---
 

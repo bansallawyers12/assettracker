@@ -63,19 +63,31 @@ it('supports consolidated profit and loss drill-down', function () {
     $service = file_get_contents(app_path('Services/FinancialReportService.php'));
     $controller = file_get_contents(app_path('Http/Controllers/FinancialReportController.php'));
     $view = file_get_contents(resource_path('views/financial-reports/profit-loss.blade.php'));
+    $banner = file_get_contents(resource_path('views/financial-reports/partials/consolidated-drill-down-banner.blade.php'));
 
     expect($service)->toContain('function generateProfitLossEntityBreakdown')
         ->and($controller)->toContain('generateProfitLossEntityBreakdown')
         ->and($view)->toContain('consolidated-drill-down-banner')
         ->and($view)->toContain('profit-loss-entity-breakdown')
-        ->and($view)->toContain('financial-reports.account-transactions');
+        ->and($view)->toContain('financial-reports.account-transactions')
+        ->and($banner)->toContain('data-consolidated-report-notice')
+        ->and($banner)->toContain('data-consolidated-no-elimination')
+        ->and($banner)->toContain('no intercompany elimination');
 });
 
 it('shows balance sheet as-of shortcuts including last financial year', function () {
     $view = file_get_contents(resource_path('views/financial-reports/balance-sheet.blade.php'));
 
     expect($view)->toContain('FinancialYear::asOfShortcuts')
-        ->and($view)->toContain("route('financial-reports.balance-sheet'");
+        ->and($view)->toContain("route('financial-reports.balance-sheet'")
+        ->and($view)->toContain('data-bs-gl-basis-notice')
+        ->and($view)->toContain('data-bs-bank-memo-notice')
+        ->and($view)->toContain('data-bs-cross-entity-cash-notice')
+        ->and($view)->toContain('data-bs-bank-memo-footnote')
+        ->and($view)->toContain('data-bs-director-loan-gl-hint')
+        ->and($view)->toContain('Bank-received operating income')
+        ->and($view)->toContain('Unallocated / reconciliation difference')
+        ->and($view)->toContain('Parent 1100 is the posted GL total');
 });
 
 it('supports consolidated balance sheet drill-down', function () {

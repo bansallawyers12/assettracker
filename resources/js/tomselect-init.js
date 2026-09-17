@@ -53,7 +53,9 @@ function resolveDropdownParent(select) {
     // Tom Select only calls positionDropdown() when dropdownParent === 'body'.
     // Custom DOM parents append the list without coordinates, so it appears at
     // the bottom of large containers (dashboard form, slide-over panels).
-    // Report hub entity scope cards use overflow-hidden, which clips inline dropdowns.
+    // Report entity scope + hub cards can clip inline dropdowns (overflow). Prefer
+    // explicit data-tomselect-dropdown-parent="body" on those selects; the closest()
+    // fallback keeps older markup working.
     if (select.closest('#add-transaction-section, .bank-account-panel-sheet, .entity-workspace-panel-sheet, [data-entity-panel-body], .persons-ws-form, [data-report-entity-scope-picker]')) {
         return 'body';
     }

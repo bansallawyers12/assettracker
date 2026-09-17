@@ -55,13 +55,25 @@ The earlier memo note saying it is transaction-entity scoped, hidden in comparis
 Manual journals (source_type null) are edited in place on the same id. Reverse posts a new posted journal with flipped D/C, user-chosen date, and reverses_journal_entry_id pointing at the original — do not set source_type to JournalEntry or the offset drops out of the manual register. Void is a reverse on the original date plus voided_at on the original; both stay posted so the GL nets to zero. Do not delete. Cannot edit/reverse/void if already reversed or voided; cannot void a reversal (void the original). Opening-balance OPEN- references stay on edit.
 
 ## Director loan account-transactions rebuild
-Account transactions for 2500 still use `buildDirectorEntityLoanAccountBlock`: opening is explicit/manual 2500 GL as of the day before start plus synthetics before start; closing adds in-period explicit/manual 2500 journal lines (`directorLoanManualGlReportLines`). Do not add synthetics for explicit `director_loan_*` types. Do not synthesise bank-received operating income (rent in an offset/bank) onto 2500, even when the bank owner differs from the booking entity. Do not feed this rebuild into balance sheet totals.
+Account transactions for 2500 still use `buildDirectorEntityLoanAccountBlock`: opening is explicit/manual 2500 GL as of the day before start plus synthetics before start; closing adds in-period explicit/manual 2500 journal lines (`directorLoanManualGlReportLines`). Do not add synthetics for explicit `director_loan_*` types. Do not synthesise bank-received operating income (rent in an offset/bank) onto 2500, even when the bank owner differs from the booking entity. Do not feed this rebuild into balance sheet totals. Keep UI notices that a balanced Bank/Cash after cross-entity omit/PAY does not imply a 2500 receivable was booked for bank-routed income.
+
+## Cash flow is category GL movement
+`generateCashFlow` sums period movements by CoA category — not bank cash. Do not present it as a statement cash roll-forward. Loan interest/fees capitalised to 4000 are non-cash; cash↔cash 1100 washes stay invisible. Keep the Cash Flow report banner that explains capitalisation and offset↔loan vs cash↔cash.
+
+## Consolidated reports do not eliminate intercompany
+Multi-entity (“All” / multi-select) reports sum journals across entities. Do not implement automatic 2500/intercompany elimination without a product decision. Keep `data-consolidated-no-elimination` copy on consolidated banners so users know totals can double-count related-party loans.
+
+## Report entity scope Tom Select uses body dropdown parent
+Report filter Tom Selects must set `data-tomselect-dropdown-parent="body"` (and `tomselect-init` falls back via `[data-report-entity-scope-picker]`). Report shell filter bars stay `overflow-visible` so the list is not clipped before body parenting applies.
 
 ## Director loan on loan ledger posts 4000
 director_loan_in/out on a loan-purpose bank account post Long Term Loans 4000 ↔ Director Loan 2500. Do not use Bank/Cash 1100 — the money never hit an operating/offset account. In reduces 4000; out is a redraw that increases 4000.
 
 ## Balance sheet 2500 is posted GL
-Balance sheet 2500 is posted GL (debit−credit as-of), same as 4000/1100. Do not strip 2500 or replace it with buildDirectorEntityLoanAccountBlock synthetics — that rebuild is only for the 2500 account-transactions listing. Entity-summary director loan figures also use getAccountBalanceAsOf.
+Balance sheet 2500 is posted GL (debit−credit as-of), same as 4000/1100. Do not strip 2500 or replace it with buildDirectorEntityLoanAccountBlock synthetics — that rebuild is only for the 2500 account-transactions listing. Entity-summary director loan figures also use getAccountBalanceAsOf. Keep UI notices on the BS and Account Transactions report so users trust the BS figure when the listing differs.
+
+## Bank/Cash memo Unallocated is expected for manuals
+Do not try to eliminate Unallocated by inventing bank attribution for manual journals. Surface the remainder as Unallocated / reconciliation difference and keep the parent 1100 row as the posted GL total. Balance sheet copy must say manuals belong in that remainder.
 
 ## Move-to-trust blocks closed and contact-only entities with inline guidance
 AssetMoveToTrustService::sourceBlockedMessage / targetBlockedMessage explain reopen vs convert. Hide Move to trust on closed/contact-only company asset pages and show data-move-to-trust-blocked; form endpoint returns the same message as JSON 422. Candidate trusts stay operationalEntities() only.

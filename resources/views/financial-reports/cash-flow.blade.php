@@ -69,6 +69,27 @@
         </form>
     </x-slot:filters>
 
+    @include('financial-reports.partials.consolidated-drill-down-banner', [
+        'report' => $report,
+        'entitySummaryUrl' => null,
+        'reportType' => 'Cash Flow',
+    ])
+
+    <div class="px-6 pt-4 text-xs text-gray-600 leading-relaxed border-b border-gray-100 space-y-1.5">
+        <p>
+            This statement is <strong>derived from posted journal movements by account category</strong>
+            (operating income/expense, fixed assets, current and long-term liabilities) — not a bank statement cash roll-forward.
+        </p>
+        <p class="text-amber-800 dark:text-amber-200" data-cash-flow-capitalisation-notice>
+            <strong>Loan interest and fees</strong> on a loan-purpose account capitalise (Dr expense / Cr Long Term Loans 4000) with
+            <em>no</em> Bank/Cash 1100 movement. They can appear under both operating and financing sections even though no cash left the bank.
+            Record cash repayments as an offset/general <strong>internal transfer</strong> to the loan; loan-ledger <code class="text-[11px]">loan_repayments</code> alone do not move 1100.
+        </p>
+        <p class="text-amber-800 dark:text-amber-200" data-cash-flow-offset-notice>
+            <strong>Offset ↔ loan</strong> transfers post 1100↔4000 on the cash/offset side. Cash↔cash transfers between accounts that share GL 1100 are a wash and do not appear here.
+        </p>
+    </div>
+
     <div class="pb-6 px-6 space-y-10 text-sm">
         <section>
             <h2 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Operating activities</h2>

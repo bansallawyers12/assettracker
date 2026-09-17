@@ -239,6 +239,7 @@
                     <x-tom-select
                         multiple
                         name="entity_ids[]"
+                        data-tomselect-dropdown-parent="body"
                         :disabled="$formsScope === 'all'"
                         class="rounded-lg bg-white dark:bg-gray-900"
                     >
@@ -274,6 +275,7 @@
                 <x-tom-select
                     multiple
                     name="entity_ids[]"
+                    data-tomselect-dropdown-parent="body"
                     :disabled="$formsScope === 'all'"
                     class="rounded-md bg-white"
                 >

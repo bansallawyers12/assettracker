@@ -167,6 +167,12 @@
         </form>
     </x-slot:filters>
 
+    @include('financial-reports.partials.consolidated-drill-down-banner', [
+        'report' => $report,
+        'entitySummaryUrl' => null,
+        'reportType' => 'Account Transactions',
+    ])
+
     {{-- ── Report body ─────────────────────────────────────────────── --}}
     @if(count($report['accounts']) === 0)
         <div class="px-6 py-16 text-center">
@@ -183,12 +189,20 @@
                 @endphp
 
                 {{-- Account header --}}
-                <div class="px-6 py-2.5 bg-gray-50 border-t border-gray-200 flex items-center gap-3">
-                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                        {{ $acct->account_code }}
-                    </span>
-                    <span class="text-sm font-semibold text-gray-800">{{ $acct->account_name }}</span>
-                </div>
+                <div class="px-6 py-2.5 bg-gray-50 border-t border-gray-200 flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                            {{ $acct->account_code }}
+                        </span>
+                        <span class="text-sm font-semibold text-gray-800">{{ $acct->account_name }}</span>
+                    </div>
+                    @if(! empty($accountGroup['is_director_entity_loan']))
+                        <p class="text-[11px] text-amber-800 dark:text-amber-200 leading-snug sm:ml-auto sm:max-w-xl" data-director-loan-rebuild-notice>
+                            Reconstructed activity for cross-entity and director-funds story lines.
+                            Closing here can differ from the Balance Sheet, which uses posted 2500 GL — trust the BS figure.
+                            Bank-received income is never synthesised here as a 2500 receivable (even with another entity as paid by).
+                        </p>
+                    @endif                </div>
 
                 <table class="w-full text-sm">
                     <thead>

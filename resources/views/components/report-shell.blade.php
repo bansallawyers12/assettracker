@@ -38,8 +38,8 @@
 
     {{-- ── Filter toolbar ──────────────────────────────────────────── --}}
     @if(isset($filters) && $filters->isNotEmpty())
-    <div class="bg-gray-50 border-b border-gray-200 print:hidden">
-        <x-app-container class="py-3">
+    <div class="bg-gray-50 border-b border-gray-200 print:hidden overflow-visible relative z-20">
+        <x-app-container class="py-3 overflow-visible">
             {{ $filters }}
         </x-app-container>
     </div>

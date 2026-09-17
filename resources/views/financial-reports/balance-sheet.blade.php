@@ -142,6 +142,19 @@
     ])
     <div class="px-6 pt-4 text-xs text-gray-600 leading-relaxed border-b border-gray-100">
         Amounts come from <strong>posted journal entries</strong> (paid bank transactions, posted invoices, manual journals).
+        <span class="block mt-1.5 text-amber-800 dark:text-amber-200" data-bs-gl-basis-notice>
+            <strong>Director / Entity Loan (2500):</strong> this sheet uses the posted GL balance.
+            Account Transactions for 2500 may list reconstructed story lines (cross-entity / director-funds) that do not match the GL closing figure — trust the balance sheet total.
+            Bank-received operating income (e.g. rent into a shared/offset bank) is <em>not</em> treated as a 2500 receivable even when <code class="text-[11px]">paid_by</code> names another entity — cash already hit a bank, so the sheet can look complete without an intercompany 2500 line.
+        </span>
+        <span class="block mt-1.5 text-amber-800 dark:text-amber-200" data-bs-cross-entity-cash-notice>
+            <strong>Cross-entity cash:</strong> Bank/Cash on the booking entity omits lines paid by another entity (cash sits on the payer’s <code class="text-[11px]">TXN-…-PAY</code> journal, or a synthetic payer amount). A coincidentally balanced 1100 does not prove every intercompany receivable was booked to 2500.
+        </span>
+        <span class="block mt-1.5 text-amber-800 dark:text-amber-200" data-bs-bank-memo-notice>
+            <strong>Bank / Cash (1100):</strong> the parent row is the GL total. Indented bank lines are a memo only
+            (journals have no bank_account_id). Manual journals and cash that cannot be tied to a bank appear under
+            <em>Unallocated / reconciliation difference</em> — that is expected, not a missing GL entry.
+        </span>
         @if($comparing)
             <strong>Prior year</strong> compares the same calendar date one year earlier.
         @endif
@@ -186,6 +199,11 @@
                                    title="View account transactions (current FY to date)">
                                     {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
                                 </a>
+                                @if((string) $row['account']->account_code === '2500')
+                                    <span class="mt-0.5 block text-[11px] font-normal text-gray-400" data-bs-director-loan-gl-hint>
+                                        Posted GL on this sheet. Account activity may rebuild story lines — use this balance.
+                                    </span>
+                                @endif
                             </td>
                             @if($comparing)
                                 @include('financial-reports.partials.comparative-amount-cells', [
@@ -226,8 +244,9 @@
                                 $priorUnattributed = (float) ($row['bank_breakdown']['prior_unattributed'] ?? 0);
                             @endphp
                             @if(abs($unattributed) >= 0.005 || ($comparing && abs($priorUnattributed) >= 0.005))
-                                <tr class="bg-gray-50/40">
-                                    <td class="px-12 py-1 text-xs italic text-gray-500">
+                                <tr class="bg-gray-50/40" data-bs-bank-unallocated>
+                                    <td class="px-12 py-1 text-xs italic text-gray-500"
+                                        title="GL 1100 remainder after allocating known bank book balances. Includes manual journals and rows without a resolvable bank account.">
                                         Unallocated / reconciliation difference
                                     </td>
                                     @if($comparing)
@@ -245,9 +264,9 @@
                                 </tr>
                             @endif
                             <tr>
-                                <td colspan="{{ $colCount }}" class="px-12 pb-2 text-[11px] text-gray-400 leading-snug">
-                                    Memo allocation by bank account. Any difference includes manual journals or
-                                    transactions whose bank account could not be identified.
+                                <td colspan="{{ $colCount }}" class="px-12 pb-2 text-[11px] text-gray-400 leading-snug" data-bs-bank-memo-footnote>
+                                    Memo allocation by bank ownership (not a sub-ledger). Parent 1100 is the posted GL total;
+                                    unallocated covers manual journals, director-funds cash with no bank, and other rows whose bank cannot be identified.
                                 </td>
                             </tr>
                         @endif
@@ -321,6 +340,11 @@
                                    title="View account transactions (current FY to date)">
                                     {{ $row['account']->account_code }}&nbsp;{{ $row['account']->account_name }}
                                 </a>
+                                @if((string) $row['account']->account_code === '2500')
+                                    <span class="mt-0.5 block text-[11px] font-normal text-gray-400" data-bs-director-loan-gl-hint>
+                                        Posted GL on this sheet. Account activity may rebuild story lines — use this balance.
+                                    </span>
+                                @endif
                             </td>
                             @if($comparing)
                                 @include('financial-reports.partials.comparative-amount-cells', [
