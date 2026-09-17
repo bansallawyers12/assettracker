@@ -48,7 +48,7 @@ Asset Tracker is a mature Laravel portal (entities, assets, banking, accounting,
 
 | ID | Type | Sev | Summary | User impact | Evidence | Status |
 | --- | --- | --- | --- | --- | --- | --- |
-| auth-001 | Security | High | App RBAC was missing (all policies returned true for mutate) | Viewers could mutate firm data | `AppRole`, `users.app_role`, `BusinessEntityPolicy` | **Fixed** — firm-shared read; `staff`/`administrator` mutate; `viewer` read-only. Per-entity ACL still out of scope. |
+| auth-001 | Security | High | App RBAC was missing (all policies returned true for mutate) | Viewers could mutate firm data | `AppRole`, `users.app_role`, `BusinessEntityPolicy` | **Fixed** — firm-shared read; `staff`/`administrator` mutate; `viewer` read-only. Portfolio mutates (vendors, CoA, portfolio banks, reminders, email templates) authorize `create`/`canMutatePortfolio`, not `viewAny`. Per-entity ACL still out of scope. |
 | auth-002 | UX | Medium | 2FA / session expiry mid AJAX workspace flow | Workspace save failed or redirected without return path | `TwoFactorVerified`, `workspace-panel.js` `apiFetch` | **Fixed** — JSON 401 + `return` URL restored after challenge |
 | auth-003 | Functionality | Low | No public registration | New staff must be created by administrator | Admin Users + login copy | **Accepted** — intentional; admin create-user is the supported path |
 

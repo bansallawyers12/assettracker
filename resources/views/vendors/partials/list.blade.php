@@ -12,14 +12,16 @@
         <p class="mx-auto mt-1.5 max-w-sm text-sm text-gray-500 dark:text-gray-400">
             {{ __('Add vendors here first, then select them when creating transactions.') }}
         </p>
-        <button
-            type="button"
-            data-vendor-action="create"
-            class="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
-        >
-            <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
-            {{ __('Add vendor') }}
-        </button>
+        @can('create', \App\Models\BusinessEntity::class)
+            <button
+                type="button"
+                data-vendor-action="create"
+                class="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-500"
+            >
+                <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
+                {{ __('Add vendor') }}
+            </button>
+        @endcan
     </div>
 @else
     <div class="overflow-x-auto">
@@ -55,7 +57,9 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 whitespace-nowrap text-right text-sm">
-                            @include('vendors.partials.row-actions', ['vendor' => $vendor])
+                            @can('create', \App\Models\BusinessEntity::class)
+                                @include('vendors.partials.row-actions', ['vendor' => $vendor])
+                            @endcan
                         </td>
                     </tr>
                 @endforeach

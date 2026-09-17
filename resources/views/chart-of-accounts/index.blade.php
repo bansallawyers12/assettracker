@@ -9,6 +9,7 @@
             'indexUrl' => $indexUrl,
             'openPanel' => $openPanel,
             'openAccountId' => $openAccountId ? (int) $openAccountId : null,
+            'canMutate' => auth()->user()?->can('create', \App\Models\BusinessEntity::class) ?? false,
             'csrfToken' => csrf_token(),
             'flashSuccess' => session('success'),
             'flashError' => session('error'),
@@ -27,12 +28,14 @@
                     Shared by all business entities. Balances by entity appear on financial reports.
                 </p>
             </div>
-            <button type="button"
-                    @click="openCreate()"
-                    class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
-                <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
-                Add account
-            </button>
+            @can('create', \App\Models\BusinessEntity::class)
+                <button type="button"
+                        @click="openCreate()"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
+                    <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
+                    Add account
+                </button>
+            @endcan
         </div>
 
         <div x-show="toast" x-cloak x-transition
@@ -180,7 +183,7 @@
                                     </div>
                                     <p class="text-sm font-semibold text-gray-900 dark:text-white" x-text="accounts.length === 0 ? 'No chart of accounts found' : 'No matching accounts'"></p>
                                     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400" x-text="accounts.length === 0 ? 'Seed the chart or add an account to get started.' : 'Try clearing search or filters.'"></p>
-                                    <button type="button" @click="openCreate()" x-show="accounts.length === 0"
+                                    <button type="button" @click="openCreate()" x-show="canMutate && accounts.length === 0"
                                             class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500">
                                         Add account
                                     </button>
@@ -209,7 +212,7 @@
                                           x-text="account.is_active ? 'Active' : 'Inactive'"></span>
                                 </td>
                                 <td class="px-4 py-3.5">
-                                    <div class="flex items-center justify-end gap-1">
+                                    <div class="flex items-center justify-end gap-1" x-show="canMutate">
                                         <button type="button" @click="openEdit(account)"
                                                 class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800"
                                                 title="Edit account"
@@ -353,6 +356,7 @@
                 reportPlacementHints: config.reportPlacementHints || {},
                 storeUrl: config.storeUrl,
                 csrfToken: config.csrfToken,
+                canMutate: Boolean(config.canMutate),
                 search: '',
                 typeFilter: '',
                 statusFilter: 'all',
@@ -389,9 +393,9 @@
                             this.$nextTick(() => this.$refs.filterSearch?.focus());
                         }
                     });
-                    if (config.openPanel === 'create') {
+                    if (this.canMutate && config.openPanel === 'create') {
                         this.openCreate();
-                    } else if (config.openPanel === 'edit' && config.openAccountId) {
+                    } else if (this.canMutate && config.openPanel === 'edit' && config.openAccountId) {
                         const account = this.accounts.find((item) => Number(item.id) === Number(config.openAccountId));
                         if (account) {
                             this.openEdit(account);
@@ -540,6 +544,9 @@
                     };
                 },
                 openCreate() {
+                    if (! this.canMutate) {
+                        return;
+                    }
                     this.panelMode = 'create';
                     this.editingId = null;
                     this.form = this.blankForm();
@@ -549,6 +556,9 @@
                     this.replaceUrl({ panel: 'create' });
                 },
                 openEdit(account) {
+                    if (! this.canMutate) {
+                        return;
+                    }
                     this.panelMode = 'edit';
                     this.editingId = account.id;
                     this.form = {

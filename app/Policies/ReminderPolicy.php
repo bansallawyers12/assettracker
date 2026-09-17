@@ -33,16 +33,20 @@ class ReminderPolicy
             return $reminder->businessEntity ? $user->can('view', $reminder->businessEntity) : false;
         }
 
-        return true;
+        return $user->canMutatePortfolio();
     }
 
     public function create(User $user): bool
     {
-        return true;
+        return $user->canMutatePortfolio();
     }
 
     public function update(User $user, Reminder $reminder): bool
     {
+        if (! $user->canMutatePortfolio()) {
+            return false;
+        }
+
         if ((int) $reminder->user_id === (int) $user->id) {
             return true;
         }
@@ -53,11 +57,11 @@ class ReminderPolicy
             return $reminder->businessEntity ? $user->can('update', $reminder->businessEntity) : false;
         }
 
-        return true;
+        return false;
     }
 
     public function delete(User $user, Reminder $reminder): bool
     {
         return $this->update($user, $reminder);
     }
-} 
+}

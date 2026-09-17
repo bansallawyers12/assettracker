@@ -32,14 +32,14 @@ class VendorController extends Controller
 
     public function create(): RedirectResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         return redirect()->route('vendors.index', ['panel' => 'create']);
     }
 
     public function store(Request $request): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $validated = $request->validate($this->validationRules(null, $request));
         $validated['name'] = trim($validated['name']);
@@ -61,14 +61,14 @@ class VendorController extends Controller
 
     public function edit(Vendor $vendor): RedirectResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         return redirect()->route('vendors.index', ['panel' => 'edit', 'vendor' => $vendor->id]);
     }
 
     public function update(Request $request, Vendor $vendor): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $validated = $request->validate($this->validationRules($vendor, $request));
         $validated['name'] = trim($validated['name']);
@@ -92,7 +92,7 @@ class VendorController extends Controller
 
     public function destroy(Request $request, Vendor $vendor): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $linkedCount = $vendor->transactions()->count();
         $vendor->delete();
@@ -111,7 +111,7 @@ class VendorController extends Controller
 
     public function linkTransactions(Request $request, Vendor $vendor): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $linked = $this->vendorSync->linkTransactionsMatchingName($vendor);
         $alsoLinkedPrevious = 0;
@@ -137,7 +137,7 @@ class VendorController extends Controller
 
     public function resolveUnlinked(Request $request): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $data = $request->validate([
             'vendor_id' => ['required', 'integer', Rule::exists('vendors', 'id')],
@@ -160,7 +160,7 @@ class VendorController extends Controller
 
     public function autoLinkAll(Request $request): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $result = $this->vendorSync->autoLinkAllExactMatches();
 
@@ -188,7 +188,7 @@ class VendorController extends Controller
 
     public function syncAllNames(Request $request): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $result = $this->vendorSync->syncAllLinkedTransactionNames();
 

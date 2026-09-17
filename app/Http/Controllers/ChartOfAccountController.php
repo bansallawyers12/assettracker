@@ -70,14 +70,14 @@ class ChartOfAccountController extends Controller
 
     public function create(): RedirectResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         return redirect()->route('chart-of-accounts.index', ['panel' => 'create']);
     }
 
     public function store(Request $request, ?BusinessEntity $businessEntity = null): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
         if ($businessEntity) {
             $this->authorize('update', $businessEntity);
             $this->ensureNotClosed($businessEntity);
@@ -113,7 +113,7 @@ class ChartOfAccountController extends Controller
 
     public function edit(ChartOfAccount $chart_of_account): RedirectResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         return redirect()->route('chart-of-accounts.index', [
             'panel' => 'edit',
@@ -123,7 +123,7 @@ class ChartOfAccountController extends Controller
 
     public function update(Request $request, ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
         if ($businessEntity) {
             $this->authorize('update', $businessEntity);
             $this->ensureNotClosed($businessEntity);
@@ -219,7 +219,7 @@ class ChartOfAccountController extends Controller
 
     public function destroy(Request $request, ChartOfAccount $chart_of_account, ?BusinessEntity $businessEntity = null): RedirectResponse|JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
         if ($businessEntity) {
             $this->authorize('update', $businessEntity);
             $this->ensureNotClosed($businessEntity);

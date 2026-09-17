@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use App\Models\Person;
+use App\Services\BankAccountAssetLinkService;
 use App\Support\SecurityAuditLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,7 +24,7 @@ class BankAccountPanelController extends Controller
 
     public function portfolioCreateForm(Request $request): JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $persons = Person::query()
@@ -47,7 +48,7 @@ class BankAccountPanelController extends Controller
 
     public function portfolioEditForm(BankAccount $bankAccount): JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
         $this->ensureOwned($bankAccount);
 
         $bankAccount->load(['holderEntity', 'holderPerson']);
@@ -104,7 +105,7 @@ class BankAccountPanelController extends Controller
 
             $links = $entity->bankAccountLinksForDisplay();
             $groups = BankAccount::groupedLinksByHolder($links, $entity->id);
-            $groups = app(\App\Services\BankAccountAssetLinkService::class)
+            $groups = app(BankAccountAssetLinkService::class)
                 ->enrichHolderGroupsWithRentAssets($entity, $groups);
 
             return view('business-entities.partials.bank-accounts.list', [

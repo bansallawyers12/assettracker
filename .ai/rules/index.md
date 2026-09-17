@@ -4,11 +4,13 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
+| app/Policies/**, app/Enums/AppRole.php, app/Models/User.php | .ai/rules/auth.md |
 | resources/views/business-entities/** | .ai/rules/business-entities.md |
 | app/Console/Commands/AuditUnmatchedLoanRepayments.php | .ai/rules/commands.md |
 | app/Http/Controllers/BalanceSheetEntryController.php, app/Http/Controllers/InvoiceController.php | .ai/rules/controllers.md |
 | app/Models/ChartOfAccount.php, app/Http/Controllers/ChartOfAccountController.php, config/financial.php | .ai/rules/http-controllers.md |
 | resources/views/invoices/** | .ai/rules/invoices.md |
+| resources/views/emails/** | .ai/rules/emails.md |
 | resources/views/vendors/**, resources/js/vendors-workspace.js, app/Http/Controllers/VendorController.php, app/Http/Controllers/VendorsWorkspaceController.php | .ai/rules/vendors.md |
 | app/Mcp/** | .ai/rules/mcp.md |
 | app/Models/Transaction.php | .ai/rules/models.md |

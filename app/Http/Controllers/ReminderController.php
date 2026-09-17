@@ -17,6 +17,8 @@ class ReminderController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Reminder::class);
+
         $this->mergeReminderDateFromRequest($request);
 
         $validated = $request->validate([

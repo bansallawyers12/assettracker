@@ -16,14 +16,16 @@
                         {{ __('Single source of truth for suppliers — edit a vendor here and linked transactions update everywhere.') }}
                     </p>
                 </div>
-                <button
-                    type="button"
-                    data-vendor-action="create"
-                    class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500"
-                >
-                    <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
-                    {{ __('Add Vendor') }}
-                </button>
+                @can('create', \App\Models\BusinessEntity::class)
+                    <button
+                        type="button"
+                        data-vendor-action="create"
+                        class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500"
+                    >
+                        <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
+                        {{ __('Add Vendor') }}
+                    </button>
+                @endcan
             </div>
 
             @if (session('success'))

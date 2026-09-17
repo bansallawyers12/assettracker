@@ -29,15 +29,17 @@
                 Accounts grouped by holder. Each entity or person can have multiple accounts — use <strong>+</strong> to add another.
             </p>
         </div>
-        <button
-            type="button"
-            data-open-add-bank-account
-            data-bank-modal-tab="create"
-            class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500"
-        >
-            <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
-            Add Account
-        </button>
+        @can('create', \App\Models\BusinessEntity::class)
+            <button
+                type="button"
+                data-open-add-bank-account
+                data-bank-modal-tab="create"
+                class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500"
+            >
+                <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
+                Add Account
+            </button>
+        @endcan
     </div>
 
     @if(session('success'))

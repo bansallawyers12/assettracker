@@ -23,6 +23,7 @@ it('renders the chart of accounts page as an alpine spa', function () {
         ->and($index)->toContain('isSystemAccount')
         ->and($index)->toContain('is_system_account')
         ->and($index)->toContain('System account — code, type, and category are fixed for posting and reports.')
+        ->and($index)->toContain('canMutate')
         ->and($controller)->toContain('expectsJson()')
         ->and($controller)->toContain('accountPayload')
         ->and($controller)->toContain('is_system_account')

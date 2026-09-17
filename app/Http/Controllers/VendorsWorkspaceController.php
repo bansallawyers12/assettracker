@@ -32,7 +32,7 @@ class VendorsWorkspaceController extends Controller
 
     public function createForm(): JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         return response()->json([
             'status' => true,
@@ -47,7 +47,7 @@ class VendorsWorkspaceController extends Controller
 
     public function editForm(Vendor $vendor): JsonResponse
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $vendor->loadCount('transactions');
 

@@ -3308,7 +3308,7 @@ class BusinessEntityController extends Controller
 
     public function createPortfolioBankAccount()
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $businessEntities = BusinessEntity::operationalEntities()->orderBy('legal_name')->get();
         $persons = $this->personOptionsForHolder();
@@ -3318,7 +3318,7 @@ class BusinessEntityController extends Controller
 
     public function storePortfolioBankAccount(Request $request)
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
 
         $this->mergeBankNameFromRequest($request);
         $this->prepareBankAccountCreateRequest($request);
@@ -3340,7 +3340,7 @@ class BusinessEntityController extends Controller
 
     public function editPortfolioBankAccount(BankAccount $bankAccount)
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
         $this->ensureBankAccountOwnedByUser($bankAccount);
 
         $bankAccount->load(['holderEntity', 'holderPerson']);
@@ -3354,7 +3354,7 @@ class BusinessEntityController extends Controller
 
     public function updatePortfolioBankAccount(Request $request, BankAccount $bankAccount)
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
         $this->ensureBankAccountOwnedByUser($bankAccount);
 
         $this->mergeBankNameFromRequest($request);
@@ -3375,7 +3375,7 @@ class BusinessEntityController extends Controller
 
     public function destroyPortfolioBankAccount(Request $request, BankAccount $bankAccount)
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
         $this->ensureBankAccountOwnedByUser($bankAccount);
 
         if (! $bankAccount->isPortfolioWide()) {
@@ -3398,7 +3398,7 @@ class BusinessEntityController extends Controller
 
     public function revealBankAccountNumber(Request $request, BankAccount $bankAccount)
     {
-        $this->authorize('viewAny', BusinessEntity::class);
+        $this->authorize('create', BusinessEntity::class);
         $this->ensureBankAccountOwnedByUser($bankAccount);
 
         if ($bankAccount->businessEntity) {
