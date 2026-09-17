@@ -1,6 +1,7 @@
 ---
 paths:
   - app/Console/Commands/AuditUnmatchedLoanRepayments.php
+  - app/Services/UnmatchedLoanRepaymentAuditor.php
 ---
 
 # Commands
@@ -8,7 +9,7 @@ paths:
 ## Loan-ledger repayments: detect orphans, never auto-post them
 `loan_repayments` on a loan-purpose account posts nothing on purpose — the cash side is the internal transfer on the offset/general account, which posts Dr 4000 / Cr 1100. Posting both sides would reduce the loan twice.
 Do not block the row on save (bank imports routinely create one side before the other) and do not auto-post the cash side (it would have to un-post itself when the offset row arrives, double-counting whenever matching is imperfect).
-Use `php artisan loans:audit-unmatched-repayments` instead: read-only, pairs by transfer_group_id or by counterpart account + amount within --days, exits non-zero when gaps exist so it can be scheduled.
+Use `UnmatchedLoanRepaymentAuditor` (and `php artisan loans:audit-unmatched-repayments`) instead: read-only, pairs by counterpart account + amount within --days, exits non-zero when gaps exist so it can be scheduled. Loan account panels show `data-unmatched-loan-repayments-banner` from the same auditor.
 
 ## Loan repayment audit matches cash transfers one-to-one
 Do not match by transfer_group_id: loan_repayments do not retain one and independently imported transfer rows get separate UUIDs. Match each repayment to at most one outgoing internal transfer in the same entity, with the same amount and date window, resolving the loan counterpart explicitly or through the offset account's asset-linked loan. Keep date filtering in SQL and validate entity/date/window options.

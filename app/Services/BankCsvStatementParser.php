@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\BankStatementXlsxReader;
 use Carbon\Carbon;
 use Carbon\Exceptions\InvalidFormatException;
 
@@ -51,10 +52,14 @@ class BankCsvStatementParser
     ];
 
     /** @var list<string> */
-    private const SUPPORTED_EXTENSIONS = ['csv', 'txt'];
+    private const SUPPORTED_EXTENSIONS = ['csv', 'txt', 'xlsx'];
 
     /** @var list<string> */
     public const MAPPING_FIELDS = ['date', 'description', 'amount', 'debit', 'credit', 'reference', 'balance'];
+
+    public function __construct(
+        private BankStatementXlsxReader $xlsxReader = new BankStatementXlsxReader
+    ) {}
 
     /**
      * Inspect a CSV and return headers, sample rows, and an auto-suggested column mapping.
@@ -71,12 +76,12 @@ class BankCsvStatementParser
         if (! in_array($extension, self::SUPPORTED_EXTENSIONS, true)) {
             return [
                 'success' => false,
-                'error' => 'Only CSV bank statements are supported. Excel import will return when Python is upgraded on the server.',
+                'error' => 'Only CSV or Excel (.xlsx) bank statements are supported. Export .xls workbooks as .xlsx or CSV first.',
             ];
         }
 
         try {
-            $rows = $this->readCsv($filePath);
+            $rows = $this->readTabularFile($filePath);
             if ($rows === []) {
                 return [
                     'success' => false,
@@ -123,12 +128,12 @@ class BankCsvStatementParser
         if (! in_array($extension, self::SUPPORTED_EXTENSIONS, true)) {
             return [
                 'success' => false,
-                'error' => 'Only CSV bank statements are supported. Excel import will return when Python is upgraded on the server.',
+                'error' => 'Only CSV or Excel (.xlsx) bank statements are supported. Export .xls workbooks as .xlsx or CSV first.',
             ];
         }
 
         try {
-            $rows = $this->readCsv($filePath);
+            $rows = $this->readTabularFile($filePath);
 
             if ($rows === []) {
                 return [
@@ -249,6 +254,72 @@ class BankCsvStatementParser
         }
 
         return null;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function readTabularFile(string $filePath): array
+    {
+        $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        if ($extension === 'xlsx') {
+            return $this->associateHeaderRows($this->xlsxReader->readRows($filePath));
+        }
+
+        return $this->readCsv($filePath);
+    }
+
+    /**
+     * @param  list<list<string>>  $matrix
+     * @return list<array<string, string|null>>
+     */
+    private function associateHeaderRows(array $matrix): array
+    {
+        if ($matrix === []) {
+            return [];
+        }
+
+        $headers = $this->ensureUniqueHeaders(array_map(
+            static fn ($column) => trim((string) $column),
+            $matrix[0]
+        ));
+        $headerCount = count($headers);
+        $rows = [];
+
+        foreach (array_slice($matrix, 1) as $row) {
+            if ($this->matrixRowIsEmpty($row)) {
+                continue;
+            }
+
+            if (count($row) < $headerCount) {
+                $row = array_pad($row, $headerCount, '');
+            } elseif (count($row) > $headerCount) {
+                $row = array_slice($row, 0, $headerCount);
+            }
+
+            /** @var array<string, string|null> $assoc */
+            $assoc = [];
+            foreach ($headers as $index => $header) {
+                $assoc[$header] = isset($row[$index]) ? (string) $row[$index] : '';
+            }
+            $rows[] = $assoc;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  list<string>  $row
+     */
+    private function matrixRowIsEmpty(array $row): bool
+    {
+        foreach ($row as $value) {
+            if (trim((string) $value) !== '') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

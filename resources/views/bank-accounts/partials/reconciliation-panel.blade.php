@@ -10,6 +10,7 @@
     $matchedEntryCount = (int) ($matchedEntryCount ?? 0);
     $isOffsetCashAccount = $bankAccount->isOffsetCashAccount();
     $invoiceCandidates = $invoiceCandidates ?? collect();
+    $matchCandidates = $matchCandidates ?? collect();
 @endphp
 
 <div
@@ -24,12 +25,17 @@
             @if($isLoanActivityImport)
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Update loan activity</h3>
                 <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                    This is the loan ledger, not cash. Interest and fees capitalise to the loan. Repayments reduce the loan and cash once — keep offset “to loan” lines as internal transfers. Director money received on this account is Director Loan In (reduces the bank loan, increases the director loan).
+                    This is the loan ledger, not cash reconciliation. Pending lines are counted as <span class="font-medium">to apply</span> (not operating “unmatched”).
                 </p>
+                <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-gray-600 dark:text-gray-400" data-loan-activity-guidance>
+                    <li>Create types are limited to Loan Interest, Loan Fees, Loan Repayment, and Director Loan In/Out.</li>
+                    <li>Match invoice and chart-account create are hidden — those belong on cash/offset accounts.</li>
+                    <li>Interest and fees capitalise to the loan. Loan Repayment on this ledger does not post cash — also book the offset/general side as an Internal transfer to the loan.</li>
+                </ul>
             @else
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reconcile statement</h3>
                 <p class="mt-1 text-xs text-gray-600 dark:text-gray-400">
-                    Upload a CSV, confirm Date / Description / Amount columns (auto-detected; drag to remap), then accept selected rows. Nothing posts until you accept.
+                    Upload a CSV or Excel (.xlsx), confirm Date / Description / Amount columns (auto-detected; drag to remap), then accept selected rows. Nothing posts until you accept.
                     @if ($isOffsetCashAccount)
                         This is the offset (cash) account — book interest, fees, and repayments on the linked loan account; money moved to or from the loan is Internal transfer.
                     @endif
@@ -40,6 +46,25 @@
             {{ $unmatchedEntries->count() }} {{ $pendingCountLabel }}
         </span>
     </div>
+
+    @php
+        $unmatchedLoanRepayments = $unmatchedLoanRepayments ?? ['count' => 0, 'total' => 0.0];
+    @endphp
+    @if($isLoanActivityImport && (int) ($unmatchedLoanRepayments['count'] ?? 0) > 0)
+        <div
+            class="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100"
+            role="status"
+            data-unmatched-loan-repayments-banner
+        >
+            <p class="font-medium">
+                {{ trans_choice('{0} No unmatched loan repayments|{1} :count loan repayment has no matching cash transfer|[2,*] :count loan repayments have no matching cash transfer', (int) $unmatchedLoanRepayments['count'], ['count' => (int) $unmatchedLoanRepayments['count']]) }}
+                ({{ number_format((float) $unmatchedLoanRepayments['total'], 2) }} principal).
+            </p>
+            <p class="mt-1 text-rose-800 dark:text-rose-200">
+                Loan-ledger repayments do not move cash or 4000 by themselves. Book the offset/general account as an Internal transfer to this loan so both sides are recorded.
+            </p>
+        </div>
+    @endif
 
     <form class="mt-4 space-y-3" data-bank-import-upload-form enctype="multipart/form-data">
         <div
@@ -80,11 +105,11 @@
                     type="file"
                     id="bank_import_statement_file"
                     name="statement_file"
-                    accept=".csv,.txt"
+                    accept=".csv,.txt,.xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,text/plain"
                     required
                     class="mt-1 block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100 dark:text-gray-300 dark:file:bg-indigo-950/50 dark:file:text-indigo-300"
                 >
-            </div>
+                <p class="mt-1 text-[11px] text-gray-500 dark:text-gray-400">CSV, TXT, or Excel (.xlsx). Legacy .xls — re-save as .xlsx or CSV.</p>            </div>
         </div>
 
         <div class="flex flex-wrap items-center justify-end gap-2">
@@ -350,109 +375,155 @@
                                     <span class="text-[11px] text-gray-500 dark:text-gray-400">{{ $suggestion['reason'] }}</span>
                                 @endif
 
-                                <button type="button" class="text-xs font-medium text-indigo-600 hover:text-indigo-500" data-bank-import-toggle-change>
+                                <button
+                                    type="button"
+                                    class="text-xs font-medium text-indigo-600 hover:text-indigo-500"
+                                    data-bank-import-toggle-change
+                                    aria-expanded="false"
+                                >
                                     Change ▾
                                 </button>
                             </div>
 
-                            <div class="mt-3 hidden grid gap-2 sm:grid-cols-2" data-bank-import-change>
-                                <div>
-                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Match existing</label>
-                                    <x-tom-select
-                                        data-bank-import-transaction
-                                        class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                                    >
-                                        <option value="">— None —</option>
-                                        @foreach($matchCandidates as $candidate)
-                                            <option
-                                                value="{{ $candidate->id }}"
-                                                data-amount="{{ $candidate->amount }}"
-                                                data-date="{{ $candidate->date?->format('Y-m-d') }}"
-                                                @selected((int) ($suggestedTxId ?? 0) === (int) $candidate->id)
+                            <div class="mt-3 hidden space-y-3" data-bank-import-change>
+                                <p class="text-[11px] text-gray-500 dark:text-gray-400" data-bank-import-change-hint>
+                                    Choose one path. Match and create options clear each other when you pick a value.
+                                </p>
+
+                                <div class="rounded-md border border-emerald-200 bg-emerald-50/60 p-2.5 dark:border-emerald-900/50 dark:bg-emerald-950/30" data-bank-import-match-section>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-emerald-800 dark:text-emerald-200">Match</p>
+                                    <p class="mt-0.5 text-[11px] text-emerald-700/90 dark:text-emerald-300/90">
+                                        Link this statement line to something already in the books.
+                                    </p>
+                                    <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                        <div>
+                                            <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-300">Match existing</label>
+                                            <p class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400" data-bank-import-match-existing-hint>
+                                                Booked lines waiting for a bank match — not chart of accounts.
+                                            </p>
+                                            <x-tom-select
+                                                data-bank-import-transaction
+                                                class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
                                             >
-                                                {{ $candidate->date?->format('d/m/Y') }} · ${{ number_format((float) $candidate->amount, 2) }}
-                                                · {{ \Illuminate\Support\Str::limit($candidate->description ?: 'No description', 40) }}
-                                                @if($candidate->businessEntity)
-                                                    ({{ $candidate->businessEntity->legal_name }})
-                                                @endif
-                                            </option>
-                                        @endforeach
-                                    </x-tom-select>
-                                </div>
-                                @unless($isLoanActivityImport)
-                                    <div class="sm:col-span-2">
-                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Match invoice(s)</label>
-                                        <x-tom-select
-                                            multiple
-                                            data-bank-import-invoice
-                                            class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                                        >
-                                            @foreach($invoiceCandidates as $invoiceCandidate)
-                                                @php
-                                                    $amountDue = $invoiceCandidate->amountDue();
-                                                @endphp
-                                                <option
-                                                    value="{{ $invoiceCandidate->id }}"
-                                                    data-amount="{{ $amountDue }}"
-                                                    data-amount-due="{{ $amountDue }}"
-                                                    data-total="{{ $invoiceCandidate->total_amount }}"
-                                                    data-date="{{ $invoiceCandidate->issue_date?->format('Y-m-d') }}"
-                                                    data-due-date="{{ $invoiceCandidate->due_date?->format('Y-m-d') }}"
-                                                    data-lease-id="{{ $invoiceCandidate->lease_id ?? '' }}"
-                                                    data-customer-name="{{ $invoiceCandidate->customer_name }}"
-                                                    @selected(in_array((int) $invoiceCandidate->id, $suggestedAllocationIds, true))
-                                                >
-                                                    {{ $invoiceCandidate->invoice_number }}
-                                                    · due ${{ number_format((float) $amountDue, 2) }}
-                                                    · {{ \Illuminate\Support\Str::limit($invoiceCandidate->customer_name ?: 'No customer', 30) }}
-                                                    · {{ $invoiceCandidate->issue_date?->format('d/m/Y') }}
-                                                </option>
-                                            @endforeach
-                                        </x-tom-select>
-                                        <div class="mt-2 hidden space-y-1.5 rounded-md border border-gray-200 p-2 dark:border-gray-700" data-bank-import-invoice-split>
-                                            <div class="space-y-1.5" data-bank-import-invoice-split-rows></div>
-                                            <div class="flex items-center justify-between gap-2 border-t border-gray-200 pt-1.5 text-[11px] dark:border-gray-700">
-                                                <span class="text-gray-600 dark:text-gray-400" data-bank-import-invoice-split-footer>Allocated $0.00 / credit $0.00</span>
-                                                <span class="font-medium text-red-600 dark:text-red-400 hidden" data-bank-import-invoice-split-error></span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                @endunless
-                                <div>
-                                    <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Or create as type</label>
-                                    <x-tom-select
-                                        data-bank-import-create-type
-                                        class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                                    >
-                                        <option value="">— None —</option>
-                                        @foreach($transactionTypeGroups as $groupLabel => $types)
-                                            <optgroup label="{{ $groupLabel }}">
-                                                @foreach($types as $typeKey => $typeLabelOption)
-                                                    <option value="{{ $typeKey }}" @selected($suggestedType === $typeKey && $action === 'create_transaction')>
-                                                        {{ $typeLabelOption }}
+                                                <option value="">— None —</option>
+                                                @forelse($matchCandidates as $candidate)
+                                                    <option
+                                                        value="{{ $candidate->id }}"
+                                                        data-amount="{{ $candidate->amount }}"
+                                                        data-date="{{ $candidate->date?->format('Y-m-d') }}"
+                                                        @selected((int) ($suggestedTxId ?? 0) === (int) $candidate->id)
+                                                    >
+                                                        {{ $candidate->date?->format('d/m/Y') }} · ${{ number_format((float) $candidate->amount, 2) }}
+                                                        · {{ \Illuminate\Support\Str::limit($candidate->description ?: 'No description', 40) }}
+                                                        @if($candidate->businessEntity)
+                                                            ({{ $candidate->businessEntity->legal_name }})
+                                                        @endif
                                                     </option>
-                                                @endforeach
-                                            </optgroup>
-                                        @endforeach
-                                    </x-tom-select>
-                                </div>
-                                @unless($isLoanActivityImport)
-                                    <div class="sm:col-span-2">
-                                        <label class="block text-[11px] font-medium text-gray-600 dark:text-gray-400">Or create from chart account</label>
-                                        <x-tom-select
-                                            data-bank-import-chart-account
-                                            class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                                        >
-                                            <option value="">— None —</option>
-                                            @foreach(($chartAccounts ?? collect()) as $chartAccount)
-                                                <option value="{{ $chartAccount->id }}">
-                                                    {{ $chartAccount->account_code }} - {{ $chartAccount->account_name }}
-                                                </option>
-                                            @endforeach
-                                        </x-tom-select>
+                                                @empty
+                                                    {{-- Options stay empty until unmatched booked transactions exist for this entity. --}}
+                                                @endforelse
+                                            </x-tom-select>
+                                            @if($matchCandidates->isEmpty())
+                                                <p class="mt-1 text-[10px] text-gray-500 dark:text-gray-400" data-bank-import-match-existing-empty>
+                                                    No unmatched booked transactions for this entity yet. Use create below, or enter the transaction first.
+                                                </p>
+                                            @endif
+                                        </div>
+                                        @unless($isLoanActivityImport)
+                                            <div class="sm:col-span-2">
+                                                <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-300">Match invoice(s)</label>
+                                                <p class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                                                    Open invoices / AR — separate from Match existing.
+                                                </p>
+                                                <x-tom-select
+                                                    multiple
+                                                    data-bank-import-invoice
+                                                    class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                                >
+                                                    @foreach($invoiceCandidates as $invoiceCandidate)
+                                                        @php
+                                                            $amountDue = $invoiceCandidate->amountDue();
+                                                        @endphp
+                                                        <option
+                                                            value="{{ $invoiceCandidate->id }}"
+                                                            data-amount="{{ $amountDue }}"
+                                                            data-amount-due="{{ $amountDue }}"
+                                                            data-total="{{ $invoiceCandidate->total_amount }}"
+                                                            data-date="{{ $invoiceCandidate->issue_date?->format('Y-m-d') }}"
+                                                            data-due-date="{{ $invoiceCandidate->due_date?->format('Y-m-d') }}"
+                                                            data-lease-id="{{ $invoiceCandidate->lease_id ?? '' }}"
+                                                            data-customer-name="{{ $invoiceCandidate->customer_name }}"
+                                                            @selected(in_array((int) $invoiceCandidate->id, $suggestedAllocationIds, true))
+                                                        >
+                                                            {{ $invoiceCandidate->invoice_number }}
+                                                            · due ${{ number_format((float) $amountDue, 2) }}
+                                                            · {{ \Illuminate\Support\Str::limit($invoiceCandidate->customer_name ?: 'No customer', 30) }}
+                                                            · {{ $invoiceCandidate->issue_date?->format('d/m/Y') }}
+                                                        </option>
+                                                    @endforeach
+                                                </x-tom-select>
+                                                <div class="mt-2 hidden space-y-1.5 rounded-md border border-gray-200 p-2 dark:border-gray-700" data-bank-import-invoice-split>
+                                                    <div class="space-y-1.5" data-bank-import-invoice-split-rows></div>
+                                                    <div class="flex items-center justify-between gap-2 border-t border-gray-200 pt-1.5 text-[11px] dark:border-gray-700">
+                                                        <span class="text-gray-600 dark:text-gray-400" data-bank-import-invoice-split-footer>Allocated $0.00 / credit $0.00</span>
+                                                        <span class="font-medium text-red-600 dark:text-red-400 hidden" data-bank-import-invoice-split-error></span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endunless
                                     </div>
-                                @endunless
-                                <div class="sm:col-span-2 rounded-md border border-gray-200 dark:border-gray-700 p-2.5">
+                                </div>
+
+                                <div class="rounded-md border border-sky-200 bg-sky-50/60 p-2.5 dark:border-sky-900/50 dark:bg-sky-950/30" data-bank-import-create-section>
+                                    <p class="text-[11px] font-semibold uppercase tracking-wide text-sky-800 dark:text-sky-200">Create new</p>
+                                    <p class="mt-0.5 text-[11px] text-sky-700/90 dark:text-sky-300/90">
+                                        Book a new transaction from this statement line (not a match to an existing one).
+                                    </p>
+                                    <div class="mt-2 grid gap-2 sm:grid-cols-2">
+                                        <div>
+                                            <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-300">Or create as type</label>
+                                            <p class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                                                e.g. Internal Transfer, Rent, Rates — uses the standard type map.
+                                            </p>
+                                            <x-tom-select
+                                                data-bank-import-create-type
+                                                class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                            >
+                                                <option value="">— None —</option>
+                                                @foreach($transactionTypeGroups as $groupLabel => $types)
+                                                    <optgroup label="{{ $groupLabel }}">
+                                                        @foreach($types as $typeKey => $typeLabelOption)
+                                                            <option value="{{ $typeKey }}" @selected($suggestedType === $typeKey && $action === 'create_transaction')>
+                                                                {{ $typeLabelOption }}
+                                                            </option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endforeach
+                                            </x-tom-select>
+                                        </div>
+                                        @unless($isLoanActivityImport)
+                                            <div class="sm:col-span-2">
+                                                <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-300">Or create from chart account</label>
+                                                <p class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400" data-bank-import-chart-account-hint>
+                                                    Active GL accounts (chart of accounts codes) — not the Match existing list.
+                                                </p>
+                                                <x-tom-select
+                                                    data-bank-import-chart-account
+                                                    class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                                >
+                                                    <option value="">— None —</option>
+                                                    @foreach(($chartAccounts ?? collect()) as $chartAccount)
+                                                        <option value="{{ $chartAccount->id }}">
+                                                            {{ $chartAccount->account_code }} - {{ $chartAccount->account_name }}
+                                                        </option>
+                                                    @endforeach
+                                                </x-tom-select>
+                                            </div>
+                                        @endunless
+                                    </div>
+                                </div>
+
+                                <div class="rounded-md border border-gray-200 dark:border-gray-700 p-2.5" data-bank-import-markers-section>
                                     <p class="text-[11px] font-medium text-gray-600 dark:text-gray-400 mb-2">Create markers</p>
                                     <div class="grid gap-2 sm:grid-cols-2">
                                         <label class="inline-flex items-center gap-2 text-xs text-gray-700 dark:text-gray-300">

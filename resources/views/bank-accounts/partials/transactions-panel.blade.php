@@ -163,6 +163,7 @@
             'transactionTypeGroups' => $transactionTypeGroups ?? \App\Models\Transaction::typeSelectGroupsForBankAccount($bankAccount),
             'isLoanActivityImport' => $isLoanActivityImport ?? $bankAccount->isLoanLedgerAccount(),
             'chartAccounts' => $chartAccounts ?? collect(),
+            'unmatchedLoanRepayments' => $unmatchedLoanRepayments ?? ['count' => 0, 'total' => 0.0],
         ])
     @endif
 

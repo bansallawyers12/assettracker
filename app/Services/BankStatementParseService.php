@@ -34,9 +34,9 @@ class BankStatementParseService
     }
 
     /**
-     * Parse a stored CSV bank statement file.
+     * Parse a stored CSV or Excel (.xlsx) bank statement file.
      *
-     * Excel import is deferred until Python 3.9+ is available on the server.
+     * Legacy .xls is not supported — export as .xlsx or CSV first.
      *
      * @param  array<string, string|null>|null  $columnMapping
      * @return array{success: bool, entries?: list<array<string, mixed>>, error?: string, message?: string, profile?: string}

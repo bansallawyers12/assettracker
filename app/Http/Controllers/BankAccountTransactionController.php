@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Services\BankAccountBalanceSnapshotService;
 use App\Services\BankStatementMatchSuggester;
+use App\Services\UnmatchedLoanRepaymentAuditor;
 use App\Support\TransactionListFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class BankAccountTransactionController extends Controller
     public function __construct(
         private BankStatementMatchSuggester $suggester,
         private BankAccountBalanceSnapshotService $balanceSnapshots,
+        private UnmatchedLoanRepaymentAuditor $loanRepaymentAuditor,
     ) {}
 
     public function index(Request $request, BankAccount $bankAccount): JsonResponse
@@ -149,6 +151,13 @@ class BankAccountTransactionController extends Controller
                 ->where('business_entity_id', $contextEntityId)
                 ->exists();
 
+        $unmatchedLoanRepayments = $bankAccount->isLoanLedgerAccount()
+            ? $this->loanRepaymentAuditor->summaryForLoanAccount(
+                $bankAccount,
+                $contextEntityId ?? $defaultEntityId
+            )
+            : ['count' => 0, 'total' => 0.0];
+
         return [
             'bankAccount' => $bankAccount,
             'transactions' => $transactions,
@@ -170,6 +179,7 @@ class BankAccountTransactionController extends Controller
             'chartAccounts' => $bankAccount->isLoanLedgerAccount()
                 ? collect()
                 : ChartOfAccount::activeForSelect(),
+            'unmatchedLoanRepayments' => $unmatchedLoanRepayments,
             'filters' => $filters,
             'filtersActive' => $filtersActive,
             'balanceSnapshots' => $this->balanceSnapshots->forPanel($bankAccount),

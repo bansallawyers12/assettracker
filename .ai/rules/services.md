@@ -63,7 +63,10 @@ Balance sheet 2500 is posted GL (debit−credit as-of), same as 4000/1100. Do no
 AssetMoveToTrustService::sourceBlockedMessage / targetBlockedMessage explain reopen vs convert. Hide Move to trust on closed/contact-only company asset pages and show data-move-to-trust-blocked; form endpoint returns the same message as JSON 422. Candidate trusts stay operationalEntities() only.
 
 ## Statement CSV duplicate key is exact
-CSV statement duplicates use date + amount + description + optional reference + optional balance_after. Matching must use that full key: missing reference/balance must not match stored rows that have them, and vice versa. Blank mapped balance cells must omit balance_after (do not store 0.0). Identical legitimate lines are allowed up to how many times they appear; re-uploading the same file must not create extras.
+CSV/XLSX statement duplicates use date + amount + description + optional reference + optional balance_after. Matching must use that full key: missing reference/balance must not match stored rows that have them, and vice versa. Blank mapped balance cells must omit balance_after (do not store 0.0). Identical legitimate lines are allowed up to how many times they appear; re-uploading the same file must not create extras.
+
+## Bank statement uploads accept CSV and XLSX
+`BankAccountImportController` validates `mimes:csv,txt,xlsx`. `BankCsvStatementParser` reads CSV/TXT natively and `.xlsx` via `BankStatementXlsxReader` (first sheet, ZipArchive — no PhpSpreadsheet). Reject legacy `.xls` with a re-save message.
 
 ## Reconcile can match unpaid invoices including partials
 Reconcile Match invoice is a separate picker from Match existing (transactions). Accepts credits ≤ remaining invoice balance (exact remaining or partial). Accept creates invoice_payment via InvoicePaymentService with an allocation (Dr 1100 / Cr 1130). Do not create rental_income for a statement credit that belongs on open AR. Hidden on loan ledgers.

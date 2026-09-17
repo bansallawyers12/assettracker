@@ -36,8 +36,8 @@ Issue types: **UI**, **UX**, **Functionality**, **Data**, **Security**, **Perfor
 
 Asset Tracker is a mature Laravel portal (entities, assets, banking, accounting, documents, compliance, email). The stack is modern (Vite, Tailwind 4, Tom Select, Alpine), but several areas create user confusion or silent accounting drift:
 
-1. **Bank reconciliation Change panel** — three different pickers (Match existing / create as type / chart account) are easy to confuse; Tom Select inside hidden panels can appear empty until **Change ▾** is opened and widgets activate.
-2. **Loan vs offset vs cash** — loan-purpose accounts use a different import UI and posting rules; loan repayments on the loan ledger do not move GL until offset transfers exist.
+1. **Bank reconciliation Change panel** — Match vs Create are grouped with hints so Match existing is not confused with chart-account create; Tom Select activates on **Change ▾** open via deferred init + refresh.
+2. **Loan vs offset vs cash** — loan-purpose accounts use a different import UI and posting rules; loan repayments on the loan ledger do not move GL until offset transfers exist (panel banner + audit command surface gaps).
 3. **Accounting model** — paid-basis P&L, director-funds posting, and reconstructed 2500 balance sheet logic are correct by design but not obvious in the UI.
 4. **Access control** — portfolio is firm-shared for reads; `app_role` gates mutations (`viewer` is read-only). Person-held bank accounts can still 403 on edit for other users.
 5. **Frontend consolidation** — heavy workspace JS loads on every page; flash/confirm/toast patterns are inconsistent.
@@ -80,18 +80,18 @@ Asset Tracker is a mature Laravel portal (entities, assets, banking, accounting,
 
 ## 4. Bank accounts and statement reconciliation
 
-| ID | Type | Sev | Summary | User impact | Evidence |
-| --- | --- | --- | --- | --- | --- |
-| bank-001 | UX | High | Change panel has three mutually exclusive pickers | Users confuse **Match existing** (booked transactions) with **Or create from chart account** (GL) | `reconciliation-panel.blade.php`, `.ai/rules/partials.md`, `bank-reconciliation.js` |
-| bank-002 | UX | Medium | Change panel hidden by default; Tom Select deferred | Dropdowns look empty/broken until **Change ▾** opens and `forceActivateTomSelectsIn` runs | `tomselect-init.js`, `bank-reconciliation.js` |
-| bank-003 | Functionality | High | Loan-purpose CSV = loan activity, not cash reconciliation | Limited types, no chart-account create, different labels/counts | `.ai/rules/partials.md`, `.ai/rules/loan-offset-transfers.md` |
-| bank-004 | Data | High | Loan repayments on loan account post no GL alone | Cash movement expected via offset `internal_transfer`; silent under-reporting if missing | `docs/ACCOUNTING_PNL_AND_BALANCE_SHEET.md` §9, `AuditUnmatchedLoanRepayments` |
-| bank-005 | Functionality | Medium | CSV/TXT only — Excel rejected | Users uploading `.xlsx` exports get validation error | `BankAccountImportController`, tests |
-| bank-006 | UX | Medium | Column mapping step after upload | Non-Macquarie banks may need manual Date/Description/Amount remap | `bank-reconciliation.js`, CSV mapping UI (Aug 2026) |
-| bank-007 | Security | Medium | Person-held bank accounts 403 for non-owner users | Account visible in portfolio list but edit returns Unauthorized | `BankAccount::isAccessibleBy`, `PersonShowWorkspaceController` |
-| bank-008 | UX | Medium | Balance sheet entry CTA ≠ Add transaction | Capital/deposits use minimal balance-sheet form; full P&L flow is separate | `.ai/rules/balance-sheet-entries.md` |
-| bank-009 | Functionality | Medium | Chart-account create maps to transaction types invisibly | e.g. 2500 → director loan in/out; liability → loan_drawdown | `.ai/rules/services.md`, `BankStatementApplyService` |
-| bank-010 | UX | Low | Clear matched/unmatched uses native `confirm()` | Inconsistent with workspace styled confirm dialogs | `bank-reconciliation.js`, `docs/TECH_UPDATE.md` |
+| ID | Type | Sev | Summary | User impact | Evidence | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| bank-001 | UX | High | Change panel has three mutually exclusive pickers | Users confuse **Match existing** (booked transactions) with **Or create from chart account** (GL) | `reconciliation-panel.blade.php`, `.ai/rules/partials.md`, `bank-reconciliation.js` | **Fixed** — Match vs Create sections + hints; empty Match existing notice; pickers still mutually exclusive |
+| bank-002 | UX | Medium | Change panel hidden by default; Tom Select deferred | Dropdowns look empty/broken until **Change ▾** opens and `forceActivateTomSelectsIn` runs | `tomselect-init.js`, `bank-reconciliation.js` | **Fixed** — open uses `scheduleForceActivateTomSelectsIn` + chart refresh; ▾/▴ + `aria-expanded` |
+| bank-003 | Functionality | High | Loan-purpose CSV = loan activity, not cash reconciliation | Limited types, no chart-account create, different labels/counts | `.ai/rules/partials.md`, `.ai/rules/loan-offset-transfers.md` | **Fixed** — loan activity guidance bullets; “to apply” vs unmatched explained; chart/invoice still hidden |
+| bank-004 | Data | High | Loan repayments on loan account post no GL alone | Cash movement expected via offset `internal_transfer`; silent under-reporting if missing | `docs/ACCOUNTING_PNL_AND_BALANCE_SHEET.md` §9, `AuditUnmatchedLoanRepayments` | **Fixed** — `UnmatchedLoanRepaymentAuditor` + loan panel banner; artisan command still read-only |
+| bank-005 | Functionality | Medium | CSV/TXT only — Excel rejected | Users uploading `.xlsx` exports get validation error | `BankAccountImportController`, tests | **Fixed** — accept `.xlsx` via `BankStatementXlsxReader`; `.xls` still needs re-save |
+| bank-006 | UX | Medium | Column mapping step after upload | Non-Macquarie banks may need manual Date/Description/Amount remap | `bank-reconciliation.js`, CSV mapping UI (Aug 2026) | Open |
+| bank-007 | Security | Medium | Person-held bank accounts 403 for non-owner users | Account visible in portfolio list but edit returns Unauthorized | `BankAccount::isAccessibleBy`, `PersonShowWorkspaceController` | Open |
+| bank-008 | UX | Medium | Balance sheet entry CTA ≠ Add transaction | Capital/deposits use minimal balance-sheet form; full P&L flow is separate | `.ai/rules/balance-sheet-entries.md` | Open |
+| bank-009 | Functionality | Medium | Chart-account create maps to transaction types invisibly | e.g. 2500 → director loan in/out; liability → loan_drawdown | `.ai/rules/services.md`, `BankStatementApplyService` | Open |
+| bank-010 | UX | Low | Clear matched/unmatched uses native `confirm()` | Inconsistent with workspace styled confirm dialogs | `bank-reconciliation.js`, `docs/TECH_UPDATE.md` | Open |
 
 ### Reconciliation Change panel — intended layout (Aug 2026)
 
@@ -104,9 +104,9 @@ Order (cash/offset accounts only):
 
 **Observed user confusion (Aug 2026):**
 
-- Empty **Match existing** when no unmatched booked transactions exists (expected for new imports).
-- Chart account list empty when Tom Select not activated inside hidden Change panel (mitigated by `forceActivateTomSelectsIn` + `loadChartAccounts()` on open).
-- Label changes during Aug 2026 redesign caused mismatch with user mental model; layout reverted to pre-redesign order.
+- Empty **Match existing** when no unmatched booked transactions exists (expected for new imports) — now explained inline under the picker.
+- Chart account list empty when Tom Select not activated inside hidden Change panel — mitigated by `scheduleForceActivateTomSelectsIn` + `loadChartAccounts()` refresh on open.
+- Label changes during Aug 2026 redesign caused mismatch with user mental model; layout order kept; Match vs Create grouped with hints (Sep 2026).
 
 ---
 

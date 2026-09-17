@@ -45,6 +45,13 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($panel)->toContain('data-bank-import-invoice')
         ->and($panel)->toContain('data-bank-import-chart-account')
         ->and($panel)->toContain('$chartAccounts')
+        ->and($panel)->toContain('data-bank-import-match-section')
+        ->and($panel)->toContain('data-bank-import-create-section')
+        ->and($panel)->toContain('data-bank-import-change-hint')
+        ->and($panel)->toContain('data-bank-import-match-existing-hint')
+        ->and($panel)->toContain('data-bank-import-chart-account-hint')
+        ->and($panel)->toContain('data-bank-import-match-existing-empty')
+        ->and($panel)->toContain('aria-expanded="false"')
         ->and($panel)->not->toContain('Create from chart of accounts')
         ->and($panel)->not->toContain('Match existing transaction')
         ->and($transactions)->toContain('bank-accounts.import.clear-entries')
@@ -67,7 +74,9 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($js)->toContain('payload.chart_accounts')
         ->and($js)->toContain('loadChartAccounts()')
         ->and($js)->toContain("importPanel.dataset.loanActivity === '1'")
-        ->and($js)->toContain('forceActivateTomSelectsIn')
+        ->and($js)->toContain('scheduleForceActivateTomSelectsIn')
+        ->and($js)->toContain("btn.textContent = open ? 'Change ▴' : 'Change ▾'")
+        ->and($js)->toContain('aria-expanded')
         ->and($modal)->toContain("from './bank-reconciliation.js'")
         ->and($modal)->toContain('bindReconciliationPanel')
         ->and($js)->toContain('subject_to_bas')
@@ -202,13 +211,14 @@ it('parses macquarie csv profile without deprecation warnings', function () {
         ->and($result['success'])->toBeTrue();
 });
 
-it('restricts bank import uploads to csv only', function () {
+it('accepts csv txt and xlsx bank import uploads', function () {
     $importController = file_get_contents(app_path('Http/Controllers/BankAccountImportController.php'));
     $panel = file_get_contents(resource_path('views/bank-accounts/partials/reconciliation-panel.blade.php'));
 
-    expect($importController)->toContain("'statement_file' => 'required|file|mimes:csv,txt|max:10240'")
-        ->and($panel)->toContain('accept=".csv,.txt"')
-        ->and($panel)->not->toContain('.xlsx');
+    expect($importController)->toContain("'statement_file' => 'required|file|mimes:csv,txt,xlsx|max:10240'")
+        ->and($panel)->toContain('.xlsx')
+        ->and($panel)->toContain('.csv,.txt')
+        ->and($panel)->not->toContain('accept=".csv,.txt"');
 });
 
 it('preselects invoice payment bank account with suggested statement line', function () {

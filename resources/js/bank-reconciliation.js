@@ -7,7 +7,7 @@ import {
     notifyFormFailure,
     notifyFormSuccess,
 } from './workspace-panel.js';
-import { forceActivateTomSelectsIn, refreshTomSelect, setSelectValue } from './tomselect-init.js';
+import { scheduleForceActivateTomSelectsIn, refreshTomSelect, setSelectValue } from './tomselect-init.js';
 
 export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel) {
     const importPanel = panel.querySelector('[data-bank-import-panel]');
@@ -942,19 +942,30 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 return;
             }
             change.classList.toggle('hidden');
-            if (!change.classList.contains('hidden')) {
-                forceActivateTomSelectsIn(change);
-                // Re-sync chart options after Tom Select activates inside the previously-hidden panel.
-                loadChartAccounts();
-                const entryEl = btn.closest('[data-bank-import-entry]');
-                if (entryEl) {
-                    const preferred = {};
-                    parseSuggestedAllocations(entryEl).forEach((row) => {
-                        preferred[String(row.invoice_id)] = row.amount;
-                    });
+            const open = !change.classList.contains('hidden');
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            btn.textContent = open ? 'Change ▴' : 'Change ▾';
+
+            if (!open) {
+                return;
+            }
+
+            // Activate deferred Tom Selects after the panel is visible, then refresh
+            // options (chart accounts may have been populated while still hidden).
+            scheduleForceActivateTomSelectsIn(change);
+            void (async () => {
+                await loadChartAccounts();
+                change.querySelectorAll('select[data-tomselect]').forEach((select) => {
+                    refreshTomSelect(select);
+                });
+                const preferred = {};
+                parseSuggestedAllocations(entryEl).forEach((row) => {
+                    preferred[String(row.invoice_id)] = row.amount;
+                });
+                if (Object.keys(preferred).length || selectedInvoiceIds(entryEl.querySelector('[data-bank-import-invoice]')).length) {
                     renderInvoiceSplit(entryEl, Object.keys(preferred).length ? preferred : true);
                 }
-            }
+            })();
         }, { signal });
     });
 

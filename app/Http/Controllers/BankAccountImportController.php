@@ -40,7 +40,7 @@ class BankAccountImportController extends Controller
 
         $validated = $request->validate([
             'business_entity_id' => ['required', BusinessEntity::ruleExistsOperational()],
-            'statement_file' => 'required|file|mimes:csv,txt|max:10240',
+            'statement_file' => 'required|file|mimes:csv,txt,xlsx|max:10240',
         ]);
 
         $businessEntity = BusinessEntity::query()->findOrFail((int) $validated['business_entity_id']);
@@ -58,7 +58,7 @@ class BankAccountImportController extends Controller
 
                 return response()->json([
                     'success' => false,
-                    'message' => $inspect['error'] ?? 'Could not read the CSV file.',
+                    'message' => $inspect['error'] ?? 'Could not read the statement file.',
                 ], 400);
             }
 
@@ -117,7 +117,7 @@ class BankAccountImportController extends Controller
         if (! is_array($preview) || empty($preview['path'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Preview expired. Upload the CSV again.',
+                'message' => 'Preview expired. Upload the statement again.',
             ], 422);
         }
 

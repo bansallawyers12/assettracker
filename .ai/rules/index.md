@@ -6,7 +6,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | --- | --- |
 | app/Policies/**, app/Enums/AppRole.php, app/Models/User.php | .ai/rules/auth.md |
 | resources/views/business-entities/**, app/Http/Controllers/Concerns/EnsuresOperationalBusinessEntity.php, app/Http/Controllers/*WorkspaceController.php, app/Http/Controllers/ContactListController.php, app/Http/Controllers/DocumentController.php | .ai/rules/business-entities.md |
-| app/Console/Commands/AuditUnmatchedLoanRepayments.php | .ai/rules/commands.md |
+| app/Console/Commands/AuditUnmatchedLoanRepayments.php, app/Services/UnmatchedLoanRepaymentAuditor.php | .ai/rules/commands.md |
 | app/Http/Controllers/BalanceSheetEntryController.php, app/Http/Controllers/InvoiceController.php | .ai/rules/controllers.md |
 | app/Models/ChartOfAccount.php, app/Http/Controllers/ChartOfAccountController.php, config/financial.php | .ai/rules/http-controllers.md |
 | resources/views/invoices/** | .ai/rules/invoices.md |
