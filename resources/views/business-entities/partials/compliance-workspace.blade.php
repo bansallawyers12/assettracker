@@ -106,7 +106,8 @@
     </div>
 
     <p class="text-xs leading-relaxed text-gray-500 dark:text-gray-400">
-        Compliance documents for each financial year (ITR, BAS, land tax, council rates, insurance, etc.).
+        Compliance documents and checklists for each financial year (ITR, BAS, land tax, council rates, insurance, etc.).
+        Uploading documents or marking status as lodged tracks internal recordkeeping and does not submit lodgements directly to the ATO or ASIC.
         Up to {{ number_format($wsDocMaxKb / 1024, 1) }} MB per file. Files are stored in AWS S3.
     </p>
 

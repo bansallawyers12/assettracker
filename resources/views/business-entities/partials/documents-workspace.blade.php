@@ -146,6 +146,7 @@
             <h3 class="text-lg font-semibold mb-3 dark:text-white">Bulk upload</h3>
             <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Each file max {{ number_format($wsDocMaxKb / 1024, 1) }} MB (same as single upload).</p>
             <input type="file" id="{{ $prefix }}-bulk-files" multiple accept="{{ $wsDocAccept }}" class="block w-full text-sm mb-3">
+            <p class="text-xs text-gray-500 dark:text-gray-400 -mt-1 mb-3">Files automatically match existing checklist rows by name. Select an item from the dropdown, or check below to create new items from filenames.</p>
             <label class="flex items-center gap-2 text-sm mb-3 dark:text-gray-300">
                 <input type="checkbox" id="{{ $prefix }}-bulk-autocreate"> Auto-create checklist for unmatched files
             </label>

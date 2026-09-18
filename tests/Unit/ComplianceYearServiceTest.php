@@ -153,4 +153,25 @@ class ComplianceYearServiceTest extends TestCase
             Carbon::setTestNow();
         }
     }
+
+    public function test_business_entity_effective_bas_reporting_frequency(): void
+    {
+        config(['compliance.bas_mode' => 'quarterly']);
+
+        $entity = new BusinessEntity;
+        $this->assertSame('quarterly', $entity->effectiveBasReportingFrequency());
+
+        $entity->bas_reporting_frequency = 'annual';
+        $this->assertSame('annual', $entity->effectiveBasReportingFrequency());
+
+        $entity->bas_reporting_frequency = 'quarterly';
+        $this->assertSame('quarterly', $entity->effectiveBasReportingFrequency());
+
+        $entity->bas_reporting_frequency = 'monthly';
+        $this->assertSame('quarterly', $entity->effectiveBasReportingFrequency(), 'monthly falls back to quarterly slots');
+
+        $entity->bas_reporting_frequency = null;
+        config(['compliance.bas_mode' => 'annual']);
+        $this->assertSame('annual', $entity->effectiveBasReportingFrequency());
+    }
 }

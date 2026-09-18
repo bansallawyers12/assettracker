@@ -1024,7 +1024,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
                 const targetId = await showWorkspaceSelect({
                     title: 'Move checklist item',
-                    message: 'Choose which category this item should belong to.',
+                    message: 'Choose a category in this workspace to move this item to.',
                     label: 'Destination category',
                     options: otherCats.map(c => ({ value: c.id, label: c.title })),
                     confirmText: 'Move item',

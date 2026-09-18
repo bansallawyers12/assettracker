@@ -160,9 +160,9 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| doc-001 | Performance | Medium | `documents-workspace.js` loaded globally (~690 lines) | Parsed on every authenticated page | `app.js`, `docs/TECH_UPDATE.md` |
-| doc-002 | UX | Medium | Bulk upload slot/category mapping is complex | Users must understand categories, slots, replace flags | `DocumentWorkspaceController`, `documents-workspace.js` |
-| doc-003 | Functionality | Low | Cannot move documents between entity and asset workspaces | Move returns error when crossing scope | `DocumentWorkspaceController` |
+| doc-001 | Performance | Medium | `documents-workspace.js` loaded globally (~690 lines) | Parsed on every authenticated page | `app.js`, `docs/TECH_UPDATE.md` | **Accepted / Planned** — Scheduled in `docs/TECH_UPDATE.md` Track 1 Phase 1a as part of the broader Vite bundle splitting with `compliance-workspace.js`; self-guards via `document.querySelectorAll('.documents-workspace')` |
+| doc-002 | UX | Medium | Bulk upload slot/category mapping is complex | Users must understand categories, slots, replace flags | `DocumentWorkspaceController`, `documents-workspace.js` | **Fixed** — Added clear guidance copy in bulk modal clarifying auto-matching against existing checklist rows by name, auto-create for unmatched files, and replace flag behavior |
+| doc-003 | Functionality | Low | Cannot move documents between entity and asset workspaces | Move returns error when crossing scope | `DocumentWorkspaceController` | **Clarified by design** — Entity documents and asset documents have strictly separated workspace scopes (`asset_id IS NULL` vs `asset_id = ?`); cross-scope moves are prohibited to avoid checklist category taxonomy and audit trail corruption. Within-workspace moves between categories are fully supported |
 
 ---
 
@@ -170,11 +170,11 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| comp-001 | Performance | Medium | `compliance-workspace.js` loaded globally (~1046 lines) | Same global bundle issue as documents | `app.js`, `docs/TECH_UPDATE.md` |
-| comp-002 | Functionality | High | Checklist only — not lodgement engine | Upload ≠ lodged; no ATO integration | `docs/ATO_LODGEMENT_TRACKING.md` |
-| comp-003 | Functionality | Medium | Limited compliance reporting | No overdue BAS/ASIC multi-year hub report | ATO lodgement doc |
-| comp-004 | Data | Medium | Global BAS mode (annual vs quarterly) | Mixed BAS cycles across entities not modeled per entity | `config/compliance.php` |
-| comp-005 | Functionality | Low | Past FY slots absent until workspace opened | Reports must treat missing years as gaps | ATO lodgement doc |
+| comp-001 | Performance | Medium | `compliance-workspace.js` loaded globally (~1046 lines) | Same global bundle issue as documents | `app.js`, `docs/TECH_UPDATE.md` | **Accepted / Planned** — Scheduled in `docs/TECH_UPDATE.md` Track 1 Phase 1a as part of the broader Vite page-bundle split alongside `documents-workspace.js`; self-guards via `bootWorkspaces()` checking `.compliance-workspace` |
+| comp-002 | Functionality | High | Checklist only — not lodgement engine | Upload ≠ lodged; no ATO integration | `docs/ATO_LODGEMENT_TRACKING.md` | **Clarified / Fixed in UI** — System is intentionally an internal recordkeeping checklist and document tracking tool, not an ATO/SBR electronic lodgement engine; clarified with explicit disclaimer notice in the compliance workspace UI that uploading or setting status to lodged does not submit to ATO/ASIC |
+| comp-003 | Functionality | Medium | Limited compliance reporting | No overdue BAS/ASIC multi-year hub report | ATO lodgement doc | **Fixed** — Implemented portfolio-wide multi-year ATO / ASIC lodgements report (`/financial-reports/ato-lodgements`, `financial-reports.ato-lodgements`) covering multi-year ITR, quarterly/annual BAS, and ASIC annual statement/fees with status classifications (`complete`, `lodged_unpaid`, `overdue`, `due_soon`, `uploaded`, `missing`) and CSV export |
+| comp-004 | Data | Medium | Global BAS mode (annual vs quarterly) | Mixed BAS cycles across entities not modeled per entity | `config/compliance.php` | **Fixed** — Modeled per-entity via `business_entities.bas_reporting_frequency` (`annual`, `quarterly`, `monthly`) with fallback to `config('compliance.bas_mode')` in `effectiveBasReportingFrequency()`; editable in entity settings, profile form, and directly via compliance workspace toolbar dropdown |
+| comp-005 | Functionality | Low | Past FY slots absent until workspace opened | Reports must treat missing years as gaps | ATO lodgement doc | **Fixed** — `ComplianceReportService::lodgementStatusReport()` and `missingItrReport()` synthesize missing years and unprovisioned candidate slots across requested multi-year ranges without requiring prior DB provisioning or opening the workspace |
 
 ---
 
@@ -314,10 +314,19 @@ Order (cash/offset accounts only):
 
 ---
 
-## 24. Change log
+## 24. Related audits
+
+| Doc | Scope |
+| --- | --- |
+| `docs/MODULE_PAGE_SPEED_AND_NAVIGATION_AUDIT.md` | Module inventory, Vite/server speed status, and 1–4 click navigation depth (2026-09-18) — documentation only |
+
+---
+
+## 25. Change log
 
 | Date | Change |
 | --- | --- |
+| 2026-09-18 | Linked module / page-speed / click-depth audit (`MODULE_PAGE_SPEED_AND_NAVIGATION_AUDIT.md`); no behaviour fixes in that pass |
 | 2026-09-02 | Initial register created from codebase audit, rules, docs, tests, and Aug 2026 reconciliation feedback |
 
 ---
