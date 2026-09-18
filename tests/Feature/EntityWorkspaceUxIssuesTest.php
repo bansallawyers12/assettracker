@@ -51,3 +51,17 @@ it('keeps trust appointor on the company profile instead of officer roles', func
         ->and($entityPerson)->toContain("'role' => 'required|in:Director,Secretary,Shareholder,Trustee,Beneficiary,Settlor,Owner'")
         ->and($sidebar)->toContain('data-trust-appointor-sidebar');
 });
+
+it('renders inline explanation instead of generic errors for tenancy-only contacts in persons workspace', function () {
+    $workspace = file_get_contents(resource_path('views/business-entities/partials/persons-workspace.blade.php'));
+    $list = file_get_contents(resource_path('views/business-entities/partials/persons/list.blade.php'));
+    $controller = file_get_contents(app_path('Http/Controllers/PersonsWorkspaceController.php'));
+
+    expect($workspace)->toContain('data-tenancy-persons-notice')
+        ->and($workspace)->toContain('Officer roles are not used here')
+        ->and($workspace)->toContain('Directors, trustees, and other company roles belong on operating entities')
+        ->and($list)->toContain('isTenancyContactOnly()')
+        ->and($list)->toContain('Officer roles are not used on tenancy / property manager contacts.')
+        ->and($controller)->toContain('isTenancyContactOnly()')
+        ->and($controller)->toContain('Company roles and officers apply to operating entities only, not tenancy or property manager contacts.');
+});

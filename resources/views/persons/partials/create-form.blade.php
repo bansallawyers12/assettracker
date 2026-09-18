@@ -64,7 +64,7 @@
         <div class="bank-form-grid mt-5">
             <div class="bank-field bank-form-grid-full">
                 <label for="person_business_entity_id" class="bank-field-label">Business entity <span class="text-red-500">*</span></label>
-                <x-tom-select id="person_business_entity_id" name="business_entity_id" class="bank-field-control" required>
+                <x-tom-select id="person_business_entity_id" name="business_entity_id" class="bank-field-control" data-tomselect-dropdown-parent="body" required>
                     <option value="">Select a business entity</option>
                     @foreach ($businessEntities as $entity)
                         <option value="{{ $entity->id }}" @selected(old('business_entity_id') == $entity->id)>

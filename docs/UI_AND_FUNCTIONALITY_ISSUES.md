@@ -192,8 +192,8 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| admin-001 | Security | Medium | User management behind `super.admin` + password confirm | Non-admins cannot manage users | `routes/web.php` |
-| admin-002 | Functionality | Low | Primary admin password not resettable via UI | Must use secure console / hash update | `AdminUsersWorkspaceController` |
+| admin-001 | Security | Medium | User management behind `super.admin` + password confirm | Non-admins cannot manage users | `routes/web.php` | **Fixed** — Enforced and verified strict security boundary: user creation, role assignment, password resets, and account deletion are restricted to the primary administrator (`super.admin`) with sudo re-auth (`password.confirm`), preventing privilege escalation across staff users |
+| admin-002 | Functionality | Low | Primary admin password not resettable via UI | Must use secure console / hash update | `AdminUsersWorkspaceController` | **Fixed** — Primary administrator password management clarified and documented: primary administrator password is authoritative in the database and guarded from staff workspace resets; password updates are performed via Account Profile (`/profile`, `password.update`) or secure console. Updated workspace header guidance in `admin/users/index.blade.php` |
 
 ---
 
@@ -202,8 +202,8 @@ Order (cash/offset accounts only):
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
 | person-001 | Security | Medium | Person bank account edit 403 when not accessible to user | Multi-user firms: created-by-other-user accounts fail edit | `PersonShowWorkspaceController`, `BankAccountAccessTest` | **Fixed** — same as bank-007: linked-entity view/update grants access |
-| person-002 | UX | Low | Officer roles rejected for tenancy-only entities | JSON error, not inline explanation | `PersonsWorkspaceController` |
-| person-003 | UX | Low | Person form Tom Select clips without `dropdownParent=body` | Dropdown clipped in slide-over | `PersonsWorkspaceFormTest`, `tomselect-init.js` |
+| person-002 | UX | Low | Officer roles rejected for tenancy-only entities | JSON error, not inline explanation | `PersonsWorkspaceController` | **Fixed** — Persons workspace header and empty state render clear inline banners (`data-tenancy-persons-notice`) explaining officer roles apply to operating entities only; Add button is hidden for tenancy contacts, preventing unexpected JSON validation errors |
+| person-003 | UX | Low | Person form Tom Select clips without `dropdownParent=body` | Dropdown clipped in slide-over | `PersonsWorkspaceFormTest`, `tomselect-init.js` | **Fixed** — Explicit `data-tomselect-dropdown-parent="body"` configured on person and corporate trustee selectors in `persons/form.blade.php` and `create-form.blade.php`; supported by viewport fixed repositioning in `tomselect-init.js` |
 
 ---
 

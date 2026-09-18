@@ -65,3 +65,22 @@ it('exposes app role assignment on admin user create form and store validation',
         ->and($migration)->not->toBeNull()
         ->and(file_get_contents($migration))->toContain('app_role');
 });
+
+it('enforces primary administrator protection and password management constraints', function () {
+    $primaryAdminEmail = 'admin@example.com';
+    config(['admin.email' => $primaryAdminEmail]);
+
+    $primaryAdmin = new User(['email' => $primaryAdminEmail]);
+    $normalUser = new User(['email' => 'user@example.com']);
+
+    expect($primaryAdmin->isPrimaryAdministrator())->toBeTrue()
+        ->and($normalUser->isPrimaryAdministrator())->toBeFalse();
+
+    $routes = file_get_contents(base_path('routes/web.php'));
+    expect($routes)->toContain("'super.admin'")
+        ->and($routes)->toContain("'password.confirm'");
+
+    $wsController = file_get_contents(app_path('Http/Controllers/Admin/AdminUsersWorkspaceController.php'));
+    expect($wsController)->toContain('$user->isPrimaryAdministrator()')
+        ->and($wsController)->toContain('The primary administrator password cannot be reset here');
+});

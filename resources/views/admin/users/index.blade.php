@@ -10,7 +10,7 @@
             <div class="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ __('Users') }}</h1>
-                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Activate or deactivate accounts, reset passwords, and remove users. The primary administrator cannot be deactivated or deleted.') }}</p>
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ __('Activate or deactivate accounts, reset passwords, and remove staff users. The primary administrator password is managed via Account Profile (or console) and cannot be deactivated or deleted here.') }}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                     <button
