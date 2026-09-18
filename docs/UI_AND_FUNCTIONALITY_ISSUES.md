@@ -182,9 +182,9 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| email-001 | Functionality | Medium | Gmail sync requires credentials | Email features inert without `.env` setup | `README.md` |
-| email-002 | UX | Low | Legacy `alert()` on some compose/reply flows | ~86 native alerts per TECH_UPDATE audit | `docs/TECH_UPDATE.md` |
-| email-003 | Functionality | Low | Old email-template CRUD URLs 404 | Workspace replacement routes only | `RemovedLegacyRoutesTest` |
+| email-001 | Functionality | Medium | Gmail sync requires credentials | Email features inert without `.env` setup | `README.md` | **Fixed** — Added credential check in `GmailFetcher::isConfigured()` and handled unconfigured sync in `GmailController::sync()` with graceful flash warning redirecting to inbox, supported by full setup instructions in `README.md` |
+| email-002 | UX | Low | Legacy `alert()` on some compose/reply flows | ~86 native alerts per TECH_UPDATE audit | `docs/TECH_UPDATE.md` | **Fixed** — Replaced native `alert()` dialogs in email compose and reply flows (`emails/reply.blade.php` and `business-entities/show.blade.php`) with modern toast notifications (`window.showToast`) |
+| email-003 | Functionality | Low | Old email-template CRUD URLs 404 | Workspace replacement routes only | `RemovedLegacyRoutesTest` | **Fixed** — Added friendly HTTP 302 redirects for legacy URLs (`/email-templates/create`, `/email-templates/{id}`, `/email-templates/{id}/edit`) to `/email-templates` (`email-templates.index`), verified in `RemovedLegacyRoutesTest` |
 
 ---
 

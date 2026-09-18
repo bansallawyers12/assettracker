@@ -320,9 +320,17 @@
                 const ccEmail = document.getElementById('cc_email').value.trim();
                 const bccEmail = document.getElementById('bcc_email').value.trim();
                 
+                function showNotice(msg, type = 'warning') {
+                    if (window.showToast) {
+                        window.showToast(msg, type);
+                    } else {
+                        alert(msg);
+                    }
+                }
+
                 // Validate To field (required)
                 if (!toEmail) {
-                    alert('Please enter at least one recipient email address.');
+                    showNotice('Please enter at least one recipient email address.');
                     return false;
                 }
                 
@@ -330,22 +338,22 @@
                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 
                 if (toEmail && !validateMultipleEmails(toEmail)) {
-                    alert('Please enter valid email addresses in the To field. Separate multiple emails with commas.');
+                    showNotice('Please enter valid email addresses in the To field. Separate multiple emails with commas.');
                     return false;
                 }
                 
                 if (ccEmail && !validateMultipleEmails(ccEmail)) {
-                    alert('Please enter valid email addresses in the CC field. Separate multiple emails with commas.');
+                    showNotice('Please enter valid email addresses in the CC field. Separate multiple emails with commas.');
                     return false;
                 }
                 
                 if (bccEmail && !validateMultipleEmails(bccEmail)) {
-                    alert('Please enter valid email addresses in the BCC field. Separate multiple emails with commas.');
+                    showNotice('Please enter valid email addresses in the BCC field. Separate multiple emails with commas.');
                     return false;
                 }
 
                 if (window.isRichTextEmpty?.('message')) {
-                    alert('Please enter a message.');
+                    showNotice('Please enter a message.');
                     return false;
                 }
                 
@@ -529,15 +537,27 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert('Email forwarded successfully!');
+                        if (window.showToast) {
+                            window.showToast('Email forwarded successfully!', 'success');
+                        }
                         window.location.href = '{{ route("emails.show", $message->id) }}';
                     } else {
-                        alert('Error forwarding email: ' + data.message);
+                        const errMsg = 'Error forwarding email: ' + (data.message || 'Unknown error');
+                        if (window.showToast) {
+                            window.showToast(errMsg, 'error');
+                        } else {
+                            alert(errMsg);
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error forwarding email. Please try again.');
+                    const errMsg = 'Error forwarding email. Please try again.';
+                    if (window.showToast) {
+                        window.showToast(errMsg, 'error');
+                    } else {
+                        alert(errMsg);
+                    }
                 });
             }
 
@@ -579,14 +599,28 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert('Forward draft saved successfully!');
+                        if (window.showToast) {
+                            window.showToast('Forward draft saved successfully!', 'success');
+                        } else {
+                            alert('Forward draft saved successfully!');
+                        }
                     } else {
-                        alert('Error saving draft: ' + data.message);
+                        const errMsg = 'Error saving draft: ' + (data.message || 'Unknown error');
+                        if (window.showToast) {
+                            window.showToast(errMsg, 'error');
+                        } else {
+                            alert(errMsg);
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('Error saving draft. Please try again.');
+                    const errMsg = 'Error saving draft. Please try again.';
+                    if (window.showToast) {
+                        window.showToast(errMsg, 'error');
+                    } else {
+                        alert(errMsg);
+                    }
                 });
             }
 

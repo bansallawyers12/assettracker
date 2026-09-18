@@ -792,7 +792,11 @@
                     e.preventDefault();
 
                     if (window.isRichTextEmpty?.('message')) {
-                        alert('Please enter a message.');
+                        if (window.showToast) {
+                            window.showToast('Please enter a message.', 'warning');
+                        } else {
+                            alert('Please enter a message.');
+                        }
                         return;
                     }
 
@@ -811,14 +815,23 @@
                     })
                     .then(response => response.json())
                     .then(data => {
-                        console.log(data);
-                        alert(data.message);
+                        const msg = data.message || 'Email sent successfully.';
+                        if (window.showToast) {
+                            window.showToast(msg, data.status ? 'success' : 'info');
+                        } else {
+                            alert(msg);
+                        }
                         composeEmailForm.reset();
                         window.setRichTextContent?.('message', '');
                     })
                     .catch(error => {
                         console.error('Error sending email:', error);
-                        alert('Error sending email.');
+                        const errMsg = 'Error sending email.';
+                        if (window.showToast) {
+                            window.showToast(errMsg, 'error');
+                        } else {
+                            alert(errMsg);
+                        }
                     });
                 });
             }

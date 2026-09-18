@@ -2,30 +2,40 @@
 
 namespace App\Services;
 
+use App\Models\MailAttachment;
 use App\Models\MailLabel;
 use App\Models\MailMessage;
-use App\Models\MailAttachment;
 use Carbon\Carbon;
+use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use GuzzleHttp\Client;
 
 class GmailFetcher
 {
-    public function fetchAndStoreLatest(int $userId, int $limit = 10): int
+    public function isConfigured(): bool
     {
-        $this->ensureSystemLabels($userId);
-
         $clientId = (string) config('gmail.client_id');
         $clientSecret = (string) config('gmail.client_secret');
         $refreshToken = (string) config('gmail.refresh_token');
         $userEmail = (string) config('gmail.user_email');
         $enabled = (bool) config('gmail.enabled');
 
-        if (!$enabled || !$clientId || !$clientSecret || !$refreshToken || !$userEmail) {
+        return $enabled && $clientId !== '' && $clientSecret !== '' && $refreshToken !== '' && $userEmail !== '';
+    }
+
+    public function fetchAndStoreLatest(int $userId, int $limit = 10): int
+    {
+        $this->ensureSystemLabels($userId);
+
+        if (! $this->isConfigured()) {
             Log::warning('GmailFetcher: credentials not configured or disabled');
+
             return 0;
         }
+
+        $clientId = (string) config('gmail.client_id');
+        $clientSecret = (string) config('gmail.client_secret');
+        $refreshToken = (string) config('gmail.refresh_token');
 
         $http = new Client([
             'timeout' => 20,
@@ -33,8 +43,9 @@ class GmailFetcher
 
         // 1) Exchange refresh token for access token
         $accessToken = $this->getAccessToken($http, $clientId, $clientSecret, $refreshToken);
-        if (!$accessToken) {
+        if (! $accessToken) {
             Log::error('GmailFetcher: failed to get access token');
+
             return 0;
         }
 
@@ -47,7 +58,7 @@ class GmailFetcher
         ];
         $resp = $http->get($listUrl, [
             'headers' => [
-                'Authorization' => 'Bearer ' . $accessToken,
+                'Authorization' => 'Bearer '.$accessToken,
             ],
             'query' => $query,
         ]);
@@ -57,13 +68,17 @@ class GmailFetcher
         $fetched = 0;
         foreach ($messages as $m) {
             $gmailId = (string) ($m['id'] ?? '');
-            if ($gmailId === '') continue;
+            if ($gmailId === '') {
+                continue;
+            }
             if (MailMessage::where('user_id', $userId)->where('gmail_id', $gmailId)->exists()) {
                 continue;
             }
 
             $detail = $this->getMessage($http, $accessToken, $gmailId);
-            if (!$detail) continue;
+            if (! $detail) {
+                continue;
+            }
 
             [$subject, $fromName, $fromEmail, $sentAt, $recipients] = $this->parseHeaders($detail['payload']['headers'] ?? []);
             [$htmlBody, $textBody, $attachmentsMeta] = $this->extractBodiesAndAttachments($detail['payload'] ?? []);
@@ -72,7 +87,7 @@ class GmailFetcher
                 'user_id' => $userId,
                 'gmail_id' => $gmailId,
                 'message_id' => (string) ($detail['id'] ?? ''),
-                'subject' => $subject ?: '(No subject) ' . $gmailId,
+                'subject' => $subject ?: '(No subject) '.$gmailId,
                 'sender_name' => $fromName,
                 'sender_email' => $fromEmail,
                 'recipients' => json_encode($recipients),
@@ -92,11 +107,15 @@ class GmailFetcher
             foreach ($attachmentsMeta as $att) {
                 $attachmentId = $att['attachmentId'] ?? null;
                 $filename = $att['filename'] ?? 'attachment';
-                if (!$attachmentId) continue;
+                if (! $attachmentId) {
+                    continue;
+                }
                 $binary = $this->getAttachment($http, $accessToken, $gmailId, $attachmentId);
-                if ($binary === null) continue;
+                if ($binary === null) {
+                    continue;
+                }
 
-                $attachmentPath = 'emails/' . $model->id . '/attachments/' . $filename;
+                $attachmentPath = 'emails/'.$model->id.'/attachments/'.$filename;
                 Storage::put($attachmentPath, $binary);
                 MailAttachment::create([
                     'mail_message_id' => $model->id,
@@ -142,9 +161,11 @@ class GmailFetcher
                 ],
             ]);
             $json = json_decode((string) $resp->getBody(), true);
+
             return $json['access_token'] ?? null;
         } catch (\Throwable $e) {
             Log::error('GmailFetcher: token exchange failed', ['error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -152,17 +173,19 @@ class GmailFetcher
     protected function getMessage(Client $http, string $accessToken, string $id): ?array
     {
         try {
-            $resp = $http->get('https://gmail.googleapis.com/gmail/v1/users/me/messages/' . $id, [
+            $resp = $http->get('https://gmail.googleapis.com/gmail/v1/users/me/messages/'.$id, [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Authorization' => 'Bearer '.$accessToken,
                 ],
                 'query' => [
                     'format' => 'full',
                 ],
             ]);
+
             return json_decode((string) $resp->getBody(), true);
         } catch (\Throwable $e) {
             Log::warning('GmailFetcher: getMessage failed', ['id' => $id, 'error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -170,18 +193,22 @@ class GmailFetcher
     protected function getAttachment(Client $http, string $accessToken, string $messageId, string $attachmentId): ?string
     {
         try {
-            $url = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/' . $messageId . '/attachments/' . $attachmentId;
+            $url = 'https://gmail.googleapis.com/gmail/v1/users/me/messages/'.$messageId.'/attachments/'.$attachmentId;
             $resp = $http->get($url, [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Authorization' => 'Bearer '.$accessToken,
                 ],
             ]);
             $json = json_decode((string) $resp->getBody(), true);
             $data = $json['data'] ?? null; // base64url
-            if (!$data) return null;
+            if (! $data) {
+                return null;
+            }
+
             return $this->base64urlDecode($data);
         } catch (\Throwable $e) {
             Log::warning('GmailFetcher: getAttachment failed', ['message_id' => $messageId, 'attachment_id' => $attachmentId, 'error' => $e->getMessage()]);
+
             return null;
         }
     }
@@ -192,7 +219,9 @@ class GmailFetcher
         foreach ($headers as $h) {
             $name = strtolower($h['name'] ?? '');
             $value = (string) ($h['value'] ?? '');
-            if ($name) $map[$name] = $value;
+            if ($name) {
+                $map[$name] = $value;
+            }
         }
         $subject = $map['subject'] ?? '';
         $from = $map['from'] ?? '';
@@ -203,7 +232,11 @@ class GmailFetcher
 
         [$fromName, $fromEmail] = $this->splitAddress($from);
         $sentAt = null;
-        try { $sentAt = Carbon::parse($date); } catch (\Throwable $e) { $sentAt = null; }
+        try {
+            $sentAt = Carbon::parse($date);
+        } catch (\Throwable $e) {
+            $sentAt = null;
+        }
 
         $recipients = [
             'to' => $this->splitAddresses($to),
@@ -222,7 +255,7 @@ class GmailFetcher
 
         $mimeType = $payload['mimeType'] ?? '';
         $body = $payload['body'] ?? [];
-        if (!empty($body['data'])) {
+        if (! empty($body['data'])) {
             $decoded = $this->base64urlDecode($body['data']);
             if ($mimeType === 'text/html') {
                 $html = $decoded;
@@ -237,11 +270,14 @@ class GmailFetcher
             $fileName = (string) ($part['filename'] ?? '');
             $attachmentId = $pBody['attachmentId'] ?? null;
 
-            if (!$fileName) {
-                if (!empty($pBody['data'])) {
+            if (! $fileName) {
+                if (! empty($pBody['data'])) {
                     $decoded = $this->base64urlDecode($pBody['data']);
-                    if ($pMime === 'text/html') $html = $decoded;
-                    elseif ($pMime === 'text/plain') $text = $decoded;
+                    if ($pMime === 'text/html') {
+                        $html = $decoded;
+                    } elseif ($pMime === 'text/plain') {
+                        $text = $decoded;
+                    }
                 }
             } else {
                 $attachments[] = [
@@ -252,10 +288,14 @@ class GmailFetcher
             }
 
             // Nested parts
-            if (!empty($part['parts'])) {
+            if (! empty($part['parts'])) {
                 [$h2, $t2, $a2] = $this->extractBodiesAndAttachments($part);
-                if ($h2) $html = $h2;
-                if ($t2) $text = $t2;
+                if ($h2) {
+                    $html = $h2;
+                }
+                if ($t2) {
+                    $text = $t2;
+                }
                 $attachments = array_merge($attachments, $a2);
             }
         }
@@ -266,10 +306,13 @@ class GmailFetcher
     protected function splitAddress(string $addr): array
     {
         $addr = trim($addr);
-        if ($addr === '') return ['', ''];
+        if ($addr === '') {
+            return ['', ''];
+        }
         if (preg_match('/^"?(.*?)"?\s*<([^>]+)>$/', $addr, $m)) {
             return [trim($m[1]), trim($m[2])];
         }
+
         return ['', $addr];
     }
 
@@ -278,10 +321,15 @@ class GmailFetcher
         $out = [];
         foreach (explode(',', $line) as $part) {
             $part = trim($part);
-            if ($part === '') continue;
+            if ($part === '') {
+                continue;
+            }
             [, $email] = $this->splitAddress($part);
-            if ($email) $out[] = $email;
+            if ($email) {
+                $out[] = $email;
+            }
         }
+
         return $out;
     }
 
@@ -292,8 +340,7 @@ class GmailFetcher
         if ($pad > 0) {
             $data .= str_repeat('=', 4 - $pad);
         }
+
         return base64_decode($data) ?: '';
     }
 }
-
-

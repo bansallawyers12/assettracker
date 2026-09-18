@@ -365,6 +365,15 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/email-templates/form/create', [EmailTemplatesWorkspaceController::class, 'createForm'])->name('email-templates.form.create');
     Route::get('/email-templates/{emailTemplate}/form/edit', [EmailTemplatesWorkspaceController::class, 'editForm'])->name('email-templates.form.edit');
     Route::resource('email-templates', EmailTemplateController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::get('/email-templates/create', function () {
+        return redirect()->route('email-templates.index');
+    });
+    Route::get('/email-templates/{emailTemplate}', function () {
+        return redirect()->route('email-templates.index');
+    })->whereNumber('emailTemplate');
+    Route::get('/email-templates/{emailTemplate}/edit', function () {
+        return redirect()->route('email-templates.index');
+    })->whereNumber('emailTemplate');
     Route::get('/email-templates/{emailTemplate}/preview', [EmailTemplateController::class, 'preview'])->name('email-templates.preview');
     Route::get('/email-templates-api/templates', [EmailTemplateController::class, 'getTemplates'])->name('email-templates.api');
 

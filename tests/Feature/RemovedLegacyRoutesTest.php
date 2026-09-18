@@ -80,3 +80,14 @@ it('renders a reminder show view for bills and tasks links', function () {
         ->and(file_get_contents(resource_path('views/bills-tasks/index.blade.php')))
         ->toContain("route('reminders.show'");
 });
+
+it('redirects legacy email-templates urls to email-templates index', function () {
+    $routes = file_get_contents(base_path('routes/web.php'));
+
+    expect($routes)->toContain("Route::get('/email-templates/create'")
+        ->and($routes)->toContain("Route::get('/email-templates/{emailTemplate}'")
+        ->and($routes)->toContain("Route::get('/email-templates/{emailTemplate}/edit'")
+        ->and(Route::has('email-templates.create'))->toBeFalse()
+        ->and(Route::has('email-templates.show'))->toBeFalse()
+        ->and(Route::has('email-templates.edit'))->toBeFalse();
+});
