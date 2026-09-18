@@ -74,7 +74,7 @@
 
             <div data-tenant-existing-company class="{{ old('create_real_estate_company') ? 'hidden' : '' }}">
                 <p class="text-xs text-gray-500 dark:text-gray-400 mb-1">Agencies are stored separately from your business entities.</p>
-                <x-tom-select name="real_estate_company_id" data-tenant-company-select class="mt-1 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+                <x-tom-select name="real_estate_company_id" data-tenant-company-select data-tomselect-dropdown-parent="body" class="mt-1 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
                     <option value="">Select an agency</option>
                     @foreach ($realEstateCompanies as $realEstateCompany)
                         <option value="{{ $realEstateCompany->id }}" {{ old('real_estate_company_id', $tenant->real_estate_company_id) == $realEstateCompany->id ? 'selected' : '' }}>

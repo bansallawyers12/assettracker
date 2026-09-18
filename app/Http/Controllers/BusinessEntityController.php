@@ -2457,6 +2457,14 @@ class BusinessEntityController extends Controller
                 ->with('error', $message);
         }
 
+        if ($purpose === BankAccount::PURPOSE_RENT_RECEIVING) {
+            // Fail before creating the purpose link when leasable assets exist but none were selected.
+            $this->bankAccountAssetLinkService->requireRentCollectionAssetsWhenLeasable(
+                $businessEntity,
+                $validated['rent_collection_asset_ids'] ?? []
+            );
+        }
+
         BusinessEntityBankAccount::firstOrCreate([
             'business_entity_id' => $businessEntity->id,
             'bank_account_id' => $bankAccount->id,

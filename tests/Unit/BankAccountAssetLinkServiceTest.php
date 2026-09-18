@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\BankAccount;
 use App\Models\BusinessEntity;
+use App\Models\BusinessEntityBankAccount;
 use App\Services\BankAccountAssetLinkService;
 use PHPUnit\Framework\TestCase;
 
@@ -38,7 +39,7 @@ class BankAccountAssetLinkServiceTest extends TestCase
         $account = new BankAccount(['account_name' => 'Loan Acct']);
         $account->id = 10;
 
-        $link = new \App\Models\BusinessEntityBankAccount([
+        $link = new BusinessEntityBankAccount([
             'business_entity_id' => 33,
             'bank_account_id' => 10,
             'purpose' => BankAccount::PURPOSE_LOAN,

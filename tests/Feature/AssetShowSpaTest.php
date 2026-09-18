@@ -41,6 +41,23 @@ it('renders the asset show page as an alpine spa with hash tabs', function () {
         ->and($workspaceJs)->toContain('move-to-trust/form')
         ->and($workspaceJs)->toContain('move-to-trust-ws-form')
         ->and($workspaceJs)->toContain('assets-ws-form')
+        ->and($workspaceJs)->toContain('scheduleForceActivateTomSelectsIn')
         ->and($workspaceController)->toContain('function moveToTrustForm')
         ->and($routes)->toContain('business-entities.assets.move-to-trust.form');
+});
+
+it('renders lease and tenant workspace forms with body-parent Tom Selects', function () {
+    $leaseForm = file_get_contents(resource_path('views/assets/partials/leases/form.blade.php'));
+    $tenantForm = file_get_contents(resource_path('views/assets/partials/tenants/form.blade.php'));
+    $rentFields = file_get_contents(resource_path('views/bank-accounts/partials/rent-collection-asset-fields.blade.php'));
+    $linkService = file_get_contents(app_path('Services/BankAccountAssetLinkService.php'));
+
+    expect($leaseForm)->toContain('x-tom-select')
+        ->and($leaseForm)->toContain('name="tenant_id"')
+        ->and($leaseForm)->toContain('data-tomselect-dropdown-parent="body"')
+        ->and($tenantForm)->toContain('data-tenant-company-select')
+        ->and($tenantForm)->toContain('data-tomselect-dropdown-parent="body"')
+        ->and($rentFields)->toContain('Required when rent receiving')
+        ->and($rentFields)->toContain('$assetsRequired')
+        ->and($linkService)->toContain('function requireRentCollectionAssetsWhenLeasable');
 });

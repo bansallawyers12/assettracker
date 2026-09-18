@@ -33,6 +33,11 @@ export function initTenantFormFields(root = document) {
                 newCompanySection.classList.add('hidden');
                 toggleCreateBtn.textContent = 'Create new agency';
                 window.setSelectValue?.(companySelect, '');
+                return;
+            }
+
+            if (isManaged && existingCompanySection && !existingCompanySection.classList.contains('hidden')) {
+                window.reinitTomSelect?.(companySelect);
             }
         }
 

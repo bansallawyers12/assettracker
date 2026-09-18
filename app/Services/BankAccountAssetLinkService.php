@@ -157,6 +157,26 @@ class BankAccountAssetLinkService
     }
 
     /**
+     * When the entity already has leasable assets, rent-receiving accounts must link at least one.
+     * Empty selection remains allowed only until the first leasable property exists.
+     *
+     * @param  array<int|string>|null  $assetIds
+     * @return list<int>
+     */
+    public function requireRentCollectionAssetsWhenLeasable(BusinessEntity $entity, ?array $assetIds): array
+    {
+        $assetIds = $this->validateRentCollectionAssetIds($entity, $assetIds);
+
+        if ($assetIds === [] && $this->leasableAssetsForEntity($entity)->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'rent_collection_asset_ids' => 'Select at least one leasable asset for this rent collection account.',
+            ]);
+        }
+
+        return $assetIds;
+    }
+
+    /**
      * Link selected assets to this account as Rent Paid Into (replaces any existing rent link on those assets).
      * Does not unlink other assets that already use this account.
      *
@@ -168,7 +188,7 @@ class BankAccountAssetLinkService
         BusinessEntity $entity,
         array $assetIds
     ): int {
-        $assetIds = $this->validateRentCollectionAssetIds($entity, $assetIds);
+        $assetIds = $this->requireRentCollectionAssetsWhenLeasable($entity, $assetIds);
 
         if ($assetIds === []) {
             return 0;
@@ -212,7 +232,7 @@ class BankAccountAssetLinkService
         BusinessEntity $entity,
         ?array $assetIds
     ): array {
-        $assetIds = $this->validateRentCollectionAssetIds($entity, $assetIds);
+        $assetIds = $this->requireRentCollectionAssetsWhenLeasable($entity, $assetIds);
 
         if ($assetIds !== [] && ! $account->isValidForAssetRole($entity, BankAccount::ROLE_RENT_COLLECTION)) {
             throw ValidationException::withMessages([

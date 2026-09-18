@@ -16,6 +16,7 @@
     $defaultPurpose = $defaultPurpose ?? null;
     $showWhenPurpose = BankAccount::PURPOSE_RENT_RECEIVING;
     $isVisible = $forceVisible || $defaultPurpose === $showWhenPurpose;
+    $assetsRequired = $leasableAssets->isNotEmpty();
 @endphp
 
 <div
@@ -26,11 +27,16 @@
     @if($purposeSelectId !== '') data-purpose-select="{{ $purposeSelectId }}" @endif
     data-show-when-purpose="{{ $showWhenPurpose }}"
 >
-    <label for="{{ $fieldId }}" class="bank-field-label">Link to assets (optional)</label>
+    <label for="{{ $fieldId }}" class="bank-field-label">
+        Link to assets
+        @if($assetsRequired)
+            <span class="text-red-500">*</span>
+        @endif
+    </label>
 
     @if($leasableAssets->isEmpty())
         <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            No leasable assets on this entity yet. You can link them later from each asset’s Rent Paid Into Account field.
+            No leasable assets on this entity yet. Link them later from each asset’s Rent Paid Into Account field once properties exist.
         </p>
     @else
         <x-tom-select
@@ -38,7 +44,9 @@
             id="{{ $fieldId }}"
             multiple
             minimal
-            :allowEmpty="true"
+            :allowEmpty="false"
+            data-tomselect-dropdown-parent="body"
+            @if($assetsRequired) required @endif
         >
             @foreach($leasableAssets as $asset)
                 <option value="{{ $asset->id }}" @selected(in_array((int) $asset->id, $selectedAssetIds, true))>
@@ -47,7 +55,7 @@
             @endforeach
         </x-tom-select>
         <p class="mt-1.5 text-xs text-gray-500 dark:text-gray-400">
-            Where rent for these properties is deposited. You can skip and link later on each asset.
+            Required when rent receiving: choose which properties deposit rent into this account (Rent Paid Into).
         </p>
     @endif
 

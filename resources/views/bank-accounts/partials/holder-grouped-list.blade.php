@@ -125,7 +125,9 @@
                                                         @endforeach
                                                     </ul>
                                                 @else
-                                                    <span class="text-gray-400">No assets linked</span>
+                                                    <span class="inline-flex items-center rounded-md bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-200" data-rent-assets-missing>
+                                                        No assets linked — invoice allocation may be wrong
+                                                    </span>
                                                 @endif
                                             @else
                                                 <span class="text-gray-400">—</span>

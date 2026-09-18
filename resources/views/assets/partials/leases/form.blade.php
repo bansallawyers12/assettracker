@@ -15,12 +15,17 @@
 
     <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Tenant (Optional)</label>
-        <select name="tenant_id" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm">
+        <x-tom-select
+            name="tenant_id"
+            id="lease_tenant_id"
+            class="mt-1 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+            data-tomselect-dropdown-parent="body"
+        >
             <option value="">No Tenant</option>
             @foreach ($tenants as $tenant)
                 <option value="{{ $tenant->id }}" {{ old('tenant_id', $lease->tenant_id) == $tenant->id ? 'selected' : '' }}>{{ $tenant->name }}</option>
             @endforeach
-        </select>
+        </x-tom-select>
     </div>
 
     <div>

@@ -74,7 +74,7 @@ Asset Tracker is a mature Laravel portal (entities, assets, banking, accounting,
 | --- | --- | --- | --- | --- | --- | --- |
 | asset-001 | Functionality | Medium | Loan and offset accounts must be linked and used correctly | `loan_*` types on offset account rejected; loan economics belong on loan-purpose account | `.ai/rules/loan-offset-transfers.md`, `LoanOffsetTransactionGuard` | **Fixed** — offset pickers hide Loan group; `isAllowedOnBankAccount` + apply/create messages; asset link hints; offset import note |
 | asset-002 | UX | Medium | Move-to-trust blocked for closed or contact-only entities | Validation error without clear inline guidance | `AssetMoveToTrustService`, tests | **Fixed** — actionable source/target messages; hide button + `data-move-to-trust-blocked` banner; form 422 + workspace alert shows payload |
-| asset-003 | UX | Low | Tom Select in tenant/lease modals needs reinit | Real-estate company picker may not search until modal opens | `docs/TECH_UPDATE.md` Track 4 | Open |
+| asset-003 | UX | Low | Tom Select in tenant/lease modals needs reinit | Real-estate company picker may not search until modal opens | `docs/TECH_UPDATE.md` Track 4 | **Fixed** — Asset workspace panel uses `scheduleForceActivateTomSelectsIn` after AJAX form inject; tenant agency + lease tenant selects use `data-tomselect-dropdown-parent="body"`; managed-by toggle reinits the agency picker |
 
 ---
 
@@ -219,8 +219,8 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| lease-001 | Functionality | Medium | Rent collection accounts need linked leasable assets | Misconfigured rent bank breaks invoice allocation | `BankAccountsWorkspaceController`, `BankAccountAssetLinkService` |
-| lease-002 | UX | Low | Lease create in asset workspace needs Tom Select reinit | Picker broken until panel reinits | `docs/TECH_UPDATE.md` |
+| lease-001 | Functionality | Medium | Rent collection accounts need linked leasable assets | Misconfigured rent bank breaks invoice allocation | `BankAccountsWorkspaceController`, `BankAccountAssetLinkService` | **Fixed** — When the entity has leasable assets, attach/sync/update of `rent_receiving` links require at least one `rent_collection_asset_ids` selection (`requireRentCollectionAssetsWhenLeasable`); UI marks the picker required and warns on list rows with no assets linked |
+| lease-002 | UX | Low | Lease create in asset workspace needs Tom Select reinit | Picker broken until panel reinits | `docs/TECH_UPDATE.md` | **Fixed** — Lease create/edit tenant picker is now `<x-tom-select>` with `dropdown-parent=body`; `asset-show-workspace.js` force-activates Tom Selects after panel load (same pattern as bank/persons panels) |
 
 ---
 

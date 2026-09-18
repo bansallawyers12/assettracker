@@ -3,6 +3,7 @@
  */
 import { showToast } from './notify.js';
 import { showWorkspaceAlert } from './workspace-dialog.js';
+import { scheduleForceActivateTomSelectsIn } from './tomselect-init.js';
 import {
     apiFetch,
     closeWorkspacePanel,
@@ -41,6 +42,8 @@ function initFormPlugins(root) {
     window.initFlatpickr?.(root);
     window.initTomSelect?.(root);
     initTenantFormFields(root);
+    // Force-activate after the panel paints so lease/tenant Tom Selects search correctly.
+    scheduleForceActivateTomSelectsIn(root);
     requestAnimationFrame(() => {
         document.dispatchEvent(new CustomEvent('au:address:refresh'));
     });
