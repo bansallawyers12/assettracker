@@ -105,7 +105,11 @@
                                             @if (in_array($inv->status, ['approved', 'partial'], true))
                                                 <a href="{{ route('business-entities.invoices.show', [$businessEntity, $inv]) }}" class="text-xs text-emerald-700 dark:text-emerald-400 hover:underline font-medium">Record payment</a>
                                                 @if ($inv->lease?->tenant?->email)
-                                                    <form method="POST" action="{{ route('business-entities.invoices.remind', [$businessEntity, $inv]) }}" onsubmit="return confirm('Send payment reminder email to {{ $inv->lease->tenant->email }}?');">
+                                                    <form method="POST" action="{{ route('business-entities.invoices.remind', [$businessEntity, $inv]) }}"
+                                                          data-confirm
+                                                          data-confirm-title="Send reminder?"
+                                                          data-confirm-message="Send payment reminder email to {{ $inv->lease->tenant->email }}?"
+                                                          data-confirm-button="Send reminder">
                                                         @csrf
                                                         <button type="submit" class="text-xs text-amber-700 dark:text-amber-400 hover:underline font-medium">Send reminder</button>
                                                     </form>

@@ -9,6 +9,8 @@ it('uses workspace confirm dialogs instead of native confirm on invoice show', f
     $formConfirm = file_get_contents(resource_path('js/form-confirm.js'));
     $app = file_get_contents(resource_path('js/app.js'));
 
+    $assetInvoicesTab = file_get_contents(resource_path('views/assets/partials/invoices-tab.blade.php'));
+
     expect($show)->not->toContain('onsubmit="return confirm(')
         ->and($show)->not->toContain("confirm('Delete this invoice?")
         ->and($show)->toContain('data-confirm')
@@ -16,6 +18,9 @@ it('uses workspace confirm dialogs instead of native confirm on invoice show', f
         ->and($show)->toContain('data-confirm-variant="danger"')
         ->and($show)->toContain('data-confirm-message="Unpost this invoice and remove its ledger entry?"')
         ->and($show)->toContain('data-confirm-message="Send reminder email?"')
+        ->and($assetInvoicesTab)->not->toContain('onsubmit="return confirm(')
+        ->and($assetInvoicesTab)->toContain('data-confirm')
+        ->and($assetInvoicesTab)->toContain('data-confirm-message="Send payment reminder email to {{ $inv->lease->tenant->email }}?"')
         ->and($formConfirm)->toContain('showWorkspaceConfirm')
         ->and($formConfirm)->toContain('initConfirmableForms')
         ->and($app)->toContain('initConfirmableForms');

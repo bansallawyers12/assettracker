@@ -151,8 +151,8 @@ Order (cash/offset accounts only):
 
 | ID | Type | Sev | Summary | User impact | Evidence |
 | --- | --- | --- | --- | --- | --- |
-| inv-001 | Functionality | Medium | `invoice_payment` type hidden from manual pickers | Must use invoice payment UI | `InvoicePaymentPostingTest` |
-| inv-002 | UX | Low | Rent reminder uses native `confirm()` | Asset invoices tab still native; invoice show delete/unpost/remind use workspace confirm | `assets/partials/invoices-tab.blade.php`, `form-confirm.js` |
+| inv-001 | Functionality | Medium | `invoice_payment` type hidden from manual pickers | Must use invoice payment UI | `InvoicePaymentPostingTest` | **Clarified by design** — intentional architecture: AR invoice receipts post via Record payment UI with invoice allocation linkage, not arbitrary manual cash entry; type excluded from picker select groups |
+| inv-002 | UX | Low | Rent reminder uses native `confirm()` | Asset invoices tab still native; invoice show delete/unpost/remind use workspace confirm | `assets/partials/invoices-tab.blade.php`, `form-confirm.js` | **Fixed** — Asset invoices tab reminder form converted to `data-confirm` workspace dialog (`form-confirm.js`), matching invoice show actions |
 
 ---
 
