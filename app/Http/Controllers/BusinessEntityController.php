@@ -3648,16 +3648,29 @@ class BusinessEntityController extends Controller
 
             if ($isSplit && in_array($type, $relatedPartyTypes, true)) {
                 throw ValidationException::withMessages([
-                    "lines.{$index}.chart_of_account_id" => 'Director loan accounts cannot be used as allocations on a split remittance. Enter them as a separate single transaction.',
+                    $this->dashboardAllocationAccountErrorKey($line, $index) => 'Director loan accounts cannot be used as allocations on a split remittance. Enter them as a separate single transaction.',
                 ]);
             }
 
             if (Transaction::isInternalTransfer($type)) {
                 throw ValidationException::withMessages([
-                    "lines.{$index}.chart_of_account_id" => 'Internal transfers must be entered from a bank account so you can choose the counterpart account.',
+                    $this->dashboardAllocationAccountErrorKey($line, $index) => 'Internal transfers must be entered from a bank account so you can choose the counterpart account.',
                 ]);
             }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $line
+     */
+    private function dashboardAllocationAccountErrorKey(array $line, int $index): string
+    {
+        $chartAccountId = $line['chart_of_account_id'] ?? null;
+        if ($chartAccountId !== null && $chartAccountId !== '') {
+            return "lines.{$index}.chart_of_account_id";
+        }
+
+        return "lines.{$index}.transaction_type";
     }
 
     /**

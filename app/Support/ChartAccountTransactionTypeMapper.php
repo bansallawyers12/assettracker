@@ -74,6 +74,25 @@ class ChartAccountTransactionTypeMapper
             return false;
         }
 
+        if (trim((string) $account->account_code) === '2500') {
+            return in_array($direction, ['income', 'expense'], true);
+        }
+
         return (string) $account->account_type === $direction;
+    }
+
+    /**
+     * Direction filter key for allocation pickers.
+     * Director loan (2500) is offered for both income and expense.
+     *
+     * @return 'income'|'expense'|'both'
+     */
+    public static function pickerDirection(ChartOfAccount $account): string
+    {
+        if (trim((string) $account->account_code) === '2500') {
+            return 'both';
+        }
+
+        return (string) $account->account_type === 'income' ? 'income' : 'expense';
     }
 }

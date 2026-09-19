@@ -40,6 +40,8 @@ class ChartOfAccount extends Model
 
     /**
      * Active income/expense accounts for dashboard allocation pickers.
+     * Includes Director / Entity Loan (2500) so remittances can still book
+     * director loan in/out from the CoA list.
      *
      * @return Collection<int, self>
      */
@@ -47,7 +49,10 @@ class ChartOfAccount extends Model
     {
         return static::query()
             ->where('is_active', true)
-            ->whereIn('account_type', ['income', 'expense'])
+            ->where(function ($query): void {
+                $query->whereIn('account_type', ['income', 'expense'])
+                    ->orWhere('account_code', '2500');
+            })
             ->orderBy('account_code')
             ->get(['id', 'account_code', 'account_name', 'account_type', 'account_category']);
     }

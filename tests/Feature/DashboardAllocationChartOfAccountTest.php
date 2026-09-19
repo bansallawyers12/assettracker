@@ -114,6 +114,76 @@ it('posts a dashboard allocation to a custom chart of account', function () {
         ->and((float) $expenseLine->credit_amount)->toBe(0.0);
 });
 
+it('books director loan out from chart account 2500 on a single allocation', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $directorLoan = ChartOfAccount::query()->where('account_code', '2500')->sole();
+    $related = BusinessEntity::create([
+        'legal_name' => 'Related Director Entity',
+        'entity_type' => 'Company',
+        'status' => 'Active',
+        'registered_address' => '2 Test Street',
+        'registered_email' => 'related@example.test',
+        'phone_number' => '0400000001',
+        'user_id' => null,
+    ]);
+
+    $user = User::factory()->create();
+    $entity = BusinessEntity::create([
+        'legal_name' => 'Director Loan CoA Pty Ltd',
+        'entity_type' => 'Company',
+        'status' => 'Active',
+        'registered_address' => '1 Test Street',
+        'registered_email' => 'director-coa@example.test',
+        'phone_number' => '0400000000',
+        'user_id' => $user->id,
+    ]);
+    $bank = BankAccount::create([
+        'business_entity_id' => $entity->id,
+        'bank_name' => 'Test Bank',
+        'bsb' => '123456',
+        'account_number' => '55667788',
+        'account_name' => 'Operating',
+        'account_purpose' => BankAccount::PURPOSE_GENERAL,
+    ]);
+
+    $response = $this->actingAs($user)->post(route('business-entities.transactions.store', $entity), [
+        'date' => '2026-09-19',
+        'payment_status' => 'paid',
+        'paid_at' => '2026-09-19',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'bank_account_id' => $bank->id,
+        'paid_by_select' => 'be:'.$entity->id,
+        'lines' => [
+            [
+                'direction' => 'expense',
+                'chart_of_account_id' => $directorLoan->id,
+                'related_entity_id' => $related->id,
+                'amount' => '200.00',
+                'description' => 'Director loan out',
+                'gst_basis' => 'none',
+            ],
+        ],
+    ]);
+
+    $response->assertSessionHasNoErrors();
+    $response->assertRedirect();
+
+    $transaction = Transaction::query()->where('business_entity_id', $entity->id)->sole();
+    expect($transaction->transaction_type)->toBe('director_loan_out')
+        ->and((int) $transaction->related_entity_id)->toBe($related->id);
+});
+
+it('includes director loan account 2500 in active pnl allocation options', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $codes = ChartOfAccount::activePnlForSelect()->pluck('account_code')->all();
+
+    expect($codes)->toContain('2500')
+        ->and($codes)->toContain('5900')
+        ->and($codes)->not->toContain('1100');
+});
+
 it('posts split allocations to each selected chart account', function () {
     $this->seed(ChartOfAccountSeeder::class);
 

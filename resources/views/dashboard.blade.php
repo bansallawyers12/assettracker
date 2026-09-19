@@ -87,7 +87,7 @@
                         'id' => $account->id,
                         'code' => $account->account_code,
                         'name' => $account->account_name,
-                        'direction' => $account->account_type,
+                        'direction' => \App\Support\ChartAccountTransactionTypeMapper::pickerDirection($account),
                         'label' => $account->account_code.' — '.$account->account_name,
                     ])->values();
 
@@ -160,7 +160,7 @@
                     window.dashboardTxnBatch = function (config) {
                         const buildFlatAccounts = (accounts, direction) => {
                             return (accounts || [])
-                                .filter((opt) => opt.direction === direction)
+                                .filter((opt) => opt.direction === direction || opt.direction === 'both')
                                 .map((opt) => ({
                                     value: String(opt.id),
                                     label: opt.label,
