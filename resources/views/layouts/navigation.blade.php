@@ -13,6 +13,98 @@
                 <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                     {{ __('Dashboard') }}
                 </x-nav-link>
+
+                {{-- Entities Dropdown --}}
+                @php
+                    $entitiesActive = request()->routeIs('business-entities.*', 'assets.*', 'persons.*');
+                @endphp
+                <x-dropdown align="left" width="56">
+                    <x-slot name="trigger">
+                        <button type="button" class="inline-flex items-center gap-1 rounded-lg px-2.5 lg:px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap {{ $entitiesActive ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800' }}">
+                            <span>{{ __('Entities') }}</span>
+                            <x-lucide-chevron-down class="w-3.5 h-3.5 opacity-60 shrink-0" aria-hidden="true" />
+                        </button>
+                    </x-slot>
+                    <x-slot name="content">
+                        <x-dropdown-link :href="route('business-entities.index')" :active="request()->routeIs('business-entities.*')">
+                            <div class="flex items-center gap-2">
+                                <x-lucide-building-2 class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                                <span>{{ __('Business entities') }}</span>
+                            </div>
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
+                            <div class="flex items-center gap-2">
+                                <x-lucide-package class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                                <span>{{ __('Assets') }}</span>
+                            </div>
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('persons.index')" :active="request()->routeIs('persons.*')">
+                            <div class="flex items-center gap-2">
+                                <x-lucide-users class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                                <span>{{ __('Persons') }}</span>
+                            </div>
+                        </x-dropdown-link>
+                        <div class="border-t border-gray-100 dark:border-gray-700 my-1"></div>
+                        <x-dropdown-link :href="route('financial-reports.compliance-gaps')" :active="request()->routeIs('financial-reports.compliance-gaps')">
+                            <div class="flex items-center gap-2">
+                                <x-lucide-shield-check class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                                <span>{{ __('Compliance gaps') }}</span>
+                            </div>
+                        </x-dropdown-link>
+                    </x-slot>
+                </x-dropdown>
+
+                {{-- Accounting Dropdown --}}
+                @php
+                    $accountingActive = request()->routeIs('bank-accounts.*', 'transactions.*', 'invoices.*', 'rent-invoices.*', 'chart-of-accounts.*', 'vendors.*', 'commitments.*');
+                @endphp
+                <x-dropdown align="left" width="56">
+                    <x-slot name="trigger">
+                        <button type="button" class="inline-flex items-center gap-1 rounded-lg px-2.5 lg:px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap {{ $accountingActive ? 'text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800' }}">
+                            <span>{{ __('Accounting') }}</span>
+                            <x-lucide-chevron-down class="w-3.5 h-3.5 opacity-60 shrink-0" aria-hidden="true" />
+                        </button>
+                    </x-slot>
+                    <x-slot name="content">
+                        <x-dropdown-link :href="route('bank-accounts.index')" :active="request()->routeIs('bank-accounts.*')">
+                            <div class="flex items-center gap-2">
+                                <x-lucide-credit-card class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                                <span>{{ __('Bank accounts') }}</span>
+                            </div>
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('transactions.index')" :active="request()->routeIs('transactions.*')">
+                            <div class="flex items-center gap-2">
+                                <x-lucide-clipboard class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                                <span>{{ __('Transactions') }}</span>
+                            </div>
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('invoices.index')" :active="request()->routeIs('invoices.*', 'rent-invoices.*')">
+                            <div class="flex items-center gap-2">
+                                <x-lucide-file-text class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                                <span>{{ __('Invoices') }}</span>
+                            </div>
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('chart-of-accounts.index')" :active="request()->routeIs('chart-of-accounts.*')">
+                            <div class="flex items-center gap-2">
+                                <x-lucide-calculator class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                                <span>{{ __('Chart of accounts') }}</span>
+                            </div>
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('vendors.index')" :active="request()->routeIs('vendors.*')">
+                            <div class="flex items-center gap-2">
+                                <x-lucide-truck class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                                <span>{{ __('Vendors') }}</span>
+                            </div>
+                        </x-dropdown-link>
+                        <x-dropdown-link :href="route('commitments.index')" :active="request()->routeIs('commitments.*')">
+                            <div class="flex items-center gap-2">
+                                <x-lucide-calendar class="w-4 h-4 text-gray-400 dark:text-gray-500 shrink-0" />
+                                <span>{{ __('Commitments') }}</span>
+                            </div>
+                        </x-dropdown-link>
+                    </x-slot>
+                </x-dropdown>
+
                 <x-nav-link :href="route('bills-tasks.index')" :active="request()->routeIs('bills-tasks.*')">
                     {{ __('Bills & tasks') }}
                 </x-nav-link>
@@ -25,12 +117,20 @@
                 <x-nav-link :href="route('portfolio.index')" :active="request()->routeIs('portfolio.*', 'assets.financials')">
                     {{ __('Portfolio') }}
                 </x-nav-link>
+
+                @auth
+                    @if (Auth::user()->isPrimaryAdministrator())
+                        <x-nav-link :href="route('admin.users.index')" :active="request()->routeIs('admin.*')">
+                            {{ __('Admin') }}
+                        </x-nav-link>
+                    @endif
+                @endauth
             </div>
 
             @auth
                 {{-- Search: centre on large screens --}}
                 <div class="hidden lg:flex flex-1 min-w-0 justify-center px-2 xl:px-4">
-                    <div class="w-full max-w-md xl:max-w-lg">
+                    <div class="w-full max-w-xs xl:max-w-md">
                         @include('partials.header-global-search-field', ['variant' => 'desktop'])
                     </div>
                 </div>
@@ -121,6 +221,50 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('portfolio.index')" :active="request()->routeIs('portfolio.*', 'assets.financials')">
                 {{ __('Portfolio') }}
+            </x-responsive-nav-link>
+
+            {{-- Entities & Portfolio Section --}}
+            <div class="pt-3 pb-1">
+                <div class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                    {{ __('Entities & Portfolio') }}
+                </div>
+            </div>
+            <x-responsive-nav-link :href="route('business-entities.index')" :active="request()->routeIs('business-entities.*')">
+                {{ __('Business entities') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('assets.index')" :active="request()->routeIs('assets.*')">
+                {{ __('Assets') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('persons.index')" :active="request()->routeIs('persons.*')">
+                {{ __('Persons') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('financial-reports.compliance-gaps')" :active="request()->routeIs('financial-reports.compliance-gaps')">
+                {{ __('Compliance gaps') }}
+            </x-responsive-nav-link>
+
+            {{-- Accounting & Finance Section --}}
+            <div class="pt-3 pb-1">
+                <div class="px-3 text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500">
+                    {{ __('Accounting & Finance') }}
+                </div>
+            </div>
+            <x-responsive-nav-link :href="route('bank-accounts.index')" :active="request()->routeIs('bank-accounts.*')">
+                {{ __('Bank accounts') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('transactions.index')" :active="request()->routeIs('transactions.*')">
+                {{ __('Transactions') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('invoices.index')" :active="request()->routeIs('invoices.*', 'rent-invoices.*')">
+                {{ __('Invoices') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('chart-of-accounts.index')" :active="request()->routeIs('chart-of-accounts.*')">
+                {{ __('Chart of accounts') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('vendors.index')" :active="request()->routeIs('vendors.*')">
+                {{ __('Vendors') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('commitments.index')" :active="request()->routeIs('commitments.*')">
+                {{ __('Commitments') }}
             </x-responsive-nav-link>
         </div>
 
