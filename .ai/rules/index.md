@@ -8,10 +8,9 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/views/business-entities/**, app/Http/Controllers/Concerns/EnsuresOperationalBusinessEntity.php, app/Http/Controllers/*WorkspaceController.php, app/Http/Controllers/ContactListController.php, app/Http/Controllers/DocumentController.php | .ai/rules/business-entities.md |
 | app/Console/Commands/AuditUnmatchedLoanRepayments.php, app/Services/UnmatchedLoanRepaymentAuditor.php | .ai/rules/commands.md |
 | app/Http/Controllers/BalanceSheetEntryController.php, app/Http/Controllers/InvoiceController.php | .ai/rules/controllers.md |
+| resources/views/emails/** | .ai/rules/emails.md |
 | app/Models/ChartOfAccount.php, app/Http/Controllers/ChartOfAccountController.php, config/financial.php | .ai/rules/http-controllers.md |
 | resources/views/invoices/** | .ai/rules/invoices.md |
-| resources/views/emails/** | .ai/rules/emails.md |
-| resources/views/vendors/**, resources/js/vendors-workspace.js, app/Http/Controllers/VendorController.php, app/Http/Controllers/VendorsWorkspaceController.php | .ai/rules/vendors.md |
 | app/Mcp/** | .ai/rules/mcp.md |
 | app/Models/Transaction.php, app/Models/BankAccount.php | .ai/rules/models.md |
 | resources/views/bank-accounts/partials/** | .ai/rules/partials.md |
@@ -20,3 +19,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Services/TransactionPostingService.php, app/Services/BankStatementApplyService.php, app/Services/**, app/Services/{FinancialReportService,BankAccountBalanceSnapshotService}.php, app/Services/ManualJournalEntryService.php, app/Services/FinancialReportService.php, app/Services/BankStatementParseService.php, app/Services/InvoicePaymentService.php, app/Services/BankStatementMatchSuggester.php | .ai/rules/services.md |
 | app/Support/TransactionGstResolver.php | .ai/rules/support.md |
 | resources/views/business-entities/bank-accounts/transactions/** | .ai/rules/transactions.md |
+| resources/views/vendors/**, resources/js/vendors-workspace.js, app/Http/Controllers/VendorController.php, app/Http/Controllers/VendorsWorkspaceController.php | .ai/rules/vendors.md |
+| resources/views/**/*.blade.php | .ai/rules/views.md |

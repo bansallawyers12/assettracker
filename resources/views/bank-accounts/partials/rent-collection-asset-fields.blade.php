@@ -45,8 +45,8 @@
             multiple
             minimal
             :allowEmpty="false"
+            :required="$assetsRequired && $isVisible"
             data-tomselect-dropdown-parent="body"
-            @if($assetsRequired) required @endif
         >
             @foreach($leasableAssets as $asset)
                 <option value="{{ $asset->id }}" @selected(in_array((int) $asset->id, $selectedAssetIds, true))>

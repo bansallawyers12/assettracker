@@ -1,6 +1,7 @@
 {{-- Searchable select — Tom Select only (see tomselect-init.js). Use x-tom-select in Blade; raw data-tomselect is for JS templates only. --}}
 @props([
     'disabled' => false,
+    'required' => false,
     'multiple' => false,
     'create' => false,
     'allowEmpty' => true,
@@ -32,6 +33,7 @@
 
 <select
     @disabled($disabled)
+    @required($required)
     @if ($multiple) multiple @endif
     {{ $attributes->merge([
         'class' => $defaultClass,

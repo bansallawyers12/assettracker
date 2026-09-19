@@ -33,6 +33,7 @@ export function refreshRentCollectionAssetSection(root = document) {
         // Manage panel (or any always-visible section)
         if (section.dataset.forceVisible === '1') {
             section.classList.remove('hidden');
+            setRentCollectionAssetsRequired(section, true);
             return;
         }
 
@@ -41,6 +42,7 @@ export function refreshRentCollectionAssetSection(root = document) {
 
         if (!purposeSelectId) {
             section.classList.remove('hidden');
+            setRentCollectionAssetsRequired(section, true);
             return;
         }
 
@@ -50,7 +52,15 @@ export function refreshRentCollectionAssetSection(root = document) {
         const purposeValue = purposeEl?.tomselect?.getValue?.() ?? purposeEl?.value ?? '';
         const visible = purposeValue === showWhen;
         section.classList.toggle('hidden', !visible);
+        setRentCollectionAssetsRequired(section, visible);
     });
+}
+
+function setRentCollectionAssetsRequired(section, visible) {
+    const select = section.querySelector('select[name="rent_collection_asset_ids[]"]');
+    if (select) {
+        select.required = visible;
+    }
 }
 
 function bindBankFormFields(formRoot) {

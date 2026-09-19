@@ -49,6 +49,8 @@ it('requires rent asset selection before creating a rent receiving purpose link'
         ->and($service)->toContain('Select at least one leasable asset for this rent collection account.')
         ->and($controller)->toContain('requireRentCollectionAssetsWhenLeasable')
         ->and($fields)->toContain('$assetsRequired')
+        ->and($fields)->toContain(':required="$assetsRequired && $isVisible"')
+        ->and($fields)->not->toContain('@if($assetsRequired) required @endif')
         ->and($fields)->toContain('Required when rent receiving')
         ->and($list)->toContain('data-rent-assets-missing');
 });
