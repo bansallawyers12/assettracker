@@ -112,33 +112,55 @@
     @endif
 
     @if(! empty($statementsUrl))
-        <button
-            type="button"
-            data-bank-action="statements"
-            data-bank-statements-url="{{ $statementsUrl }}"
-            data-bank-statements-title="{{ $statementsTitle ?? 'Bank statements' }}"
-            data-bank-statements-subtitle="{{ $statementsSubtitle ?? '' }}"
-            title="{{ $statementsTitle ?? 'Bank statements' }}"
-            class="{{ $btnClass }} border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50"
-        >
-            <x-lucide-file-text class="h-4 w-4" aria-hidden="true" />
-            <span class="sr-only">{{ $statementsTitle ?? 'Bank statements' }}</span>
-        </button>
+        @if($useSpaActions)
+            <button
+                type="button"
+                data-bank-action="statements"
+                data-bank-statements-url="{{ $statementsUrl }}"
+                data-bank-statements-title="{{ $statementsTitle ?? 'Bank statements' }}"
+                data-bank-statements-subtitle="{{ $statementsSubtitle ?? '' }}"
+                title="{{ $statementsTitle ?? 'Bank statements' }}"
+                class="{{ $btnClass }} border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50"
+            >
+                <x-lucide-file-text class="h-4 w-4" aria-hidden="true" />
+                <span class="sr-only">{{ $statementsTitle ?? 'Bank statements' }}</span>
+            </button>
+        @else
+            <a
+                href="{{ $statementsUrl }}"
+                title="{{ $statementsTitle ?? 'Bank statements' }}"
+                class="{{ $btnClass }} border-sky-300 bg-sky-50 text-sky-700 hover:bg-sky-100 dark:border-sky-800 dark:bg-sky-950/40 dark:text-sky-300 dark:hover:bg-sky-900/50"
+            >
+                <x-lucide-file-text class="h-4 w-4" aria-hidden="true" />
+                <span class="sr-only">{{ $statementsTitle ?? 'Bank statements' }}</span>
+            </a>
+        @endif
     @endif
 
     @if(! empty($transactionsUrl))
-        <button
-            type="button"
-            data-bank-action="transactions"
-            data-bank-transactions-url="{{ $transactionsUrl }}"
-            data-bank-transactions-title="{{ $transactionsTitle ?? 'Transactions' }}"
-            data-bank-transactions-subtitle="{{ $transactionsSubtitle ?? '' }}"
-            title="{{ $transactionsTitle ?? 'Transactions' }}"
-            class="{{ $btnClass }} border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50"
-        >
-            <x-lucide-arrow-left-right class="h-4 w-4" aria-hidden="true" />
-            <span class="sr-only">{{ $transactionsTitle ?? 'Transactions' }}</span>
-        </button>
+        @if($useSpaActions)
+            <button
+                type="button"
+                data-bank-action="transactions"
+                data-bank-transactions-url="{{ $transactionsUrl }}"
+                data-bank-transactions-title="{{ $transactionsTitle ?? 'Transactions' }}"
+                data-bank-transactions-subtitle="{{ $transactionsSubtitle ?? '' }}"
+                title="{{ $transactionsTitle ?? 'Transactions' }}"
+                class="{{ $btnClass }} border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50"
+            >
+                <x-lucide-arrow-left-right class="h-4 w-4" aria-hidden="true" />
+                <span class="sr-only">{{ $transactionsTitle ?? 'Transactions' }}</span>
+            </button>
+        @else
+            <a
+                href="{{ $transactionsUrl }}"
+                title="{{ $transactionsTitle ?? 'Transactions' }}"
+                class="{{ $btnClass }} border-violet-300 bg-violet-50 text-violet-700 hover:bg-violet-100 dark:border-violet-800 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50"
+            >
+                <x-lucide-arrow-left-right class="h-4 w-4" aria-hidden="true" />
+                <span class="sr-only">{{ $transactionsTitle ?? 'Transactions' }}</span>
+            </a>
+        @endif
     @endif
 
     @if(! empty($deleteUrl))

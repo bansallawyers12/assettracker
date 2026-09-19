@@ -30,6 +30,11 @@
                 </p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('emails.drafts') }}"
+                   class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">
+                    <x-lucide-file-text class="h-4 w-4" aria-hidden="true" />
+                    {{ __('Drafts') }}
+                </a>
                 <a href="{{ route('email-templates.index') }}"
                    class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800">
                     <x-lucide-layout-grid class="h-4 w-4" aria-hidden="true" />
@@ -53,6 +58,8 @@
         class="py-8 w-full px-4 sm:px-6 lg:px-8"
         x-data="{ filtersOpen: {{ $hasFilters ? 'true' : 'false' }} }"
     >
+        @include('emails.partials.subnav', ['active' => 'inbox'])
+
         @if (session('status'))
             <div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-200" role="status">
                 {{ session('status') }}

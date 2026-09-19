@@ -3,17 +3,20 @@
 namespace App\Http\Controllers\Email;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ContactEmail;
+use App\Models\Asset;
+use App\Models\BusinessEntity;
+use App\Models\Document;
+use App\Models\EmailDraft;
 use App\Models\MailAttachment;
 use App\Models\MailLabel;
 use App\Models\MailMessage;
-use App\Models\BusinessEntity;
-use App\Models\Asset;
-use App\Models\Document;
 use App\Services\DocumentUploadService;
 use App\Services\MsgParserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class MailMessageController extends Controller
@@ -94,6 +97,7 @@ class MailMessageController extends Controller
 
         $messages = $query->latest('sent_date')->paginate(20)->withQueryString();
         $labels = $this->labelsForCurrentUser();
+
         return view('emails.upload', [
             'messages' => $messages,
             'labels' => $labels,
@@ -135,11 +139,12 @@ class MailMessageController extends Controller
 
                     if ($alreadyParsed) {
                         $skippedCount++;
+
                         continue;
                     }
 
-                    if (blank($existing->source_path) || !Storage::exists($existing->source_path)) {
-                        $existing->source_path = $file->store('emails/uploads/' . $userId);
+                    if (blank($existing->source_path) || ! Storage::exists($existing->source_path)) {
+                        $existing->source_path = $file->store('emails/uploads/'.$userId);
                         $existing->save();
                     }
 
@@ -150,10 +155,11 @@ class MailMessageController extends Controller
                     } else {
                         $failedCount++;
                     }
+
                     continue;
                 }
 
-                $storedPath = $file->store('emails/uploads/' . $userId);
+                $storedPath = $file->store('emails/uploads/'.$userId);
                 $message = MailMessage::create([
                     'user_id' => $userId,
                     'subject' => $file->getClientOriginalName(),
@@ -183,22 +189,22 @@ class MailMessageController extends Controller
 
         $statusParts = [];
         if ($uploadedCount > 0) {
-            $statusParts[] = $uploadedCount . ' uploaded';
+            $statusParts[] = $uploadedCount.' uploaded';
         }
         if ($skippedCount > 0) {
-            $statusParts[] = $skippedCount . ' skipped (duplicate)';
+            $statusParts[] = $skippedCount.' skipped (duplicate)';
         }
         if ($reprocessedCount > 0) {
-            $statusParts[] = $reprocessedCount . ' reprocessed';
+            $statusParts[] = $reprocessedCount.' reprocessed';
         }
         if ($failedCount > 0) {
-            $statusParts[] = $failedCount . ' failed';
+            $statusParts[] = $failedCount.' failed';
         }
         if ($statusParts === []) {
             $statusParts[] = 'No files were processed';
         }
 
-        return redirect()->route('emails.upload')->with('status', 'Email upload completed: ' . implode(', ', $statusParts) . '.');
+        return redirect()->route('emails.upload')->with('status', 'Email upload completed: '.implode(', ', $statusParts).'.');
     }
 
     public function show(int $id)
@@ -224,7 +230,7 @@ class MailMessageController extends Controller
         $message = $this->findOwnedMailMessage($id);
 
         return response()->json([
-            'subject' => 'Re: ' . ($message->subject ?: '(No subject)'),
+            'subject' => 'Re: '.($message->subject ?: '(No subject)'),
             'to_email' => $message->sender_email,
             'sender_name' => $message->sender_name,
             'original_message' => $message->text_content ?: $message->html_content,
@@ -244,7 +250,7 @@ class MailMessageController extends Controller
         $message->businessEntities()->syncWithoutDetaching([$entity->id]);
 
         // Ensure a shared label exists for this entity and attach it to the message
-        $labelName = 'Entity: ' . $entity->legal_name;
+        $labelName = 'Entity: '.$entity->legal_name;
         $label = MailLabel::firstOrCreate([
             'type' => 'entity',
             'name' => $labelName,
@@ -272,7 +278,7 @@ class MailMessageController extends Controller
         $message->assets()->syncWithoutDetaching([$asset->id]);
 
         // Ensure a shared label exists for this asset and attach it to the message
-        $labelName = 'Asset: ' . $asset->name;
+        $labelName = 'Asset: '.$asset->name;
         $label = MailLabel::firstOrCreate([
             'type' => 'asset',
             'name' => $labelName,
@@ -293,7 +299,7 @@ class MailMessageController extends Controller
         try {
             $sanitizedEntity = $this->sanitizeFilename((string) $entity->legal_name);
             $docsPath = "BusinessEntities/{$entity->id}_{$sanitizedEntity}/docs";
-            if (!Storage::disk('s3')->exists($docsPath)) {
+            if (! Storage::disk('s3')->exists($docsPath)) {
                 Storage::disk('s3')->makeDirectory($docsPath);
             }
 
@@ -304,19 +310,19 @@ class MailMessageController extends Controller
             );
 
             foreach ($message->attachments as $att) {
-                if (!$att->storage_path || !Storage::exists($att->storage_path)) {
+                if (! $att->storage_path || ! Storage::exists($att->storage_path)) {
                     continue;
                 }
 
-                $filename = $att->filename ?: ('attachment_' . $att->id);
-                $targetPath = $docsPath . '/' . $filename;
+                $filename = $att->filename ?: ('attachment_'.$att->id);
+                $targetPath = $docsPath.'/'.$filename;
 
-                if (!Storage::disk('s3')->exists($targetPath)) {
+                if (! Storage::disk('s3')->exists($targetPath)) {
                     $binary = Storage::get($att->storage_path);
                     Storage::disk('s3')->put($targetPath, $binary);
                 }
 
-                if (!Document::where('path', $targetPath)->exists()) {
+                if (! Document::where('path', $targetPath)->exists()) {
                     $checklistLabel = pathinfo($filename, PATHINFO_FILENAME) ?: $filename;
                     $fileSize = Storage::disk('s3')->exists($targetPath)
                         ? Storage::disk('s3')->size($targetPath)
@@ -330,7 +336,7 @@ class MailMessageController extends Controller
                         'file_name' => $filename,
                         'path' => $targetPath,
                         'type' => 'other',
-                        'description' => 'Imported from email #' . $message->id . ': ' . (string) $message->subject,
+                        'description' => 'Imported from email #'.$message->id.': '.(string) $message->subject,
                         'filetype' => $att->content_type ?: 'application/octet-stream',
                         'file_size' => $fileSize,
                         'user_id' => Auth::id(),
@@ -350,11 +356,13 @@ class MailMessageController extends Controller
     {
         try {
             $entity = $asset->businessEntity;
-            if (!$entity) return;
+            if (! $entity) {
+                return;
+            }
             $sanitizedEntity = $this->sanitizeFilename((string) $entity->legal_name);
-            $assetFolderName = $asset->id . '_' . $this->sanitizeFilename((string) $asset->name);
+            $assetFolderName = $asset->id.'_'.$this->sanitizeFilename((string) $asset->name);
             $docsPath = "BusinessEntities/{$entity->id}_{$sanitizedEntity}/docs/{$assetFolderName}";
-            if (!Storage::disk('s3')->exists($docsPath)) {
+            if (! Storage::disk('s3')->exists($docsPath)) {
                 Storage::disk('s3')->makeDirectory($docsPath);
             }
 
@@ -365,19 +373,19 @@ class MailMessageController extends Controller
             );
 
             foreach ($message->attachments as $att) {
-                if (!$att->storage_path || !Storage::exists($att->storage_path)) {
+                if (! $att->storage_path || ! Storage::exists($att->storage_path)) {
                     continue;
                 }
 
-                $filename = $att->filename ?: ('attachment_' . $att->id);
-                $targetPath = $docsPath . '/' . $filename;
+                $filename = $att->filename ?: ('attachment_'.$att->id);
+                $targetPath = $docsPath.'/'.$filename;
 
-                if (!Storage::disk('s3')->exists($targetPath)) {
+                if (! Storage::disk('s3')->exists($targetPath)) {
                     $binary = Storage::get($att->storage_path);
                     Storage::disk('s3')->put($targetPath, $binary);
                 }
 
-                if (!Document::where('path', $targetPath)->exists()) {
+                if (! Document::where('path', $targetPath)->exists()) {
                     $checklistLabel = pathinfo($filename, PATHINFO_FILENAME) ?: $filename;
                     $fileSize = Storage::disk('s3')->exists($targetPath)
                         ? Storage::disk('s3')->size($targetPath)
@@ -391,7 +399,7 @@ class MailMessageController extends Controller
                         'file_name' => $filename,
                         'path' => $targetPath,
                         'type' => 'other',
-                        'description' => 'Imported from email #' . $message->id . ': ' . (string) $message->subject,
+                        'description' => 'Imported from email #'.$message->id.': '.(string) $message->subject,
                         'filetype' => $att->content_type ?: 'application/octet-stream',
                         'file_size' => $fileSize,
                         'user_id' => Auth::id(),
@@ -410,6 +418,7 @@ class MailMessageController extends Controller
     private function sanitizeFilename(string $name): string
     {
         $name = preg_replace('/[^a-zA-Z0-9\s\-]/', '', $name) ?? '';
+
         return trim(str_replace(' ', '-', $name));
     }
 
@@ -521,14 +530,14 @@ class MailMessageController extends Controller
             $bccEmails = $this->parseEmailList($request->input('bcc_email'));
 
             // Create the email instance
-            $email = new \App\Mail\ContactEmail(
+            $email = new ContactEmail(
                 $request->input('subject'),
                 $request->input('message'),
                 $request->file('attachments', []),
                 $request->input('from_email')
             );
 
-            $pending = \Illuminate\Support\Facades\Mail::to($toEmails);
+            $pending = Mail::to($toEmails);
             if ($ccEmails !== []) {
                 $pending->cc($ccEmails);
             }
@@ -553,7 +562,7 @@ class MailMessageController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Email sent successfully!'
+                'message' => 'Email sent successfully!',
             ]);
 
         } catch (\Exception $e) {
@@ -565,7 +574,7 @@ class MailMessageController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send email: ' . $e->getMessage()
+                'message' => 'Failed to send email: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -590,7 +599,7 @@ class MailMessageController extends Controller
             $userId = Auth::id();
 
             // Store draft in database
-            $draft = \App\Models\EmailDraft::create([
+            $draft = EmailDraft::create([
                 'user_id' => $userId,
                 'from_email' => $request->input('from_email'),
                 'to_email' => $request->input('to_email'),
@@ -624,7 +633,7 @@ class MailMessageController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save draft: ' . $e->getMessage()
+                'message' => 'Failed to save draft: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -632,24 +641,45 @@ class MailMessageController extends Controller
     /**
      * Get user's email drafts
      */
-    public function drafts()
+    public function drafts(Request $request)
     {
-        $drafts = \App\Models\EmailDraft::query()
+        $drafts = EmailDraft::query()
             ->where('user_id', Auth::id())
             ->with(['businessEntity', 'template'])
             ->orderBy('created_at', 'desc')
-            ->paginate(10);
+            ->paginate(15)
+            ->withQueryString();
 
-        return response()->json([
-            'success' => true,
-            'drafts' => $drafts->items(),
-            'pagination' => [
-                'current_page' => $drafts->currentPage(),
-                'last_page' => $drafts->lastPage(),
-                'per_page' => $drafts->perPage(),
-                'total' => $drafts->total(),
-            ]
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'drafts' => $drafts->items(),
+                'pagination' => [
+                    'current_page' => $drafts->currentPage(),
+                    'last_page' => $drafts->lastPage(),
+                    'per_page' => $drafts->perPage(),
+                    'total' => $drafts->total(),
+                ],
+            ]);
+        }
+
+        return view('emails.drafts', [
+            'drafts' => $drafts,
         ]);
+    }
+
+    /**
+     * Delete an email draft
+     */
+    public function destroyDraft(EmailDraft $draft)
+    {
+        if ($draft->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $draft->delete();
+
+        return redirect()->route('emails.drafts')->with('status', 'Draft deleted successfully.');
     }
 
     /**
@@ -674,11 +704,11 @@ class MailMessageController extends Controller
             // Associate with business entity if provided
             if ($request->input('business_entity_id')) {
                 $mailMessage->businessEntities()->attach($request->input('business_entity_id'));
-                
+
                 // Create a label for this entity
-                $entity = \App\Models\BusinessEntity::find($request->input('business_entity_id'));
+                $entity = BusinessEntity::find($request->input('business_entity_id'));
                 if ($entity) {
-                    $labelName = 'Entity: ' . $entity->legal_name;
+                    $labelName = 'Entity: '.$entity->legal_name;
                     $label = MailLabel::firstOrCreate([
                         'type' => 'entity',
                         'name' => $labelName,
@@ -694,7 +724,7 @@ class MailMessageController extends Controller
             if ($request->hasFile('attachments')) {
                 foreach ($request->file('attachments') as $attachment) {
                     $path = $attachment->store('email-attachments', 'public');
-                    
+
                     MailAttachment::create([
                         'mail_message_id' => $mailMessage->id,
                         'filename' => $attachment->getClientOriginalName(),
@@ -713,5 +743,3 @@ class MailMessageController extends Controller
         }
     }
 }
-
-

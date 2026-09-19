@@ -360,6 +360,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/emails/upload', [MailMessageController::class, 'uploadIndex'])->name('emails.upload');
     Route::post('/emails/upload', [MailMessageController::class, 'uploadMsg'])->name('emails.upload.store');
     Route::get('/emails/drafts', [MailMessageController::class, 'drafts'])->name('emails.drafts');
+    Route::delete('/emails/drafts/{draft}', [MailMessageController::class, 'destroyDraft'])->name('emails.drafts.destroy');
     Route::post('/emails/send', [MailMessageController::class, 'sendEmail'])->name('emails.send');
     Route::post('/emails/save-draft', [MailMessageController::class, 'saveDraft'])->name('emails.save-draft');
     Route::get('/emails-sync', [GmailController::class, 'sync'])->name('emails.sync');

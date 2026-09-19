@@ -474,6 +474,17 @@
                                 <!-- Real Estate: Financials Tab -->
                                 <div id="tab_financials" class="tab-content" x-show="activeTab === $el.id" style="display: none;">
                                     <div class="asset-panel">
+                                        <div class="flex flex-wrap justify-between items-center gap-2 mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
+                                            <div>
+                                                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Financial Overview & Property P&L</h3>
+                                                <p class="text-sm text-gray-500 dark:text-gray-400">Insurance, property values, and detailed financial reports.</p>
+                                            </div>
+                                            <a href="{{ route('assets.financials', [$businessEntity, $asset]) }}"
+                                               class="inline-flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow-xs transition-colors">
+                                                <x-lucide-bar-chart-3 class="h-4 w-4" />
+                                                Property Financials Report
+                                            </a>
+                                        </div>
                                         <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Insurance</h3>
                                         <dl class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                                             <div>
