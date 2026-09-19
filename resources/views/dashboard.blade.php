@@ -990,6 +990,45 @@
                         </div>
                     </div>
 
+                    {{-- Entities & Portfolio --}}
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
+                        <div class="p-5 border-b border-gray-100 dark:border-gray-700">
+                            <h3 class="text-sm font-bold text-gray-900 dark:text-white">Entities & Portfolio</h3>
+                        </div>
+                        <div class="p-4 space-y-1.5">
+                            <a href="{{ route('business-entities.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors group">
+                                <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                                    <x-lucide-building-2 class="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">Business Entities</span>
+                            </a>
+                            <a href="{{ route('assets.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors group">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
+                                    <x-lucide-package class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-emerald-700 dark:group-hover:text-emerald-300 transition-colors">Assets</span>
+                            </a>
+                            <a href="{{ route('persons.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors group">
+                                <div class="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
+                                    <x-lucide-users class="w-4 h-4 text-violet-600 dark:text-violet-400" />
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">Persons</span>
+                            </a>
+                            <a href="{{ route('portfolio.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors group">
+                                <div class="w-9 h-9 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0">
+                                    <x-lucide-bar-chart-3 class="w-4 h-4 text-teal-600 dark:text-teal-400" />
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">Property Portfolio</span>
+                            </a>
+                            <a href="{{ route('financial-reports.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors group">
+                                <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                                    <x-lucide-pie-chart class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">Reports Hub</span>
+                            </a>
+                        </div>
+                    </div>
+
                     {{-- Accounting & Finance --}}
                     <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs border border-gray-100 dark:border-gray-700 overflow-hidden">
                         <div class="p-5 border-b border-gray-100 dark:border-gray-700">
