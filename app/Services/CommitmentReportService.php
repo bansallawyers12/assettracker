@@ -72,12 +72,19 @@ class CommitmentReportService
      */
     public function dashboardSummary(?array $entityIds = null): array
     {
+        if ($entityIds !== null && $entityIds === []) {
+            return [
+                'active_count' => 0,
+                'total_balance_due' => 0.0,
+            ];
+        }
+
         $query = Commitment::query()
             ->with('payments')
             ->active()
             ->forOperationalEntities();
 
-        if ($entityIds !== null && $entityIds !== []) {
+        if ($entityIds !== null) {
             $query->whereIn('business_entity_id', $entityIds);
         }
 
@@ -85,7 +92,7 @@ class CommitmentReportService
 
         return [
             'active_count' => $commitments->count(),
-            'total_balance_due' => $commitments->sum(fn (Commitment $c) => $c->balance_due),
+            'total_balance_due' => (float) $commitments->sum(fn (Commitment $c) => $c->balance_due),
         ];
     }
 

@@ -726,13 +726,7 @@ class BusinessEntityController extends Controller
                 $q->whereIn('business_entity_id', $opIds)
                     ->orWhereNull('business_entity_id');
             })
-            ->where(function ($q) {
-                $q->whereDate('reminder_date', '<', now()->startOfDay())
-                    ->orWhere(function ($q2) {
-                        $q2->whereDate('reminder_date', '>=', now()->startOfDay())
-                            ->whereDate('reminder_date', '<=', now()->addDays(15));
-                    });
-            })
+            ->whereDate('reminder_date', '<=', now()->addDays(15))
             ->with(['businessEntity', 'asset', 'user'])
             ->orderBy('reminder_date')
             ->get()
@@ -759,13 +753,7 @@ class BusinessEntityController extends Controller
             ->whereIn('business_entity_id', $opIds)
             ->where('payment_status', 'unpaid')
             ->whereNotNull('due_date')
-            ->where(function ($q) {
-                $q->whereDate('due_date', '<', now()->startOfDay())
-                    ->orWhere(function ($q2) {
-                        $q2->whereDate('due_date', '>=', now()->startOfDay())
-                            ->whereDate('due_date', '<=', now()->addDays(15));
-                    });
-            })
+            ->whereDate('due_date', '<=', now()->addDays(15))
             ->with(['businessEntity.user', 'asset', 'vendor'])
             ->orderBy('due_date')
             ->get()
@@ -799,8 +787,9 @@ class BusinessEntityController extends Controller
             ->with(['person', 'trusteeEntity', 'businessEntity'])
             ->get();
 
-        // Group persons by their actual Person record to avoid duplicates
+        // Group persons by their actual Person record to avoid duplicates, filtering orphaned relations
         $uniquePersons = $persons->where('person_id', '!=', null)
+            ->filter(fn ($ep) => $ep->person !== null)
             ->groupBy('person_id')
             ->map(function ($entityPersonGroup) {
                 $firstEntityPerson = $entityPersonGroup->first();

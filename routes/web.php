@@ -342,6 +342,15 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('reminders/{reminder}/complete', [ReminderController::class, 'complete'])->name('reminders.complete');
     Route::post('reminders/{reminder}/extend', [ReminderController::class, 'extend'])->name('reminders.extend');
     Route::post('reminders/bulk-complete', [ReminderController::class, 'bulkComplete'])->name('reminders.bulk-complete');
+    Route::get('/reminders', function () {
+        return redirect()->route('bills-tasks.index', ['tab' => 'due']);
+    });
+    Route::get('/reminders/create', function () {
+        return redirect()->route('bills-tasks.index', ['tab' => 'due']);
+    });
+    Route::get('/reminders/{reminder}/edit', function () {
+        return redirect()->route('bills-tasks.index', ['tab' => 'due']);
+    })->whereNumber('reminder');
 
     // Contact List Routes
     Route::resource('business-entities.contact-lists', ContactListController::class);

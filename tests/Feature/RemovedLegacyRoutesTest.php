@@ -91,3 +91,15 @@ it('redirects legacy email-templates urls to email-templates index', function ()
         ->and(Route::has('email-templates.show'))->toBeFalse()
         ->and(Route::has('email-templates.edit'))->toBeFalse();
 });
+
+it('redirects legacy reminders urls to bills-tasks due tab', function () {
+    $routes = file_get_contents(base_path('routes/web.php'));
+
+    expect($routes)->toContain("Route::get('/reminders'")
+        ->and($routes)->toContain("Route::get('/reminders/create'")
+        ->and($routes)->toContain("Route::get('/reminders/{reminder}/edit'")
+        ->and(Route::has('reminders.index'))->toBeFalse()
+        ->and(Route::has('reminders.create'))->toBeFalse()
+        ->and(Route::has('reminders.edit'))->toBeFalse()
+        ->and(Route::has('reminders.update'))->toBeFalse();
+});

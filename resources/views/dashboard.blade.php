@@ -44,8 +44,12 @@
                 $txnInput = 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 shadow-xs placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
                 $txnSelect = 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 text-sm text-gray-900 dark:text-gray-100 shadow-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
                 $txnSection = 'rounded-xl border border-gray-100 dark:border-gray-700/80 bg-gray-50/60 dark:bg-gray-900/30 p-5 space-y-4';
+
+                $isReminderError = $errors->hasAny(['reminder_date', 'repeat_type', 'repeat_end_date'])
+                    || ($errors->has('content') && ! $errors->has('lines') && ! collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'lines.')));
+                $isTransactionError = $errors->any() && ! $isReminderError;
             @endphp
-            <div id="add-transaction-section" class="{{ ($errors->any() || session('error') || session('keep_open') || request()->boolean('open_add_transaction')) ? '' : 'hidden' }} overflow-visible rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl transition-all duration-300">
+            <div id="add-transaction-section" class="{{ ($isTransactionError || (session('error') && ! $isReminderError) || session('keep_open') || request()->boolean('open_add_transaction')) ? '' : 'hidden' }} overflow-visible rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl transition-all duration-300">
                 <div class="relative border-b border-gray-100 dark:border-gray-700 bg-linear-to-r from-blue-50 via-white to-indigo-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800/90 px-6 py-5">
                     <div class="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-blue-500 via-indigo-500 to-violet-500"></div>
                     <div class="flex items-start justify-between gap-4">
@@ -68,10 +72,15 @@
                 @php
                     $dashboardTransactionEntityId = $businessEntities->first()?->id ?? 0;
                     $dashboardTxnErrorToast = null;
-                    if ($errors->any()) {
+                    $dashboardReminderErrorToast = null;
+                    if ($isTransactionError) {
                         $dashboardTxnErrorToast = $errors->count() === 1
                             ? $errors->first()
                             : "Could not save these transactions:\n" . implode("\n", $errors->all());
+                    } elseif ($isReminderError) {
+                        $dashboardReminderErrorToast = $errors->count() === 1
+                            ? $errors->first()
+                            : "Could not save reminder:\n" . implode("\n", $errors->all());
                     }
 
                     $dashboardTypeGroups = [];
@@ -531,7 +540,7 @@
                             <x-lucide-users class="w-5 h-5 text-violet-600 dark:text-violet-400" />
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $persons->count() }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $uniquePersons->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Persons</div>
                 </div>
                 <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
@@ -588,7 +597,7 @@
                         </div>
 
                         {{-- Reminder Form --}}
-                        <form id="reminder-form" class="hidden p-5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700" method="POST" action="{{ route('reminders.store') }}">
+                        <form id="reminder-form" class="{{ $isReminderError ? '' : 'hidden' }} p-5 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-700" method="POST" action="{{ route('reminders.store') }}">
                             @csrf
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
@@ -596,17 +605,17 @@
                                     <x-tom-select name="business_entity_id" id="reminder_business_entity_id" class="rounded-xl focus:ring-amber-500 focus:border-amber-500">
                                         <option value="">Select Entity (Optional)</option>
                                         @foreach ($businessEntities as $entity)
-                                            <option value="{{ $entity->id }}">{{ $entity->legal_name }}</option>
+                                            <option value="{{ $entity->id }}" @selected(old('business_entity_id') == $entity->id)>{{ $entity->legal_name }}</option>
                                         @endforeach
                                     </x-tom-select>
                                     @error('business_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Asset</label>
-                                    <x-tom-select name="asset_id" id="reminder_asset_id" class="rounded-xl focus:ring-amber-500 focus:border-amber-500" disabled>
+                                    <x-tom-select name="asset_id" id="reminder_asset_id" class="rounded-xl focus:ring-amber-500 focus:border-amber-500" :disabled="!old('business_entity_id')">
                                         <option value="">Select Asset (Optional)</option>
                                         @foreach ($assets as $asset)
-                                            <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}">{{ $asset->name }} ({{ $asset->asset_type }})</option>
+                                            <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}" @selected(old('asset_id') == $asset->id)>{{ $asset->name }} ({{ $asset->asset_type }})</option>
                                         @endforeach
                                     </x-tom-select>
                                     @error('asset_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
@@ -624,14 +633,14 @@
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Repeat</label>
                                     <select name="repeat_type" id="repeat_type" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm">
-                                        <option value="none">One-off (No repeat)</option>
-                                        <option value="monthly">Monthly</option>
-                                        <option value="quarterly">Quarterly</option>
-                                        <option value="annual">Annual</option>
+                                        <option value="none" @selected(old('repeat_type', 'none') === 'none')>One-off (No repeat)</option>
+                                        <option value="monthly" @selected(old('repeat_type') === 'monthly')>Monthly</option>
+                                        <option value="quarterly" @selected(old('repeat_type') === 'quarterly')>Quarterly</option>
+                                        <option value="annual" @selected(old('repeat_type') === 'annual')>Annual</option>
                                     </select>
                                     @error('repeat_type') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
-                                <div id="repeat_end_date_container" style="display: none;">
+                                <div id="repeat_end_date_container" style="{{ in_array(old('repeat_type'), ['monthly', 'quarterly', 'annual'], true) ? '' : 'display: none;' }}">
                                     <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date (Optional)</label>
                                     <x-date-input  name="repeat_end_date" class="block w-full border-gray-300 dark:border-gray-600 rounded-xl shadow-xs focus:ring-amber-500 focus:border-amber-500 dark:bg-gray-700 dark:text-white text-sm" min="{{ now()->format('Y-m-d') }}" value="{{ old('repeat_end_date') }}" />
                                     @error('repeat_end_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
@@ -672,7 +681,7 @@
                                                 <div class="mt-2 flex flex-wrap items-center gap-2">
                                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                                                         <x-lucide-clock class="w-3 h-3" />
-                                                        {{ $reminder->next_due_date ? $reminder->next_due_date->format('d/m/Y') : 'N/A' }}
+                                                        {{ $reminder->next_due_date ? \Carbon\Carbon::parse($reminder->next_due_date)->format('d/m/Y') : 'N/A' }}
                                                     </span>
                                                     @if($reminder->repeat_type && $reminder->repeat_type !== 'none')
                                                         <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
@@ -820,7 +829,7 @@
                                                         </form>
                                                         <form action="{{ route('entity-persons.extend-due-date', $entityDueDate->id) }}" method="POST">
                                                             @csrf
-                                                            <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Extend (3 days)</button>
+                                                            <button type="submit" class="text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline underline-offset-2">Extend (30 days)</button>
                                                         </form>
                                                     </div>
                                                 </div>
@@ -936,7 +945,7 @@
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-blue-700 dark:group-hover:text-blue-300 transition-colors">Add Entity</span>
                             </a>
-                            <a href="{{ route('business-entities.assets.create', $businessEntities->first()?->id ?? 0) }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors group">
+                            <a href="{{ $businessEntities->isNotEmpty() ? route('business-entities.assets.create', $businessEntities->first()->id) : route('business-entities.create') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center shrink-0">
                                     <x-lucide-package class="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                                 </div>
@@ -1078,7 +1087,7 @@
                         );
 
                         if (keepValue && !stillValid) {
-                            window.setSelectValue(transactionAssetSelect, '');
+                            window.setSelectValue?.(transactionAssetSelect, '') ?? (transactionAssetSelect.value = '');
                         }
                     }
 
@@ -1127,7 +1136,7 @@
                 });
             }
 
-            @if (session('error') || $errors->any())
+            @if ($isTransactionError || (session('error') && ! $isReminderError))
                 if (transactionSection) {
                     showTransactionForm();
                 }
@@ -1135,18 +1144,23 @@
 
             @if (session('success'))
                 window.showToast?.(@json(session('success')), 'success', {
-                    title: 'Transactions saved',
+                    title: 'Success',
                     duration: 7000,
                 });
                 hideTransactionForm();
             @elseif (session('error'))
                 window.showToast?.(@json(session('error')), 'error', {
-                    title: 'Could not save transactions',
+                    title: 'Error',
                     duration: 9000,
                 });
             @elseif ($dashboardTxnErrorToast)
                 window.showToast?.(@json($dashboardTxnErrorToast), 'error', {
                     title: 'Could not save transactions',
+                    duration: 9000,
+                });
+            @elseif ($dashboardReminderErrorToast)
+                window.showToast?.(@json($dashboardReminderErrorToast), 'error', {
+                    title: 'Could not save reminder',
                     duration: 9000,
                 });
             @endif
@@ -1186,19 +1200,35 @@
                     });
                 }
 
-                if (entitySelect && assetSelect) {
-                    entitySelect.addEventListener('change', function() {
-                        window.setSelectDisabled?.(assetSelect, !this.value);
-                        Array.from(assetSelect.options).forEach(option => {
-                            if (!option.value || !option.dataset.entityId) {
-                                return;
-                            }
-                            const match = option.dataset.entityId === entitySelect.value;
-                            option.hidden = !match;
-                            option.disabled = !match;
-                        });
-                        window.rebuildTomSelectFromNative?.(assetSelect);
+                function syncReminderAssetSelect() {
+                    if (!entitySelect || !assetSelect) return;
+                    const entityId = window.getSelectValue?.(entitySelect) ?? entitySelect.value ?? '';
+                    window.setSelectDisabled?.(assetSelect, !entityId);
+                    const keepValue = window.getSelectValue?.(assetSelect) ?? assetSelect.value ?? '';
+                    Array.from(assetSelect.options).forEach(option => {
+                        if (!option.value || !option.dataset.entityId) {
+                            return;
+                        }
+                        const match = String(option.dataset.entityId) === String(entityId);
+                        option.hidden = !match;
+                        option.disabled = !match;
                     });
+                    if (entityId) {
+                        const stillValid = Array.from(assetSelect.options).some(
+                            o => String(o.value) === String(keepValue) && !o.disabled
+                        );
+                        if (keepValue && !stillValid) {
+                            window.setSelectValue?.(assetSelect, '') ?? (assetSelect.value = '');
+                        }
+                    }
+                    window.rebuildTomSelectFromNative?.(assetSelect);
+                }
+
+                if (entitySelect && assetSelect) {
+                    entitySelect.addEventListener('change', syncReminderAssetSelect);
+                    if (entitySelect.value) {
+                        syncReminderAssetSelect();
+                    }
                 }
             }
 
