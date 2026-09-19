@@ -185,6 +185,10 @@
                                             <x-lucide-file-text class="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 shrink-0" aria-hidden="true" />
                                             Invoices
                                         </a>
+                                        <a href="#tab_financial_reports" class="tab-link entity-tab-link inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white rounded-md hover:bg-gray-100/80 dark:hover:bg-gray-800/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 dark:focus-visible:ring-offset-gray-900">
+                                            <x-lucide-pie-chart class="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-hidden="true" />
+                                            Financial Reports
+                                        </a>
                                     </nav>
                                 </div>
                             </div>
@@ -423,8 +427,7 @@
                                                 </div>
                                             </div>
                                             <div class="mt-4">
-                                                @php $fyStart = \App\Support\FinancialYear::currentStart()->toDateString(); @endphp
-                                                <a href="{{ route('business-entities.show', $businessEntity->id) }}?fy_start={{ $fyStart }}#tab_compliance" class="inline-flex items-center px-3 py-2 bg-violet-100 hover:bg-violet-200 text-violet-700 dark:bg-violet-900 dark:hover:bg-violet-800 dark:text-violet-200 rounded-lg text-sm transition-all duration-200">
+                                                <a href="#tab_compliance" class="js-entity-tab-jump inline-flex items-center px-3 py-2 bg-violet-100 hover:bg-violet-200 text-violet-700 dark:bg-violet-900 dark:hover:bg-violet-800 dark:text-violet-200 rounded-lg text-sm transition-all duration-200">
                                                     Open compliance tab
                                                     <x-lucide-chevron-right class="h-4 w-4 ml-1" />
                                                 </a>
@@ -672,6 +675,7 @@
                 const opts = options || {};
                 const tabAliases = {
                     tab_bank_import: 'tab_bank_accounts',
+                    tab_reports: 'tab_financial_reports',
                 };
                 const aliasedFrom = Object.prototype.hasOwnProperty.call(tabAliases, targetId) ? targetId : null;
                 let resolvedId = aliasedFrom ? tabAliases[aliasedFrom] : targetId;
