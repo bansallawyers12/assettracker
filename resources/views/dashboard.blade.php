@@ -11,27 +11,27 @@
                         <h1 class="text-2xl lg:text-3xl font-bold">Welcome back, {{ Auth::user()->name }}</h1>
                         <p class="mt-1 text-blue-100 text-sm lg:text-base">{{ now()->format('l, F j, Y') }} &mdash; Here's your overview.</p>
                     </div>
-                    <div class="flex flex-wrap gap-3">
+                    <div class="flex flex-wrap gap-2.5 sm:gap-3">
                         <a href="{{ route('business-entities.create') }}"
-                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
+                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
                             <x-lucide-plus class="w-4 h-4" />
                             New Entity
                         </a>
+                        <a href="{{ $businessEntities->isNotEmpty() ? route('business-entities.assets.create', $businessEntities->first()->id) : route('business-entities.create') }}"
+                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
+                            <x-lucide-package class="w-4 h-4" />
+                            New Asset
+                        </a>
+                        <a href="{{ route('persons.create') }}"
+                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
+                            <x-lucide-user class="w-4 h-4" />
+                            New Person
+                        </a>
                         <button id="add-transaction-btn"
-                                class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
+                                class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-4 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
                             <x-lucide-clipboard class="w-4 h-4" />
                             Add Transaction
                         </button>
-                        <a href="{{ route('bills-tasks.index') }}"
-                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
-                            <x-lucide-clipboard-list class="w-4 h-4" />
-                            Bills &amp; tasks
-                        </a>
-                        <a href="{{ route('emails.index') }}"
-                           class="inline-flex items-center gap-2 bg-white/20 hover:bg-white/30 backdrop-blur-xs text-white font-semibold py-2.5 px-5 rounded-xl text-sm transition-all duration-200 hover:shadow-lg">
-                            <x-lucide-mail class="w-4 h-4" />
-                            Emails
-                        </a>
                     </div>
                 </div>
             </div>
@@ -516,58 +516,58 @@
 
             {{-- Stats Grid --}}
             <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                <a href="{{ route('business-entities.index') }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 transition-all block group">
                     <div class="flex items-center justify-between mb-3">
-                        <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                        <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
                             <x-lucide-building-2 class="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $businessEntities->count() }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{{ $businessEntities->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Entities</div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                </a>
+                <a href="{{ route('assets.index') }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-emerald-200 dark:hover:border-emerald-800 transition-all block group">
                     <div class="flex items-center justify-between mb-3">
-                        <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                        <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
                             <x-lucide-package class="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assets->count() }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">{{ $assets->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Assets</div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                </a>
+                <a href="{{ route('persons.index') }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-violet-200 dark:hover:border-violet-800 transition-all block group">
                     <div class="flex items-center justify-between mb-3">
-                        <div class="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+                        <div class="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
                             <x-lucide-users class="w-5 h-5 text-violet-600 dark:text-violet-400" />
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $uniquePersons->count() }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{{ $uniquePersons->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Persons</div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                </a>
+                <a href="{{ route('bills-tasks.index', ['tab' => 'reminders']) }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-amber-200 dark:hover:border-amber-800 transition-all block group">
                     <div class="flex items-center justify-between mb-3">
-                        <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                        <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
                             <x-lucide-bell class="w-5 h-5 text-amber-600 dark:text-amber-400" />
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $allReminders->count() }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">{{ $allReminders->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Reminders</div>
-                </div>
-                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow">
+                </a>
+                <a href="{{ route('bills-tasks.index', ['tab' => 'due']) }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-red-200 dark:hover:border-red-800 transition-all block group">
                     <div class="flex items-center justify-between mb-3">
-                        <div class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                        <div class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
                             <x-lucide-clock class="w-5 h-5 text-red-600 dark:text-red-400" />
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $assetDueDateItems->count() + $entityDueDates->count() + $asicRenewalDueDates->count() + $companiesMissingAsicRenewalDate->count() }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">{{ $assetDueDateItems->count() + $entityDueDates->count() + $asicRenewalDueDates->count() + $companiesMissingAsicRenewalDate->count() }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Due Soon</div>
-                </div>
-                <a href="{{ route('commitments.index') }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow block">
+                </a>
+                <a href="{{ route('commitments.index') }}" class="bg-white dark:bg-gray-800 rounded-2xl shadow-xs p-5 border border-gray-100 dark:border-gray-700 hover:shadow-md hover:border-rose-200 dark:hover:border-rose-800 transition-all block group">
                     <div class="flex items-center justify-between mb-3">
-                        <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
+                        <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center group-hover:scale-105 transition-transform">
                             <x-lucide-file-text class="w-5 h-5 text-rose-600 dark:text-rose-400" />
                         </div>
                     </div>
-                    <div class="text-2xl font-bold text-gray-900 dark:text-white">{{ $commitmentSummary['active_count'] }}</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-rose-600 dark:group-hover:text-rose-400 transition-colors">{{ $commitmentSummary['active_count'] }}</div>
                     <div class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5">Commitments</div>
                     <div class="text-xs text-rose-600 dark:text-rose-400 mt-1 tabular-nums">${{ number_format($commitmentSummary['total_balance_due'], 0) }} due</div>
                 </a>
@@ -856,7 +856,13 @@
                             </div>
                             <div class="p-4">
                                 @if ($businessEntities->isEmpty())
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No entities yet.</p>
+                                    <div class="text-center py-4">
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">No entities yet.</p>
+                                        <a href="{{ route('business-entities.create') }}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                                            <x-lucide-plus class="w-3.5 h-3.5" />
+                                            Add Entity
+                                        </a>
+                                    </div>
                                 @else
                                     <div class="space-y-2">
                                         @foreach ($businessEntities->take(3) as $entity)
@@ -881,7 +887,13 @@
                             </div>
                             <div class="p-4">
                                 @if ($assets->isEmpty())
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No assets yet.</p>
+                                    <div class="text-center py-4">
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">No assets yet.</p>
+                                        <a href="{{ $businessEntities->isNotEmpty() ? route('business-entities.assets.create', $businessEntities->first()->id) : route('business-entities.create') }}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
+                                            <x-lucide-plus class="w-3.5 h-3.5" />
+                                            Add Asset
+                                        </a>
+                                    </div>
                                 @else
                                     <div class="space-y-2">
                                         @foreach ($assets->take(3) as $asset)
@@ -906,7 +918,13 @@
                             </div>
                             <div class="p-4">
                                 @if ($uniquePersons->isEmpty())
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No persons yet.</p>
+                                    <div class="text-center py-4">
+                                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">No persons yet.</p>
+                                        <a href="{{ route('persons.create') }}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 hover:underline">
+                                            <x-lucide-plus class="w-3.5 h-3.5" />
+                                            Add Person
+                                        </a>
+                                    </div>
                                 @else
                                     <div class="space-y-2">
                                         @foreach ($uniquePersons->take(3) as $personData)
@@ -916,7 +934,7 @@
                                                     <div class="flex gap-1.5 mt-1">
                                                         <span class="text-xs text-gray-500 dark:text-gray-400">{{ $personData['totalRoles'] }} role{{ $personData['totalRoles'] != 1 ? 's' : '' }}</span>
                                                         @if($personData['activeRoles'] > 0)
-                                                            <span class="text-xs text-emerald-600 dark:text-emerald-400">&middot; {{ $personData['activeRoles'] }} active</span>
+                                                            &middot; <span class="text-xs text-emerald-600 dark:text-emerald-400">{{ $personData['activeRoles'] }} active</span>
                                                         @endif
                                                     </div>
                                                 </div>
@@ -957,6 +975,12 @@
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-violet-700 dark:group-hover:text-violet-300 transition-colors">Add Person</span>
                             </a>
+                            <button type="button" onclick="document.getElementById('add-transaction-btn')?.click()" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors group text-left">
+                                <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center shrink-0">
+                                    <x-lucide-clipboard class="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">Add Transaction</span>
+                            </button>
                             <a href="{{ route('emails.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
                                     <x-lucide-mail class="w-4 h-4 text-purple-600 dark:text-purple-400" />
@@ -990,17 +1014,23 @@
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">Transactions</span>
                             </a>
+                            <a href="{{ route('invoices.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors group">
+                                <div class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+                                    <x-lucide-file-text class="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-orange-700 dark:group-hover:text-orange-300 transition-colors">Invoices</span>
+                            </a>
                             <a href="{{ route('vendors.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-teal-50 dark:hover:bg-teal-900/20 transition-colors group">
                                 <div class="w-9 h-9 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center shrink-0">
                                     <x-lucide-truck class="w-4 h-4 text-teal-600 dark:text-teal-400" />
                                 </div>
                                 <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-teal-700 dark:group-hover:text-teal-300 transition-colors">Vendors</span>
                             </a>
-                            <a href="{{ route('invoices.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors group">
-                                <div class="w-9 h-9 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
-                                    <x-lucide-file-text class="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                            <a href="{{ route('commitments.index') }}" class="flex items-center gap-3 p-3 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors group">
+                                <div class="w-9 h-9 rounded-lg bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center shrink-0">
+                                    <x-lucide-calendar class="w-4 h-4 text-rose-600 dark:text-rose-400" />
                                 </div>
-                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-orange-700 dark:group-hover:text-orange-300 transition-colors">Invoices</span>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-rose-700 dark:group-hover:text-rose-300 transition-colors">Commitments</span>
                             </a>
                         </div>
                     </div>
