@@ -499,7 +499,9 @@ class AssetController extends Controller
             ]);
         }
 
-        return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])->with('success', 'Tenant added successfully!');
+        return redirect()
+            ->to(route('business-entities.assets.show', [$businessEntity->id, $asset->id]).'#tab_tenants')
+            ->with('success', 'Tenant added successfully!');
     }
 
     public function editTenant(BusinessEntity $businessEntity, Asset $asset, Tenant $tenant)
@@ -586,7 +588,9 @@ class AssetController extends Controller
             ]);
         }
 
-        return redirect()->route('business-entities.assets.show', [$businessEntity->id, $asset->id])->with('success', 'Lease added successfully!');
+        return redirect()
+            ->to(route('business-entities.assets.show', [$businessEntity->id, $asset->id]).'#tab_leases')
+            ->with('success', 'Lease added successfully!');
     }
 
     public function editLease(BusinessEntity $businessEntity, Asset $asset, Lease $lease)

@@ -544,7 +544,7 @@
                                             {{ __('Email templates') }}
                                         </a>
                                     </div>
-                                    @php($allocatedEmails = $businessEntity->mailMessages()->latest('sent_date')->with('labels')->paginate(10))
+                                    @php($allocatedEmails = $businessEntity->mailMessages()->latest('sent_date')->with('labels')->paginate(10)->fragment('tab_emails'))
                                     @if ($allocatedEmails->isEmpty())
                                         <p class="text-gray-500 dark:text-gray-400 text-center py-4">No emails allocated yet.</p>
                                     @else

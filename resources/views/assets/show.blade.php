@@ -99,6 +99,18 @@
                             <div class="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Quick actions</div>
                             <div class="flex flex-wrap gap-2">
                             @if ($asset->asset_type === 'Car')
+                                <button type="button" @click="setTab('tab_service')" class="asset-quick-action bg-blue-600 hover:bg-blue-700 text-white">
+                                    <x-lucide-wrench class="h-4 w-4" />
+                                    Service
+                                </button>
+                                <button type="button" @click="setTab('tab_registration')" class="asset-quick-action bg-emerald-600 hover:bg-emerald-700 text-white">
+                                    <x-lucide-file-badge class="h-4 w-4" />
+                                    Registration
+                                </button>
+                                <button type="button" @click="setTab('tab_insurance')" class="asset-quick-action bg-amber-600 hover:bg-amber-700 text-white">
+                                    <x-lucide-shield class="h-4 w-4" />
+                                    Insurance
+                                </button>
                                 <button type="button" @click="setTab('tab_documents')" class="asset-quick-action bg-violet-600 hover:bg-violet-700 text-white">
                                     <x-lucide-upload class="h-4 w-4" />
                                     Documents
@@ -868,7 +880,7 @@
                             <div id="tab_emails" class="tab-content" x-show="activeTab === $el.id" style="display: none;">
                                 <div class="asset-panel">
                                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Allocated Emails</h3>
-                                    @php($allocatedEmails = $asset->mailMessages()->latest('sent_date')->with('labels')->paginate(10))
+                                    @php($allocatedEmails = $asset->mailMessages()->latest('sent_date')->with('labels')->paginate(10)->fragment('tab_emails'))
                                     @if ($allocatedEmails->isEmpty())
                                         <div class="rounded-xl border border-dashed border-gray-200 bg-gray-50/80 px-6 py-12 text-center dark:border-gray-700 dark:bg-gray-800/40">
                                             <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-xs dark:bg-gray-900">
