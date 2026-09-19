@@ -39,6 +39,20 @@ class ChartOfAccount extends Model
     }
 
     /**
+     * Active income/expense accounts for dashboard allocation pickers.
+     *
+     * @return Collection<int, self>
+     */
+    public static function activePnlForSelect(): Collection
+    {
+        return static::query()
+            ->where('is_active', true)
+            ->whereIn('account_type', ['income', 'expense'])
+            ->orderBy('account_code')
+            ->get(['id', 'account_code', 'account_name', 'account_type', 'account_category']);
+    }
+
+    /**
      * Active income accounts (legacy helper; invoice lines use activeForSelect).
      *
      * @return Collection<int, self>

@@ -1,6 +1,6 @@
 {{--
     Allocation lines for the Dashboard add-transaction form (one bank-facing header + N P&L lines).
-    Expects Alpine parent with: lines, addLine, removeLine, typesFor, showRelatedEntity, recalcGst, totals, canAddLine
+    Expects Alpine parent with: lines, addLine, removeLine, accountsFor, showRelatedEntity, recalcGst, totals, canAddLine
 --}}
 @php
     $txnLabel = $txnLabel ?? 'block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5';
@@ -87,14 +87,14 @@
                     </div>
 
                     <div>
-                        <label class="{{ $txnLabel }}">Transaction Type</label>
-                        <select :name="'lines[' + index + '][transaction_type]'"
-                                x-model="line.transaction_type"
+                        <label class="{{ $txnLabel }}">Account</label>
+                        <select :name="'lines[' + index + '][chart_of_account_id]'"
+                                x-model="line.chart_of_account_id"
                                 required
                                 class="{{ $txnInput }}"
-                                @change="if (!showRelatedEntity(line.transaction_type)) line.related_entity_id = ''">
-                            <option value="">Select Type</option>
-                            <template x-for="opt in typesFor(line.direction)" :key="opt.value">
+                                @change="if (!showRelatedEntity(line)) line.related_entity_id = ''">
+                            <option value="">Select account</option>
+                            <template x-for="opt in accountsFor(line.direction)" :key="opt.value">
                                 <option :value="opt.value" x-text="opt.label"></option>
                             </template>
                         </select>
@@ -121,11 +121,11 @@
                                placeholder="e.g., INV-0042">
                     </div>
 
-                    <div class="md:col-span-2 lg:col-span-3" x-show="showRelatedEntity(line.transaction_type)" x-cloak>
+                    <div class="md:col-span-2 lg:col-span-3" x-show="showRelatedEntity(line)" x-cloak>
                         <label class="{{ $txnLabel }}">Related Entity</label>
                         <select :name="'lines[' + index + '][related_entity_id]'"
                                 x-model="line.related_entity_id"
-                                :required="showRelatedEntity(line.transaction_type)"
+                                :required="showRelatedEntity(line)"
                                 class="{{ $txnInput }}">
                             <option value="">Select Related Entity</option>
                             <template x-for="entity in relatedEntities" :key="entity.id">

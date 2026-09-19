@@ -564,6 +564,23 @@ class TransactionPostingService
 
             $counterAccount = $mapping[$type] ?? null;
 
+            if ($allocation->chart_of_account_id) {
+                $override = ChartOfAccount::query()->find($allocation->chart_of_account_id);
+                if ($override && $this->chartOverrideCompatibleWithMappedAccount($counterAccount, $override)) {
+                    $counterAccount = $override;
+                } elseif ($override) {
+                    Log::warning('TransactionPostingService: ignoring split line chart_of_account_id override that flips P&L/BS class', [
+                        'transaction_id' => $transaction->id,
+                        'transaction_line_id' => $allocation->id,
+                        'transaction_type' => $type,
+                        'mapped_account_id' => $counterAccount?->id,
+                        'mapped_account_type' => $counterAccount?->account_type,
+                        'override_account_id' => $override->id,
+                        'override_account_type' => $override->account_type,
+                    ]);
+                }
+            }
+
             if (! $counterAccount) {
                 Log::warning('TransactionPostingService: required GL accounts not found for split line', [
                     'transaction_id' => $transaction->id,

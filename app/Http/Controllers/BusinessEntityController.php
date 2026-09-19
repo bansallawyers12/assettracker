@@ -10,6 +10,7 @@ use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\BusinessEntityBankAccount;
+use App\Models\ChartOfAccount;
 use App\Models\Document;
 use App\Models\EmailTemplate;
 use App\Models\EntityPerson;
@@ -29,6 +30,7 @@ use App\Services\ComplianceYearService;
 use App\Services\DocumentUploadService;
 use App\Services\LoanOffsetTransactionGuard;
 use App\Services\TransactionPostingService;
+use App\Support\ChartAccountTransactionTypeMapper;
 use App\Support\SecurityAuditLogger;
 use App\Support\TableSort;
 use App\Support\TransactionCashParts;
@@ -870,7 +872,7 @@ class BusinessEntityController extends Controller
 
         $this->prepareTransactionUploadValidation($request, ['document', 'payment_document']);
 
-        $typeRule = 'required|in:'.implode(',', array_keys(Transaction::allTypes()));
+        $typeRule = 'nullable|in:'.implode(',', array_keys(Transaction::allTypes()));
 
         $request->validate(array_merge([
             'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
@@ -897,6 +899,12 @@ class BusinessEntityController extends Controller
             'lines.*.description' => 'nullable|string|max:255',
             'lines.*.vendor_id' => ['nullable', 'integer', Rule::exists('vendors', 'id')],
             'lines.*.invoice_number' => 'nullable|string|max:100',
+            'lines.*.direction' => 'nullable|in:income,expense',
+            'lines.*.chart_of_account_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('chart_of_accounts', 'id')->where(fn ($q) => $q->where('is_active', true)),
+            ],
             'lines.*.transaction_type' => $typeRule,
             'lines.*.related_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
             'lines.*.gst_amount' => 'nullable|numeric|min:0',
@@ -929,7 +937,7 @@ class BusinessEntityController extends Controller
                 ? Transaction::TYPE_SPLIT
                 : (string) $resolvedLines[0]['transaction_type'];
             $request->merge(['transaction_type' => $isSplit
-                ? $this->representativeTransactionTypeForBatch($lines)
+                ? $this->representativeTransactionTypeForBatch($resolvedLines)
                 : $representativeType]);
 
             $asset = $request->filled('asset_id')
@@ -1075,6 +1083,7 @@ class BusinessEntityController extends Controller
                         'vendor_name' => $line['vendor_name'],
                         'invoice_number' => $line['invoice_number'],
                         'transaction_type' => $line['transaction_type'],
+                        'chart_of_account_id' => $line['chart_of_account_id'],
                         'gst_amount' => $line['gst_amount'],
                         'gst_status' => $line['gst_status'],
                         'gst_basis' => $line['gst_basis'],
@@ -1099,6 +1108,7 @@ class BusinessEntityController extends Controller
                         'vendor_name' => null,
                         'invoice_number' => null,
                         'transaction_type' => Transaction::TYPE_SPLIT,
+                        'chart_of_account_id' => null,
                         'gst_amount' => null,
                         'gst_status' => 'gst_free',
                         'gst_basis' => null,
@@ -1109,6 +1119,7 @@ class BusinessEntityController extends Controller
                             'transaction_id' => $transaction->id,
                             'sort_order' => $index,
                             'transaction_type' => $line['transaction_type'],
+                            'chart_of_account_id' => $line['chart_of_account_id'],
                             'amount' => $line['amount'],
                             'gst_basis' => $line['gst_basis'],
                             'gst_amount' => $line['gst_amount'],
@@ -1455,11 +1466,7 @@ class BusinessEntityController extends Controller
             ->orderBy('legal_name')
             ->get();
 
-        $view = $transaction->isLinkedToBankStatement()
-            ? 'business-entities.bank-accounts.transactions.edit-from-statement'
-            : 'business-entities.bank-accounts.transactions.edit';
-
-        return view($view, compact(
+        return view('business-entities.bank-accounts.transactions.edit', compact(
             'businessEntity',
             'transaction',
             'payerOptions',
@@ -1488,8 +1495,7 @@ class BusinessEntityController extends Controller
         }
 
         $transaction->loadMissing(['lines', 'bankStatementEntries']);
-        $isStatementEdit = $request->input('edit_origin') === 'statement'
-            && $transaction->isLinkedToBankStatement();
+        $isStatementEdit = $transaction->isLinkedToBankStatement();
 
         if ($isStatementEdit) {
             $this->mergePreservedFieldsForStatementEdit($request, $transaction);
@@ -1539,7 +1545,7 @@ class BusinessEntityController extends Controller
             'comments' => ['nullable', 'string'],
         ], $this->transactionReceiptUploadRules(false)), $this->transactionReceiptValidationMessages());
 
-        if (! $isSplit && ! $isStatementEdit) {
+        if (! $isSplit) {
             $this->validateTransactionGstBasis($request);
         }
 
@@ -1547,6 +1553,16 @@ class BusinessEntityController extends Controller
             $data['date'] = $transaction->date->toDateString();
             if (! $isSplit) {
                 $data['amount'] = $transaction->amount;
+            }
+            $data['payment_status'] = $transaction->payment_status ?? 'paid';
+            $data['payment_channel'] = $transaction->payment_channel;
+            $data['paid_at'] = $transaction->paid_at?->toDateString();
+            $data['payment_method'] = $transaction->payment_method;
+
+            if (($data['gst_basis'] ?? null) === 'exclusive') {
+                throw ValidationException::withMessages([
+                    'gst_basis' => 'GST exclusive cannot be used while this line is matched to a bank statement. Use Inclusive or Manual (GST included in the bank amount), or Unmatch to change cash.',
+                ]);
             }
         }
 
@@ -1629,14 +1645,6 @@ class BusinessEntityController extends Controller
                     'gst_status' => 'gst_free',
                     'gst_basis' => null,
                 ];
-            } elseif ($isStatementEdit) {
-                $data['counterpart_bank_account_id'] = null;
-                $data['transfer_group_id'] = null;
-                $gstResolved = [
-                    'gst_amount' => $transaction->gst_amount !== null ? (float) $transaction->gst_amount : null,
-                    'gst_status' => $transaction->gst_status,
-                    'gst_basis' => $transaction->gst_basis,
-                ];
             } else {
                 $data['counterpart_bank_account_id'] = null;
                 $data['transfer_group_id'] = null;
@@ -1677,10 +1685,6 @@ class BusinessEntityController extends Controller
         }
 
         $paidBy = $this->validatedPaidBy($request, requireWhenPaid: ! $isStatementEdit);
-        if ($isStatementEdit && ($paidBy === null || trim($paidBy) === '')) {
-            $paidBy = $transaction->paid_by;
-        }
-
         $bankAccountId = $this->resolveBankAccountIdForTransactionSave(
             $request,
             $transaction,
@@ -1688,7 +1692,8 @@ class BusinessEntityController extends Controller
             requireWhenPaid: ! $isStatementEdit
         );
 
-        if ($isStatementEdit && $bankAccountId === null && $transaction->bank_account_id) {
+        if ($isStatementEdit) {
+            $paidBy = $transaction->paid_by;
             $bankAccountId = $transaction->bank_account_id;
         }
 
@@ -3576,7 +3581,7 @@ class BusinessEntityController extends Controller
             if (! is_array($line)) {
                 continue;
             }
-            foreach (['vendor_id', 'related_entity_id', 'gst_amount', 'invoice_number', 'description'] as $key) {
+            foreach (['vendor_id', 'related_entity_id', 'gst_amount', 'invoice_number', 'description', 'chart_of_account_id'] as $key) {
                 if (array_key_exists($key, $line) && $line[$key] === '') {
                     $lines[$i][$key] = null;
                 }
@@ -3602,7 +3607,7 @@ class BusinessEntityController extends Controller
         $isSplit = count($lines) > 1;
 
         foreach ($lines as $index => $line) {
-            $type = (string) ($line['transaction_type'] ?? '');
+            $type = $this->resolvedDashboardLineTransactionType($line, $index);
             $gstAmount = $line['gst_amount'] ?? null;
             $hasGstAmount = $gstAmount !== null && $gstAmount !== '' && is_numeric($gstAmount) && round((float) $gstAmount, 2) > 0;
             $basis = $line['gst_basis'] ?? null;
@@ -3643,16 +3648,54 @@ class BusinessEntityController extends Controller
 
             if ($isSplit && in_array($type, $relatedPartyTypes, true)) {
                 throw ValidationException::withMessages([
-                    "lines.{$index}.transaction_type" => 'Director loan types cannot be used as allocations on a split remittance. Enter them as a separate single transaction.',
+                    "lines.{$index}.chart_of_account_id" => 'Director loan accounts cannot be used as allocations on a split remittance. Enter them as a separate single transaction.',
                 ]);
             }
 
             if (Transaction::isInternalTransfer($type)) {
                 throw ValidationException::withMessages([
-                    "lines.{$index}.transaction_type" => 'Internal transfers must be entered from a bank account so you can choose the counterpart account.',
+                    "lines.{$index}.chart_of_account_id" => 'Internal transfers must be entered from a bank account so you can choose the counterpart account.',
                 ]);
             }
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $line
+     */
+    private function resolvedDashboardLineTransactionType(array $line, int $index): string
+    {
+        $chartAccountId = $line['chart_of_account_id'] ?? null;
+        if ($chartAccountId !== null && $chartAccountId !== '') {
+            $account = ChartOfAccount::query()->find((int) $chartAccountId);
+            if (! $account || ! $account->is_active) {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.chart_of_account_id" => 'Select an active chart of accounts row.',
+                ]);
+            }
+
+            $direction = $line['direction'] ?? null;
+            if (! in_array($direction, ['income', 'expense'], true)) {
+                $direction = $account->account_type === 'income' ? 'income' : 'expense';
+            }
+
+            if (! ChartAccountTransactionTypeMapper::isAllowedForDirection($account, $direction)) {
+                throw ValidationException::withMessages([
+                    "lines.{$index}.chart_of_account_id" => 'That account does not match the selected income/expense direction.',
+                ]);
+            }
+
+            return ChartAccountTransactionTypeMapper::typeFor($account, $direction);
+        }
+
+        $type = (string) ($line['transaction_type'] ?? '');
+        if ($type === '' || ! array_key_exists($type, Transaction::allTypes())) {
+            throw ValidationException::withMessages([
+                "lines.{$index}.chart_of_account_id" => 'Select a chart of accounts row for this allocation.',
+            ]);
+        }
+
+        return $type;
     }
 
     /**
@@ -3676,6 +3719,7 @@ class BusinessEntityController extends Controller
      * @param  list<array<string, mixed>>  $lines
      * @return list<array{
      *     transaction_type: string,
+     *     chart_of_account_id: ?int,
      *     amount: float,
      *     description: ?string,
      *     vendor_id: ?int,
@@ -3693,9 +3737,15 @@ class BusinessEntityController extends Controller
     {
         $resolved = [];
 
-        foreach ($lines as $line) {
-            $type = (string) $line['transaction_type'];
-            $direction = Transaction::directionFromType($type);
+        foreach ($lines as $index => $line) {
+            $chartAccountId = isset($line['chart_of_account_id']) && $line['chart_of_account_id'] !== null && $line['chart_of_account_id'] !== ''
+                ? (int) $line['chart_of_account_id']
+                : null;
+            $type = $this->resolvedDashboardLineTransactionType($line, $index);
+            $direction = $line['direction'] ?? null;
+            if (! in_array($direction, ['income', 'expense'], true)) {
+                $direction = Transaction::directionFromType($type);
+            }
             $gstResolved = TransactionGstResolver::resolve(
                 (float) $line['amount'],
                 ! empty($line['gst_basis']) ? (string) $line['gst_basis'] : null,
@@ -3716,6 +3766,7 @@ class BusinessEntityController extends Controller
             $relatedId = $line['related_entity_id'] ?? null;
             $resolved[] = [
                 'transaction_type' => $type,
+                'chart_of_account_id' => $chartAccountId,
                 'amount' => round((float) $line['amount'], 2),
                 'description' => isset($line['description']) && $line['description'] !== ''
                     ? (string) $line['description']
@@ -3874,7 +3925,8 @@ class BusinessEntityController extends Controller
     }
 
     /**
-     * Statement classify-edit does not post payment/GST/vendor. Keep those values so update does not wipe them.
+     * Statement-linked edits lock cash identity (date, amount, payment, bank, paid-by).
+     * GST, vendor, and invoice come from the form.
      */
     private function mergePreservedFieldsForStatementEdit(Request $request, Transaction $transaction): void
     {
@@ -3891,10 +3943,6 @@ class BusinessEntityController extends Controller
             'paid_by_select' => $pbSplit['select'],
             'paid_by_other' => $pbSplit['other'],
             'bank_account_id' => $transaction->bank_account_id,
-            'gst_basis' => $transaction->gst_basis,
-            'gst_amount' => $transaction->gst_amount,
-            'invoice_number' => $transaction->invoice_number,
-            'vendor_id' => $transaction->vendor_id,
         ]);
     }
 

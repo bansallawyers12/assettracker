@@ -87,7 +87,7 @@ it('registers match correction service and routes', function () {
     $list = file_get_contents(resource_path('views/bank-accounts/partials/transactions-list.blade.php'));
     $panel = file_get_contents(resource_path('views/bank-accounts/partials/transactions-panel.blade.php'));
     $js = file_get_contents(resource_path('js/bank-account-modal.js'));
-    $edit = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/edit-from-statement.blade.php'));
+    $edit = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/edit.blade.php'));
 
     expect($list)->toContain('data-bank-tx-unmatch')
         ->and($list)->toContain('data-bank-tx-remove-and-redo')

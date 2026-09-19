@@ -83,18 +83,13 @@
                             : "Could not save reminder:\n" . implode("\n", $errors->all());
                     }
 
-                    $dashboardTypeGroups = [];
-                    foreach (\App\Models\Transaction::typeSelectGroups() as $groupLabel => $types) {
-                        $options = [];
-                        foreach ($types as $value => $label) {
-                            $options[] = [
-                                'value' => $value,
-                                'label' => $label,
-                                'direction' => array_key_exists($value, \App\Models\Transaction::$incomeTypes) ? 'income' : 'expense',
-                            ];
-                        }
-                        $dashboardTypeGroups[] = ['label' => $groupLabel, 'options' => $options];
-                    }
+                    $dashboardChartAccounts = \App\Models\ChartOfAccount::activePnlForSelect()->map(fn ($account) => [
+                        'id' => $account->id,
+                        'code' => $account->account_code,
+                        'name' => $account->account_name,
+                        'direction' => $account->account_type,
+                        'label' => $account->account_code.' — '.$account->account_name,
+                    ])->values();
 
                     $dashboardVendorsJson = $vendors->map(fn ($v) => ['id' => $v->id, 'name' => $v->name])->values();
                     $dashboardRelatedEntitiesJson = $businessEntities->sortBy('legal_name')->map(fn ($e) => [
@@ -116,7 +111,7 @@
                             'amount' => old('amount', session('transactionData.amount', '')),
                             'description' => old('description', session('transactionData.description', '')),
                             'vendor_id' => (string) old('vendor_id', session('transactionData.vendor_id', '')),
-                            'transaction_type' => $seedType,
+                            'chart_of_account_id' => (string) old('chart_of_account_id', session('transactionData.chart_of_account_id', '')),
                             'invoice_number' => old('invoice_number', session('transactionData.invoice_number', '')),
                             'related_entity_id' => (string) old('related_entity_id', session('transactionData.related_entity_id', '')),
                             'gst_basis' => old('gst_basis', session('transactionData.gst_basis', 'none')) ?: 'none',
@@ -141,7 +136,9 @@
                                 'amount' => $line['amount'] ?? '',
                                 'description' => $line['description'] ?? '',
                                 'vendor_id' => isset($line['vendor_id']) && $line['vendor_id'] !== null ? (string) $line['vendor_id'] : '',
-                                'transaction_type' => $type,
+                                'chart_of_account_id' => isset($line['chart_of_account_id']) && $line['chart_of_account_id'] !== null
+                                    ? (string) $line['chart_of_account_id']
+                                    : '',
                                 'invoice_number' => $line['invoice_number'] ?? '',
                                 'related_entity_id' => isset($line['related_entity_id']) && $line['related_entity_id'] !== null ? (string) $line['related_entity_id'] : '',
                                 'gst_basis' => $gstBasis,
@@ -152,27 +149,23 @@
 
                     $dashboardTxnBatchConfig = [
                         'initialLines' => $oldLines,
-                        'typeGroups' => $dashboardTypeGroups,
+                        'chartAccounts' => $dashboardChartAccounts->all(),
                         'vendors' => $dashboardVendorsJson->all(),
                         'relatedEntities' => $dashboardRelatedEntitiesJson->all(),
                         'maxLines' => 20,
-                        'relatedPartyTypes' => \App\Models\Transaction::directorLoanRelatedPartyTypes(),
+                        'directorLoanAccountCodes' => ['2500'],
                     ];
                 @endphp
                 <script>
                     window.dashboardTxnBatch = function (config) {
-                        const buildFlatTypes = (typeGroups, direction) => {
-                            const rows = [];
-                            (typeGroups || []).forEach((group) => {
-                                (group.options || []).forEach((opt) => {
-                                    if (opt.direction !== direction) return;
-                                    rows.push({
-                                        value: opt.value,
-                                        label: opt.label + ' — ' + group.label,
-                                    });
-                                });
-                            });
-                            return rows;
+                        const buildFlatAccounts = (accounts, direction) => {
+                            return (accounts || [])
+                                .filter((opt) => opt.direction === direction)
+                                .map((opt) => ({
+                                    value: String(opt.id),
+                                    label: opt.label,
+                                    code: opt.code,
+                                }));
                         };
 
                         const blankLine = (seed = {}) => {
@@ -186,7 +179,9 @@
                                 amount: seed.amount ?? '',
                                 description: seed.description ?? '',
                                 vendor_id: seed.vendor_id != null && seed.vendor_id !== '' ? String(seed.vendor_id) : '',
-                                transaction_type: seed.transaction_type ?? '',
+                                chart_of_account_id: seed.chart_of_account_id != null && seed.chart_of_account_id !== ''
+                                    ? String(seed.chart_of_account_id)
+                                    : '',
                                 invoice_number: seed.invoice_number ?? '',
                                 related_entity_id: seed.related_entity_id != null && seed.related_entity_id !== '' ? String(seed.related_entity_id) : '',
                                 gst_basis: gstBasis,
@@ -195,16 +190,16 @@
                             };
                         };
 
-                        const typeGroups = config.typeGroups || [];
+                        const chartAccounts = config.chartAccounts || [];
+                        const directorLoanCodes = new Set(config.directorLoanAccountCodes || ['2500']);
 
                         return {
                             lines: (config.initialLines || []).map((line) => blankLine(line)),
                             vendors: config.vendors || [],
                             relatedEntities: config.relatedEntities || [],
                             maxLines: config.maxLines || 20,
-                            relatedPartyTypes: config.relatedPartyTypes || [],
-                            incomeTypes: buildFlatTypes(typeGroups, 'income'),
-                            expenseTypes: buildFlatTypes(typeGroups, 'expense'),
+                            incomeAccounts: buildFlatAccounts(chartAccounts, 'income'),
+                            expenseAccounts: buildFlatAccounts(chartAccounts, 'expense'),
                             get canAddLine() {
                                 return this.lines.length < this.maxLines;
                             },
@@ -231,20 +226,25 @@
                             get submitLabel() {
                                 return 'Save transaction';
                             },
-                            typesFor(direction) {
-                                return direction === 'income' ? this.incomeTypes : this.expenseTypes;
+                            accountsFor(direction) {
+                                return direction === 'income' ? this.incomeAccounts : this.expenseAccounts;
                             },
-                            showRelatedEntity(type) {
-                                return this.relatedPartyTypes.includes(type);
+                            accountCodeFor(line) {
+                                if (!line || !line.chart_of_account_id) return '';
+                                const match = this.accountsFor(line.direction).find((o) => o.value === String(line.chart_of_account_id));
+                                return match ? match.code : '';
+                            },
+                            showRelatedEntity(line) {
+                                return directorLoanCodes.has(this.accountCodeFor(line));
                             },
                             onDirectionChange(index) {
                                 const line = this.lines[index];
                                 if (!line) return;
-                                const allowed = new Set(this.typesFor(line.direction).map((o) => o.value));
-                                if (line.transaction_type && !allowed.has(line.transaction_type)) {
-                                    line.transaction_type = '';
+                                const allowed = new Set(this.accountsFor(line.direction).map((o) => o.value));
+                                if (line.chart_of_account_id && !allowed.has(String(line.chart_of_account_id))) {
+                                    line.chart_of_account_id = '';
                                 }
-                                if (!this.showRelatedEntity(line.transaction_type)) {
+                                if (!this.showRelatedEntity(line)) {
                                     line.related_entity_id = '';
                                 }
                                 this.updatePaidByLabel();

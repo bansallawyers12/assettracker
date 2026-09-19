@@ -12,6 +12,7 @@ class TransactionLine extends Model
         'transaction_id',
         'sort_order',
         'transaction_type',
+        'chart_of_account_id',
         'amount',
         'gst_basis',
         'gst_amount',
@@ -37,6 +38,11 @@ class TransactionLine extends Model
     public function vendor(): BelongsTo
     {
         return $this->belongsTo(Vendor::class);
+    }
+
+    public function chartOfAccount(): BelongsTo
+    {
+        return $this->belongsTo(ChartOfAccount::class);
     }
 
     public function relatedEntity(): BelongsTo

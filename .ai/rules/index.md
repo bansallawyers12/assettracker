@@ -20,4 +20,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Support/TransactionGstResolver.php | .ai/rules/support.md |
 | resources/views/business-entities/bank-accounts/transactions/** | .ai/rules/transactions.md |
 | resources/views/vendors/**, resources/js/vendors-workspace.js, app/Http/Controllers/VendorController.php, app/Http/Controllers/VendorsWorkspaceController.php | .ai/rules/vendors.md |
+| resources/views/partials/dashboard-transaction-lines.blade.php | .ai/rules/views-partials.md |
 | resources/views/**/*.blade.php | .ai/rules/views.md |
