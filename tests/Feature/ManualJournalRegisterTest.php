@@ -291,6 +291,30 @@ it('scopes hub journal detail account transactions to that journal entity', func
         ->assertSee(e($accountTransactionsUrl), false);
 });
 
+it('shows add line controls on create and edit journal forms', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-ADDLINE-UI');
+
+    $this->actingAs($user)
+        ->get(route('business-entities.financial-reports.journal-entries.create', $entity))
+        ->assertSuccessful()
+        ->assertSee('Add line')
+        ->assertSee('window.manualJournalLinesForm', false)
+        ->assertSee('Use Add line for extra rows');
+
+    $this->actingAs($user)
+        ->get(route('business-entities.financial-reports.journal-entries.edit', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]))
+        ->assertSuccessful()
+        ->assertSee('Edit manual journal')
+        ->assertSee('Add line')
+        ->assertSee('window.manualJournalLinesForm', false);
+});
+
 it('updates a manual journal in place', function () {
     $this->seed(ChartOfAccountSeeder::class);
     $user = manualJournalUser();
@@ -323,6 +347,45 @@ it('updates a manual journal in place', function () {
         ->and($entry->description)->toBe('Updated manual journal')
         ->and($entry->entry_date->toDateString())->toBe('2026-08-16')
         ->and($entry->journalLines)->toHaveCount(2);
+});
+
+it('updates a manual journal with more than four lines', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = manualJournalUser();
+    $entity = manualJournalEntity();
+    $entry = postManualJournal($entity, 'MAN-MANYLINES');
+    ['bank' => $bank, 'equity' => $equity] = manualJournalAccounts();
+    $asset = ChartOfAccount::query()->where('account_code', '1500')->firstOrFail();
+    $drawings = ChartOfAccount::query()->where('account_code', '2500')->firstOrFail();
+
+    $this->actingAs($user)
+        ->put(route('business-entities.financial-reports.journal-entries.update', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]), [
+            'business_entity_id' => $entity->id,
+            'entry_date' => '2026-08-18',
+            'description' => 'Multi-line property purchase',
+            'reference_number' => 'MAN-MANYLINES',
+            'lines' => [
+                ['chart_of_account_id' => $asset->id, 'debit' => 500, 'credit' => 0, 'description' => 'Asset'],
+                ['chart_of_account_id' => $bank->id, 'debit' => 0, 'credit' => 300, 'description' => 'Bank'],
+                ['chart_of_account_id' => $drawings->id, 'debit' => 0, 'credit' => 100, 'description' => 'Deposit'],
+                ['chart_of_account_id' => $equity->id, 'debit' => 0, 'credit' => 50, 'description' => 'Equity'],
+                ['chart_of_account_id' => $bank->id, 'debit' => 0, 'credit' => 50, 'description' => 'Fees'],
+                ['chart_of_account_id' => '', 'debit' => '', 'credit' => ''],
+            ],
+        ])
+        ->assertRedirect(route('business-entities.financial-reports.journal-entries.show', [
+            'businessEntity' => $entity,
+            'journalEntry' => $entry,
+        ]));
+
+    $entry->refresh()->load('journalLines');
+
+    expect((float) $entry->total_debit)->toBe(500.0)
+        ->and((float) $entry->total_credit)->toBe(500.0)
+        ->and($entry->journalLines)->toHaveCount(5);
 });
 
 it('posts a reversing journal with flipped debits and credits', function () {
