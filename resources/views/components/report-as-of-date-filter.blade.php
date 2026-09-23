@@ -5,13 +5,14 @@
     'query' => [],
     'label' => 'Date',
     'hint' => 'Overdue and due soon use this date.',
+    'shortcuts' => null,
 ])
 
 @php
     $dateValue = $value instanceof \Carbon\Carbon
         ? $value->toDateString()
         : (string) $value;
-    $shortcuts = \App\Support\FinancialYear::asOfShortcuts();
+    $shortcuts = $shortcuts ?? \App\Support\FinancialYear::asOfShortcuts();
     $inputId = $attributes->get('id', $name);
     $controlClass = 'border border-gray-300 rounded-md text-sm px-2.5 py-1.5 bg-white text-gray-900 shadow-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500';
     $shortcutClass = 'inline-flex h-[34px] items-center text-xs font-medium rounded-md px-2.5 border whitespace-nowrap transition-colors focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:ring-offset-1';

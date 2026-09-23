@@ -145,4 +145,20 @@ class FinancialYear
             'End of last FY' => self::previousEnd($date)->toDateString(),
         ];
     }
+
+    /**
+     * Point-in-time dates for lodgement status. Excludes future year-end and month-end,
+     * which describe a balance sheet rather than what is outstanding today.
+     *
+     * @return array<string, string>
+     */
+    public static function lodgementAsOfShortcuts(?Carbon $date = null): array
+    {
+        $date = $date ?? now();
+
+        return [
+            'Today' => $date->copy()->toDateString(),
+            'End of last FY' => self::previousEnd($date)->toDateString(),
+        ];
+    }
 }

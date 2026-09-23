@@ -514,6 +514,76 @@ class ComplianceReportService
     }
 
     /**
+     * Counts of entities missing a lodgement, and how many of those lodgements are tax returns, GST, or ASIC.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @param  list<string>  $obligationKeys
+     * @return array{
+     *     entities: int,
+     *     obligations: list<array{key: string, label: string, count: int}>
+     * }
+     */
+    public function pendingLodgementSummary(array $rows, array $obligationKeys): array
+    {
+        $families = [
+            self::OBLIGATION_ITR => 'Tax return',
+            self::OBLIGATION_BAS => 'GST',
+            self::OBLIGATION_ASIC => 'ASIC',
+        ];
+        $counts = array_fill_keys(array_keys($families), 0);
+        $entityIds = [];
+
+        foreach ($rows as $row) {
+            if (! ($row['is_pending'] ?? false)) {
+                continue;
+            }
+
+            $family = $this->obligationFamily((string) ($row['obligation_code'] ?? ''));
+            if ($family === null || ! array_key_exists($family, $counts)) {
+                continue;
+            }
+
+            $counts[$family]++;
+            $entityIds[$row['entity_id']] = true;
+        }
+
+        $obligations = [];
+        foreach ($families as $key => $label) {
+            if (! in_array($key, $obligationKeys, true)) {
+                continue;
+            }
+
+            $obligations[] = [
+                'key' => $key,
+                'label' => $label,
+                'count' => $counts[$key],
+            ];
+        }
+
+        return [
+            'entities' => count($entityIds),
+            'obligations' => $obligations,
+        ];
+    }
+
+    private function obligationFamily(string $code): ?string
+    {
+        if ($code === 'itr') {
+            return self::OBLIGATION_ITR;
+        }
+
+        if ($code === 'bas_annual' || str_starts_with($code, 'bas_')) {
+            return self::OBLIGATION_BAS;
+        }
+
+        if (str_starts_with($code, 'asic_')) {
+            return self::OBLIGATION_ASIC;
+        }
+
+        return null;
+    }
+
+    /**
      * Pending means overdue, due within 30 days, lodged but unpaid,
      * or missing once the financial year has ended and no future due date applies.
      */

@@ -75,6 +75,18 @@ class FinancialYearTest extends TestCase
         $this->assertSame('2025-06-30', $shortcuts['End of last FY']);
     }
 
+    public function test_lodgement_as_of_shortcuts_are_today_and_last_fy_end(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-23'));
+
+        $shortcuts = FinancialYear::lodgementAsOfShortcuts();
+
+        $this->assertSame([
+            'Today' => '2026-09-23',
+            'End of last FY' => '2026-06-30',
+        ], $shortcuts);
+    }
+
     protected function tearDown(): void
     {
         Carbon::setTestNow();

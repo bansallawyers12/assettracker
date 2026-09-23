@@ -74,7 +74,7 @@ class ComplianceReportController extends Controller
         }
 
         $availableYears = $this->yearService->listAvailableYears();
-        [$fyFrom, $fyTo] = $this->resolveFyRange($request, $availableYears);
+        [$fyFrom, $fyTo, $yearPreset] = $this->resolveFyRange($request, $availableYears);
 
         $obligationKeys = $this->reportService->normalizeObligationKeys(
             array_values(array_filter((array) $request->input('obligations', ComplianceReportService::DEFAULT_OBLIGATIONS)))
@@ -103,40 +103,34 @@ class ComplianceReportController extends Controller
         $listedGroups = array_values(array_filter($entityGroups, fn (array $group): bool => $group['listed']));
         $upToDateGroups = array_values(array_filter($entityGroups, fn (array $group): bool => ! $group['listed']));
         $entityPaginator = $this->paginateReportRows($request, $listedGroups);
-        $pendingEntityCount = count(array_filter($entityGroups, fn (array $group): bool => $group['has_pending']));
-        $pendingCounts = array_fill_keys(ComplianceReportService::PENDING_STATUS_ORDER, 0);
-        foreach ($report['rows'] as $row) {
-            if (($row['is_pending'] ?? false) && isset($pendingCounts[$row['status']])) {
-                $pendingCounts[$row['status']]++;
-            }
-        }
+        $lodgementSummary = $this->reportService->pendingLodgementSummary($report['rows'], $obligationKeys);
+        $pendingEntityCount = $lodgementSummary['entities'];
 
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
         $formsScope = $request->input('scope') === 'selected' ? 'selected' : 'all';
         $formsEntityIds = $formsScope === 'selected' ? ($entityIds ?? []) : [];
 
         $obligationOptions = [
-            ComplianceReportService::OBLIGATION_ITR => 'ITR',
-            ComplianceReportService::OBLIGATION_BAS => 'BAS',
+            ComplianceReportService::OBLIGATION_ITR => 'Tax return',
+            ComplianceReportService::OBLIGATION_BAS => 'GST',
             ComplianceReportService::OBLIGATION_ASIC => 'ASIC',
         ];
 
         $statusOptions = [
-            'all' => 'All statuses',
-            ComplianceReportService::STATUS_MISSING => 'Missing',
-            ComplianceReportService::STATUS_UPLOADED => 'Uploaded',
+            'all' => 'Outstanding',
             ComplianceReportService::STATUS_OVERDUE => 'Overdue',
             ComplianceReportService::STATUS_DUE_SOON => 'Due soon',
             ComplianceReportService::STATUS_LODGED_UNPAID => 'Lodged, unpaid',
-            ComplianceReportService::STATUS_COMPLETE => 'Complete',
         ];
+
+        $lodgementDateShortcuts = FinancialYear::lodgementAsOfShortcuts();
 
         return view('compliance-reports.ato-lodgements', compact(
             'report',
             'entityPaginator',
             'upToDateGroups',
             'pendingEntityCount',
-            'pendingCounts',
+            'lodgementSummary',
             'listingPending',
             'businessEntities',
             'formsScope',
@@ -146,7 +140,9 @@ class ComplianceReportController extends Controller
             'statusOptions',
             'obligationKeys',
             'statusFilter',
-            'asOfDate'
+            'asOfDate',
+            'yearPreset',
+            'lodgementDateShortcuts'
         ));
     }
 
@@ -187,26 +183,61 @@ class ComplianceReportController extends Controller
 
     /**
      * @param  array<int, array{start: string, end: string, label: string}>  $availableYears
-     * @return array{0: Carbon, 1: Carbon}
+     * @return array{0: Carbon, 1: Carbon, 2: string}
      */
     private function resolveFyRange(Request $request, array $availableYears): array
     {
+        $current = FinancialYear::currentStart();
         $oldest = isset($availableYears[array_key_last($availableYears)])
             ? $this->yearService->normalizeFyStart($availableYears[array_key_last($availableYears)]['start'])
-            : FinancialYear::currentStart();
+            : $current->copy();
         $newest = isset($availableYears[0])
             ? $this->yearService->normalizeFyStart($availableYears[0]['start'])
-            : FinancialYear::currentStart();
+            : $current->copy();
 
-        $fyFrom = $oldest;
-        $fyTo = $newest;
+        $preset = $request->query('years');
+        if ($preset === 'custom') {
+            return [...$this->customFyRange($request, $oldest, $newest), 'custom'];
+        }
+
+        if (! in_array($preset, ['this', 'recent', 'all'], true)) {
+            $preset = 'recent';
+        }
+
+        $recentFrom = $current->copy()->subYears(2);
+        if ($recentFrom->lt($oldest)) {
+            $recentFrom = $oldest->copy();
+        }
+
+        $thisYear = $current->lt($oldest) ? $oldest->copy() : ($current->gt($newest) ? $newest->copy() : $current->copy());
+
+        [$fyFrom, $fyTo] = match ($preset) {
+            'this' => [$thisYear, $thisYear->copy()],
+            'all' => [$oldest, $newest],
+            default => [$recentFrom, $newest->gt($thisYear) ? $thisYear->copy() : $newest->copy()],
+        };
+
+        if ($fyFrom->gt($fyTo)) {
+            [$fyFrom, $fyTo] = [$fyTo, $fyFrom];
+        }
+
+        return [$fyFrom, $fyTo, $preset];
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    private function customFyRange(Request $request, Carbon $oldest, Carbon $newest): array
+    {
+        $fyFrom = $oldest->copy();
+        $fyTo = $newest->copy();
 
         try {
             if ($request->query('fy_from')) {
                 $fyFrom = $this->yearService->normalizeFyStart(Carbon::parse($request->query('fy_from')));
             }
         } catch (\Throwable) {
-            $fyFrom = $oldest;
+            $fyFrom = $oldest->copy();
         }
 
         try {
@@ -214,7 +245,7 @@ class ComplianceReportController extends Controller
                 $fyTo = $this->yearService->normalizeFyStart(Carbon::parse($request->query('fy_to')));
             }
         } catch (\Throwable) {
-            $fyTo = $newest;
+            $fyTo = $newest->copy();
         }
 
         if ($fyFrom->gt($fyTo)) {

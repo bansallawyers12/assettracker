@@ -77,19 +77,48 @@
                 />
             </section>
 
-            {{-- Period & status --}}
             <section class="px-4 py-4 sm:px-5">
-                <div class="grid gap-4 xl:grid-cols-12 xl:items-end">
-                    <div class="xl:col-span-5">
+                <div class="grid gap-4 lg:grid-cols-12 lg:items-end">
+                    <div class="lg:col-span-6">
                         <x-report-as-of-date-filter
                             :value="$asOfDate"
                             route="financial-reports.ato-lodgements"
                             :query="request()->query()"
+                            label="As at"
+                            hint="Overdue and due soon are counted from this date."
+                            :shortcuts="$lodgementDateShortcuts"
                         />
                     </div>
 
-                    <div class="xl:col-span-4">
-                        <x-report-filter-field label="Financial year range">
+                    <div class="lg:col-span-3">
+                        <x-report-filter-field label="Years" for="years" hint="Which financial years to include.">
+                            <select name="years" id="years" class="{{ $selectClass }}">
+                                <option value="this" @selected($yearPreset === 'this')>This year</option>
+                                <option value="recent" @selected($yearPreset === 'recent')>Last 3 years</option>
+                                <option value="all" @selected($yearPreset === 'all')>All years</option>
+                                @if($yearPreset === 'custom')
+                                    <option value="custom" selected>Custom range</option>
+                                @endif
+                            </select>
+                        </x-report-filter-field>
+                    </div>
+
+                    <div class="lg:col-span-3">
+                        <x-report-filter-field label="Show" for="status" hint="Outstanding is anything still to lodge or pay.">
+                            <select name="status" id="status" class="{{ $selectClass }}">
+                                @foreach($statusOptions as $value => $label)
+                                    <option value="{{ $value }}" @selected($selectedStatus === $value)>
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </x-report-filter-field>
+                    </div>
+                </div>
+
+                @if($yearPreset === 'custom')
+                    <div class="mt-4 max-w-md">
+                        <x-report-filter-field label="Custom year range">
                             <div class="flex items-center gap-2">
                                 <select name="fy_from" id="fy_from" class="{{ $selectClass }} min-w-[7.5rem]">
                                     @foreach($availableYears as $year)
@@ -109,25 +138,12 @@
                             </div>
                         </x-report-filter-field>
                     </div>
-
-                    <div class="xl:col-span-3">
-                        <x-report-filter-field label="Status" for="status">
-                            <select name="status" id="status" class="{{ $selectClass }}">
-                                @foreach($statusOptions as $value => $label)
-                                    <option value="{{ $value }}" @selected($selectedStatus === $value)>
-                                        {{ $label }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </x-report-filter-field>
-                    </div>
-                </div>
+                @endif
             </section>
 
-            {{-- Obligations & actions --}}
             <section class="px-4 py-4 sm:px-5">
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                    <x-report-filter-field label="Obligations" class="min-w-0">
+                    <x-report-filter-field label="Lodgement" class="min-w-0">
                         <div class="flex flex-wrap gap-2">
                             @foreach($obligationOptions as $key => $label)
                                 <label class="inline-flex cursor-pointer items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-medium text-gray-600 transition-colors select-none hover:border-gray-300 hover:bg-white has-checked:border-indigo-500 has-checked:bg-indigo-50 has-checked:text-indigo-700 has-checked:ring-1 has-checked:ring-indigo-500/20">
@@ -166,35 +182,19 @@
     @include('compliance-reports.partials.formation-date-warning')
 
     @if($listingPending)
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-6 py-5 border-b border-gray-100 bg-gray-50/70">
+        <div class="grid grid-cols-2 gap-4 border-b border-gray-100 bg-gray-50/70 px-6 py-5 sm:grid-cols-4">
             <div class="text-center">
-                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Entities pending</p>
-                <p class="text-2xl font-bold text-gray-800 mt-0.5" data-pending-entity-count>{{ $pendingEntityCount }}</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Entities missing lodgements</p>
+                <p class="mt-0.5 text-2xl font-bold {{ $lodgementSummary['entities'] > 0 ? 'text-gray-800' : 'text-gray-400' }}" data-pending-entity-count>{{ $lodgementSummary['entities'] }}</p>
             </div>
-            <div class="text-center">
-                <p class="text-xs font-semibold uppercase tracking-wide text-rose-600">Overdue</p>
-                <p class="text-2xl font-bold {{ $pendingCounts[ComplianceReportService::STATUS_OVERDUE] > 0 ? 'text-rose-600' : 'text-gray-400' }} mt-0.5">
-                    {{ $pendingCounts[ComplianceReportService::STATUS_OVERDUE] }}
-                </p>
-            </div>
-            <div class="text-center">
-                <p class="text-xs font-semibold uppercase tracking-wide text-sky-600">Due soon</p>
-                <p class="text-2xl font-bold {{ $pendingCounts[ComplianceReportService::STATUS_DUE_SOON] > 0 ? 'text-sky-600' : 'text-gray-400' }} mt-0.5">
-                    {{ $pendingCounts[ComplianceReportService::STATUS_DUE_SOON] }}
-                </p>
-            </div>
-            <div class="text-center">
-                <p class="text-xs font-semibold uppercase tracking-wide text-orange-600">Lodged, unpaid</p>
-                <p class="text-2xl font-bold {{ $pendingCounts[ComplianceReportService::STATUS_LODGED_UNPAID] > 0 ? 'text-orange-600' : 'text-gray-400' }} mt-0.5">
-                    {{ $pendingCounts[ComplianceReportService::STATUS_LODGED_UNPAID] }}
-                </p>
-            </div>
-            <div class="text-center">
-                <p class="text-xs font-semibold uppercase tracking-wide text-red-500">Missing</p>
-                <p class="text-2xl font-bold {{ $pendingCounts[ComplianceReportService::STATUS_MISSING] > 0 ? 'text-red-600' : 'text-gray-400' }} mt-0.5">
-                    {{ $pendingCounts[ComplianceReportService::STATUS_MISSING] }}
-                </p>
-            </div>
+            @foreach($lodgementSummary['obligations'] as $obligation)
+                <div class="text-center">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">{{ $obligation['label'] }}</p>
+                    <p class="mt-0.5 text-2xl font-bold {{ $obligation['count'] > 0 ? 'text-gray-800' : 'text-gray-400' }}">
+                        {{ $obligation['count'] }}
+                    </p>
+                </div>
+            @endforeach
         </div>
     @endif
 
@@ -202,7 +202,7 @@
         <p class="text-sm text-gray-800 mb-1">
             @if($listingPending && $selectedStatus === 'all')
                 <span class="font-semibold">{{ $pendingEntityCount }}</span>
-                of {{ $report['total_entities'] }} entities have something pending.
+                of {{ $report['total_entities'] }} entities are missing lodgements.
             @elseif($listingPending)
                 <span class="font-semibold">{{ $pendingEntityCount }}</span>
                 {{ \Illuminate\Support\Str::plural('entity', $pendingEntityCount) }}

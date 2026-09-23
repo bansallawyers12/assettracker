@@ -123,6 +123,30 @@ it('lists entities with pending work first and hides future rows until opened as
         ->and($groups[2]['has_pending'])->toBeFalse();
 });
 
+it('counts missing lodgements by tax return, GST, and ASIC', function () {
+    $service = lodgementGroupingService();
+
+    $gst = lodgementRow(1, 'Alpha Pty Ltd', ComplianceReportService::STATUS_OVERDUE, true, obligation: 'BAS Q1');
+    $gst['obligation_code'] = 'bas_q1';
+    $asic = lodgementRow(2, 'Beta Pty Ltd', ComplianceReportService::STATUS_DUE_SOON, true, obligation: 'ASIC Annual Statement');
+    $asic['obligation_code'] = 'asic_statement';
+    $future = lodgementRow(3, 'Calm Trust', ComplianceReportService::STATUS_MISSING, false, dueOn: '2027-10-31');
+
+    $summary = $service->pendingLodgementSummary([
+        lodgementRow(1, 'Alpha Pty Ltd', ComplianceReportService::STATUS_OVERDUE, true),
+        $gst,
+        $asic,
+        $future,
+    ], ComplianceReportService::DEFAULT_OBLIGATIONS);
+
+    expect($summary['entities'])->toBe(2)
+        ->and($summary['obligations'])->toBe([
+            ['key' => 'itr', 'label' => 'Tax return', 'count' => 1],
+            ['key' => 'bas', 'label' => 'GST', 'count' => 1],
+            ['key' => 'asic', 'label' => 'ASIC', 'count' => 1],
+        ]);
+});
+
 it('includes non-pending rows when the status filter asks for them', function () {
     $service = lodgementGroupingService();
 
