@@ -10,10 +10,48 @@
     );
 
     $selectedStatus = $statusFilter ?? 'all';
-    $counts = $report['counts'];
-    $totalRows = $rowsPaginator->total();
-    $rowFrom = $totalRows > 0 ? $rowsPaginator->firstItem() : 0;
-    $rowTo = $totalRows > 0 ? $rowsPaginator->lastItem() : 0;
+    $listedTotal = $entityPaginator->total();
+    $listedFrom = $listedTotal > 0 ? $entityPaginator->firstItem() : 0;
+    $listedTo = $listedTotal > 0 ? $entityPaginator->lastItem() : 0;
+    $summaryOrder = $listingPending
+        ? ComplianceReportService::PENDING_STATUS_ORDER
+        : [ComplianceReportService::STATUS_COMPLETE, ComplianceReportService::STATUS_UPLOADED];
+
+    $statusChipClass = function (string $status): string {
+        return match ($status) {
+            ComplianceReportService::STATUS_MISSING => 'text-red-700',
+            ComplianceReportService::STATUS_UPLOADED => 'text-amber-700',
+            ComplianceReportService::STATUS_OVERDUE => 'text-rose-700',
+            ComplianceReportService::STATUS_DUE_SOON => 'text-sky-700',
+            ComplianceReportService::STATUS_LODGED_UNPAID => 'text-orange-700',
+            ComplianceReportService::STATUS_COMPLETE => 'text-green-700',
+            default => 'text-gray-700',
+        };
+    };
+
+    $statusBadgeClass = function (string $status): string {
+        return match ($status) {
+            ComplianceReportService::STATUS_MISSING => 'text-red-700 bg-red-50',
+            ComplianceReportService::STATUS_UPLOADED => 'text-amber-800 bg-amber-50',
+            ComplianceReportService::STATUS_OVERDUE => 'text-rose-700 bg-rose-50',
+            ComplianceReportService::STATUS_DUE_SOON => 'text-sky-800 bg-sky-50',
+            ComplianceReportService::STATUS_LODGED_UNPAID => 'text-orange-800 bg-orange-50',
+            ComplianceReportService::STATUS_COMPLETE => 'text-green-700 bg-green-50',
+            default => 'text-gray-700 bg-gray-50',
+        };
+    };
+
+    $summaryLabel = function (string $status): string {
+        return match ($status) {
+            ComplianceReportService::STATUS_OVERDUE => 'overdue',
+            ComplianceReportService::STATUS_DUE_SOON => 'due soon',
+            ComplianceReportService::STATUS_LODGED_UNPAID => 'unpaid',
+            ComplianceReportService::STATUS_MISSING => 'missing',
+            ComplianceReportService::STATUS_COMPLETE => 'complete',
+            ComplianceReportService::STATUS_UPLOADED => 'uploaded',
+            default => $status,
+        };
+    };
 @endphp
 
 <x-report-shell
@@ -127,127 +165,146 @@
 
     @include('compliance-reports.partials.formation-date-warning')
 
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-4 px-6 py-5 border-b border-gray-100 bg-gray-50/70">
-        <div class="text-center">
-            <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Entities</p>
-            <p class="text-2xl font-bold text-gray-800 mt-0.5">{{ $report['total_entities'] }}</p>
+    @if($listingPending)
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 px-6 py-5 border-b border-gray-100 bg-gray-50/70">
+            <div class="text-center">
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Entities pending</p>
+                <p class="text-2xl font-bold text-gray-800 mt-0.5" data-pending-entity-count>{{ $pendingEntityCount }}</p>
+            </div>
+            <div class="text-center">
+                <p class="text-xs font-semibold uppercase tracking-wide text-rose-600">Overdue</p>
+                <p class="text-2xl font-bold {{ $pendingCounts[ComplianceReportService::STATUS_OVERDUE] > 0 ? 'text-rose-600' : 'text-gray-400' }} mt-0.5">
+                    {{ $pendingCounts[ComplianceReportService::STATUS_OVERDUE] }}
+                </p>
+            </div>
+            <div class="text-center">
+                <p class="text-xs font-semibold uppercase tracking-wide text-sky-600">Due soon</p>
+                <p class="text-2xl font-bold {{ $pendingCounts[ComplianceReportService::STATUS_DUE_SOON] > 0 ? 'text-sky-600' : 'text-gray-400' }} mt-0.5">
+                    {{ $pendingCounts[ComplianceReportService::STATUS_DUE_SOON] }}
+                </p>
+            </div>
+            <div class="text-center">
+                <p class="text-xs font-semibold uppercase tracking-wide text-orange-600">Lodged, unpaid</p>
+                <p class="text-2xl font-bold {{ $pendingCounts[ComplianceReportService::STATUS_LODGED_UNPAID] > 0 ? 'text-orange-600' : 'text-gray-400' }} mt-0.5">
+                    {{ $pendingCounts[ComplianceReportService::STATUS_LODGED_UNPAID] }}
+                </p>
+            </div>
+            <div class="text-center">
+                <p class="text-xs font-semibold uppercase tracking-wide text-red-500">Missing</p>
+                <p class="text-2xl font-bold {{ $pendingCounts[ComplianceReportService::STATUS_MISSING] > 0 ? 'text-red-600' : 'text-gray-400' }} mt-0.5">
+                    {{ $pendingCounts[ComplianceReportService::STATUS_MISSING] }}
+                </p>
+            </div>
         </div>
-        <div class="text-center">
-            <p class="text-xs font-semibold uppercase tracking-wide text-red-500">Missing</p>
-            <p class="text-2xl font-bold {{ $counts[ComplianceReportService::STATUS_MISSING] > 0 ? 'text-red-600' : 'text-gray-400' }} mt-0.5">
-                {{ $counts[ComplianceReportService::STATUS_MISSING] }}
-            </p>
-        </div>
-        <div class="text-center">
-            <p class="text-xs font-semibold uppercase tracking-wide text-amber-600">Uploaded</p>
-            <p class="text-2xl font-bold {{ $counts[ComplianceReportService::STATUS_UPLOADED] > 0 ? 'text-amber-600' : 'text-gray-400' }} mt-0.5">
-                {{ $counts[ComplianceReportService::STATUS_UPLOADED] }}
-            </p>
-        </div>
-        <div class="text-center">
-            <p class="text-xs font-semibold uppercase tracking-wide text-orange-600">Lodged, unpaid</p>
-            <p class="text-2xl font-bold {{ $counts[ComplianceReportService::STATUS_LODGED_UNPAID] > 0 ? 'text-orange-600' : 'text-gray-400' }} mt-0.5">
-                {{ $counts[ComplianceReportService::STATUS_LODGED_UNPAID] }}
-            </p>
-        </div>
-        <div class="text-center">
-            <p class="text-xs font-semibold uppercase tracking-wide text-green-600">Complete</p>
-            <p class="text-2xl font-bold {{ $counts[ComplianceReportService::STATUS_COMPLETE] > 0 ? 'text-green-600' : 'text-gray-400' }} mt-0.5">
-                {{ $counts[ComplianceReportService::STATUS_COMPLETE] }}
-            </p>
-        </div>
-        <div class="text-center">
-            <p class="text-xs font-semibold uppercase tracking-wide text-rose-600">Overdue</p>
-            <p class="text-2xl font-bold {{ $counts[ComplianceReportService::STATUS_OVERDUE] > 0 ? 'text-rose-600' : 'text-gray-400' }} mt-0.5">
-                {{ $counts[ComplianceReportService::STATUS_OVERDUE] }}
-            </p>
-        </div>
-        <div class="text-center">
-            <p class="text-xs font-semibold uppercase tracking-wide text-sky-600">Due soon</p>
-            <p class="text-2xl font-bold {{ $counts[ComplianceReportService::STATUS_DUE_SOON] > 0 ? 'text-sky-600' : 'text-gray-400' }} mt-0.5">
-                {{ $counts[ComplianceReportService::STATUS_DUE_SOON] }}
-            </p>
-        </div>
-    </div>
+    @endif
 
     <div class="px-6 py-5">
-        <p class="text-xs text-gray-500 mb-4">
-            FY range {{ $report['fy_from_label'] }} – {{ $report['fy_to_label'] }}.
-            Overdue and due soon are calculated as at {{ $report['as_of_date_label'] }}.
-            Counts above include all statuses before the status filter;
-            @if($totalRows > 0)
-                the table shows {{ $rowFrom }}–{{ $rowTo }} of {{ $totalRows }} row(s).
+        <p class="text-sm text-gray-800 mb-1">
+            @if($listingPending && $selectedStatus === 'all')
+                <span class="font-semibold">{{ $pendingEntityCount }}</span>
+                of {{ $report['total_entities'] }} entities have something pending.
+            @elseif($listingPending)
+                <span class="font-semibold">{{ $pendingEntityCount }}</span>
+                {{ \Illuminate\Support\Str::plural('entity', $pendingEntityCount) }}
+                with {{ $summaryLabel($selectedStatus) }} obligations.
             @else
-                the table shows 0 row(s).
+                <span class="font-semibold">{{ $listedTotal }}</span>
+                {{ \Illuminate\Support\Str::plural('entity', $listedTotal) }}
+                with status {{ $statusOptions[$selectedStatus] ?? $selectedStatus }}.
             @endif
-            Due dates are estimated (self-lodge defaults) when not set on the compliance slot.
-            Years before an entity's registration or establishment date are excluded.
-            Does not create compliance year records — open a workspace FY to provision slots.
+        </p>
+        <p class="text-xs text-gray-500 mb-4">
+            FY {{ $report['fy_from_label'] }} – {{ $report['fy_to_label'] }}, as at {{ $report['as_of_date_label'] }}.
+            Open an entity to see what is still outstanding.
+            A future return that is not due yet is left off this list.
+            @if($listedTotal > 0)
+                Showing entities {{ $listedFrom }}–{{ $listedTo }} of {{ $listedTotal }}.
+            @endif
         </p>
 
-        @if($totalRows === 0)
+        @if($listedTotal === 0)
             <p class="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3">
-                No lodgement rows match the current filters.
+                @if($listingPending)
+                    No entities have anything pending for the current filters.
+                @else
+                    No entities match the current filters.
+                @endif
             </p>
         @else
-            <div class="overflow-x-auto border border-gray-200 rounded-lg">
-                <table class="min-w-full text-sm">
-                    <thead class="bg-gray-50 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        <tr>
-                            <th class="px-4 py-3">Entity</th>
-                            <th class="px-4 py-3">Financial year</th>
-                            <th class="px-4 py-3">Obligation</th>
-                            <th class="px-4 py-3">Due date</th>
-                            <th class="px-4 py-3">Lodged</th>
-                            <th class="px-4 py-3">Paid</th>
-                            <th class="px-4 py-3">Status</th>
-                            <th class="px-4 py-3">Document</th>
-                            <th class="px-4 py-3">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        @foreach($rowsPaginator as $row)
-                            @php
-                                $statusClass = match ($row['status']) {
-                                    ComplianceReportService::STATUS_MISSING => 'text-red-700 bg-red-50',
-                                    ComplianceReportService::STATUS_UPLOADED => 'text-amber-800 bg-amber-50',
-                                    ComplianceReportService::STATUS_OVERDUE => 'text-rose-700 bg-rose-50',
-                                    ComplianceReportService::STATUS_DUE_SOON => 'text-orange-700 bg-orange-50',
-                                    ComplianceReportService::STATUS_LODGED_UNPAID => 'text-orange-800 bg-orange-50',
-                                    ComplianceReportService::STATUS_COMPLETE => 'text-green-700 bg-green-50',
-                                    default => 'text-gray-700 bg-gray-50',
-                                };
-                            @endphp
-                            <tr>
-                                <td class="px-4 py-3 font-medium text-gray-900">{{ $row['entity_name'] }}</td>
-                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ $row['fy_label'] }}</td>
-                                <td class="px-4 py-3 text-gray-800">{{ $row['obligation_label'] }}</td>
-                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ $row['due_date'] ?? '—' }}</td>
-                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ $row['lodged_date'] ?? '—' }}</td>
-                                <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ $row['paid_date'] ?? '—' }}</td>
-                                <td class="px-4 py-3">
-                                    <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $statusClass }}">
-                                        {{ $row['status_label'] }}
-                                    </span>
-                                </td>
-                                <td class="px-4 py-3 text-gray-600">{{ $row['has_document'] ? 'Yes' : '—' }}</td>
-                                <td class="px-4 py-3">
-                                    <a href="{{ $row['compliance_url'] }}"
-                                       class="text-indigo-600 hover:underline font-medium">
-                                        Open workspace
-                                    </a>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+            <div class="divide-y divide-gray-200 overflow-hidden rounded-lg border border-gray-200">
+                @foreach($entityPaginator as $entity)
+                    <details class="group bg-white" data-lodgement-entity="{{ $entity['entity_id'] }}">
+                        <summary class="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3 hover:bg-gray-50 [&::-webkit-details-marker]:hidden">
+                            <span class="flex min-w-0 items-center gap-2">
+                                <svg class="h-4 w-4 shrink-0 text-gray-400 transition-transform group-open:rotate-90" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 0 1 .02-1.06L11.168 10 7.23 6.29a.75.75 0 1 1 1.04-1.08l4.5 4.25a.75.75 0 0 1 0 1.08l-4.5 4.25a.75.75 0 0 1-1.06-.02Z" clip-rule="evenodd" />
+                                </svg>
+                                <span class="truncate font-medium text-gray-900">{{ $entity['entity_name'] }}</span>
+                            </span>
+                            <span class="flex shrink-0 flex-wrap justify-end gap-x-3 gap-y-1 text-xs font-medium">
+                                @foreach($summaryOrder as $status)
+                                    @if(($entity['summary_counts'][$status] ?? 0) > 0)
+                                        <span class="{{ $statusChipClass($status) }}">
+                                            {{ $entity['summary_counts'][$status] }} {{ $summaryLabel($status) }}
+                                        </span>
+                                    @endif
+                                @endforeach
+                            </span>
+                        </summary>
+                        <div class="border-t border-gray-100 bg-gray-50/40 px-4 py-3">
+                            <table class="min-w-full text-sm">
+                                <thead class="text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                    <tr>
+                                        <th class="px-2 py-2">Financial year</th>
+                                        <th class="px-2 py-2">Obligation</th>
+                                        <th class="px-2 py-2">Due date</th>
+                                        <th class="px-2 py-2">Status</th>
+                                        <th class="px-2 py-2">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100">
+                                    @foreach($entity['rows'] as $row)
+                                        <tr>
+                                            <td class="px-2 py-2 whitespace-nowrap text-gray-600">{{ $row['fy_label'] }}</td>
+                                            <td class="px-2 py-2 text-gray-800">{{ $row['obligation_label'] }}</td>
+                                            <td class="px-2 py-2 whitespace-nowrap text-gray-600">{{ $row['due_date'] ?? '—' }}</td>
+                                            <td class="px-2 py-2">
+                                                <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {{ $statusBadgeClass($row['status']) }}">
+                                                    {{ $row['status_label'] }}
+                                                </span>
+                                            </td>
+                                            <td class="px-2 py-2">
+                                                <a href="{{ $row['compliance_url'] }}" class="font-medium text-indigo-600 hover:underline">
+                                                    Open workspace
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </details>
+                @endforeach
             </div>
 
-            @if($rowsPaginator->hasPages())
+            @if($entityPaginator->hasPages())
                 <div class="mt-4">
-                    {{ $rowsPaginator->withQueryString()->links() }}
+                    {{ $entityPaginator->withQueryString()->links() }}
                 </div>
             @endif
+        @endif
+
+        @if(count($upToDateGroups) > 0)
+            <details class="mt-4 rounded-lg border border-gray-200 bg-white">
+                <summary class="cursor-pointer list-none px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 [&::-webkit-details-marker]:hidden">
+                    Show up to date ({{ count($upToDateGroups) }})
+                </summary>
+                <ul class="divide-y divide-gray-100 border-t border-gray-100">
+                    @foreach($upToDateGroups as $entity)
+                        <li class="px-4 py-2 text-sm text-gray-700">{{ $entity['entity_name'] }}</li>
+                    @endforeach
+                </ul>
+            </details>
         @endif
     </div>
 </x-report-shell>

@@ -95,7 +95,21 @@ class ComplianceReportController extends Controller
             return $this->atoLodgementsCsvResponse($report);
         }
 
-        $rowsPaginator = $this->paginateReportRows($request, $report['rows']);
+        $listingPending = ! in_array($statusFilter, [
+            ComplianceReportService::STATUS_COMPLETE,
+            ComplianceReportService::STATUS_UPLOADED,
+        ], true);
+        $entityGroups = $this->reportService->groupLodgementRowsByEntity($report['rows'], ! $listingPending);
+        $listedGroups = array_values(array_filter($entityGroups, fn (array $group): bool => $group['listed']));
+        $upToDateGroups = array_values(array_filter($entityGroups, fn (array $group): bool => ! $group['listed']));
+        $entityPaginator = $this->paginateReportRows($request, $listedGroups);
+        $pendingEntityCount = count(array_filter($entityGroups, fn (array $group): bool => $group['has_pending']));
+        $pendingCounts = array_fill_keys(ComplianceReportService::PENDING_STATUS_ORDER, 0);
+        foreach ($report['rows'] as $row) {
+            if (($row['is_pending'] ?? false) && isset($pendingCounts[$row['status']])) {
+                $pendingCounts[$row['status']]++;
+            }
+        }
 
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
         $formsScope = $request->input('scope') === 'selected' ? 'selected' : 'all';
@@ -119,7 +133,11 @@ class ComplianceReportController extends Controller
 
         return view('compliance-reports.ato-lodgements', compact(
             'report',
-            'rowsPaginator',
+            'entityPaginator',
+            'upToDateGroups',
+            'pendingEntityCount',
+            'pendingCounts',
+            'listingPending',
             'businessEntities',
             'formsScope',
             'formsEntityIds',

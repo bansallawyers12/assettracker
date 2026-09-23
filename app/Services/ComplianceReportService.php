@@ -17,6 +17,7 @@ class ComplianceReportService
     ) {}
 
     public const STATUS_COMPLETE = 'complete';
+
     public const STATUS_LODGED_UNPAID = 'lodged_unpaid';
 
     public const STATUS_OVERDUE = 'overdue';
@@ -26,6 +27,19 @@ class ComplianceReportService
     public const STATUS_UPLOADED = 'uploaded';
 
     public const STATUS_MISSING = 'missing';
+
+    /**
+     * Statuses that mean the entity still has something to lodge or pay.
+     * Missing is included only when the obligation is already due.
+     *
+     * @var list<string>
+     */
+    public const PENDING_STATUS_ORDER = [
+        self::STATUS_OVERDUE,
+        self::STATUS_DUE_SOON,
+        self::STATUS_LODGED_UNPAID,
+        self::STATUS_MISSING,
+    ];
 
     /** @var list<string> */
     public const STATUS_ORDER = [
@@ -264,6 +278,7 @@ class ComplianceReportService
                         $entity
                     );
 
+                    $effectiveDue = $file?->due_date ?? $estimatedDue;
                     $classified = $this->classifyLodgementRow($file, $asOfDate, $estimatedDue);
                     $counts[$classified['status']]++;
 
@@ -279,11 +294,18 @@ class ComplianceReportService
                         'obligation_code' => $type->code,
                         'obligation_label' => $type->label,
                         'due_date' => $classified['due_date'],
+                        'due_on' => $effectiveDue?->toDateString(),
                         'lodged_date' => $classified['lodged_date'],
                         'paid_date' => $classified['paid_date'],
                         'status' => $classified['status'],
                         'status_label' => $this->statusLabel($classified['status']),
                         'has_document' => $classified['has_document'],
+                        'is_pending' => $this->obligationIsPending(
+                            $classified['status'],
+                            $effectiveDue,
+                            $fyStart,
+                            $asOfDate,
+                        ),
                         'compliance_url' => $complianceUrl,
                     ];
                 }
@@ -489,6 +511,118 @@ class ComplianceReportService
             'paid_date' => $paidDate,
             'has_document' => $hasDocument,
         ];
+    }
+
+    /**
+     * Pending means overdue, due within 30 days, lodged but unpaid,
+     * or missing once the financial year has ended and no future due date applies.
+     */
+    public function obligationIsPending(string $status, ?Carbon $dueDate, Carbon $fyStart, Carbon $asOfDate): bool
+    {
+        if (in_array($status, [self::STATUS_OVERDUE, self::STATUS_DUE_SOON, self::STATUS_LODGED_UNPAID], true)) {
+            return true;
+        }
+
+        if ($status !== self::STATUS_MISSING) {
+            return false;
+        }
+
+        $asOfDate = $asOfDate->copy()->startOfDay();
+
+        if ($dueDate !== null && $dueDate->copy()->startOfDay()->gt($asOfDate)) {
+            return false;
+        }
+
+        if ($dueDate !== null) {
+            return true;
+        }
+
+        return $this->atoDueDateService->fyEndForStart($fyStart)->lt($asOfDate);
+    }
+
+    /**
+     * Collapse lodgement rows under each entity.
+     * The main list is entities with pending obligations, worst first.
+     * Pass $includeNonPending when a status filter is asking for complete or uploaded rows.
+     *
+     * @param  list<array<string, mixed>>  $rows
+     * @return list<array{
+     *     entity_id: int,
+     *     entity_name: string,
+     *     has_pending: bool,
+     *     listed: bool,
+     *     summary_counts: array<string, int>,
+     *     workspace_url: string|null,
+     *     rows: list<array<string, mixed>>
+     * }>
+     */
+    public function groupLodgementRowsByEntity(array $rows, bool $includeNonPending = false): array
+    {
+        $statusRank = array_flip([...self::PENDING_STATUS_ORDER, self::STATUS_UPLOADED, self::STATUS_COMPLETE]);
+
+        return collect($rows)
+            ->groupBy('entity_id')
+            ->map(function (Collection $entityRows) use ($includeNonPending, $statusRank): array {
+                $pendingRows = $entityRows->filter(fn (array $row): bool => (bool) ($row['is_pending'] ?? false));
+                $displayRows = ($includeNonPending ? $entityRows : $pendingRows)
+                    ->sort(function (array $left, array $right) use ($statusRank): int {
+                        $rank = ($statusRank[$left['status']] ?? 99) <=> ($statusRank[$right['status']] ?? 99);
+                        if ($rank !== 0) {
+                            return $rank;
+                        }
+
+                        $due = ($left['due_on'] ?? '9999-12-31') <=> ($right['due_on'] ?? '9999-12-31');
+                        if ($due !== 0) {
+                            return $due;
+                        }
+
+                        return [$left['fy_start'], $left['obligation_label']] <=> [$right['fy_start'], $right['obligation_label']];
+                    })
+                    ->values();
+
+                $summaryCounts = [];
+                foreach ($displayRows as $row) {
+                    $status = (string) $row['status'];
+                    $summaryCounts[$status] = ($summaryCounts[$status] ?? 0) + 1;
+                }
+
+                $first = $entityRows->first();
+                $mostUrgent = $displayRows->first();
+                $workspaceSource = is_array($mostUrgent) ? $mostUrgent : $first;
+
+                return [
+                    'entity_id' => $first['entity_id'],
+                    'entity_name' => $first['entity_name'],
+                    'has_pending' => $pendingRows->isNotEmpty(),
+                    'listed' => $displayRows->isNotEmpty(),
+                    'summary_counts' => $summaryCounts,
+                    'workspace_url' => $workspaceSource['compliance_url'] ?? null,
+                    'rows' => $displayRows->all(),
+                ];
+            })
+            ->sort(function (array $left, array $right): int {
+                $urgency = $this->entityUrgency($left) <=> $this->entityUrgency($right);
+                if ($urgency !== 0) {
+                    return $urgency;
+                }
+
+                return strcasecmp($left['entity_name'], $right['entity_name']);
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array{summary_counts: array<string, int>}  $group
+     */
+    private function entityUrgency(array $group): int
+    {
+        $counts = $group['summary_counts'];
+
+        return -(($counts[self::STATUS_OVERDUE] ?? 0) * 1_000_000)
+            - (($counts[self::STATUS_DUE_SOON] ?? 0) * 10_000)
+            - (($counts[self::STATUS_LODGED_UNPAID] ?? 0) * 100)
+            - ($counts[self::STATUS_MISSING] ?? 0);
     }
 
     /**
