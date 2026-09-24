@@ -90,18 +90,17 @@
                         <label class="{{ $txnLabel }}">Account</label>
                         <select :name="'lines[' + index + '][chart_of_account_id]'"
                                 x-model="line.chart_of_account_id"
+                                x-effect="syncAccountOptions($el, line.direction, line.chart_of_account_id)"
                                 required
                                 class="{{ $txnInput }}"
                                 @change="if (!showRelatedEntity(line)) line.related_entity_id = ''">
                             <option value="">Select account</option>
-                            {{-- Server-render options (same pattern as journal entries). Alpine x-for
-                                 inside <select> is invalid HTML and can drop newly added CoA rows. --}}
+                            {{-- Real <option> nodes, not <template x-for> inside <select> (invalid HTML; browsers drop those options). --}}
                             @foreach (($dashboardChartAccounts ?? collect()) as $account)
                                 <option
                                     value="{{ $account['id'] }}"
                                     data-code="{{ $account['code'] }}"
                                     data-direction="{{ $account['direction'] }}"
-                                    x-bind:hidden="!('{{ $account['direction'] }}' === 'both' || line.direction === '{{ $account['direction'] }}')"
                                 >{{ $account['label'] }}</option>
                             @endforeach
                         </select>
@@ -116,9 +115,9 @@
                                 x-model="line.vendor_id"
                                 class="{{ $txnInput }}">
                             <option value="">Select vendor</option>
-                            <template x-for="vendor in vendors" :key="vendor.id">
-                                <option :value="String(vendor.id)" x-text="vendor.name"></option>
-                            </template>
+                            @foreach (($vendors ?? collect()) as $vendor)
+                                <option value="{{ $vendor->id }}">{{ $vendor->name }}</option>
+                            @endforeach
                         </select>
                     </div>
 
@@ -138,9 +137,9 @@
                                 :required="showRelatedEntity(line)"
                                 class="{{ $txnInput }}">
                             <option value="">Select Related Entity</option>
-                            <template x-for="entity in relatedEntities" :key="entity.id">
-                                <option :value="String(entity.id)" x-text="entity.name"></option>
-                            </template>
+                            @foreach (($dashboardRelatedEntitiesJson ?? collect()) as $entity)
+                                <option value="{{ $entity['id'] }}">{{ $entity['name'] }}</option>
+                            @endforeach
                         </select>
                     </div>
                 </div>

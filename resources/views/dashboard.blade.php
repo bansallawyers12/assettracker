@@ -229,6 +229,29 @@
                             accountsFor(direction) {
                                 return direction === 'income' ? this.incomeAccounts : this.expenseAccounts;
                             },
+                            syncAccountOptions(select, direction, selectedId) {
+                                if (!select || select.dataset.accountOptionsSyncing === '1') {
+                                    return;
+                                }
+                                if (!select._accountOptionPool) {
+                                    select._accountOptionPool = Array.from(select.querySelectorAll('option[data-direction]'));
+                                }
+                                const want = selectedId != null && selectedId !== '' ? String(selectedId) : '';
+                                select.dataset.accountOptionsSyncing = '1';
+                                select._accountOptionPool.forEach((opt) => opt.remove());
+                                select._accountOptionPool.forEach((opt) => {
+                                    const dir = opt.getAttribute('data-direction') || '';
+                                    if (dir === 'both' || dir === direction) {
+                                        select.appendChild(opt);
+                                    }
+                                });
+                                const stillThere = want !== '' && Array.from(select.options).some((opt) => opt.value === want);
+                                const next = stillThere ? want : '';
+                                if (select.value !== next) {
+                                    select.value = next;
+                                }
+                                delete select.dataset.accountOptionsSyncing;
+                            },
                             accountCodeFor(line) {
                                 if (!line || !line.chart_of_account_id) return '';
                                 const match = this.accountsFor(line.direction).find((o) => o.value === String(line.chart_of_account_id));

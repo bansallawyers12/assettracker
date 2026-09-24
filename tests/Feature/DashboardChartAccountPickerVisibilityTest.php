@@ -49,8 +49,14 @@ it('embeds newly created active expense accounts in the dashboard allocation sel
 
 it('lists chart accounts via server-rendered options instead of alpine x-for inside select', function () {
     $allocations = file_get_contents(resource_path('views/partials/dashboard-transaction-lines.blade.php'));
+    $dashboard = file_get_contents(resource_path('views/dashboard.blade.php'));
 
     expect($allocations)->toContain('@foreach (($dashboardChartAccounts ?? collect()) as $account)')
-        ->and($allocations)->toContain('x-bind:hidden')
-        ->and($allocations)->not->toContain('accountsFor(line.direction)');
+        ->and($allocations)->toContain('syncAccountOptions($el, line.direction, line.chart_of_account_id)')
+        ->and($allocations)->toContain('@foreach (($vendors ?? collect()) as $vendor)')
+        ->and($allocations)->not->toContain('x-bind:hidden')
+        ->and($allocations)->not->toContain('accountsFor(line.direction)')
+        ->and($allocations)->not->toContain('x-for="vendor in vendors"')
+        ->and($allocations)->not->toContain('x-for="entity in relatedEntities"')
+        ->and($dashboard)->toContain('syncAccountOptions(select, direction, selectedId)');
 });
