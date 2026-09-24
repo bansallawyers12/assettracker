@@ -19,9 +19,10 @@ it('lists chart of accounts on the dashboard allocation picker instead of transa
 
     expect($dashboard)->toContain('ChartOfAccount::activePnlForSelect()')
         ->and($dashboard)->toContain('chartAccounts')
-        ->and($dashboard)->toContain('accountsFor(direction)')
+        ->and($dashboard)->toContain('dashboardChartAccounts')
         ->and($allocations)->toContain("lines[' + index + '][chart_of_account_id]")
         ->and($allocations)->toContain('Select account')
+        ->and($allocations)->toContain('@foreach (($dashboardChartAccounts ?? collect()) as $account)')
         ->and($allocations)->not->toContain("lines[' + index + '][transaction_type]")
         ->and($allocations)->not->toContain('typesFor(line.direction)');
 });

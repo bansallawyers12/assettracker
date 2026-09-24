@@ -323,6 +323,10 @@
                         <p x-show="reportPlacementHint" x-cloak
                            class="rounded-lg border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-900 dark:border-indigo-900 dark:bg-indigo-950/40 dark:text-indigo-200"
                            x-text="reportPlacementHint"></p>
+                        <p x-show="form.account_type && form.account_type !== 'income' && form.account_type !== 'expense'" x-cloak
+                           class="rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+                            Balance sheet accounts (asset, liability, equity) do not appear in Dashboard → Add transaction allocations. Use them in journal entries or balance sheet entry flows instead.
+                        </p>
                         <p x-show="isSystemAccount" x-cloak
                            class="text-xs text-gray-500 dark:text-gray-400">
                             System account — code, type, and category are fixed for posting and reports.

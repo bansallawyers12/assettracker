@@ -360,6 +360,7 @@
                         'txnLabel' => $txnLabel,
                         'txnInput' => $txnInput,
                         'txnSection' => $txnSection,
+                        'dashboardChartAccounts' => $dashboardChartAccounts,
                     ])
                     @error('lines') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                     @foreach ($errors->getMessages() as $errKey => $errMsgs)

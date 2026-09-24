@@ -94,10 +94,20 @@
                                 class="{{ $txnInput }}"
                                 @change="if (!showRelatedEntity(line)) line.related_entity_id = ''">
                             <option value="">Select account</option>
-                            <template x-for="opt in accountsFor(line.direction)" :key="opt.value">
-                                <option :value="opt.value" x-text="opt.label"></option>
-                            </template>
+                            {{-- Server-render options (same pattern as journal entries). Alpine x-for
+                                 inside <select> is invalid HTML and can drop newly added CoA rows. --}}
+                            @foreach (($dashboardChartAccounts ?? collect()) as $account)
+                                <option
+                                    value="{{ $account['id'] }}"
+                                    data-code="{{ $account['code'] }}"
+                                    data-direction="{{ $account['direction'] }}"
+                                    x-bind:hidden="!('{{ $account['direction'] }}' === 'both' || line.direction === '{{ $account['direction'] }}')"
+                                >{{ $account['label'] }}</option>
+                            @endforeach
                         </select>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Active income &amp; expense accounts only (plus Director / Entity Loan).
+                        </p>
                     </div>
 
                     <div>
