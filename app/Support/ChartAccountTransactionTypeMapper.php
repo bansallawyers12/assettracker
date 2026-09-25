@@ -65,6 +65,7 @@ class ChartAccountTransactionTypeMapper
 
     /**
      * Whether this CoA may be chosen on a dashboard allocation for the given direction.
+     * Any active chart account is allowed; direction still drives cash-flow sign and type fallbacks.
      *
      * @param  'income'|'expense'  $direction
      */
@@ -74,25 +75,17 @@ class ChartAccountTransactionTypeMapper
             return false;
         }
 
-        if (trim((string) $account->account_code) === '2500') {
-            return in_array($direction, ['income', 'expense'], true);
-        }
-
-        return (string) $account->account_type === $direction;
+        return in_array($direction, ['income', 'expense'], true);
     }
 
     /**
      * Direction filter key for allocation pickers.
-     * Director loan (2500) is offered for both income and expense.
+     * Full chart is always listed for both income and expense remittances.
      *
      * @return 'income'|'expense'|'both'
      */
     public static function pickerDirection(ChartOfAccount $account): string
     {
-        if (trim((string) $account->account_code) === '2500') {
-            return 'both';
-        }
-
-        return (string) $account->account_type === 'income' ? 'income' : 'expense';
+        return 'both';
     }
 }

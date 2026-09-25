@@ -17,12 +17,13 @@ it('lists chart of accounts on the dashboard allocation picker instead of transa
     $dashboard = file_get_contents(resource_path('views/dashboard.blade.php'));
     $allocations = file_get_contents(resource_path('views/partials/dashboard-transaction-lines.blade.php'));
 
-    expect($dashboard)->toContain('ChartOfAccount::activePnlForSelect()')
+    expect($dashboard)->toContain('ChartOfAccount::activeForSelect()')
         ->and($dashboard)->toContain('chartAccounts')
         ->and($dashboard)->toContain('dashboardChartAccounts')
         ->and($allocations)->toContain("lines[' + index + '][chart_of_account_id]")
         ->and($allocations)->toContain('Select account')
         ->and($allocations)->toContain('@foreach (($dashboardChartAccounts ?? collect()) as $account)')
+        ->and($allocations)->toContain('All active chart of accounts')
         ->and($allocations)->not->toContain("lines[' + index + '][transaction_type]")
         ->and($allocations)->not->toContain('typesFor(line.direction)');
 });
@@ -175,14 +176,15 @@ it('books director loan out from chart account 2500 on a single allocation', fun
         ->and((int) $transaction->related_entity_id)->toBe($related->id);
 });
 
-it('includes director loan account 2500 in active pnl allocation options', function () {
+it('includes the full active chart including bank and director loan in allocation options', function () {
     $this->seed(ChartOfAccountSeeder::class);
 
-    $codes = ChartOfAccount::activePnlForSelect()->pluck('account_code')->all();
+    $codes = ChartOfAccount::activeForSelect()->pluck('account_code')->all();
 
     expect($codes)->toContain('2500')
         ->and($codes)->toContain('5900')
-        ->and($codes)->not->toContain('1100');
+        ->and($codes)->toContain('1100')
+        ->and($codes)->toContain('4100');
 });
 
 it('posts split allocations to each selected chart account', function () {

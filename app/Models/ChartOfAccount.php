@@ -26,7 +26,7 @@ class ChartOfAccount extends Model
     ];
 
     /**
-     * Active accounts for reconciliation / journal pickers.
+     * Active accounts for reconciliation / journal / invoice pickers.
      *
      * @return Collection<int, self>
      */
@@ -35,26 +35,17 @@ class ChartOfAccount extends Model
         return static::query()
             ->where('is_active', true)
             ->orderBy('account_code')
-            ->get(['id', 'account_code', 'account_name']);
+            ->get(['id', 'account_code', 'account_name', 'account_type', 'account_category']);
     }
 
     /**
-     * Active income/expense accounts for dashboard allocation pickers.
-     * Includes Director / Entity Loan (2500) so remittances can still book
-     * director loan in/out from the CoA list.
+     * Active chart accounts for dashboard allocation pickers (full active chart).
      *
      * @return Collection<int, self>
      */
     public static function activePnlForSelect(): Collection
     {
-        return static::query()
-            ->where('is_active', true)
-            ->where(function ($query): void {
-                $query->whereIn('account_type', ['income', 'expense'])
-                    ->orWhere('account_code', '2500');
-            })
-            ->orderBy('account_code')
-            ->get(['id', 'account_code', 'account_name', 'account_type', 'account_category']);
+        return static::activeForSelect();
     }
 
     /**

@@ -83,7 +83,7 @@
                             : "Could not save reminder:\n" . implode("\n", $errors->all());
                     }
 
-                    $dashboardChartAccounts = \App\Models\ChartOfAccount::activePnlForSelect()->map(fn ($account) => [
+                    $dashboardChartAccounts = \App\Models\ChartOfAccount::activeForSelect()->map(fn ($account) => [
                         'id' => $account->id,
                         'code' => $account->account_code,
                         'name' => $account->account_name,

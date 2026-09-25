@@ -105,7 +105,7 @@
                             @endforeach
                         </select>
                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                            Active income &amp; expense accounts only (plus Director / Entity Loan).
+                            All active chart of accounts. Income / expense toggles the cash direction.
                         </p>
                     </div>
 
