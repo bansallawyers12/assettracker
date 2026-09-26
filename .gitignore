@@ -22,4 +22,10 @@ yarn-error.log
 /.vscode
 /.zed
 /asset_tracker_backup.sql
+
+# Graphify
 /graphify-out/
+
+# Laravel Boost / Cursor MCP (graphify, context7, laravel-boost)
+/.cursor/
+/boost.json
