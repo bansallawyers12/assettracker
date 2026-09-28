@@ -38,8 +38,8 @@ class ManualJournalRegister
         $baseQuery = JournalEntry::query()
             ->postedManual()
             ->whereIn('business_entity_id', $entityIds)
-            ->whereDate('entry_date', '>=', $start)
-            ->whereDate('entry_date', '<=', $end);
+            ->where('entry_date', '>=', $start)
+            ->where('entry_date', '<=', $end);
 
         $manualCount = (clone $baseQuery)
             ->where('reference_number', 'not like', 'OPEN-%')
