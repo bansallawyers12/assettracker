@@ -35,8 +35,9 @@ class SetupSecurity extends Command
 
         try {
             // Check if already configured
-            if (!$this->option('force') && $this->isAlreadyConfigured()) {
+            if (! $this->option('force') && $this->isAlreadyConfigured()) {
                 $this->warn('Security appears to be already configured. Use --force to reconfigure.');
+
                 return Command::SUCCESS;
             }
 
@@ -47,7 +48,7 @@ class SetupSecurity extends Command
             $this->createEncryptedStorage();
 
             // Run migrations
-            if (!$this->option('skip-migration')) {
+            if (! $this->option('skip-migration')) {
                 $this->runMigrations();
             }
 
@@ -70,7 +71,8 @@ class SetupSecurity extends Command
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error("Security setup failed: " . $e->getMessage());
+            $this->error('Security setup failed: '.$e->getMessage());
+
             return Command::FAILURE;
         }
     }
@@ -80,7 +82,7 @@ class SetupSecurity extends Command
      */
     protected function isAlreadyConfigured(): bool
     {
-        return !empty(config('app.key')) && 
+        return ! empty(config('app.key')) &&
                File::exists(storage_path('app/encrypted'));
     }
 
@@ -108,7 +110,7 @@ class SetupSecurity extends Command
         $envContent = File::exists($envPath) ? File::get($envPath) : '';
 
         foreach ($keys as $key => $value) {
-            if (!Str::contains($envContent, $key)) {
+            if (! Str::contains($envContent, $key)) {
                 $envContent .= "\n{$key}={$value}";
                 $this->line("✓ Generated {$key}");
             }
@@ -132,7 +134,7 @@ class SetupSecurity extends Command
         $this->info('Creating encrypted storage directory...');
 
         $encryptedPath = storage_path('app/encrypted');
-        if (!File::exists($encryptedPath)) {
+        if (! File::exists($encryptedPath)) {
             File::makeDirectory($encryptedPath, 0755, true);
             $this->line('✓ Created encrypted storage directory');
         }
@@ -149,7 +151,7 @@ class SetupSecurity extends Command
             Artisan::call('migrate', ['--force' => true]);
             $this->line('✓ Database migrations completed');
         } catch (\Exception $e) {
-            $this->warn('Migration failed: ' . $e->getMessage());
+            $this->warn('Migration failed: '.$e->getMessage());
             $this->warn('Please run "php artisan migrate" manually.');
         }
     }
@@ -171,7 +173,7 @@ class SetupSecurity extends Command
         foreach ($directories as $dir) {
             if (File::exists($dir)) {
                 chmod($dir, 0755);
-                $this->line("✓ Set permissions for " . basename($dir));
+                $this->line('✓ Set permissions for '.basename($dir));
             }
         }
 
@@ -191,7 +193,7 @@ class SetupSecurity extends Command
         $this->info('Creating .env.example file...');
 
         $envExample = base_path('.env.example');
-        if (!File::exists($envExample)) {
+        if (! File::exists($envExample)) {
             $content = $this->getEnvExampleContent();
             File::put($envExample, $content);
             $this->line('✓ Created .env.example file');
@@ -211,6 +213,8 @@ APP_DEBUG=false
 APP_URL=https://your-domain.com
 
 LOG_CHANNEL=stack
+LOG_STACK=daily
+LOG_DAILY_DAYS=7
 LOG_DEPRECATIONS_CHANNEL=null
 LOG_LEVEL=error
 
@@ -299,7 +303,7 @@ ENV;
             Artisan::call('security:audit');
             $this->line('✓ Security audit completed');
         } catch (\Exception $e) {
-            $this->warn('Security audit failed: ' . $e->getMessage());
+            $this->warn('Security audit failed: '.$e->getMessage());
         }
     }
 }

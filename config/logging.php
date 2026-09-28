@@ -69,7 +69,7 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
-            'days' => env('LOG_DAILY_DAYS', 14),
+            'days' => (int) env('LOG_DAILY_DAYS', 7),
             'replace_placeholders' => true,
         ],
 
@@ -131,7 +131,7 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/security-audit.log'),
             'level' => 'info',
-            'days' => (int) config('security.audit.retention_days', 365),
+            'days' => (int) env('LOG_DAILY_DAYS', 7),
             'replace_placeholders' => true,
         ],
 

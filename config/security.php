@@ -1,12 +1,12 @@
 <?php
 
 $viteDevHttp = '';
-$viteDevWs   = '';
+$viteDevWs = '';
 $isDevLikeEnvironment = in_array(env('APP_ENV'), ['local', 'testing'], true)
     || filter_var(env('APP_DEBUG', false), FILTER_VALIDATE_BOOLEAN);
 if ($isDevLikeEnvironment) {
     $viteDevHttp = ' http://127.0.0.1:5173 http://localhost:5173';
-    $viteDevWs   = ' ws://127.0.0.1:5173 ws://localhost:5173';
+    $viteDevWs = ' ws://127.0.0.1:5173 ws://localhost:5173';
 }
 
 return [
@@ -46,11 +46,11 @@ return [
 
     'database' => [
         'encrypt_fields' => [
-            'users'             => ['email', 'phone', 'address', 'two_factor_secret', 'two_factor_backup_codes'],
-            'bank_accounts'     => ['account_number'],
+            'users' => ['email', 'phone', 'address', 'two_factor_secret', 'two_factor_backup_codes'],
+            'bank_accounts' => ['account_number'],
             'business_entities' => ['tfn', 'abn', 'acn', 'corporate_key'],
-            'persons'           => ['first_name', 'last_name', 'email', 'tfn', 'abn', 'phone_number', 'address', 'identification_number', 'ssn', 'passport_number', 'drivers_license'],
-            'emails'            => ['password'],
+            'persons' => ['first_name', 'last_name', 'email', 'tfn', 'abn', 'phone_number', 'address', 'identification_number', 'ssn', 'passport_number', 'drivers_license'],
+            'emails' => ['password'],
         ],
         'encryption_key' => env('DB_ENCRYPTION_KEY', env('APP_KEY')),
     ],
@@ -213,6 +213,6 @@ return [
         'log_failed_logins' => true,
         'log_password_changes' => true,
         'log_sensitive_operations' => true,
-        'retention_days' => 365,
+        'retention_days' => (int) env('LOG_DAILY_DAYS', 7),
     ],
 ];
