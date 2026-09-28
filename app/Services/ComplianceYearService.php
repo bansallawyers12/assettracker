@@ -128,7 +128,9 @@ class ComplianceYearService
             $fyStart instanceof Carbon ? $fyStart : Carbon::parse($fyStart)
         );
 
-        $record = DB::transaction(function () use ($entity, $asset, $period) {
+        $created = false;
+
+        $record = DB::transaction(function () use ($entity, $asset, $period, &$created) {
             $query = ComplianceYearRecord::query()
                 ->where('business_entity_id', $entity->id)
                 ->whereDate('fy_start_date', $period['start']->toDateString());
@@ -149,6 +151,7 @@ class ComplianceYearService
                         'fy_start_date' => $period['start']->toDateString(),
                         'fy_end_date' => $period['end']->toDateString(),
                     ]);
+                    $created = true;
                 } catch (\Throwable $e) {
                     $rec = $query->first();
                     if (! $rec) {
@@ -160,14 +163,15 @@ class ComplianceYearService
             return $rec;
         });
 
-        if (config('compliance.auto_provision_on_view', true)) {
+        $shouldProvision = config('compliance.auto_provision_on_view', true)
+            && ($created || ! ComplianceCategory::query()->where('compliance_year_record_id', $record->id)->exists());
+
+        if ($shouldProvision) {
             $this->provisionCategoriesAndSlots($record);
         }
 
         return $record->fresh()->load([
             'categories.files.type',
-            'categories.files.category',
-            'categories.files.yearRecord',
         ]);
     }
 

@@ -72,7 +72,7 @@ it('still loads full message body on the show page', function () {
         ->assertSee('Body visible on show page only');
 });
 
-it('still finds emails by body text when searching from the inbox list', function () {
+it('does not search email body text from the inbox list', function () {
     $user = mailListUser();
     mailListMessage($user, [
         'subject' => 'Hidden subject',
@@ -82,7 +82,35 @@ it('still finds emails by body text when searching from the inbox list', functio
     $this->actingAs($user)
         ->get(route('emails.index', ['search' => 'unique-search-token-body-only']))
         ->assertSuccessful()
-        ->assertSee('Hidden subject');
+        ->assertDontSee('Hidden subject');
+});
+
+it('still finds emails by subject when searching from the inbox list', function () {
+    $user = mailListUser();
+    mailListMessage($user, ['subject' => 'Unique subject search token']);
+
+    $this->actingAs($user)
+        ->get(route('emails.index', ['search' => 'Unique subject search token']))
+        ->assertSuccessful()
+        ->assertSee('Unique subject search token');
+});
+
+it('includes labels attached to the users messages in the filter list', function () {
+    $user = mailListUser();
+    $message = mailListMessage($user);
+
+    $label = MailLabel::query()->create([
+        'user_id' => null,
+        'name' => 'Entity: Example Pty Ltd',
+        'color' => '#fde68a',
+        'type' => 'entity',
+    ]);
+    $message->labels()->attach($label->id);
+
+    $this->actingAs($user)
+        ->get(route('emails.index'))
+        ->assertSuccessful()
+        ->assertSee('Entity: Example Pty Ltd');
 });
 
 it('renders upload list without requiring body columns on list models', function () {

@@ -13,8 +13,10 @@ use App\Models\MailLabel;
 use App\Models\MailMessage;
 use App\Services\DocumentUploadService;
 use App\Services\MsgParserService;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
@@ -30,13 +32,7 @@ class MailMessageController extends Controller
         $query = $this->mailMessageListQuery();
 
         if ($search = $request->string('search')->toString()) {
-            $query->where(function ($q) use ($search) {
-                $q->where('subject', 'like', "%$search%")
-                    ->orWhere('sender_email', 'like', "%$search%")
-                    ->orWhere('sender_name', 'like', "%$search%")
-                    ->orWhere('text_content', 'like', "%$search%")
-                    ->orWhere('recipients', 'like', "%$search%");
-            });
+            $this->applyMailListSearch($query, $search);
         }
 
         if ($labelId = $request->integer('label_id')) {
@@ -72,13 +68,7 @@ class MailMessageController extends Controller
         $query = $this->mailMessageListQuery();
 
         if ($search = $request->string('search')->toString()) {
-            $query->where(function ($q) use ($search) {
-                $q->where('subject', 'like', "%$search%")
-                    ->orWhere('sender_email', 'like', "%$search%")
-                    ->orWhere('sender_name', 'like', "%$search%")
-                    ->orWhere('text_content', 'like', "%$search%")
-                    ->orWhere('recipients', 'like', "%$search%");
-            });
+            $this->applyMailListSearch($query, $search);
         }
 
         if ($labelId = $request->integer('label_id')) {
@@ -463,17 +453,36 @@ class MailMessageController extends Controller
     {
         $userId = Auth::id();
 
+        $messageLabelIds = DB::table('mail_label_mail_message')
+            ->join('mail_messages', 'mail_messages.id', '=', 'mail_label_mail_message.mail_message_id')
+            ->where('mail_messages.user_id', $userId)
+            ->distinct()
+            ->pluck('mail_label_mail_message.mail_label_id');
+
         return MailLabel::query()
-            ->where(function ($q) use ($userId) {
+            ->where(function ($q) use ($userId, $messageLabelIds) {
                 $q->where('user_id', $userId)
-                    ->orWhere('type', 'system')
-                    ->orWhereHas('messages', function ($messages) use ($userId) {
-                        $messages->where('user_id', $userId);
-                    });
+                    ->orWhere('type', 'system');
+
+                if ($messageLabelIds->isNotEmpty()) {
+                    $q->orWhereIn('id', $messageLabelIds);
+                }
             })
             ->orderBy('type')
             ->orderBy('name')
             ->get();
+    }
+
+    /**
+     * Inbox/upload search: indexed-friendly fields only (not email body).
+     */
+    private function applyMailListSearch(Builder $query, string $search): void
+    {
+        $query->where(function ($q) use ($search) {
+            $q->where('subject', 'like', "%{$search}%")
+                ->orWhere('sender_email', 'like', "%{$search}%")
+                ->orWhere('sender_name', 'like', "%{$search}%");
+        });
     }
 
     /**

@@ -8,31 +8,32 @@ class ComplianceDocumentFileResource extends JsonResource
 {
     public function toArray($request): array
     {
-        $entityId = $this->yearRecord?->business_entity_id;
+        $entityId = $request->attributes->get('compliance_workspace_entity_id')
+            ?? $this->yearRecord?->business_entity_id;
 
         $contentUrl = $this->path && $entityId
             ? route('entities.compliance-files.content', [$entityId, $this->id], absolute: false)
             : null;
 
         return [
-            'id'               => $this->id,
-            'category_id'      => $this->compliance_category_id,
-            'checklist_label'  => $this->displayLabel(),
-            'mapping_label'    => $this->effectiveChecklistLabel(),
-            'type_code'        => $this->type?->code,
-            'type_label'       => $this->type?->label,
-            'frequency'        => $this->type?->frequency,
-            'is_required'      => (bool) ($this->type?->is_required ?? false),
-            'custom_label'     => (bool) $this->custom_label,
-            'status'           => $this->status,
-            'has_file'         => (bool) $this->path,
-            'file_name'        => $this->file_name,
-            'filetype'         => $this->filetype,
-            'due_date'         => $this->due_date?->toDateString(),
-            'lodged_date'      => $this->lodged_date?->toDateString(),
-            'paid_date'        => $this->paid_date?->toDateString(),
-            'content_url'      => $contentUrl,
-            'download_url'     => $contentUrl ? $contentUrl.'?download=1' : null,
+            'id' => $this->id,
+            'category_id' => $this->compliance_category_id,
+            'checklist_label' => $this->displayLabel(),
+            'mapping_label' => $this->effectiveChecklistLabel(),
+            'type_code' => $this->type?->code,
+            'type_label' => $this->type?->label,
+            'frequency' => $this->type?->frequency,
+            'is_required' => (bool) ($this->type?->is_required ?? false),
+            'custom_label' => (bool) $this->custom_label,
+            'status' => $this->status,
+            'has_file' => (bool) $this->path,
+            'file_name' => $this->file_name,
+            'filetype' => $this->filetype,
+            'due_date' => $this->due_date?->toDateString(),
+            'lodged_date' => $this->lodged_date?->toDateString(),
+            'paid_date' => $this->paid_date?->toDateString(),
+            'content_url' => $contentUrl,
+            'download_url' => $contentUrl ? $contentUrl.'?download=1' : null,
         ];
     }
 }

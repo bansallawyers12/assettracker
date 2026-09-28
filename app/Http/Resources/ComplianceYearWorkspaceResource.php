@@ -16,6 +16,8 @@ class ComplianceYearWorkspaceResource extends JsonResource
         $this->loadMissing('businessEntity');
         $entity = $this->businessEntity;
 
+        $request->attributes->set('compliance_workspace_entity_id', $this->business_entity_id);
+
         $categories = $this->categories
             ->sortBy(fn ($cat) => [$cat->sort_order, $cat->id])
             ->values();
