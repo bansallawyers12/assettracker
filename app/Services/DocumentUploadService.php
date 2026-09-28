@@ -178,16 +178,7 @@ class DocumentUploadService
         $category = $this->firstOrCreateCategoryNamed($entity, $asset, self::TRANSACTION_RECEIPTS_CATEGORY_TITLE);
         $fname = $displayFileName ?? $file->getClientOriginalName();
         $label = $checklistLabel ?: (pathinfo($fname, PATHINFO_FILENAME) ?: 'Receipt');
-
-        $document = Document::query()->create([
-            'business_entity_id' => $entity->id,
-            'asset_id' => $asset?->id,
-            'document_category_id' => $category->id,
-            'checklist_label' => $label,
-            'type' => 'financial',
-            'description' => $description,
-            'user_id' => auth()->id(),
-        ]);
+        $document = $this->resolveTransactionReceiptDocumentSlot($entity, $asset, $category, $label, $description);
 
         $this->attachFileToDocument($document, $file, $entity, $asset, $fname);
 
@@ -211,16 +202,7 @@ class DocumentUploadService
 
         $category = $this->firstOrCreateCategoryNamed($entity, $asset, self::TRANSACTION_RECEIPTS_CATEGORY_TITLE);
         $label = $checklistLabel ?: (pathinfo($displayFileName, PATHINFO_FILENAME) ?: 'Receipt');
-
-        $document = Document::query()->create([
-            'business_entity_id' => $entity->id,
-            'asset_id' => $asset?->id,
-            'document_category_id' => $category->id,
-            'checklist_label' => $label,
-            'type' => 'financial',
-            'description' => $description,
-            'user_id' => auth()->id(),
-        ]);
+        $document = $this->resolveTransactionReceiptDocumentSlot($entity, $asset, $category, $label, $description);
 
         $this->copyS3ObjectIntoDocumentSlot($document, $sourceS3Path, $entity, $asset, $displayFileName);
 
@@ -287,6 +269,75 @@ class DocumentUploadService
             $document->user_id = auth()->id();
         }
         $document->save();
+    }
+
+    private function resolveTransactionReceiptDocumentSlot(
+        BusinessEntity $entity,
+        ?Asset $asset,
+        DocumentCategory $category,
+        string $checklistLabel,
+        ?string $description = null
+    ): Document {
+        $label = trim($checklistLabel) !== '' ? trim($checklistLabel) : 'Receipt';
+        $existing = $this->findDocumentByCategoryAndLabel($category->id, $label);
+
+        if ($existing !== null && ! $this->documentLinkedToTransaction($existing)) {
+            if ($description !== null) {
+                $existing->description = $description;
+            }
+            if (auth()->check()) {
+                $existing->user_id = auth()->id();
+            }
+            $existing->save();
+
+            return $existing;
+        }
+
+        $resolvedLabel = $existing !== null
+            ? $this->uniqueChecklistLabelInCategory($category->id, $label)
+            : $label;
+
+        return Document::query()->create([
+            'business_entity_id' => $entity->id,
+            'asset_id' => $asset?->id,
+            'document_category_id' => $category->id,
+            'checklist_label' => $resolvedLabel,
+            'type' => 'financial',
+            'description' => $description,
+            'user_id' => auth()->id(),
+        ]);
+    }
+
+    private function findDocumentByCategoryAndLabel(int $categoryId, string $label): ?Document
+    {
+        return Document::query()
+            ->where('document_category_id', $categoryId)
+            ->whereRaw('LOWER(TRIM(checklist_label)) = LOWER(TRIM(?))', [trim($label)])
+            ->first();
+    }
+
+    private function documentLinkedToTransaction(Document $document): bool
+    {
+        return Transaction::query()
+            ->where(function ($query) use ($document) {
+                $query->where('document_id', $document->id)
+                    ->orWhere('payment_document_id', $document->id);
+            })
+            ->exists();
+    }
+
+    private function uniqueChecklistLabelInCategory(int $categoryId, string $baseLabel): string
+    {
+        $base = trim($baseLabel) !== '' ? trim($baseLabel) : 'Receipt';
+        $label = $base;
+        $suffix = 2;
+
+        while ($this->findDocumentByCategoryAndLabel($categoryId, $label) !== null) {
+            $label = $base.' ('.$suffix.')';
+            $suffix++;
+        }
+
+        return $label;
     }
 
     private function mimeTypeForExtension(string $extension): string
