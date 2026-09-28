@@ -522,6 +522,7 @@
                                                             value="{{ $chartAccount->id }}"
                                                             data-account-code="{{ $chartAccount->account_code }}"
                                                             data-account-type="{{ $chartAccount->account_type }}"
+                                                            data-account-name="{{ $chartAccount->account_name }}"
                                                         >
                                                             {{ $chartAccount->account_code }} - {{ $chartAccount->account_name }}
                                                         </option>

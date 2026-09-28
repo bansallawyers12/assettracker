@@ -6,8 +6,11 @@ use App\Models\ChartOfAccount;
 
 /**
  * Resolve a booking transaction_type from a Chart of Accounts selection.
- * Known seeded codes map to dedicated types; custom P&L accounts fall back to
- * other_income / other_expenses and rely on chart_of_account_id for posting.
+ * Known seeded codes map to dedicated types. GST clearing liabilities map to
+ * BAS payment (money out) or a liability inflow (money in) so the selected
+ * current-liability account is not rewritten to Other Expenses. Custom P&L
+ * accounts fall back to other_income / other_expenses and rely on
+ * chart_of_account_id for posting.
  */
 class ChartAccountTransactionTypeMapper
 {
@@ -55,12 +58,36 @@ class ChartAccountTransactionTypeMapper
             return $direction === 'income' ? 'director_loan_in' : 'director_loan_out';
         }
 
+        if (self::isGstClearingAccount($account)) {
+            return $direction === 'income' ? 'loan_drawdown' : 'bas_payments';
+        }
+
         $mapped = self::codeTypeMap()[$code] ?? null;
         if ($mapped !== null) {
             return $mapped;
         }
 
         return $direction === 'income' ? 'other_income' : 'other_expenses';
+    }
+
+    /**
+     * Liability account that holds net GST owing to or from the ATO.
+     * Code 2100 is canonical; a renamed or recoded row still matches on name.
+     */
+    public static function isGstClearingAccount(ChartOfAccount $account): bool
+    {
+        if ((string) $account->account_type !== 'liability') {
+            return false;
+        }
+
+        $code = trim((string) $account->account_code);
+        if ($code === (string) config('financial.report_accounts.gst_clearing', '2100')) {
+            return true;
+        }
+
+        $name = strtolower(trim((string) preg_replace('/\s+/', ' ', (string) $account->account_name)));
+
+        return in_array($name, ['gst', 'gst clearing', 'gst payable'], true);
     }
 
     /**

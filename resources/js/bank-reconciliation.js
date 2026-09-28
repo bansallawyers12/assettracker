@@ -732,17 +732,37 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         asset_purchase: 'Asset Purchase',
         loan_drawdown: 'Loan Drawdown',
         loan_repayments: 'Loan Repayment',
+        bas_payments: 'BAS / Tax Payment',
         equity_contribution: 'Equity Contribution',
         directors_fees: 'Directors Fees',
     };
 
     /**
      * Mirrors BankStatementApplyService::mapTransactionType for Change-panel preview.
+     * GST clearing detection matches ChartAccountTransactionTypeMapper::isGstClearingAccount.
      */
-    function mapChartAccountToTransactionType(accountCode, accountType, amount) {
+    function isGstClearingChartAccount(accountCode, accountType, accountName) {
+        if (String(accountType || '') !== 'liability') {
+            return false;
+        }
+
+        if (String(accountCode) === '2100') {
+            return true;
+        }
+
+        const name = String(accountName || '').trim().toLowerCase().replace(/\s+/g, ' ');
+
+        return name === 'gst' || name === 'gst clearing' || name === 'gst payable';
+    }
+
+    function mapChartAccountToTransactionType(accountCode, accountType, amount, accountName) {
         const isIncome = Number(amount) >= 0;
         if (String(accountCode) === '2500') {
             return isIncome ? 'director_loan_in' : 'director_loan_out';
+        }
+
+        if (isGstClearingChartAccount(accountCode, accountType, accountName)) {
+            return isIncome ? 'loan_drawdown' : 'bas_payments';
         }
 
         switch (String(accountType || '')) {
@@ -772,6 +792,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             || chartSelect.querySelector(`option[value="${CSS.escape(chartSelect.value)}"]`);
         const accountCode = option?.dataset?.accountCode || '';
         const accountType = option?.dataset?.accountType || '';
+        const accountName = option?.dataset?.accountName || '';
         if (!chartSelect.value || !accountCode) {
             preview.classList.add('hidden');
             preview.textContent = '';
@@ -779,7 +800,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         }
 
         const amount = Number(entryEl.dataset.entryAmount || 0);
-        const typeKey = mapChartAccountToTransactionType(accountCode, accountType, amount);
+        const typeKey = mapChartAccountToTransactionType(accountCode, accountType, amount, accountName);
         const typeLabel = CHART_CREATE_TYPE_LABELS[typeKey] || typeKey;
         const direction = amount >= 0 ? 'credit (money in)' : 'debit (money out)';
         preview.textContent = `Creates as ${typeLabel} · ${direction} from GL ${accountCode}`;
@@ -804,6 +825,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                 option.textContent = `${account.account_code} - ${account.account_name}`;
                 option.dataset.accountCode = String(account.account_code ?? '');
                 option.dataset.accountType = String(account.account_type ?? '');
+                option.dataset.accountName = String(account.account_name ?? '');
                 select.appendChild(option);
             });
             if (keep && accounts.some((account) => String(account.id) === String(keep))) {

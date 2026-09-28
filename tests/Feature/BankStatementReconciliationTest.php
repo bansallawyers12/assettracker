@@ -84,6 +84,8 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($js)->toContain('aria-expanded')
         ->and($js)->toContain('showWorkspaceConfirm')
         ->and($js)->toContain('mapChartAccountToTransactionType')
+        ->and($js)->toContain('isGstClearingChartAccount')
+        ->and($js)->toContain('bas_payments')
         ->and($js)->toContain('updateChartTypePreview')
         ->and($js)->toContain('data-bank-import-chart-type-preview')
         ->and($js)->not->toContain('window.confirm')

@@ -8,6 +8,7 @@ use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use App\Models\Invoice;
 use App\Models\Transaction;
+use App\Support\ChartAccountTransactionTypeMapper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -396,6 +397,10 @@ class BankStatementApplyService
         $isIncome = $amount >= 0;
         if ((string) $chartAccount->account_code === '2500') {
             return $isIncome ? 'director_loan_in' : 'director_loan_out';
+        }
+
+        if (ChartAccountTransactionTypeMapper::isGstClearingAccount($chartAccount)) {
+            return ChartAccountTransactionTypeMapper::typeFor($chartAccount, $isIncome ? 'income' : 'expense');
         }
 
         return match ($chartAccount->account_type) {
