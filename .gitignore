@@ -28,4 +28,5 @@ yarn-error.log
 
 # Laravel Boost / Cursor MCP (graphify, context7, laravel-boost)
 /.cursor/
+/.mcp.json
 /boost.json

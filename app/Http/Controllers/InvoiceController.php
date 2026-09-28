@@ -196,7 +196,6 @@ class InvoiceController extends Controller
                     $data['lines'],
                     $gstRate,
                     $gstBasis,
-                    isset($data['gst_amount']) ? (float) $data['gst_amount'] : null
                 );
 
                 $invoice->load('lines');
@@ -395,7 +394,6 @@ class InvoiceController extends Controller
                     $data['lines'],
                     $gstRate,
                     $gstBasis,
-                    isset($data['gst_amount']) ? (float) $data['gst_amount'] : null
                 );
                 $invoice->load('lines');
 
@@ -655,6 +653,7 @@ class InvoiceController extends Controller
             'lines.*.quantity' => ['required', 'numeric', 'min:0.0001'],
             'lines.*.unit_price' => ['required', 'numeric'],
             'lines.*.account_code' => ['required', 'string', Rule::in($lineAccountCodes)],
+            'lines.*.tax_code' => ['nullable', Rule::in(['gst', 'free'])],
             'save_and_post' => ['nullable', 'boolean'],
         ]);
 
@@ -663,13 +662,14 @@ class InvoiceController extends Controller
         }
 
         if ($data['gst_basis'] === 'manual') {
-            $manualGst = isset($data['gst_amount']) ? (float) $data['gst_amount'] : 0.0;
-            if ($manualGst <= 0) {
-                throw ValidationException::withMessages([
-                    'gst_amount' => 'Enter the invoice TOTAL GST when using mixed rates / manual GST.',
-                ]);
-            }
             $data['gst_percent'] = 0;
+            foreach ($data['lines'] as $index => $line) {
+                if (! in_array($line['tax_code'] ?? null, ['gst', 'free'], true)) {
+                    throw ValidationException::withMessages([
+                        "lines.$index.tax_code" => 'Select GST 10% or GST Free for each line when using mixed rates.',
+                    ]);
+                }
+            }
         }
 
         return $data;
@@ -710,18 +710,18 @@ class InvoiceController extends Controller
         array $lines,
         float $gstRate,
         string $gstBasis,
-        ?float $manualGstAmount = null
     ): void {
         $subtotal = 0.0;
         $gstTotal = 0.0;
         $grand = 0.0;
 
         foreach ($lines as $line) {
+            [$lineRate, $lineBasis] = $this->resolveLineGst($line, $gstRate, $gstBasis);
             $amounts = $this->calculateInvoiceLineAmounts(
                 (float) $line['quantity'],
                 (float) $line['unit_price'],
-                $gstRate,
-                $gstBasis
+                $lineRate,
+                $lineBasis
             );
 
             InvoiceLine::create([
@@ -730,7 +730,7 @@ class InvoiceController extends Controller
                 'quantity' => $line['quantity'],
                 'unit_price' => $line['unit_price'],
                 'line_total' => $amounts['line_total'],
-                'gst_rate' => $gstBasis === 'manual' ? 0.0 : $gstRate,
+                'gst_rate' => $lineRate,
                 'account_code' => $line['account_code'],
             ]);
 
@@ -739,21 +739,30 @@ class InvoiceController extends Controller
             $grand += $amounts['line_total'];
         }
 
-        if ($gstBasis === 'manual') {
-            $grand = round($grand, 2);
-            $gstTotal = round((float) $manualGstAmount, 2);
-            if ($gstTotal > $grand) {
-                throw ValidationException::withMessages([
-                    'gst_amount' => 'Manual GST cannot exceed the invoice total.',
-                ]);
-            }
-            $subtotal = round($grand - $gstTotal, 2);
-        }
-
         $invoice->subtotal = round($subtotal, 2);
         $invoice->gst_amount = round($gstTotal, 2);
         $invoice->total_amount = round($grand, 2);
         $invoice->save();
+    }
+
+    /**
+     * Mixed-rate invoices price each line as a cash total and carry their own rate.
+     * GST 10% is inclusive; GST Free stores a zero rate so posting leaves the full amount on the P&L account.
+     *
+     * @param  array<string, mixed>  $line
+     * @return array{0: float, 1: string}
+     */
+    private function resolveLineGst(array $line, float $gstRate, string $gstBasis): array
+    {
+        if ($gstBasis !== 'manual') {
+            return [$gstRate, $gstBasis];
+        }
+
+        if (($line['tax_code'] ?? null) === 'gst') {
+            return [0.1, 'inclusive'];
+        }
+
+        return [0.0, 'none'];
     }
 
     private function ensureDefaultRentalIncomeAccount(): ChartOfAccount

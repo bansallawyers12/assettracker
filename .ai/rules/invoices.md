@@ -6,7 +6,7 @@ paths:
 # Invoices
 
 ## Invoice create/edit UI is simplified
-Manual invoice form shows: issue/due dates, lease picker, customer, GST mode (10% inclusive / 10% exclusive / mixed-rates manual total / none), line description + unit price + account (full chart), totals. Hidden defaults: AUD currency, auto invoice number, auto reference from lease, qty=1. Mixed rates requires gst_amount (invoice TOTAL GST); line prices stay cash totals. Do not reintroduce Currency, GST %, Asset picker, tenant pick dropdown, Notes, Qty, or Line total columns without product approval. Backend still accepts exclusive GST and other fields via POST.
+Manual invoice form shows: issue/due dates, lease picker, customer, GST mode (10% inclusive / 10% exclusive / mixed rates / none), line description + unit price + account (full chart), totals. Hidden defaults: AUD currency, auto invoice number, auto reference from lease, qty=1. Mixed rates keep line prices as cash totals and add a Tax rate (GST 10% or GST Free) plus a calculated Tax amount on each line. Invoice GST is the sum of those lines. Do not bring back a single invoice TOTAL GST field, or Currency, a free-form GST %, Asset picker, tenant pick dropdown, Notes, Qty, or Line total columns. Backend still accepts exclusive GST and other fields via POST.
 
 ## Lease picker shows past-expiry leases
 Lease / tenant options include leases with past end_date. end_date is expiry/term, not closed. Do not re-add an end_date filter or "Include ended leases" toggle on this form.

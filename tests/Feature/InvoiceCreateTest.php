@@ -74,7 +74,7 @@ it('pre-fills create form with suggested number, line accounts, and due date', f
         ->assertSee('INV'.$entity->id.'-'.now()->format('Ym').'001', false)
         ->assertSee('4100 — Rental Income', false)
         ->assertSee('5110 — Management Fees', false)
-        ->assertSee('Yes — GST applies', false)
+        ->assertSee('Yes — 10% inclusive', false)
         ->assertSee('>Account</div>', false)
         ->assertDontSee('Income account', false)
         ->assertDontSee('min="0"', false)

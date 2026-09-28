@@ -13,6 +13,20 @@
             $quantity = 1;
         }
         $unitPrice = (float) ($line['unit_price'] ?? 0);
+        $taxCode = $line['tax_code'] ?? null;
+        if (! in_array($taxCode, ['gst', 'free'], true)) {
+            if (array_key_exists('gst_rate', $line) && (float) $line['gst_rate'] > 0) {
+                $taxCode = 'gst';
+            } elseif (! empty($line['legacy_unrated'])) {
+                // Old mixed drafts stored one invoice GST total and a zero rate on every line.
+                // Leave the rate blank so a save cannot treat those lines as GST Free.
+                $taxCode = '';
+            } elseif (array_key_exists('gst_rate', $line)) {
+                $taxCode = 'free';
+            } else {
+                $taxCode = 'gst';
+            }
+        }
 
         return [
             'description' => $line['description'] ?? '',
@@ -20,14 +34,21 @@
             // Qty is hidden (always 1); fold existing qty into the unit price so totals stay correct.
             'unit_price' => round($quantity * $unitPrice, 2),
             'account_code' => $line['account_code'] ?? $defaultAccountCode,
+            'tax_code' => $taxCode,
         ];
     };
+    $legacyMixedGst = $isEdit
+        && ($invoice->gst_basis ?? null) === 'manual'
+        && (float) $invoice->gst_amount > 0
+        && $invoice->lines->every(fn ($line) => (float) $line->gst_rate <= 0);
     $defaultLines = $isEdit
         ? $invoice->lines->map(fn ($line) => $collapseLine([
             'description' => $line->description,
             'quantity' => (float) $line->quantity,
             'unit_price' => (float) $line->unit_price,
             'account_code' => $line->account_code ?? $defaultAccountCode,
+            'gst_rate' => (float) $line->gst_rate,
+            'legacy_unrated' => $legacyMixedGst,
         ]))->values()->all()
         : [$collapseLine([
             'description' => '',
@@ -49,7 +70,6 @@
         'reference' => old('reference', $isEdit ? $invoice->reference : ''),
         'notes' => old('notes', $isEdit ? $invoice->notes : ''),
         'gstBasis' => old('gst_basis', $isEdit ? ($invoice->gst_basis ?: 'inclusive') : 'inclusive'),
-        'gstAmount' => old('gst_amount', $isEdit ? $invoice->gst_amount : null),
         'issueDate' => $issueDate,
         'dueDate' => $defaultDueDate,
         'invoiceNumber' => $suggestedInvoiceNumber,
@@ -174,22 +194,18 @@
                     </label>
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
                         <input type="radio" name="gst_mode_ui" value="manual" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        <span class="block font-medium text-gray-900 dark:text-white">Mixed rates — enter total GST</span>
+                        <span class="block font-medium text-gray-900 dark:text-white">Mixed rates — tax per line</span>
                     </label>
                     <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
                         <input type="radio" name="gst_mode_ui" value="none" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
                         <span class="block font-medium text-gray-900 dark:text-white">No — GST not applicable</span>
                     </label>
                 </div>
-                <div x-show="gstMode === 'manual'" x-cloak class="max-w-xs">
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Invoice TOTAL GST <span class="text-red-500">*</span></label>
-                    <input type="number" step="0.01" min="0.01" name="gst_amount" x-model.number="manualGstAmount"
-                           class="{{ $fieldClass }}" :required="gstMode === 'manual'" />
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                        Use when some lines are GST-free or use a non-10% rate. Line prices are cash totals; enter the GST from the tax invoice.
+                @if ($legacyMixedGst)
+                    <p class="text-xs text-amber-800 dark:text-amber-200">
+                        This draft stored one GST total and no rate on each line, so the Profit &amp; Loss report could not split it. Choose GST 10% or GST Free on every line before you save.
                     </p>
-                    @error('gst_amount') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
-                </div>
+                @endif
             </div>
         </section>
 
@@ -211,15 +227,17 @@
 
             <div class="p-5">
                 <div class="hidden md:grid md:grid-cols-12 gap-2 mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
-                    <div class="md:col-span-5">Description</div>
+                    <div :class="gstMode === 'manual' ? 'md:col-span-3' : 'md:col-span-5'">Description</div>
                     <div class="md:col-span-2" x-text="unitPriceLabel"></div>
-                    <div class="md:col-span-4">Account</div>
+                    <div class="md:col-span-2" x-show="gstMode === 'manual'" x-cloak>Tax rate</div>
+                    <div class="md:col-span-2" x-show="gstMode === 'manual'" x-cloak>Tax</div>
+                    <div :class="gstMode === 'manual' ? 'md:col-span-2' : 'md:col-span-4'">Account</div>
                     <div class="md:col-span-1"></div>
                 </div>
 
                 <template x-for="(line, index) in lines" :key="index">
                     <div class="mb-3 grid grid-cols-1 items-start gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 md:grid-cols-12 md:border-0 md:bg-transparent md:p-0 dark:border-gray-800 dark:bg-gray-800/30 md:dark:bg-transparent">
-                        <div class="md:col-span-5">
+                        <div :class="gstMode === 'manual' ? 'md:col-span-3' : 'md:col-span-5'">
                             <label class="mb-1 block text-xs text-gray-500 md:hidden">Description</label>
                             <input :name="'lines[' + index + '][description]'" x-model="line.description" required
                                    class="{{ $fieldClass }}" />
@@ -230,7 +248,21 @@
                             <input type="number" step="0.01" :name="'lines[' + index + '][unit_price]'" x-model.number="line.unit_price" required
                                    class="{{ $fieldClass }}" />
                         </div>
-                        <div class="md:col-span-4">
+                        <div class="md:col-span-2" x-show="gstMode === 'manual'" x-cloak>
+                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Tax rate</label>
+                            <select :name="'lines[' + index + '][tax_code]'" x-model="line.tax_code"
+                                    :disabled="gstMode !== 'manual'" :required="gstMode === 'manual'"
+                                    class="{{ $fieldClass }}">
+                                <option value="">Select tax</option>
+                                <option value="gst">GST 10%</option>
+                                <option value="free">GST Free</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2" x-show="gstMode === 'manual'" x-cloak>
+                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Tax amount</label>
+                            <p class="px-1 py-2 text-right text-sm font-medium tabular-nums text-gray-900 dark:text-white" x-text="formatMoney(lineAmounts(line).gst)"></p>
+                        </div>
+                        <div :class="gstMode === 'manual' ? 'md:col-span-2' : 'md:col-span-4'">
                             <label class="mb-1 block text-xs text-gray-500 md:hidden">Account</label>
                             <input type="hidden" :name="'lines[' + index + '][account_code]'" :value="line.account_code">
                             <select x-model="line.account_code"
@@ -306,7 +338,6 @@
             gstMode: config.gstBasis === 'none'
                 ? 'none'
                 : (config.gstBasis === 'manual' ? 'manual' : (config.gstBasis === 'exclusive' ? 'exclusive' : 'inclusive')),
-            manualGstAmount: Number(config.gstAmount ?? 0) || null,
             issueDate: config.issueDate || '',
             dueDate: config.dueDate || '',
             invoiceNumber: config.invoiceNumber || '',
@@ -320,6 +351,7 @@
                 quantity: 1,
                 unit_price: Number(line.unit_price ?? 0),
                 account_code: line.account_code || config.defaultAccountCode || '',
+                tax_code: line.tax_code === 'free' || line.tax_code === 'gst' ? line.tax_code : '',
             })),
             get allLeases() {
                 return this.assets.flatMap((asset) =>
@@ -344,7 +376,7 @@
                     return 'GST not charged on this invoice';
                 }
                 if (this.gstMode === 'manual') {
-                    return 'Mixed rates: line prices are cash totals; enter the invoice TOTAL GST below';
+                    return 'Mixed rates: line prices are cash totals. Choose GST 10% or GST Free on each line.';
                 }
                 if (this.gstMode === 'exclusive') {
                     return '10% exclusive (GST added on top) — kept from this draft';
@@ -372,23 +404,22 @@
                     return acc;
                 }, { subtotal: 0, gst: 0, total: 0 });
 
-                if (this.gstMode === 'manual') {
-                    const total = Math.round(carry.total * 100) / 100;
-                    const gst = Math.round((Number(this.manualGstAmount) || 0) * 100) / 100;
-                    return {
-                        subtotal: Math.round((total - gst) * 100) / 100,
-                        gst,
-                        total,
-                    };
-                }
-
                 return carry;
             },
             lineAmounts(line) {
                 const qty = 1;
                 const price = Number(line.unit_price) || 0;
+                if (this.gstMode === 'manual') {
+                    const lineTotal = Math.round(qty * price * 100) / 100;
+                    if (line.tax_code !== 'gst') {
+                        return { net: lineTotal, gst: 0, lineTotal };
+                    }
+                    const net = Math.round((lineTotal / 1.1) * 100) / 100;
+                    const gst = Math.round((lineTotal - net) * 100) / 100;
+                    return { net, gst, lineTotal };
+                }
                 const rate = this.gstRate;
-                if (rate <= 0 || this.gstMode === 'manual') {
+                if (rate <= 0) {
                     const total = Math.round(qty * price * 100) / 100;
                     return { net: total, gst: 0, lineTotal: total };
                 }
@@ -414,6 +445,7 @@
                     quantity: 1,
                     unit_price: 0,
                     account_code: this.defaultAccountCode || (this.lineAccounts[0]?.code ?? ''),
+                    tax_code: 'gst',
                 });
             },
             removeLine(index) {

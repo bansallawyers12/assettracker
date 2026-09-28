@@ -292,7 +292,7 @@
                         <td>{{ $line->description }}</td>
                         <td class="num">{{ rtrim(rtrim(number_format((float) $line->quantity, 4), '0'), '.') }}</td>
                         <td class="num">{{ number_format((float) $line->unit_price, 2) }}</td>
-                        <td class="num">{{ number_format((float) $line->gst_rate * 100, 0) }}%</td>
+                        <td class="num">@if ((float) $line->gst_rate > 0){{ number_format((float) $line->gst_rate * 100, 0) }}%@elseif ($invoice->gst_basis === 'manual')GST Free@else 0%@endif</td>
                         <td class="num">{{ number_format((float) $line->line_total, 2) }}</td>
                     </tr>
                 @empty

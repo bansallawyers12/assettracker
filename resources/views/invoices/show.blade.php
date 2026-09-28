@@ -15,7 +15,7 @@
         $gstBasisLabel = match ($invoice->gst_basis) {
             'none' => 'GST not applicable',
             'exclusive' => 'Exclusive (unit prices ex GST)',
-            'manual' => 'Mixed rates (manual GST total)',
+            'manual' => 'Mixed rates (tax selected per line)',
             default => 'Inclusive (unit prices inc GST)',
         };
     @endphp
@@ -271,7 +271,15 @@
                                     <td class="px-4 py-3.5 text-gray-900 dark:text-gray-100">{{ $line->description }}</td>
                                     <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ number_format((float) $line->quantity, 4) }}</td>
                                     <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ (float) $line->unit_price < 0 ? '-' : '' }}${{ number_format(abs((float) $line->unit_price), 2) }}</td>
-                                    <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ (float) $line->gst_rate * 100 }}%</td>
+                                    <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">
+                                        @if ((float) $line->gst_rate > 0)
+                                            {{ rtrim(rtrim(number_format((float) $line->gst_rate * 100, 2), '0'), '.') }}%
+                                        @elseif ($invoice->gst_basis === 'manual')
+                                            GST Free
+                                        @else
+                                            0%
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3.5 text-right tabular-nums font-semibold text-gray-900 dark:text-white">{{ (float) $line->line_total < 0 ? '-' : '' }}${{ number_format(abs((float) $line->line_total), 2) }}</td>
                                 </tr>
                             @empty

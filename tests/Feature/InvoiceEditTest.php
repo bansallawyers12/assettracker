@@ -94,7 +94,7 @@ it('renders the edit form for a draft invoice', function () {
         ->assertSuccessful()
         ->assertSee('Edit Invoice', false)
         ->assertSee('Edit Tenant', false)
-        ->assertSee('Yes — GST applies', false)
+        ->assertSee('Yes — 10% inclusive', false)
         ->assertSee('>Account</div>', false)
         ->assertDontSee('Income account', false)
         ->assertSee('Save &amp; post', false)
