@@ -27,7 +27,7 @@ class MailMessageController extends Controller
 
     public function index(Request $request)
     {
-        $query = $this->mailMessagesForCurrentUser();
+        $query = $this->mailMessageListQuery();
 
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($q) use ($search) {
@@ -69,7 +69,7 @@ class MailMessageController extends Controller
 
     public function uploadIndex(Request $request)
     {
-        $query = $this->mailMessagesForCurrentUser();
+        $query = $this->mailMessageListQuery();
 
         if ($search = $request->string('search')->toString()) {
             $query->where(function ($q) use ($search) {
@@ -425,6 +425,24 @@ class MailMessageController extends Controller
     private function mailMessagesForCurrentUser()
     {
         return MailMessage::query()->where('user_id', Auth::id());
+    }
+
+    /**
+     * Inbox/upload list rows: omit large body columns; eager-load labels for the list UI.
+     */
+    private function mailMessageListQuery()
+    {
+        return $this->mailMessagesForCurrentUser()
+            ->select([
+                'id',
+                'user_id',
+                'subject',
+                'sender_name',
+                'sender_email',
+                'sent_date',
+                'status',
+            ])
+            ->with('labels');
     }
 
     private function findOwnedMailMessage(int $id, array $with = []): MailMessage
