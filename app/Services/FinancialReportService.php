@@ -25,7 +25,7 @@ class FinancialReportService
      * @param  int|array<int>  $businessEntityIdOrIds
      * @return array<int>
      */
-    private function normalizeEntityIds($businessEntityIdOrIds): array
+    private function normalizeEntityIds(int|array $businessEntityIdOrIds): array
     {
         $ids = is_array($businessEntityIdOrIds) ? $businessEntityIdOrIds : [(int) $businessEntityIdOrIds];
         $ids = array_values(array_unique(array_filter(
@@ -58,7 +58,7 @@ class FinancialReportService
     /**
      * @param  int|array<int>  $businessEntityIdOrIds
      */
-    public function generateProfitLoss($businessEntityIdOrIds, $startDate, $endDate, bool $hideZeroBalances = true): array
+    public function generateProfitLoss(int|array $businessEntityIdOrIds, string $startDate, string $endDate, bool $hideZeroBalances = true): array
     {
         $ids = $this->normalizeEntityIds($businessEntityIdOrIds);
 
@@ -98,8 +98,8 @@ class FinancialReportService
      * @param  int|array<int>  $businessEntityIdOrIds
      */
     public function generateBalanceSheet(
-        $businessEntityIdOrIds,
-        $asOfDate,
+        int|array $businessEntityIdOrIds,
+        string $asOfDate,
         bool $includeBankBreakdown = true
     ): array {
         $ids = $this->normalizeEntityIds($businessEntityIdOrIds);
@@ -137,7 +137,7 @@ class FinancialReportService
     /**
      * @param  int|array<int>  $businessEntityIdOrIds
      */
-    public function generateAccountTransactions($businessEntityIdOrIds, $startDate, $endDate, array $accountIds = []): array
+    public function generateAccountTransactions(int|array $businessEntityIdOrIds, string $startDate, string $endDate, array $accountIds = []): array
     {
         $ids = $this->normalizeEntityIds($businessEntityIdOrIds);
 
@@ -183,8 +183,8 @@ class FinancialReportService
             $lines = JournalLine::where('chart_of_account_id', $account->id)
                 ->whereHas('journalEntry', function ($q) use ($ids, $start, $end) {
                     $q->whereIn('business_entity_id', $ids)
-                        ->whereDate('entry_date', '>=', $start)
-                        ->whereDate('entry_date', '<=', $end);
+                        ->where('entry_date', '>=', $start->toDateString())
+                        ->where('entry_date', '<=', $end->toDateString());
                     $this->applyBalancedPostedJournalConstraints($q);
                 })
                 ->with([
@@ -927,7 +927,7 @@ class FinancialReportService
      *
      * @param  array<int>  $entityIds
      */
-    private function getDirectorLoanManualGlBalanceAsOf($accountId, string $asOfDate, array $entityIds): float
+    private function getDirectorLoanManualGlBalanceAsOf(int $accountId, string $asOfDate, array $entityIds): float
     {
         $debits = (float) $this->directorLoanManualGlLinesQuery($accountId, $entityIds, asOfDate: $asOfDate)
             ->sum('debit_amount');
@@ -943,7 +943,7 @@ class FinancialReportService
      * @param  array<int>  $entityIds
      * @return list<array<string, mixed>>
      */
-    private function directorLoanManualGlReportLines($accountId, array $entityIds, string $startDate, string $endDate): array
+    private function directorLoanManualGlReportLines(int $accountId, array $entityIds, string $startDate, string $endDate): array
     {
         $lines = $this->directorLoanManualGlLinesQuery(
             $accountId,
@@ -999,7 +999,7 @@ class FinancialReportService
      * @return Builder<JournalLine>
      */
     private function directorLoanManualGlLinesQuery(
-        $accountId,
+        int $accountId,
         array $entityIds,
         ?string $asOfDate = null,
         ?string $fromDate = null
@@ -1300,7 +1300,7 @@ class FinancialReportService
     /**
      * @param  int|array<int>  $businessEntityIdOrIds
      */
-    public function generateCashFlow($businessEntityIdOrIds, $startDate, $endDate): array
+    public function generateCashFlow(int|array $businessEntityIdOrIds, string $startDate, string $endDate): array
     {
         $ids = $this->normalizeEntityIds($businessEntityIdOrIds);
 
@@ -1332,7 +1332,7 @@ class FinancialReportService
         ], $ids);
     }
 
-    private function calculateAccountBalancesGrouped($accounts, $startDate, $endDate, array $entityIds, array $categoryLabels = [], bool $hideZeroBalances = false): array
+    private function calculateAccountBalancesGrouped(EloquentCollection $accounts, string $startDate, string $endDate, array $entityIds, array $categoryLabels = [], bool $hideZeroBalances = false): array
     {
         $byCategory = [];
         $total = 0;
@@ -1361,8 +1361,8 @@ class FinancialReportService
 
     private function getAccountBalancesByTypeGrouped(
         array $entityIds,
-        $accountType,
-        $asOfDate,
+        string $accountType,
+        string $asOfDate,
         array $categoryLabels = [],
         bool $includeBankBreakdown = false
     ): array {
@@ -1523,7 +1523,7 @@ class FinancialReportService
     /**
      * Exclude journal entries whose line totals do not balance (corrupt imports / partial posts).
      */
-    private function applyBalancedPostedJournalConstraints($query): void
+    private function applyBalancedPostedJournalConstraints(Builder $query): void
     {
         $query->where('is_posted', true)
             ->whereColumn('total_debit', 'total_credit');
@@ -1569,7 +1569,7 @@ class FinancialReportService
             || ($trading !== '' && $lineLabel === $trading);
     }
 
-    private function getAccountBalancesByCategory(array $entityIds, $accountCategory, $startDate, $endDate): array
+    private function getAccountBalancesByCategory(array $entityIds, string $accountCategory, string $startDate, string $endDate): array
     {
         $accounts = ChartOfAccount::where('account_category', $accountCategory)
             ->where('is_active', true)
@@ -1593,7 +1593,7 @@ class FinancialReportService
         ];
     }
 
-    private function getAccountBalance($accountId, $startDate, $endDate, array $entityIds): float
+    private function getAccountBalance(int $accountId, string $startDate, string $endDate, array $entityIds): float
     {
         $debits = JournalLine::where('chart_of_account_id', $accountId)
             ->whereHas('journalEntry', function ($query) use ($startDate, $endDate, $entityIds) {
@@ -1617,8 +1617,8 @@ class FinancialReportService
     }
 
     private function getAccountBalanceAsOf(
-        $accountId,
-        $asOfDate,
+        int $accountId,
+        string $asOfDate,
         array $entityIds,
         ?ChartOfAccount $bankCashAccount = null
     ): float {
@@ -1686,7 +1686,7 @@ class FinancialReportService
     /**
      * @param  int|array<int>  $businessEntityIdOrIds
      */
-    public function generateTrackingCategoryReport($businessEntityIdOrIds, $startDate, $endDate, $trackingCategoryId = null, $trackingSubCategoryId = null): array
+    public function generateTrackingCategoryReport(int|array $businessEntityIdOrIds, string $startDate, string $endDate, ?int $trackingCategoryId = null, ?int $trackingSubCategoryId = null): array
     {
         $ids = $this->normalizeEntityIds($businessEntityIdOrIds);
 
@@ -1781,7 +1781,7 @@ class FinancialReportService
     /**
      * @param  int|array<int>  $businessEntityIdOrIds
      */
-    public function getTrackingCategories($businessEntityIdOrIds): EloquentCollection
+    public function getTrackingCategories(int|array $businessEntityIdOrIds): EloquentCollection
     {
         $ids = $this->normalizeEntityIds($businessEntityIdOrIds);
 
