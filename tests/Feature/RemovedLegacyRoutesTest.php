@@ -103,3 +103,13 @@ it('redirects legacy reminders urls to bills-tasks due tab', function () {
         ->and(Route::has('reminders.edit'))->toBeFalse()
         ->and(Route::has('reminders.update'))->toBeFalse();
 });
+
+it('registers a GET redirect for entity transactions index bookmarks', function () {
+    $routes = file_get_contents(base_path('routes/web.php'));
+
+    expect(Route::has('business-entities.transactions.index'))->toBeTrue()
+        ->and(route('business-entities.transactions.index', 47))->toContain('/business-entities/47/transactions')
+        ->and($routes)->toContain("Route::get('business-entities/{businessEntity}/transactions'")
+        ->and($routes)->toContain("->withFragment('tab_transactions')")
+        ->and(Route::has('business-entities.transactions.store'))->toBeTrue();
+});

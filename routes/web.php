@@ -47,6 +47,7 @@ use App\Http\Controllers\TrackingCategoryController;
 use App\Http\Controllers\TrackingSubCategoryController;
 use App\Http\Controllers\VendorController;
 use App\Http\Controllers\VendorsWorkspaceController;
+use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -315,6 +316,12 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::delete('/business-entities/{businessEntity}/bank-accounts/{bankAccount}', [BusinessEntityController::class, 'destroyBankAccount'])->name('business-entities.bank-accounts.destroy');
 
     // Transaction Routes
+    // GET bookmarks / typed URLs used to 405 (POST-only). Send them to the entity Transactions tab.
+    Route::get('business-entities/{businessEntity}/transactions', function (BusinessEntity $businessEntity) {
+        return redirect()
+            ->route('business-entities.show', $businessEntity)
+            ->withFragment('tab_transactions');
+    })->name('business-entities.transactions.index');
     Route::post('business-entities/{businessEntity}/transactions', [BusinessEntityController::class, 'storeTransaction'])->name('business-entities.transactions.store');
     Route::get('business-entities/{businessEntity}/transactions/{transaction}/edit', [BusinessEntityController::class, 'editTransaction'])->whereNumber('transaction')->name('business-entities.transactions.edit');
     Route::put('business-entities/{businessEntity}/transactions/{transaction}', [BusinessEntityController::class, 'updateTransaction'])->whereNumber('transaction')->name('business-entities.transactions.update');
