@@ -81,38 +81,63 @@
                 </div>
             @endif
 
-            {{-- Filters --}}
-            <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xs overflow-hidden">
-                <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
-                    <x-lucide-sliders-horizontal class="w-4 h-4 text-gray-400" aria-hidden="true" />
-                    <h2 class="portfolio-section-title">Report settings</h2>
-                </div>
-                <form method="GET" action="{{ $formRoute }}" class="p-5">
-                    <div class="flex flex-wrap items-end gap-x-5 gap-y-4">
-                        @include('property-reports.partials.portfolio-filters', [
-                            'formRoute' => $formRoute,
-                            'startDate' => $startDate,
-                            'endDate' => $endDate,
-                            'basis' => $basis,
-                            'reportQuery' => $reportQuery,
-                            'showDisposed' => $showDisposed,
-                        ])
-
-                        <x-report-entity-scope-picker
-                            :business-entities="$businessEntities"
-                            :forms-scope="$formsScope"
-                            :forms-entity-ids="$formsEntityIds"
-                        />
-
-                        <div class="flex items-end gap-2 ml-auto">
-                            <button type="submit"
-                                    class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold tracking-tight px-5 py-2.5 shadow-xs transition-colors">
-                                <x-lucide-refresh-cw class="w-4 h-4" aria-hidden="true" />
-                                Update report
-                            </button>
-                        </div>
+            {{-- Filters (collapsed by default; open via filter icon) --}}
+            <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xs overflow-hidden"
+                 x-data="{ filtersOpen: false }">
+                <div class="px-5 py-3 flex items-center justify-between gap-3">
+                    <div class="min-w-0">
+                        <h2 class="portfolio-section-title">Report settings</h2>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Basis, date range, and entity scope</p>
                     </div>
-                </form>
+                    <button type="button"
+                            @click="filtersOpen = !filtersOpen"
+                            class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium shadow-xs transition-colors shrink-0"
+                            :class="filtersOpen
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+                                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800'"
+                            :aria-expanded="filtersOpen.toString()"
+                            aria-controls="portfolio-filters-panel">
+                        <x-lucide-filter class="w-4 h-4" aria-hidden="true" />
+                        <span class="hidden sm:inline">Filters</span>
+                    </button>
+                </div>
+                <div id="portfolio-filters-panel"
+                     x-show="filtersOpen"
+                     x-cloak
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 -translate-y-1"
+                     x-transition:enter-end="opacity-100 translate-y-0"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 translate-y-0"
+                     x-transition:leave-end="opacity-0 -translate-y-1"
+                     class="border-t border-gray-100 dark:border-gray-700">
+                    <form method="GET" action="{{ $formRoute }}" class="p-5">
+                        <div class="flex flex-wrap items-end gap-x-5 gap-y-4">
+                            @include('property-reports.partials.portfolio-filters', [
+                                'formRoute' => $formRoute,
+                                'startDate' => $startDate,
+                                'endDate' => $endDate,
+                                'basis' => $basis,
+                                'reportQuery' => $reportQuery,
+                                'showDisposed' => $showDisposed,
+                            ])
+
+                            <x-report-entity-scope-picker
+                                :business-entities="$businessEntities"
+                                :forms-scope="$formsScope"
+                                :forms-entity-ids="$formsEntityIds"
+                            />
+
+                            <div class="flex items-end gap-2 ml-auto">
+                                <button type="submit"
+                                        class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold tracking-tight px-5 py-2.5 shadow-xs transition-colors">
+                                    <x-lucide-refresh-cw class="w-4 h-4" aria-hidden="true" />
+                                    Update report
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             {{-- Summary stats --}}
