@@ -43,6 +43,17 @@ class BusinessEntityPolicy
     }
 
     /**
+     * Determine whether the user can record a dashboard transaction for the entity.
+     *
+     * Viewers may post income/expense from the dashboard but cannot edit entity settings
+     * or mutate other portfolio records (see update/create/delete).
+     */
+    public function recordTransaction(User $user, BusinessEntity $businessEntity): bool
+    {
+        return $this->view($user, $businessEntity);
+    }
+
+    /**
      * Determine whether the user can delete the business entity.
      */
     public function delete(User $user, BusinessEntity $businessEntity): bool

@@ -25,6 +25,8 @@ it('allows staff to mutate the firm-shared portfolio while viewers are read-only
         ->and($policy->view($viewer, $entity))->toBeTrue()
         ->and($policy->update($staff, $entity))->toBeTrue()
         ->and($policy->update($viewer, $entity))->toBeFalse()
+        ->and($policy->recordTransaction($staff, $entity))->toBeTrue()
+        ->and($policy->recordTransaction($viewer, $entity))->toBeTrue()
         ->and($policy->create($viewer))->toBeFalse()
         ->and($policy->delete($viewer, $entity))->toBeFalse()
         ->and($reminderPolicy->create($viewer))->toBeFalse()

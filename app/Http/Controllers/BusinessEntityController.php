@@ -858,7 +858,7 @@ class BusinessEntityController extends Controller
      */
     public function storeTransaction(Request $request, BusinessEntity $businessEntity)
     {
-        $this->authorize('update', $businessEntity);
+        $this->authorize('recordTransaction', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
 
         $this->normalizeDashboardTransactionLines($request);
@@ -919,7 +919,7 @@ class BusinessEntityController extends Controller
                 : $businessEntity;
 
             $this->ensureOperationalForAccounting($targetEntity);
-            $this->authorize('update', $targetEntity);
+            $this->authorize('recordTransaction', $targetEntity);
 
             $lines = array_values($request->input('lines', []));
             $this->assertDashboardTransactionLinesValid($lines, $targetEntity);
