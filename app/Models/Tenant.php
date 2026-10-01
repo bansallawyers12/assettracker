@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Tenant extends Model
 {
     protected $fillable = [
-        'asset_id', 'name', 'email', 'phone', 'address',
+        'asset_id', 'name', 'email', 'phone', 'address', 'abn',
         'move_in_date', 'lease_duration', 'lease_duration_value', 'lease_duration_unit',
         'lease_expiry_date', 'lease_expiry_reminder_days', 'rent_amount', 'rent_frequency',
         'move_out_date', 'notes',

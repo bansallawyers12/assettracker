@@ -790,6 +790,7 @@ class AssetController extends Controller
             'email' => 'nullable|email|max:255',
             'phone' => 'nullable|string|max:20',
             'address' => 'nullable|string',
+            'abn' => 'nullable|string|max:11|regex:/^\d*$/',
             'move_in_date' => 'nullable|date',
             'lease_duration_value' => 'nullable|integer|min:1|required_with:lease_duration_unit',
             'lease_duration_unit' => 'nullable|in:days,weeks,months,years|required_with:lease_duration_value',
@@ -880,11 +881,17 @@ class AssetController extends Controller
             }
         }
 
+        $abnDigits = isset($validated['abn']) && $validated['abn'] !== ''
+            ? preg_replace('/\D/', '', (string) $validated['abn'])
+            : '';
+        $abn = $abnDigits !== '' ? $abnDigits : null;
+
         $attributes = [
             'name' => $validated['name'],
             'email' => $validated['email'] ?? null,
             'phone' => $validated['phone'] ?? null,
             'address' => $validated['address'] ?? null,
+            'abn' => $abn,
             'move_in_date' => $validated['move_in_date'] ?? null,
             'lease_duration_value' => $leaseDurationValue,
             'lease_duration_unit' => $leaseDurationUnit,

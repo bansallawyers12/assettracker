@@ -141,6 +141,19 @@
     </div>
 
     <div>
+        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">ABN</label>
+        <input type="text"
+               name="abn"
+               value="{{ old('abn', $tenant->abn) }}"
+               inputmode="numeric"
+               autocomplete="off"
+               maxlength="11"
+               placeholder="11 digits (optional)"
+               class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm font-mono">
+        @error('abn') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+    </div>
+
+    <div>
         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">Lease Start Date</label>
         <x-date-input name="move_in_date" value="{{ old('move_in_date', $tenant->move_in_date?->format('Y-m-d')) }}" class="mt-1 block w-full rounded-lg border-gray-300 shadow-xs focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white text-sm" />
     </div>

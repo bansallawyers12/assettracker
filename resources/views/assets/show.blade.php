@@ -343,6 +343,12 @@
                                                                 <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->address ?? 'N/A' }}</dd>
                                                             </div>
                                                             <div>
+                                                                <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">ABN</dt>
+                                                                <dd class="text-gray-900 dark:text-gray-200 font-mono">
+                                                                    {{ $tenant->abn ? \App\Models\BusinessEntity::formatAbn($tenant->abn) : 'N/A' }}
+                                                                </dd>
+                                                            </div>
+                                                            <div>
                                                                 <dt class="text-sm font-medium text-gray-500 dark:text-gray-400">Lease Start Date</dt>
                                                                 <dd class="text-gray-900 dark:text-gray-200">{{ $tenant->move_in_date ? $tenant->move_in_date->format('d/m/Y') : 'N/A' }}</dd>
                                                             </div>
