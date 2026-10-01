@@ -294,22 +294,12 @@
                 <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional PDF or image stored with this invoice in Documents.</p>
             </div>
             <div class="space-y-3 p-5">
-                @if ($isEdit && $invoice->document?->hasFile())
-                    <div class="flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-800/60 sm:flex-row sm:items-center sm:justify-between">
-                        <div class="min-w-0">
-                            <p class="font-medium text-gray-900 dark:text-white truncate">{{ $invoice->document->file_name }}</p>
-                            <a href="{{ route('business-entities.documents.content', [$businessEntity, $invoice->document]) }}"
-                               target="_blank"
-                               rel="noopener"
-                               class="text-xs font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-                                View current file
-                            </a>
-                        </div>
-                        <label class="inline-flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300 shrink-0">
-                            <input type="checkbox" name="remove_attachment" value="1" class="rounded border-gray-300 text-rose-600 focus:ring-rose-500 dark:border-gray-600 dark:bg-gray-800">
-                            Remove file
-                        </label>
-                    </div>
+                @if ($isEdit)
+                    @include('invoices.partials.attachment-display', [
+                        'invoice' => $invoice,
+                        'businessEntity' => $businessEntity,
+                        'variant' => 'form',
+                    ])
                 @endif
                 <div>
                     <label for="invoice_attachment" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">

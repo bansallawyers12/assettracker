@@ -249,6 +249,12 @@
                 </div>
             @endif
 
+            @include('invoices.partials.attachment-display', [
+                'invoice' => $invoice,
+                'businessEntity' => $businessEntity,
+                'variant' => 'card',
+            ])
+
             <div class="px-6 py-5">
                 <div class="mb-3 flex items-center justify-between gap-3">
                     <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Line items</h3>

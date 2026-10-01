@@ -321,6 +321,12 @@ it('can attach a file when updating a draft invoice', function () {
 
     expect($invoice->document_id)->not->toBeNull()
         ->and($invoice->document->file_name)->toBe('edited-invoice.pdf');
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.show', [$entity, $invoice]))
+        ->assertSuccessful()
+        ->assertSee('edited-invoice.pdf', false)
+        ->assertSee('View file', false);
 });
 
 it('can remove an attachment when updating a draft invoice', function () {

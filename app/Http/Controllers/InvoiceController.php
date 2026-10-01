@@ -58,7 +58,7 @@ class InvoiceController extends Controller
             $this->authorize('view', $businessEntity);
             $this->ensureOperationalForAccounting($businessEntity);
 
-            $query = Invoice::where('business_entity_id', $businessEntity->id)->with(['asset', 'lease']);
+            $query = Invoice::where('business_entity_id', $businessEntity->id)->with(['asset', 'lease', 'document']);
             $this->applyInvoiceListFilters($query, $statusFilter, $receivableOnly, $assetIdFilter, $leaseIdFilter);
             $tableSort->applyToQuery($query, [
                 'number' => 'invoice_number',
@@ -89,7 +89,7 @@ class InvoiceController extends Controller
 
         $query = Invoice::query()
             ->whereIn('business_entity_id', BusinessEntity::query()->operationalEntities()->pluck('id'))
-            ->with(['asset', 'businessEntity', 'lease']);
+            ->with(['asset', 'businessEntity', 'lease', 'document']);
 
         $this->applyInvoiceListFilters($query, $statusFilter, $receivableOnly, $assetIdFilter, $leaseIdFilter);
 

@@ -18,7 +18,7 @@
                 default => 'bg-gray-100 text-gray-700 ring-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:ring-gray-700',
             };
         };
-        $colCount = isset($businessEntity) ? 8 : 9;
+        $colCount = isset($businessEntity) ? 9 : 10;
         $hasFilters = ! empty($filterQuery);
         $activeFilterCount = count($filterQuery);
         $clearUrl = isset($businessEntity)
@@ -219,6 +219,7 @@
                             <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Due</th>
                             <x-sortable-table-header :label="__('Total')" column="total" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" align="right" class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" />
                             <x-sortable-table-header :label="__('Status')" column="status" :sort="$tableSort->column" :order="$tableSort->order" :route="$invoiceRoute" :route-params="array_merge($invoiceRouteParams, $filterQuery)" class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400" />
+                            <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ __('File') }}</th>
                             <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
                                 <span class="sr-only">Actions</span>
                             </th>
@@ -263,6 +264,17 @@
                                     <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset {{ $statusBadge($inv->status) }}">
                                         {{ \App\Models\Invoice::$statuses[$inv->status] ?? ucfirst($inv->status) }}
                                     </span>
+                                </td>
+                                <td class="px-4 py-3.5">
+                                    @if ($inv->document?->hasFile())
+                                        @include('invoices.partials.attachment-display', [
+                                            'invoice' => $inv,
+                                            'businessEntity' => $businessEntity ?? $inv->businessEntity,
+                                            'variant' => 'inline',
+                                        ])
+                                    @else
+                                        <span class="text-xs text-gray-400">—</span>
+                                    @endif
                                 </td>
                                 <td class="px-4 py-3.5">
                                     <div class="flex items-center justify-end gap-1">

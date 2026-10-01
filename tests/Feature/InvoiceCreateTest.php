@@ -717,4 +717,15 @@ it('stores an optional attachment when creating a draft invoice', function () {
         ->and($invoice->document)->not->toBeNull()
         ->and($invoice->document->file_name)->toBe('supporting-invoice.pdf')
         ->and($invoice->document->path)->not->toBeNull();
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.show', [$entity, $invoice]))
+        ->assertSuccessful()
+        ->assertSee('supporting-invoice.pdf', false)
+        ->assertSee('View file', false);
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.index', $entity))
+        ->assertSuccessful()
+        ->assertSee('supporting-invoice.pdf', false);
 });
