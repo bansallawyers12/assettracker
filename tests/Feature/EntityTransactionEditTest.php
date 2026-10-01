@@ -81,17 +81,18 @@ it('shows the full edit form with locked cash identity when a transaction is sta
         ->get(route('business-entities.transactions.edit', [$entity, $transaction]));
 
     $response->assertSuccessful();
-    $response->assertSee('GST (10%)', false);
-    $response->assertSee('Invoice Number', false);
+    $response->assertSee('Allocations', false);
+    $response->assertSee('Attachments', false);
+    $response->assertSee('Payment', false);
     $response->assertSee('name="payment_document"', false);
+    $response->assertSee('name="document"', false);
     $response->assertSee('name="edit_origin" value="statement"', false);
     $response->assertSee('data-statement-edit-locked-notice', false);
     $response->assertSee('data-statement-edit-full-form-path', false);
     $response->assertSee('data-statement-unmatch', false);
     $response->assertSee('Locked', false);
-    $response->assertDontSee('name="direction" value="expense"', false);
     $response->assertDontSee('id="payment_status_unpaid"', false);
-    $response->assertDontSee('GST exclusive — 10% on top', false);
+    $response->assertDontSee('>Exclusive</span>', false);
     $response->assertDontSee('data-transaction-paid-by-form', false);
 });
 
@@ -230,10 +231,11 @@ it('keeps the full unlocked edit form for unmatched transactions', function () {
 
     $response->assertSuccessful();
     $response->assertSee('name="edit_origin" value="manual"', false);
-    $response->assertSee('name="direction" value="expense"', false);
+    $response->assertSee('lines[0][direction]', false);
     $response->assertSee('id="payment_status_unpaid"', false);
-    $response->assertSee('GST exclusive — 10% on top', false);
+    $response->assertSee('>Exclusive</span>', false);
     $response->assertSee('data-transaction-paid-by-form', false);
+    $response->assertSee('name="document"', false);
     $response->assertDontSee('data-statement-edit-locked-notice', false);
 });
 
@@ -241,13 +243,9 @@ it('detects statement-linked transactions from bank statement entries', function
     expect(method_exists(Transaction::class, 'isLinkedToBankStatement'))->toBeTrue();
 });
 
-it('lets loan statement edits use loan activity type groups', function () {
+it('uses chart of accounts allocations on the edit form like the dashboard add form', function () {
     $edit = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/edit.blade.php'));
-    $create = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/create.blade.php'));
-    $typeSelect = file_get_contents(resource_path('views/partials/transaction-type-select.blade.php'));
 
-    expect($edit)->toContain('isLoanActivity')
-        ->and($edit)->toContain("'bankAccount' => \$bankAccount")
-        ->and($create)->toContain("'bankAccount' => \$bankAccount")
-        ->and($typeSelect)->toContain('bankAccount');
+    expect($edit)->toContain('dashboard-transaction-lines')
+        ->and($edit)->toContain('dashboardTxnBatch');
 });

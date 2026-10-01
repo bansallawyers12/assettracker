@@ -5,6 +5,8 @@
 @php
     $txnLabel = $txnLabel ?? 'block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5';
     $txnInput = $txnInput ?? 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 shadow-xs placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
+    $hideExclusiveGst = $hideExclusiveGst ?? false;
+    $lockLineAmount = $lockLineAmount ?? false;
 @endphp
 
 <section class="{{ $txnSection ?? 'rounded-xl border border-gray-100 dark:border-gray-700/80 bg-gray-50/60 dark:bg-gray-900/30 p-5 space-y-4' }}">
@@ -65,16 +67,26 @@
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div>
-                        <label class="{{ $txnLabel }}">Amount</label>
-                        <div class="relative">
-                            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-base font-semibold text-gray-400">$</span>
-                            <input type="number" step="0.01" required
-                                   :name="'lines[' + index + '][amount]'"
-                                   x-model="line.amount"
-                                   @input="recalcGst(index)"
-                                   class="{{ $txnInput }} pl-8 text-lg font-semibold tabular-nums"
-                                   placeholder="0.00">
-                        </div>
+                        <label class="{{ $txnLabel }}">
+                            Amount
+                            @if ($lockLineAmount)
+                                <span class="ml-1 rounded bg-amber-200/80 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-normal text-amber-900 dark:bg-amber-900/60 dark:text-amber-100">Locked</span>
+                            @endif
+                        </label>
+                        @if ($lockLineAmount)
+                            <input type="hidden" :name="'lines[' + index + '][amount]'" x-model="line.amount">
+                            <p class="{{ $txnInput }} pl-3 text-lg font-semibold tabular-nums text-gray-900 dark:text-gray-100" x-text="line.amount ? ('$' + parseFloat(line.amount).toFixed(2)) : '—'"></p>
+                        @else
+                            <div class="relative">
+                                <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-base font-semibold text-gray-400">$</span>
+                                <input type="number" step="0.01" required
+                                       :name="'lines[' + index + '][amount]'"
+                                       x-model="line.amount"
+                                       @input="recalcGst(index)"
+                                       class="{{ $txnInput }} pl-8 text-lg font-semibold tabular-nums"
+                                       placeholder="0.00">
+                            </div>
+                        @endif
                     </div>
 
                     <div class="lg:col-span-2">
@@ -173,6 +185,7 @@
                                 <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">Full amount @ 10%</span>
                             </div>
                         </label>
+                        @unless ($hideExclusiveGst)
                         <label class="cursor-pointer">
                             <input type="radio" class="sr-only" value="exclusive"
                                    :name="'lines[' + index + '][gst_basis]'"
@@ -186,6 +199,7 @@
                                 <span class="block text-xs text-gray-500 dark:text-gray-400 mt-0.5">10% on top</span>
                             </div>
                         </label>
+                        @endunless
                         <label class="cursor-pointer">
                             <input type="radio" class="sr-only" value="manual"
                                    :name="'lines[' + index + '][gst_basis]'"
