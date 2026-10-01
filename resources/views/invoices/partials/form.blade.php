@@ -113,7 +113,7 @@
         </div>
     @endunless
 
-    <form method="POST" action="{{ $formAction }}" class="space-y-5">
+    <form method="POST" action="{{ $formAction }}" enctype="multipart/form-data" class="space-y-5">
         @csrf
         @if ($isEdit)
             @method('PUT')
@@ -281,6 +281,49 @@
                         </div>
                     </div>
                 </template>
+            </div>
+        </section>
+
+        {{-- Attachment --}}
+        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
+                <div class="flex items-center gap-2">
+                    <x-lucide-paperclip class="h-4 w-4 text-gray-400" aria-hidden="true" />
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Attachment</h3>
+                </div>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional PDF or image stored with this invoice in Documents.</p>
+            </div>
+            <div class="space-y-3 p-5">
+                @if ($isEdit && $invoice->document?->hasFile())
+                    <div class="flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm dark:border-gray-700 dark:bg-gray-800/60 sm:flex-row sm:items-center sm:justify-between">
+                        <div class="min-w-0">
+                            <p class="font-medium text-gray-900 dark:text-white truncate">{{ $invoice->document->file_name }}</p>
+                            <a href="{{ route('business-entities.documents.content', [$businessEntity, $invoice->document]) }}"
+                               target="_blank"
+                               rel="noopener"
+                               class="text-xs font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
+                                View current file
+                            </a>
+                        </div>
+                        <label class="inline-flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300 shrink-0">
+                            <input type="checkbox" name="remove_attachment" value="1" class="rounded border-gray-300 text-rose-600 focus:ring-rose-500 dark:border-gray-600 dark:bg-gray-800">
+                            Remove file
+                        </label>
+                    </div>
+                @endif
+                <div>
+                    <label for="invoice_attachment" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {{ ($isEdit && $invoice->document?->hasFile()) ? 'Replace attachment' : 'Attach file' }}
+                    </label>
+                    <input id="invoice_attachment"
+                           type="file"
+                           name="attachment"
+                           accept="{{ config('documents.transaction_file_accept') }}"
+                           class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 dark:file:bg-gray-700 dark:file:text-indigo-300" />
+                    @error('attachment')
+                        <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
         </section>
 

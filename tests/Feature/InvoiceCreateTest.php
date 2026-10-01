@@ -11,6 +11,8 @@ use App\Models\User;
 use App\Services\InvoicePostingService;
 use Database\Seeders\ChartOfAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -81,7 +83,9 @@ it('pre-fills create form with suggested number, line accounts, and due date', f
         ->assertDontSee('Include ended leases', false)
         ->assertDontSee('GST basis', false)
         ->assertDontSee('Pick from tenants', false)
-        ->assertDontSee('Line total', false);
+        ->assertDontSee('Line total', false)
+        ->assertSee('Attach file', false)
+        ->assertSee('enctype="multipart/form-data"', false);
 });
 
 it('includes leases whose planned end date is in the past on the create form', function () {
@@ -680,4 +684,37 @@ it('rejects a lease that does not belong to the selected asset', function () {
         ])
         ->assertRedirect(route('business-entities.invoices.create', $entity))
         ->assertSessionHasErrors('lease_id');
+});
+
+it('stores an optional attachment when creating a draft invoice', function () {
+    Storage::fake('s3');
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $this->actingAs($user)->post(route('business-entities.invoices.store', $entity), [
+        'invoice_number' => 'INV'.$entity->id.'-202609001',
+        'issue_date' => '2026-09-03',
+        'customer_name' => 'Attachment Customer',
+        'currency' => 'AUD',
+        'gst_basis' => 'none',
+        'gst_percent' => 0,
+        'lines' => [
+            [
+                'description' => 'Consulting',
+                'quantity' => 1,
+                'unit_price' => 200,
+                'account_code' => '4100',
+            ],
+        ],
+        'attachment' => UploadedFile::fake()->create('supporting-invoice.pdf', 100, 'application/pdf'),
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->where('business_entity_id', $entity->id)->firstOrFail();
+    $invoice->load('document');
+
+    expect($invoice->document_id)->not->toBeNull()
+        ->and($invoice->document)->not->toBeNull()
+        ->and($invoice->document->file_name)->toBe('supporting-invoice.pdf')
+        ->and($invoice->document->path)->not->toBeNull();
 });

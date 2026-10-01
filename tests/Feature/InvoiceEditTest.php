@@ -9,6 +9,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use Database\Seeders\ChartOfAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -99,7 +101,8 @@ it('renders the edit form for a draft invoice', function () {
         ->assertDontSee('Income account', false)
         ->assertSee('Save &amp; post', false)
         ->assertDontSee('GST basis', false)
-        ->assertDontSee('Include ended leases', false);
+        ->assertDontSee('Include ended leases', false)
+        ->assertSee('Attach file', false);
 });
 
 it('updates a draft invoice with exclusive gst, asset, lease, and notes', function () {
@@ -284,4 +287,95 @@ it('suggests an invoice number for a given issue date', function () {
         ->assertJson([
             'invoice_number' => 'INV'.$entity->id.'-202610001',
         ]);
+});
+
+it('can attach a file when updating a draft invoice', function () {
+    Storage::fake('s3');
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceEditEntity();
+    $invoice = invoiceEditDraft($entity);
+
+    $this->actingAs($user)->put(route('business-entities.invoices.update', [$entity, $invoice]), [
+        'invoice_number' => $invoice->invoice_number,
+        'issue_date' => '2026-09-05',
+        'due_date' => '2026-10-05',
+        'asset_id' => $invoice->asset_id,
+        'lease_id' => $invoice->lease_id,
+        'customer_name' => $invoice->customer_name,
+        'currency' => 'AUD',
+        'gst_basis' => 'inclusive',
+        'gst_percent' => 10,
+        'lines' => [
+            [
+                'description' => 'Updated fee',
+                'quantity' => 1,
+                'unit_price' => 1100,
+                'account_code' => '4100',
+            ],
+        ],
+        'attachment' => UploadedFile::fake()->create('edited-invoice.pdf', 100, 'application/pdf'),
+    ])->assertRedirect(route('business-entities.invoices.show', [$entity, $invoice]));
+
+    $invoice->refresh()->load('document');
+
+    expect($invoice->document_id)->not->toBeNull()
+        ->and($invoice->document->file_name)->toBe('edited-invoice.pdf');
+});
+
+it('can remove an attachment when updating a draft invoice', function () {
+    Storage::fake('s3');
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceEditEntity();
+    $invoice = invoiceEditDraft($entity);
+
+    $this->actingAs($user)->put(route('business-entities.invoices.update', [$entity, $invoice]), [
+        'invoice_number' => $invoice->invoice_number,
+        'issue_date' => '2026-09-05',
+        'due_date' => '2026-10-05',
+        'asset_id' => $invoice->asset_id,
+        'lease_id' => $invoice->lease_id,
+        'customer_name' => $invoice->customer_name,
+        'currency' => 'AUD',
+        'gst_basis' => 'inclusive',
+        'gst_percent' => 10,
+        'lines' => [
+            [
+                'description' => 'Updated fee',
+                'quantity' => 1,
+                'unit_price' => 1100,
+                'account_code' => '4100',
+            ],
+        ],
+        'attachment' => UploadedFile::fake()->create('edited-invoice.pdf', 100, 'application/pdf'),
+    ]);
+
+    $invoice->refresh()->load('document');
+    expect($invoice->document_id)->not->toBeNull();
+
+    $this->actingAs($user)->put(route('business-entities.invoices.update', [$entity, $invoice]), [
+        'invoice_number' => $invoice->invoice_number,
+        'issue_date' => '2026-09-05',
+        'due_date' => '2026-10-05',
+        'asset_id' => $invoice->asset_id,
+        'lease_id' => $invoice->lease_id,
+        'customer_name' => $invoice->customer_name,
+        'currency' => 'AUD',
+        'gst_basis' => 'inclusive',
+        'gst_percent' => 10,
+        'remove_attachment' => 1,
+        'lines' => [
+            [
+                'description' => 'Updated fee',
+                'quantity' => 1,
+                'unit_price' => 1100,
+                'account_code' => '4100',
+            ],
+        ],
+    ])->assertRedirect(route('business-entities.invoices.show', [$entity, $invoice]));
+
+    $invoice->refresh();
+
+    expect($invoice->document_id)->toBeNull();
 });

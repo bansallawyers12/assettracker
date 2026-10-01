@@ -35,6 +35,7 @@ class Invoice extends Model
         'payment_transaction_id',
         'last_reminder_sent_at',
         'reminder_count',
+        'document_id',
     ];
 
     protected $casts = [
@@ -77,6 +78,11 @@ class Invoice extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(InvoiceLine::class);
+    }
+
+    public function document(): BelongsTo
+    {
+        return $this->belongsTo(Document::class);
     }
 
     public function amountPaid(): float

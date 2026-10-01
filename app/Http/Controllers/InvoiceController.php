@@ -9,14 +9,17 @@ use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
+use App\Models\Document;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\Lease;
 use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Services\BankStatementMatchSuggester;
+use App\Services\DocumentUploadService;
 use App\Services\InvoicePaymentService;
 use App\Services\InvoicePostingService;
+use App\Support\DocumentUploadValidation;
 use App\Support\TableSort;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -32,6 +35,10 @@ use Illuminate\View\View;
 class InvoiceController extends Controller
 {
     use EnsuresOperationalBusinessEntity;
+
+    public function __construct(
+        private DocumentUploadService $documentUploadService,
+    ) {}
 
     public function index(Request $request, ?BusinessEntity $businessEntity = null)
     {
@@ -169,7 +176,7 @@ class InvoiceController extends Controller
         $saveAndPost = $request->boolean('save_and_post');
 
         try {
-            $invoice = DB::transaction(function () use ($businessEntity, $data, $assetId, $leaseId, $gstRate, $gstBasis, $saveAndPost, $postingService) {
+            $invoice = DB::transaction(function () use ($request, $businessEntity, $data, $assetId, $leaseId, $gstRate, $gstBasis, $saveAndPost, $postingService) {
                 $invoice = new Invoice;
                 $invoice->fill([
                     'invoice_number' => $data['invoice_number'],
@@ -199,6 +206,7 @@ class InvoiceController extends Controller
                 );
 
                 $invoice->load('lines');
+                $this->syncInvoiceAttachment($request, $invoice, $businessEntity);
                 if ($saveAndPost) {
                     $postingService->post($invoice);
                 }
@@ -223,6 +231,7 @@ class InvoiceController extends Controller
         $this->authorizeInvoice($businessEntity, $invoice);
         $invoice->load([
             'lines',
+            'document',
             'lease.tenant',
             'asset',
             'paymentAllocations.transaction.bankAccount',
@@ -325,7 +334,7 @@ class InvoiceController extends Controller
                 ->with('error', 'Posted invoices cannot be edited.');
         }
 
-        $invoice->load('lines');
+        $invoice->load(['lines', 'document']);
 
         $issueDate = old('issue_date', $invoice->issue_date->toDateString());
         $suggestedInvoiceNumber = old('invoice_number', $invoice->invoice_number);
@@ -373,7 +382,7 @@ class InvoiceController extends Controller
         $saveAndPost = $request->boolean('save_and_post');
 
         try {
-            DB::transaction(function () use ($invoice, $data, $assetId, $leaseId, $gstRate, $gstBasis, $saveAndPost, $postingService) {
+            DB::transaction(function () use ($request, $invoice, $data, $assetId, $leaseId, $gstRate, $gstBasis, $saveAndPost, $postingService, $businessEntity) {
                 $invoice->fill([
                     'invoice_number' => $data['invoice_number'],
                     'issue_date' => $data['issue_date'],
@@ -396,6 +405,7 @@ class InvoiceController extends Controller
                     $gstBasis,
                 );
                 $invoice->load('lines');
+                $this->syncInvoiceAttachment($request, $invoice, $businessEntity);
 
                 if ($saveAndPost) {
                     $postingService->post($invoice);
@@ -407,7 +417,7 @@ class InvoiceController extends Controller
             return back()->withInput()->with('error', 'Invoice was not saved: '.$e->getMessage());
         }
 
-        $invoice->refresh()->load('lines');
+        $invoice->refresh()->load(['lines', 'document']);
         $message = $saveAndPost ? 'Invoice updated and posted to ledger' : 'Invoice updated';
 
         return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
@@ -655,6 +665,8 @@ class InvoiceController extends Controller
             'lines.*.account_code' => ['required', 'string', Rule::in($lineAccountCodes)],
             'lines.*.tax_code' => ['nullable', Rule::in(['gst', 'free'])],
             'save_and_post' => ['nullable', 'boolean'],
+            'remove_attachment' => ['nullable', 'boolean'],
+            ...$this->invoiceAttachmentFileRules(),
         ]);
 
         if ($data['gst_basis'] === 'none') {
@@ -858,5 +870,69 @@ class InvoiceController extends Controller
     {
         abort_unless((int) $invoice->business_entity_id === (int) $businessEntity->id, 404);
         $this->ensureOperationalForAccounting($businessEntity);
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function invoiceAttachmentFileRules(): array
+    {
+        $fileRules = DocumentUploadValidation::rules('attachment');
+        $attachmentRules = $fileRules['attachment'] ?? ['file'];
+        $attachmentRules = array_values(array_filter(
+            $attachmentRules,
+            static fn ($rule) => $rule !== 'required'
+        ));
+        array_unshift($attachmentRules, 'nullable');
+
+        return ['attachment' => $attachmentRules];
+    }
+
+    private function syncInvoiceAttachment(Request $request, Invoice $invoice, BusinessEntity $businessEntity): void
+    {
+        if ($request->boolean('remove_attachment')) {
+            $this->detachInvoiceDocument($invoice);
+        }
+
+        $file = $request->file('attachment');
+        if (! $file) {
+            return;
+        }
+
+        $asset = $invoice->asset_id ? Asset::query()->find($invoice->asset_id) : null;
+        $displayName = $file->getClientOriginalName();
+
+        if ($invoice->document_id) {
+            $document = Document::query()->find($invoice->document_id);
+            if ($document !== null) {
+                $this->documentUploadService->attachFileToDocument($document, $file, $businessEntity, $asset, $displayName);
+
+                return;
+            }
+        }
+
+        $document = $this->documentUploadService->createInvoiceAttachmentDocumentFromUpload(
+            $businessEntity,
+            $asset,
+            $file,
+            (int) $invoice->id,
+            $displayName,
+        );
+
+        $invoice->forceFill(['document_id' => $document->id])->save();
+    }
+
+    private function detachInvoiceDocument(Invoice $invoice): void
+    {
+        if (! $invoice->document_id) {
+            return;
+        }
+
+        $document = Document::query()->find($invoice->document_id);
+        $invoice->forceFill(['document_id' => null])->save();
+
+        if ($document !== null) {
+            $this->documentUploadService->deleteFileFromDocument($document);
+        }
     }
 }

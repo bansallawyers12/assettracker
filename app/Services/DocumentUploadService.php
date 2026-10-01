@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\Document;
 use App\Models\DocumentCategory;
+use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Support\DocumentStorage;
 use Illuminate\Http\UploadedFile;
@@ -13,6 +14,8 @@ use Illuminate\Http\UploadedFile;
 class DocumentUploadService
 {
     public const TRANSACTION_RECEIPTS_CATEGORY_TITLE = 'Transaction Receipts';
+
+    public const INVOICE_ATTACHMENTS_CATEGORY_TITLE = 'Invoice attachments';
 
     public const IMPORTED_FROM_EMAIL_CATEGORY_TITLE = 'Imported from Email';
 
@@ -186,6 +189,26 @@ class DocumentUploadService
     }
 
     /**
+     * Create a checklist row and store an uploaded file linked to a manual invoice.
+     */
+    public function createInvoiceAttachmentDocumentFromUpload(
+        BusinessEntity $entity,
+        ?Asset $asset,
+        UploadedFile $file,
+        int $invoiceId,
+        ?string $displayFileName = null,
+    ): Document {
+        $category = $this->firstOrCreateCategoryNamed($entity, $asset, self::INVOICE_ATTACHMENTS_CATEGORY_TITLE);
+        $fname = $displayFileName ?? $file->getClientOriginalName();
+        $label = 'Invoice #'.$invoiceId;
+        $document = $this->resolveInvoiceAttachmentDocumentSlot($entity, $asset, $category, $label, 'Invoice attachment');
+
+        $this->attachFileToDocument($document, $file, $entity, $asset, $fname);
+
+        return $document->fresh();
+    }
+
+    /**
      * Copy an existing S3 object into a new transaction-receipt checklist document (e.g. legacy Receipts/ path or session prefill).
      */
     public function createTransactionReceiptFromExistingS3Path(
@@ -271,6 +294,43 @@ class DocumentUploadService
         $document->save();
     }
 
+    private function resolveInvoiceAttachmentDocumentSlot(
+        BusinessEntity $entity,
+        ?Asset $asset,
+        DocumentCategory $category,
+        string $checklistLabel,
+        ?string $description = null
+    ): Document {
+        $label = trim($checklistLabel) !== '' ? trim($checklistLabel) : 'Invoice attachment';
+        $existing = $this->findDocumentByCategoryAndLabel($category->id, $label);
+
+        if ($existing !== null && ! $this->documentLinkedToInvoice($existing)) {
+            if ($description !== null) {
+                $existing->description = $description;
+            }
+            if (auth()->check()) {
+                $existing->user_id = auth()->id();
+            }
+            $existing->save();
+
+            return $existing;
+        }
+
+        $resolvedLabel = $existing !== null
+            ? $this->uniqueChecklistLabelInCategory($category->id, $label)
+            : $label;
+
+        return Document::query()->create([
+            'business_entity_id' => $entity->id,
+            'asset_id' => $asset?->id,
+            'document_category_id' => $category->id,
+            'checklist_label' => $resolvedLabel,
+            'type' => 'financial',
+            'description' => $description,
+            'user_id' => auth()->id(),
+        ]);
+    }
+
     private function resolveTransactionReceiptDocumentSlot(
         BusinessEntity $entity,
         ?Asset $asset,
@@ -323,6 +383,13 @@ class DocumentUploadService
                 $query->where('document_id', $document->id)
                     ->orWhere('payment_document_id', $document->id);
             })
+            ->exists();
+    }
+
+    private function documentLinkedToInvoice(Document $document): bool
+    {
+        return Invoice::query()
+            ->where('document_id', $document->id)
             ->exists();
     }
 
