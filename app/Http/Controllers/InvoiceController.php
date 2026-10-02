@@ -334,7 +334,7 @@ class InvoiceController extends Controller
                 ->with('error', 'Posted invoices cannot be edited.');
         }
 
-        $invoice->load(['lines', 'document']);
+        $invoice->load(['lines', 'document', 'lease.tenant']);
 
         $issueDate = old('issue_date', $invoice->issue_date->toDateString());
         $suggestedInvoiceNumber = old('invoice_number', $invoice->invoice_number);
@@ -585,6 +585,7 @@ class InvoiceController extends Controller
                         'id' => $lease->id,
                         'label' => "{$tenantName} ({$start} – {$end})",
                         'tenant_name' => $lease->tenant?->name,
+                        'tenant_abn' => $lease->tenant?->abn,
                         'asset_name' => $asset->name,
                         'gst_applicable' => (bool) ($lease->gst_applicable ?? true),
                     ];

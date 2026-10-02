@@ -241,6 +241,9 @@
                 @if ($businessEntity->registered_address)
                     <p>{{ $businessEntity->registered_address }}</p>
                 @endif
+                @if ($businessEntity->abn)
+                    <p>ABN {{ \App\Models\BusinessEntity::formatAbn($businessEntity->abn) }}</p>
+                @endif
                 @if ($businessEntity->registered_email || $businessEntity->phone_number)
                     <p>
                         @if ($businessEntity->registered_email){{ $businessEntity->registered_email }}@endif
@@ -260,6 +263,7 @@
             <div>
                 <span class="label">Bill to</span>
                 <div class="name">{{ $invoice->customer_name ?: '—' }}</div>
+                @include('invoices.partials.customer-abn', ['invoice' => $invoice, 'variant' => 'print'])
                 @if ($invoice->lease?->tenant?->email)
                     <div class="line">{{ $invoice->lease->tenant->email }}</div>
                 @endif

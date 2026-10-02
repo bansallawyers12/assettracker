@@ -121,6 +121,7 @@
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Bill to</p>
                             <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">{{ $invoice->customer_name ?: '—' }}</p>
+                            @include('invoices.partials.customer-abn', ['invoice' => $invoice, 'variant' => 'show'])
                             @if ($invoice->lease?->tenant?->email)
                                 <p class="mt-0.5 text-sm text-gray-600 dark:text-gray-300">{{ $invoice->lease->tenant->email }}</p>
                             @endif

@@ -67,6 +67,7 @@
         'assetId' => old('asset_id', $isEdit ? $invoice->asset_id : null),
         'leaseId' => old('lease_id', $isEdit ? $invoice->lease_id : null),
         'customerName' => old('customer_name', $isEdit ? $invoice->customer_name : ''),
+        'customerAbn' => old('customer_abn', $isEdit ? ($invoice->lease?->tenant?->abn ?? '') : ''),
         'reference' => old('reference', $isEdit ? $invoice->reference : ''),
         'notes' => old('notes', $isEdit ? $invoice->notes : ''),
         'gstBasis' => old('gst_basis', $isEdit ? ($invoice->gst_basis ?: 'inclusive') : 'inclusive'),
@@ -172,6 +173,11 @@
                     <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Customer</label>
                     <input name="customer_name" x-model="customerName" required
                            class="{{ $fieldClass }}" placeholder="Customer / bill-to name" />
+                </div>
+                <div x-show="formattedCustomerAbn" x-cloak class="md:col-span-2">
+                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">ABN</label>
+                    <p class="{{ $fieldClass }} bg-gray-50 dark:bg-gray-900/60 font-mono text-gray-800 dark:text-gray-100" x-text="formattedCustomerAbn"></p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">From the selected tenant record.</p>
                 </div>
             </div>
         </section>
@@ -366,6 +372,7 @@
             assetId: config.assetId ? String(config.assetId) : '',
             leaseId: config.leaseId ? String(config.leaseId) : '',
             customerName: config.customerName || '',
+            customerAbn: config.customerAbn || '',
             reference: config.reference || '',
             notes: config.notes || '',
             gstMode: config.gstBasis === 'none'
@@ -394,6 +401,27 @@
                         fullLabel: `${asset.name} — ${lease.label}`,
                     }))
                 );
+            },
+            get resolvedCustomerAbn() {
+                if (this.leaseId) {
+                    const lease = this.allLeases.find((item) => String(item.id) === String(this.leaseId));
+                    if (lease?.tenant_abn) {
+                        return String(lease.tenant_abn);
+                    }
+                }
+
+                return this.customerAbn ? String(this.customerAbn) : '';
+            },
+            get formattedCustomerAbn() {
+                return this.formatAbn(this.resolvedCustomerAbn);
+            },
+            formatAbn(value) {
+                const digits = String(value || '').replace(/\D/g, '');
+                if (digits.length !== 11) {
+                    return digits !== '' ? digits : '';
+                }
+
+                return `${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8, 11)}`;
             },
             get gstApplicable() {
                 return this.gstMode !== 'none';
@@ -507,6 +535,9 @@
                 }
                 if (lease.tenant_name) {
                     this.customerName = lease.tenant_name;
+                }
+                if (lease.tenant_abn) {
+                    this.customerAbn = String(lease.tenant_abn);
                 }
                 const assetName = lease.asset_name || '';
                 if (assetName) {
