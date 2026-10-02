@@ -57,6 +57,32 @@ class Document extends Model
         return filled($this->path);
     }
 
+    /**
+     * App proxy URL for inline preview or download (includes asset_id when scoped).
+     */
+    public function contentRouteUrl(BusinessEntity $businessEntity, bool $download = false): ?string
+    {
+        if (! $this->hasFile()) {
+            return null;
+        }
+
+        $query = [];
+        if ($this->asset_id) {
+            $query['asset_id'] = $this->asset_id;
+        }
+        if ($download) {
+            $query['download'] = '1';
+        }
+
+        $url = route('business-entities.documents.content', [$businessEntity, $this]);
+
+        if ($query !== []) {
+            $url .= '?'.http_build_query($query);
+        }
+
+        return $url;
+    }
+
     public function getFileUrl(): ?string
     {
         if (! $this->path || ! Storage::disk('s3')->exists($this->path)) {

@@ -3078,7 +3078,7 @@ class BusinessEntityController extends Controller
             abort(404); // Or abort(403) if preferred
         }
 
-        $transaction->load(['asset', 'bankAccount', 'counterpartBankAccount', 'lines.vendor', 'lines.relatedEntity']);
+        $transaction->load(['asset', 'bankAccount', 'counterpartBankAccount', 'lines.vendor', 'lines.relatedEntity', 'receiptDocument', 'paymentDocument']);
 
         return view('business-entities.bank-accounts.transactions.show', compact('businessEntity', 'bankAccount', 'transaction'));
     }

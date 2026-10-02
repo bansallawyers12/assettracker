@@ -188,27 +188,10 @@
                     <p class="text-sm text-gray-900 dark:text-gray-100">{{ $transaction->comments ?: '—' }}</p>
                 </div>
 
-                @if ($transaction->receipt_path)
-                    <div>
-                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Invoice / Bill</p>
-                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($transaction->receipt_path, now()->addMinutes(30)) }}"
-                           target="_blank"
-                           class="inline-flex items-center text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-300 underline">
-                            View Document
-                        </a>
-                    </div>
-                @endif
-
-                @if ($transaction->paymentDocument && $transaction->paymentDocument->path)
-                    <div>
-                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Payment Receipt</p>
-                        <a href="{{ \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($transaction->paymentDocument->path, now()->addMinutes(30)) }}"
-                           target="_blank"
-                           class="inline-flex items-center text-sm text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 underline">
-                            View Payment Receipt
-                        </a>
-                    </div>
-                @endif
+                @include('business-entities.bank-accounts.transactions.partials.attachments-display', [
+                    'businessEntity' => $businessEntity,
+                    'transaction' => $transaction,
+                ])
             </div>
 
             @if ($transaction->lines->isNotEmpty())
