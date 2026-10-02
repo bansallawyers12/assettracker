@@ -164,24 +164,30 @@
                             </div>
                             <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2">Attached once and linked to every line in this batch.</p>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
+                                <div class="md:col-span-2">
                                     <label class="{{ $txnLabel }}">Invoice / Bill <span class="normal-case font-normal text-gray-400">(optional)</span></label>
-                                    @if ($transaction->receiptDocument && $transaction->receiptDocument->path)
-                                        <div class="mb-2 text-xs text-gray-500 dark:text-gray-400">
-                                            Current:
-                                            <a href="{{ \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($transaction->receiptDocument->path, now()->addMinutes(30)) }}"
-                                               target="_blank" rel="noopener" class="text-blue-600 underline dark:text-blue-400">
-                                                {{ $transaction->receiptDocument->file_name ?? 'View file' }}
-                                            </a>
-                                            — upload below to replace
+                                    @php
+                                        $receiptDocs = $transaction->receiptDocuments->filter(fn ($doc) => $doc->hasFile());
+                                    @endphp
+                                    @if ($receiptDocs->isNotEmpty())
+                                        <div class="mb-3 space-y-2">
+                                            @foreach ($receiptDocs as $document)
+                                                @include('partials.document-attachment-row', [
+                                                    'businessEntity' => $businessEntity,
+                                                    'document' => $document,
+                                                    'showRemove' => true,
+                                                    'removeInputName' => 'remove_documents[]',
+                                                ])
+                                            @endforeach
                                         </div>
                                     @endif
                                     <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/40 px-4 py-3">
-                                        <input type="file" name="document"
+                                        <input type="file" name="documents[]" multiple
                                                class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
                                                accept="{{ config('documents.transaction_file_accept') }}">
                                     </div>
                                     @error('document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                                    @error('documents.*') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <label class="{{ $txnLabel }}">Invoice / Bill Name</label>
@@ -287,23 +293,30 @@
                             @endif
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                                <div>
+                                <div class="md:col-span-2">
                                     <label class="{{ $txnLabel }}">Payment Receipt <span class="normal-case font-normal text-gray-400">(optional)</span></label>
-                                    @if ($transaction->paymentDocument && $transaction->paymentDocument->path)
-                                        <div class="mb-2 text-xs text-gray-500 dark:text-gray-400">
-                                            Current:
-                                            <a href="{{ \Illuminate\Support\Facades\Storage::disk('s3')->temporaryUrl($transaction->paymentDocument->path, now()->addMinutes(30)) }}"
-                                               target="_blank" rel="noopener" class="text-emerald-600 underline dark:text-emerald-400">
-                                                {{ $transaction->paymentDocument->file_name ?? 'View receipt' }}
-                                            </a>
+                                    @php
+                                        $paymentDocs = $transaction->paymentDocuments->filter(fn ($doc) => $doc->hasFile());
+                                    @endphp
+                                    @if ($paymentDocs->isNotEmpty())
+                                        <div class="mb-3 space-y-2">
+                                            @foreach ($paymentDocs as $document)
+                                                @include('partials.document-attachment-row', [
+                                                    'businessEntity' => $businessEntity,
+                                                    'document' => $document,
+                                                    'showRemove' => true,
+                                                    'removeInputName' => 'remove_payment_documents[]',
+                                                ])
+                                            @endforeach
                                         </div>
                                     @endif
                                     <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/40 px-4 py-3">
-                                        <input type="file" name="payment_document"
+                                        <input type="file" name="payment_documents[]" multiple
                                                class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
                                                accept="{{ config('documents.transaction_file_accept') }}">
                                     </div>
                                     @error('payment_document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                                    @error('payment_documents.*') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
                                 <div>
                                     <label class="{{ $txnLabel }}">Payment Receipt Name</label>

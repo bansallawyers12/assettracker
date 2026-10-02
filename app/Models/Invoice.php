@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -83,6 +84,20 @@ class Invoice extends Model
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class);
+    }
+
+    public function attachmentDocuments(): BelongsToMany
+    {
+        return $this->belongsToMany(Document::class, 'invoice_document')->withTimestamps();
+    }
+
+    public function hasFileAttachments(): bool
+    {
+        if ($this->relationLoaded('attachmentDocuments')) {
+            return $this->attachmentDocuments->contains(fn (Document $document) => $document->hasFile());
+        }
+
+        return $this->attachmentDocuments()->whereNotNull('path')->exists();
     }
 
     public function amountPaid(): float

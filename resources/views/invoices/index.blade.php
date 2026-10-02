@@ -266,7 +266,7 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-3.5">
-                                    @if ($inv->document?->hasFile())
+                                    @if ($inv->hasFileAttachments())
                                         @include('invoices.partials.attachment-display', [
                                             'invoice' => $inv,
                                             'businessEntity' => $businessEntity ?? $inv->businessEntity,

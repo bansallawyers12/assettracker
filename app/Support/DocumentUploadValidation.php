@@ -23,6 +23,26 @@ class DocumentUploadValidation
     /**
      * @return array<string, list<string|callable>>
      */
+    public static function nullableFileArrayRules(string $key = 'attachments'): array
+    {
+        $singleKey = $key.'.*';
+        $single = self::rules($singleKey);
+        $fileRules = $single[$singleKey] ?? ['file'];
+        $fileRules = array_values(array_filter(
+            $fileRules,
+            static fn ($rule) => $rule !== 'required'
+        ));
+        array_unshift($fileRules, 'nullable');
+
+        return [
+            $key => ['nullable', 'array'],
+            $singleKey => $fileRules,
+        ];
+    }
+
+    /**
+     * @return array<string, list<string|callable>>
+     */
     public static function rules(
         string $key = 'document',
         ?string $extensionsConfigKey = null,

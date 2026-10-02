@@ -242,13 +242,14 @@
                         <div>
                             <label class="{{ $txnLabel }}">Invoice / Bill <span class="normal-case font-normal text-gray-400">(optional)</span></label>
                             <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/40 px-4 py-3">
-                                <input type="file" name="document"
+                                <input type="file" name="documents[]" multiple
                                        class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-blue-500 dark:file:bg-blue-600"
                                        accept="{{ config('documents.transaction_file_accept') }}">
                             </div>
                             @php $dashDocMaxKb = max(1, (int) config('documents.max_kilobytes', 20480)); @endphp
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Up to {{ number_format($dashDocMaxKb / 1024, 1) }} MB. Check PHP <span class="font-mono">upload_max_filesize</span> if uploads fail.</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Select one or more files. Up to {{ number_format($dashDocMaxKb / 1024, 1) }} MB each.</p>
                             @error('document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                            @error('documents.*') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                         </div>
 
                         {{-- Document Name --}}
@@ -341,11 +342,12 @@
                             <div>
                                 <label class="{{ $txnLabel }}">Payment Receipt <span class="normal-case font-normal text-gray-400">(optional)</span></label>
                                 <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/40 px-4 py-3">
-                                    <input type="file" name="payment_document"
+                                    <input type="file" name="payment_documents[]" multiple
                                            class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-emerald-500"
                                            accept="{{ config('documents.transaction_file_accept') }}">
                                 </div>
                                 @error('payment_document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                                @error('payment_documents.*') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                             <div>
                                 <label class="{{ $txnLabel }}">Payment Receipt Name</label>

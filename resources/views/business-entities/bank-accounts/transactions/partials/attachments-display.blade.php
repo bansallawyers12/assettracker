@@ -23,7 +23,15 @@
         ];
     };
 
-    if ($transaction->receiptDocument) {
+    $receiptDocuments = $transaction->relationLoaded('receiptDocuments')
+        ? $transaction->receiptDocuments
+        : $transaction->receiptDocuments()->get();
+
+    foreach ($receiptDocuments as $document) {
+        $pushDocument($document, 'Invoice / bill');
+    }
+
+    if ($receiptDocuments->isEmpty() && $transaction->receiptDocument?->hasFile()) {
         $pushDocument($transaction->receiptDocument, 'Invoice / bill');
     }
 
@@ -40,7 +48,15 @@
         }
     }
 
-    if ($transaction->paymentDocument) {
+    $paymentDocuments = $transaction->relationLoaded('paymentDocuments')
+        ? $transaction->paymentDocuments
+        : $transaction->paymentDocuments()->get();
+
+    foreach ($paymentDocuments as $document) {
+        $pushDocument($document, 'Payment receipt');
+    }
+
+    if ($paymentDocuments->isEmpty() && $transaction->paymentDocument?->hasFile()) {
         $pushDocument($transaction->paymentDocument, 'Payment receipt');
     }
 @endphp

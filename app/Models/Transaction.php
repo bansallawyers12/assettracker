@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Support\TransactionCashParts;
 use App\Support\TransactionPayerResolver;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
@@ -685,6 +686,29 @@ class Transaction extends Model
     public function paymentDocument()
     {
         return $this->belongsTo(Document::class, 'payment_document_id');
+    }
+
+    public function linkedDocuments(): BelongsToMany
+    {
+        return $this->belongsToMany(Document::class, 'transaction_document')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function receiptDocuments(): BelongsToMany
+    {
+        return $this->belongsToMany(Document::class, 'transaction_document')
+            ->withPivot('role')
+            ->wherePivot('role', 'receipt')
+            ->withTimestamps();
+    }
+
+    public function paymentDocuments(): BelongsToMany
+    {
+        return $this->belongsToMany(Document::class, 'transaction_document')
+            ->withPivot('role')
+            ->wherePivot('role', 'payment')
+            ->withTimestamps();
     }
 
     public function getReceiptUrlAttribute(): ?string

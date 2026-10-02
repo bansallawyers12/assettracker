@@ -9,7 +9,6 @@ use App\Models\BankAccount;
 use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
-use App\Models\Document;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\Lease;
@@ -58,7 +57,7 @@ class InvoiceController extends Controller
             $this->authorize('view', $businessEntity);
             $this->ensureOperationalForAccounting($businessEntity);
 
-            $query = Invoice::where('business_entity_id', $businessEntity->id)->with(['asset', 'lease', 'document']);
+            $query = Invoice::where('business_entity_id', $businessEntity->id)->with(['asset', 'lease', 'attachmentDocuments']);
             $this->applyInvoiceListFilters($query, $statusFilter, $receivableOnly, $assetIdFilter, $leaseIdFilter);
             $tableSort->applyToQuery($query, [
                 'number' => 'invoice_number',
@@ -89,7 +88,7 @@ class InvoiceController extends Controller
 
         $query = Invoice::query()
             ->whereIn('business_entity_id', BusinessEntity::query()->operationalEntities()->pluck('id'))
-            ->with(['asset', 'businessEntity', 'lease', 'document']);
+            ->with(['asset', 'businessEntity', 'lease', 'attachmentDocuments']);
 
         $this->applyInvoiceListFilters($query, $statusFilter, $receivableOnly, $assetIdFilter, $leaseIdFilter);
 
@@ -231,6 +230,7 @@ class InvoiceController extends Controller
         $this->authorizeInvoice($businessEntity, $invoice);
         $invoice->load([
             'lines.chartOfAccount',
+            'attachmentDocuments',
             'document',
             'lease.tenant',
             'asset',
@@ -334,7 +334,7 @@ class InvoiceController extends Controller
                 ->with('error', 'Posted invoices cannot be edited.');
         }
 
-        $invoice->load(['lines', 'document', 'lease.tenant']);
+        $invoice->load(['lines', 'attachmentDocuments', 'document', 'lease.tenant']);
 
         $issueDate = old('issue_date', $invoice->issue_date->toDateString());
         $suggestedInvoiceNumber = old('invoice_number', $invoice->invoice_number);
@@ -417,7 +417,7 @@ class InvoiceController extends Controller
             return back()->withInput()->with('error', 'Invoice was not saved: '.$e->getMessage());
         }
 
-        $invoice->refresh()->load(['lines', 'document']);
+        $invoice->refresh()->load(['lines', 'attachmentDocuments', 'document']);
         $message = $saveAndPost ? 'Invoice updated and posted to ledger' : 'Invoice updated';
 
         return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
@@ -667,6 +667,8 @@ class InvoiceController extends Controller
             'lines.*.tax_code' => ['nullable', Rule::in(['gst', 'free'])],
             'save_and_post' => ['nullable', 'boolean'],
             'remove_attachment' => ['nullable', 'boolean'],
+            'remove_attachments' => ['nullable', 'array'],
+            'remove_attachments.*' => ['integer', 'exists:documents,id'],
             ...$this->invoiceAttachmentFileRules(),
         ]);
 
@@ -878,62 +880,56 @@ class InvoiceController extends Controller
      */
     private function invoiceAttachmentFileRules(): array
     {
-        $fileRules = DocumentUploadValidation::rules('attachment');
-        $attachmentRules = $fileRules['attachment'] ?? ['file'];
+        $arrayRules = DocumentUploadValidation::nullableFileArrayRules('attachments');
+        $single = DocumentUploadValidation::rules('attachment');
+        $attachmentRules = $single['attachment'] ?? ['file'];
         $attachmentRules = array_values(array_filter(
             $attachmentRules,
             static fn ($rule) => $rule !== 'required'
         ));
         array_unshift($attachmentRules, 'nullable');
 
-        return ['attachment' => $attachmentRules];
+        return array_merge($arrayRules, ['attachment' => $attachmentRules]);
     }
 
     private function syncInvoiceAttachment(Request $request, Invoice $invoice, BusinessEntity $businessEntity): void
     {
-        if ($request->boolean('remove_attachment')) {
-            $this->detachInvoiceDocument($invoice);
+        foreach (array_filter(array_map('intval', (array) $request->input('remove_attachments', []))) as $documentId) {
+            $this->documentUploadService->detachInvoiceDocumentById($invoice, $documentId);
         }
 
-        $file = $request->file('attachment');
-        if (! $file) {
+        if ($request->boolean('remove_attachment') && $invoice->document_id) {
+            $this->documentUploadService->detachInvoiceDocumentById($invoice, (int) $invoice->document_id);
+        }
+
+        $files = [];
+        $fromArray = $request->file('attachments');
+        if (is_array($fromArray)) {
+            $files = array_values(array_filter($fromArray));
+        } elseif ($fromArray) {
+            $files[] = $fromArray;
+        }
+
+        $legacy = $request->file('attachment');
+        if ($legacy) {
+            $files[] = $legacy;
+        }
+
+        if ($files === []) {
             return;
         }
 
         $asset = $invoice->asset_id ? Asset::query()->find($invoice->asset_id) : null;
-        $displayName = $file->getClientOriginalName();
 
-        if ($invoice->document_id) {
-            $document = Document::query()->find($invoice->document_id);
-            if ($document !== null) {
-                $this->documentUploadService->attachFileToDocument($document, $file, $businessEntity, $asset, $displayName);
-
-                return;
-            }
-        }
-
-        $document = $this->documentUploadService->createInvoiceAttachmentDocumentFromUpload(
-            $businessEntity,
-            $asset,
-            $file,
-            (int) $invoice->id,
-            $displayName,
-        );
-
-        $invoice->forceFill(['document_id' => $document->id])->save();
-    }
-
-    private function detachInvoiceDocument(Invoice $invoice): void
-    {
-        if (! $invoice->document_id) {
-            return;
-        }
-
-        $document = Document::query()->find($invoice->document_id);
-        $invoice->forceFill(['document_id' => null])->save();
-
-        if ($document !== null) {
-            $this->documentUploadService->deleteFileFromDocument($document);
+        foreach ($files as $file) {
+            $document = $this->documentUploadService->createInvoiceAttachmentDocumentFromUpload(
+                $businessEntity,
+                $asset,
+                $file,
+                (int) $invoice->id,
+                $file->getClientOriginalName(),
+            );
+            $this->documentUploadService->linkDocumentToInvoice($invoice, $document);
         }
     }
 }

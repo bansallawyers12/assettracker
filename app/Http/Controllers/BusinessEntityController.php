@@ -77,10 +77,20 @@ class BusinessEntityController extends Controller
     {
         $maxKb = max(1, (int) config('documents.max_kilobytes', 20480));
         $mimes = (string) config('documents.mimes', 'pdf,jpeg,png,jpg');
-        $rule = "nullable|file|mimes:{$mimes}|max:{$maxKb}";
-        $out = ['payment_document' => $rule];
+        $fileRule = "nullable|file|mimes:{$mimes}|max:{$maxKb}";
+        $out = [
+            'payment_document' => $fileRule,
+            'payment_documents' => 'nullable|array',
+            'payment_documents.*' => $fileRule,
+            'remove_documents' => 'nullable|array',
+            'remove_documents.*' => 'integer|exists:documents,id',
+            'remove_payment_documents' => 'nullable|array',
+            'remove_payment_documents.*' => 'integer|exists:documents,id',
+        ];
         if ($includeInvoiceField) {
-            $out['document'] = $rule;
+            $out['document'] = $fileRule;
+            $out['documents'] = 'nullable|array';
+            $out['documents.*'] = $fileRule;
         }
 
         return $out;
@@ -224,7 +234,31 @@ class BusinessEntityController extends Controller
         $this->hintIfMultipartBodyLikelyDiscarded($request);
         foreach ($fileFields as $field) {
             $label = $field === 'payment_document' ? 'payment receipt' : 'invoice / bill file';
-            $this->assertPhpUploadSucceeded($request, $field, $label);
+            if ($request->hasFile($field)) {
+                $this->assertPhpUploadSucceeded($request, $field, $label);
+            }
+
+            $arrayField = match ($field) {
+                'document' => 'documents',
+                'payment_document' => 'payment_documents',
+                default => null,
+            };
+
+            if ($arrayField !== null && $request->hasFile($arrayField)) {
+                $files = $request->file($arrayField);
+                if (! is_array($files)) {
+                    $files = [$files];
+                }
+                foreach ($files as $index => $file) {
+                    if (! $file instanceof UploadedFile) {
+                        continue;
+                    }
+                    if ($file->isValid()) {
+                        continue;
+                    }
+                    $this->assertPhpUploadSucceeded($request, $arrayField.'.'.$index, $label);
+                }
+            }
         }
     }
 
@@ -997,25 +1031,7 @@ class BusinessEntityController extends Controller
                     ? $headerDescription
                     : ($isSplit ? 'Split remittance ('.count($resolvedLines).' allocations)' : '');
 
-                if ($request->hasFile('document')) {
-                    $file = $request->file('document');
-                    $originalName = $file->getClientOriginalName();
-                    $displayName = $this->buildReceiptUploadDisplayName($request, $file);
-                    $labelBase = $request->filled('document_name')
-                        ? trim((string) $request->input('document_name'))
-                        : pathinfo($originalName, PATHINFO_FILENAME);
-                    $desc = trim('Transaction receipt'.($docLabel !== '' ? ': '.$docLabel : ''));
-                    $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                        $targetEntity,
-                        $asset,
-                        $file,
-                        $displayName,
-                        $labelBase ?: 'Receipt',
-                        $desc !== '' ? $desc : null
-                    );
-                    $receiptPath = $document->path;
-                    $documentId = $document->id;
-                } elseif (
+                if (
                     $prefillPath
                     && $this->prefillReceiptPathAllowedForEntity($prefillPath, $targetEntity)
                     && Storage::disk('s3')->exists($prefillPath)
@@ -1036,23 +1052,6 @@ class BusinessEntityController extends Controller
                 }
 
                 $paymentDocumentId = null;
-                if ($request->hasFile('payment_document')) {
-                    $payFile = $request->file('payment_document');
-                    $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile, 'payment_document_name');
-                    $payLabelBase = $request->filled('payment_document_name')
-                        ? trim((string) $request->input('payment_document_name'))
-                        : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
-                    $payDesc = trim('Payment receipt'.($docLabel !== '' ? ': '.$docLabel : ''));
-                    $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                        $targetEntity,
-                        $asset,
-                        $payFile,
-                        $payDisplayName,
-                        $payLabelBase ?: 'Payment Receipt',
-                        $payDesc !== '' ? $payDesc : null
-                    );
-                    $paymentDocumentId = $payDocument->id;
-                }
 
                 $shared = [
                     'business_entity_id' => $targetEntity->id,
@@ -1141,6 +1140,28 @@ class BusinessEntityController extends Controller
 
                 return $transaction;
             });
+
+            if ($created->document_id) {
+                $prefillDocument = Document::query()->find($created->document_id);
+                if ($prefillDocument !== null) {
+                    $this->documentUploadService->linkDocumentToTransaction($created, $prefillDocument, 'receipt');
+                }
+            }
+
+            $this->syncTransactionReceiptUploads(
+                $request,
+                $created,
+                $targetEntity,
+                $asset,
+                $created->description
+            );
+            $this->syncTransactionPaymentUploads(
+                $request,
+                $created,
+                $targetEntity,
+                $asset,
+                $created->description
+            );
 
             Log::info('Dashboard add transaction: saved', [
                 'transaction_id' => $created->id,
@@ -1311,25 +1332,7 @@ class BusinessEntityController extends Controller
             $documentId = null;
             $prefillPath = $request->input('receipt_path');
 
-            if ($request->hasFile('document')) {
-                $file = $request->file('document');
-                $originalName = $file->getClientOriginalName();
-                $displayName = $this->buildReceiptUploadDisplayName($request, $file);
-                $labelBase = $request->filled('document_name')
-                    ? trim((string) $request->input('document_name'))
-                    : pathinfo($originalName, PATHINFO_FILENAME);
-                $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
-                $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                    $bookingEntity,
-                    $asset,
-                    $file,
-                    $displayName,
-                    $labelBase ?: 'Receipt',
-                    $desc !== '' ? $desc : null
-                );
-                $receiptPath = $document->path;
-                $documentId = $document->id;
-            } elseif (
+            if (
                 $prefillPath
                 && $this->prefillReceiptPathAllowedForEntity($prefillPath, $bookingEntity)
                 && Storage::disk('s3')->exists($prefillPath)
@@ -1350,23 +1353,6 @@ class BusinessEntityController extends Controller
             }
 
             $paymentDocumentId = null;
-            if ($request->hasFile('payment_document')) {
-                $payFile = $request->file('payment_document');
-                $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile, 'payment_document_name');
-                $payLabelBase = $request->filled('payment_document_name')
-                    ? trim((string) $request->input('payment_document_name'))
-                    : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
-                $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
-                $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                    $bookingEntity,
-                    $asset,
-                    $payFile,
-                    $payDisplayName,
-                    $payLabelBase ?: 'Payment Receipt',
-                    $payDesc !== '' ? $payDesc : null
-                );
-                $paymentDocumentId = $payDocument->id;
-            }
 
             return Transaction::create([
                 'business_entity_id' => $bookingEntity->id,
@@ -1399,6 +1385,28 @@ class BusinessEntityController extends Controller
                 'comments' => $request->input('comments'),
             ]);
         });
+
+        if ($transaction->document_id) {
+            $prefillDocument = Document::query()->find($transaction->document_id);
+            if ($prefillDocument !== null) {
+                $this->documentUploadService->linkDocumentToTransaction($transaction, $prefillDocument, 'receipt');
+            }
+        }
+
+        $this->syncTransactionReceiptUploads(
+            $request,
+            $transaction,
+            $bookingEntity,
+            $asset,
+            $transaction->description
+        );
+        $this->syncTransactionPaymentUploads(
+            $request,
+            $transaction,
+            $bookingEntity,
+            $asset,
+            $transaction->description
+        );
 
         if ($request->input('return_to') === 'bank-account') {
             return redirect()
@@ -1453,7 +1461,7 @@ class BusinessEntityController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
-        $transaction->load(['asset', 'lines', 'bankStatementEntries', 'bankAccount', 'receiptDocument', 'paymentDocument']);
+        $transaction->load(['asset', 'lines', 'bankStatementEntries', 'bankAccount', 'receiptDocument', 'paymentDocument', 'receiptDocuments', 'paymentDocuments']);
 
         $payerOptions = TransactionPayerResolver::payerOptions();
         $vendors = Vendor::orderedForSelect();
@@ -1796,74 +1804,6 @@ class BusinessEntityController extends Controller
 
         $asset = ! empty($data['asset_id']) ? Asset::query()->find($data['asset_id']) : null;
 
-        if ($request->hasFile('document')) {
-            $file = $request->file('document');
-            $displayName = $this->buildReceiptUploadDisplayName($request, $file);
-            $labelBase = $request->filled('document_name')
-                ? trim((string) $request->input('document_name'))
-                : pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-            $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
-            $existingDocument = $transaction->document_id
-                ? Document::query()->find($transaction->document_id)
-                : null;
-
-            if ($existingDocument !== null) {
-                $this->documentUploadService->attachFileToDocument(
-                    $existingDocument,
-                    $file,
-                    $businessEntity,
-                    $asset,
-                    $displayName
-                );
-                $data['document_id'] = $existingDocument->id;
-                $data['receipt_path'] = $existingDocument->fresh()->path;
-            } else {
-                $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                    $businessEntity,
-                    $asset,
-                    $file,
-                    $displayName,
-                    $labelBase ?: 'Receipt',
-                    $desc !== '' ? $desc : null
-                );
-                $data['document_id'] = $document->id;
-                $data['receipt_path'] = $document->path;
-            }
-        }
-
-        if ($request->hasFile('payment_document')) {
-            $payFile = $request->file('payment_document');
-            $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile, 'payment_document_name');
-            $payLabelBase = $request->filled('payment_document_name')
-                ? trim((string) $request->input('payment_document_name'))
-                : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
-            $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
-            $existingPaymentDocument = $transaction->payment_document_id
-                ? Document::query()->find($transaction->payment_document_id)
-                : null;
-
-            if ($existingPaymentDocument !== null) {
-                $this->documentUploadService->attachFileToDocument(
-                    $existingPaymentDocument,
-                    $payFile,
-                    $businessEntity,
-                    $asset,
-                    $payDisplayName
-                );
-                $data['payment_document_id'] = $existingPaymentDocument->id;
-            } else {
-                $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
-                    $businessEntity,
-                    $asset,
-                    $payFile,
-                    $payDisplayName,
-                    $payLabelBase ?: 'Payment Receipt',
-                    $payDesc !== '' ? $payDesc : null
-                );
-                $data['payment_document_id'] = $payDocument->id;
-            }
-        }
-
         $paidBy = $this->validatedPaidBy($request, requireWhenPaid: ! $isStatementEdit);
         $bankAccountId = $this->resolveBankAccountIdForTransactionSave(
             $request,
@@ -1898,6 +1838,21 @@ class BusinessEntityController extends Controller
                 'comments' => $request->input('comments'),
             ]
         ));
+
+        $this->syncTransactionReceiptUploads(
+            $request,
+            $transaction,
+            $businessEntity,
+            $asset,
+            $transaction->description
+        );
+        $this->syncTransactionPaymentUploads(
+            $request,
+            $transaction,
+            $businessEntity,
+            $asset,
+            $transaction->description
+        );
 
         if ($isSplit && $resolvedDashboardLines !== null && count($resolvedDashboardLines) > 0) {
             $this->replaceTransactionLinesFromResolved($transaction, $resolvedDashboardLines);
@@ -3078,7 +3033,7 @@ class BusinessEntityController extends Controller
             abort(404); // Or abort(403) if preferred
         }
 
-        $transaction->load(['asset', 'bankAccount', 'counterpartBankAccount', 'lines.vendor', 'lines.relatedEntity', 'receiptDocument', 'paymentDocument']);
+        $transaction->load(['asset', 'bankAccount', 'counterpartBankAccount', 'lines.vendor', 'lines.relatedEntity', 'receiptDocument', 'paymentDocument', 'receiptDocuments', 'paymentDocuments']);
 
         return view('business-entities.bank-accounts.transactions.show', compact('businessEntity', 'bankAccount', 'transaction'));
     }
@@ -3696,6 +3651,93 @@ class BusinessEntityController extends Controller
             'filters' => $filters,
             'filtersActive' => $filtersActive,
         ]);
+    }
+
+    /**
+     * @return list<UploadedFile>
+     */
+    private function normalizedTransactionUploadFiles(Request $request, string $arrayField, string $legacyField): array
+    {
+        $files = [];
+        $fromArray = $request->file($arrayField);
+        if (is_array($fromArray)) {
+            foreach ($fromArray as $file) {
+                if ($file instanceof UploadedFile) {
+                    $files[] = $file;
+                }
+            }
+        } elseif ($fromArray instanceof UploadedFile) {
+            $files[] = $fromArray;
+        }
+
+        $legacy = $request->file($legacyField);
+        if ($legacy instanceof UploadedFile) {
+            $files[] = $legacy;
+        }
+
+        return $files;
+    }
+
+    private function removeSelectedTransactionDocuments(Request $request, Transaction $transaction, string $inputKey): void
+    {
+        $ids = array_filter(array_map('intval', (array) $request->input($inputKey, [])));
+        foreach ($ids as $documentId) {
+            $this->documentUploadService->detachTransactionDocumentById($transaction, $documentId);
+        }
+    }
+
+    private function syncTransactionReceiptUploads(
+        Request $request,
+        Transaction $transaction,
+        BusinessEntity $businessEntity,
+        ?Asset $asset,
+        ?string $contextLabel,
+    ): void {
+        $this->removeSelectedTransactionDocuments($request, $transaction, 'remove_documents');
+
+        foreach ($this->normalizedTransactionUploadFiles($request, 'documents', 'document') as $file) {
+            $displayName = $this->buildReceiptUploadDisplayName($request, $file);
+            $labelBase = $request->filled('document_name')
+                ? trim((string) $request->input('document_name'))
+                : pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $desc = trim('Transaction receipt'.($contextLabel ? ': '.$contextLabel : ''));
+            $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                $businessEntity,
+                $asset,
+                $file,
+                $displayName,
+                $labelBase ?: 'Receipt',
+                $desc !== '' ? $desc : null
+            );
+            $this->documentUploadService->linkDocumentToTransaction($transaction, $document, 'receipt');
+        }
+    }
+
+    private function syncTransactionPaymentUploads(
+        Request $request,
+        Transaction $transaction,
+        BusinessEntity $businessEntity,
+        ?Asset $asset,
+        ?string $contextLabel,
+    ): void {
+        $this->removeSelectedTransactionDocuments($request, $transaction, 'remove_payment_documents');
+
+        foreach ($this->normalizedTransactionUploadFiles($request, 'payment_documents', 'payment_document') as $file) {
+            $payDisplayName = $this->buildReceiptUploadDisplayName($request, $file, 'payment_document_name');
+            $payLabelBase = $request->filled('payment_document_name')
+                ? trim((string) $request->input('payment_document_name'))
+                : pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $payDesc = trim('Payment receipt'.($contextLabel ? ': '.$contextLabel : ''));
+            $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
+                $businessEntity,
+                $asset,
+                $file,
+                $payDisplayName,
+                $payLabelBase ?: 'Payment Receipt',
+                $payDesc !== '' ? $payDesc : null
+            );
+            $this->documentUploadService->linkDocumentToTransaction($transaction, $payDocument, 'payment');
+        }
     }
 
     /**

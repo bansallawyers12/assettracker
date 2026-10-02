@@ -10,6 +10,7 @@ use App\Models\Invoice;
 use App\Models\Transaction;
 use App\Support\DocumentStorage;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 
 class DocumentUploadService
 {
@@ -378,17 +379,29 @@ class DocumentUploadService
 
     private function documentLinkedToTransaction(Document $document): bool
     {
-        return Transaction::query()
+        if (Transaction::query()
             ->where(function ($query) use ($document) {
                 $query->where('document_id', $document->id)
                     ->orWhere('payment_document_id', $document->id);
             })
+            ->exists()) {
+            return true;
+        }
+
+        return DB::table('transaction_document')
+            ->where('document_id', $document->id)
             ->exists();
     }
 
     private function documentLinkedToInvoice(Document $document): bool
     {
-        return Invoice::query()
+        if (Invoice::query()
+            ->where('document_id', $document->id)
+            ->exists()) {
+            return true;
+        }
+
+        return DB::table('invoice_document')
             ->where('document_id', $document->id)
             ->exists();
     }
@@ -427,14 +440,105 @@ class DocumentUploadService
         };
     }
 
+    public function linkDocumentToInvoice(Invoice $invoice, Document $document): void
+    {
+        $invoice->attachmentDocuments()->syncWithoutDetaching([$document->id]);
+        $this->syncInvoiceLegacyDocumentColumn($invoice);
+    }
+
+    public function syncInvoiceLegacyDocumentColumn(Invoice $invoice): void
+    {
+        $firstId = $invoice->attachmentDocuments()
+            ->orderBy('invoice_document.id')
+            ->value('documents.id');
+
+        $invoice->forceFill(['document_id' => $firstId])->save();
+    }
+
+    public function detachInvoiceDocumentById(Invoice $invoice, int $documentId): void
+    {
+        if (! $invoice->attachmentDocuments()->where('documents.id', $documentId)->exists()) {
+            return;
+        }
+
+        $invoice->attachmentDocuments()->detach($documentId);
+        $this->syncInvoiceLegacyDocumentColumn($invoice);
+
+        $document = Document::query()->find($documentId);
+        if ($document !== null && ! $this->documentLinkedToInvoice($document) && ! $this->documentLinkedToTransaction($document)) {
+            $this->deleteFileFromDocument($document);
+        }
+    }
+
+    public function linkDocumentToTransaction(Transaction $transaction, Document $document, string $role): void
+    {
+        $transaction->linkedDocuments()->syncWithoutDetaching([
+            $document->id => ['role' => $role],
+        ]);
+        $this->syncTransactionLegacyDocumentColumns($transaction);
+    }
+
+    public function syncTransactionLegacyDocumentColumns(Transaction $transaction): void
+    {
+        $receiptId = $transaction->receiptDocuments()
+            ->orderBy('transaction_document.id')
+            ->value('documents.id');
+        $paymentId = $transaction->paymentDocuments()
+            ->orderBy('transaction_document.id')
+            ->value('documents.id');
+        $receiptDocument = $receiptId ? Document::query()->find($receiptId) : null;
+
+        $transaction->forceFill([
+            'document_id' => $receiptId,
+            'receipt_path' => $receiptDocument?->path,
+            'payment_document_id' => $paymentId,
+        ])->save();
+    }
+
+    public function detachTransactionDocumentById(Transaction $transaction, int $documentId): void
+    {
+        if (! $transaction->linkedDocuments()->where('documents.id', $documentId)->exists()) {
+            return;
+        }
+
+        $transaction->linkedDocuments()->detach($documentId);
+        $this->syncTransactionLegacyDocumentColumns($transaction);
+
+        $document = Document::query()->find($documentId);
+        if ($document !== null && ! $this->documentLinkedToInvoice($document) && ! $this->documentLinkedToTransaction($document)) {
+            $this->deleteFileFromDocument($document);
+        }
+    }
+
     /**
      * Remove receipt link from any transactions pointing at this document (e.g. before delete/clear file).
      */
     public function clearTransactionLinksForDocument(Document $document): void
     {
+        $transactionIds = DB::table('transaction_document')
+            ->where('document_id', $document->id)
+            ->pluck('transaction_id')
+            ->unique()
+            ->all();
+
+        DB::table('transaction_document')
+            ->where('document_id', $document->id)
+            ->delete();
+
         Transaction::query()->where('document_id', $document->id)->update([
             'document_id' => null,
             'receipt_path' => null,
         ]);
+
+        Transaction::query()->where('payment_document_id', $document->id)->update([
+            'payment_document_id' => null,
+        ]);
+
+        foreach ($transactionIds as $transactionId) {
+            $transaction = Transaction::query()->find($transactionId);
+            if ($transaction !== null) {
+                $this->syncTransactionLegacyDocumentColumns($transaction);
+            }
+        }
     }
 }

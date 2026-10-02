@@ -295,9 +295,9 @@
             <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
                 <div class="flex items-center gap-2">
                     <x-lucide-paperclip class="h-4 w-4 text-gray-400" aria-hidden="true" />
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Attachment</h3>
+                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Attachments</h3>
                 </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional PDF or image stored with this invoice in Documents.</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional PDFs or images stored with this invoice in Documents. You can select multiple files.</p>
             </div>
             <div class="space-y-3 p-5">
                 @if ($isEdit)
@@ -308,15 +308,19 @@
                     ])
                 @endif
                 <div>
-                    <label for="invoice_attachment" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
-                        {{ ($isEdit && $invoice->document?->hasFile()) ? 'Replace attachment' : 'Attach file' }}
+                    <label for="invoice_attachments" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                        {{ $isEdit ? 'Add more files' : 'Attach files' }}
                     </label>
-                    <input id="invoice_attachment"
+                    <input id="invoice_attachments"
                            type="file"
-                           name="attachment"
+                           name="attachments[]"
+                           multiple
                            accept="{{ config('documents.transaction_file_accept') }}"
                            class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 dark:file:bg-gray-700 dark:file:text-indigo-300" />
-                    @error('attachment')
+                    @error('attachments')
+                        <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                    @enderror
+                    @error('attachments.*')
                         <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
                     @enderror
                 </div>
