@@ -2,10 +2,11 @@
 
 namespace App\Console\Commands;
 
+use Carbon\Carbon;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 use ZipArchive;
 
@@ -41,10 +42,10 @@ class CreateEncryptedBackup extends Command
 
         try {
             // Create backup directory
-            $backupDir = 'backups/' . now()->format('Y-m-d_H-i-s');
-            $tempDir = storage_path('app/temp_backup_' . uniqid());
+            $backupDir = 'backups/'.now()->format('Y-m-d_H-i-s');
+            $tempDir = storage_path('app/temp_backup_'.uniqid());
 
-            if (!File::exists($tempDir)) {
+            if (! File::exists($tempDir)) {
                 File::makeDirectory($tempDir, 0755, true);
             }
 
@@ -71,8 +72,8 @@ class CreateEncryptedBackup extends Command
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error("Backup failed: " . $e->getMessage());
-            
+            $this->error('Backup failed: '.$e->getMessage());
+
             // Clean up temp directory on failure
             if (isset($tempDir) && File::exists($tempDir)) {
                 File::deleteDirectory($tempDir);
@@ -115,7 +116,7 @@ class CreateEncryptedBackup extends Command
             );
             $this->runProcessWithEnv($command, ['PGPASSWORD' => $password ?? '']);
         } elseif (in_array($connection, ['mysql', 'mariadb'])) {
-            $passwordArg = $password ? '-p' . escapeshellarg($password) : '';
+            $passwordArg = $password ? '-p'.escapeshellarg($password) : '';
             $command = sprintf(
                 'mysqldump -h %s -P %s -u %s %s %s > %s',
                 escapeshellarg($host),
@@ -127,7 +128,7 @@ class CreateEncryptedBackup extends Command
             );
             $this->runProcessWithEnv($command);
         } else {
-            $this->warn('Database backup for ' . $connection . ' requires manual implementation');
+            $this->warn('Database backup for '.$connection.' requires manual implementation');
         }
     }
 
@@ -140,16 +141,16 @@ class CreateEncryptedBackup extends Command
         $previous = null;
         if (isset($env['PGPASSWORD'])) {
             $previous = getenv('PGPASSWORD') ?: false;
-            putenv('PGPASSWORD=' . $env['PGPASSWORD']);
+            putenv('PGPASSWORD='.$env['PGPASSWORD']);
         }
         try {
             $process->run();
-            if (!$process->isSuccessful()) {
-                throw new \RuntimeException('Database backup failed: ' . $process->getErrorOutput());
+            if (! $process->isSuccessful()) {
+                throw new \RuntimeException('Database backup failed: '.$process->getErrorOutput());
             }
         } finally {
             if ($previous !== null) {
-                putenv('PGPASSWORD=' . ($previous !== false ? (string) $previous : ''));
+                putenv('PGPASSWORD='.($previous !== false ? (string) $previous : ''));
             }
         }
     }
@@ -209,7 +210,7 @@ class CreateEncryptedBackup extends Command
     {
         $this->info('Creating encrypted archive...');
 
-        $filename = 'backup_' . now()->format('Y-m-d_H-i-s') . ($compress ? '.zip' : '.tar');
+        $filename = 'backup_'.now()->format('Y-m-d_H-i-s').($compress ? '.zip' : '.tar');
         $backupPath = "{$backupDir}/{$filename}";
 
         if ($compress) {
@@ -229,9 +230,9 @@ class CreateEncryptedBackup extends Command
      */
     protected function createZipArchive(string $sourceDir, string $destinationPath): void
     {
-        $zip = new ZipArchive();
-        
-        if ($zip->open($destinationPath, ZipArchive::CREATE) !== TRUE) {
+        $zip = new ZipArchive;
+
+        if ($zip->open($destinationPath, ZipArchive::CREATE) !== true) {
             throw new \Exception("Cannot create ZIP file: {$destinationPath}");
         }
 
@@ -245,9 +246,9 @@ class CreateEncryptedBackup extends Command
     protected function addDirectoryToZip(ZipArchive $zip, string $sourceDir, string $basePath): void
     {
         $files = File::allFiles($sourceDir);
-        
+
         foreach ($files as $file) {
-            $relativePath = $basePath . $file->getRelativePathname();
+            $relativePath = $basePath.$file->getRelativePathname();
             $zip->addFile($file->getPathname(), $relativePath);
         }
     }
@@ -271,15 +272,15 @@ class CreateEncryptedBackup extends Command
 
         $content = File::get($filePath);
         $encryptedContent = Crypt::encrypt($content);
-        
+
         // Save encrypted content
-        File::put($filePath . '.encrypted', $encryptedContent);
-        
+        File::put($filePath.'.encrypted', $encryptedContent);
+
         // Remove original file
         File::delete($filePath);
-        
+
         // Rename encrypted file
-        File::move($filePath . '.encrypted', $filePath);
+        File::move($filePath.'.encrypted', $filePath);
     }
 
     /**
@@ -293,11 +294,11 @@ class CreateEncryptedBackup extends Command
         $cutoffDate = now()->subDays($retentionDays);
 
         $files = Storage::disk('encrypted')->files($backupsDir);
-        
+
         foreach ($files as $file) {
             $lastModified = Storage::disk('encrypted')->lastModified($file);
-            $fileDate = \Carbon\Carbon::createFromTimestamp($lastModified);
-            
+            $fileDate = Carbon::createFromTimestamp($lastModified);
+
             if ($fileDate->lt($cutoffDate)) {
                 Storage::disk('encrypted')->delete($file);
                 $this->line("Deleted old backup: {$file}");

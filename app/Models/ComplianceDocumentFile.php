@@ -29,10 +29,10 @@ class ComplianceDocumentFile extends Model
     {
         return [
             'custom_label' => 'boolean',
-            'due_date'    => 'date',
+            'due_date' => 'date',
             'lodged_date' => 'date',
-            'paid_date'   => 'date',
-            'file_size'   => 'integer',
+            'paid_date' => 'date',
+            'file_size' => 'integer',
         ];
     }
 

@@ -22,12 +22,12 @@ class ComplianceCategoryResource extends JsonResource
             ])->values();
 
         return [
-            'id'           => $this->id,
-            'title'        => $this->title,
-            'sort_order'   => $this->sort_order,
-            'is_system'    => (bool) $this->is_system,
+            'id' => $this->id,
+            'title' => $this->title,
+            'sort_order' => $this->sort_order,
+            'is_system' => (bool) $this->is_system,
             'completeness' => $yearService->categoryCompleteness($this->resource),
-            'files'        => ComplianceDocumentFileResource::collection($files)->resolve(),
+            'files' => ComplianceDocumentFileResource::collection($files)->resolve(),
         ];
     }
 }

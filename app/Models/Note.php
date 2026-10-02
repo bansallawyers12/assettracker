@@ -27,7 +27,6 @@ class Note extends Model
         return $this->belongsTo(BusinessEntity::class);
     }
 
-
     public function user()
     {
         return $this->belongsTo(User::class);

@@ -6,6 +6,7 @@ use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\Lease;
 use App\Services\RentInvoiceService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -34,8 +35,8 @@ class AssetInvoiceController extends Controller
             ->firstOrFail();
 
         $date = isset($validated['invoice_date'])
-            ? \Carbon\Carbon::parse($validated['invoice_date'])
-            : \Carbon\Carbon::now();
+            ? Carbon::parse($validated['invoice_date'])
+            : Carbon::now();
 
         $result = $rentInvoiceService->generateRentInvoiceForLease($lease, $date);
 
@@ -43,7 +44,7 @@ class AssetInvoiceController extends Controller
             route('business-entities.assets.show', [$businessEntity, $asset]).'#tab_invoices'
         );
 
-        if (!($result['success'] ?? false)) {
+        if (! ($result['success'] ?? false)) {
             return $toAsset->with('error', $result['message'] ?? 'Could not create invoice.');
         }
 

@@ -6,7 +6,6 @@ use App\Http\Resources\AssetResource;
 use App\Models\Asset;
 use App\Models\BusinessEntity;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 
 class AssetsWorkspaceController extends Controller
 {

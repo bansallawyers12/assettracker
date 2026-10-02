@@ -25,15 +25,17 @@ class GmailSyncCommand extends Command
 
     public function handle(): int
     {
-        if (!(bool) config('gmail.enabled')) {
+        if (! (bool) config('gmail.enabled')) {
             $this->info('Gmail sync disabled. Enable by setting GMAIL_ENABLED=true');
+
             return self::SUCCESS;
         }
 
         $globalLockSeconds = (int) config('gmail.global_lock_seconds', 55);
         $lock = Cache::lock('gmail_sync_tick', $globalLockSeconds);
-        if (!$lock->get()) {
+        if (! $lock->get()) {
             $this->info('Another sync tick is running. Skipping.');
+
             return self::SUCCESS;
         }
 
@@ -41,14 +43,14 @@ class GmailSyncCommand extends Command
             $limitUsersPerTick = (int) config('gmail.users_per_tick', 3);
             $userIds = $this->option('users');
             $query = User::query();
-            if (!empty($userIds)) {
+            if (! empty($userIds)) {
                 $query->whereIn('id', $userIds);
             }
             $users = $query->orderBy('id')->limit($limitUsersPerTick)->get(['id']);
 
             foreach ($users as $user) {
                 SyncGmailForUser::dispatch($user->id)->onQueue(config('gmail.queue', 'default'));
-                $this->info('Dispatched Gmail sync for user ID: ' . $user->id);
+                $this->info('Dispatched Gmail sync for user ID: '.$user->id);
             }
 
             if ($users->isEmpty()) {
@@ -61,5 +63,3 @@ class GmailSyncCommand extends Command
         return self::SUCCESS;
     }
 }
-
-

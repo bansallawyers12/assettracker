@@ -36,13 +36,13 @@ class CarReportService
         return [
             'cars' => $cars,
             'totals' => [
-                'total_cars'         => $cars->count(),
-                'rego_overdue'       => $this->countDueBefore($cars, 'registration_due_date', $now),
-                'rego_due_soon'      => $this->countDueBetween($cars, 'registration_due_date', $now, $in30),
-                'insurance_overdue'  => $this->countDueBefore($cars, 'insurance_due_date', $now),
+                'total_cars' => $cars->count(),
+                'rego_overdue' => $this->countDueBefore($cars, 'registration_due_date', $now),
+                'rego_due_soon' => $this->countDueBetween($cars, 'registration_due_date', $now, $in30),
+                'insurance_overdue' => $this->countDueBefore($cars, 'insurance_due_date', $now),
                 'insurance_due_soon' => $this->countDueBetween($cars, 'insurance_due_date', $now, $in30),
-                'service_overdue'    => $this->countDueBefore($cars, 'service_due_date', $now),
-                'service_due_soon'   => $this->countDueBetween($cars, 'service_due_date', $now, $in30),
+                'service_overdue' => $this->countDueBefore($cars, 'service_due_date', $now),
+                'service_due_soon' => $this->countDueBetween($cars, 'service_due_date', $now, $in30),
             ],
         ];
     }

@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class BillsTasksController extends Controller
@@ -295,10 +296,10 @@ class BillsTasksController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, object>  $items
+     * @param  Collection<int, object>  $items
      * @param  list<int>  $opIds
      */
-    private function appendAssetDueItems(\Illuminate\Support\Collection $items, array $opIds): void
+    private function appendAssetDueItems(Collection $items, array $opIds): void
     {
         $this->assetOperationalQuery($opIds)
             ->with('businessEntity')
@@ -368,10 +369,10 @@ class BillsTasksController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, object>  $items
+     * @param  Collection<int, object>  $items
      * @param  list<int>  $opIds
      */
-    private function appendAsicRenewalDueItems(\Illuminate\Support\Collection $items, array $opIds): void
+    private function appendAsicRenewalDueItems(Collection $items, array $opIds): void
     {
         if ($opIds === []) {
             return;

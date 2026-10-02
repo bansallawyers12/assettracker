@@ -18,7 +18,7 @@ class ContactList extends Model
         'phone_no',
         'mobile_no',
         'address',
-        'zip_code'
+        'zip_code',
     ];
 
     /**
@@ -28,4 +28,4 @@ class ContactList extends Model
     {
         return $this->belongsTo(BusinessEntity::class);
     }
-} 
+}

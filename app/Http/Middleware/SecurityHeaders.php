@@ -11,15 +11,15 @@ class SecurityHeaders
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!config('security.headers.enabled', true)) {
+        if (! config('security.headers.enabled', true)) {
             return $next($request);
         }
 
-        if (config('security.headers.force_https', true) && !$request->secure()) {
+        if (config('security.headers.force_https', true) && ! $request->secure()) {
             // 308 preserves POST/PUT (301 would downgrade form submissions to GET).
             return redirect()->secure($request->getRequestUri(), 308);
         }

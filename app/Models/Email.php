@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Email extends Model
 {
-    use HasFactory, EncryptsAttributes;
+    use EncryptsAttributes, HasFactory;
 
     protected $fillable = [
         'email',

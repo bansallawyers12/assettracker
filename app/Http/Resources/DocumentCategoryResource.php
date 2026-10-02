@@ -9,11 +9,11 @@ class DocumentCategoryResource extends JsonResource
     public function toArray($request): array
     {
         return [
-            'id'         => $this->id,
-            'title'      => $this->title,
+            'id' => $this->id,
+            'title' => $this->title,
             'sort_order' => $this->sort_order,
-            'asset_id'   => $this->asset_id,
-            'documents'  => DocumentSlotResource::collection($this->whenLoaded('documents')),
+            'asset_id' => $this->asset_id,
+            'documents' => DocumentSlotResource::collection($this->whenLoaded('documents')),
         ];
     }
 }

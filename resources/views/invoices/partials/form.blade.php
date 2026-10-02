@@ -85,36 +85,47 @@
         'lockInvoiceNumber' => (bool) ($lockInvoiceNumber ?? false),
         'lockDueDate' => (bool) ($lockDueDate ?? false),
     ];
-    $fieldClass = 'w-full rounded-lg border-gray-300 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white';
+    $fieldClass = 'block w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-2xs transition-colors placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-hidden dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-indigo-400';
 @endphp
 
-<div class="py-8 w-full px-4 sm:px-6 lg:px-8"
+<div class="py-6 sm:py-8 w-full px-4 sm:px-6 lg:px-8"
+     style="max-width: 1400px; margin-left: auto; margin-right: auto;"
      x-data="invoiceForm(@js($formConfig))"
      x-init="init()">
     @if (session('error'))
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">{{ session('error') }}</div>
+        <div class="mb-5 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm text-rose-800 shadow-2xs dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">
+            <x-lucide-alert-circle class="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+            <div class="flex-1 font-medium">{{ session('error') }}</div>
+        </div>
     @endif
 
     @if ($errors->any())
-        <div class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
-            <ul class="list-disc list-inside space-y-1">
-                @foreach ($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
+        <div class="mb-5 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3.5 text-sm text-rose-800 shadow-2xs dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-200">
+            <x-lucide-alert-triangle class="h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400 mt-0.5" />
+            <div class="flex-1">
+                <p class="font-semibold">Please correct the following errors:</p>
+                <ul class="mt-1 list-disc list-inside space-y-0.5 text-xs text-rose-700 dark:text-rose-300">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
         </div>
     @endif
 
     @unless ($isEdit)
-        <div class="mb-5 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3 text-sm text-indigo-900 dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-200">
-            For recurring monthly rent, prefer
-            <a href="{{ route('business-entities.rent-invoices.index', $businessEntity) }}" class="font-semibold underline hover:no-underline">Rent invoices</a>
-            so amounts and lease links are generated automatically. Use this form for one-off invoices.
-            Rent invoices follow the lease GST setting (10% inclusive when GST applies, or GST not applicable).
+        <div class="mb-5 flex items-start gap-3 rounded-xl border border-indigo-100 bg-indigo-50/70 px-4 py-3.5 text-sm text-indigo-900 shadow-2xs dark:border-indigo-900/50 dark:bg-indigo-950/30 dark:text-indigo-200">
+            <x-lucide-info class="h-5 w-5 shrink-0 text-indigo-600 dark:text-indigo-400 mt-0.5" />
+            <div class="text-xs leading-relaxed">
+                For recurring monthly rent, prefer
+                <a href="{{ route('business-entities.rent-invoices.index', $businessEntity) }}" class="font-semibold underline hover:no-underline">Rent invoices</a>
+                so amounts and lease links are generated automatically. Use this form for one-off invoices.
+                Rent invoices follow the lease GST setting (10% inclusive when GST applies, or GST not applicable).
+            </div>
         </div>
     @endunless
 
-    <form method="POST" action="{{ $formAction }}" enctype="multipart/form-data" class="space-y-5">
+    <form method="POST" action="{{ $formAction }}" enctype="multipart/form-data" class="space-y-6">
         @csrf
         @if ($isEdit)
             @method('PUT')
@@ -130,235 +141,337 @@
         <input type="hidden" name="gst_percent" value="{{ in_array(($formConfig['gstBasis'] ?? 'inclusive'), ['none', 'manual'], true) ? 0 : 10 }}" :value="gstPercent">
         <input type="hidden" name="gst_basis" value="{{ $formConfig['gstBasis'] ?? 'inclusive' }}" :value="gstBasis">
 
-        {{-- Invoice details --}}
-        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Invoice details</h3>
-                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Dates for this invoice</p>
-            </div>
-            <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Issue date</label>
-                    <x-date-input name="issue_date" value="{{ $issueDate }}" data-invoice-issue-date
-                                  class="{{ $fieldClass }}" required />
+        {{-- Main Invoice Document Sheet --}}
+        <div class="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
+            {{-- Document Header & Metadata Panel --}}
+            <div class="border-b border-gray-100 bg-gradient-to-br from-slate-50/70 via-white to-indigo-50/30 px-6 py-6 sm:px-8 dark:border-gray-800 dark:from-gray-900 dark:via-gray-900 dark:to-indigo-950/20">
+                <div class="flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 shadow-2xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
+                            <x-lucide-file-text class="h-3.5 w-3.5 text-indigo-500" />
+                            Invoice # <span class="font-mono text-gray-900 dark:text-white" x-text="invoiceNumber || '{{ $suggestedInvoiceNumber }}'"></span>
+                        </span>
+                        <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800 ring-1 ring-inset ring-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:ring-amber-900">
+                            Draft · Editable
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-500 shadow-2xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                            <x-lucide-coins class="h-3.5 w-3.5 text-amber-500" />
+                            Currency: AUD ($)
+                        </span>
+                    </div>
                 </div>
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Due date</label>
-                    <x-date-input name="due_date" value="{{ $defaultDueDate }}" data-invoice-due-date
-                                  class="{{ $fieldClass }}" />
-                </div>
-            </div>
-        </section>
 
-        {{-- Customer & lease --}}
-        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Customer &amp; lease</h3>
-                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">Optional lease fills customer automatically</p>
-            </div>
-            <div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Lease / tenant</label>
-                    <select x-model="leaseId" @change="onLeaseChange()"
-                            class="{{ $fieldClass }}">
-                        <option value="">— Optional —</option>
-                        <template x-for="lease in allLeases" :key="lease.id">
-                            <option :value="String(lease.id)"
-                                    :selected="String(lease.id) === String(leaseId)"
-                                    x-text="lease.fullLabel"></option>
-                        </template>
-                    </select>
-                </div>
-                <div>
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">Customer</label>
-                    <input name="customer_name" x-model="customerName" required
-                           class="{{ $fieldClass }}" placeholder="Customer / bill-to name" />
-                </div>
-                <div x-show="formattedCustomerAbn" x-cloak class="md:col-span-2">
-                    <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">ABN</label>
-                    <p class="{{ $fieldClass }} bg-gray-50 dark:bg-gray-900/60 font-mono text-gray-800 dark:text-gray-100" x-text="formattedCustomerAbn"></p>
-                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">From the selected tenant record.</p>
-                </div>
-            </div>
-        </section>
+                {{-- Two-column configuration grid --}}
+                <div class="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
+                    {{-- Customer & Lease (7 columns) --}}
+                    <div class="space-y-4 lg:col-span-7">
+                        <div class="flex items-center gap-2 border-b border-gray-100 pb-2 dark:border-gray-800">
+                            <x-lucide-user-check class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Customer &amp; Lease</h3>
+                            <span class="text-xs text-gray-400 font-normal">(Optional lease auto-fills tenant details)</span>
+                        </div>
 
-        {{-- GST --}}
-        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div class="border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">GST</h3>
-                <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400" x-text="gstHint"></p>
-            </div>
-            <div class="space-y-3 p-5">
-                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
-                        <input type="radio" name="gst_mode_ui" value="inclusive" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        <span class="block font-medium text-gray-900 dark:text-white">Yes — 10% inclusive</span>
-                    </label>
-                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
-                        <input type="radio" name="gst_mode_ui" value="exclusive" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        <span class="block font-medium text-gray-900 dark:text-white">Yes — 10% exclusive</span>
-                    </label>
-                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
-                        <input type="radio" name="gst_mode_ui" value="manual" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        <span class="block font-medium text-gray-900 dark:text-white">Mixed rates — tax per line</span>
-                    </label>
-                    <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3 text-sm has-[:checked]:border-indigo-300 has-[:checked]:bg-indigo-50/70 dark:border-gray-700 dark:has-[:checked]:border-indigo-700 dark:has-[:checked]:bg-indigo-950/40">
-                        <input type="radio" name="gst_mode_ui" value="none" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-                        <span class="block font-medium text-gray-900 dark:text-white">No — GST not applicable</span>
-                    </label>
-                </div>
-                @if ($legacyMixedGst)
-                    <p class="text-xs text-amber-800 dark:text-amber-200">
-                        This draft stored one GST total and no rate on each line, so the Profit &amp; Loss report could not split it. Choose GST 10% or GST Free on every line before you save.
-                    </p>
-                @endif
-            </div>
-        </section>
+                        <div>
+                            <label class="mb-1.5 flex items-center justify-between text-xs font-medium text-gray-700 dark:text-gray-300">
+                                <span>Lease / tenant</span>
+                                <span class="text-[11px] text-gray-400 font-normal">Optional</span>
+                            </label>
+                            <select x-model="leaseId" @change="onLeaseChange()" class="{{ $fieldClass }}">
+                                <option value="">— Optional —</option>
+                                <template x-for="lease in allLeases" :key="lease.id">
+                                    <option :value="String(lease.id)"
+                                            :selected="String(lease.id) === String(leaseId)"
+                                            x-text="lease.fullLabel"></option>
+                                </template>
+                            </select>
+                        </div>
 
-        {{-- Line items --}}
-        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div class="flex items-center justify-between gap-3 border-b border-gray-200 px-5 py-4 dark:border-gray-800">
-                <div>
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Line items</h3>
-                    <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                        <span x-text="lines.length"></span> <span x-text="lines.length === 1 ? 'line' : 'lines'"></span>
-                    </p>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                                Customer <span class="text-rose-500">*</span>
+                            </label>
+                            <input name="customer_name" x-model="customerName"
+                                   value="{{ old('customer_name', $isEdit ? $invoice->customer_name : '') }}" required
+                                   class="{{ $fieldClass }}" placeholder="Customer / bill-to name" />
+                        </div>
+
+                        <div x-show="formattedCustomerAbn" x-cloak class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 dark:border-indigo-900/40 dark:bg-indigo-950/20">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-medium text-indigo-900 dark:text-indigo-200">Customer ABN</span>
+                                <span class="font-mono text-xs font-bold text-indigo-950 dark:text-indigo-100" x-text="formattedCustomerAbn"></span>
+                            </div>
+                            <p class="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">From the selected tenant record.</p>
+                        </div>
+                    </div>
+
+                    {{-- Invoice Dates & GST Treatment (5 columns) --}}
+                    <div class="space-y-4 lg:col-span-5">
+                        <div class="flex items-center gap-2 border-b border-gray-100 pb-2 dark:border-gray-800">
+                            <x-lucide-calendar class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-gray-700 dark:text-gray-300">Invoice Schedule &amp; GST</h3>
+                        </div>
+
+                        <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <div>
+                                <label class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                                    Issue date <span class="text-rose-500">*</span>
+                                </label>
+                                <x-date-input name="issue_date" value="{{ $issueDate }}" data-invoice-issue-date
+                                              class="{{ $fieldClass }}" required />
+                            </div>
+                            <div>
+                                <label class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                                    Due date
+                                </label>
+                                <x-date-input name="due_date" value="{{ $defaultDueDate }}" data-invoice-due-date
+                                              class="{{ $fieldClass }}" />
+                            </div>
+                        </div>
+
+                        <div class="pt-1">
+                            <label class="mb-1.5 block text-xs font-medium text-gray-700 dark:text-gray-300">
+                                GST treatment
+                            </label>
+                            <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                <label class="relative flex cursor-pointer items-start gap-2.5 rounded-xl border p-2.5 transition-all duration-150"
+                                       :class="gstMode === 'inclusive' ? 'border-indigo-600 bg-indigo-50/70 ring-1 ring-indigo-600/30 dark:bg-indigo-950/40 dark:border-indigo-500' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800'">
+                                    <input type="radio" name="gst_mode_ui" value="inclusive" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700" />
+                                    <div class="min-w-0 flex-1">
+                                        <span class="block text-xs font-semibold text-gray-900 dark:text-white">Yes — 10% inclusive</span>
+                                        <span class="block text-[11px] text-gray-500 dark:text-gray-400">Prices include GST</span>
+                                    </div>
+                                </label>
+
+                                <label class="relative flex cursor-pointer items-start gap-2.5 rounded-xl border p-2.5 transition-all duration-150"
+                                       :class="gstMode === 'exclusive' ? 'border-indigo-600 bg-indigo-50/70 ring-1 ring-indigo-600/30 dark:bg-indigo-950/40 dark:border-indigo-500' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800'">
+                                    <input type="radio" name="gst_mode_ui" value="exclusive" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700" />
+                                    <div class="min-w-0 flex-1">
+                                        <span class="block text-xs font-semibold text-gray-900 dark:text-white">Yes — 10% exclusive</span>
+                                        <span class="block text-[11px] text-gray-500 dark:text-gray-400">+10% added on top</span>
+                                    </div>
+                                </label>
+
+                                <label class="relative flex cursor-pointer items-start gap-2.5 rounded-xl border p-2.5 transition-all duration-150"
+                                       :class="gstMode === 'manual' ? 'border-indigo-600 bg-indigo-50/70 ring-1 ring-indigo-600/30 dark:bg-indigo-950/40 dark:border-indigo-500' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800'">
+                                    <input type="radio" name="gst_mode_ui" value="manual" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700" />
+                                    <div class="min-w-0 flex-1">
+                                        <span class="block text-xs font-semibold text-gray-900 dark:text-white">Mixed rates — tax per line</span>
+                                        <span class="block text-[11px] text-gray-500 dark:text-gray-400">Tax rate per item</span>
+                                    </div>
+                                </label>
+
+                                <label class="relative flex cursor-pointer items-start gap-2.5 rounded-xl border p-2.5 transition-all duration-150"
+                                       :class="gstMode === 'none' ? 'border-indigo-600 bg-indigo-50/70 ring-1 ring-indigo-600/30 dark:bg-indigo-950/40 dark:border-indigo-500' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800/60 dark:hover:bg-gray-800'">
+                                    <input type="radio" name="gst_mode_ui" value="none" x-model="gstMode" class="mt-0.5 border-gray-300 text-indigo-600 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-700" />
+                                    <div class="min-w-0 flex-1">
+                                        <span class="block text-xs font-semibold text-gray-900 dark:text-white">No — GST not applicable</span>
+                                        <span class="block text-[11px] text-gray-500 dark:text-gray-400">GST exempt</span>
+                                    </div>
+                                </label>
+                            </div>
+                            <p class="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                                <x-lucide-info class="h-3.5 w-3.5 shrink-0 text-indigo-500" />
+                                <span x-text="gstHint"></span>
+                            </p>
+                            @if ($legacyMixedGst)
+                                <p class="mt-2 text-xs text-amber-800 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg p-2.5">
+                                    This draft stored one GST total and no rate on each line, so the Profit &amp; Loss report could not split it. Choose GST 10% or GST Free on every line before you save.
+                                </p>
+                            @endif
+                        </div>
+                    </div>
                 </div>
-                <button type="button" @click="addLine()"
-                        class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700">
-                    <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
-                    Add line
-                </button>
             </div>
 
-            <div class="p-5">
-                <div class="hidden md:grid md:grid-cols-12 gap-2 mb-2 px-1 text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+            {{-- Line Items Section --}}
+            <div class="p-6 sm:p-8 border-b border-gray-100 dark:border-gray-800">
+                <div class="flex items-center justify-between gap-3 mb-4">
+                    <div class="flex items-center gap-2">
+                        <x-lucide-list class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                        <h3 class="text-sm font-bold text-gray-900 dark:text-white">Line items</h3>
+                        <span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600 dark:bg-gray-800 dark:text-gray-300">
+                            <span x-text="lines.length"></span> <span x-text="lines.length === 1 ? 'item' : 'items'"></span>
+                        </span>
+                    </div>
+                    <button type="button" @click="addLine()"
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-indigo-600 hover:border-indigo-300 transition-colors dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <x-lucide-plus class="h-3.5 w-3.5" aria-hidden="true" />
+                        Add line
+                    </button>
+                </div>
+
+                {{-- Table Header (Desktop) --}}
+                <div class="hidden md:grid md:grid-cols-12 gap-3 mb-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-gray-500 bg-gray-50/80 rounded-lg dark:bg-gray-800/50 dark:text-gray-400 border border-gray-100 dark:border-gray-800">
                     <div :class="gstMode === 'manual' ? 'md:col-span-3' : 'md:col-span-5'">Description</div>
                     <div class="md:col-span-2" x-text="unitPriceLabel"></div>
                     <div class="md:col-span-2" x-show="gstMode === 'manual'" x-cloak>Tax rate</div>
-                    <div class="md:col-span-2" x-show="gstMode === 'manual'" x-cloak>Tax</div>
-                    <div :class="gstMode === 'manual' ? 'md:col-span-2' : 'md:col-span-4'">Account</div>
+                    <div class="md:col-span-1 text-right" x-show="gstMode === 'manual'" x-cloak>Tax amount</div>
+                    <div :class="gstMode === 'manual' ? 'md:col-span-3' : 'md:col-span-4'">Account</div>
                     <div class="md:col-span-1"></div>
                 </div>
 
-                <template x-for="(line, index) in lines" :key="index">
-                    <div class="mb-3 grid grid-cols-1 items-start gap-2 rounded-lg border border-gray-100 bg-gray-50/50 p-3 md:grid-cols-12 md:border-0 md:bg-transparent md:p-0 dark:border-gray-800 dark:bg-gray-800/30 md:dark:bg-transparent">
-                        <div :class="gstMode === 'manual' ? 'md:col-span-3' : 'md:col-span-5'">
-                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Description</label>
-                            <input :name="'lines[' + index + '][description]'" x-model="line.description" required
-                                   class="{{ $fieldClass }}" />
-                            <input type="hidden" :name="'lines[' + index + '][quantity]'" value="1">
+                {{-- Rows --}}
+                <div class="space-y-3">
+                    <template x-for="(line, index) in lines" :key="index">
+                        <div class="grid grid-cols-1 items-start gap-3 rounded-xl border border-gray-200/70 bg-gray-50/40 p-4 md:grid-cols-12 md:border-0 md:bg-transparent md:p-0 dark:border-gray-800 dark:bg-gray-800/30 md:dark:bg-transparent hover:bg-indigo-50/20 md:hover:bg-transparent transition-colors">
+                            {{-- Description --}}
+                            <div :class="gstMode === 'manual' ? 'md:col-span-3' : 'md:col-span-5'">
+                                <label class="mb-1 block text-xs font-medium text-gray-500 md:hidden">Description</label>
+                                <input :name="'lines[' + index + '][description]'" x-model="line.description" required
+                                       class="{{ $fieldClass }}" placeholder="Item description (e.g. Monthly Rent)" />
+                                <input type="hidden" :name="'lines[' + index + '][quantity]'" value="1">
+                            </div>
+
+                            {{-- Unit Price --}}
+                            <div class="md:col-span-2">
+                                <label class="mb-1 block text-xs font-medium text-gray-500 md:hidden" x-text="unitPriceLabel"></label>
+                                <div class="relative rounded-lg shadow-2xs">
+                                    <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-sm font-medium text-gray-400">$</div>
+                                    <input type="number" step="0.01" :name="'lines[' + index + '][unit_price]'" x-model.number="line.unit_price" required
+                                           class="{{ $fieldClass }} pl-7 font-mono text-right" placeholder="0.00" />
+                                </div>
+                            </div>
+
+                            {{-- Tax Rate (manual only) --}}
+                            <div class="md:col-span-2" x-show="gstMode === 'manual'" x-cloak>
+                                <label class="mb-1 block text-xs font-medium text-gray-500 md:hidden">Tax rate</label>
+                                <select :name="'lines[' + index + '][tax_code]'" x-model="line.tax_code"
+                                        :disabled="gstMode !== 'manual'" :required="gstMode === 'manual'"
+                                        class="{{ $fieldClass }}">
+                                    <option value="">Select tax</option>
+                                    <option value="gst">GST 10%</option>
+                                    <option value="free">GST Free</option>
+                                </select>
+                            </div>
+
+                            {{-- Tax Amount (manual only) --}}
+                            <div class="md:col-span-1" x-show="gstMode === 'manual'" x-cloak>
+                                <label class="mb-1 block text-xs font-medium text-gray-500 md:hidden">Tax amount</label>
+                                <div class="flex items-center md:justify-end py-2 px-1">
+                                    <span class="font-mono text-sm font-semibold tabular-nums text-gray-900 dark:text-white" x-text="formatMoney(lineAmounts(line).gst)"></span>
+                                </div>
+                            </div>
+
+                            {{-- Account --}}
+                            <div :class="gstMode === 'manual' ? 'md:col-span-3' : 'md:col-span-4'">
+                                <label class="mb-1 block text-xs font-medium text-gray-500 md:hidden">Account</label>
+                                <input type="hidden" :name="'lines[' + index + '][account_code]'" :value="line.account_code">
+                                <select x-model="line.account_code" class="{{ $fieldClass }}">
+                                    @foreach ($lineAccounts as $account)
+                                        <option value="{{ $account->account_code }}">{{ $account->account_code }} — {{ $account->account_name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            {{-- Action --}}
+                            <div class="md:col-span-1 flex items-center md:justify-end">
+                                <button type="button" @click="removeLine(index)" x-show="lines.length > 1"
+                                        class="inline-flex items-center justify-center h-9 w-9 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors dark:text-gray-400 dark:hover:text-rose-400 dark:hover:bg-rose-950/40"
+                                        title="Remove line">
+                                    <x-lucide-trash-2 class="h-4 w-4" aria-hidden="true" />
+                                    <span class="sr-only">Remove</span>
+                                </button>
+                            </div>
                         </div>
-                        <div class="md:col-span-2">
-                            <label class="mb-1 block text-xs text-gray-500 md:hidden" x-text="unitPriceLabel"></label>
-                            <input type="number" step="0.01" :name="'lines[' + index + '][unit_price]'" x-model.number="line.unit_price" required
-                                   class="{{ $fieldClass }}" />
-                        </div>
-                        <div class="md:col-span-2" x-show="gstMode === 'manual'" x-cloak>
-                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Tax rate</label>
-                            <select :name="'lines[' + index + '][tax_code]'" x-model="line.tax_code"
-                                    :disabled="gstMode !== 'manual'" :required="gstMode === 'manual'"
-                                    class="{{ $fieldClass }}">
-                                <option value="">Select tax</option>
-                                <option value="gst">GST 10%</option>
-                                <option value="free">GST Free</option>
-                            </select>
-                        </div>
-                        <div class="md:col-span-2" x-show="gstMode === 'manual'" x-cloak>
-                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Tax amount</label>
-                            <p class="px-1 py-2 text-right text-sm font-medium tabular-nums text-gray-900 dark:text-white" x-text="formatMoney(lineAmounts(line).gst)"></p>
-                        </div>
-                        <div :class="gstMode === 'manual' ? 'md:col-span-2' : 'md:col-span-4'">
-                            <label class="mb-1 block text-xs text-gray-500 md:hidden">Account</label>
-                            <input type="hidden" :name="'lines[' + index + '][account_code]'" :value="line.account_code">
-                            <select x-model="line.account_code"
-                                    class="{{ $fieldClass }}">
-                                @foreach ($lineAccounts as $account)
-                                    <option value="{{ $account->account_code }}">{{ $account->account_code }} — {{ $account->account_name }}</option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="md:col-span-1 flex md:justify-end">
-                            <button type="button" @click="removeLine(index)" x-show="lines.length > 1"
-                                    class="inline-flex items-center gap-1 rounded-lg px-2 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30">
-                                <x-lucide-trash-2 class="h-4 w-4" aria-hidden="true" />
-                                <span class="md:hidden">Remove</span>
-                            </button>
+                    </template>
+                </div>
+            </div>
+
+            {{-- Bottom Section: Attachments & Totals Summary --}}
+            <div class="bg-gray-50/40 p-6 sm:p-8 dark:bg-gray-900/40">
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-start">
+                    {{-- Attachments (7 columns) --}}
+                    <div class="lg:col-span-7">
+                        <div class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-2xs dark:border-gray-800 dark:bg-gray-850">
+                            <div class="flex items-center gap-2 mb-3">
+                                <x-lucide-paperclip class="h-4 w-4 text-indigo-500" />
+                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Attachments</h3>
+                            </div>
+                            <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+                                Optional PDFs or image receipts stored with this invoice in Documents.
+                            </p>
+                            @if ($isEdit)
+                                @include('invoices.partials.attachment-display', [
+                                    'invoice' => $invoice,
+                                    'businessEntity' => $businessEntity,
+                                    'variant' => 'form',
+                                ])
+                            @endif
+                            <div class="mt-3">
+                                <p class="mb-2 text-xs font-medium text-gray-600 dark:text-gray-400">
+                                    {{ $isEdit ? 'Attach files or add more' : 'Attach files' }}
+                                </p>
+                                @include('invoices.partials.attachment-dropzone')
+                                @error('attachments')
+                                    <p class="mt-2 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                                @enderror
+                                @error('attachments.*')
+                                    <p class="mt-2 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                                @enderror
+                            </div>
                         </div>
                     </div>
-                </template>
-            </div>
-        </section>
 
-        {{-- Attachment --}}
-        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div class="border-b border-gray-100 px-5 py-4 dark:border-gray-800">
-                <div class="flex items-center gap-2">
-                    <x-lucide-paperclip class="h-4 w-4 text-gray-400" aria-hidden="true" />
-                    <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Attachments</h3>
+                    {{-- Summary Card (5 columns) --}}
+                    <div class="lg:col-span-5">
+                        <div class="overflow-hidden rounded-2xl border border-indigo-100 bg-white shadow-xs dark:border-indigo-900/50 dark:bg-gray-850">
+                            <div class="border-b border-indigo-50 bg-indigo-50/60 px-5 py-3.5 dark:border-indigo-900/40 dark:bg-indigo-950/40">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center gap-2">
+                                        <x-lucide-calculator class="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                                        <span class="text-xs font-bold uppercase tracking-wider text-indigo-900 dark:text-indigo-200">Invoice Summary</span>
+                                    </div>
+                                    <span class="rounded-md bg-indigo-100/70 px-2 py-0.5 text-[11px] font-semibold text-indigo-700 dark:bg-indigo-900/60 dark:text-indigo-300">AUD</span>
+                                </div>
+                            </div>
+                            <div class="p-5 space-y-3">
+                                <div class="flex justify-between items-center text-sm text-gray-600 dark:text-gray-300">
+                                    <span x-text="gstApplicable ? 'Subtotal (ex GST)' : 'Subtotal'"></span>
+                                    <span class="font-mono font-medium tabular-nums text-gray-900 dark:text-white" x-text="formatMoney(totals.subtotal)"></span>
+                                </div>
+                                <div class="flex justify-between items-center text-sm text-gray-600 dark:text-gray-300">
+                                    <span>GST</span>
+                                    <span class="font-mono font-medium tabular-nums text-gray-900 dark:text-white" x-text="formatMoney(totals.gst)"></span>
+                                </div>
+                                <div class="border-t border-gray-100 dark:border-gray-700 pt-3.5 flex justify-between items-baseline">
+                                    <div>
+                                        <span class="text-base font-bold text-gray-900 dark:text-white">Total</span>
+                                        <p class="text-[11px] text-gray-400" x-text="gstApplicable ? 'Includes applicable GST' : 'No GST charged'"></p>
+                                    </div>
+                                    <span class="text-2xl font-bold tracking-tight tabular-nums text-indigo-600 dark:text-indigo-400 font-mono" x-text="formatMoney(totals.total)"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional PDFs or images stored with this invoice in Documents. Drag and drop or choose multiple files.</p>
             </div>
-            <div class="space-y-3 p-5">
-                @if ($isEdit)
-                    @include('invoices.partials.attachment-display', [
-                        'invoice' => $invoice,
-                        'businessEntity' => $businessEntity,
-                        'variant' => 'form',
-                    ])
-                @endif
-                <div>
-                    <p class="mb-2 text-xs font-medium text-gray-600 dark:text-gray-400">
-                        {{ $isEdit ? 'Add more files' : 'Attach files' }}
-                    </p>
-                    @include('invoices.partials.attachment-dropzone')
-                    @error('attachments')
-                        <p class="mt-2 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
-                    @enderror
-                    @error('attachments.*')
-                        <p class="mt-2 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
-                    @enderror
-                </div>
-            </div>
-        </section>
 
-        {{-- Totals & actions --}}
-        <section class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
-            <div class="flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:justify-between">
-                <div class="w-full max-w-xs rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/20">
-                    <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">Totals</p>
-                    <dl class="mt-3 space-y-1.5 text-sm text-gray-700 dark:text-gray-300">
-                        <div class="flex justify-between gap-6">
-                            <dt x-text="gstApplicable ? 'Subtotal (ex GST)' : 'Subtotal'"></dt>
-                            <dd class="font-medium tabular-nums text-gray-900 dark:text-white" x-text="formatMoney(totals.subtotal)"></dd>
-                        </div>
-                        <div class="flex justify-between gap-6">
-                            <dt>GST</dt>
-                            <dd class="font-medium tabular-nums text-gray-900 dark:text-white" x-text="formatMoney(totals.gst)"></dd>
-                        </div>
-                        <div class="flex justify-between gap-6 border-t border-indigo-100 pt-2 text-base font-semibold text-gray-900 dark:border-indigo-900/60 dark:text-white">
-                            <dt>Total</dt>
-                            <dd class="tabular-nums text-indigo-600 dark:text-indigo-300" x-text="formatMoney(totals.total)"></dd>
-                        </div>
-                    </dl>
+            {{-- Action Footer Bar --}}
+            <div class="border-t border-gray-200/80 bg-white px-6 py-4 dark:border-gray-800 dark:bg-gray-900 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
+                    <x-lucide-shield-check class="h-4 w-4 text-emerald-500" />
+                    <span>{{ $isEdit ? 'Draft invoices can be edited freely. Posted invoices stay read-only.' : 'Draft will be created and can be posted anytime.' }}</span>
                 </div>
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap items-center gap-2.5">
                     <a href="{{ $cancelUrl }}"
-                       class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                       class="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 transition-colors dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
                         Cancel
                     </a>
                     <button type="submit" name="save_and_post" value="0"
-                            class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
+                            class="inline-flex items-center gap-1.5 rounded-lg border border-indigo-600 bg-white px-4 py-2 text-sm font-semibold text-indigo-600 shadow-2xs hover:bg-indigo-50 hover:border-indigo-700 transition-colors dark:border-indigo-500 dark:bg-gray-800 dark:text-indigo-400 dark:hover:bg-indigo-950/40">
+                        <x-lucide-save class="h-4 w-4" aria-hidden="true" />
                         Save draft
                     </button>
                     <button type="submit" name="save_and_post" value="1"
-                            class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-emerald-500">
+                            class="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-xs hover:bg-emerald-500 transition-colors focus:ring-2 focus:ring-emerald-500/20">
                         <x-lucide-book-check class="h-4 w-4" aria-hidden="true" />
                         Save &amp; post
                     </button>
                 </div>
             </div>
-        </section>
+        </div>
     </form>
 </div>
 

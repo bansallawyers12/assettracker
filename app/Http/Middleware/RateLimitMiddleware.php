@@ -12,11 +12,11 @@ class RateLimitMiddleware
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next, string $key = 'api'): Response
     {
-        if (!config('security.rate_limiting.enabled', true)) {
+        if (! config('security.rate_limiting.enabled', true)) {
             return $next($request);
         }
 
@@ -46,10 +46,10 @@ class RateLimitMiddleware
     protected function resolveRequestSignature(Request $request, string $key): string
     {
         if ($user = $request->user()) {
-            return $key . '|' . $user->getAuthIdentifier();
+            return $key.'|'.$user->getAuthIdentifier();
         }
 
-        return $key . '|' . $request->ip();
+        return $key.'|'.$request->ip();
     }
 
     /**
@@ -92,7 +92,7 @@ class RateLimitMiddleware
             ], 429)->header('Retry-After', (string) $retryAfter);
         }
 
-        return back()->with('error', 'Too many attempts. Please try again in ' . $retryAfter . ' seconds.');
+        return back()->with('error', 'Too many attempts. Please try again in '.$retryAfter.' seconds.');
     }
 
     /**

@@ -84,7 +84,7 @@ class EmailDraft extends Model
      */
     public function isScheduled(): bool
     {
-        return !is_null($this->scheduled_at);
+        return ! is_null($this->scheduled_at);
     }
 
     /**

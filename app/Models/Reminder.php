@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
 
 class Reminder extends Model
 {
@@ -110,7 +110,7 @@ class Reminder extends Model
     public function scopeOverdue($query)
     {
         return $query->where('next_due_date', '<', now())
-                    ->where('is_completed', false);
+            ->where('is_completed', false);
     }
 
     public function scopeForBusinessEntity($query, $businessEntityId)
@@ -144,7 +144,7 @@ class Reminder extends Model
     {
         $baseDate = $this->next_due_date ? $this->next_due_date->copy() : now();
 
-        $nextDueDate = match($this->repeat_type) {
+        $nextDueDate = match ($this->repeat_type) {
             'monthly' => $baseDate->copy()->addMonth(),
             'quarterly' => $baseDate->copy()->addMonths(3),
             'annual' => $baseDate->copy()->addYear(),
@@ -152,7 +152,7 @@ class Reminder extends Model
         };
 
         if ($nextDueDate) {
-            if ($this->repeat_end_date && $nextDueDate->startOfDay()->gt(\Carbon\Carbon::parse($this->repeat_end_date)->startOfDay())) {
+            if ($this->repeat_end_date && $nextDueDate->startOfDay()->gt(Carbon::parse($this->repeat_end_date)->startOfDay())) {
                 return;
             }
 
@@ -168,7 +168,7 @@ class Reminder extends Model
         parent::boot();
 
         static::creating(function ($reminder) {
-            if (!$reminder->next_due_date) {
+            if (! $reminder->next_due_date) {
                 $reminder->next_due_date = $reminder->reminder_date;
             }
         });

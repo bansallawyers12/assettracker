@@ -25,7 +25,7 @@ class TrackingCategoryController extends Controller
             ->with('subCategories')
             ->ordered()
             ->get();
-            
+
         return view('tracking-categories.index', compact('businessEntity', 'trackingCategories'));
     }
 
@@ -46,7 +46,7 @@ class TrackingCategoryController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
-            'sort_order' => 'integer|min:0'
+            'sort_order' => 'integer|min:0',
         ]);
 
         $trackingCategory = TrackingCategory::create([
@@ -54,7 +54,7 @@ class TrackingCategoryController extends Controller
             'name' => $request->name,
             'description' => $request->description,
             'is_active' => $request->boolean('is_active'),
-            'sort_order' => $request->sort_order ?? 0
+            'sort_order' => $request->sort_order ?? 0,
         ]);
 
         return redirect()->route('business-entities.tracking-categories.index', $businessEntity)
@@ -68,7 +68,7 @@ class TrackingCategoryController extends Controller
         $this->authorizeTrackingCategory($businessEntity, $trackingCategory);
 
         $trackingCategory->load('subCategories');
-        
+
         return view('tracking-categories.show', compact('businessEntity', 'trackingCategory'));
     }
 
@@ -91,14 +91,14 @@ class TrackingCategoryController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
-            'sort_order' => 'integer|min:0'
+            'sort_order' => 'integer|min:0',
         ]);
 
         $trackingCategory->update([
             'name' => $request->name,
             'description' => $request->description,
             'is_active' => $request->boolean('is_active'),
-            'sort_order' => $request->sort_order ?? 0
+            'sort_order' => $request->sort_order ?? 0,
         ]);
 
         return redirect()->route('business-entities.tracking-categories.index', $businessEntity)

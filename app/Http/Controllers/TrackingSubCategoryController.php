@@ -41,7 +41,7 @@ class TrackingSubCategoryController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
-            'sort_order' => 'integer|min:0'
+            'sort_order' => 'integer|min:0',
         ]);
 
         TrackingSubCategory::create([
@@ -49,7 +49,7 @@ class TrackingSubCategoryController extends Controller
             'name' => $request->name,
             'description' => $request->description,
             'is_active' => $request->boolean('is_active'),
-            'sort_order' => $request->sort_order ?? 0
+            'sort_order' => $request->sort_order ?? 0,
         ]);
 
         return redirect()->route('business-entities.tracking-categories.show', [$businessEntity, $trackingCategory])
@@ -77,14 +77,14 @@ class TrackingSubCategoryController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'is_active' => 'boolean',
-            'sort_order' => 'integer|min:0'
+            'sort_order' => 'integer|min:0',
         ]);
 
         $trackingSubCategory->update([
             'name' => $request->name,
             'description' => $request->description,
             'is_active' => $request->boolean('is_active'),
-            'sort_order' => $request->sort_order ?? 0
+            'sort_order' => $request->sort_order ?? 0,
         ]);
 
         return redirect()->route('business-entities.tracking-categories.show', [$businessEntity, $trackingCategory])

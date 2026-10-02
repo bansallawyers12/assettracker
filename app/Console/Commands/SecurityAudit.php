@@ -2,10 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\User;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Hash;
-use App\Models\User;
 
 class SecurityAudit extends Command
 {
@@ -58,7 +57,7 @@ class SecurityAudit extends Command
         $this->displayResults($issues, $fixes);
 
         // Apply fixes if requested
-        if ($this->option('fix') && !empty($fixes)) {
+        if ($this->option('fix') && ! empty($fixes)) {
             $this->applyFixes($fixes);
         }
 
@@ -73,7 +72,7 @@ class SecurityAudit extends Command
         $this->line('Checking environment security...');
 
         // Check if .env file exists
-        if (!File::exists(base_path('.env'))) {
+        if (! File::exists(base_path('.env'))) {
             $issues[] = 'Missing .env file';
             $fixes[] = 'Create .env file from .env.example';
         }
@@ -91,7 +90,7 @@ class SecurityAudit extends Command
         }
 
         // Check if HTTPS is enforced
-        if (!config('security.headers.force_https', false)) {
+        if (! config('security.headers.force_https', false)) {
             $issues[] = 'HTTPS is not enforced';
             $fixes[] = 'Set FORCE_HTTPS=true in .env';
         }
@@ -138,7 +137,7 @@ class SecurityAudit extends Command
             }
 
             // Check if 2FA is enabled
-            if (!$user->two_factor_enabled) {
+            if (! $user->two_factor_enabled) {
                 $issues[] = "User {$user->email} does not have 2FA enabled";
                 $fixes[] = "Enable 2FA for user {$user->email}";
             }
@@ -159,7 +158,7 @@ class SecurityAudit extends Command
         }
 
         // Check if session encryption is enabled
-        if (!config('security.sessions.encrypt', false)) {
+        if (! config('security.sessions.encrypt', false)) {
             $issues[] = 'Session encryption is not enabled';
             $fixes[] = 'Set SESSION_ENCRYPT=true in .env';
         }
@@ -182,12 +181,12 @@ class SecurityAudit extends Command
         // Check session lifetime
         $sessionLifetime = config('session.lifetime');
         if ($sessionLifetime > 480) { // 8 hours
-            $issues[] = 'Session lifetime is too long: ' . $sessionLifetime . ' minutes';
+            $issues[] = 'Session lifetime is too long: '.$sessionLifetime.' minutes';
             $fixes[] = 'Set SESSION_LIFETIME=120 in .env';
         }
 
         // Check secure cookies
-        if (!config('session.secure')) {
+        if (! config('session.secure')) {
             $issues[] = 'Session cookies are not secure';
             $fixes[] = 'Set SESSION_SECURE_COOKIE=true in .env';
         }
@@ -227,18 +226,18 @@ class SecurityAudit extends Command
         if (empty($issues)) {
             $this->info('✅ No security issues found!');
         } else {
-            $this->error('❌ Found ' . count($issues) . ' security issues:');
+            $this->error('❌ Found '.count($issues).' security issues:');
             $this->newLine();
 
             foreach ($issues as $index => $issue) {
-                $this->line(($index + 1) . '. ' . $issue);
+                $this->line(($index + 1).'. '.$issue);
             }
 
-            if (!empty($fixes)) {
+            if (! empty($fixes)) {
                 $this->newLine();
                 $this->warn('Suggested fixes:');
                 foreach ($fixes as $index => $fix) {
-                    $this->line(($index + 1) . '. ' . $fix);
+                    $this->line(($index + 1).'. '.$fix);
                 }
             }
         }

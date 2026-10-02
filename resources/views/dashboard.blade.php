@@ -40,35 +40,38 @@
             @php
                 $oldStatus = old('payment_status', session('transactionData.payment_status', request('payment_status', 'paid')));
                 $oldChannel = old('payment_channel', session('transactionData.payment_channel', request('payment_channel', \App\Models\Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT)));
-                $txnLabel = 'block text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-1.5';
-                $txnInput = 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 px-3 py-2.5 text-sm text-gray-900 dark:text-gray-100 shadow-xs placeholder:text-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
-                $txnSelect = 'block w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/80 text-sm text-gray-900 dark:text-gray-100 shadow-xs focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:focus:border-blue-400 transition-colors';
-                $txnSection = 'rounded-xl border border-gray-100 dark:border-gray-700/80 bg-gray-50/60 dark:bg-gray-900/30 p-5 space-y-4';
+                $txnLabel = 'block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-1.5';
+                $txnInput = 'block w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-gray-900 shadow-2xs transition-colors placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-hidden dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500 dark:focus:border-indigo-400';
+                $txnSelect = 'block w-full rounded-xl border border-gray-300 bg-white text-sm text-gray-900 shadow-2xs transition-colors focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 focus:outline-hidden dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:focus:border-indigo-400';
+                $txnSection = 'rounded-2xl border border-gray-200/90 dark:border-gray-700/80 bg-white dark:bg-gray-800/95 p-5 sm:p-6 shadow-xs space-y-4';
 
                 $isReminderError = $errors->hasAny(['reminder_date', 'repeat_type', 'repeat_end_date'])
                     || ($errors->has('content') && ! $errors->has('lines') && ! collect($errors->keys())->contains(fn ($k) => str_starts_with($k, 'lines.')));
                 $isTransactionError = $errors->any() && ! $isReminderError;
             @endphp
-            <div id="add-transaction-section" class="{{ ($isTransactionError || (session('error') && ! $isReminderError) || session('keep_open') || request()->boolean('open_add_transaction')) ? '' : 'hidden' }} overflow-visible rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xl transition-all duration-300">
-                <div class="relative border-b border-gray-100 dark:border-gray-700 bg-linear-to-r from-blue-50 via-white to-indigo-50 dark:from-gray-800 dark:via-gray-800 dark:to-gray-800/90 px-6 py-5">
-                    <div class="absolute inset-x-0 top-0 h-1 bg-linear-to-r from-blue-500 via-indigo-500 to-violet-500"></div>
-                    <div class="flex items-start justify-between gap-4">
-                        <div>
-                            <h3 class="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2.5">
-                                <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/10 dark:bg-blue-500/15 ring-1 ring-blue-600/20 dark:ring-blue-400/30">
-                                    <x-lucide-clipboard class="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                                </span>
-                                Add Transactions
-                            </h3>
-                            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Record income/expense for an entity. Paid transactions only need a bank account when the payment channel is bank account.</p>
+            <div id="add-transaction-section" class="{{ ($isTransactionError || (session('error') && ! $isReminderError) || session('keep_open') || request()->boolean('open_add_transaction')) ? '' : 'hidden' }} overflow-visible rounded-2xl border border-gray-200/90 dark:border-gray-700/80 bg-white dark:bg-gray-800/95 shadow-xl transition-all duration-300">
+                <div class="border-b border-gray-100 dark:border-gray-700/70 bg-gray-50/70 dark:bg-gray-800/60 px-6 py-4.5 rounded-t-2xl">
+                    <div class="flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 ring-1 ring-indigo-500/15">
+                                <x-lucide-receipt class="w-5 h-5" />
+                            </span>
+                            <div>
+                                <h3 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight">
+                                    Add Transaction
+                                </h3>
+                                <p class="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                                    Record multi-line income or expense. Net total synchronizes with bank remittance.
+                                </p>
+                            </div>
                         </div>
-                        <button type="button" id="cancel-transaction-btn" class="rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors" aria-label="Close form">
+                        <button type="button" id="cancel-transaction-btn" class="rounded-xl p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200 transition-colors" aria-label="Close form">
                             <x-lucide-x class="w-5 h-5" />
                         </button>
                     </div>
                 </div>
 
-                <div class="p-6">
+                <div class="p-5 sm:p-7">
                 @php
                     $dashboardTransactionEntityId = $businessEntities->first()?->id ?? 0;
                     $dashboardTxnErrorToast = null;
@@ -169,48 +172,56 @@
                       x-init="init()">
                     @csrf
 
-                    {{-- Context --}}
+                    {{-- Context / Where --}}
                     <section class="{{ $txnSection }}">
-                        <div class="flex items-center gap-2 pb-1">
-                            <x-lucide-building-2 class="w-4 h-4 text-blue-500 dark:text-blue-400" />
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Where</h4>
+                        <div class="flex items-center justify-between gap-2 pb-2 border-b border-gray-100 dark:border-gray-700/60">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400 ring-1 ring-indigo-500/10">
+                                    <x-lucide-building-2 class="w-4 h-4" />
+                                </span>
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Entity & Date</h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Select the operating entity, optional asset, and transaction date.</p>
+                                </div>
+                            </div>
                         </div>
+
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {{-- Business Entity --}}
+                            <div>
+                                <label class="{{ $txnLabel }}">Business Entity</label>
+                                <x-tom-select name="business_entity_id" id="business_entity_id" class="{{ $txnSelect }}" required>
+                                    <option value="">Select Entity</option>
+                                    @foreach ($businessEntities as $entity)
+                                        <option value="{{ $entity->id }}" {{ old('business_entity_id', session('transactionData.business_entity_id', request('business_entity_id'))) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
+                                    @endforeach
+                                </x-tom-select>
+                                @error('business_entity_id') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            </div>
 
-                        {{-- Business Entity --}}
-                        <div>
-                            <label class="{{ $txnLabel }}">Business Entity</label>
-                            <x-tom-select name="business_entity_id" id="business_entity_id" class="{{ $txnSelect }}" required>
-                                <option value="">Select Entity</option>
-                                @foreach ($businessEntities as $entity)
-                                    <option value="{{ $entity->id }}" {{ old('business_entity_id', session('transactionData.business_entity_id', request('business_entity_id'))) == $entity->id ? 'selected' : '' }}>{{ $entity->legal_name }}</option>
-                                @endforeach
-                            </x-tom-select>
-                            @error('business_entity_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                            {{-- Asset --}}
+                            <div>
+                                <label class="{{ $txnLabel }}">Asset <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                                <x-tom-select name="asset_id" id="transaction_asset_id" class="{{ $txnSelect }}">
+                                    <option value="">None — entity only</option>
+                                    @foreach ($assets as $asset)
+                                        <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}"
+                                            {{ (string) old('asset_id', session('transactionData.asset_id')) === (string) $asset->id ? 'selected' : '' }}>{{ $asset->name }}</option>
+                                    @endforeach
+                                </x-tom-select>
+                                @error('asset_id') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+
+                            {{-- Date --}}
+                            <div>
+                                <label class="{{ $txnLabel }}">Transaction Date</label>
+                                <x-date-input name="date" value="{{ old('date', session('transactionData.date', now()->toDateString())) }}"
+                                       class="{{ $txnInput }}" required />
+                                @error('date') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            </div>
                         </div>
 
-                        {{-- Asset --}}
-                        <div>
-                            <label class="{{ $txnLabel }}">Asset <span class="normal-case font-normal text-gray-400">(optional)</span></label>
-                            <x-tom-select name="asset_id" id="transaction_asset_id" class="{{ $txnSelect }}">
-                                <option value="">None — entity only</option>
-                                @foreach ($assets as $asset)
-                                    <option value="{{ $asset->id }}" data-entity-id="{{ $asset->business_entity_id }}"
-                                        {{ (string) old('asset_id', session('transactionData.asset_id')) === (string) $asset->id ? 'selected' : '' }}>{{ $asset->name }}</option>
-                                @endforeach
-                            </x-tom-select>
-                            @error('asset_id') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
-
-                        {{-- Date --}}
-                        <div>
-                            <label class="{{ $txnLabel }}">Date</label>
-                            <x-date-input name="date" value="{{ old('date', session('transactionData.date', now()->toDateString())) }}"
-                                   class="{{ $txnInput }}" required />
-                            @error('date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
-                        </div>
-                        <div class="mt-4">
+                        <div class="pt-1">
                             @include('partials.transaction-marker-fields')
                         </div>
                     </section>
@@ -232,146 +243,169 @@
 
                     {{-- Documents --}}
                     <section class="{{ $txnSection }}">
-                        <div class="flex items-center gap-2 pb-1">
-                            <x-lucide-paperclip class="w-4 h-4 text-violet-500 dark:text-violet-400" />
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Attachments</h4>
-                        </div>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 -mt-2">Attached once and linked to every line in this batch.</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {{-- Invoice / Bill upload --}}
-                        <div>
-                            <label class="{{ $txnLabel }}">Invoice / Bill <span class="normal-case font-normal text-gray-400">(optional)</span></label>
-                            @include('partials.attachment-dropzone', [
-                                'inputName' => 'documents[]',
-                                'inputId' => 'dashboard-documents',
-                                'zoneId' => 'dashboard-documents-dropzone',
-                                'previewId' => 'dashboard-documents-pending',
-                                'accent' => 'blue',
-                            ])
-                            @php $dashDocMaxKb = max(1, (int) config('documents.max_kilobytes', 20480)); @endphp
-                            <p class="text-xs text-gray-500 dark:text-gray-400 mt-2">Up to {{ number_format($dashDocMaxKb / 1024, 1) }} MB each.</p>
-                            @error('document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                            @error('documents.*') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        <div class="flex items-center justify-between gap-2 pb-2 border-b border-gray-100 dark:border-gray-700/60">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600 dark:bg-violet-950/50 dark:text-violet-400 ring-1 ring-violet-500/10">
+                                    <x-lucide-paperclip class="w-4 h-4" />
+                                </span>
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Attachments & Documents</h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Attached once and automatically linked to every allocation in this batch.</p>
+                                </div>
+                            </div>
                         </div>
 
-                        {{-- Document Name --}}
-                        <div>
-                            <label class="{{ $txnLabel }}">Invoice / Bill Name</label>
-                            <input type="text" name="document_name" value="{{ old('document_name') }}"
-                                   class="{{ $txnInput }}"
-                                   placeholder="e.g., Invoice123">
-                            @error('document_name') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            {{-- Invoice / Bill upload --}}
+                            <div>
+                                <label class="{{ $txnLabel }}">Invoice / Bill <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                                @include('partials.attachment-dropzone', [
+                                    'inputName' => 'documents[]',
+                                    'inputId' => 'dashboard-documents',
+                                    'zoneId' => 'dashboard-documents-dropzone',
+                                    'previewId' => 'dashboard-documents-pending',
+                                    'accent' => 'indigo',
+                                ])
+                                @php $dashDocMaxKb = max(1, (int) config('documents.max_kilobytes', 20480)); @endphp
+                                <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-2">Up to {{ number_format($dashDocMaxKb / 1024, 1) }} MB each.</p>
+                                @error('document') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                @error('documents.*') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            </div>
+
+                            {{-- Document Name --}}
+                            <div>
+                                <label class="{{ $txnLabel }}">Document Name <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                                <input type="text" name="document_name" value="{{ old('document_name') }}"
+                                       class="{{ $txnInput }}"
+                                       placeholder="e.g., Invoice-March-2026">
+                                <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">Custom label for the uploaded file(s).</p>
+                                @error('document_name') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                            </div>
                         </div>
                     </section>
 
                     {{-- Payment --}}
                     <section class="{{ $txnSection }}">
-                        <div class="flex items-center gap-2 pb-1">
-                            <x-lucide-wallet class="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-                            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Payment</h4>
-                        </div>
-                        <div class="rounded-xl bg-gray-100/80 dark:bg-gray-900/50 p-1.5 grid grid-cols-2 gap-1.5 max-w-md">
-                            <label class="cursor-pointer">
-                                <input type="radio" name="payment_status" value="paid" id="payment_status_paid" class="sr-only peer" {{ $oldStatus === 'paid' ? 'checked' : '' }}>
-                                <div class="flex items-center justify-center gap-2 rounded-lg py-2.5 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400 transition-all peer-checked:bg-white dark:peer-checked:bg-gray-800 peer-checked:text-blue-600 dark:peer-checked:text-blue-400 peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-blue-200 dark:peer-checked:ring-blue-900/50">
-                                    <x-lucide-check class="w-4 h-4" />
-                                    Paid
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-gray-100 dark:border-gray-700/60">
+                            <div class="flex items-center gap-2.5">
+                                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/50 dark:text-emerald-400 ring-1 ring-emerald-500/10">
+                                    <x-lucide-wallet class="w-4 h-4" />
+                                </span>
+                                <div>
+                                    <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Payment & Settlement</h4>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Paid transactions only require a bank account when paid via bank account.</p>
                                 </div>
-                            </label>
-                            <label class="cursor-pointer">
-                                <input type="radio" name="payment_status" value="unpaid" id="payment_status_unpaid" class="sr-only peer" {{ $oldStatus === 'unpaid' ? 'checked' : '' }}>
-                                <div class="flex items-center justify-center gap-2 rounded-lg py-2.5 px-4 text-sm font-semibold text-gray-600 dark:text-gray-400 transition-all peer-checked:bg-white dark:peer-checked:bg-gray-800 peer-checked:text-amber-600 dark:peer-checked:text-amber-400 peer-checked:shadow-sm peer-checked:ring-1 peer-checked:ring-amber-200 dark:peer-checked:ring-amber-900/50">
-                                    <x-lucide-clock class="w-4 h-4" />
-                                    Unpaid
-                                </div>
-                            </label>
+                            </div>
+
+                            {{-- Status Toggle --}}
+                            <div class="inline-flex rounded-xl bg-gray-100 dark:bg-gray-800 p-1 border border-gray-200/70 dark:border-gray-700/60 self-start sm:self-auto">
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="payment_status" value="paid" id="payment_status_paid" class="sr-only peer" {{ $oldStatus === 'paid' ? 'checked' : '' }}>
+                                    <div class="flex items-center justify-center gap-2 rounded-lg py-1.5 px-4 text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 transition-all peer-checked:bg-white dark:peer-checked:bg-gray-700 peer-checked:text-emerald-600 dark:peer-checked:text-emerald-400 peer-checked:shadow-xs peer-checked:ring-1 peer-checked:ring-black/5 dark:peer-checked:ring-white/10">
+                                        <x-lucide-check class="w-3.5 h-3.5" />
+                                        Paid
+                                    </div>
+                                </label>
+                                <label class="cursor-pointer">
+                                    <input type="radio" name="payment_status" value="unpaid" id="payment_status_unpaid" class="sr-only peer" {{ $oldStatus === 'unpaid' ? 'checked' : '' }}>
+                                    <div class="flex items-center justify-center gap-2 rounded-lg py-1.5 px-4 text-xs sm:text-sm font-semibold text-gray-600 dark:text-gray-400 transition-all peer-checked:bg-white dark:peer-checked:bg-gray-700 peer-checked:text-amber-600 dark:peer-checked:text-amber-400 peer-checked:shadow-xs peer-checked:ring-1 peer-checked:ring-black/5 dark:peer-checked:ring-white/10">
+                                        <x-lucide-clock class="w-3.5 h-3.5" />
+                                        Unpaid
+                                    </div>
+                                </label>
+                            </div>
                         </div>
 
                         {{-- Unpaid block --}}
-                        <div id="unpaid_block" class="{{ $oldStatus === 'unpaid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div id="unpaid_block" class="{{ $oldStatus === 'unpaid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
                             <div>
                                 <label class="{{ $txnLabel }}">Due Date</label>
                                 <x-date-input name="due_date" value="{{ old('due_date', session('transactionData.due_date')) }}"
                                        class="{{ $txnInput }}" />
-                                @error('due_date') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                                @error('due_date') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                             </div>
                         </div>
 
                         {{-- Paid block --}}
-                        <div id="paid_block" class="{{ $oldStatus === 'paid' ? '' : 'hidden' }} grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div>
-                                <label class="{{ $txnLabel }}">Payment Date</label>
-                                <x-date-input name="paid_at" value="{{ old('paid_at', session('transactionData.paid_at')) }}"
-                                       class="{{ $txnInput }}" />
-                                @error('paid_at') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                        <div id="paid_block" class="{{ $oldStatus === 'paid' ? '' : 'hidden' }} space-y-4 pt-1">
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <label class="{{ $txnLabel }}">Payment Date</label>
+                                    <x-date-input name="paid_at" value="{{ old('paid_at', session('transactionData.paid_at')) }}"
+                                           class="{{ $txnInput }}" />
+                                    @error('paid_at') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="{{ $txnLabel }}">Payment Method</label>
+                                    <x-tom-select name="payment_method" class="{{ $txnSelect }}">
+                                        <option value="">Select Method</option>
+                                        @foreach (\App\Models\Transaction::$paymentMethods as $val => $lbl)
+                                            <option value="{{ $val }}" {{ old('payment_method', session('transactionData.payment_method')) == $val ? 'selected' : '' }}>{{ $lbl }}</option>
+                                        @endforeach
+                                    </x-tom-select>
+                                    @error('payment_method') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="{{ $txnLabel }}">Payment Channel</label>
+                                    <x-tom-select name="payment_channel" id="payment_channel" class="{{ $txnSelect }}">
+                                        @foreach (\App\Models\Transaction::$paymentChannels as $value => $label)
+                                            <option value="{{ $value }}" @selected($oldChannel === $value)>{{ $label }}</option>
+                                        @endforeach
+                                    </x-tom-select>
+                                    @include('partials.payment-channel-funding-hint', ['hintClass' => 'mt-1 text-[11px] text-gray-500 dark:text-gray-400'])
+                                    @error('payment_channel') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+                                <div class="md:col-span-2 lg:col-span-3">
+                                    @php
+                                        $pbSplit = \App\Support\TransactionPayerResolver::splitStoredForForm(session('transactionData.paid_by'));
+                                    @endphp
+                                    @include('partials.transaction-paid-by-fields', [
+                                        'payerOptions' => $payerOptions,
+                                        'paidBySelect' => $pbSplit['select'],
+                                        'paidByOther' => $pbSplit['other'],
+                                        'bankAccountId' => old('bank_account_id', session('transactionData.bank_account_id')),
+                                        'paidByLabelText' => 'Paid / received by',
+                                        'labelClass' => $txnLabel,
+                                        'selectClass' => $txnSelect,
+                                        'errorClass' => 'text-xs mt-1',
+                                    ])
+                                </div>
                             </div>
-                            <div>
-                                <label class="{{ $txnLabel }}">Payment Method</label>
-                                <x-tom-select name="payment_method" class="{{ $txnSelect }} px-3 py-2.5">
-                                    <option value="">Select Method</option>
-                                    @foreach (\App\Models\Transaction::$paymentMethods as $val => $lbl)
-                                        <option value="{{ $val }}" {{ old('payment_method', session('transactionData.payment_method')) == $val ? 'selected' : '' }}>{{ $lbl }}</option>
-                                    @endforeach
-                                </x-tom-select>
-                                @error('payment_method') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                            </div>
-                            <div>
-                                <label class="{{ $txnLabel }}">Payment Channel</label>
-                                <x-tom-select name="payment_channel" id="payment_channel" class="{{ $txnSelect }} px-3 py-2.5">
-                                    @foreach (\App\Models\Transaction::$paymentChannels as $value => $label)
-                                        <option value="{{ $value }}" @selected($oldChannel === $value)>{{ $label }}</option>
-                                    @endforeach
-                                </x-tom-select>
-                                @include('partials.payment-channel-funding-hint', ['hintClass' => 'mt-1 text-xs text-gray-500 dark:text-gray-400'])
-                                @error('payment_channel') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                            </div>
-                            <div class="md:col-span-2 lg:col-span-1">
-                                @php
-                                    $pbSplit = \App\Support\TransactionPayerResolver::splitStoredForForm(session('transactionData.paid_by'));
-                                @endphp
-                                @include('partials.transaction-paid-by-fields', [
-                                    'payerOptions' => $payerOptions,
-                                    'paidBySelect' => $pbSplit['select'],
-                                    'paidByOther' => $pbSplit['other'],
-                                    'bankAccountId' => old('bank_account_id', session('transactionData.bank_account_id')),
-                                    'paidByLabelText' => 'Paid / received by',
-                                    'labelClass' => $txnLabel,
-                                    'selectClass' => $txnSelect . ' px-3 py-2.5',
-                                    'errorClass' => 'text-xs mt-1',
-                                ])
-                            </div>
-                            <div>
-                                <label class="{{ $txnLabel }}">Payment Receipt <span class="normal-case font-normal text-gray-400">(optional)</span></label>
-                                @include('partials.attachment-dropzone', [
-                                    'inputName' => 'payment_documents[]',
-                                    'inputId' => 'dashboard-payment-documents',
-                                    'zoneId' => 'dashboard-payment-documents-dropzone',
-                                    'previewId' => 'dashboard-payment-documents-pending',
-                                    'accent' => 'emerald',
-                                ])
-                                @error('payment_document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                                @error('payment_documents.*') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
-                            </div>
-                            <div>
-                                <label class="{{ $txnLabel }}">Payment Receipt Name</label>
-                                <input type="text" name="payment_document_name" value="{{ old('payment_document_name') }}"
-                                       class="{{ $txnInput }}"
-                                       placeholder="e.g., Bank Transfer Confirmation">
-                                @error('payment_document_name') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 border-t border-gray-100 dark:border-gray-700/60">
+                                <div>
+                                    <label class="{{ $txnLabel }}">Payment Receipt <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                                    @include('partials.attachment-dropzone', [
+                                        'inputName' => 'payment_documents[]',
+                                        'inputId' => 'dashboard-payment-documents',
+                                        'zoneId' => 'dashboard-payment-documents-dropzone',
+                                        'previewId' => 'dashboard-payment-documents-pending',
+                                        'accent' => 'emerald',
+                                    ])
+                                    @error('payment_document') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                    @error('payment_documents.*') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                </div>
+                                <div>
+                                    <label class="{{ $txnLabel }}">Payment Receipt Name <span class="normal-case font-normal text-gray-400">(optional)</span></label>
+                                    <input type="text" name="payment_document_name" value="{{ old('payment_document_name') }}"
+                                           class="{{ $txnInput }}"
+                                           placeholder="e.g., Bank Transfer Confirmation">
+                                    <p class="text-[11px] text-gray-400 dark:text-gray-500 mt-1.5">Custom name for the receipt document.</p>
+                                    @error('payment_document_name') <span class="text-rose-500 text-xs mt-1 block">{{ $message }}</span> @enderror
+                                </div>
                             </div>
                         </div>
                     </section>
 
                     <input type="hidden" name="receipt_path" value="{{ old('receipt_path', session('transactionData.receipt_path')) }}">
 
-                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between gap-3 pt-3 border-t border-gray-100 dark:border-gray-700/80">
                         <button type="button" id="cancel-transaction-footer-btn"
-                                class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-5 py-2.5 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 shadow-2xs transition-colors">
                             Cancel
                         </button>
                         <button type="submit"
-                                class="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-600/20 transition-colors">
+                                class="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 px-6 py-2.5 text-sm font-semibold text-white shadow-xs hover:shadow-sm transition-all focus:ring-2 focus:ring-indigo-500/20">
                             <x-lucide-check class="w-4 h-4" />
                             <span x-text="submitLabel">Save transaction</span>
                         </button>

@@ -3,8 +3,8 @@
 namespace App\Providers;
 
 use App\Filesystem\EncryptedFilesystemAdapter;
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\ServiceProvider;
 use League\Flysystem\Filesystem;
 
 class EncryptedFilesystemServiceProvider extends ServiceProvider

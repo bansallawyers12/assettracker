@@ -33,9 +33,9 @@ class SyncGmailForUser implements ShouldQueue
     {
         $batchSize = (int) config('gmail.batch_size', 25);
         $lockSeconds = (int) config('gmail.user_lock_seconds', 300);
-        $lock = Cache::lock('gmail_sync_user_' . $this->userId, $lockSeconds);
+        $lock = Cache::lock('gmail_sync_user_'.$this->userId, $lockSeconds);
 
-        if (!$lock->get()) {
+        if (! $lock->get()) {
             return;
         }
 
@@ -50,5 +50,3 @@ class SyncGmailForUser implements ShouldQueue
         }
     }
 }
-
-

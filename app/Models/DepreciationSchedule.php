@@ -12,14 +12,14 @@ class DepreciationSchedule extends Model
         'depreciation_amount',
         'accumulated_depreciation',
         'book_value',
-        'is_posted'
+        'is_posted',
     ];
 
     protected $casts = [
         'depreciation_amount' => 'decimal:2',
         'accumulated_depreciation' => 'decimal:2',
         'book_value' => 'decimal:2',
-        'is_posted' => 'boolean'
+        'is_posted' => 'boolean',
     ];
 
     public function asset()

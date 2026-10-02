@@ -35,18 +35,18 @@ class BackfillPersonsEncryption extends Command
 
     /** @var array<string, array{class: class-string, table: string}> */
     private array $specs = [
-        'person'          => ['class' => Person::class,         'table' => 'persons'],
-        'user'            => ['class' => User::class,            'table' => 'users'],
-        'bank_account'    => ['class' => BankAccount::class,     'table' => 'bank_accounts'],
-        'email'           => ['class' => Email::class,           'table' => 'emails'],
+        'person' => ['class' => Person::class,         'table' => 'persons'],
+        'user' => ['class' => User::class,            'table' => 'users'],
+        'bank_account' => ['class' => BankAccount::class,     'table' => 'bank_accounts'],
+        'email' => ['class' => Email::class,           'table' => 'emails'],
         'business_entity' => ['class' => BusinessEntity::class,  'table' => 'business_entities'],
     ];
 
     public function handle(): int
     {
-        $target  = $this->option('model');
-        $dryRun  = (bool) $this->option('dry-run');
-        $chunk   = (int) $this->option('chunk');
+        $target = $this->option('model');
+        $dryRun = (bool) $this->option('dry-run');
+        $chunk = (int) $this->option('chunk');
 
         $previousKeyCount = EncryptionHelper::previousKeyCount();
         $this->line('APP_KEY fingerprint: '.EncryptionHelper::currentKeyFingerprint());
@@ -63,7 +63,8 @@ class BackfillPersonsEncryption extends Command
 
         foreach ($toProcess as $key => $spec) {
             if ($spec === null) {
-                $this->error("Unknown model key: {$key}. Valid values: " . implode(', ', array_keys($this->specs)));
+                $this->error("Unknown model key: {$key}. Valid values: ".implode(', ', array_keys($this->specs)));
+
                 return self::FAILURE;
             }
 
@@ -74,27 +75,28 @@ class BackfillPersonsEncryption extends Command
     }
 
     /**
-     * @param class-string $class
+     * @param  class-string  $class
      */
     private function processModel(string $class, string $table, bool $dryRun, int $chunk): void
     {
-        $dummy     = new $class;
-        $fields    = $dummy->getEncryptedAttributes();
+        $dummy = new $class;
+        $fields = $dummy->getEncryptedAttributes();
 
         if (empty($fields)) {
             $this->line("<info>{$class}</info>: no encrypted attributes, skipping.");
+
             return;
         }
 
-        $this->info("\nProcessing <comment>{$class}</comment> ({$table}) – fields: " . implode(', ', $fields));
+        $this->info("\nProcessing <comment>{$class}</comment> ({$table}) – fields: ".implode(', ', $fields));
 
-        $plaintext     = 0;
-        $doubleEnc     = 0;
-        $rotated       = 0;
-        $alreadyOk     = 0;
-        $locked        = 0;
-        $skipped       = 0;
-        $writes        = 0;
+        $plaintext = 0;
+        $doubleEnc = 0;
+        $rotated = 0;
+        $alreadyOk = 0;
+        $locked = 0;
+        $skipped = 0;
+        $writes = 0;
 
         $class::query()
             ->orderBy($dummy->getKeyName())
@@ -103,7 +105,7 @@ class BackfillPersonsEncryption extends Command
                 &$plaintext, &$doubleEnc, &$rotated, &$alreadyOk, &$locked, &$skipped, &$writes
             ) {
                 foreach ($models as $model) {
-                    $updates  = [];
+                    $updates = [];
                     $hasError = false;
 
                     foreach ($fields as $field) {
@@ -140,7 +142,7 @@ class BackfillPersonsEncryption extends Command
                                 $this->warn("  [{$table} id={$model->getKey()}] field={$field}: {$err}");
                                 Log::warning('BackfillPersonsEncryption: locked ciphertext', [
                                     'table' => $table,
-                                    'id'    => $model->getKey(),
+                                    'id' => $model->getKey(),
                                     'field' => $field,
                                     'error' => $err,
                                 ]);
@@ -149,9 +151,9 @@ class BackfillPersonsEncryption extends Command
 
                             case 'error':
                                 $this->warn("  [{$table} id={$model->getKey()}] field={$field}: {$err}");
-                                Log::warning("BackfillPersonsEncryption: cannot classify", [
+                                Log::warning('BackfillPersonsEncryption: cannot classify', [
                                     'table' => $table,
-                                    'id'    => $model->getKey(),
+                                    'id' => $model->getKey(),
                                     'field' => $field,
                                     'error' => $err,
                                 ]);
@@ -173,6 +175,7 @@ class BackfillPersonsEncryption extends Command
                         $changedFields = implode(', ', array_keys($updates));
                         $this->line("  [dry-run] {$table} id={$model->getKey()} — would update: {$changedFields}");
                         $writes++;
+
                         continue;
                     }
 

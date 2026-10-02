@@ -20,7 +20,7 @@ class EncryptedEmailUserProvider extends EloquentUserProvider
      */
     public function retrieveByCredentials(array $credentials): ?Authenticatable
     {
-        if (!isset($credentials['email'])) {
+        if (! isset($credentials['email'])) {
             return parent::retrieveByCredentials($credentials);
         }
 

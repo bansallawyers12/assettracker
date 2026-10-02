@@ -14,12 +14,12 @@ class JournalLine extends Model
         'description',
         'reference',
         'tracking_category_id',
-        'tracking_sub_category_id'
+        'tracking_sub_category_id',
     ];
 
     protected $casts = [
         'debit_amount' => 'decimal:2',
-        'credit_amount' => 'decimal:2'
+        'credit_amount' => 'decimal:2',
     ];
 
     public function journalEntry()

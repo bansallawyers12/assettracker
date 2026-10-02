@@ -4,7 +4,6 @@ namespace App\Filesystem;
 
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Crypt;
-use Illuminate\Support\Facades\Storage;
 use League\Flysystem\Filesystem;
 use League\Flysystem\Local\LocalFilesystemAdapter;
 
@@ -15,22 +14,24 @@ class EncryptedFilesystemAdapter extends FilesystemAdapter
     public function __construct($root, $key, $options = [])
     {
         $this->encryptionKey = $key;
-        
+
         $adapter = new LocalFilesystemAdapter($root);
         $filesystem = new Filesystem($adapter);
-        
+
         parent::__construct($filesystem, $adapter, $options);
     }
 
     public function put($path, $contents, $options = [])
     {
         $encryptedContents = $this->encrypt($contents);
+
         return parent::put($path, $encryptedContents, $options);
     }
 
     public function get($path)
     {
         $encryptedContents = parent::get($path);
+
         return $this->decrypt($encryptedContents);
     }
 
@@ -56,7 +57,7 @@ class EncryptedFilesystemAdapter extends FilesystemAdapter
     {
         $contents = stream_get_contents($resource);
         $encryptedContents = $this->encrypt($contents);
-        
+
         $tempStream = fopen('php://temp', 'r+');
         fwrite($tempStream, $encryptedContents);
         rewind($tempStream);

@@ -2,27 +2,27 @@
 
 namespace App\Providers;
 
-use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
-use Illuminate\Support\Facades\Auth;
 use App\Auth\EncryptedEmailUserProvider;
-use App\Models\Document;
-use App\Policies\DocumentPolicy;
-use App\Models\BusinessEntity;
-use App\Policies\BusinessEntityPolicy;
 use App\Models\Asset;
-use App\Policies\AssetPolicy;
-use App\Models\ContactList;
-use App\Policies\ContactListPolicy;
-use App\Models\EmailTemplate;
-use App\Policies\EmailTemplatePolicy;
+use App\Models\BusinessEntity;
 use App\Models\Commitment;
 use App\Models\ComplianceDocumentFile;
 use App\Models\ComplianceYearRecord;
+use App\Models\ContactList;
+use App\Models\Document;
+use App\Models\EmailTemplate;
 use App\Models\Reminder;
+use App\Policies\AssetPolicy;
+use App\Policies\BusinessEntityPolicy;
 use App\Policies\CommitmentPolicy;
 use App\Policies\ComplianceDocumentFilePolicy;
 use App\Policies\ComplianceYearRecordPolicy;
+use App\Policies\ContactListPolicy;
+use App\Policies\DocumentPolicy;
+use App\Policies\EmailTemplatePolicy;
 use App\Policies\ReminderPolicy;
+use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Auth;
 
 class AuthServiceProvider extends ServiceProvider
 {

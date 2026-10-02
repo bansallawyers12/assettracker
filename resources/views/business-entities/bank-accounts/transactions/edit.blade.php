@@ -136,6 +136,7 @@
                             </div>
                         </section>
 
+                        {{-- Inherits GST selection from dashboard-transaction-lines (including value="manual") --}}
                         @include('partials.dashboard-transaction-lines', [
                             'txnLabel' => $txnLabel,
                             'txnInput' => $txnInput,

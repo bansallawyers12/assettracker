@@ -43,7 +43,7 @@ class ComplianceController extends Controller
 
             return response()->json([
                 'status' => true,
-                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
+                'file' => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
             ]);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
@@ -53,7 +53,7 @@ class ComplianceController extends Controller
             Log::error('Compliance upload failed', ['error' => $e->getMessage()]);
 
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => config('app.debug') ? $e->getMessage() : 'Upload failed.',
             ], 500);
         }
@@ -82,7 +82,7 @@ class ComplianceController extends Controller
 
             return response()->json([
                 'status' => true,
-                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
+                'file' => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
             ]);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
@@ -92,7 +92,7 @@ class ComplianceController extends Controller
             Log::error('Asset compliance upload failed', ['error' => $e->getMessage()]);
 
             return response()->json([
-                'status'  => false,
+                'status' => false,
                 'message' => config('app.debug') ? $e->getMessage() : 'Upload failed.',
             ], 500);
         }
@@ -108,7 +108,7 @@ class ComplianceController extends Controller
 
             return response()->json([
                 'status' => true,
-                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
+                'file' => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
             ]);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
@@ -129,7 +129,7 @@ class ComplianceController extends Controller
 
             return response()->json([
                 'status' => true,
-                'file'   => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
+                'file' => (new ComplianceDocumentFileResource($complianceFile->fresh(['type', 'category', 'yearRecord'])))->resolve(),
             ]);
         } catch (\InvalidArgumentException $e) {
             return response()->json(['status' => false, 'message' => $e->getMessage()], 422);
@@ -175,7 +175,7 @@ class ComplianceController extends Controller
         $name = $this->safeContentDispositionFilename($complianceFile->file_name, $complianceFile->path);
         $mime = $this->resolveMimeType($complianceFile);
         $headers = [
-            'Content-Type'  => $mime,
+            'Content-Type' => $mime,
             'Cache-Control' => 'private, max-age=120',
         ];
 
@@ -212,8 +212,8 @@ class ComplianceController extends Controller
         $this->authorize('update', $businessEntity);
 
         $data = $request->validate([
-            'category_id'  => 'required|exists:compliance_categories,id',
-            'files'        => 'required|array',
+            'category_id' => 'required|exists:compliance_categories,id',
+            'files' => 'required|array',
             'files.*.name' => 'required|string',
         ]);
 
@@ -224,8 +224,8 @@ class ComplianceController extends Controller
         $this->ensureCategoryBelongs($businessEntity, $category);
 
         $checklistItems = $category->files->map(fn (ComplianceDocumentFile $file) => [
-            'name'      => $file->effectiveChecklistLabel(),
-            'label'     => $file->effectiveChecklistLabel(),
+            'name' => $file->effectiveChecklistLabel(),
+            'label' => $file->effectiveChecklistLabel(),
             'type_code' => $file->type?->code,
         ])->filter(fn ($item) => $item['label'] !== '')->values()->all();
 
@@ -240,8 +240,8 @@ class ComplianceController extends Controller
 
         $request->validate([
             'category_id' => 'required|exists:compliance_categories,id',
-            'asset_id'    => 'nullable|exists:assets,id',
-            'mappings'    => 'present|array',
+            'asset_id' => 'nullable|exists:assets,id',
+            'mappings' => 'present|array',
         ]);
 
         $category = ComplianceCategory::query()->with('yearRecord')->findOrFail($request->category_id);
@@ -283,12 +283,14 @@ class ComplianceController extends Controller
                 $fileValidator = validator(['file' => $file], $this->fileValidationRules('file'));
                 if ($fileValidator->fails()) {
                     $errors[] = ($file?->getClientOriginalName() ?? 'file').': '.$fileValidator->errors()->first('file');
+
                     continue;
                 }
 
                 $mapping = $mappings[$index] ?? null;
                 if (! is_array($mapping) || empty($mapping['name'])) {
                     $errors[] = 'No checklist mapping for file '.($file->getClientOriginalName() ?? $index);
+
                     continue;
                 }
 
@@ -304,6 +306,7 @@ class ComplianceController extends Controller
                 if (! $slot && $filledSlot) {
                     if (! $replace) {
                         $errors[] = "Checklist \"{$checklistName}\" already has a file. Enable Replace to overwrite. ({$file->getClientOriginalName()})";
+
                         continue;
                     }
                     $slot = $filledSlot;
@@ -314,20 +317,22 @@ class ComplianceController extends Controller
 
                     if ($exists) {
                         $errors[] = "Checklist \"{$checklistName}\" already exists. ({$file->getClientOriginalName()})";
+
                         continue;
                     }
 
                     $slot = ComplianceDocumentFile::query()->create([
-                        'compliance_year_record_id'   => $category->compliance_year_record_id,
-                        'compliance_category_id'      => $category->id,
-                        'checklist_label'             => $checklistName,
-                        'custom_label'                => true,
-                        'status'                      => 'not_started',
+                        'compliance_year_record_id' => $category->compliance_year_record_id,
+                        'compliance_category_id' => $category->id,
+                        'checklist_label' => $checklistName,
+                        'custom_label' => true,
+                        'status' => 'not_started',
                     ]);
                 }
 
                 if (! $slot) {
                     $errors[] = "No checklist row named \"{$checklistName}\" found. ({$file->getClientOriginalName()})";
+
                     continue;
                 }
 
@@ -341,11 +346,11 @@ class ComplianceController extends Controller
         }
 
         return response()->json([
-            'status'   => $uploaded > 0,
-            'message'  => $uploaded > 0 ? "Uploaded {$uploaded} file(s)" : 'No files uploaded',
+            'status' => $uploaded > 0,
+            'message' => $uploaded > 0 ? "Uploaded {$uploaded} file(s)" : 'No files uploaded',
             'uploaded' => $uploaded,
-            'errors'   => $errors,
-            'files'    => $patchedFiles,
+            'errors' => $errors,
+            'files' => $patchedFiles,
         ]);
     }
 
@@ -417,8 +422,8 @@ class ComplianceController extends Controller
 
     private function safeContentDispositionFilename(?string $fileName, string $storagePath): string
     {
-        $raw  = ($fileName !== null && $fileName !== '') ? $fileName : basename($storagePath);
-        $raw  = str_replace(["\r", "\n", "\0"], '', $raw);
+        $raw = ($fileName !== null && $fileName !== '') ? $fileName : basename($storagePath);
+        $raw = str_replace(["\r", "\n", "\0"], '', $raw);
         $base = basename($raw);
 
         return $base !== '' ? $base : 'document';
@@ -434,10 +439,10 @@ class ComplianceController extends Controller
 
         $ext = strtolower((string) pathinfo((string) $file->path, PATHINFO_EXTENSION));
         $map = [
-            'pdf'  => 'application/pdf',
-            'jpg'  => 'image/jpeg',
+            'pdf' => 'application/pdf',
+            'jpg' => 'image/jpeg',
             'jpeg' => 'image/jpeg',
-            'png'  => 'image/png',
+            'png' => 'image/png',
         ];
 
         if (isset($map[$ext])) {

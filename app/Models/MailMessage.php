@@ -58,5 +58,3 @@ class MailMessage extends Model
         return $this->belongsToMany(Asset::class, 'asset_mail_message');
     }
 }
-
-

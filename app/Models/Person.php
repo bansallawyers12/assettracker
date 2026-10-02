@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use App\Traits\EncryptsAttributes;
+use Illuminate\Database\Eloquent\Model;
 
 class Person extends Model
 {

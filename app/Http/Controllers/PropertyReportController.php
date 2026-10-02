@@ -105,8 +105,8 @@ class PropertyReportController extends Controller
         );
 
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
-        $formsScope      = $request->input('scope') === 'selected' ? 'selected' : 'all';
-        $formsEntityIds  = $formsScope === 'selected' ? ($entityIds ?? []) : [];
+        $formsScope = $request->input('scope') === 'selected' ? 'selected' : 'all';
+        $formsEntityIds = $formsScope === 'selected' ? ($entityIds ?? []) : [];
 
         return view('property-reports.asset-summary', compact(
             'report',

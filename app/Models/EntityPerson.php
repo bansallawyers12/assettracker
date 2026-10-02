@@ -50,7 +50,7 @@ class EntityPerson extends Model
 
     // We explicitly avoid defining any unique constraints here
     // to allow one person to have multiple roles in the same entity
-    
+
     /**
      * Boot the model.
      * Disable Laravel's default uniqueness checks.
@@ -58,7 +58,7 @@ class EntityPerson extends Model
     public static function boot()
     {
         parent::boot();
-        
+
         // By not defining any unique indexes here, we ensure
         // that a person can have multiple roles in the same entity
     }
@@ -87,8 +87,8 @@ class EntityPerson extends Model
     {
         return $query->where(function ($query) {
             $query->whereBetween('asic_due_date', [now(), now()->addDays(15)])
-                  ->where('asic_updated', false)
-                  ->where('role_status', 'Active');
+                ->where('asic_updated', false)
+                ->where('role_status', 'Active');
         });
     }
 
@@ -97,7 +97,7 @@ class EntityPerson extends Model
      */
     public function isAppointorEntity()
     {
-        return $this->role === 'Appointor' && !is_null($this->appointor_entity_id);
+        return $this->role === 'Appointor' && ! is_null($this->appointor_entity_id);
     }
 
     /**
@@ -105,7 +105,7 @@ class EntityPerson extends Model
      */
     public function isAppointorPerson()
     {
-        return $this->role === 'Appointor' && !is_null($this->person_id);
+        return $this->role === 'Appointor' && ! is_null($this->person_id);
     }
 
     /**
@@ -118,6 +118,7 @@ class EntityPerson extends Model
         } elseif ($this->isAppointorEntity()) {
             return $this->appointorEntity;
         }
+
         return null;
     }
 }

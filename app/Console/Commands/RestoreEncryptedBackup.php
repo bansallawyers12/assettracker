@@ -3,9 +3,9 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Process;
 use ZipArchive;
 
@@ -37,8 +37,9 @@ class RestoreEncryptedBackup extends Command
         $disk = $this->option('disk');
         $force = $this->option('force');
 
-        if (!$force && !$this->confirm('This will overwrite current data. Are you sure?')) {
+        if (! $force && ! $this->confirm('This will overwrite current data. Are you sure?')) {
             $this->info('Restoration cancelled.');
+
             return Command::SUCCESS;
         }
 
@@ -46,13 +47,14 @@ class RestoreEncryptedBackup extends Command
             $this->info("Starting restoration from: {$backupFile}");
 
             // Check if backup file exists
-            if (!Storage::disk($disk)->exists($backupFile)) {
+            if (! Storage::disk($disk)->exists($backupFile)) {
                 $this->error("Backup file not found: {$backupFile}");
+
                 return Command::FAILURE;
             }
 
             // Create temporary directory
-            $tempDir = storage_path('app/temp_restore_' . uniqid());
+            $tempDir = storage_path('app/temp_restore_'.uniqid());
             File::makeDirectory($tempDir, 0755, true);
 
             // Download and decrypt backup
@@ -75,8 +77,8 @@ class RestoreEncryptedBackup extends Command
             return Command::SUCCESS;
 
         } catch (\Exception $e) {
-            $this->error("Restoration failed: " . $e->getMessage());
-            
+            $this->error('Restoration failed: '.$e->getMessage());
+
             // Clean up temp directory on failure
             if (isset($tempDir) && File::exists($tempDir)) {
                 File::deleteDirectory($tempDir);
@@ -95,17 +97,17 @@ class RestoreEncryptedBackup extends Command
 
         // Download encrypted backup
         $encryptedContent = Storage::disk($disk)->get($backupFile);
-        
+
         // Decrypt content
         $decryptedContent = Crypt::decrypt($encryptedContent);
-        
+
         // Save decrypted content temporarily
-        $tempBackupFile = $tempDir . '/backup_decrypted.zip';
+        $tempBackupFile = $tempDir.'/backup_decrypted.zip';
         File::put($tempBackupFile, $decryptedContent);
 
         // Extract ZIP archive
-        $zip = new ZipArchive();
-        if ($zip->open($tempBackupFile) !== TRUE) {
+        $zip = new ZipArchive;
+        if ($zip->open($tempBackupFile) !== true) {
             throw new \Exception("Cannot open backup file: {$tempBackupFile}");
         }
 
@@ -124,11 +126,11 @@ class RestoreEncryptedBackup extends Command
         $this->info('Restoring database...');
 
         $databaseFiles = File::glob("{$tempDir}/database_*.sql");
-        
+
         foreach ($databaseFiles as $dbFile) {
             $connection = basename($dbFile, '.sql');
             $connection = str_replace('database_', '', $connection);
-            
+
             $this->restoreDatabaseFile($dbFile, $connection);
         }
     }
@@ -166,7 +168,7 @@ class RestoreEncryptedBackup extends Command
             $host = config("database.connections.{$connection}.host");
             $port = config("database.connections.{$connection}.port");
 
-            $passwordArg = $password ? '-p' . escapeshellarg($password) : '';
+            $passwordArg = $password ? '-p'.escapeshellarg($password) : '';
             $command = sprintf(
                 'mysql -h %s -P %s -u %s %s %s < %s',
                 escapeshellarg($host),
@@ -199,7 +201,7 @@ class RestoreEncryptedBackup extends Command
         if (File::exists("{$filesDir}/public_uploads")) {
             $this->line('Restoring public uploads...');
             $publicUploadsPath = public_path('uploads');
-            if (!File::exists($publicUploadsPath)) {
+            if (! File::exists($publicUploadsPath)) {
                 File::makeDirectory($publicUploadsPath, 0755, true);
             }
             File::copyDirectory("{$filesDir}/public_uploads", $publicUploadsPath);
@@ -240,16 +242,16 @@ class RestoreEncryptedBackup extends Command
         $previous = null;
         if (isset($env['PGPASSWORD'])) {
             $previous = getenv('PGPASSWORD') ?: false;
-            putenv('PGPASSWORD=' . $env['PGPASSWORD']);
+            putenv('PGPASSWORD='.$env['PGPASSWORD']);
         }
         try {
             $process->run();
-            if (!$process->isSuccessful()) {
-                throw new \RuntimeException('Database restore failed: ' . $process->getErrorOutput());
+            if (! $process->isSuccessful()) {
+                throw new \RuntimeException('Database restore failed: '.$process->getErrorOutput());
             }
         } finally {
             if ($previous !== null) {
-                putenv('PGPASSWORD=' . ($previous !== false ? (string) $previous : ''));
+                putenv('PGPASSWORD='.($previous !== false ? (string) $previous : ''));
             }
         }
     }

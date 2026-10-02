@@ -24,9 +24,9 @@ class ComplianceDocumentType extends Model
     {
         return [
             'asset_types' => 'array',
-            'sort_order'  => 'integer',
+            'sort_order' => 'integer',
             'is_required' => 'boolean',
-            'is_active'   => 'boolean',
+            'is_active' => 'boolean',
         ];
     }
 

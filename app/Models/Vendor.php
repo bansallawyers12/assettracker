@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Services\VendorSyncService;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -32,7 +33,7 @@ class Vendor extends Model
     }
 
     /**
-     * @return \Illuminate\Database\Eloquent\Collection<int, static>
+     * @return Collection<int, static>
      */
     public static function orderedForSelect()
     {

@@ -28,5 +28,3 @@ class MailLabel extends Model
         return $this->belongsToMany(MailMessage::class, 'mail_label_mail_message');
     }
 }
-
-

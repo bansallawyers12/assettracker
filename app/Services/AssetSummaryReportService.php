@@ -25,7 +25,7 @@ class AssetSummaryReportService
                 'businessEntity',
                 'bankAccounts',
                 'tenants' => fn ($q) => $q->orderByRaw('move_out_date IS NULL DESC')->orderBy('move_in_date', 'desc'),
-                'leases'  => fn ($q) => $q->with('tenant')->orderBy('start_date', 'desc'),
+                'leases' => fn ($q) => $q->with('tenant')->orderBy('start_date', 'desc'),
             ])
             ->orderBy('name');
 
@@ -40,7 +40,7 @@ class AssetSummaryReportService
         $owningEntityIds = $assets->pluck('business_entity_id')->filter()->unique()->values();
         $trusteeMap = $this->buildTrusteeMap($owningEntityIds);
 
-        $active   = collect();
+        $active = collect();
         $disposed = collect();
 
         foreach ($assets as $asset) {
@@ -53,23 +53,23 @@ class AssetSummaryReportService
             }
         }
 
-        $activeRented  = $active->filter(fn ($r) => ! $r['is_vacant'] && ! $r['is_disposed'])->count();
-        $activeVacant  = $active->filter(fn ($r) => $r['is_vacant'])->count();
-        $totalLoanBalance    = $active->sum(fn ($r) => $r['loan_balance'] ?? 0);
+        $activeRented = $active->filter(fn ($r) => ! $r['is_vacant'] && ! $r['is_disposed'])->count();
+        $activeVacant = $active->filter(fn ($r) => $r['is_vacant'])->count();
+        $totalLoanBalance = $active->sum(fn ($r) => $r['loan_balance'] ?? 0);
         $totalEquityRequired = $active->sum(fn ($r) => $r['equity_required'] ?? 0);
-        $totalLandTax        = $active->sum(fn ($r) => $r['land_tax_amount'] ?? 0);
+        $totalLandTax = $active->sum(fn ($r) => $r['land_tax_amount'] ?? 0);
 
         return [
-            'active'   => $active->values()->all(),
+            'active' => $active->values()->all(),
             'disposed' => $disposed->values()->all(),
-            'totals'   => [
-                'active_count'          => $active->count(),
-                'rented_count'          => $activeRented,
-                'vacant_count'          => $activeVacant,
-                'disposed_count'        => $disposed->count(),
-                'total_loan_balance'    => $totalLoanBalance > 0 ? $totalLoanBalance : null,
+            'totals' => [
+                'active_count' => $active->count(),
+                'rented_count' => $activeRented,
+                'vacant_count' => $activeVacant,
+                'disposed_count' => $disposed->count(),
+                'total_loan_balance' => $totalLoanBalance > 0 ? $totalLoanBalance : null,
                 'total_equity_required' => $totalEquityRequired > 0 ? $totalEquityRequired : null,
-                'total_land_tax'        => $totalLandTax > 0 ? $totalLandTax : null,
+                'total_land_tax' => $totalLandTax > 0 ? $totalLandTax : null,
             ],
         ];
     }
@@ -77,7 +77,7 @@ class AssetSummaryReportService
     /**
      * Build a single report row from an asset.
      *
-     * @param  Collection<int, \Illuminate\Support\Collection>  $trusteeMap
+     * @param  Collection<int, Collection>  $trusteeMap
      * @return array<string, mixed>
      */
     private function buildRow(Asset $asset, Collection $trusteeMap): array
@@ -108,18 +108,18 @@ class AssetSummaryReportService
         }
 
         // Rent amount: prefer active lease, fallback to active tenant
-        $rentAmount    = null;
+        $rentAmount = null;
         $rentFrequency = null;
         if ($activeLease) {
-            $rentAmount    = $activeLease->rental_amount !== null ? (float) $activeLease->rental_amount : null;
+            $rentAmount = $activeLease->rental_amount !== null ? (float) $activeLease->rental_amount : null;
             $rentFrequency = $activeLease->payment_frequency;
         } elseif ($activeTenant && $activeTenant->rent_amount) {
-            $rentAmount    = (float) $activeTenant->rent_amount;
+            $rentAmount = (float) $activeTenant->rent_amount;
             $rentFrequency = $activeTenant->rent_frequency;
         }
 
         // Status label
-        $isDisposed  = $asset->disposal_date !== null || $asset->status === 'Sold';
+        $isDisposed = $asset->disposal_date !== null || $asset->status === 'Sold';
         $statusLabel = $this->resolveStatusLabel($asset, $activeLease, $activeTenant, $isDisposed);
 
         // Rent label (formatted)
@@ -129,41 +129,41 @@ class AssetSummaryReportService
         $isVacant = $occupant === null && ! $isDisposed;
 
         // Real-estate managed?
-        $reManaged   = $activeTenant?->is_real_estate_managed ?? false;
-        $reCompany   = $reManaged ? ($activeTenant?->realEstateCompany?->name ?? null) : null;
+        $reManaged = $activeTenant?->is_real_estate_managed ?? false;
+        $reCompany = $reManaged ? ($activeTenant?->realEstateCompany?->name ?? null) : null;
         $loanAccount = $asset->linkedLoanAccount();
 
         return [
-            'asset'           => $asset,
-            'entity_name'     => $entity?->legal_name ?? '',
-            'trustee_label'   => $trusteeLabel,
-            'status_label'    => $statusLabel,
-            'occupant_label'  => $occupant ?? ($isDisposed ? '—' : 'Vacant'),
-            'rent_label'      => $rentLabel,
-            'rent_amount'     => $rentAmount,
-            'rent_frequency'  => $rentFrequency,
-            'acquisition_date'=> $asset->acquisition_date,
-            'acquisition_cost'=> $asset->acquisition_cost !== null ? (float) $asset->acquisition_cost : null,
-            'is_disposed'     => $isDisposed,
-            'is_vacant'       => $isVacant,
-            're_managed'      => $reManaged,
-            're_company'      => $reCompany,
-            'loan_provider'        => filled($asset->loan_provider) ? $asset->loan_provider : null,
-            'loan_payment_amount'  => $asset->loan_payment_amount !== null ? (float) $asset->loan_payment_amount : null,
-            'loan_balance'         => $asset->loan_balance !== null ? (float) $asset->loan_balance : null,
-            'equity_required'      => $asset->equity_required !== null ? (float) $asset->equity_required : null,
-            'loan_bsb'   => $loanAccount ? BankAccount::formatBsb($loanAccount->bsb) : null,
+            'asset' => $asset,
+            'entity_name' => $entity?->legal_name ?? '',
+            'trustee_label' => $trusteeLabel,
+            'status_label' => $statusLabel,
+            'occupant_label' => $occupant ?? ($isDisposed ? '—' : 'Vacant'),
+            'rent_label' => $rentLabel,
+            'rent_amount' => $rentAmount,
+            'rent_frequency' => $rentFrequency,
+            'acquisition_date' => $asset->acquisition_date,
+            'acquisition_cost' => $asset->acquisition_cost !== null ? (float) $asset->acquisition_cost : null,
+            'is_disposed' => $isDisposed,
+            'is_vacant' => $isVacant,
+            're_managed' => $reManaged,
+            're_company' => $reCompany,
+            'loan_provider' => filled($asset->loan_provider) ? $asset->loan_provider : null,
+            'loan_payment_amount' => $asset->loan_payment_amount !== null ? (float) $asset->loan_payment_amount : null,
+            'loan_balance' => $asset->loan_balance !== null ? (float) $asset->loan_balance : null,
+            'equity_required' => $asset->equity_required !== null ? (float) $asset->equity_required : null,
+            'loan_bsb' => $loanAccount ? BankAccount::formatBsb($loanAccount->bsb) : null,
             'loan_bank_account_id' => $loanAccount?->id,
             'loan_account_number' => $loanAccount?->maskedAccountNumber(),
             // @deprecated Use loan_* keys — kept for any external consumers
-            'loan_repayment_bsb'   => $loanAccount ? BankAccount::formatBsb($loanAccount->bsb) : null,
+            'loan_repayment_bsb' => $loanAccount ? BankAccount::formatBsb($loanAccount->bsb) : null,
             'loan_repayment_bank_account_id' => $loanAccount?->id,
             'loan_repayment_account_number' => $loanAccount?->maskedAccountNumber(),
-            'direct_debit_amount'  => $asset->direct_debit_amount !== null ? (float) $asset->direct_debit_amount : null,
-            'rent_paid_by'         => filled($asset->rent_paid_by) ? $asset->rent_paid_by : null,
-            'land_tax_amount'      => $asset->land_tax_amount !== null ? (float) $asset->land_tax_amount : null,
-            'land_tax_due_date'    => $asset->land_tax_due_date,
-            'sro_updated'          => (bool) $asset->sro_updated,
+            'direct_debit_amount' => $asset->direct_debit_amount !== null ? (float) $asset->direct_debit_amount : null,
+            'rent_paid_by' => filled($asset->rent_paid_by) ? $asset->rent_paid_by : null,
+            'land_tax_amount' => $asset->land_tax_amount !== null ? (float) $asset->land_tax_amount : null,
+            'land_tax_due_date' => $asset->land_tax_due_date,
+            'sro_updated' => (bool) $asset->sro_updated,
         ];
     }
 
@@ -174,7 +174,7 @@ class AssetSummaryReportService
      * We look up the entity_person pivot: rows where entity_trustee_id = owning entity's id
      * represent trusts that the owning company is trustee of.
      *
-     * @param  Collection<int, \Illuminate\Support\Collection>  $trusteeMap
+     * @param  Collection<int, Collection>  $trusteeMap
      */
     private function resolveTrusteeLabel(Asset $asset, Collection $trusteeMap): string
     {
@@ -201,8 +201,9 @@ class AssetSummaryReportService
                         return $ep->trusteeEntity->legal_name;
                     }
                     if ($ep->person) {
-                        return trim(($ep->person->first_name ?? '') . ' ' . ($ep->person->last_name ?? ''));
+                        return trim(($ep->person->first_name ?? '').' '.($ep->person->last_name ?? ''));
                     }
+
                     return null;
                 })
                 ->filter()
@@ -227,17 +228,18 @@ class AssetSummaryReportService
             $date = $asset->disposal_date
                 ? Carbon::parse($asset->disposal_date)->format('M Y')
                 : null;
+
             return $date ? "Sold $date" : 'Sold';
         }
 
         // Rented from lease start date
         if ($activeLease && $activeLease->start_date) {
-            return 'Rented FROM ' . $activeLease->start_date->format('M Y');
+            return 'Rented FROM '.$activeLease->start_date->format('M Y');
         }
 
         // Rented from tenant move-in date
         if ($activeTenant && $activeTenant->move_in_date) {
-            return 'Rented FROM ' . $activeTenant->move_in_date->format('M Y');
+            return 'Rented FROM '.$activeTenant->move_in_date->format('M Y');
         }
 
         return 'Active';
@@ -253,14 +255,14 @@ class AssetSummaryReportService
         }
 
         $freq = match (strtolower((string) $frequency)) {
-            'weekly'     => 'wk',
-            'fortnightly'=> 'fn',
-            'monthly'    => 'mo',
-            'annually'   => 'yr',
-            default      => $frequency ?? 'mo',
+            'weekly' => 'wk',
+            'fortnightly' => 'fn',
+            'monthly' => 'mo',
+            'annually' => 'yr',
+            default => $frequency ?? 'mo',
         };
 
-        return '$' . number_format($amount, 0) . ' / ' . $freq;
+        return '$'.number_format($amount, 0).' / '.$freq;
     }
 
     /**

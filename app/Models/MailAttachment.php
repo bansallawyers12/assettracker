@@ -24,5 +24,3 @@ class MailAttachment extends Model
         return $this->belongsTo(MailMessage::class, 'mail_message_id');
     }
 }
-
-

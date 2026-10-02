@@ -3,11 +3,10 @@
 namespace App\Mail;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
 
 class ContactEmail extends Mailable
@@ -15,8 +14,11 @@ class ContactEmail extends Mailable
     use Queueable, SerializesModels;
 
     public $subject;
+
     public $messageBody;
+
     public $attachmentsData;
+
     public $fromEmail;
 
     /**
@@ -60,16 +62,17 @@ class ContactEmail extends Mailable
     /**
      * Get the attachments for the message.
      *
-     * @return array<int, \Illuminate\Mail\Mailables\Attachment>
+     * @return array<int, Attachment>
      */
     public function attachments(): array
     {
         $attachments = [];
         foreach ($this->attachmentsData as $attachment) {
             $attachments[] = Attachment::fromPath($attachment->getRealPath())
-                                        ->as($attachment->getClientOriginalName())
-                                        ->withMime($attachment->getMimeType());
+                ->as($attachment->getClientOriginalName())
+                ->withMime($attachment->getMimeType());
         }
+
         return $attachments;
     }
 }

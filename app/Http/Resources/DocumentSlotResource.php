@@ -18,15 +18,15 @@ class DocumentSlotResource extends JsonResource
         $assetParam = $assetId ? '?asset_id='.$assetId : '';
 
         return [
-            'id'              => $this->id,
+            'id' => $this->id,
             'checklist_label' => $this->checklist_label,
-            'type'            => $this->type,
-            'description'     => $this->description,
-            'has_file'        => (bool) $this->path,
-            'file_name'       => $this->file_name,
-            'asset_id'        => $assetId,
-            'content_url'     => $baseContentUrl ? $baseContentUrl.$assetParam : null,
-            'download_url'    => $baseContentUrl ? $baseContentUrl.$assetParam.($assetId ? '&download=1' : '?download=1') : null,
+            'type' => $this->type,
+            'description' => $this->description,
+            'has_file' => (bool) $this->path,
+            'file_name' => $this->file_name,
+            'asset_id' => $assetId,
+            'content_url' => $baseContentUrl ? $baseContentUrl.$assetParam : null,
+            'download_url' => $baseContentUrl ? $baseContentUrl.$assetParam.($assetId ? '&download=1' : '?download=1') : null,
         ];
     }
 }

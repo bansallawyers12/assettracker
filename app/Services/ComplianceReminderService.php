@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\ComplianceDocumentFile;
 use App\Models\Reminder;
-use App\Models\User;
+use App\Support\FinancialYear;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -73,7 +73,7 @@ class ComplianceReminderService
 
                 $label = $file->displayLabel();
                 $fyLabel = $file->yearRecord->fy_start_date
-                    ? \App\Support\FinancialYear::label($file->yearRecord->fy_start_date)
+                    ? FinancialYear::label($file->yearRecord->fy_start_date)
                     : '';
 
                 foreach (self::OFFSET_DAYS as $offset) {
