@@ -230,7 +230,7 @@ class InvoiceController extends Controller
         $this->authorize('view', $businessEntity);
         $this->authorizeInvoice($businessEntity, $invoice);
         $invoice->load([
-            'lines',
+            'lines.chartOfAccount',
             'document',
             'lease.tenant',
             'asset',
@@ -311,7 +311,7 @@ class InvoiceController extends Controller
     {
         $this->authorize('view', $businessEntity);
         $this->authorizeInvoice($businessEntity, $invoice);
-        $invoice->load(['lines', 'lease.tenant', 'asset', 'businessEntity']);
+        $invoice->load(['lines.chartOfAccount', 'lease.tenant', 'asset', 'businessEntity']);
 
         $filename = Str::of($invoice->invoice_number)
             ->replaceMatches('/[^\w.\-]+/', '-')

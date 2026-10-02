@@ -266,6 +266,7 @@
                         <thead class="bg-gray-50/90 dark:bg-gray-800/60">
                             <tr class="border-b border-gray-200 dark:border-gray-800">
                                 <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Description</th>
+                                <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Account</th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Qty</th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Unit</th>
                                 <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">GST %</th>
@@ -276,6 +277,7 @@
                             @forelse ($invoice->lines as $line)
                                 <tr class="hover:bg-gray-50/70 dark:hover:bg-gray-800/40">
                                     <td class="px-4 py-3.5 text-gray-900 dark:text-gray-100">{{ $line->description }}</td>
+                                    <td class="px-4 py-3.5 text-gray-700 dark:text-gray-300">@include('invoices.partials.line-account-label', ['line' => $line])</td>
                                     <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ number_format((float) $line->quantity, 4) }}</td>
                                     <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">{{ (float) $line->unit_price < 0 ? '-' : '' }}${{ number_format(abs((float) $line->unit_price), 2) }}</td>
                                     <td class="px-4 py-3.5 text-right tabular-nums text-gray-700 dark:text-gray-300">
@@ -291,21 +293,21 @@
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="5" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">No line items on this invoice.</td>
+                                    <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">No line items on this invoice.</td>
                                 </tr>
                             @endforelse
                         </tbody>
                         <tfoot class="border-t border-gray-200 bg-gray-50/80 dark:border-gray-800 dark:bg-gray-800/40">
                             <tr>
-                                <td colspan="4" class="px-4 py-2.5 text-right text-sm text-gray-500 dark:text-gray-400">Subtotal</td>
+                                <td colspan="5" class="px-4 py-2.5 text-right text-sm text-gray-500 dark:text-gray-400">Subtotal</td>
                                 <td class="px-4 py-2.5 text-right tabular-nums text-sm font-medium text-gray-900 dark:text-white">${{ number_format($invoice->subtotal, 2) }}</td>
                             </tr>
                             <tr>
-                                <td colspan="4" class="px-4 py-2.5 text-right text-sm text-gray-500 dark:text-gray-400">GST</td>
+                                <td colspan="5" class="px-4 py-2.5 text-right text-sm text-gray-500 dark:text-gray-400">GST</td>
                                 <td class="px-4 py-2.5 text-right tabular-nums text-sm font-medium text-gray-900 dark:text-white">${{ number_format($invoice->gst_amount, 2) }}</td>
                             </tr>
                             <tr>
-                                <td colspan="4" class="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">Total ({{ $invoice->currency }})</td>
+                                <td colspan="5" class="px-4 py-3 text-right text-sm font-semibold text-gray-900 dark:text-white">Total ({{ $invoice->currency }})</td>
                                 <td class="px-4 py-3 text-right text-base font-bold tabular-nums text-indigo-600 dark:text-indigo-400">${{ number_format($invoice->total_amount, 2) }}</td>
                             </tr>
                         </tfoot>

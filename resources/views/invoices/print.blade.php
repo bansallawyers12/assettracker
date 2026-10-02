@@ -284,6 +284,7 @@
             <thead>
                 <tr>
                     <th>Description</th>
+                    <th>Account</th>
                     <th class="num">Qty</th>
                     <th class="num">Price</th>
                     <th class="num">GST</th>
@@ -294,6 +295,7 @@
                 @forelse ($invoice->lines as $line)
                     <tr>
                         <td>{{ $line->description }}</td>
+                        <td>@include('invoices.partials.line-account-label', ['line' => $line])</td>
                         <td class="num">{{ rtrim(rtrim(number_format((float) $line->quantity, 4), '0'), '.') }}</td>
                         <td class="num">{{ number_format((float) $line->unit_price, 2) }}</td>
                         <td class="num">@if ((float) $line->gst_rate > 0){{ number_format((float) $line->gst_rate * 100, 0) }}%@elseif ($invoice->gst_basis === 'manual')GST Free@else 0%@endif</td>
@@ -301,7 +303,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" style="color: var(--muted);">No line items.</td>
+                        <td colspan="6" style="color: var(--muted);">No line items.</td>
                     </tr>
                 @endforelse
             </tbody>
