@@ -297,7 +297,7 @@
                     <x-lucide-paperclip class="h-4 w-4 text-gray-400" aria-hidden="true" />
                     <h3 class="text-sm font-semibold text-gray-900 dark:text-white">Attachments</h3>
                 </div>
-                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional PDFs or images stored with this invoice in Documents. You can select multiple files.</p>
+                <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Optional PDFs or images stored with this invoice in Documents. Drag and drop or choose multiple files.</p>
             </div>
             <div class="space-y-3 p-5">
                 @if ($isEdit)
@@ -308,20 +308,15 @@
                     ])
                 @endif
                 <div>
-                    <label for="invoice_attachments" class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-400">
+                    <p class="mb-2 text-xs font-medium text-gray-600 dark:text-gray-400">
                         {{ $isEdit ? 'Add more files' : 'Attach files' }}
-                    </label>
-                    <input id="invoice_attachments"
-                           type="file"
-                           name="attachments[]"
-                           multiple
-                           accept="{{ config('documents.transaction_file_accept') }}"
-                           class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-indigo-700 dark:file:bg-gray-700 dark:file:text-indigo-300" />
+                    </p>
+                    @include('invoices.partials.attachment-dropzone')
                     @error('attachments')
-                        <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                        <p class="mt-2 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
                     @enderror
                     @error('attachments.*')
-                        <p class="mt-1 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
+                        <p class="mt-2 text-xs text-rose-600 dark:text-rose-400">{{ $message }}</p>
                     @enderror
                 </div>
             </div>

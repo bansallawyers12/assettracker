@@ -11,12 +11,17 @@ it('supports multiple file uploads on invoice and transaction forms', function (
     $dashboard = file_get_contents(resource_path('views/dashboard.blade.php'));
     $migration = file_get_contents(database_path('migrations/2026_10_02_120000_create_invoice_and_transaction_document_pivot_tables.php'));
 
-    expect($invoiceForm)->toContain('attachments[]')
-        ->and($invoiceForm)->toContain('multiple')
-        ->and($invoiceForm)->toContain('remove_attachments[]')
-        ->and($transactionEdit)->toContain('documents[]')
+    $dropzone = file_get_contents(resource_path('views/partials/attachment-dropzone.blade.php'));
+
+    expect($invoiceForm)->toContain('invoices.partials.attachment-dropzone')
+        ->and($dropzone)->toContain('data-attachment-dropzone')
+        ->and($dropzone)->toContain('multiple')
+        ->and($dropzone)->toContain('drag and drop')
+        ->and($dropzone)->toContain('Remove')
+        ->and($transactionEdit)->toContain('partials.attachment-dropzone')
         ->and($transactionEdit)->toContain('payment_documents[]')
-        ->and($transactionCreate)->toContain('documents[]')
+        ->and($transactionCreate)->toContain('partials.attachment-dropzone')
+        ->and($dashboard)->toContain('partials.attachment-dropzone')
         ->and($dashboard)->toContain('documents[]')
         ->and($migration)->toContain('invoice_document')
         ->and($migration)->toContain('transaction_document');

@@ -181,11 +181,13 @@
                                             @endforeach
                                         </div>
                                     @endif
-                                    <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/40 px-4 py-3">
-                                        <input type="file" name="documents[]" multiple
-                                               class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                                               accept="{{ config('documents.transaction_file_accept') }}">
-                                    </div>
+                                    @include('partials.attachment-dropzone', [
+                                        'inputName' => 'documents[]',
+                                        'inputId' => 'bank-txn-edit-documents',
+                                        'zoneId' => 'bank-txn-edit-documents-dropzone',
+                                        'previewId' => 'bank-txn-edit-documents-pending',
+                                        'accent' => 'blue',
+                                    ])
                                     @error('document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                     @error('documents.*') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
@@ -310,11 +312,13 @@
                                             @endforeach
                                         </div>
                                     @endif
-                                    <div class="rounded-lg border-2 border-dashed border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900/40 px-4 py-3">
-                                        <input type="file" name="payment_documents[]" multiple
-                                               class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-600 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-white"
-                                               accept="{{ config('documents.transaction_file_accept') }}">
-                                    </div>
+                                    @include('partials.attachment-dropzone', [
+                                        'inputName' => 'payment_documents[]',
+                                        'inputId' => 'bank-txn-edit-payment-documents',
+                                        'zoneId' => 'bank-txn-edit-payment-documents-dropzone',
+                                        'previewId' => 'bank-txn-edit-payment-documents-pending',
+                                        'accent' => 'emerald',
+                                    ])
                                     @error('payment_document') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                     @error('payment_documents.*') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                                 </div>
