@@ -729,3 +729,64 @@ it('stores an optional attachment when creating a draft invoice', function () {
         ->assertSuccessful()
         ->assertSee('supporting-invoice.pdf', false);
 });
+
+it('streams invoice attachments for asset scoped documents when view link includes asset_id', function () {
+    Storage::fake('s3');
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+    $asset = invoiceCreateAsset($entity);
+    $tenant = Tenant::create([
+        'asset_id' => $asset->id,
+        'name' => 'Asset Attachment Tenant',
+        'email' => 'tenant@example.test',
+    ]);
+    $lease = Lease::create([
+        'asset_id' => $asset->id,
+        'tenant_id' => $tenant->id,
+        'rental_amount' => 500,
+        'payment_frequency' => 'Monthly',
+        'start_date' => '2026-01-01',
+        'end_date' => null,
+    ]);
+
+    $this->actingAs($user)->post(route('business-entities.invoices.store', $entity), [
+        'invoice_number' => 'INV'.$entity->id.'-202609002',
+        'issue_date' => '2026-09-03',
+        'asset_id' => $asset->id,
+        'lease_id' => $lease->id,
+        'customer_name' => 'Asset Attachment Tenant',
+        'currency' => 'AUD',
+        'gst_basis' => 'none',
+        'gst_percent' => 0,
+        'lines' => [
+            [
+                'description' => 'Rent',
+                'quantity' => 1,
+                'unit_price' => 500,
+                'account_code' => '4100',
+            ],
+        ],
+        'attachment' => UploadedFile::fake()->create('lease-invoice.pdf', 100, 'application/pdf'),
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->where('business_entity_id', $entity->id)->firstOrFail();
+    $invoice->load('document');
+    $document = $invoice->document;
+
+    expect($document)->not->toBeNull()
+        ->and($document->asset_id)->toBe($asset->id);
+
+    $contentRoute = route('business-entities.documents.content', [$entity, $document]);
+
+    $this->actingAs($user)->get($contentRoute)->assertNotFound();
+
+    $this->actingAs($user)
+        ->get($contentRoute.'?'.http_build_query(['asset_id' => $asset->id]))
+        ->assertSuccessful();
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.show', [$entity, $invoice]))
+        ->assertSuccessful()
+        ->assertSee('asset_id='.$asset->id, false);
+});

@@ -8,6 +8,9 @@
 @if ($hasAttachment)
     @php
         $viewUrl = route('business-entities.documents.content', [$businessEntity, $document]);
+        if ($document->asset_id) {
+            $viewUrl .= '?'.http_build_query(['asset_id' => $document->asset_id]);
+        }
         $fileName = $document->file_name ?: basename((string) $document->path);
     @endphp
 
