@@ -321,8 +321,8 @@
 
                     @unless ($businessEntity->isClosed())
                         <div class="mt-8 border-t border-red-100 pt-6">
-                            <a href="{{ route('business-entities.delete.confirm', $businessEntity) }}" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-white hover:bg-red-700">
-                                Delete this company
+                            <a href="{{ route('business-entities.delete.confirm', $businessEntity) }}" class="inline-flex items-center px-4 py-2 bg-amber-600 border border-transparent rounded-md font-semibold text-white hover:bg-amber-700">
+                                {{ $businessEntity->status === 'Inactive' ? 'Review inactive status' : 'Mark inactive' }}
                             </a>
                         </div>
                     @endunless

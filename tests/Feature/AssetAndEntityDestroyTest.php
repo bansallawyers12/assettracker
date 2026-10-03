@@ -105,19 +105,25 @@ it('deletes an asset together with its tenant, lease, and invoice', function () 
 
     $this->actingAs($user)
         ->delete(route('business-entities.assets.destroy', [$entity, $asset]))
-        ->assertRedirect(route('business-entities.show', $entity));
+        ->assertRedirect(route('business-entities.assets.show', [$entity, $asset]));
 
-    expect(Asset::query()->find($asset->id))->toBeNull()
-        ->and(Tenant::query()->find($tenant->id))->toBeNull()
-        ->and(Lease::query()->find($lease->id))->toBeNull()
-        ->and(Invoice::query()->find($invoice->id))->toBeNull()
-        ->and(JournalEntry::query()->find($journal->id))->toBeNull()
-        ->and(Transaction::query()->find($transaction->id))->not->toBeNull()
-        ->and(Transaction::query()->find($transaction->id)->asset_id)->toBeNull()
-        ->and(BusinessEntity::query()->find($entity->id))->not->toBeNull();
+    $asset->refresh();
+
+    expect($asset->status)->toBe('Inactive')
+        ->and(Tenant::query()->find($tenant->id))->not->toBeNull()
+        ->and(Lease::query()->find($lease->id))->not->toBeNull()
+        ->and(Invoice::query()->find($invoice->id))->not->toBeNull()
+        ->and(JournalEntry::query()->find($journal->id))->not->toBeNull()
+        ->and(Transaction::query()->find($transaction->id)->asset_id)->toBe($asset->id);
+
+    $this->actingAs($user)
+        ->delete(route('business-entities.assets.destroy', [$entity, $asset]))
+        ->assertRedirect(route('business-entities.assets.show', [$entity, $asset]));
+
+    expect($asset->refresh()->status)->toBe('Active');
 });
 
-it('deletes a company and the asset that belongs to it', function () {
+it('marks a company inactive and keeps the asset that belongs to it', function () {
     $user = User::factory()->create();
     $entity = destroyTestEntity();
     $asset = destroyTestAsset($entity);
@@ -137,21 +143,31 @@ it('deletes a company and the asset that belongs to it', function () {
     $this->actingAs($user)
         ->get(route('business-entities.delete.confirm', $entity))
         ->assertOk()
-        ->assertSee('What will be deleted')
+        ->assertSee('Records that stay')
         ->assertSee('1 Test Hill')
         ->assertSee('None. Nothing else in the portfolio points at this company or its assets.');
 
     $this->actingAs($user)
         ->delete(route('business-entities.destroy', $entity))
-        ->assertRedirect(route('business-entities.index'));
+        ->assertRedirect(route('business-entities.inactive.index'));
 
-    expect(BusinessEntity::query()->find($entity->id))->toBeNull()
-        ->and(Asset::query()->find($asset->id))->toBeNull()
-        ->and(Tenant::query()->where('asset_id', $asset->id)->exists())->toBeFalse()
-        ->and(BankAccount::query()->find($bank->id))->toBeNull();
+    $entity->refresh();
+
+    expect($entity->status)->toBe('Inactive')
+        ->and(Asset::query()->find($asset->id))->not->toBeNull()
+        ->and(Tenant::query()->where('asset_id', $asset->id)->exists())->toBeTrue()
+        ->and(BankAccount::query()->find($bank->id))->not->toBeNull()
+        ->and(BusinessEntity::query()->operationalEntities()->whereKey($entity->id)->exists())->toBeFalse();
+
+    $this->actingAs($user)
+        ->post(route('business-entities.activate', $entity))
+        ->assertRedirect(route('business-entities.show', $entity));
+
+    expect($entity->refresh()->status)->toBe('Active')
+        ->and(BusinessEntity::query()->operationalEntities()->whereKey($entity->id)->exists())->toBeTrue();
 });
 
-it('lists a link to another company and requires confirmation before deleting', function () {
+it('lists a link to another company and requires confirmation before marking inactive', function () {
     $user = User::factory()->create();
     $entity = destroyTestEntity();
     $other = BusinessEntity::create([
@@ -199,10 +215,10 @@ it('lists a link to another company and requires confirmation before deleting', 
 
     $this->actingAs($user)
         ->delete(route('business-entities.destroy', $entity), ['acknowledge_links' => '1'])
-        ->assertRedirect(route('business-entities.index'));
+        ->assertRedirect(route('business-entities.inactive.index'));
 
-    expect(BusinessEntity::query()->find($entity->id))->toBeNull()
+    expect($entity->refresh()->status)->toBe('Inactive')
         ->and(Transaction::query()->find($transaction->id))->not->toBeNull()
-        ->and(Transaction::query()->find($transaction->id)->related_entity_id)->toBeNull()
+        ->and(Transaction::query()->find($transaction->id)->related_entity_id)->toBe($entity->id)
         ->and(BusinessEntity::query()->find($other->id))->not->toBeNull();
 });

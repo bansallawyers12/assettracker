@@ -75,6 +75,8 @@
         </div>
     @endif
 
+    @include('property-reports.partials.figure-breakdown')
+
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 px-6 py-5 border-b border-gray-100">
         <div class="rounded-lg border border-green-200 bg-green-50 p-4">
             <p class="text-xs font-semibold uppercase tracking-wide text-green-700">Gross yield</p>

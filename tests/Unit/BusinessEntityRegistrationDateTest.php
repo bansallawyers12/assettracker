@@ -3,7 +3,6 @@
 namespace Tests\Unit;
 
 use App\Models\BusinessEntity;
-use App\Support\FinancialYear;
 use Carbon\Carbon;
 use Tests\TestCase;
 
@@ -124,6 +123,7 @@ class BusinessEntityRegistrationDateTest extends TestCase
 
         $this->assertStringContainsString('closed_date', $sql);
         $this->assertStringContainsString('is null', $sql);
+        $this->assertStringContainsString('status', $sql);
     }
 
     public function test_closed_entities_scope_only_includes_closed_records(): void

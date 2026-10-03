@@ -165,11 +165,11 @@
                     </form>
 
                     <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-                        <form action="{{ route('business-entities.assets.destroy', [$asset->business_entity_id, $asset->id]) }}" method="POST" onsubmit="return confirm('Delete this asset? Tenants, leases, and invoices on this asset are removed with it. Bank transactions stay, with the asset link cleared.');">
+                        <form action="{{ route('business-entities.assets.destroy', [$asset->business_entity_id, $asset->id]) }}" method="POST" onsubmit="return confirm(@json($asset->status === 'Inactive' ? 'Mark this asset active again? It will show on the portfolio.' : 'Mark this asset inactive? Its tenants, leases, invoices, and transactions stay. It is hidden from the portfolio until you mark it active.'));">
                             @csrf
                             @method('DELETE')
-                            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-sm transition duration-200">
-                                Delete Asset
+                            <button type="submit" class="{{ $asset->status === 'Inactive' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-amber-600 hover:bg-amber-700' }} text-white font-semibold px-4 py-2 rounded-sm transition duration-200">
+                                {{ $asset->status === 'Inactive' ? 'Mark active' : 'Mark inactive' }}
                             </button>
                         </form>
                         <div class="flex flex-wrap items-center gap-2">

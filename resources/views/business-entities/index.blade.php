@@ -5,6 +5,9 @@
                 {{ __('Business Entities') }}
             </h2>
             <div class="flex flex-wrap items-center gap-2">
+                <a href="{{ route('business-entities.inactive.index') }}" class="inline-flex items-center justify-center px-4 py-2 border border-amber-200 dark:border-amber-900/60 hover:bg-amber-50 dark:hover:bg-amber-950/30 text-amber-800 dark:text-amber-200 rounded-lg text-sm font-medium transition-colors">
+                    {{ __('Inactive entities') }}
+                </a>
                 <a href="{{ route('business-entities.closed.index') }}" class="inline-flex items-center justify-center px-4 py-2 border border-rose-200 dark:border-rose-900/60 hover:bg-rose-50 dark:hover:bg-rose-950/30 text-rose-700 dark:text-rose-300 rounded-lg text-sm font-medium transition-colors">
                     <x-lucide-archive class="h-4 w-4 mr-2" />
                     {{ __('Closed entities') }}

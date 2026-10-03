@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Delete {{ $businessEntity->legal_name }}
+                {{ $businessEntity->status === 'Inactive' ? 'Inactive' : 'Mark inactive' }} — {{ $businessEntity->legal_name }}
             </h2>
             <a href="{{ route('business-entities.edit', $businessEntity) }}" class="px-4 py-2 bg-gray-200 rounded-md text-gray-700 hover:bg-gray-300 transition-colors duration-200">
                 Back to edit
@@ -21,12 +21,12 @@
             <div class="bg-white overflow-hidden shadow-lg sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <p class="text-sm text-gray-600">
-                        Nothing is removed until you confirm at the bottom of this page. Deleting <strong>{{ $businessEntity->legal_name }}</strong> removes the company and the records that belong to it.
+                        Marking <strong>{{ $businessEntity->legal_name }}</strong> inactive hides it from the company list, portfolio, and reports. Every asset, invoice, journal, bank account, and transaction stays in the database.
                     </p>
 
-                    <h3 class="mt-8 text-lg font-medium text-gray-900">What will be deleted</h3>
+                    <h3 class="mt-8 text-lg font-medium text-gray-900">Records that stay</h3>
                     @if ($willDelete === [])
-                        <p class="mt-2 text-sm text-gray-600">Only the company record itself. It has no assets, invoices, journals, or bank accounts.</p>
+                        <p class="mt-2 text-sm text-gray-600">This company has no assets, invoices, journals, or bank accounts. Only its profile is hidden.</p>
                     @else
                         <ul class="mt-3 space-y-4">
                             @foreach ($willDelete as $group)
@@ -49,7 +49,7 @@
                         <p class="mt-2 text-sm text-gray-600">None. Nothing else in the portfolio points at this company or its assets.</p>
                     @else
                         <div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                            <p class="text-sm font-medium text-amber-950">Review these before deleting. They belong to another company or asset.</p>
+                            <p class="text-sm font-medium text-amber-950">These links stay. Review them before hiding this company.</p>
                             <ul class="mt-4 space-y-4">
                                 @foreach ($warnings as $warning)
                                     <li>
@@ -66,19 +66,28 @@
                         </div>
                     @endif
 
-                    <form action="{{ route('business-entities.destroy', $businessEntity) }}" method="POST" class="mt-8 border-t border-gray-200 pt-6">
-                        @csrf
-                        @method('DELETE')
-                        @if ($warnings !== [])
-                            <label class="flex items-start gap-3 mb-4">
-                                <input type="checkbox" name="acknowledge_links" value="1" class="mt-1 rounded-sm border-gray-300 text-red-600 focus:ring-red-500" required>
-                                <span class="text-sm text-gray-800">I have read the links above. Delete this company anyway.</span>
-                            </label>
-                        @endif
-                        <button type="submit" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-white hover:bg-red-700">
-                            Delete {{ $businessEntity->legal_name }}
-                        </button>
-                    </form>
+                    @if ($businessEntity->status === 'Inactive')
+                        <form action="{{ route('business-entities.activate', $businessEntity) }}" method="POST" class="mt-8 border-t border-gray-200 pt-6">
+                            @csrf
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-emerald-600 border border-transparent rounded-md font-semibold text-white hover:bg-emerald-700">
+                                Mark {{ $businessEntity->legal_name }} active
+                            </button>
+                        </form>
+                    @else
+                        <form action="{{ route('business-entities.destroy', $businessEntity) }}" method="POST" class="mt-8 border-t border-gray-200 pt-6">
+                            @csrf
+                            @method('DELETE')
+                            @if ($warnings !== [])
+                                <label class="flex items-start gap-3 mb-4">
+                                    <input type="checkbox" name="acknowledge_links" value="1" class="mt-1 rounded-sm border-gray-300 text-amber-600 focus:ring-amber-500" required>
+                                    <span class="text-sm text-gray-800">I have read the links above. Mark this company inactive anyway.</span>
+                                </label>
+                            @endif
+                            <button type="submit" class="inline-flex items-center px-4 py-2 bg-amber-600 border border-transparent rounded-md font-semibold text-white hover:bg-amber-700">
+                                Mark {{ $businessEntity->legal_name }} inactive
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
         </div>

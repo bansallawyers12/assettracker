@@ -38,7 +38,8 @@ class PropertyReportService
      *     expenses: array{by_type: array<string, array{label: string, amount: float}>, total: float},
      *     net: float,
      *     yield: array<string, mixed>,
-     *     transaction_count: int
+     *     transaction_count: int,
+     *     breakdown: array{figures: list<array<string, mixed>>, left_out: list<array<string, mixed>>}
      * }
      */
     public function propertyProfitLoss(Asset $asset, string $startDate, string $endDate, string $basis = self::BASIS_CASH): array
@@ -46,12 +47,7 @@ class PropertyReportService
         $basis = $this->normalizeBasis($basis);
         $start = Carbon::parse($startDate)->startOfDay();
         $end = Carbon::parse($endDate)->endOfDay();
-
-        $transactions = $this->queryTransactionsForAssets(collect([$asset->id]), $start, $end, $basis)
-            ->get()
-            ->filter(fn (Transaction $t) => (int) $t->asset_id === (int) $asset->id);
-
-        $pl = $this->aggregateTransactions($transactions);
+        $measured = $this->measureOne($asset, $start, $end, $basis);
 
         return [
             'asset' => $asset,
@@ -60,11 +56,12 @@ class PropertyReportService
                 'end_date' => $end->toDateString(),
             ],
             'basis' => $basis,
-            'income' => $pl['income'],
-            'expenses' => $pl['expenses'],
-            'net' => $pl['net'],
-            'yield' => $this->propertyYield($asset, $pl, $start, $end),
-            'transaction_count' => $transactions->count(),
+            'income' => $measured['pl']['income'],
+            'expenses' => $measured['pl']['expenses'],
+            'net' => $measured['pl']['net'],
+            'yield' => $measured['yield'],
+            'transaction_count' => $measured['transactions']->count() + $measured['included_loan']->count(),
+            'breakdown' => $this->figureBreakdown($asset, $measured, $start, $end),
         ];
     }
 
@@ -135,53 +132,36 @@ class PropertyReportService
             $loanTransactions = $loanAccount !== null
                 ? $loanActivity->get($loanAccount->id, collect())
                 : collect();
-            $seenIds = $transactions->pluck('id')->map(fn ($id) => (int) $id)->all();
             $soleLoanAccount = $loanAccount !== null
                 && count($loanSharers[(int) $loanAccount->id] ?? []) === 1;
-            $extraLoanTransactions = $loanTransactions
-                ->reject(function (Transaction $transaction) use ($seenIds, $asset, $soleLoanAccount) {
-                    if (in_array((int) $transaction->id, $seenIds, true)) {
-                        return true;
-                    }
-
-                    $taggedAssetId = $transaction->asset_id !== null ? (int) $transaction->asset_id : null;
-                    if ($taggedAssetId !== null) {
-                        return $taggedAssetId !== (int) $asset->id;
-                    }
-
-                    return ! $soleLoanAccount;
-                })
-                ->values();
-            $holdingTransactions = $transactions->concat($extraLoanTransactions);
-            $pl = $this->includeReceivedRent(
+            $measured = $this->measureFromCollections(
                 $asset,
-                $this->aggregateTransactions($transactions),
+                $transactions,
+                $loanTransactions,
+                $loanAccount,
+                $soleLoanAccount,
                 $start,
                 $end
             );
-            $extraPl = $this->aggregateTransactions($extraLoanTransactions);
-            $pl = $this->includeAllExpenses($asset, $pl, $extraPl, $start, $end);
-            $yield = $this->propertyYield($asset, $pl, $start, $end);
-            $holding = $this->holdingFigures($asset, $pl, $extraPl, $holdingTransactions, $loanAccount);
 
             $row = [
                 'asset' => $asset,
                 'entity_name' => (string) ($asset->businessEntity?->legal_name ?? ''),
                 'acquisition_cost' => $asset->acquisition_cost !== null ? (float) $asset->acquisition_cost : null,
-                'loan_balance' => $holding['loan_balance'],
-                'repayment' => $holding['repayment'],
-                'interest' => $holding['interest'],
-                'council_rates' => $holding['council_rates'],
-                'land_tax' => $holding['land_tax'],
-                'strata' => $holding['strata'],
-                'period_income' => $pl['income']['total'],
-                'period_expenses' => $pl['expenses']['total'],
-                'period_net' => $pl['net'],
-                'annual_rent' => $yield['annual_rent'],
-                'annual_expenses' => $yield['annual_expenses'],
-                'annual_net' => $yield['annual_net'],
-                'gross_yield' => $yield['gross_yield'],
-                'net_yield' => $yield['net_yield'],
+                'loan_balance' => $measured['holding']['loan_balance'],
+                'repayment' => $measured['holding']['repayment'],
+                'interest' => $measured['holding']['interest'],
+                'council_rates' => $measured['holding']['council_rates'],
+                'land_tax' => $measured['holding']['land_tax'],
+                'strata' => $measured['holding']['strata'],
+                'period_income' => $measured['pl']['income']['total'],
+                'period_expenses' => $measured['pl']['expenses']['total'],
+                'period_net' => $measured['pl']['net'],
+                'annual_rent' => $measured['yield']['annual_rent'],
+                'annual_expenses' => $measured['yield']['annual_expenses'],
+                'annual_net' => $measured['yield']['annual_net'],
+                'gross_yield' => $measured['yield']['gross_yield'],
+                'net_yield' => $measured['yield']['net_yield'],
             ];
 
             $properties[] = $row;
@@ -400,7 +380,7 @@ class PropertyReportService
         }
 
         $query = Transaction::query()
-            ->with('lines')
+            ->with(['lines', 'bankAccount'])
             ->whereIn('asset_id', $ids)
             ->whereNotIn('transaction_type', self::EXCLUDED_TRANSACTION_TYPES);
 
@@ -424,7 +404,7 @@ class PropertyReportService
         }
 
         $query = Transaction::query()
-            ->with('lines')
+            ->with(['lines', 'bankAccount'])
             ->whereIn('bank_account_id', $ids)
             ->where(function ($query) {
                 $query->whereIn('transaction_type', [
@@ -458,6 +438,905 @@ class PropertyReportService
         }
 
         $query->whereBetween('date', [$start->toDateString(), $end->toDateString()]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function measureOne(Asset $asset, Carbon $start, Carbon $end, string $basis): array
+    {
+        $asset->loadMissing(['businessEntity', 'bankAccounts', 'tenants', 'leases']);
+
+        $transactions = $this->queryTransactionsForAssets(collect([$asset->id]), $start, $end, $basis)
+            ->get()
+            ->filter(fn (Transaction $transaction) => (int) $transaction->asset_id === (int) $asset->id)
+            ->values();
+
+        $loanAccount = $asset->linkedLoanAccount();
+        $sharerNames = $this->loanSharerNames($asset, $loanAccount);
+        $loanTransactions = $loanAccount !== null
+            ? $this->queryLoanAccountActivity([(int) $loanAccount->id], $start, $end, $basis)
+                ->get((int) $loanAccount->id, collect())
+            : collect();
+
+        $measured = $this->measureFromCollections(
+            $asset,
+            $transactions,
+            $loanTransactions,
+            $loanAccount,
+            $loanAccount !== null && $sharerNames === [],
+            $start,
+            $end
+        );
+        $measured['sharer_names'] = $sharerNames;
+        $measured['omitted'] = $this->omittedTransactions(
+            $asset,
+            $loanAccount,
+            $loanAccount !== null && $sharerNames === [],
+            $start,
+            $end,
+            $basis,
+            $transactions->concat($loanTransactions)
+        );
+
+        return $measured;
+    }
+
+    /**
+     * Money on this property or its loan account that the portfolio figures do not use.
+     *
+     * @param  Collection<int, Transaction>  $already
+     * @return Collection<int, Transaction>
+     */
+    private function omittedTransactions(
+        Asset $asset,
+        ?BankAccount $loanAccount,
+        bool $soleLoan,
+        Carbon $start,
+        Carbon $end,
+        string $basis,
+        Collection $already
+    ): Collection {
+        $ids = $already->pluck('id')->map(fn ($id) => (int) $id)->filter(fn (int $id) => $id > 0)->values()->all();
+
+        $query = Transaction::query()
+            ->with(['lines', 'bankAccount'])
+            ->where(function ($query) use ($asset, $loanAccount, $soleLoan) {
+                $query->where(function ($query) use ($asset) {
+                    $query->where('asset_id', $asset->id)
+                        ->whereIn('transaction_type', self::EXCLUDED_TRANSACTION_TYPES);
+                });
+
+                if ($loanAccount !== null && $soleLoan) {
+                    $query->orWhere(function ($query) use ($loanAccount) {
+                        $query->where('bank_account_id', $loanAccount->id)
+                            ->whereNull('asset_id');
+                    });
+                }
+            });
+
+        if ($ids !== []) {
+            $query->whereNotIn('id', $ids);
+        }
+
+        $this->applyBasisWindow($query, $start, $end, $basis);
+
+        return $query->orderBy('date')->get();
+    }
+
+    /**
+     * @param  Collection<int, Transaction>  $transactions
+     * @param  Collection<int, Transaction>  $loanTransactions
+     * @return array<string, mixed>
+     */
+    private function measureFromCollections(
+        Asset $asset,
+        Collection $transactions,
+        Collection $loanTransactions,
+        ?BankAccount $loanAccount,
+        bool $soleLoanAccount,
+        Carbon $start,
+        Carbon $end
+    ): array {
+        $seenIds = $transactions->pluck('id')->map(fn ($id) => (int) $id)->all();
+        [$includedLoan, $excludedLoan] = $this->classifyLoanTransactions(
+            $loanTransactions,
+            $asset,
+            $soleLoanAccount,
+            $seenIds
+        );
+        $basePl = $this->aggregateTransactions($transactions);
+        $extraPl = $this->aggregateTransactions($includedLoan);
+        $pl = $this->includeAllExpenses(
+            $asset,
+            $this->includeReceivedRent($asset, $basePl, $start, $end),
+            $extraPl,
+            $start,
+            $end
+        );
+
+        return [
+            'pl' => $pl,
+            'base_pl' => $basePl,
+            'extra_pl' => $extraPl,
+            'holding' => $this->holdingFigures(
+                $asset,
+                $basePl,
+                $extraPl,
+                $transactions->concat($includedLoan),
+                $loanAccount
+            ),
+            'yield' => $this->propertyYield($asset, $pl, $start, $end),
+            'transactions' => $transactions,
+            'included_loan' => $includedLoan,
+            'excluded_loan' => $excludedLoan,
+            'loan_account' => $loanAccount,
+            'sole_loan' => $soleLoanAccount,
+            'sharer_names' => [],
+        ];
+    }
+
+    /**
+     * @param  Collection<int, Transaction>  $loanTransactions
+     * @param  list<int>  $seenIds
+     * @return array{0: Collection<int, Transaction>, 1: Collection<int, array{transaction: Transaction, reason: string}>}
+     */
+    private function classifyLoanTransactions(
+        Collection $loanTransactions,
+        Asset $asset,
+        bool $soleLoanAccount,
+        array $seenIds
+    ): array {
+        $included = collect();
+        $excluded = collect();
+
+        foreach ($loanTransactions as $transaction) {
+            if (in_array((int) $transaction->id, $seenIds, true)) {
+                continue;
+            }
+
+            $taggedAssetId = $transaction->asset_id !== null ? (int) $transaction->asset_id : null;
+            if ($taggedAssetId !== null && $taggedAssetId !== (int) $asset->id) {
+                $excluded->push([
+                    'transaction' => $transaction,
+                    'reason' => 'Tagged to another property, so it is not included here.',
+                ]);
+
+                continue;
+            }
+
+            if ($taggedAssetId === null && ! $soleLoanAccount) {
+                $excluded->push([
+                    'transaction' => $transaction,
+                    'reason' => 'This loan account is shared and this transaction is not tagged to this property, so it is not included here.',
+                ]);
+
+                continue;
+            }
+
+            $included->push($transaction);
+        }
+
+        return [$included->values(), $excluded->values()];
+    }
+
+    /**
+     * @param  array<string, mixed>  $measured
+     * @return array{figures: list<array<string, mixed>>, left_out: list<array<string, mixed>>}
+     */
+    private function figureBreakdown(Asset $asset, array $measured, Carbon $start, Carbon $end): array
+    {
+        $holding = $measured['holding'];
+        $pl = $measured['pl'];
+        $purchase = $asset->acquisition_cost !== null ? (float) $asset->acquisition_cost : null;
+
+        return [
+            'figures' => [
+                $this->figure(
+                    'purchase_price',
+                    'Purchase Price',
+                    $purchase,
+                    $purchase !== null && $purchase > 0
+                        ? 'Purchase price saved on the property. Yield uses this amount.'
+                        : 'No purchase price is saved on the property, so yield cannot be calculated.'
+                ),
+                $this->loanBalanceFigure($asset, $measured),
+                $this->repaymentFigure($asset, $measured),
+                $this->recordedOrSavedFigure(
+                    'interest',
+                    'Interest',
+                    'loan_interest',
+                    'Interest',
+                    $holding['interest'],
+                    null,
+                    'No loan interest was recorded in this period.',
+                    $measured
+                ),
+                $this->recordedOrSavedFigure(
+                    'council_rates',
+                    'Council rates',
+                    'valuation_and_rates',
+                    'Council rates',
+                    $holding['council_rates'],
+                    $asset->council_rates_amount !== null ? (float) $asset->council_rates_amount : null,
+                    'No council rates were recorded in this period, and none are saved on the property.',
+                    $measured
+                ),
+                $this->recordedOrSavedFigure(
+                    'land_tax',
+                    'Land tax',
+                    'land_tax',
+                    'Land tax',
+                    $holding['land_tax'],
+                    $asset->land_tax_amount !== null ? (float) $asset->land_tax_amount : null,
+                    'No land tax was recorded in this period, and none is saved on the property.',
+                    $measured
+                ),
+                $this->recordedOrSavedFigure(
+                    'strata',
+                    'Strata',
+                    'oc_fees',
+                    'Strata',
+                    $holding['strata'],
+                    $asset->owners_corp_amount !== null ? (float) $asset->owners_corp_amount : null,
+                    'No strata was recorded in this period, and none is saved on the property.',
+                    $measured
+                ),
+                $this->incomeFigure($asset, $measured, $start, $end),
+                $this->expensesFigure($measured),
+                $this->figure(
+                    'net',
+                    'Net',
+                    (float) $pl['net'],
+                    'Net is income '.$this->moneyLabel((float) $pl['income']['total']).' minus expenses '.$this->moneyLabel((float) $pl['expenses']['total']).'.'
+                ),
+                $this->yieldFigure($asset, $measured, $purchase),
+            ],
+            'left_out' => $this->leftOutLines($measured),
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $lines
+     * @return array<string, mixed>
+     */
+    private function figure(string $key, string $label, ?float $amount, string $text, array $lines = [], string $format = 'money'): array
+    {
+        return [
+            'key' => $key,
+            'label' => $label,
+            'amount' => $amount,
+            'text' => $text,
+            'lines' => $lines,
+            'format' => $format,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $measured
+     * @return array<string, mixed>
+     */
+    private function loanBalanceFigure(Asset $asset, array $measured): array
+    {
+        /** @var BankAccount|null $loanAccount */
+        $loanAccount = $measured['loan_account'];
+        $saved = $this->positiveAmount($asset->loan_balance !== null ? (float) $asset->loan_balance : null);
+        $statement = $loanAccount !== null
+            ? $this->balanceSnapshots()->latestStatementBalance($loanAccount)
+            : ['amount' => null, 'as_of' => null, 'source' => null];
+        $statementAmount = $statement['amount'] !== null ? round((float) $statement['amount'], 2) : null;
+        $usedStatement = $statementAmount !== null;
+        $lines = [];
+
+        if ($loanAccount === null) {
+            $text = 'No loan account is linked to this property.';
+        } else {
+            $text = '';
+        }
+
+        if ($usedStatement) {
+            $sourceLabel = match ($statement['source']) {
+                'csv' => 'imported statement balance',
+                'statement' => 'PDF statement closing balance',
+                default => 'loan statement balance',
+            };
+            $asOf = $statement['as_of'] ? ' as at '.$statement['as_of'] : '';
+            $text = 'Loan balance is the '.$sourceLabel.' of '.$this->moneyLabel(abs($statementAmount)).$asOf
+                .' on '.$loanAccount->transactionAccountLabel().'.';
+            if ($statementAmount < 0) {
+                $text .= ' The statement balance is '.$this->moneyLabel($statementAmount).' and is shown as a positive balance.';
+            }
+            $lines[] = $this->noteLine(
+                $statement['as_of'] ?: 'Statement',
+                $sourceLabel,
+                'Loan balance',
+                $loanAccount->transactionAccountLabel(),
+                abs($statementAmount),
+                'Used for the Loan balance column.'
+            );
+        } elseif ($loanAccount !== null) {
+            $text = $loanAccount->transactionAccountLabel().' has no statement balance.';
+        }
+
+        if ($saved !== null) {
+            $lines[] = $this->noteLine(
+                'Saved on the property',
+                'Loan balance saved on the property',
+                'Loan balance',
+                'Property record',
+                $saved,
+                $usedStatement
+                    ? 'Not used, because a loan statement balance was found.'
+                    : 'Used for the Loan balance column.'
+            );
+            $text .= $usedStatement
+                ? ' The '.$this->moneyLabel($saved).' saved on the property was not used.'
+                : ' Loan balance is the '.$this->moneyLabel($saved).' saved on the property.';
+        } elseif (! $usedStatement) {
+            $text .= ' No loan balance is saved on the property either.';
+        }
+
+        $sharerNames = $measured['sharer_names'] ?? [];
+        if ($sharerNames !== []) {
+            $text .= ' This loan account is also linked to '.implode(', ', $sharerNames).'. The full balance is shown on this property, not a share of it.';
+        }
+
+        return $this->figure('loan_balance', 'Loan balance', $measured['holding']['loan_balance'], trim($text), $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $measured
+     * @return array<string, mixed>
+     */
+    private function repaymentFigure(Asset $asset, array $measured): array
+    {
+        $entries = $this->entriesFor(
+            $measured['transactions']->concat($measured['included_loan']),
+            'expense',
+            'loan_repayments'
+        );
+        $saved = $this->positiveAmount($asset->loan_payment_amount !== null ? (float) $asset->loan_payment_amount : null);
+        $frequency = $this->frequencyLabel($asset->loan_payment_frequency);
+        $inExpenses = $this->expenseAmount($measured['pl'], 'loan_repayments');
+        $column = $measured['holding']['repayment'];
+
+        if ($entries === []) {
+            $annual = $this->annualAmount($saved, $asset->loan_payment_frequency);
+            $text = 'No loan repayment was recorded in this period.';
+            if ($saved !== null) {
+                $text .= ' The Repayment column is the '.$frequency.' repayment of '.$this->moneyLabel($saved).' saved on the property.';
+                $text .= ' That repayment is '.$this->moneyLabel($annual).' a year, and '.$this->moneyLabel($inExpenses).' of it falls in this period and is included in expenses.';
+            } else {
+                $text .= ' No repayment is saved on the property either.';
+            }
+
+            $lines = $inExpenses > 0
+                ? [$this->noteLine(
+                    'Saved on the property',
+                    ucfirst($frequency).' repayment applied to this period',
+                    'Loan Repayment',
+                    'Property record',
+                    $inExpenses,
+                    'Included in expenses. The Repayment column shows the instalment itself.'
+                )]
+                : [];
+
+            return $this->figure('repayment', 'Repayment', $column, $text, $lines);
+        }
+
+        $latestIndex = 0;
+        $latestSort = '';
+        foreach ($entries as $index => $entry) {
+            if ($latestSort === '' || strcmp((string) $entry['sort'], $latestSort) >= 0) {
+                $latestIndex = $index;
+                $latestSort = (string) $entry['sort'];
+            }
+        }
+
+        foreach ($entries as $index => $entry) {
+            $entries[$index]['mark'] = $index === $latestIndex
+                ? 'This is the Repayment column.'
+                : 'Included in expenses, not in the Repayment column.';
+        }
+
+        $latest = $entries[$latestIndex];
+        $text = 'The Repayment column is the latest loan repayment in this period: '
+            .$this->moneyLabel($column).' on '.$latest['when'].'.';
+        if ($column !== null && abs($inExpenses - (float) $column) >= 0.01) {
+            $text .= ' Expenses include every loan repayment in this period, '.$this->moneyLabel($inExpenses).'.';
+        } else {
+            $text .= ' Expenses include that same repayment.';
+        }
+        if ($saved !== null) {
+            $text .= ' The '.$this->moneyLabel($saved).' '.$frequency.' repayment saved on the property was not used.';
+        }
+
+        return $this->figure('repayment', 'Repayment', $column, $text, $this->presentLines($entries));
+    }
+
+    /**
+     * @param  array<string, mixed>  $measured
+     * @return array<string, mixed>
+     */
+    private function recordedOrSavedFigure(
+        string $key,
+        string $label,
+        string $type,
+        string $noun,
+        ?float $column,
+        ?float $savedRaw,
+        string $emptyText,
+        array $measured
+    ): array {
+        $recorded = $this->combinedExpense($measured['base_pl'], $measured['extra_pl'], $type);
+        $saved = $this->positiveAmount($savedRaw);
+        $entries = abs($recorded) >= 0.01
+            ? $this->presentLines($this->entriesFor(
+                $measured['transactions']->concat($measured['included_loan']),
+                'expense',
+                $type
+            ))
+            : [];
+
+        if ($recorded > 0) {
+            $text = $noun.' is the '.$this->moneyLabel($recorded).' recorded in this period.';
+            if ($saved !== null && abs($saved - $recorded) >= 0.01) {
+                $text .= ' The '.$this->moneyLabel($saved).' saved on the property was not used.';
+            }
+
+            return $this->figure($key, $label, $column, $text, $entries);
+        }
+
+        if ($column !== null) {
+            if ($recorded < 0) {
+                foreach ($entries as $index => $entry) {
+                    $entries[$index]['mark'] = 'Not used. Only a positive amount is counted, so the amount saved on the property is used instead.';
+                }
+            }
+            $text = $recorded < 0
+                ? $noun.' recorded in this period nets to '.$this->moneyLabel($recorded).', which is not used. This column and expenses use the '.$this->moneyLabel($column).' saved on the property.'
+                : 'Nothing was recorded for '.$label.' in this period. This column and expenses use the '.$this->moneyLabel($column).' saved on the property.';
+            $entries[] = $this->noteLine(
+                'Saved on the property',
+                $noun.' saved on the property',
+                $noun,
+                'Property record',
+                $column,
+                'Used because nothing positive was recorded in this period.'
+            );
+
+            return $this->figure($key, $label, $column, $text, $entries);
+        }
+
+        if ($recorded < 0) {
+            foreach ($entries as $index => $entry) {
+                $entries[$index]['mark'] = 'Included in expenses. The column is blank because this amount is negative.';
+            }
+
+            return $this->figure(
+                $key,
+                $label,
+                null,
+                $noun.' recorded in this period is '.$this->moneyLabel($recorded).'. The '.$label.' column only shows a positive amount, so it is blank. Expenses include '.$this->moneyLabel($recorded).'.',
+                $entries
+            );
+        }
+
+        return $this->figure($key, $label, null, $emptyText);
+    }
+
+    /**
+     * @param  array<string, mixed>  $measured
+     * @return array<string, mixed>
+     */
+    private function incomeFigure(Asset $asset, array $measured, Carbon $start, Carbon $end): array
+    {
+        $lines = $this->presentLines($this->entriesFor($measured['transactions'], 'income'));
+        $added = round((float) $measured['pl']['income']['total'] - (float) $measured['base_pl']['income']['total'], 2);
+        $explanation = $this->rentExplanation($asset, $measured['base_pl'], $start, $end);
+        if ($added > 0) {
+            $lines[] = $this->noteLine(
+                'This period',
+                'Rent with no bank receipt',
+                'Rental Income',
+                'Property record',
+                $added,
+                'Added because no rent was banked in this period.'
+            );
+        }
+
+        return $this->figure(
+            'income',
+            'Income',
+            (float) $measured['pl']['income']['total'],
+            'Income is '.$this->moneyLabel((float) $measured['pl']['income']['total']).'. '.$explanation,
+            $lines
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $measured
+     * @return array<string, mixed>
+     */
+    private function expensesFigure(array $measured): array
+    {
+        $lines = [];
+        foreach ($measured['pl']['expenses']['by_type'] as $type => $row) {
+            $shown = round((float) $row['amount'], 2);
+            $recorded = $this->combinedExpense($measured['base_pl'], $measured['extra_pl'], (string) $type);
+            if (abs($recorded) >= 0.01 && abs($recorded - $shown) < 0.01) {
+                $lines = array_merge($lines, $this->presentLines($this->entriesFor(
+                    $measured['transactions']->concat($measured['included_loan']),
+                    'expense',
+                    (string) $type
+                )));
+
+                continue;
+            }
+
+            $lines[] = $this->noteLine(
+                'Saved on the property',
+                (string) $row['label'],
+                (string) $row['label'],
+                'Property record',
+                $shown,
+                'Used because this cost was not recorded in the period.'
+            );
+        }
+
+        $text = 'Expenses are '.$this->moneyLabel((float) $measured['pl']['expenses']['total'])
+            .'. This is the total used for net and yield.';
+        $repaymentInExpenses = $this->expenseAmount($measured['pl'], 'loan_repayments');
+        $column = $measured['holding']['repayment'];
+        if ($column !== null && abs($repaymentInExpenses - (float) $column) >= 0.01) {
+            $text .= ' The Repayment column is '.$this->moneyLabel((float) $column)
+                .', which is not the loan repayment inside this total ('.$this->moneyLabel($repaymentInExpenses).').';
+        }
+
+        return $this->figure('expenses', 'Expenses', (float) $measured['pl']['expenses']['total'], $text, $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $measured
+     * @return array<string, mixed>
+     */
+    private function yieldFigure(Asset $asset, array $measured, ?float $purchase): array
+    {
+        $yield = $measured['yield'];
+        if ($purchase === null || $purchase <= 0) {
+            $text = 'Gross and net yield need a purchase price above zero.';
+        } else {
+            $text = 'Gross yield is annual rent '.$this->moneyLabel((float) $yield['annual_rent'])
+                .' divided by the purchase price '.$this->moneyLabel($purchase).'.'
+                .' Net yield is annual rent minus annual expenses '.$this->moneyLabel((float) $yield['annual_expenses'])
+                .', then divided by the same purchase price.';
+        }
+
+        return $this->figure(
+            'yield',
+            'Net yield',
+            $yield['net_yield'],
+            $text,
+            [],
+            'percent'
+        );
+    }
+
+    /**
+     * @param  array{income: array{by_type: array<string, array{amount: float}>}}  $basePl
+     */
+    private function rentExplanation(Asset $asset, array $basePl, Carbon $start, Carbon $end): string
+    {
+        $schedule = $this->rentSchedule($asset, $start, $end);
+        $banked = $this->rentFromPl($basePl);
+
+        if ($banked > 0) {
+            if ($schedule === null) {
+                return 'Rent in this period comes from the transactions below.';
+            }
+
+            return 'Rent banked in this period is already included. '
+                .ucfirst($schedule['label']).' rent of '.$this->moneyLabel($schedule['raw']).' '
+                .$schedule['frequency'].' was not added again.';
+        }
+
+        if ($schedule !== null) {
+            $days = max(1, $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1);
+            $added = round($schedule['monthly'] * 12 / (365 / $days), 2);
+
+            return 'No rent was banked in this period. Income includes '.$this->moneyLabel($added)
+                .' from '.$schedule['label'].': '.$this->moneyLabel($schedule['raw']).' '
+                .$schedule['frequency'].' ('.$this->moneyLabel($schedule['monthly']).' a month).';
+        }
+
+        if ($asset->rental_income !== null && (float) $asset->rental_income > 0) {
+            $days = max(1, $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1);
+            $added = round((float) $asset->rental_income / (365 / $days), 2);
+
+            return 'No rent was banked in this period, and there is no lease or tenant rent. Income includes '
+                .$this->moneyLabel($added).' from the annual rental income of '
+                .$this->moneyLabel((float) $asset->rental_income).' saved on the property.';
+        }
+
+        return 'No rent was banked in this period, and no lease, tenant, or annual rental income is saved on the property.';
+    }
+
+    /**
+     * @param  Collection<int, Transaction>  $transactions
+     * @return list<array<string, mixed>>
+     */
+    private function entriesFor(Collection $transactions, string $side, ?string $onlyType = null): array
+    {
+        $entries = [];
+
+        foreach ($transactions as $transaction) {
+            foreach ($this->components($transaction) as $component) {
+                if ($onlyType !== null && $component['type'] !== $onlyType) {
+                    continue;
+                }
+
+                if (in_array($component['type'], self::EXCLUDED_TRANSACTION_TYPES, true)) {
+                    continue;
+                }
+
+                $isIncome = array_key_exists($component['type'], Transaction::$incomeTypes);
+                $isExpense = array_key_exists($component['type'], Transaction::$expenseTypes);
+                if ($side === 'income' && ! $isIncome) {
+                    continue;
+                }
+                if ($side === 'expense' && ! $isExpense) {
+                    continue;
+                }
+
+                $entries[] = $this->entryFrom($transaction, $component);
+            }
+        }
+
+        usort($entries, fn (array $a, array $b): int => strcmp((string) $a['sort'], (string) $b['sort']));
+
+        return $entries;
+    }
+
+    /**
+     * @param  array<string, mixed>  $measured
+     * @return list<array<string, mixed>>
+     */
+    private function leftOutLines(array $measured): array
+    {
+        $lines = [];
+
+        foreach ($measured['transactions'] as $transaction) {
+            foreach ($this->components($transaction) as $component) {
+                if (! in_array($component['type'], self::EXCLUDED_TRANSACTION_TYPES, true)) {
+                    continue;
+                }
+                $entry = $this->entryFrom($transaction, $component);
+                $label = Transaction::$incomeTypes[$component['type']]
+                    ?? Transaction::$expenseTypes[$component['type']]
+                    ?? $component['type'];
+                $entry['mark'] = $label.' is left out of income, expenses, and yield.';
+                $lines[] = $entry;
+            }
+        }
+
+        foreach ($measured['excluded_loan'] as $item) {
+            foreach ($this->components($item['transaction']) as $component) {
+                if (! array_key_exists($component['type'], Transaction::$incomeTypes)
+                    && ! array_key_exists($component['type'], Transaction::$expenseTypes)) {
+                    continue;
+                }
+                $entry = $this->entryFrom($item['transaction'], $component);
+                $entry['mark'] = $item['reason'];
+                $lines[] = $entry;
+            }
+        }
+
+        foreach ($measured['omitted'] ?? [] as $transaction) {
+            foreach ($this->components($transaction) as $component) {
+                if (! array_key_exists($component['type'], Transaction::$incomeTypes)
+                    && ! array_key_exists($component['type'], Transaction::$expenseTypes)
+                    && ! in_array($component['type'], self::EXCLUDED_TRANSACTION_TYPES, true)) {
+                    continue;
+                }
+                $entry = $this->entryFrom($transaction, $component);
+                $label = $entry['type'];
+                $entry['mark'] = in_array($component['type'], self::EXCLUDED_TRANSACTION_TYPES, true)
+                    ? $label.' is left out of income, expenses, and yield.'
+                    : 'Not included. The portfolio uses property transactions, plus loan repayment, interest, fees, council rates, land tax, and strata on the linked loan account.';
+                $lines[] = $entry;
+            }
+        }
+
+        foreach ($measured['included_loan'] as $transaction) {
+            foreach ($this->components($transaction) as $component) {
+                if (! array_key_exists($component['type'], Transaction::$incomeTypes)) {
+                    continue;
+                }
+                if (in_array($component['type'], self::EXCLUDED_TRANSACTION_TYPES, true)) {
+                    continue;
+                }
+                $entry = $this->entryFrom($transaction, $component);
+                $entry['mark'] = 'On the loan account. Income is taken from the property, so this was not added.';
+                $lines[] = $entry;
+            }
+        }
+
+        return $this->presentLines($lines);
+    }
+
+    /**
+     * @return list<array{type: string, amount: float, description: string}>
+     */
+    private function components(Transaction $transaction): array
+    {
+        if ($transaction->isSplit()) {
+            if (! $transaction->relationLoaded('lines')) {
+                $transaction->load('lines');
+            }
+
+            $rows = [];
+            foreach ($transaction->lines as $line) {
+                $rows[] = [
+                    'type' => (string) $line->transaction_type,
+                    'amount' => $this->netAmountFromParts(
+                        (float) $line->amount,
+                        $line->gst_amount !== null ? (float) $line->gst_amount : null,
+                        $line->gst_basis
+                    ),
+                    'description' => trim((string) ($line->description ?: $transaction->description ?: '')),
+                ];
+            }
+
+            return $rows;
+        }
+
+        return [[
+            'type' => (string) $transaction->transaction_type,
+            'amount' => $this->netAmount($transaction),
+            'description' => trim((string) ($transaction->description ?: '')),
+        ]];
+    }
+
+    /**
+     * @param  array{type: string, amount: float, description: string}  $component
+     * @return array<string, mixed>
+     */
+    private function entryFrom(Transaction $transaction, array $component): array
+    {
+        $type = $component['type'];
+
+        return [
+            'when' => $this->whenLabel($transaction),
+            'description' => $component['description'] !== '' ? $component['description'] : 'No description',
+            'type' => Transaction::$incomeTypes[$type] ?? Transaction::$expenseTypes[$type] ?? Transaction::$transferTypes[$type] ?? $type,
+            'account' => $this->accountLabel($transaction),
+            'amount' => round((float) $component['amount'], 2),
+            'mark' => null,
+            'sort' => $this->transactionSortKey($transaction),
+            'business_entity_id' => $transaction->business_entity_id !== null ? (int) $transaction->business_entity_id : null,
+            'bank_account_id' => $transaction->bank_account_id !== null ? (int) $transaction->bank_account_id : null,
+            'transaction_id' => $transaction->id !== null ? (int) $transaction->id : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function noteLine(
+        string $when,
+        string $description,
+        string $typeLabel,
+        string $account,
+        float $amount,
+        ?string $mark
+    ): array {
+        return [
+            'when' => $when,
+            'description' => $description,
+            'type' => $typeLabel,
+            'account' => $account,
+            'amount' => round($amount, 2),
+            'mark' => $mark,
+            'business_entity_id' => null,
+            'bank_account_id' => null,
+            'transaction_id' => null,
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $entries
+     * @return list<array<string, mixed>>
+     */
+    private function presentLines(array $entries): array
+    {
+        return array_map(function (array $entry): array {
+            unset($entry['sort']);
+
+            return $entry;
+        }, $entries);
+    }
+
+    private function whenLabel(Transaction $transaction): string
+    {
+        $paid = $transaction->paid_at;
+        $entered = $transaction->date;
+        $primary = $paid ?? $entered;
+        if ($primary === null) {
+            return '—';
+        }
+
+        $label = Carbon::parse($primary)->format('j M Y');
+        if ($paid !== null && $entered !== null && Carbon::parse($paid)->toDateString() !== Carbon::parse($entered)->toDateString()) {
+            $label .= ' (dated '.Carbon::parse($entered)->format('j M Y').')';
+        }
+
+        return $label;
+    }
+
+    private function accountLabel(Transaction $transaction): string
+    {
+        $account = $transaction->relationLoaded('bankAccount')
+            ? $transaction->bankAccount
+            : $transaction->bankAccount()->first();
+
+        return $account !== null ? $account->transactionAccountLabel() : 'No bank account';
+    }
+
+    private function moneyLabel(?float $amount): string
+    {
+        if ($amount === null) {
+            return '—';
+        }
+
+        $formatted = '$'.number_format(abs($amount), 2);
+
+        return $amount < 0 ? '-'.$formatted : $formatted;
+    }
+
+    private function frequencyLabel(?string $frequency): string
+    {
+        $value = strtolower(trim((string) $frequency));
+        if ($value === '') {
+            return 'monthly (no frequency is saved)';
+        }
+        if ($value === 'monthly') {
+            return 'monthly';
+        }
+
+        return match ($value) {
+            'weekly' => 'weekly',
+            'fortnightly' => 'fortnightly',
+            'quarterly' => 'quarterly',
+            'yearly', 'annually', 'annual' => 'yearly',
+            default => trim((string) $frequency).' (treated as monthly)',
+        };
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function loanSharerNames(Asset $asset, ?BankAccount $loanAccount): array
+    {
+        if ($loanAccount === null) {
+            return [];
+        }
+
+        return Asset::query()
+            ->where('id', '!=', $asset->id)
+            ->whereNull('disposal_date')
+            ->where(function ($query): void {
+                $query->whereNull('status')->orWhere('status', '!=', 'Inactive');
+            })
+            ->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
+            ->whereHas('businessEntity', fn ($query) => $query->forFinancialReports())
+            ->whereHas('bankAccounts', function ($query) use ($loanAccount) {
+                $query->where('bank_accounts.id', $loanAccount->id)
+                    ->whereIn('asset_bank_account.role', [BankAccount::ROLE_LOAN, BankAccount::ROLE_LOAN_REPAYMENT]);
+            })
+            ->orderBy('name')
+            ->pluck('name')
+            ->map(fn ($name) => (string) $name)
+            ->all();
     }
 
     /**
@@ -608,6 +1487,9 @@ class PropertyReportService
     {
         $query = Asset::query()
             ->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
+            ->where(function ($query): void {
+                $query->whereNull('status')->orWhere('status', '!=', 'Inactive');
+            })
             ->whereHas('businessEntity', fn ($q) => $q->forFinancialReports())
             ->with(['businessEntity', 'bankAccounts', 'tenants', 'leases'])
             ->orderBy('name');
@@ -650,20 +1532,38 @@ class PropertyReportService
             );
         }
 
-        $replaced = $this->expenseAmount($pl, 'valuation_and_rates')
-            + $this->expenseAmount($pl, 'land_tax')
-            + $this->expenseAmount($pl, 'oc_fees')
-            + $this->expenseAmount($pl, 'loan_repayments')
-            + $this->expenseAmount($pl, 'loan_interest')
-            + $this->expenseAmount($pl, 'loan_fees');
+        $this->putExpenseAmount($pl, 'valuation_and_rates', $council);
+        $this->putExpenseAmount($pl, 'land_tax', $landTax);
+        $this->putExpenseAmount($pl, 'oc_fees', $strata);
+        $this->putExpenseAmount($pl, 'loan_repayments', $repayments);
+        $this->putExpenseAmount($pl, 'loan_interest', $interest);
+        $this->putExpenseAmount($pl, 'loan_fees', $fees);
+        ksort($pl['expenses']['by_type']);
 
         $pl['expenses']['total'] = round(
-            $pl['expenses']['total'] - $replaced + $council + $landTax + $strata + $repayments + $interest + $fees,
+            (float) collect($pl['expenses']['by_type'])->sum(fn (array $row): float => (float) $row['amount']),
             2
         );
         $pl['net'] = round($pl['income']['total'] - $pl['expenses']['total'], 2);
 
         return $pl;
+    }
+
+    /**
+     * @param  array{expenses: array{by_type: array<string, array{label?: string, amount: float}>}}  $pl
+     */
+    private function putExpenseAmount(array &$pl, string $type, float $amount): void
+    {
+        if (abs($amount) < 0.005) {
+            unset($pl['expenses']['by_type'][$type]);
+
+            return;
+        }
+
+        $pl['expenses']['by_type'][$type] = [
+            'label' => $pl['expenses']['by_type'][$type]['label'] ?? (Transaction::$expenseTypes[$type] ?? $type),
+            'amount' => round($amount, 2),
+        ];
     }
 
     /**
@@ -700,21 +1600,30 @@ class PropertyReportService
 
     private function periodAmountFromInstalment(?float $amount, ?string $frequency, Carbon $start, Carbon $end): float
     {
+        $annual = $this->annualAmount($amount, $frequency);
+        if ($annual <= 0) {
+            return 0.0;
+        }
+
+        $days = max(1, $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1);
+
+        return round($annual * $days / 365, 2);
+    }
+
+    private function annualAmount(?float $amount, ?string $frequency): float
+    {
         $amount = $this->positiveAmount($amount);
         if ($amount === null) {
             return 0.0;
         }
 
-        $annual = match (strtolower(trim((string) $frequency))) {
+        return match (strtolower(trim((string) $frequency))) {
             'weekly' => $amount * 52,
             'fortnightly' => $amount * 26,
             'quarterly' => $amount * 4,
             'yearly', 'annually', 'annual' => $amount,
             default => $amount * 12,
         };
-        $days = max(1, $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1);
-
-        return round($annual * $days / 365, 2);
     }
 
     /**
@@ -776,18 +1685,32 @@ class PropertyReportService
 
     private function monthlyReceivedRent(Asset $asset, Carbon $start, Carbon $end): ?float
     {
+        return $this->rentSchedule($asset, $start, $end)['monthly'] ?? null;
+    }
+
+    /**
+     * @return array{source: string, label: string, raw: float, frequency: string, monthly: float}|null
+     */
+    private function rentSchedule(Asset $asset, Carbon $start, Carbon $end): ?array
+    {
         $lease = $asset->leases
             ->filter(fn (Lease $lease) => $this->overlapsPeriod($lease->start_date, $lease->end_date, $start, $end))
             ->sortByDesc(fn (Lease $lease) => $lease->start_date?->getTimestamp() ?? 0)
             ->first();
 
         if ($lease !== null) {
-            $fromLease = $this->toMonthly(
+            $monthly = $this->toMonthly(
                 $lease->rental_amount !== null ? (float) $lease->rental_amount : null,
                 $lease->payment_frequency
             );
-            if ($fromLease !== null) {
-                return $fromLease;
+            if ($monthly !== null) {
+                return [
+                    'source' => 'lease',
+                    'label' => 'the lease',
+                    'raw' => round((float) $lease->rental_amount, 2),
+                    'frequency' => $this->frequencyLabel($lease->payment_frequency),
+                    'monthly' => $monthly,
+                ];
             }
         }
 
@@ -800,10 +1723,23 @@ class PropertyReportService
             return null;
         }
 
-        return $this->toMonthly(
+        $monthly = $this->toMonthly(
             $tenant->rent_amount !== null ? (float) $tenant->rent_amount : null,
             $tenant->rent_frequency
         );
+        if ($monthly === null) {
+            return null;
+        }
+
+        $name = trim((string) $tenant->name);
+
+        return [
+            'source' => 'tenant',
+            'label' => $name !== '' ? $name : 'the tenant',
+            'raw' => round((float) $tenant->rent_amount, 2),
+            'frequency' => $this->frequencyLabel($tenant->rent_frequency),
+            'monthly' => $monthly,
+        ];
     }
 
     private function overlapsPeriod(mixed $starts, mixed $ends, Carbon $periodStart, Carbon $periodEnd): bool

@@ -129,7 +129,17 @@ class BusinessEntity extends Model
      */
     public function scopeOperationalEntities($query)
     {
-        return $query->where('exclude_from_financial_reports', false)->open();
+        return $query->where('exclude_from_financial_reports', false)->open()->where(function ($query): void {
+            $query->whereNull('status')->orWhere('status', '!=', 'Inactive');
+        });
+    }
+
+    /**
+     * Open companies marked Inactive. Hidden from lists and reports; records stay.
+     */
+    public function scopeInactiveEntities($query)
+    {
+        return $query->where('status', 'Inactive')->whereNull('closed_date');
     }
 
     /**

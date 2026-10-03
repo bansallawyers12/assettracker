@@ -250,3 +250,202 @@ it('does not copy a shared loan or another property onto this row', function () 
         ->and($rows['Split house']['period_expenses'])->toBe(900.0)
         ->and($rows->sum('repayment'))->toBe(1233.0);
 });
+
+it('explains each portfolio figure on the property page', function () {
+    $entity = portfolioHoldingEntity();
+    $entity->update(['registered_email' => 'portfolio-figures@example.test']);
+    $operating = portfolioHoldingBank($entity, BankAccount::PURPOSE_GENERAL, 'Operating');
+    $loan = portfolioHoldingBank($entity, BankAccount::PURPOSE_LOAN, 'Loan');
+
+    $funded = Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Rented',
+        'name' => '219 South Gippsland Highway',
+        'address' => '219 South Gippsland Highway, Cranbourne',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 1966000,
+        'current_value' => 1966000,
+        'status' => 'Active',
+        'loan_balance' => 1,
+        'loan_payment_amount' => 999,
+        'loan_payment_frequency' => 'Monthly',
+        'council_rates_amount' => 50,
+        'land_tax_amount' => 100,
+        'owners_corp_amount' => 10,
+    ]);
+    $funded->bankAccounts()->attach($loan->id, ['role' => BankAccount::ROLE_LOAN]);
+    BankAccountStatement::create([
+        'bank_account_id' => $loan->id,
+        'statement_period_start' => '2026-05-01',
+        'statement_period_end' => '2026-05-31',
+        'opening_balance' => -2000000,
+        'closing_balance' => -1940433.54,
+        'file_name' => 'loan.pdf',
+        'path' => 'statements/loan.pdf',
+    ]);
+    portfolioHoldingTransaction($entity, $loan, 'loan_repayments', 1000, '2026-01-15', $funded);
+    portfolioHoldingTransaction($entity, $loan, 'loan_repayments', 6608, '2026-06-15');
+    portfolioHoldingTransaction($entity, $loan, 'loan_interest', 400.5, '2026-06-15');
+    portfolioHoldingTransaction($entity, $operating, 'land_tax', 2786.55, '2026-03-01', $funded);
+    portfolioHoldingTransaction($entity, $operating, 'valuation_and_rates', 3381.29, '2026-02-01', $funded);
+    portfolioHoldingTransaction($entity, $operating, 'oc_fees', 3600, '2026-04-01', $funded);
+    portfolioHoldingTransaction($entity, $operating, 'rental_income', 12000, '2026-06-01', $funded);
+    portfolioHoldingTransaction($entity, $loan, 'internal_transfer', 250, '2026-06-20');
+    Tenant::create([
+        'asset_id' => $funded->id,
+        'name' => 'Funded tenant',
+        'rent_amount' => 9999,
+        'rent_frequency' => 'Monthly',
+        'move_in_date' => '2024-01-01',
+    ]);
+
+    $saved = Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Rented',
+        'name' => '1 Bald Hill',
+        'address' => '1 Bald Hill Rd, Pakenham',
+        'acquisition_date' => '2021-01-01',
+        'acquisition_cost' => 500000,
+        'current_value' => 500000,
+        'status' => 'Active',
+        'loan_balance' => 1000,
+        'loan_payment_amount' => 1000,
+        'loan_payment_frequency' => 'Fortnightly',
+        'council_rates_amount' => 300,
+        'land_tax_amount' => 200,
+        'owners_corp_amount' => 400,
+    ]);
+    portfolioHoldingTransaction($entity, $operating, 'rent_to_related_party', 1500, '2026-05-01', $saved);
+    Tenant::create([
+        'asset_id' => $saved->id,
+        'name' => 'Bald Hill tenant',
+        'rent_amount' => 2000,
+        'rent_frequency' => 'Monthly',
+        'move_in_date' => '2024-01-01',
+    ]);
+
+    $fundedReport = app(PropertyReportService::class)->propertyProfitLoss($funded, '2025-07-01', '2026-06-30');
+    $fundedFigures = collect($fundedReport['breakdown']['figures'])->keyBy('key');
+
+    expect(round(collect($fundedFigures['income']['lines'])->sum('amount'), 2))->toBe(12000.0)
+        ->and(round(collect($fundedFigures['expenses']['lines'])->sum('amount'), 2))->toBe(17776.34)
+        ->and($fundedFigures['repayment']['amount'])->toBe(6608.0)
+        ->and($fundedFigures['loan_balance']['amount'])->toBe(1940433.54)
+        ->and($fundedFigures['income']['text'])->toContain('was not added again')
+        ->and($fundedFigures['repayment']['text'])->toContain('latest loan repayment in this period: $6,608.00 on 15 Jun 2026')
+        ->and($fundedFigures['repayment']['text'])->toContain('Expenses include every loan repayment in this period, $7,608.00')
+        ->and($fundedFigures['expenses']['text'])->toContain('The Repayment column is $6,608.00, which is not the loan repayment inside this total ($7,608.00)')
+        ->and(collect($fundedReport['breakdown']['left_out'])->pluck('mark')->join(' '))->toContain('Internal Transfer is left out');
+
+    $savedReport = app(PropertyReportService::class)->propertyProfitLoss($saved, '2025-07-01', '2026-06-30');
+    $savedFigures = collect($savedReport['breakdown']['figures'])->keyBy('key');
+
+    expect(round(collect($savedFigures['income']['lines'])->sum('amount'), 2))->toBe(24000.0)
+        ->and(round(collect($savedFigures['expenses']['lines'])->sum('amount'), 2))->toBe(28400.0)
+        ->and($savedFigures['repayment']['text'])->toContain('No loan repayment was recorded in this period')
+        ->and($savedFigures['repayment']['text'])->toContain('fortnightly repayment of $1,000.00')
+        ->and($savedFigures['repayment']['text'])->toContain('$26,000.00 of it falls in this period')
+        ->and($savedFigures['income']['text'])->toContain('No rent was banked in this period')
+        ->and($savedFigures['income']['text'])->toContain('Bald Hill tenant')
+        ->and($savedFigures['council_rates']['text'])->toContain('Nothing was recorded for Council rates')
+        ->and($savedFigures['loan_balance']['text'])->toContain('No loan account is linked');
+
+    $this->actingAs(User::factory()->create())
+        ->get(route('assets.financials', [
+            'businessEntity' => $entity,
+            'asset' => $funded,
+            'start_date' => '2025-07-01',
+            'end_date' => '2026-06-30',
+        ]))
+        ->assertSuccessful()
+        ->assertSee('Where the portfolio figures come from')
+        ->assertSee('PDF statement closing balance of $1,940,433.54 as at 31/05/2026')
+        ->assertSee('The statement balance is -$1,940,433.54 and is shown as a positive balance.')
+        ->assertSee('The $1.00 saved on the property was not used.')
+        ->assertSee('Included in expenses, not in the Repayment column.')
+        ->assertSee('$17,776.34')
+        ->assertSee('data-figure="repayment"', false);
+});
+
+it('keeps negative interest and does not borrow another property from a shared loan', function () {
+    $entity = portfolioHoldingEntity();
+    $entity->update(['registered_email' => 'portfolio-review@example.test']);
+    $loan = portfolioHoldingBank($entity, BankAccount::PURPOSE_LOAN, 'Shared loan');
+
+    $active = Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Rented',
+        'name' => 'Active house',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 100000,
+        'current_value' => 100000,
+        'status' => 'Active',
+    ]);
+    $other = Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Rented',
+        'name' => 'Other house',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 100000,
+        'current_value' => 100000,
+        'status' => 'Active',
+    ]);
+    $inactive = Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Rented',
+        'name' => 'Inactive house',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 100000,
+        'current_value' => 100000,
+        'status' => 'Inactive',
+    ]);
+    $active->bankAccounts()->attach($loan->id, ['role' => BankAccount::ROLE_LOAN]);
+    $other->bankAccounts()->attach($loan->id, ['role' => BankAccount::ROLE_LOAN]);
+    $inactive->bankAccounts()->attach($loan->id, ['role' => BankAccount::ROLE_LOAN]);
+
+    portfolioHoldingTransaction($entity, $loan, 'loan_interest', -40, '2026-02-01', $active);
+    portfolioHoldingTransaction($entity, $loan, 'repairs_maintenance', 75, '2026-03-01', $other);
+    portfolioHoldingTransaction($entity, $loan, 'internal_transfer', 90, '2026-04-01');
+
+    $report = app(PropertyReportService::class)->propertyProfitLoss($active, '2025-07-01', '2026-06-30');
+    $figures = collect($report['breakdown']['figures'])->keyBy('key');
+    $leftOut = collect($report['breakdown']['left_out'])->pluck('description')->join(' ');
+
+    expect($figures['interest']['amount'])->toBeNull()
+        ->and($figures['interest']['text'])->toContain('-$40.00')
+        ->and($figures['interest']['lines'][0]['mark'])->toContain('Included in expenses')
+        ->and($figures['expenses']['amount'])->toBe(-40.0)
+        ->and($report['expenses']['by_type']['loan_interest']['amount'])->toBe(-40.0)
+        ->and($leftOut)->not->toContain('repairs_maintenance')
+        ->and($leftOut)->not->toContain('internal_transfer');
+
+    $soleLoan = portfolioHoldingBank($entity, BankAccount::PURPOSE_LOAN, 'Sole loan');
+    $soleLoan->update(['account_number' => '11223344']);
+    $only = Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Rented',
+        'name' => 'Only house',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 100000,
+        'current_value' => 100000,
+        'status' => 'Active',
+    ]);
+    $only->bankAccounts()->attach($soleLoan->id, ['role' => BankAccount::ROLE_LOAN]);
+    $parked = Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Rented',
+        'name' => 'Parked house',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 100000,
+        'current_value' => 100000,
+        'status' => 'Inactive',
+    ]);
+    $parked->bankAccounts()->attach($soleLoan->id, ['role' => BankAccount::ROLE_LOAN]);
+    portfolioHoldingTransaction($entity, $soleLoan, 'loan_repayments', 640, '2026-05-01');
+
+    $soleReport = app(PropertyReportService::class)->propertyProfitLoss($only, '2025-07-01', '2026-06-30');
+    $soleFigures = collect($soleReport['breakdown']['figures'])->keyBy('key');
+
+    expect($soleFigures['repayment']['amount'])->toBe(640.0)
+        ->and($soleFigures['loan_balance']['text'])->not->toContain('Parked house');
+});

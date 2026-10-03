@@ -26,7 +26,12 @@
                 class="text-left bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700/80 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-indigo-500"
             >
                 <div class="text-sm font-medium text-gray-900 dark:text-gray-100">{{ $asset->name }}</div>
-                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $asset->asset_type }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {{ $asset->asset_type }}
+                    @if ($asset->status === 'Inactive')
+                        <span class="ml-1 font-medium text-amber-700 dark:text-amber-300">Inactive</span>
+                    @endif
+                </div>
             </button>
         @endforeach
     </div>

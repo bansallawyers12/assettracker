@@ -314,7 +314,7 @@ class BusinessEntityDeletionService
 
         return [
             'heading' => $heading,
-            'effect' => $effect,
+            'effect' => 'This stays. Marking the company inactive does not remove it.',
             'items' => $shown,
         ];
     }

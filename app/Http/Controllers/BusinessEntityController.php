@@ -376,6 +376,25 @@ class BusinessEntityController extends Controller
         return view('business-entities.closed-index', compact('businessEntities', 'tableSort'));
     }
 
+    public function inactiveIndex(Request $request): View
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+
+        $tableSort = TableSort::resolve($request, ['name', 'type'], 'name', 'asc');
+
+        $businessEntities = $tableSort->sortCollection(
+            BusinessEntity::query()->inactiveEntities()->get(),
+            function (BusinessEntity $entity, string $column) {
+                return match ($column) {
+                    'type' => $entity->entity_type,
+                    default => $entity->legal_name,
+                };
+            }
+        );
+
+        return view('business-entities.inactive-index', compact('businessEntities', 'tableSort'));
+    }
+
     /**
      * @param  Collection<int, BusinessEntity>  $entities
      * @return Collection<int, BusinessEntity>
@@ -2507,26 +2526,26 @@ class BusinessEntityController extends Controller
         if ($preview['warnings'] !== [] && ! $request->boolean('acknowledge_links')) {
             return redirect()
                 ->route('business-entities.delete.confirm', $businessEntity)
-                ->with('error', 'This company is linked to other companies or assets. Review that list, then tick the confirmation before deleting.');
+                ->with('error', 'This company is linked to other companies or assets. Review that list, then tick the confirmation before marking it inactive.');
         }
 
-        $name = $businessEntity->legal_name;
-
-        try {
-            DB::transaction(function () use ($businessEntity): void {
-                $businessEntity->delete();
-            });
-        } catch (QueryException $exception) {
-            report($exception);
-
-            return redirect()
-                ->route('business-entities.delete.confirm', $businessEntity)
-                ->with('error', 'This entity could not be deleted because other records still depend on it.');
-        }
+        $businessEntity->update(['status' => 'Inactive']);
 
         return redirect()
-            ->route('business-entities.index')
-            ->with('success', $name.' was deleted.');
+            ->route('business-entities.inactive.index')
+            ->with('success', $businessEntity->legal_name.' was marked inactive. Its records stay in place.');
+    }
+
+    public function activate(BusinessEntity $businessEntity): RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+
+        $businessEntity->update(['status' => 'Active']);
+
+        return redirect()
+            ->route('business-entities.show', $businessEntity)
+            ->with('success', $businessEntity->legal_name.' is active again.');
     }
 
     // --- Bank Account Methods ---
