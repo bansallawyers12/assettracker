@@ -269,7 +269,7 @@ it('shows monthly columns by default and keeps yield columns behind the yield vi
         ->assertSee('Monthly expenses')
         ->assertSee('Set aside')
         ->assertSee('Insurance')
-        ->assertSee('Clayton — land tax: missing')
+        ->assertDontSee('Still to enter')
         ->assertDontSee('Gross yield');
 
     $this->actingAs($user)

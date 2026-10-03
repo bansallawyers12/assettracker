@@ -246,17 +246,6 @@
                 @endif
             </div>
 
-            @if ($view === 'monthly' && count($report['checklist'] ?? []) > 0)
-                <div class="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-5 py-4" data-monthly-checklist>
-                    <h2 class="text-sm font-semibold tracking-tight text-amber-950 dark:text-amber-100">Still to enter</h2>
-                    <ul class="mt-2 space-y-1 text-sm leading-relaxed text-amber-900 dark:text-amber-200">
-                        @foreach ($report['checklist'] as $item)
-                            <li>{{ $item['text'] }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
             {{-- Properties list --}}
             <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xs overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
