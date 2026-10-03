@@ -149,6 +149,7 @@ it('reads portfolio holding figures from transactions and falls back to the prop
         ->and($rows['219 South Gippsland Highway']['land_tax'])->toBe(2786.55)
         ->and($rows['219 South Gippsland Highway']['strata'])->toBe(3600.0)
         ->and($rows['219 South Gippsland Highway']['period_income'])->toBe(12000.0)
+        ->and($rows['219 South Gippsland Highway']['period_expenses'])->toBe(17776.34)
         ->and($rows['1 Bald Hill']['loan_balance'])->toBe(1000.0)
         ->and($rows['1 Bald Hill']['repayment'])->toBe(1000.0)
         ->and($rows['1 Bald Hill']['interest'])->toBeNull()
@@ -156,7 +157,7 @@ it('reads portfolio holding figures from transactions and falls back to the prop
         ->and($rows['1 Bald Hill']['land_tax'])->toBe(200.0)
         ->and($rows['1 Bald Hill']['strata'])->toBe(400.0)
         ->and($rows['1 Bald Hill']['period_income'])->toBe(24000.0)
-        ->and($rows['1 Bald Hill']['period_expenses'])->toBe(1500.0)
+        ->and($rows['1 Bald Hill']['period_expenses'])->toBe(28400.0)
         ->and($report['totals']['total_loan_balance'])->toBe(1941433.54)
         ->and($report['totals']['total_land_tax'])->toBe(2986.55);
 
@@ -175,7 +176,7 @@ it('reads portfolio holding figures from transactions and falls back to the prop
         ->assertDontSee('Monthly rent')
         ->assertSee('$12,000.00')
         ->assertSee('$24,000.00')
-        ->assertSee('$1,500.00')
+        ->assertSee('$28,400.00')
         ->assertSee('$1,940,433.54')
         ->assertSee('$6,608.00')
         ->assertDontSee('$2,166.67');
@@ -242,7 +243,10 @@ it('does not copy a shared loan or another property onto this row', function () 
     expect($rows['First house']['repayment'])->toBe(111.0)
         ->and($rows['First house']['interest'])->toBeNull()
         ->and($rows['Second house']['repayment'])->toBe(222.0)
+        ->and($rows['First house']['period_expenses'])->toBe(1332.0)
         ->and($rows['Second house']['interest'])->toBe(80.0)
+        ->and($rows['Second house']['period_expenses'])->toBe(2744.0)
         ->and($rows['Split house']['repayment'])->toBe(900.0)
+        ->and($rows['Split house']['period_expenses'])->toBe(900.0)
         ->and($rows->sum('repayment'))->toBe(1233.0);
 });

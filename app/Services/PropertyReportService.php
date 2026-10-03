@@ -160,6 +160,7 @@ class PropertyReportService
                 $end
             );
             $extraPl = $this->aggregateTransactions($extraLoanTransactions);
+            $pl = $this->includeAllExpenses($asset, $pl, $extraPl, $start, $end);
             $yield = $this->propertyYield($asset, $pl, $start, $end);
             $holding = $this->holdingFigures($asset, $pl, $extraPl, $holdingTransactions, $loanAccount);
 
@@ -429,6 +430,7 @@ class PropertyReportService
                 $query->whereIn('transaction_type', [
                     'loan_repayments',
                     'loan_interest',
+                    'loan_fees',
                     'land_tax',
                     'valuation_and_rates',
                     'oc_fees',
@@ -619,6 +621,100 @@ class PropertyReportService
         }
 
         return $query;
+    }
+
+    /**
+     * Expenses used for net and yield are every cost for the period: recorded
+     * expenses, loan costs on the loan account, and council, land tax, strata,
+     * or the repayment saved on the property when that cost was not recorded.
+     *
+     * @param  array{income: array{total: float}, expenses: array{by_type: array<string, array{amount: float}>, total: float}, net: float}  $pl
+     * @param  array{expenses: array{by_type: array<string, array{amount: float}>}}  $extraPl
+     * @return array{income: array{total: float}, expenses: array{by_type: array<string, array{amount: float}>, total: float}, net: float}
+     */
+    private function includeAllExpenses(Asset $asset, array $pl, array $extraPl, Carbon $start, Carbon $end): array
+    {
+        $council = $this->recordedOrSaved($pl, $extraPl, 'valuation_and_rates', $asset->council_rates_amount);
+        $landTax = $this->recordedOrSaved($pl, $extraPl, 'land_tax', $asset->land_tax_amount);
+        $strata = $this->recordedOrSaved($pl, $extraPl, 'oc_fees', $asset->owners_corp_amount);
+        $repayments = $this->combinedExpense($pl, $extraPl, 'loan_repayments');
+        $interest = $this->combinedExpense($pl, $extraPl, 'loan_interest');
+        $fees = $this->combinedExpense($pl, $extraPl, 'loan_fees');
+
+        if ($repayments <= 0) {
+            $repayments = $this->periodAmountFromInstalment(
+                $asset->loan_payment_amount !== null ? (float) $asset->loan_payment_amount : null,
+                $asset->loan_payment_frequency,
+                $start,
+                $end
+            );
+        }
+
+        $replaced = $this->expenseAmount($pl, 'valuation_and_rates')
+            + $this->expenseAmount($pl, 'land_tax')
+            + $this->expenseAmount($pl, 'oc_fees')
+            + $this->expenseAmount($pl, 'loan_repayments')
+            + $this->expenseAmount($pl, 'loan_interest')
+            + $this->expenseAmount($pl, 'loan_fees');
+
+        $pl['expenses']['total'] = round(
+            $pl['expenses']['total'] - $replaced + $council + $landTax + $strata + $repayments + $interest + $fees,
+            2
+        );
+        $pl['net'] = round($pl['income']['total'] - $pl['expenses']['total'], 2);
+
+        return $pl;
+    }
+
+    /**
+     * @param  array{expenses: array{by_type: array<string, array{amount: float}>}}  $pl
+     * @param  array{expenses: array{by_type: array<string, array{amount: float}>}}  $extraPl
+     */
+    private function recordedOrSaved(array $pl, array $extraPl, string $type, mixed $saved): float
+    {
+        $recorded = $this->combinedExpense($pl, $extraPl, $type);
+
+        if ($recorded > 0) {
+            return $recorded;
+        }
+
+        return $this->positiveAmount($saved !== null ? (float) $saved : null) ?? 0.0;
+    }
+
+    /**
+     * @param  array{expenses: array{by_type: array<string, array{amount: float}>}}  $pl
+     * @param  array{expenses: array{by_type: array<string, array{amount: float}>}}  $extraPl
+     */
+    private function combinedExpense(array $pl, array $extraPl, string $type): float
+    {
+        return round($this->expenseAmount($pl, $type) + $this->expenseAmount($extraPl, $type), 2);
+    }
+
+    /**
+     * @param  array{expenses: array{by_type: array<string, array{amount: float}>}}  $pl
+     */
+    private function expenseAmount(array $pl, string $type): float
+    {
+        return round((float) ($pl['expenses']['by_type'][$type]['amount'] ?? 0), 2);
+    }
+
+    private function periodAmountFromInstalment(?float $amount, ?string $frequency, Carbon $start, Carbon $end): float
+    {
+        $amount = $this->positiveAmount($amount);
+        if ($amount === null) {
+            return 0.0;
+        }
+
+        $annual = match (strtolower(trim((string) $frequency))) {
+            'weekly' => $amount * 52,
+            'fortnightly' => $amount * 26,
+            'quarterly' => $amount * 4,
+            'yearly', 'annually', 'annual' => $amount,
+            default => $amount * 12,
+        };
+        $days = max(1, $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1);
+
+        return round($annual * $days / 365, 2);
     }
 
     /**
