@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\ChartOfAccount;
+use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\Lease;
 use App\Models\Tenant;
@@ -864,10 +865,6 @@ class PropertyReportService
      * @param  array<string, mixed>  $measured
      * @return array<string, mixed>
      */
-    /**
-     * @param  array<string, mixed>  $measured
-     * @return array<string, mixed>
-     */
     private function interestFigure(array $measured): array
     {
         $recorded = $this->combinedExpense($measured['base_pl'], $measured['extra_pl'], 'loan_interest');
@@ -908,8 +905,10 @@ class PropertyReportService
                 $text .= ' The Interest column is '.$this->moneyLabel($column).'.';
             }
         }
-        if ($unallocated >= 0.01) {
-            $text .= ' This entity has '.$this->moneyLabel($unallocated).' more manual journal interest that does not name a property, so it is not on this row.';
+        if (abs($unallocated) >= 0.01) {
+            $text .= $unallocated > 0
+                ? ' This entity has '.$this->moneyLabel($unallocated).' more manual journal interest that does not name a property, so it is not on this row.'
+                : ' This entity has '.$this->moneyLabel(abs($unallocated)).' of manual journal interest reductions that do not name a property, so they are not on this row.';
         }
 
         return $this->figure('interest', 'Interest', $column, $text, $lines);
@@ -1425,10 +1424,11 @@ class PropertyReportService
             return [];
         }
 
+        $interestCode = (string) config('financial.report_accounts.interest_expense', '7500');
         $accountIds = ChartOfAccount::query()
-            ->where(function ($query) {
-                $query->where('account_code', (string) config('financial.report_accounts.interest_expense', '7500'))
-                    ->orWhere('account_name', 'Interest Expense');
+            ->where(function ($query) use ($interestCode) {
+                $query->where('account_code', $interestCode)
+                    ->orWhereRaw('LOWER(TRIM(account_name)) = ?', ['interest expense']);
             })
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
@@ -1457,7 +1457,14 @@ class PropertyReportService
         }
 
         $lines = JournalLine::query()
-            ->with(['journalEntry', 'trackingCategory', 'trackingSubCategory'])
+            ->with([
+                'journalEntry.journalLines.trackingCategory',
+                'journalEntry.journalLines.trackingSubCategory',
+                'journalEntry.reverses.journalLines.trackingCategory',
+                'journalEntry.reverses.journalLines.trackingSubCategory',
+                'trackingCategory',
+                'trackingSubCategory',
+            ])
             ->whereIn('chart_of_account_id', $accountIds)
             ->whereHas('journalEntry', function ($query) use ($entityIds, $start, $end) {
                 $query->whereIn('business_entity_id', $entityIds)
@@ -1478,7 +1485,7 @@ class PropertyReportService
                 continue;
             }
             $amount = round((float) $line->debit_amount - (float) $line->credit_amount, 2);
-            if (abs($amount) < 0.005) {
+            if (abs($amount) < 0.005 || $this->offsetsOpeningInterest($entry)) {
                 continue;
             }
 
@@ -1522,13 +1529,36 @@ class PropertyReportService
     private function matchInterestAsset(Collection $assets, JournalLine $line): ?Asset
     {
         $entry = $line->journalEntry;
-        $haystack = $this->normalizeMatchText(implode(' ', array_filter([
+        $parts = [
             $line->description,
+            $line->reference,
             $entry?->description,
             $entry?->reference_number,
             $line->trackingCategory?->name,
             $line->trackingSubCategory?->name,
-        ])));
+        ];
+        foreach ($entry?->journalLines ?? [] as $sibling) {
+            if ((int) $sibling->id === (int) $line->id) {
+                continue;
+            }
+            $parts[] = $sibling->trackingCategory?->name;
+            $parts[] = $sibling->trackingSubCategory?->name;
+        }
+        $original = $entry?->reverses;
+        if ($original !== null) {
+            $parts[] = $original->description;
+            $parts[] = $original->reference_number;
+            foreach ($original->journalLines as $originalLine) {
+                $parts[] = $originalLine->description;
+                $parts[] = $originalLine->reference;
+                $parts[] = $originalLine->trackingCategory?->name;
+                $parts[] = $originalLine->trackingSubCategory?->name;
+            }
+        }
+        $haystack = $this->normalizeMatchText(implode(' ', array_filter(
+            $parts,
+            fn (mixed $part): bool => trim((string) $part) !== ''
+        )));
         if ($haystack === '') {
             return null;
         }
@@ -1618,12 +1648,27 @@ class PropertyReportService
     }
 
     /**
+     * A void of an opening balance is dated on the original and is not period interest.
+     * A later reverse of that opening balance stays in the period it was posted.
+     */
+    private function offsetsOpeningInterest(JournalEntry $entry): bool
+    {
+        $original = $entry->reverses;
+        if ($original === null || ! $original->isOpeningBalance()) {
+            return false;
+        }
+
+        return $original->entry_date?->toDateString() === $entry->entry_date?->toDateString();
+    }
+
+    /**
      * Snapshot and period figures for one property.
      *
      * Loan balance is the latest loan-statement balance. Repayment is the latest
-     * loan repayment in the period. Interest, council, land tax, and strata are
-     * amounts paid in the period. Each falls back to the amount saved on the property
-     * when the books have nothing for that figure. Rent received is income.
+     * loan repayment in the period. Interest is loan interest in the period plus
+     * manual journals to Interest Expense, and has no saved-amount fallback.
+     * Council, land tax, and strata are amounts paid in the period, or the amount
+     * saved on the property when nothing was recorded. Rent received is income.
      * Rent paid is an expense.
      *
      * @param  array{income: array{by_type: array<string, array{label: string, amount: float}>, total: float}, expenses: array{by_type: array<string, array{label: string, amount: float}>, total: float}}  $pl

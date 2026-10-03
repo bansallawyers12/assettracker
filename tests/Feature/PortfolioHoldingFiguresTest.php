@@ -8,6 +8,7 @@ use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\Tenant;
+use App\Models\TrackingCategory;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\PropertyReportService;
@@ -519,6 +520,54 @@ it('adds manual journal interest and does not double count a posted transaction'
         ->and(collect($namedInterest['lines'])->contains(fn (array $line) => ($line['mark'] ?? '') === 'Manual journal to Interest Expense.'))->toBeTrue();
 });
 
+it('keeps a voided manual journal off the interest column and follows tracking on the other line', function () {
+    $user = User::factory()->create();
+    $entity = portfolioHoldingEntity();
+    $entity->update(['registered_email' => 'portfolio-interest-void@example.test']);
+    $named = Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Rented',
+        'name' => 'First Cranbury Road',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 100000,
+        'current_value' => 100000,
+        'status' => 'Active',
+    ]);
+    Asset::create([
+        'business_entity_id' => $entity->id,
+        'asset_type' => 'House Rented',
+        'name' => 'Second Manning Road',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 100000,
+        'current_value' => 100000,
+        'status' => 'Active',
+    ]);
+
+    portfolioManualInterest($entity, $user, 'MJ-HEADER', 80, 'Interest First Cranbury Road', '2026-04-01', null, 'Interest');
+    $original = JournalEntry::query()->where('reference_number', 'MJ-HEADER')->sole();
+    portfolioManualInterest($entity, $user, 'VOID-MJ-HEADER', -80, 'Void of MJ-HEADER', '2026-04-01', null, 'Interest', $original->id);
+
+    $category = TrackingCategory::create([
+        'business_entity_id' => $entity->id,
+        'name' => 'Second Manning Road',
+        'is_active' => true,
+    ]);
+    portfolioManualInterest($entity, $user, 'MJ-TRACK', 55, 'Loan interest', '2026-05-01', null, 'Loan interest', null, $category->id);
+    portfolioManualInterest($entity, $user, 'OPEN-7500-'.$entity->id, 40, 'Opening interest', '2026-01-01');
+    $opening = JournalEntry::query()->where('reference_number', 'OPEN-7500-'.$entity->id)->sole();
+    portfolioManualInterest($entity, $user, 'VOID-OPEN-7500-'.$entity->id, -40, 'Void of opening interest', '2026-01-01', null, 'Interest', $opening->id);
+    portfolioManualInterest($entity, $user, 'MJ-CREDIT', -12, 'Interest', '2026-05-15');
+
+    $rows = collect(app(PropertyReportService::class)->portfolio([$entity->id], '2025-07-01', '2026-06-30')['properties'])
+        ->keyBy(fn (array $row) => $row['asset']->name);
+    $namedReport = app(PropertyReportService::class)->propertyProfitLoss($named, '2025-07-01', '2026-06-30');
+    $namedInterest = collect($namedReport['breakdown']['figures'])->firstWhere('key', 'interest');
+
+    expect($rows['First Cranbury Road']['interest'])->toBeNull()
+        ->and($rows['Second Manning Road']['interest'])->toBe(55.0)
+        ->and($namedInterest['text'])->toContain('$12.00 of manual journal interest reductions');
+});
+
 function portfolioManualInterest(
     BusinessEntity $entity,
     User $user,
@@ -526,7 +575,10 @@ function portfolioManualInterest(
     float $amount,
     string $description,
     string $date,
-    ?string $sourceType = null
+    ?string $sourceType = null,
+    ?string $lineDescription = null,
+    ?int $reversesJournalEntryId = null,
+    ?int $loanLineTrackingCategoryId = null
 ): void {
     $interest = ChartOfAccount::query()->firstOrCreate(
         ['account_code' => '7500'],
@@ -556,19 +608,23 @@ function portfolioManualInterest(
         'is_posted' => true,
         'created_by' => $user->id,
         'source_type' => $sourceType,
+        'reverses_journal_entry_id' => $reversesJournalEntryId,
     ]);
+    $debit = $amount > 0 ? $amount : 0;
+    $credit = $amount < 0 ? abs($amount) : 0;
     JournalLine::create([
         'journal_entry_id' => $entry->id,
         'chart_of_account_id' => $interest->id,
-        'debit_amount' => $amount,
-        'credit_amount' => 0,
-        'description' => $description,
+        'debit_amount' => $debit,
+        'credit_amount' => $credit,
+        'description' => $lineDescription ?? $description,
     ]);
     JournalLine::create([
         'journal_entry_id' => $entry->id,
         'chart_of_account_id' => $loan->id,
-        'debit_amount' => 0,
-        'credit_amount' => $amount,
-        'description' => $description,
+        'debit_amount' => $credit,
+        'credit_amount' => $debit,
+        'description' => $lineDescription ?? $description,
+        'tracking_category_id' => $loanLineTrackingCategoryId,
     ]);
 }
