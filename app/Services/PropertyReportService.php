@@ -4,8 +4,6 @@ namespace App\Services;
 
 use App\Models\Asset;
 use App\Models\BankAccount;
-use App\Models\Lease;
-use App\Models\Tenant;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -156,7 +154,7 @@ class PropertyReportService
             $pl = $this->aggregateTransactions($transactions);
             $extraPl = $this->aggregateTransactions($extraLoanTransactions);
             $yield = $this->propertyYield($asset, $pl, $start, $end);
-            $holding = $this->holdingFigures($asset, $pl, $extraPl, $holdingTransactions, $yield, $loanAccount, $start, $end);
+            $holding = $this->holdingFigures($asset, $pl, $extraPl, $holdingTransactions, $loanAccount);
 
             $row = [
                 'asset' => $asset,
@@ -168,7 +166,6 @@ class PropertyReportService
                 'council_rates' => $holding['council_rates'],
                 'land_tax' => $holding['land_tax'],
                 'strata' => $holding['strata'],
-                'monthly_rent' => $holding['monthly_rent'],
                 'period_income' => $pl['income']['total'],
                 'period_expenses' => $pl['expenses']['total'],
                 'period_net' => $pl['net'],
@@ -192,7 +189,6 @@ class PropertyReportService
             $totals['total_council_rates'] = $this->addMoney($totals['total_council_rates'], $row['council_rates']);
             $totals['total_land_tax'] = $this->addMoney($totals['total_land_tax'], $row['land_tax']);
             $totals['total_strata'] = $this->addMoney($totals['total_strata'], $row['strata']);
-            $totals['total_monthly_rent'] = $this->addMoney($totals['total_monthly_rent'], $row['monthly_rent']);
             $totals['total_period_income'] += $row['period_income'];
             $totals['total_period_expenses'] += $row['period_expenses'];
             $totals['total_period_net'] += $row['period_net'];
@@ -461,21 +457,19 @@ class PropertyReportService
      * Loan balance is the latest loan-statement balance. Repayment is the latest
      * loan repayment in the period. Interest, council, land tax, and strata are
      * amounts paid in the period. Each falls back to the amount saved on the property
-     * when the books have nothing for that figure. Monthly rent is period rent
-     * spread over a month, then the lease or tenant rent.
+     * when the books have nothing for that figure. Rent received is income.
+     * Rent paid is an expense.
      *
      * @param  array{income: array{by_type: array<string, array{label: string, amount: float}>, total: float}, expenses: array{by_type: array<string, array{label: string, amount: float}>, total: float}}  $pl
      * @param  array{income: array{by_type: array<string, array{label: string, amount: float}>, total: float}, expenses: array{by_type: array<string, array{label: string, amount: float}>, total: float}}  $extraPl
      * @param  Collection<int, Transaction>  $holdingTransactions
-     * @param  array{annual_rent: float}  $yield
      * @return array{
      *     loan_balance: float|null,
      *     repayment: float|null,
      *     interest: float|null,
      *     council_rates: float|null,
      *     land_tax: float|null,
-     *     strata: float|null,
-     *     monthly_rent: float|null
+     *     strata: float|null
      * }
      */
     private function holdingFigures(
@@ -483,10 +477,7 @@ class PropertyReportService
         array $pl,
         array $extraPl,
         Collection $holdingTransactions,
-        array $yield,
-        ?BankAccount $loanAccount,
-        Carbon $start,
-        Carbon $end
+        ?BankAccount $loanAccount
     ): array {
         return [
             'loan_balance' => $this->loanBalance($asset, $loanAccount),
@@ -499,7 +490,6 @@ class PropertyReportService
                 ?? $this->positiveAmount($asset->land_tax_amount !== null ? (float) $asset->land_tax_amount : null),
             'strata' => $this->periodExpense($pl, $extraPl, 'oc_fees')
                 ?? $this->positiveAmount($asset->owners_corp_amount !== null ? (float) $asset->owners_corp_amount : null),
-            'monthly_rent' => $this->monthlyRent($asset, $yield, $start, $end),
         ];
     }
 
@@ -579,73 +569,6 @@ class PropertyReportService
         return ($date !== null ? Carbon::parse($date)->toDateString() : '').'-'.str_pad((string) $transaction->id, 12, '0', STR_PAD_LEFT);
     }
 
-    /**
-     * @param  array{annual_rent: float}  $yield
-     */
-    private function monthlyRent(Asset $asset, array $yield, Carbon $start, Carbon $end): ?float
-    {
-        if ($yield['annual_rent'] > 0) {
-            return round($yield['annual_rent'] / 12, 2);
-        }
-
-        $lease = $asset->leases
-            ->filter(fn (Lease $lease) => $this->overlapsPeriod($lease->start_date, $lease->end_date, $start, $end))
-            ->sortByDesc(fn (Lease $lease) => $lease->start_date?->getTimestamp() ?? 0)
-            ->first();
-
-        if ($lease !== null) {
-            $fromLease = $this->toMonthly(
-                $lease->rental_amount !== null ? (float) $lease->rental_amount : null,
-                $lease->payment_frequency
-            );
-            if ($fromLease !== null) {
-                return $fromLease;
-            }
-        }
-
-        $tenant = $asset->tenants
-            ->filter(fn (Tenant $tenant) => $this->overlapsPeriod($tenant->move_in_date, $tenant->move_out_date, $start, $end))
-            ->sortByDesc(fn (Tenant $tenant) => $tenant->move_in_date?->getTimestamp() ?? 0)
-            ->first();
-
-        if ($tenant === null) {
-            return null;
-        }
-
-        return $this->toMonthly(
-            $tenant->rent_amount !== null ? (float) $tenant->rent_amount : null,
-            $tenant->rent_frequency
-        );
-    }
-
-    private function overlapsPeriod(mixed $starts, mixed $ends, Carbon $periodStart, Carbon $periodEnd): bool
-    {
-        $startsAt = $starts !== null ? Carbon::parse($starts)->startOfDay() : null;
-        $endsAt = $ends !== null ? Carbon::parse($ends)->endOfDay() : null;
-
-        if ($startsAt !== null && $startsAt->gt($periodEnd)) {
-            return false;
-        }
-
-        return $endsAt === null || $endsAt->gte($periodStart);
-    }
-
-    private function toMonthly(?float $amount, ?string $frequency): ?float
-    {
-        $amount = $this->positiveAmount($amount);
-        if ($amount === null) {
-            return null;
-        }
-
-        return match (strtolower(trim((string) $frequency))) {
-            'weekly' => round(($amount * 52) / 12, 2),
-            'fortnightly' => round(($amount * 26) / 12, 2),
-            'quarterly' => round($amount / 3, 2),
-            'yearly', 'annually', 'annual' => round($amount / 12, 2),
-            default => $amount,
-        };
-    }
-
     private function positiveAmount(?float $amount): ?float
     {
         if ($amount === null || $amount <= 0) {
@@ -677,7 +600,7 @@ class PropertyReportService
         $query = Asset::query()
             ->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
             ->whereHas('businessEntity', fn ($q) => $q->forFinancialReports())
-            ->with(['businessEntity', 'bankAccounts', 'tenants', 'leases'])
+            ->with(['businessEntity', 'bankAccounts'])
             ->orderBy('name');
 
         if ($entityIds !== null && $entityIds !== []) {
@@ -734,7 +657,6 @@ class PropertyReportService
             'total_council_rates' => null,
             'total_land_tax' => null,
             'total_strata' => null,
-            'total_monthly_rent' => null,
             'total_period_income' => 0.0,
             'total_period_expenses' => 0.0,
             'total_period_net' => 0.0,

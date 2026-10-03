@@ -46,7 +46,7 @@
                         </div>
                         <h1 class="portfolio-title">Property portfolio</h1>
                         <p class="portfolio-lead mt-2 max-w-2xl">
-                            Purchase price, loan position, holding costs, rent, and period performance.
+                            Purchase price, loan position, holding costs, and period performance.
                         </p>
                         <div class="mt-4 flex flex-wrap gap-2">
                             <span class="portfolio-chip">
@@ -232,7 +232,7 @@
                 <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
                         <h2 class="portfolio-section-title text-base">Properties</h2>
-                        <p class="portfolio-section-desc mt-1">Loan balance is the latest loan statement, or the balance saved on the property. Repayment is the latest loan repayment in this period, or the repayment saved on the property. Interest, council rates, land tax, and strata are amounts paid in this period, or the amount saved on the property when nothing was paid. Monthly rent is rent received in this period, or the lease or tenant rent.</p>
+                        <p class="portfolio-section-desc mt-1">Loan balance is the latest loan statement, or the balance saved on the property. Repayment is the latest loan repayment in this period, or the repayment saved on the property. Interest, council rates, land tax, and strata are amounts paid in this period, or the amount saved on the property when nothing was paid. Rent received is included in Income. Rent paid is included in Expenses.</p>
                     </div>
                     @if ($propertyCount > 0)
                         <span class="inline-flex items-center self-start rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 tabular-nums tracking-tight">
@@ -323,10 +323,6 @@
                                         <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Strata</p>
                                         <p class="portfolio-money mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $money($row['strata']) }}</p>
                                     </div>
-                                    <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
-                                        <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Monthly rent</p>
-                                        <p class="portfolio-money mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $money($row['monthly_rent']) }}</p>
-                                    </div>
                                 </div>
                             </a>
                         @endforeach
@@ -346,7 +342,6 @@
                                     <th class="text-right min-w-[110px]">Council rates</th>
                                     <th class="text-right min-w-[100px]">Land tax</th>
                                     <th class="text-right min-w-[90px]">Strata</th>
-                                    <th class="text-right min-w-[110px]">Monthly rent</th>
                                     <th class="text-right min-w-[100px]">Income</th>
                                     <th class="text-right min-w-[100px]">Expenses</th>
                                     <th class="text-right min-w-[100px]">Net</th>
@@ -385,7 +380,6 @@
                                         <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{{ $money($row['council_rates']) }}</td>
                                         <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{{ $money($row['land_tax']) }}</td>
                                         <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{{ $money($row['strata']) }}</td>
-                                        <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{{ $money($row['monthly_rent']) }}</td>
                                         <td class="text-right portfolio-money text-emerald-700 dark:text-emerald-300">
                                             ${{ number_format($row['period_income'], 2) }}
                                         </td>
@@ -414,7 +408,6 @@
                                     <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_council_rates']) }}</td>
                                     <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_land_tax']) }}</td>
                                     <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_strata']) }}</td>
-                                    <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_rent']) }}</td>
                                     <td class="py-4 text-right portfolio-money font-semibold text-emerald-700 dark:text-emerald-300">${{ number_format($totals['total_period_income'], 2) }}</td>
                                     <td class="py-4 text-right portfolio-money font-semibold text-rose-700 dark:text-rose-300">${{ number_format($totals['total_period_expenses'], 2) }}</td>
                                     <td class="py-4 text-right portfolio-money font-semibold {{ $netPositive ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300' }}">
@@ -448,10 +441,6 @@
                             <div>
                                 <p class="text-gray-500 dark:text-gray-400 text-xs font-medium">Loan balance</p>
                                 <p class="portfolio-money mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_loan_balance']) }}</p>
-                            </div>
-                            <div>
-                                <p class="text-gray-500 dark:text-gray-400 text-xs font-medium">Monthly rent</p>
-                                <p class="portfolio-money mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_rent']) }}</p>
                             </div>
                         </div>
                     </div>
