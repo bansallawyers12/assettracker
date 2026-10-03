@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Asset;
 use App\Models\BankAccount;
+use App\Models\ChartOfAccount;
+use App\Models\JournalLine;
 use App\Models\Lease;
 use App\Models\Tenant;
 use App\Models\Transaction;
@@ -122,6 +124,11 @@ class PropertyReportService
             $end,
             $basis
         );
+        $manualInterest = $this->manualInterestAllocations(
+            $assets->pluck('business_entity_id')->map(fn ($id) => (int) $id)->unique()->values()->all(),
+            $start,
+            $end
+        );
 
         $properties = [];
         $totals = $this->emptyPortfolioTotals();
@@ -141,7 +148,8 @@ class PropertyReportService
                 $loanAccount,
                 $soleLoanAccount,
                 $start,
-                $end
+                $end,
+                $manualInterest[(int) $asset->id] ?? $this->emptyManualInterest()
             );
 
             $row = [
@@ -459,6 +467,7 @@ class PropertyReportService
                 ->get((int) $loanAccount->id, collect())
             : collect();
 
+        $manualInterest = $this->manualInterestAllocations([(int) $asset->business_entity_id], $start, $end);
         $measured = $this->measureFromCollections(
             $asset,
             $transactions,
@@ -466,7 +475,8 @@ class PropertyReportService
             $loanAccount,
             $loanAccount !== null && $sharerNames === [],
             $start,
-            $end
+            $end,
+            $manualInterest[(int) $asset->id] ?? $this->emptyManualInterest()
         );
         $measured['sharer_names'] = $sharerNames;
         $measured['omitted'] = $this->omittedTransactions(
@@ -536,8 +546,10 @@ class PropertyReportService
         ?BankAccount $loanAccount,
         bool $soleLoanAccount,
         Carbon $start,
-        Carbon $end
+        Carbon $end,
+        array $manualInterest = []
     ): array {
+        $manualInterest = $manualInterest === [] ? $this->emptyManualInterest() : $manualInterest;
         $seenIds = $transactions->pluck('id')->map(fn ($id) => (int) $id)->all();
         [$includedLoan, $excludedLoan] = $this->classifyLoanTransactions(
             $loanTransactions,
@@ -552,19 +564,22 @@ class PropertyReportService
             $this->includeReceivedRent($asset, $basePl, $start, $end),
             $extraPl,
             $start,
-            $end
+            $end,
+            (float) $manualInterest['amount']
         );
 
         return [
             'pl' => $pl,
             'base_pl' => $basePl,
             'extra_pl' => $extraPl,
+            'manual_interest' => $manualInterest,
             'holding' => $this->holdingFigures(
                 $asset,
                 $basePl,
                 $extraPl,
                 $transactions->concat($includedLoan),
-                $loanAccount
+                $loanAccount,
+                (float) $manualInterest['amount']
             ),
             'yield' => $this->propertyYield($asset, $pl, $start, $end),
             'transactions' => $transactions,
@@ -642,16 +657,7 @@ class PropertyReportService
                 ),
                 $this->loanBalanceFigure($asset, $measured),
                 $this->repaymentFigure($asset, $measured),
-                $this->recordedOrSavedFigure(
-                    'interest',
-                    'Interest',
-                    'loan_interest',
-                    'Interest',
-                    $holding['interest'],
-                    null,
-                    'No loan interest was recorded in this period.',
-                    $measured
-                ),
+                $this->interestFigure($measured),
                 $this->recordedOrSavedFigure(
                     'council_rates',
                     'Council rates',
@@ -858,6 +864,57 @@ class PropertyReportService
      * @param  array<string, mixed>  $measured
      * @return array<string, mixed>
      */
+    /**
+     * @param  array<string, mixed>  $measured
+     * @return array<string, mixed>
+     */
+    private function interestFigure(array $measured): array
+    {
+        $recorded = $this->combinedExpense($measured['base_pl'], $measured['extra_pl'], 'loan_interest');
+        $manual = $measured['manual_interest'] ?? $this->emptyManualInterest();
+        $manualAmount = round((float) $manual['amount'], 2);
+        $unallocated = round((float) $manual['unallocated'], 2);
+        $column = $measured['holding']['interest'];
+        $lines = [];
+
+        if (abs($recorded) >= 0.01) {
+            $lines = $this->presentLines($this->entriesFor(
+                $measured['transactions']->concat($measured['included_loan']),
+                'expense',
+                'loan_interest'
+            ));
+            if ($recorded < 0 && $column === null) {
+                foreach ($lines as $index => $line) {
+                    $lines[$index]['mark'] = 'Included in expenses. The column is blank when interest is not positive.';
+                }
+            }
+        }
+
+        $lines = array_merge($lines, $manual['lines']);
+        $parts = [];
+        if (abs($recorded) >= 0.01) {
+            $parts[] = 'Interest recorded on transactions is '.$this->moneyLabel($recorded).'.';
+        }
+        if (abs($manualAmount) >= 0.01) {
+            $parts[] = $manualAmount > 0
+                ? 'Manual journals add '.$this->moneyLabel($manualAmount).'.'
+                : 'Manual journals reduce interest by '.$this->moneyLabel(abs($manualAmount)).'.';
+        }
+        if ($parts === []) {
+            $text = 'No loan interest was recorded in this period, and no manual journal posted Interest Expense for this property.';
+        } else {
+            $text = implode(' ', $parts);
+            if ($column !== null) {
+                $text .= ' The Interest column is '.$this->moneyLabel($column).'.';
+            }
+        }
+        if ($unallocated >= 0.01) {
+            $text .= ' This entity has '.$this->moneyLabel($unallocated).' more manual journal interest that does not name a property, so it is not on this row.';
+        }
+
+        return $this->figure('interest', 'Interest', $column, $text, $lines);
+    }
+
     private function recordedOrSavedFigure(
         string $key,
         string $label,
@@ -964,6 +1021,21 @@ class PropertyReportService
         foreach ($measured['pl']['expenses']['by_type'] as $type => $row) {
             $shown = round((float) $row['amount'], 2);
             $recorded = $this->combinedExpense($measured['base_pl'], $measured['extra_pl'], (string) $type);
+            if ((string) $type === 'loan_interest') {
+                $manualAmount = round((float) ($measured['manual_interest']['amount'] ?? 0), 2);
+                if (abs($recorded + $manualAmount - $shown) < 0.01) {
+                    if (abs($recorded) >= 0.01) {
+                        $lines = array_merge($lines, $this->presentLines($this->entriesFor(
+                            $measured['transactions']->concat($measured['included_loan']),
+                            'expense',
+                            'loan_interest'
+                        )));
+                    }
+                    $lines = array_merge($lines, $measured['manual_interest']['lines'] ?? []);
+
+                    continue;
+                }
+            }
             if (abs($recorded) >= 0.01 && abs($recorded - $shown) < 0.01) {
                 $lines = array_merge($lines, $this->presentLines($this->entriesFor(
                     $measured['transactions']->concat($measured['included_loan']),
@@ -1340,6 +1412,212 @@ class PropertyReportService
     }
 
     /**
+     * Posted manual journals to Interest Expense, allocated to a property when the
+     * journal names it, or when the entity has only one property.
+     *
+     * @param  list<int>  $entityIds
+     * @return array<int, array{amount: float, lines: list<array<string, mixed>>, unallocated: float}>
+     */
+    private function manualInterestAllocations(array $entityIds, Carbon $start, Carbon $end): array
+    {
+        $entityIds = array_values(array_filter($entityIds, fn (int $id) => $id > 0));
+        if ($entityIds === []) {
+            return [];
+        }
+
+        $accountIds = ChartOfAccount::query()
+            ->where(function ($query) {
+                $query->where('account_code', (string) config('financial.report_accounts.interest_expense', '7500'))
+                    ->orWhere('account_name', 'Interest Expense');
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+        if ($accountIds === []) {
+            return [];
+        }
+
+        $candidates = Asset::query()
+            ->whereIn('business_entity_id', $entityIds)
+            ->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
+            ->where(function ($query): void {
+                $query->whereNull('status')->orWhere('status', '!=', 'Inactive');
+            })
+            ->whereHas('businessEntity', fn ($query) => $query->forFinancialReports())
+            ->get(['id', 'business_entity_id', 'name', 'address', 'disposal_date']);
+
+        $byEntity = $candidates->groupBy(fn (Asset $asset) => (int) $asset->business_entity_id);
+        $allocated = [];
+        $unallocatedByEntity = [];
+        foreach ($entityIds as $entityId) {
+            $unallocatedByEntity[$entityId] = 0.0;
+            foreach ($byEntity->get($entityId, collect()) as $asset) {
+                $allocated[(int) $asset->id] = $this->emptyManualInterest();
+            }
+        }
+
+        $lines = JournalLine::query()
+            ->with(['journalEntry', 'trackingCategory', 'trackingSubCategory'])
+            ->whereIn('chart_of_account_id', $accountIds)
+            ->whereHas('journalEntry', function ($query) use ($entityIds, $start, $end) {
+                $query->whereIn('business_entity_id', $entityIds)
+                    ->whereNull('source_type')
+                    ->where('is_posted', true)
+                    ->whereColumn('total_debit', 'total_credit')
+                    ->whereBetween('entry_date', [$start->toDateString(), $end->toDateString()])
+                    ->where(function ($query) {
+                        $query->whereNull('reference_number')
+                            ->orWhere('reference_number', 'not like', 'OPEN-%');
+                    });
+            })
+            ->get();
+
+        foreach ($lines as $line) {
+            $entry = $line->journalEntry;
+            if ($entry === null) {
+                continue;
+            }
+            $amount = round((float) $line->debit_amount - (float) $line->credit_amount, 2);
+            if (abs($amount) < 0.005) {
+                continue;
+            }
+
+            $entityId = (int) $entry->business_entity_id;
+            $entityAssets = $byEntity->get($entityId, collect());
+            $asset = $this->matchInterestAsset($entityAssets, $line);
+            if ($asset === null) {
+                $active = $entityAssets->filter(fn (Asset $candidate) => $candidate->disposal_date === null);
+                if ($active->count() === 1) {
+                    $asset = $active->first();
+                }
+            }
+
+            $row = $this->manualInterestLine($line, $amount);
+            if ($asset === null) {
+                $unallocatedByEntity[$entityId] = round(($unallocatedByEntity[$entityId] ?? 0) + $amount, 2);
+
+                continue;
+            }
+
+            $assetId = (int) $asset->id;
+            if (! isset($allocated[$assetId])) {
+                $allocated[$assetId] = $this->emptyManualInterest();
+            }
+            $allocated[$assetId]['lines'][] = $row;
+            $allocated[$assetId]['amount'] = round($allocated[$assetId]['amount'] + $amount, 2);
+        }
+
+        foreach ($allocated as $assetId => $row) {
+            $asset = $candidates->first(fn (Asset $candidate) => (int) $candidate->id === (int) $assetId);
+            $entityId = $asset !== null ? (int) $asset->business_entity_id : 0;
+            $allocated[$assetId]['unallocated'] = round($unallocatedByEntity[$entityId] ?? 0, 2);
+        }
+
+        return $allocated;
+    }
+
+    /**
+     * @param  Collection<int, Asset>  $assets
+     */
+    private function matchInterestAsset(Collection $assets, JournalLine $line): ?Asset
+    {
+        $entry = $line->journalEntry;
+        $haystack = $this->normalizeMatchText(implode(' ', array_filter([
+            $line->description,
+            $entry?->description,
+            $entry?->reference_number,
+            $line->trackingCategory?->name,
+            $line->trackingSubCategory?->name,
+        ])));
+        if ($haystack === '') {
+            return null;
+        }
+
+        $best = null;
+        $bestLength = 0;
+        $tied = false;
+        foreach ($assets as $asset) {
+            foreach ($this->matchNeedles($asset) as $needle) {
+                if (! str_contains($haystack, $needle)) {
+                    continue;
+                }
+                $length = strlen($needle);
+                if ($best === null || $length > $bestLength) {
+                    $best = $asset;
+                    $bestLength = $length;
+                    $tied = false;
+                } elseif ($length === $bestLength && (int) $best->id !== (int) $asset->id) {
+                    $tied = true;
+                }
+            }
+        }
+
+        return $tied ? null : $best;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function matchNeedles(Asset $asset): array
+    {
+        $needles = [];
+        foreach ([$asset->name, $asset->address] as $value) {
+            $text = $this->normalizeMatchText($value);
+            if (strlen($text) >= 8) {
+                $needles[] = $text;
+            }
+        }
+
+        return array_values(array_unique($needles));
+    }
+
+    private function normalizeMatchText(?string $value): string
+    {
+        $value = strtolower(trim((string) $value));
+        $value = preg_replace('/[^a-z0-9]+/', ' ', $value) ?? '';
+
+        return trim($value);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function manualInterestLine(JournalLine $line, float $amount): array
+    {
+        $entry = $line->journalEntry;
+        $description = trim((string) ($line->description ?: $entry?->description ?: ''));
+        $reference = trim((string) ($entry?->reference_number ?? ''));
+        $when = $entry?->entry_date !== null ? Carbon::parse($entry->entry_date)->format('j M Y') : '—';
+
+        return [
+            'when' => $when,
+            'description' => $description !== '' ? $description : 'Manual journal',
+            'type' => 'Interest Expense',
+            'account' => $reference !== '' ? 'Manual journal '.$reference : 'Manual journal',
+            'amount' => round($amount, 2),
+            'mark' => 'Manual journal to Interest Expense.',
+            'business_entity_id' => null,
+            'bank_account_id' => null,
+            'transaction_id' => null,
+            'url' => $entry !== null
+                ? route('business-entities.financial-reports.journal-entries.show', [$entry->business_entity_id, $entry->id])
+                : null,
+        ];
+    }
+
+    /**
+     * @return array{amount: float, lines: list<array<string, mixed>>, unallocated: float}
+     */
+    private function emptyManualInterest(): array
+    {
+        return [
+            'amount' => 0.0,
+            'lines' => [],
+            'unallocated' => 0.0,
+        ];
+    }
+
+    /**
      * Snapshot and period figures for one property.
      *
      * Loan balance is the latest loan-statement balance. Repayment is the latest
@@ -1365,13 +1643,16 @@ class PropertyReportService
         array $pl,
         array $extraPl,
         Collection $holdingTransactions,
-        ?BankAccount $loanAccount
+        ?BankAccount $loanAccount,
+        float $manualInterest = 0.0
     ): array {
+        $interest = round($this->combinedExpense($pl, $extraPl, 'loan_interest') + $manualInterest, 2);
+
         return [
             'loan_balance' => $this->loanBalance($asset, $loanAccount),
             'repayment' => $this->latestTypedAmount($holdingTransactions, 'loan_repayments')
                 ?? $this->positiveAmount($asset->loan_payment_amount !== null ? (float) $asset->loan_payment_amount : null),
-            'interest' => $this->periodExpense($pl, $extraPl, 'loan_interest'),
+            'interest' => $this->positiveAmount($interest),
             'council_rates' => $this->periodExpense($pl, $extraPl, 'valuation_and_rates')
                 ?? $this->positiveAmount($asset->council_rates_amount !== null ? (float) $asset->council_rates_amount : null),
             'land_tax' => $this->periodExpense($pl, $extraPl, 'land_tax')
@@ -1514,13 +1795,13 @@ class PropertyReportService
      * @param  array{expenses: array{by_type: array<string, array{amount: float}>}}  $extraPl
      * @return array{income: array{total: float}, expenses: array{by_type: array<string, array{amount: float}>, total: float}, net: float}
      */
-    private function includeAllExpenses(Asset $asset, array $pl, array $extraPl, Carbon $start, Carbon $end): array
+    private function includeAllExpenses(Asset $asset, array $pl, array $extraPl, Carbon $start, Carbon $end, float $manualInterest = 0.0): array
     {
         $council = $this->recordedOrSaved($pl, $extraPl, 'valuation_and_rates', $asset->council_rates_amount);
         $landTax = $this->recordedOrSaved($pl, $extraPl, 'land_tax', $asset->land_tax_amount);
         $strata = $this->recordedOrSaved($pl, $extraPl, 'oc_fees', $asset->owners_corp_amount);
         $repayments = $this->combinedExpense($pl, $extraPl, 'loan_repayments');
-        $interest = $this->combinedExpense($pl, $extraPl, 'loan_interest');
+        $interest = round($this->combinedExpense($pl, $extraPl, 'loan_interest') + $manualInterest, 2);
         $fees = $this->combinedExpense($pl, $extraPl, 'loan_fees');
 
         if ($repayments <= 0) {

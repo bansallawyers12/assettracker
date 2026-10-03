@@ -4,6 +4,9 @@ use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BankAccountStatement;
 use App\Models\BusinessEntity;
+use App\Models\ChartOfAccount;
+use App\Models\JournalEntry;
+use App\Models\JournalLine;
 use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Models\User;
@@ -449,3 +452,121 @@ it('keeps negative interest and does not borrow another property from a shared l
     expect($soleFigures['repayment']['amount'])->toBe(640.0)
         ->and($soleFigures['loan_balance']['text'])->not->toContain('Parked house');
 });
+
+it('adds manual journal interest and does not double count a posted transaction', function () {
+    $user = User::factory()->create();
+    $soleEntity = portfolioHoldingEntity();
+    $soleEntity->update(['registered_email' => 'portfolio-interest-sole@example.test']);
+    $sole = Asset::create([
+        'business_entity_id' => $soleEntity->id,
+        'asset_type' => 'House Rented',
+        'name' => 'Sole Interest House',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 100000,
+        'current_value' => 100000,
+        'status' => 'Active',
+    ]);
+    portfolioManualInterest($soleEntity, $user, 'MJ-SOLE', 250, 'Loan interest', '2026-03-15');
+    portfolioManualInterest($soleEntity, $user, 'MJ-OLD', 999, 'Loan interest', '2020-01-01');
+    portfolioManualInterest($soleEntity, $user, 'OPEN-1', 80, 'Opening interest', '2026-03-15');
+
+    $sharedEntity = portfolioHoldingEntity();
+    $sharedEntity->update(['registered_email' => 'portfolio-interest-shared@example.test', 'legal_name' => 'Shared Interest Pty Ltd']);
+    $named = Asset::create([
+        'business_entity_id' => $sharedEntity->id,
+        'asset_type' => 'House Rented',
+        'name' => 'First Cranbury Road',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 100000,
+        'current_value' => 100000,
+        'status' => 'Active',
+    ]);
+    $other = Asset::create([
+        'business_entity_id' => $sharedEntity->id,
+        'asset_type' => 'House Rented',
+        'name' => 'Second Manning Road',
+        'acquisition_date' => '2020-01-01',
+        'acquisition_cost' => 100000,
+        'current_value' => 100000,
+        'status' => 'Active',
+    ]);
+    portfolioHoldingTransaction($sharedEntity, portfolioHoldingBank($sharedEntity, BankAccount::PURPOSE_GENERAL, 'Operating'), 'loan_interest', 40, '2026-02-01', $named);
+    portfolioManualInterest($sharedEntity, $user, 'MJ-NAMED', 80, 'Interest First Cranbury Road', '2026-04-01');
+    portfolioManualInterest($sharedEntity, $user, 'MJ-PLAIN', 30, 'Interest', '2026-05-01');
+    portfolioManualInterest($sharedEntity, $user, 'MJ-TXN', 999, 'Interest First Cranbury Road', '2026-05-02', Transaction::class);
+
+    $service = app(PropertyReportService::class);
+    $soleRow = collect($service->portfolio([$soleEntity->id], '2025-07-01', '2026-06-30')['properties'])->first();
+    $sharedRows = collect($service->portfolio([$sharedEntity->id], '2025-07-01', '2026-06-30')['properties'])
+        ->keyBy(fn (array $row) => $row['asset']->name);
+
+    expect($soleRow['interest'])->toBe(250.0)
+        ->and($soleRow['period_expenses'])->toBe(250.0)
+        ->and($sharedRows['First Cranbury Road']['interest'])->toBe(120.0)
+        ->and($sharedRows['Second Manning Road']['interest'])->toBeNull();
+
+    $namedReport = $service->propertyProfitLoss($named, '2025-07-01', '2026-06-30');
+    $namedInterest = collect($namedReport['breakdown']['figures'])->firstWhere('key', 'interest');
+    $otherInterest = collect($service->propertyProfitLoss($other, '2025-07-01', '2026-06-30')['breakdown']['figures'])
+        ->firstWhere('key', 'interest');
+
+    expect($namedInterest['text'])->toContain('Manual journals add $80.00')
+        ->and($namedInterest['text'])->toContain('Interest recorded on transactions is $40.00')
+        ->and($namedInterest['text'])->toContain('$30.00 more manual journal interest')
+        ->and($otherInterest['text'])->toContain('$30.00 more manual journal interest')
+        ->and(collect($namedInterest['lines'])->contains(fn (array $line) => ($line['mark'] ?? '') === 'Manual journal to Interest Expense.'))->toBeTrue();
+});
+
+function portfolioManualInterest(
+    BusinessEntity $entity,
+    User $user,
+    string $reference,
+    float $amount,
+    string $description,
+    string $date,
+    ?string $sourceType = null
+): void {
+    $interest = ChartOfAccount::query()->firstOrCreate(
+        ['account_code' => '7500'],
+        [
+            'account_name' => 'Interest Expense',
+            'account_type' => 'expense',
+            'account_category' => 'operating_expense',
+            'is_active' => true,
+        ]
+    );
+    $loan = ChartOfAccount::query()->firstOrCreate(
+        ['account_code' => '4000'],
+        [
+            'account_name' => 'Long Term Loans',
+            'account_type' => 'liability',
+            'account_category' => 'long_term_liability',
+            'is_active' => true,
+        ]
+    );
+    $entry = JournalEntry::create([
+        'business_entity_id' => $entity->id,
+        'entry_date' => $date,
+        'reference_number' => $reference,
+        'description' => $description,
+        'total_debit' => abs($amount),
+        'total_credit' => abs($amount),
+        'is_posted' => true,
+        'created_by' => $user->id,
+        'source_type' => $sourceType,
+    ]);
+    JournalLine::create([
+        'journal_entry_id' => $entry->id,
+        'chart_of_account_id' => $interest->id,
+        'debit_amount' => $amount,
+        'credit_amount' => 0,
+        'description' => $description,
+    ]);
+    JournalLine::create([
+        'journal_entry_id' => $entry->id,
+        'chart_of_account_id' => $loan->id,
+        'debit_amount' => 0,
+        'credit_amount' => $amount,
+        'description' => $description,
+    ]);
+}

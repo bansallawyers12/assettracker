@@ -48,9 +48,14 @@
                                     <tr class="border-t border-gray-100 align-top">
                                         <td class="px-4 py-2 text-gray-700 whitespace-nowrap">{{ $line['when'] }}</td>
                                         <td class="px-4 py-2 text-gray-800">
-                                            @if ($line['transaction_id'] && $line['bank_account_id'] && $line['business_entity_id'])
-                                                <a href="{{ route('business-entities.bank-accounts.transactions.show', [$line['business_entity_id'], $line['bank_account_id'], $line['transaction_id']]) }}"
-                                                   class="text-blue-600 hover:underline">{{ $line['description'] }}</a>
+                                            @php
+                                                $lineUrl = $line['url'] ?? null;
+                                                if (! $lineUrl && $line['transaction_id'] && $line['bank_account_id'] && $line['business_entity_id']) {
+                                                    $lineUrl = route('business-entities.bank-accounts.transactions.show', [$line['business_entity_id'], $line['bank_account_id'], $line['transaction_id']]);
+                                                }
+                                            @endphp
+                                            @if ($lineUrl)
+                                                <a href="{{ $lineUrl }}" class="text-blue-600 hover:underline">{{ $line['description'] }}</a>
                                             @else
                                                 {{ $line['description'] }}
                                             @endif
@@ -93,9 +98,14 @@
                             <tr class="border-t border-gray-100 align-top">
                                 <td class="px-4 py-2 text-gray-700 whitespace-nowrap">{{ $line['when'] }}</td>
                                 <td class="px-4 py-2 text-gray-800">
-                                    @if ($line['transaction_id'] && $line['bank_account_id'] && $line['business_entity_id'])
-                                        <a href="{{ route('business-entities.bank-accounts.transactions.show', [$line['business_entity_id'], $line['bank_account_id'], $line['transaction_id']]) }}"
-                                           class="text-blue-600 hover:underline">{{ $line['description'] }}</a>
+                                    @php
+                                        $lineUrl = $line['url'] ?? null;
+                                        if (! $lineUrl && $line['transaction_id'] && $line['bank_account_id'] && $line['business_entity_id']) {
+                                            $lineUrl = route('business-entities.bank-accounts.transactions.show', [$line['business_entity_id'], $line['bank_account_id'], $line['transaction_id']]);
+                                        }
+                                    @endphp
+                                    @if ($lineUrl)
+                                        <a href="{{ $lineUrl }}" class="text-blue-600 hover:underline">{{ $line['description'] }}</a>
                                     @else
                                         {{ $line['description'] }}
                                     @endif
