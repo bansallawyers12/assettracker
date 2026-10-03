@@ -34,76 +34,60 @@
     <div class="portfolio-page py-6 lg:py-8 bg-linear-to-br from-gray-50 via-white to-emerald-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 min-h-screen">
         <div class="w-full px-4 sm:px-6 lg:px-8 space-y-6">
 
-            {{-- Hero --}}
-            <div class="relative overflow-hidden rounded-2xl bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-700 p-6 lg:p-8 text-white shadow-xl">
-                <div class="absolute top-0 right-0 -mt-6 -mr-6 w-44 h-44 bg-white/10 rounded-full blur-2xl"></div>
-                <div class="absolute bottom-0 left-1/3 -mb-10 w-56 h-56 bg-white/5 rounded-full blur-3xl"></div>
-                <div class="relative flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
-                    <div class="min-w-0">
-                        <div class="portfolio-kicker flex items-center gap-2 mb-2">
-                            <x-lucide-building-2 class="w-4 h-4 shrink-0 opacity-90" aria-hidden="true" />
-                            Portfolio overview
+            {{-- Header and report filters are one control. Chips show the applied scope; Filters opens the form under them. --}}
+            <div class="overflow-hidden rounded-2xl shadow-xl" x-data="{ filtersOpen: false }">
+                <div class="relative bg-linear-to-r from-emerald-600 via-teal-600 to-cyan-700 p-6 lg:p-8 text-white">
+                    <div class="absolute top-0 right-0 -mt-6 -mr-6 w-44 h-44 bg-white/10 rounded-full blur-2xl"></div>
+                    <div class="absolute bottom-0 left-1/3 -mb-10 w-56 h-56 bg-white/5 rounded-full blur-3xl"></div>
+                    <div class="relative flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
+                        <div class="min-w-0">
+                            <div class="portfolio-kicker flex items-center gap-2 mb-2">
+                                <x-lucide-building-2 class="w-4 h-4 shrink-0 opacity-90" aria-hidden="true" />
+                                Portfolio overview
+                            </div>
+                            <h1 class="portfolio-title">Property portfolio</h1>
+                            <p class="portfolio-lead mt-2 max-w-2xl">
+                                Purchase price, loan position, holding costs, and period performance.
+                            </p>
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <span class="portfolio-chip">
+                                    <x-lucide-calendar class="w-3.5 h-3.5 opacity-90" aria-hidden="true" />
+                                    {{ $periodLabel }}
+                                </span>
+                                <span class="portfolio-chip">
+                                    <x-lucide-receipt class="w-3.5 h-3.5 opacity-90" aria-hidden="true" />
+                                    {{ $basisLabel }} basis
+                                </span>
+                                <span class="portfolio-chip truncate max-w-full">
+                                    <x-lucide-layers class="w-3.5 h-3.5 shrink-0 opacity-90" aria-hidden="true" />
+                                    {{ $entityScopeLabel }}
+                                </span>
+                            </div>
                         </div>
-                        <h1 class="portfolio-title">Property portfolio</h1>
-                        <p class="portfolio-lead mt-2 max-w-2xl">
-                            Purchase price, loan position, holding costs, and period performance.
-                        </p>
-                        <div class="mt-4 flex flex-wrap gap-2">
-                            <span class="portfolio-chip">
-                                <x-lucide-calendar class="w-3.5 h-3.5 opacity-90" aria-hidden="true" />
-                                {{ $periodLabel }}
-                            </span>
-                            <span class="portfolio-chip">
-                                <x-lucide-receipt class="w-3.5 h-3.5 opacity-90" aria-hidden="true" />
-                                {{ $basisLabel }} basis
-                            </span>
-                            <span class="portfolio-chip truncate max-w-full">
-                                <x-lucide-layers class="w-3.5 h-3.5 shrink-0 opacity-90" aria-hidden="true" />
-                                {{ $entityScopeLabel }}
-                            </span>
+                        <div class="flex flex-wrap gap-2 shrink-0">
+                            <button type="button"
+                                    @click="filtersOpen = !filtersOpen"
+                                    class="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium tracking-tight transition-colors"
+                                    :class="filtersOpen ? 'bg-white text-emerald-800' : 'bg-white/15 hover:bg-white/25'"
+                                    :aria-expanded="filtersOpen.toString()"
+                                    aria-controls="portfolio-filters-panel">
+                                <x-lucide-filter class="w-4 h-4" aria-hidden="true" />
+                                Filters
+                            </button>
+                            <a href="{{ route('financial-reports.asset-summary', $reportQuery()) }}"
+                               class="inline-flex items-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-xs px-4 py-2.5 text-sm font-medium tracking-tight transition-colors">
+                                <x-lucide-clipboard-list class="w-4 h-4" aria-hidden="true" />
+                                Asset summary
+                            </a>
+                            <a href="{{ route('financial-reports.index') }}"
+                               class="inline-flex items-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-xs px-4 py-2.5 text-sm font-medium tracking-tight transition-colors">
+                                <x-lucide-bar-chart-3 class="w-4 h-4" aria-hidden="true" />
+                                All reports
+                            </a>
                         </div>
                     </div>
-                    <div class="flex flex-wrap gap-2 shrink-0">
-                        <a href="{{ route('financial-reports.asset-summary', $reportQuery()) }}"
-                           class="inline-flex items-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-xs px-4 py-2.5 text-sm font-medium tracking-tight transition-colors">
-                            <x-lucide-clipboard-list class="w-4 h-4" aria-hidden="true" />
-                            Asset summary
-                        </a>
-                        <a href="{{ route('financial-reports.index') }}"
-                           class="inline-flex items-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-xs px-4 py-2.5 text-sm font-medium tracking-tight transition-colors">
-                            <x-lucide-bar-chart-3 class="w-4 h-4" aria-hidden="true" />
-                            All reports
-                        </a>
-                    </div>
                 </div>
-            </div>
 
-            @if (session('error'))
-                <div class="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm leading-relaxed text-red-800 dark:text-red-200" role="alert">
-                    {{ session('error') }}
-                </div>
-            @endif
-
-            {{-- Filters (collapsed by default; open via filter icon) --}}
-            <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xs overflow-hidden"
-                 x-data="{ filtersOpen: false }">
-                <div class="px-5 py-3 flex items-center justify-between gap-3">
-                    <div class="min-w-0">
-                        <h2 class="portfolio-section-title">Report settings</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Basis, date range, and entity scope</p>
-                    </div>
-                    <button type="button"
-                            @click="filtersOpen = !filtersOpen"
-                            class="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium shadow-xs transition-colors shrink-0"
-                            :class="filtersOpen
-                                ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
-                                : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200 dark:hover:bg-gray-800'"
-                            :aria-expanded="filtersOpen.toString()"
-                            aria-controls="portfolio-filters-panel">
-                        <x-lucide-filter class="w-4 h-4" aria-hidden="true" />
-                        <span class="hidden sm:inline">Filters</span>
-                    </button>
-                </div>
                 <div id="portfolio-filters-panel"
                      x-show="filtersOpen"
                      x-cloak
@@ -113,7 +97,7 @@
                      x-transition:leave="transition ease-in duration-100"
                      x-transition:leave-start="opacity-100 translate-y-0"
                      x-transition:leave-end="opacity-0 -translate-y-1"
-                     class="border-t border-gray-100 dark:border-gray-700">
+                     class="border-t border-gray-100 bg-white dark:border-gray-700 dark:bg-gray-800">
                     <form method="GET" action="{{ $formRoute }}" class="p-5">
                         <div class="flex flex-wrap items-end gap-x-5 gap-y-4">
                             @include('property-reports.partials.portfolio-filters', [
@@ -142,6 +126,12 @@
                     </form>
                 </div>
             </div>
+
+            @if (session('error'))
+                <div class="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm leading-relaxed text-red-800 dark:text-red-200" role="alert">
+                    {{ session('error') }}
+                </div>
+            @endif
 
             {{-- Summary stats --}}
             <div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">

@@ -171,6 +171,8 @@ it('reads portfolio holding figures from transactions and falls back to the prop
         ]))
         ->assertSuccessful()
         ->assertSee('Loan balance')
+        ->assertSee('Filters')
+        ->assertDontSee('Report settings')
         ->assertSee('Repayment')
         ->assertSee('Interest')
         ->assertSee('Council rates')
