@@ -9,6 +9,11 @@
         <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-xs sm:rounded-lg">
                 <div class="p-6 text-gray-900">
+                    @if (session('error'))
+                        <div class="mb-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                            {{ session('error') }}
+                        </div>
+                    @endif
                     <form id="asset-update-form" method="POST" action="{{ route('business-entities.assets.update', [$asset->business_entity_id, $asset->id]) }}">
                         @csrf
                         @method('PATCH')
@@ -160,7 +165,7 @@
                     </form>
 
                     <div class="mt-6 flex flex-wrap items-center justify-between gap-3">
-                        <form action="{{ route('business-entities.assets.destroy', [$asset->business_entity_id, $asset->id]) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this asset?');">
+                        <form action="{{ route('business-entities.assets.destroy', [$asset->business_entity_id, $asset->id]) }}" method="POST" onsubmit="return confirm('Delete this asset? Tenants, leases, and invoices on this asset are removed with it. Bank transactions stay, with the asset link cleared.');">
                             @csrf
                             @method('DELETE')
                             <button type="submit" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-4 py-2 rounded-sm transition duration-200">

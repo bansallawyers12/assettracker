@@ -21,6 +21,11 @@
         <div class="w-full px-4 sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-lg sm:rounded-lg">
                 <div class="p-6 text-gray-900">
+                    @if (session('error'))
+                        <div class="mb-4 rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                            {{ session('error') }}
+                        </div>
+                    @endif
                     <form method="POST" action="{{ route('business-entities.update', $businessEntity->id) }}" data-entity-form="1">
                         @csrf
                         @method('PATCH')
@@ -313,6 +318,14 @@
                             </div>
                         </div>
                     </form>
+
+                    @unless ($businessEntity->isClosed())
+                        <div class="mt-8 border-t border-red-100 pt-6">
+                            <a href="{{ route('business-entities.delete.confirm', $businessEntity) }}" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-white hover:bg-red-700">
+                                Delete this company
+                            </a>
+                        </div>
+                    @endunless
                 </div>
             </div>
         </div>

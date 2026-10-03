@@ -25,6 +25,7 @@ use App\Rules\UniqueAbnHash;
 use App\Rules\UniqueAcnHash;
 use App\Services\BankAccountAssetLinkService;
 use App\Services\BankStatementMatchSuggester;
+use App\Services\BusinessEntityDeletionService;
 use App\Services\CommitmentReportService;
 use App\Services\ComplianceYearService;
 use App\Services\DocumentUploadService;
@@ -2480,6 +2481,52 @@ class BusinessEntityController extends Controller
         return redirect()
             ->route('business-entities.show', $businessEntity)
             ->with('success', 'Entity closed successfully.');
+    }
+
+    public function confirmDestroy(BusinessEntity $businessEntity, BusinessEntityDeletionService $deletion): View
+    {
+        $this->authorize('delete', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+
+        $preview = $deletion->preview($businessEntity);
+
+        return view('business-entities.delete', [
+            'businessEntity' => $businessEntity,
+            'willDelete' => $preview['will_delete'],
+            'warnings' => $preview['warnings'],
+        ]);
+    }
+
+    public function destroy(Request $request, BusinessEntity $businessEntity, BusinessEntityDeletionService $deletion): RedirectResponse
+    {
+        $this->authorize('delete', $businessEntity);
+        $this->ensureNotClosed($businessEntity);
+
+        $preview = $deletion->preview($businessEntity);
+
+        if ($preview['warnings'] !== [] && ! $request->boolean('acknowledge_links')) {
+            return redirect()
+                ->route('business-entities.delete.confirm', $businessEntity)
+                ->with('error', 'This company is linked to other companies or assets. Review that list, then tick the confirmation before deleting.');
+        }
+
+        $name = $businessEntity->legal_name;
+
+        try {
+            DB::transaction(function () use ($businessEntity): void {
+                $businessEntity->delete();
+            });
+        } catch (QueryException $exception) {
+            report($exception);
+
+            return redirect()
+                ->route('business-entities.delete.confirm', $businessEntity)
+                ->with('error', 'This entity could not be deleted because other records still depend on it.');
+        }
+
+        return redirect()
+            ->route('business-entities.index')
+            ->with('success', $name.' was deleted.');
     }
 
     // --- Bank Account Methods ---

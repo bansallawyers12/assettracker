@@ -8,6 +8,7 @@ use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BusinessEntity;
 use App\Models\Invoice;
+use App\Models\JournalEntry;
 use App\Models\Lease;
 use App\Models\Note;
 use App\Models\RealEstateCompany;
@@ -15,6 +16,7 @@ use App\Models\RealEstateCompanyContact;
 use App\Models\Tenant;
 use App\Services\AssetMoveToTrustService;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -422,11 +424,28 @@ class AssetController extends Controller
         $this->authorize('update', $businessEntity);
         $this->ensureNotClosed($businessEntity);
 
-        if ($asset->tenants()->exists() || $asset->leases()->exists() || Invoice::where('asset_id', $asset->id)->exists()) {
-            return redirect()->back()->with('error', 'Cannot delete asset with active tenants, leases, or associated invoices. Remove or detach them first.');
-        }
+        try {
+            DB::transaction(function () use ($asset): void {
+                $invoiceIds = Invoice::query()->where('asset_id', $asset->id)->pluck('id');
 
-        $asset->delete();
+                if ($invoiceIds->isNotEmpty()) {
+                    JournalEntry::query()
+                        ->where('source_type', Invoice::class)
+                        ->whereIn('source_id', $invoiceIds)
+                        ->delete();
+
+                    Invoice::query()->whereIn('id', $invoiceIds)->delete();
+                }
+
+                $asset->leases()->delete();
+                $asset->tenants()->delete();
+                $asset->delete();
+            });
+        } catch (QueryException $exception) {
+            report($exception);
+
+            return redirect()->back()->with('error', 'This asset could not be deleted because other records still depend on it.');
+        }
 
         return redirect()->route('business-entities.show', $businessEntity->id)
             ->with('success', 'Asset deleted successfully');
