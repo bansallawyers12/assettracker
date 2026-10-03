@@ -10,6 +10,7 @@ use App\Models\JournalLine;
 use App\Models\Lease;
 use App\Models\Tenant;
 use App\Models\Transaction;
+use App\Support\FinancialYear;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -83,9 +84,11 @@ class PropertyReportService
         string $startDate,
         string $endDate,
         string $basis = self::BASIS_CASH,
-        bool $showDisposed = false
+        bool $showDisposed = false,
+        float $bufferPercent = 10.0,
     ): array {
         $basis = $this->normalizeBasis($basis);
+        $bufferPercent = $this->normalizeBuffer($bufferPercent);
         $start = Carbon::parse($startDate)->startOfDay();
         $end = Carbon::parse($endDate)->endOfDay();
 
@@ -101,6 +104,8 @@ class PropertyReportService
                 'show_disposed' => $showDisposed,
                 'properties' => [],
                 'totals' => $this->emptyPortfolioTotals(),
+                'checklist' => [],
+                'buffer_percent' => $bufferPercent,
             ];
         }
 
@@ -119,19 +124,14 @@ class PropertyReportService
             }
         }
 
-        $loanActivity = $this->queryLoanAccountActivity(
-            collect($loanAccounts)->pluck('id')->unique()->map(fn ($id) => (int) $id)->all(),
-            $start,
-            $end,
-            $basis
-        );
-        $manualInterest = $this->manualInterestAllocations(
-            $assets->pluck('business_entity_id')->map(fn ($id) => (int) $id)->unique()->values()->all(),
-            $start,
-            $end
-        );
+        $loanAccountIds = collect($loanAccounts)->pluck('id')->unique()->map(fn ($id) => (int) $id)->all();
+        $loanActivity = $this->queryLoanAccountActivity($loanAccountIds, $start, $end, $basis);
+        $reportEntityIds = $assets->pluck('business_entity_id')->map(fn ($id) => (int) $id)->unique()->values()->all();
+        $manualInterest = $this->manualInterestAllocations($reportEntityIds, $start, $end);
+        $monthlySources = $this->monthlySourceBundles($assetIds, $loanAccountIds, $reportEntityIds, $start, $end);
 
         $properties = [];
+        $checklist = [];
         $totals = $this->emptyPortfolioTotals();
 
         foreach ($assets as $asset) {
@@ -172,6 +172,28 @@ class PropertyReportService
                 'gross_yield' => $measured['yield']['gross_yield'],
                 'net_yield' => $measured['yield']['net_yield'],
             ];
+            $monthly = $this->monthlyCashForAsset(
+                $asset,
+                $monthlySources['paid']->get($asset->id, collect()),
+                $loanAccount !== null ? $monthlySources['paid_loan']->get($loanAccount->id, collect()) : collect(),
+                $monthlySources['due']->get($asset->id, collect()),
+                $loanAccount !== null ? $monthlySources['due_loan']->get($loanAccount->id, collect()) : collect(),
+                $monthlySources['last_paid']->get($asset->id, collect()),
+                $loanAccount !== null ? $monthlySources['last_paid_loan']->get($loanAccount->id, collect()) : collect(),
+                $monthlySources['last_due']->get($asset->id, collect()),
+                $loanAccount !== null ? $monthlySources['last_due_loan']->get($loanAccount->id, collect()) : collect(),
+                $soleLoanAccount,
+                $monthlySources['journals'][(int) $asset->id] ?? [],
+                $monthlySources['last_journals'][(int) $asset->id] ?? [],
+                $monthlySources['insurance_account_ids'],
+                $start,
+                $end,
+                $monthlySources['previous_start'],
+                $monthlySources['previous_end'],
+                $bufferPercent,
+            );
+            $row['monthly'] = $monthly['figures'];
+            array_push($checklist, ...$monthly['checklist']);
 
             $properties[] = $row;
 
@@ -192,6 +214,16 @@ class PropertyReportService
             $totals['total_annual_rent'] += $row['annual_rent'];
             $totals['total_annual_expenses'] += $row['annual_expenses'];
             $totals['total_annual_net'] += $row['annual_net'];
+            $totals['total_monthly_repayment'] = $this->addMoney($totals['total_monthly_repayment'], $row['monthly']['repayment']['amount']);
+            $totals['total_monthly_interest'] = $this->addMoney($totals['total_monthly_interest'], $row['monthly']['interest']['amount']);
+            $totals['total_monthly_council_rates'] = $this->addMoney($totals['total_monthly_council_rates'], $row['monthly']['council_rates']['amount']);
+            $totals['total_monthly_land_tax'] = $this->addMoney($totals['total_monthly_land_tax'], $row['monthly']['land_tax']['amount']);
+            $totals['total_monthly_strata'] = $this->addMoney($totals['total_monthly_strata'], $row['monthly']['strata']['amount']);
+            $totals['total_monthly_insurance'] = $this->addMoney($totals['total_monthly_insurance'], $row['monthly']['insurance']['amount']);
+            $totals['total_monthly_other'] = $this->addMoney($totals['total_monthly_other'], $row['monthly']['other']['amount']);
+            $totals['total_monthly_expenses'] = $this->addMoney($totals['total_monthly_expenses'], $row['monthly']['expenses']);
+            $totals['total_monthly_rent'] = $this->addMoney($totals['total_monthly_rent'], $row['monthly']['rent']['amount']);
+            $totals['total_set_aside'] = $this->addMoney($totals['total_set_aside'], $row['monthly']['set_aside']);
         }
 
         $totals['gross_yield'] = $this->portfolioYield(
@@ -212,6 +244,8 @@ class PropertyReportService
             'show_disposed' => $showDisposed,
             'properties' => $properties,
             'totals' => $totals,
+            'checklist' => $checklist,
+            'buffer_percent' => $bufferPercent,
         ];
     }
 
@@ -2147,6 +2181,630 @@ class PropertyReportService
             'total_annual_net' => 0.0,
             'gross_yield' => null,
             'net_yield' => null,
+            'total_monthly_repayment' => null,
+            'total_monthly_interest' => null,
+            'total_monthly_council_rates' => null,
+            'total_monthly_land_tax' => null,
+            'total_monthly_strata' => null,
+            'total_monthly_insurance' => null,
+            'total_monthly_other' => null,
+            'total_monthly_expenses' => null,
+            'total_monthly_rent' => null,
+            'total_set_aside' => null,
         ];
+    }
+
+    /**
+     * @param  list<int>  $assetIds
+     * @param  list<int>  $loanAccountIds
+     * @param  list<int>  $entityIds
+     * @return array<string, mixed>
+     */
+    private function monthlySourceBundles(array $assetIds, array $loanAccountIds, array $entityIds, Carbon $start, Carbon $end): array
+    {
+        $previousStart = FinancialYear::previousStart()->startOfDay();
+        $previousEnd = FinancialYear::previousEnd()->endOfDay();
+        $ids = collect($assetIds);
+
+        return [
+            'previous_start' => $previousStart,
+            'previous_end' => $previousEnd,
+            'paid' => $this->queryTransactionsForAssets($ids, $start, $end, self::BASIS_CASH)->get()->groupBy(fn (Transaction $transaction) => (int) $transaction->asset_id),
+            'paid_loan' => $this->queryLoanAccountActivity($loanAccountIds, $start, $end, self::BASIS_CASH),
+            'due' => $this->queryDueForAssets($ids, $start, $end)->groupBy(fn (Transaction $transaction) => (int) $transaction->asset_id),
+            'due_loan' => $this->queryDueLoanActivity($loanAccountIds, $start, $end),
+            'last_paid' => $this->queryTransactionsForAssets($ids, $previousStart, $previousEnd, self::BASIS_CASH)->get()->groupBy(fn (Transaction $transaction) => (int) $transaction->asset_id),
+            'last_paid_loan' => $this->queryLoanAccountActivity($loanAccountIds, $previousStart, $previousEnd, self::BASIS_CASH),
+            'last_due' => $this->queryDueForAssets($ids, $previousStart, $previousEnd)->groupBy(fn (Transaction $transaction) => (int) $transaction->asset_id),
+            'last_due_loan' => $this->queryDueLoanActivity($loanAccountIds, $previousStart, $previousEnd),
+            'journals' => $this->manualCostAllocations($entityIds, $start, $end),
+            'last_journals' => $this->manualCostAllocations($entityIds, $previousStart, $previousEnd),
+            'insurance_account_ids' => $this->insuranceAccountIds(),
+        ];
+    }
+
+    /**
+     * @param  Collection<int, int|string>  $assetIds
+     * @return Collection<int, Transaction>
+     */
+    private function queryDueForAssets(Collection $assetIds, Carbon $start, Carbon $end): Collection
+    {
+        $ids = $assetIds->map(fn ($id) => (int) $id)->filter(fn ($id) => $id > 0)->values()->all();
+        if ($ids === []) {
+            return collect();
+        }
+
+        return Transaction::query()
+            ->with(['lines', 'bankAccount'])
+            ->whereIn('asset_id', $ids)
+            ->whereNotIn('transaction_type', self::EXCLUDED_TRANSACTION_TYPES)
+            ->where('payment_status', '!=', 'paid')
+            ->whereBetween('due_date', [$start->toDateString(), $end->toDateString()])
+            ->orderBy('due_date')
+            ->get();
+    }
+
+    /**
+     * @param  list<int>  $accountIds
+     * @return Collection<int|string, Collection<int, Transaction>>
+     */
+    private function queryDueLoanActivity(array $accountIds, Carbon $start, Carbon $end): Collection
+    {
+        $ids = array_values(array_filter($accountIds, fn (int $id) => $id > 0));
+        if ($ids === []) {
+            return collect();
+        }
+
+        return Transaction::query()
+            ->with(['lines', 'bankAccount'])
+            ->whereIn('bank_account_id', $ids)
+            ->where(function ($query) {
+                $query->whereIn('transaction_type', [
+                    'loan_repayments',
+                    'loan_interest',
+                    'loan_fees',
+                    'land_tax',
+                    'valuation_and_rates',
+                    'oc_fees',
+                ])->orWhere('transaction_type', Transaction::TYPE_SPLIT);
+            })
+            ->where('payment_status', '!=', 'paid')
+            ->whereBetween('due_date', [$start->toDateString(), $end->toDateString()])
+            ->get()
+            ->groupBy(fn (Transaction $transaction) => (int) $transaction->bank_account_id);
+    }
+
+    /**
+     * Monthly cash to set aside. Each cost stops at the first source that has a figure.
+     * Interest is reported and left out of the expense total.
+     *
+     * @param  Collection<int, Transaction>  $paid
+     * @param  Collection<int, Transaction>  $paidLoan
+     * @param  Collection<int, Transaction>  $due
+     * @param  Collection<int, Transaction>  $dueLoan
+     * @param  Collection<int, Transaction>  $lastPaid
+     * @param  Collection<int, Transaction>  $lastPaidLoan
+     * @param  Collection<int, Transaction>  $lastDue
+     * @param  Collection<int, Transaction>  $lastDueLoan
+     * @param  array<string, float>  $journals
+     * @param  array<string, float>  $lastJournals
+     * @param  list<int>  $insuranceAccountIds
+     * @return array{figures: array<string, mixed>, checklist: list<array{property: string, cost: string, source: string, text: string}>}
+     */
+    private function monthlyCashForAsset(
+        Asset $asset,
+        Collection $paid,
+        Collection $paidLoan,
+        Collection $due,
+        Collection $dueLoan,
+        Collection $lastPaid,
+        Collection $lastPaidLoan,
+        Collection $lastDue,
+        Collection $lastDueLoan,
+        bool $soleLoanAccount,
+        array $journals,
+        array $lastJournals,
+        array $insuranceAccountIds,
+        Carbon $start,
+        Carbon $end,
+        Carbon $previousStart,
+        Carbon $previousEnd,
+        float $bufferPercent,
+    ): array {
+        $paidTotals = $this->sumMonthlyCosts($paid, $paidLoan, $asset, $soleLoanAccount, $insuranceAccountIds);
+        $dueTotals = $this->sumMonthlyCosts($due, $dueLoan, $asset, $soleLoanAccount, $insuranceAccountIds);
+        $lastPaidTotals = $this->sumMonthlyCosts($lastPaid, $lastPaidLoan, $asset, $soleLoanAccount, $insuranceAccountIds);
+        $lastDueTotals = $this->sumMonthlyCosts($lastDue, $lastDueLoan, $asset, $soleLoanAccount, $insuranceAccountIds);
+
+        $figures = [];
+        foreach (['repayment', 'interest', 'council_rates', 'land_tax', 'strata', 'insurance', 'other'] as $key) {
+            $figures[$key] = $this->resolveMonthlyCost(
+                $this->positiveAmount($paidTotals[$key] ?? 0),
+                $this->positiveAmount($journals[$key] ?? 0),
+                $this->positiveAmount($dueTotals[$key] ?? 0),
+                $this->firstPositive(
+                    $this->positiveAmount($lastPaidTotals[$key] ?? 0),
+                    $this->positiveAmount($lastJournals[$key] ?? 0),
+                    $this->positiveAmount($lastDueTotals[$key] ?? 0),
+                ),
+                $this->savedMonthlyCost($asset, $key),
+                $start,
+                $end,
+                $previousStart,
+                $previousEnd,
+                $this->isAnnualBill($key),
+            );
+        }
+
+        $figures['rent'] = $this->resolveMonthlyRent($asset, $paidTotals['rent'] ?? 0, $start, $end);
+        $figures['expenses'] = $this->monthlyExpenseTotal($figures);
+        $figures['set_aside'] = $this->monthlySetAside($figures['expenses'], $figures['rent']['amount'], $bufferPercent);
+
+        return [
+            'figures' => $figures,
+            'checklist' => $this->monthlyChecklist((string) $asset->name, $figures),
+        ];
+    }
+
+    /**
+     * @param  array<string, array{amount: float|null, source: string}>  $figures
+     */
+    private function monthlyExpenseTotal(array $figures): ?float
+    {
+        $known = [];
+        foreach (['repayment', 'council_rates', 'land_tax', 'strata', 'insurance', 'other'] as $key) {
+            if ($figures[$key]['amount'] !== null) {
+                $known[] = (float) $figures[$key]['amount'];
+            }
+        }
+
+        if ($known === []) {
+            return null;
+        }
+
+        return round(array_sum($known), 2);
+    }
+
+    private function monthlySetAside(?float $expenses, ?float $rent, float $bufferPercent): ?float
+    {
+        if ($expenses === null || $rent === null) {
+            return null;
+        }
+
+        $shortfall = round($expenses - $rent, 2);
+        if ($shortfall <= 0) {
+            return 0.0;
+        }
+
+        return $this->roundUpDollars($shortfall * (1 + ($bufferPercent / 100)));
+    }
+
+    private function roundUpDollars(float $amount): float
+    {
+        $cents = (int) round($amount * 100);
+        if ($cents <= 0) {
+            return 0.0;
+        }
+
+        return (float) ceil($cents / 100);
+    }
+
+    /**
+     * @param  array<string, array{amount: float|null, source: string}|float|null>  $figures
+     * @return list<array{property: string, cost: string, source: string, text: string}>
+     */
+    private function monthlyChecklist(string $property, array $figures): array
+    {
+        $lines = [];
+        foreach ([
+            'repayment' => 'repayment',
+            'interest' => 'interest',
+            'council_rates' => 'council rates',
+            'land_tax' => 'land tax',
+            'strata' => 'strata',
+            'insurance' => 'insurance',
+            'other' => 'other expenses',
+            'rent' => 'rent',
+        ] as $key => $label) {
+            $cell = $figures[$key] ?? null;
+            if (! is_array($cell) || ! in_array($cell['source'], ['last year', 'missing'], true)) {
+                continue;
+            }
+            if ($cell['source'] === 'missing' && ! in_array($key, ['repayment', 'council_rates', 'land_tax', 'strata', 'insurance', 'rent'], true)) {
+                continue;
+            }
+
+            $text = $cell['source'] === 'last year'
+                ? $property.' — '.$label.': last year\'s figure, nothing entered this year'
+                : $property.' — '.$label.': missing';
+            $lines[] = [
+                'property' => $property,
+                'cost' => $label,
+                'source' => $cell['source'],
+                'text' => $text,
+            ];
+        }
+
+        return $lines;
+    }
+
+    /**
+     * @return array{amount: float|null, source: string}
+     */
+    private function resolveMonthlyCost(
+        ?float $paid,
+        ?float $journal,
+        ?float $due,
+        ?float $lastYear,
+        ?float $savedMonthly,
+        Carbon $start,
+        Carbon $end,
+        Carbon $previousStart,
+        Carbon $previousEnd,
+        bool $annualBill = false,
+    ): array {
+        if ($paid !== null) {
+            return ['amount' => $this->monthlyFromPeriodTotal($paid, $start, $end, $annualBill), 'source' => 'paid'];
+        }
+        if ($journal !== null) {
+            return ['amount' => $this->monthlyFromPeriodTotal($journal, $start, $end, $annualBill), 'source' => 'journal'];
+        }
+        if ($due !== null) {
+            return ['amount' => $this->monthlyFromPeriodTotal($due, $start, $end, $annualBill), 'source' => 'due'];
+        }
+        if ($lastYear !== null) {
+            return ['amount' => $this->monthlyFromPeriodTotal($lastYear, $previousStart, $previousEnd, $annualBill), 'source' => 'last year'];
+        }
+        if ($savedMonthly !== null) {
+            return ['amount' => $savedMonthly, 'source' => 'saved'];
+        }
+
+        return ['amount' => null, 'source' => 'missing'];
+    }
+
+    /**
+     * @return array{amount: float|null, source: string}
+     */
+    private function resolveMonthlyRent(Asset $asset, float $paidRent, Carbon $start, Carbon $end): array
+    {
+        $paid = $this->positiveAmount($paidRent);
+        if ($paid !== null) {
+            return ['amount' => $this->monthlyFromPeriodTotal($paid, $start, $end), 'source' => 'paid'];
+        }
+
+        $schedule = $this->rentSchedule($asset, $start, $end);
+        if ($schedule !== null) {
+            return ['amount' => $schedule['monthly'], 'source' => 'lease'];
+        }
+
+        $saved = $this->positiveAmount($asset->rental_income !== null ? (float) $asset->rental_income : null);
+        if ($saved !== null) {
+            return ['amount' => round($saved / 12, 2), 'source' => 'saved'];
+        }
+
+        return ['amount' => null, 'source' => 'missing'];
+    }
+
+    /**
+     * Council rates, land tax, strata, and insurance are annual bills. The amount
+     * found is already the year's cost, so a short selected period must not scale it up.
+     * Repayments and other running costs use a monthly run-rate when the period is shorter than a year.
+     */
+    private function isAnnualBill(string $key): bool
+    {
+        return in_array($key, ['council_rates', 'land_tax', 'strata', 'insurance'], true);
+    }
+
+    private function monthlyFromPeriodTotal(float $amount, Carbon $start, Carbon $end, bool $annualBill = false): float
+    {
+        if ($annualBill) {
+            return round($amount / 12, 2);
+        }
+
+        $days = max(1, (int) abs($start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay())) + 1);
+        $annual = $days >= 360 ? $amount : $amount * (365 / $days);
+
+        return round($annual / 12, 2);
+    }
+
+    private function savedMonthlyCost(Asset $asset, string $key): ?float
+    {
+        return match ($key) {
+            'repayment' => $this->toMonthly(
+                $asset->loan_payment_amount !== null ? (float) $asset->loan_payment_amount : null,
+                $asset->loan_payment_frequency,
+            ),
+            'council_rates' => $this->annualSavedMonthly($asset->council_rates_amount),
+            'land_tax' => $this->annualSavedMonthly($asset->land_tax_amount),
+            'strata' => $this->annualSavedMonthly($asset->owners_corp_amount),
+            'insurance' => $this->annualSavedMonthly($asset->insurance_amount),
+            default => null,
+        };
+    }
+
+    private function annualSavedMonthly(mixed $amount): ?float
+    {
+        $annual = $this->positiveAmount($amount !== null ? (float) $amount : null);
+        if ($annual === null) {
+            return null;
+        }
+
+        return round($annual / 12, 2);
+    }
+
+    private function firstPositive(?float ...$amounts): ?float
+    {
+        foreach ($amounts as $amount) {
+            if ($amount !== null) {
+                return $amount;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  Collection<int, Transaction>  $transactions
+     * @param  Collection<int, Transaction>  $loanTransactions
+     * @param  list<int>  $insuranceAccountIds
+     * @return array<string, float>
+     */
+    private function sumMonthlyCosts(
+        Collection $transactions,
+        Collection $loanTransactions,
+        Asset $asset,
+        bool $soleLoanAccount,
+        array $insuranceAccountIds,
+    ): array {
+        $seen = $transactions->pluck('id')->map(fn ($id) => (int) $id)->all();
+        [$included] = $this->classifyLoanTransactions($loanTransactions, $asset, $soleLoanAccount, $seen);
+        $totals = [
+            'repayment' => 0.0,
+            'interest' => 0.0,
+            'council_rates' => 0.0,
+            'land_tax' => 0.0,
+            'strata' => 0.0,
+            'insurance' => 0.0,
+            'other' => 0.0,
+            'rent' => 0.0,
+        ];
+
+        foreach ($transactions->concat($included) as $transaction) {
+            $this->accumulateMonthlyCosts($transaction, $totals, $insuranceAccountIds);
+        }
+
+        return $totals;
+    }
+
+    /**
+     * @param  array<string, float>  $totals
+     * @param  list<int>  $insuranceAccountIds
+     */
+    private function accumulateMonthlyCosts(Transaction $transaction, array &$totals, array $insuranceAccountIds): void
+    {
+        if ($transaction->isSplit()) {
+            if (! $transaction->relationLoaded('lines')) {
+                $transaction->load('lines');
+            }
+            foreach ($transaction->lines as $line) {
+                $key = $this->monthlyCostKey(
+                    (string) $line->transaction_type,
+                    $line->chart_of_account_id !== null ? (int) $line->chart_of_account_id : null,
+                    trim((string) ($line->description ?: $transaction->description)),
+                    $insuranceAccountIds,
+                );
+                if ($key === null) {
+                    continue;
+                }
+                $totals[$key] += $this->netAmountFromParts(
+                    (float) $line->amount,
+                    $line->gst_amount !== null ? (float) $line->gst_amount : null,
+                    $line->gst_basis,
+                );
+            }
+
+            return;
+        }
+
+        $key = $this->monthlyCostKey(
+            (string) $transaction->transaction_type,
+            $transaction->chart_of_account_id !== null ? (int) $transaction->chart_of_account_id : null,
+            trim((string) $transaction->description),
+            $insuranceAccountIds,
+        );
+        if ($key === null) {
+            return;
+        }
+
+        $totals[$key] += $this->netAmount($transaction);
+    }
+
+    /**
+     * @param  list<int>  $insuranceAccountIds
+     */
+    private function monthlyCostKey(string $type, ?int $chartId, string $description, array $insuranceAccountIds): ?string
+    {
+        if (in_array($type, self::EXCLUDED_TRANSACTION_TYPES, true)) {
+            return null;
+        }
+        if ($type === 'rental_income') {
+            return 'rent';
+        }
+
+        $named = match ($type) {
+            'loan_repayments' => 'repayment',
+            'loan_interest' => 'interest',
+            'valuation_and_rates' => 'council_rates',
+            'land_tax' => 'land_tax',
+            'oc_fees' => 'strata',
+            default => null,
+        };
+        if ($named !== null) {
+            return $named;
+        }
+        if (! array_key_exists($type, Transaction::$expenseTypes)) {
+            return null;
+        }
+        if ($this->looksLikeInsurance($chartId, $description, $insuranceAccountIds)) {
+            return 'insurance';
+        }
+
+        return 'other';
+    }
+
+    /**
+     * @param  list<int>  $insuranceAccountIds
+     */
+    private function looksLikeInsurance(?int $chartId, string $description, array $insuranceAccountIds): bool
+    {
+        if ($chartId !== null && in_array($chartId, $insuranceAccountIds, true)) {
+            return true;
+        }
+
+        return str_contains(strtolower($description), 'insurance');
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function insuranceAccountIds(): array
+    {
+        return ChartOfAccount::query()
+            ->where(function ($query) {
+                $query->where('account_code', '7400')
+                    ->orWhereRaw('LOWER(account_name) like ?', ['%insurance%']);
+            })
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    /**
+     * Posted manual journals for holding costs, allocated the same way as interest.
+     *
+     * @param  list<int>  $entityIds
+     * @return array<int, array<string, float>>
+     */
+    private function manualCostAllocations(array $entityIds, Carbon $start, Carbon $end): array
+    {
+        $entityIds = array_values(array_filter($entityIds, fn (int $id) => $id > 0));
+        if ($entityIds === []) {
+            return [];
+        }
+
+        $keyByAccount = [];
+        foreach (ChartOfAccount::query()->get(['id', 'account_code', 'account_name', 'account_type']) as $account) {
+            $key = $this->costKeyForAccount($account);
+            if ($key !== null) {
+                $keyByAccount[(int) $account->id] = $key;
+            }
+        }
+        if ($keyByAccount === []) {
+            return [];
+        }
+
+        $candidates = Asset::query()
+            ->whereIn('business_entity_id', $entityIds)
+            ->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
+            ->where(function ($query): void {
+                $query->whereNull('status')->orWhere('status', '!=', 'Inactive');
+            })
+            ->whereHas('businessEntity', fn ($query) => $query->forFinancialReports())
+            ->get(['id', 'business_entity_id', 'name', 'address', 'disposal_date']);
+        $byEntity = $candidates->groupBy(fn (Asset $asset) => (int) $asset->business_entity_id);
+        $allocated = [];
+        foreach ($candidates as $asset) {
+            $allocated[(int) $asset->id] = [];
+        }
+
+        $lines = JournalLine::query()
+            ->with([
+                'chartOfAccount',
+                'journalEntry.journalLines.trackingCategory',
+                'journalEntry.journalLines.trackingSubCategory',
+                'journalEntry.reverses.journalLines.trackingCategory',
+                'journalEntry.reverses.journalLines.trackingSubCategory',
+                'trackingCategory',
+                'trackingSubCategory',
+            ])
+            ->whereIn('chart_of_account_id', array_keys($keyByAccount))
+            ->whereHas('journalEntry', function ($query) use ($entityIds, $start, $end) {
+                $query->whereIn('business_entity_id', $entityIds)
+                    ->whereNull('source_type')
+                    ->where('is_posted', true)
+                    ->whereColumn('total_debit', 'total_credit')
+                    ->whereBetween('entry_date', [$start->toDateString(), $end->toDateString()])
+                    ->where(function ($query) {
+                        $query->whereNull('reference_number')
+                            ->orWhere('reference_number', 'not like', 'OPEN-%');
+                    });
+            })
+            ->get();
+
+        foreach ($lines as $line) {
+            $entry = $line->journalEntry;
+            $key = $keyByAccount[(int) $line->chart_of_account_id] ?? null;
+            if ($entry === null || $key === null) {
+                continue;
+            }
+            $amount = round((float) $line->debit_amount - (float) $line->credit_amount, 2);
+            if (abs($amount) < 0.005 || $this->offsetsOpeningInterest($entry)) {
+                continue;
+            }
+
+            $entityAssets = $byEntity->get((int) $entry->business_entity_id, collect());
+            $asset = $this->matchInterestAsset($entityAssets, $line);
+            if ($asset === null) {
+                $active = $entityAssets->filter(fn (Asset $candidate) => $candidate->disposal_date === null);
+                if ($active->count() === 1) {
+                    $asset = $active->first();
+                }
+            }
+            if ($asset === null) {
+                continue;
+            }
+
+            $assetId = (int) $asset->id;
+            $allocated[$assetId][$key] = round(($allocated[$assetId][$key] ?? 0) + $amount, 2);
+        }
+
+        return $allocated;
+    }
+
+    private function costKeyForAccount(ChartOfAccount $account): ?string
+    {
+        $code = trim((string) $account->account_code);
+        $name = strtolower(trim((string) $account->account_name));
+        $interestCode = (string) config('financial.report_accounts.interest_expense', '7500');
+
+        if ($code === $interestCode || $name === 'interest expense') {
+            return 'interest';
+        }
+        if ($code === '5130' || $name === 'land tax') {
+            return 'land_tax';
+        }
+        if ($code === '5140' || in_array($name, ['valuation & rates', 'rates expense'], true)) {
+            return 'council_rates';
+        }
+        if ($code === '5150' || $name === 'oc fees') {
+            return 'strata';
+        }
+        if ($code === '7400' || str_contains($name, 'insurance')) {
+            return 'insurance';
+        }
+
+        return null;
+    }
+
+    private function normalizeBuffer(float $bufferPercent): float
+    {
+        if ($bufferPercent < 0) {
+            return 0.0;
+        }
+        if ($bufferPercent > 100) {
+            return 100.0;
+        }
+
+        return $bufferPercent;
     }
 }

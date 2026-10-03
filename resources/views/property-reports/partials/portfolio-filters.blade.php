@@ -5,6 +5,8 @@
     'basis',
     'reportQuery' => fn (array $merge = []) => $merge,
     'showDisposed' => false,
+    'view' => 'monthly',
+    'buffer' => 10,
 ])
 
 <div class="flex flex-col gap-1.5">
@@ -64,3 +66,24 @@
 </div>
 
 <input type="hidden" name="basis" value="{{ $basis }}">
+<input type="hidden" name="view" value="{{ $view }}">
+
+<div class="flex flex-col gap-1.5">
+    <label class="portfolio-filter-label">View</label>
+    <div class="portfolio-basis-toggle">
+        <a href="{{ $formRoute }}?{{ http_build_query($reportQuery(['view' => 'monthly', 'basis' => $basis, 'start_date' => $startDate, 'end_date' => $endDate])) }}"
+           @class(['is-active' => $view === 'monthly'])>
+            Monthly
+        </a>
+        <a href="{{ $formRoute }}?{{ http_build_query($reportQuery(['view' => 'yield', 'basis' => $basis, 'start_date' => $startDate, 'end_date' => $endDate])) }}"
+           @class(['is-active' => $view === 'yield', 'border-l border-gray-200 dark:border-gray-600'])>
+            Yield
+        </a>
+    </div>
+</div>
+
+<div class="flex flex-col gap-1.5">
+    <label for="portfolio-buffer" class="portfolio-filter-label">Buffer %</label>
+    <input id="portfolio-buffer" type="number" name="buffer" min="0" max="100" step="1" value="{{ $buffer }}"
+           class="portfolio-filter-control px-3 py-2 w-24">
+</div>

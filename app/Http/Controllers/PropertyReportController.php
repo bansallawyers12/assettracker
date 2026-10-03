@@ -55,14 +55,18 @@ class PropertyReportController extends Controller
         $startDate = Carbon::parse($request->get('start_date', FinancialYear::currentStart()->toDateString()))->toDateString();
         $endDate = Carbon::parse($request->get('end_date', FinancialYear::currentEnd()->toDateString()))->toDateString();
         $showDisposed = $request->boolean('show_disposed');
+        $view = $request->get('view') === 'yield' ? 'yield' : 'monthly';
+        $buffer = is_numeric($request->get('buffer')) ? (float) $request->get('buffer') : 10.0;
 
         $report = $this->propertyReportService->portfolio(
             $entityIds === [] ? null : $entityIds,
             $startDate,
             $endDate,
             $basis,
-            $showDisposed
+            $showDisposed,
+            $buffer,
         );
+        $buffer = $report['buffer_percent'];
 
         $businessEntities = BusinessEntity::forFinancialReports()->orderBy('legal_name')->get();
         $formsScope = $request->input('scope') === 'selected' ? 'selected' : 'all';
@@ -76,7 +80,9 @@ class PropertyReportController extends Controller
             'endDate',
             'showDisposed',
             'formsScope',
-            'formsEntityIds'
+            'formsEntityIds',
+            'view',
+            'buffer',
         ));
     }
 

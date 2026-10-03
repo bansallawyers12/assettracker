@@ -556,6 +556,14 @@
     @apply bg-white dark:bg-gray-900/70 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800;
   }
 
+  .portfolio-page .portfolio-source {
+    @apply mt-0.5 inline-flex rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500 bg-gray-100 dark:bg-gray-700 dark:text-gray-300;
+  }
+
+  .portfolio-page .portfolio-source.is-missing {
+    @apply text-amber-800 bg-amber-100 dark:text-amber-200 dark:bg-amber-950/60;
+  }
+
   /* Financial reports hub */
   .reports-hub-page {
     @apply text-gray-900 dark:text-gray-100;

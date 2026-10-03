@@ -169,6 +169,7 @@ it('reads portfolio holding figures from transactions and falls back to the prop
         ->get(route('portfolio.index', [
             'start_date' => '2025-07-01',
             'end_date' => '2026-06-30',
+            'view' => 'yield',
         ]))
         ->assertSuccessful()
         ->assertSee('Loan balance')

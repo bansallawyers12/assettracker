@@ -14,19 +14,33 @@
         $businessEntities,
         'All reporting properties'
     );
-    $reportQuery = function (array $merge = []) use ($formsScope, $formsEntityIds, $showDisposed) {
+    $reportQuery = function (array $merge = []) use ($formsScope, $formsEntityIds, $showDisposed, $view, $buffer) {
         $q = ReportScopeQuery::build($formsScope, $formsEntityIds, $merge);
         if ($showDisposed) {
             $q['show_disposed'] = 1;
         }
+        $q['view'] = $q['view'] ?? $view;
+        if (! array_key_exists('buffer', $q) && (float) $buffer !== 10.0) {
+            $q['buffer'] = $buffer;
+        }
         return $q;
     };
+    $summaryQuery = $reportQuery();
+    unset($summaryQuery['view'], $summaryQuery['buffer']);
 
     $periodLabel = $start->format('j M Y') . ' – ' . $end->format('j M Y');
     $basisLabel = $basis === 'accrual' ? 'Accrual' : 'Cash';
     $netPositive = ($totals['total_period_net'] ?? 0) >= 0;
     $money = function (?float $amount): string {
         return $amount === null ? '—' : '$'.number_format($amount, 2);
+    };
+    $monthlyCell = function (array $cell) use ($money): string {
+        if (($cell['source'] ?? 'missing') === 'missing' || $cell['amount'] === null) {
+            return '<span class="portfolio-source is-missing">missing</span>';
+        }
+
+        return '<span class="block">'.e($money($cell['amount'])).'</span>'
+            .'<span class="portfolio-source">'.e($cell['source']).'</span>';
     };
 @endphp
 
@@ -74,7 +88,7 @@
                                 <x-lucide-filter class="w-4 h-4" aria-hidden="true" />
                                 Filters
                             </button>
-                            <a href="{{ route('financial-reports.asset-summary', $reportQuery()) }}"
+                            <a href="{{ route('financial-reports.asset-summary', $summaryQuery) }}"
                                class="inline-flex items-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur-xs px-4 py-2.5 text-sm font-medium tracking-tight transition-colors">
                                 <x-lucide-clipboard-list class="w-4 h-4" aria-hidden="true" />
                                 Asset summary
@@ -107,6 +121,8 @@
                                 'basis' => $basis,
                                 'reportQuery' => $reportQuery,
                                 'showDisposed' => $showDisposed,
+                                'view' => $view,
+                                'buffer' => $buffer,
                             ])
 
                             <x-report-entity-scope-picker
@@ -192,37 +208,65 @@
                     <p class="portfolio-stat-hint">Income − expenses</p>
                 </div>
 
-                <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-xs col-span-2 lg:col-span-1">
-                    <div class="flex items-center gap-2.5">
-                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-100 dark:bg-cyan-950/50">
-                            <x-lucide-percent class="w-4 h-4 text-cyan-600 dark:text-cyan-300" aria-hidden="true" />
-                        </span>
-                        <p class="portfolio-stat-label">Yields</p>
-                    </div>
-                    <div class="mt-3 flex items-baseline gap-3">
-                        <div>
-                            <p class="text-xl font-semibold tracking-tight tabular-nums text-gray-900 dark:text-white leading-none">
-                                {{ $totals['gross_yield'] !== null ? number_format($totals['gross_yield'], 1) . '%' : '—' }}
-                            </p>
-                            <p class="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">Gross</p>
+                @if ($view === 'monthly')
+                    <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-xs col-span-2 lg:col-span-1">
+                        <div class="flex items-center gap-2.5">
+                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-100 dark:bg-cyan-950/50">
+                                <x-lucide-piggy-bank class="w-4 h-4 text-cyan-600 dark:text-cyan-300" aria-hidden="true" />
+                            </span>
+                            <p class="portfolio-stat-label">Set aside / month</p>
                         </div>
-                        <div class="h-8 w-px bg-gray-200 dark:bg-gray-600"></div>
-                        <div>
-                            <p class="text-xl font-semibold tracking-tight tabular-nums text-gray-900 dark:text-white leading-none">
-                                {{ $totals['net_yield'] !== null ? number_format($totals['net_yield'], 1) . '%' : '—' }}
-                            </p>
-                            <p class="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">Net</p>
+                        <p class="portfolio-stat-value">{{ $money($totals['total_set_aside']) }}</p>
+                        <p class="portfolio-stat-hint">Includes {{ rtrim(rtrim(number_format((float) $buffer, 2), '0'), '.') }}% buffer</p>
+                    </div>
+                @else
+                    <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-xs col-span-2 lg:col-span-1">
+                        <div class="flex items-center gap-2.5">
+                            <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-100 dark:bg-cyan-950/50">
+                                <x-lucide-percent class="w-4 h-4 text-cyan-600 dark:text-cyan-300" aria-hidden="true" />
+                            </span>
+                            <p class="portfolio-stat-label">Yields</p>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-3">
+                            <div>
+                                <p class="text-xl font-semibold tracking-tight tabular-nums text-gray-900 dark:text-white leading-none">
+                                    {{ $totals['gross_yield'] !== null ? number_format($totals['gross_yield'], 1) . '%' : '—' }}
+                                </p>
+                                <p class="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">Gross</p>
+                            </div>
+                            <div class="h-8 w-px bg-gray-200 dark:bg-gray-600"></div>
+                            <div>
+                                <p class="text-xl font-semibold tracking-tight tabular-nums text-gray-900 dark:text-white leading-none">
+                                    {{ $totals['net_yield'] !== null ? number_format($totals['net_yield'], 1) . '%' : '—' }}
+                                </p>
+                                <p class="mt-1.5 text-[10px] font-semibold uppercase tracking-[0.1em] text-gray-500 dark:text-gray-400">Net</p>
+                            </div>
                         </div>
                     </div>
-                </div>
+                @endif
             </div>
+
+            @if ($view === 'monthly' && count($report['checklist'] ?? []) > 0)
+                <div class="rounded-2xl border border-amber-200 dark:border-amber-900/60 bg-amber-50 dark:bg-amber-950/30 px-5 py-4" data-monthly-checklist>
+                    <h2 class="text-sm font-semibold tracking-tight text-amber-950 dark:text-amber-100">Still to enter</h2>
+                    <ul class="mt-2 space-y-1 text-sm leading-relaxed text-amber-900 dark:text-amber-200">
+                        @foreach ($report['checklist'] as $item)
+                            <li>{{ $item['text'] }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
 
             {{-- Properties list --}}
             <div class="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-xs overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
                         <h2 class="portfolio-section-title text-base">Properties</h2>
-                        <p class="portfolio-section-desc mt-1">Loan balance is the latest loan statement, or the balance saved on the property. Repayment is the latest loan repayment in this period, or the repayment saved on the property. Interest is loan interest in this period, plus a manual journal to Interest Expense when the journal names the property or the entity has only that property. Council rates, land tax, and strata are amounts paid in this period, or the amount saved on the property when nothing was paid. Rent received is included in Income, including the lease or tenant rent when no rent was banked in this period. Expenses is the total used for net and yield: every recorded cost, plus council rates, land tax, strata, and the repayment saved on the property when that cost was not already recorded.</p>
+                        @if ($view === 'monthly')
+                            <p class="portfolio-section-desc mt-1">Each amount is one month of the annual cost. A figure already paid this period is used first, then a manual journal, then a bill that is due, then last financial year, then the amount saved on the property. Nothing found is marked missing, not zero. Interest is shown for reference and is not added, because repayments already include it. Set aside is monthly expenses minus monthly rent, rounded up, plus the buffer.</p>
+                        @else
+                            <p class="portfolio-section-desc mt-1">Loan balance is the latest loan statement, or the balance saved on the property. Repayment is the latest loan repayment in this period, or the repayment saved on the property. Interest is loan interest in this period, plus a manual journal to Interest Expense when the journal names the property or the entity has only that property. Council rates, land tax, and strata are amounts paid in this period, or the amount saved on the property when nothing was paid. Rent received is included in Income, including the lease or tenant rent when no rent was banked in this period. Expenses is the total used for net and yield: every recorded cost, plus council rates, land tax, strata, and the repayment saved on the property when that cost was not already recorded.</p>
+                        @endif
                     </div>
                     @if ($propertyCount > 0)
                         <span class="inline-flex items-center self-start rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 tabular-nums tracking-tight">
@@ -242,6 +286,156 @@
                         </p>
                     </div>
                 @else
+                    @if ($view === 'monthly')
+                        <div class="lg:hidden divide-y divide-gray-100 dark:divide-gray-700">
+                            @foreach ($properties as $row)
+                                @php
+                                    $a = $row['asset'];
+                                    $monthly = $row['monthly'];
+                                    $financialsUrl = route('assets.financials', [$a->business_entity_id, $a->id]) . '?' . http_build_query([
+                                        'start_date' => $startDate,
+                                        'end_date' => $endDate,
+                                        'basis' => $basis,
+                                    ]);
+                                @endphp
+                                <a href="{{ $financialsUrl }}" class="block p-5 hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                                    <p class="font-semibold tracking-tight text-gray-900 dark:text-white truncate">{{ $a->name }}</p>
+                                    @if ($a->address)
+                                        <p class="text-xs leading-relaxed text-gray-500 dark:text-gray-400 mt-0.5 truncate">{{ $a->address }}</p>
+                                    @endif
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">{{ $row['entity_name'] }}</p>
+                                    <div class="mt-4 grid grid-cols-2 gap-3 text-xs">
+                                        <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
+                                            <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Repayment</p>
+                                            <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{!! $monthlyCell($monthly['repayment']) !!}</div>
+                                        </div>
+                                        <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
+                                            <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Interest</p>
+                                            <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{!! $monthlyCell($monthly['interest']) !!}</div>
+                                        </div>
+                                        <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
+                                            <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Council rates</p>
+                                            <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{!! $monthlyCell($monthly['council_rates']) !!}</div>
+                                        </div>
+                                        <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
+                                            <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Land tax</p>
+                                            <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{!! $monthlyCell($monthly['land_tax']) !!}</div>
+                                        </div>
+                                        <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
+                                            <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Strata</p>
+                                            <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{!! $monthlyCell($monthly['strata']) !!}</div>
+                                        </div>
+                                        <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
+                                            <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Insurance</p>
+                                            <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{!! $monthlyCell($monthly['insurance']) !!}</div>
+                                        </div>
+                                        <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
+                                            <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Other</p>
+                                            <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{!! $monthlyCell($monthly['other']) !!}</div>
+                                        </div>
+                                        <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
+                                            <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Monthly expenses</p>
+                                            <p class="portfolio-money mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $money($monthly['expenses']) }}</p>
+                                        </div>
+                                        <div class="rounded-lg bg-gray-50 dark:bg-gray-900/50 px-3 py-2.5">
+                                            <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Monthly rent</p>
+                                            <div class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{!! $monthlyCell($monthly['rent']) !!}</div>
+                                        </div>
+                                        <div class="rounded-lg bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2.5">
+                                            <p class="portfolio-stat-label normal-case tracking-normal text-[10px]">Set aside</p>
+                                            <p class="portfolio-money mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $money($monthly['set_aside']) }}</p>
+                                        </div>
+                                    </div>
+                                </a>
+                            @endforeach
+                        </div>
+
+                        <div class="hidden lg:block overflow-x-auto">
+                            <table class="portfolio-table">
+                                <thead>
+                                    <tr class="border-b border-gray-200 dark:border-gray-700 bg-gray-50/80 dark:bg-gray-900/40">
+                                        <th class="px-6 min-w-[220px]">Property</th>
+                                        <th class="min-w-[160px]">Entity</th>
+                                        <th class="text-right min-w-[110px]">Repayment</th>
+                                        <th class="text-right min-w-[110px]" title="Not included in monthly expenses. Repayments already include interest.">Interest</th>
+                                        <th class="text-right min-w-[110px]">Council rates</th>
+                                        <th class="text-right min-w-[100px]">Land tax</th>
+                                        <th class="text-right min-w-[90px]">Strata</th>
+                                        <th class="text-right min-w-[100px]">Insurance</th>
+                                        <th class="text-right min-w-[100px]">Other</th>
+                                        <th class="text-right min-w-[120px]">Monthly expenses</th>
+                                        <th class="text-right min-w-[110px]">Monthly rent</th>
+                                        <th class="text-right min-w-[110px]">Set aside</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                                    @foreach ($properties as $row)
+                                        @php
+                                            $a = $row['asset'];
+                                            $monthly = $row['monthly'];
+                                            $financialsUrl = route('assets.financials', [$a->business_entity_id, $a->id]) . '?' . http_build_query([
+                                                'start_date' => $startDate,
+                                                'end_date' => $endDate,
+                                                'basis' => $basis,
+                                            ]);
+                                        @endphp
+                                        <tr class="group hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20 transition-colors">
+                                            <td class="px-6">
+                                                <a href="{{ $financialsUrl }}" class="font-semibold tracking-tight text-emerald-700 dark:text-emerald-300 group-hover:underline">{{ $a->name }}</a>
+                                                @if ($a->address)
+                                                    <p class="text-xs leading-relaxed text-gray-500 dark:text-gray-400 truncate max-w-xs mt-0.5">{{ $a->address }}</p>
+                                                @endif
+                                            </td>
+                                            <td class="text-gray-700 dark:text-gray-300">{{ $row['entity_name'] }}</td>
+                                            <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{!! $monthlyCell($monthly['repayment']) !!}</td>
+                                            <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{!! $monthlyCell($monthly['interest']) !!}</td>
+                                            <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{!! $monthlyCell($monthly['council_rates']) !!}</td>
+                                            <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{!! $monthlyCell($monthly['land_tax']) !!}</td>
+                                            <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{!! $monthlyCell($monthly['strata']) !!}</td>
+                                            <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{!! $monthlyCell($monthly['insurance']) !!}</td>
+                                            <td class="text-right portfolio-money text-gray-700 dark:text-gray-300">{!! $monthlyCell($monthly['other']) !!}</td>
+                                            <td class="text-right portfolio-money text-gray-900 dark:text-white">{{ $money($monthly['expenses']) }}</td>
+                                            <td class="text-right portfolio-money text-emerald-700 dark:text-emerald-300">{!! $monthlyCell($monthly['rent']) !!}</td>
+                                            <td class="text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($monthly['set_aside']) }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                                <tfoot>
+                                    <tr class="border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
+                                        <td class="px-6 py-4 font-semibold tracking-tight text-gray-900 dark:text-white" colspan="2">Portfolio total</td>
+                                        <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_repayment']) }}</td>
+                                        <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_interest']) }}</td>
+                                        <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_council_rates']) }}</td>
+                                        <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_land_tax']) }}</td>
+                                        <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_strata']) }}</td>
+                                        <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_insurance']) }}</td>
+                                        <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_other']) }}</td>
+                                        <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_expenses']) }}</td>
+                                        <td class="py-4 text-right portfolio-money font-semibold text-emerald-700 dark:text-emerald-300">{{ $money($totals['total_monthly_rent']) }}</td>
+                                        <td class="py-4 text-right portfolio-money font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_set_aside']) }}</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="lg:hidden border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 px-5 py-4">
+                            <p class="portfolio-stat-label mb-3">Portfolio total</p>
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs font-medium">Set aside</p>
+                                    <p class="portfolio-money mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_set_aside']) }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs font-medium">Monthly expenses</p>
+                                    <p class="portfolio-money mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_expenses']) }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-500 dark:text-gray-400 text-xs font-medium">Monthly rent</p>
+                                    <p class="portfolio-money mt-1 text-base font-semibold text-gray-900 dark:text-white">{{ $money($totals['total_monthly_rent']) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    @else
                     {{-- Mobile cards --}}
                     <div class="lg:hidden divide-y divide-gray-100 dark:divide-gray-700">
                         @foreach ($properties as $row)
@@ -434,6 +628,7 @@
                             </div>
                         </div>
                     </div>
+                    @endif
                 @endif
             </div>
 
