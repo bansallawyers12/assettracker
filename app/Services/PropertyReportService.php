@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\Asset;
 use App\Models\BankAccount;
+use App\Models\Lease;
+use App\Models\Tenant;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -151,7 +153,12 @@ class PropertyReportService
                 })
                 ->values();
             $holdingTransactions = $transactions->concat($extraLoanTransactions);
-            $pl = $this->aggregateTransactions($transactions);
+            $pl = $this->includeReceivedRent(
+                $asset,
+                $this->aggregateTransactions($transactions),
+                $start,
+                $end
+            );
             $extraPl = $this->aggregateTransactions($extraLoanTransactions);
             $yield = $this->propertyYield($asset, $pl, $start, $end);
             $holding = $this->holdingFigures($asset, $pl, $extraPl, $holdingTransactions, $loanAccount);
@@ -600,7 +607,7 @@ class PropertyReportService
         $query = Asset::query()
             ->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
             ->whereHas('businessEntity', fn ($q) => $q->forFinancialReports())
-            ->with(['businessEntity', 'bankAccounts'])
+            ->with(['businessEntity', 'bankAccounts', 'tenants', 'leases'])
             ->orderBy('name');
 
         if ($entityIds !== null && $entityIds !== []) {
@@ -612,6 +619,123 @@ class PropertyReportService
         }
 
         return $query;
+    }
+
+    /**
+     * Rent received with no bank receipt in this period still belongs in Income.
+     * Lease or tenant rent is used first. The annual rental income saved on the
+     * property is used when there is no lease. Rent already in the transactions
+     * is left as it is.
+     *
+     * @param  array{income: array{by_type: array<string, array{label: string, amount: float}>, total: float}, expenses: array{total: float}, net: float}  $pl
+     * @return array{income: array{by_type: array<string, array{label: string, amount: float}>, total: float}, expenses: array{total: float}, net: float}
+     */
+    private function includeReceivedRent(Asset $asset, array $pl, Carbon $start, Carbon $end): array
+    {
+        $supplement = $this->periodReceivedRent($asset, $pl, $start, $end);
+        if ($supplement <= 0) {
+            return $pl;
+        }
+
+        if (! isset($pl['income']['by_type']['rental_income'])) {
+            $pl['income']['by_type']['rental_income'] = [
+                'label' => Transaction::$incomeTypes['rental_income'],
+                'amount' => 0.0,
+            ];
+        }
+
+        $pl['income']['by_type']['rental_income']['amount'] = round(
+            (float) $pl['income']['by_type']['rental_income']['amount'] + $supplement,
+            2
+        );
+        $pl['income']['total'] = round($pl['income']['total'] + $supplement, 2);
+        $pl['net'] = round($pl['income']['total'] - $pl['expenses']['total'], 2);
+
+        return $pl;
+    }
+
+    /**
+     * @param  array{income: array{by_type: array<string, array{label: string, amount: float}>, total: float}}  $pl
+     */
+    private function periodReceivedRent(Asset $asset, array $pl, Carbon $start, Carbon $end): float
+    {
+        if ($this->rentFromPl($pl) > 0) {
+            return 0.0;
+        }
+
+        $days = max(1, $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1);
+        $annualFactor = 365 / $days;
+        $monthly = $this->monthlyReceivedRent($asset, $start, $end);
+
+        if ($monthly !== null) {
+            return round($monthly * 12 / $annualFactor, 2);
+        }
+
+        if ($asset->rental_income !== null && (float) $asset->rental_income > 0) {
+            return round((float) $asset->rental_income / $annualFactor, 2);
+        }
+
+        return 0.0;
+    }
+
+    private function monthlyReceivedRent(Asset $asset, Carbon $start, Carbon $end): ?float
+    {
+        $lease = $asset->leases
+            ->filter(fn (Lease $lease) => $this->overlapsPeriod($lease->start_date, $lease->end_date, $start, $end))
+            ->sortByDesc(fn (Lease $lease) => $lease->start_date?->getTimestamp() ?? 0)
+            ->first();
+
+        if ($lease !== null) {
+            $fromLease = $this->toMonthly(
+                $lease->rental_amount !== null ? (float) $lease->rental_amount : null,
+                $lease->payment_frequency
+            );
+            if ($fromLease !== null) {
+                return $fromLease;
+            }
+        }
+
+        $tenant = $asset->tenants
+            ->filter(fn (Tenant $tenant) => $this->overlapsPeriod($tenant->move_in_date, $tenant->move_out_date, $start, $end))
+            ->sortByDesc(fn (Tenant $tenant) => $tenant->move_in_date?->getTimestamp() ?? 0)
+            ->first();
+
+        if ($tenant === null) {
+            return null;
+        }
+
+        return $this->toMonthly(
+            $tenant->rent_amount !== null ? (float) $tenant->rent_amount : null,
+            $tenant->rent_frequency
+        );
+    }
+
+    private function overlapsPeriod(mixed $starts, mixed $ends, Carbon $periodStart, Carbon $periodEnd): bool
+    {
+        $startsAt = $starts !== null ? Carbon::parse($starts)->startOfDay() : null;
+        $endsAt = $ends !== null ? Carbon::parse($ends)->endOfDay() : null;
+
+        if ($startsAt !== null && $startsAt->gt($periodEnd)) {
+            return false;
+        }
+
+        return $endsAt === null || $endsAt->gte($periodStart);
+    }
+
+    private function toMonthly(?float $amount, ?string $frequency): ?float
+    {
+        $amount = $this->positiveAmount($amount);
+        if ($amount === null) {
+            return null;
+        }
+
+        return match (strtolower(trim((string) $frequency))) {
+            'weekly' => round(($amount * 52) / 12, 2),
+            'fortnightly' => round(($amount * 26) / 12, 2),
+            'quarterly' => round($amount / 3, 2),
+            'yearly', 'annually', 'annual' => round($amount / 12, 2),
+            default => $amount,
+        };
     }
 
     /**

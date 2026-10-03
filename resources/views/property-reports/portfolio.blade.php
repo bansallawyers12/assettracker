@@ -232,7 +232,7 @@
                 <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
                         <h2 class="portfolio-section-title text-base">Properties</h2>
-                        <p class="portfolio-section-desc mt-1">Loan balance is the latest loan statement, or the balance saved on the property. Repayment is the latest loan repayment in this period, or the repayment saved on the property. Interest, council rates, land tax, and strata are amounts paid in this period, or the amount saved on the property when nothing was paid. Rent received is included in Income. Rent paid is included in Expenses.</p>
+                        <p class="portfolio-section-desc mt-1">Loan balance is the latest loan statement, or the balance saved on the property. Repayment is the latest loan repayment in this period, or the repayment saved on the property. Interest, council rates, land tax, and strata are amounts paid in this period, or the amount saved on the property when nothing was paid. Rent received is included in Income, including the lease or tenant rent when no rent was banked in this period. Rent paid is included in Expenses.</p>
                     </div>
                     @if ($propertyCount > 0)
                         <span class="inline-flex items-center self-start rounded-full bg-gray-100 dark:bg-gray-700 px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-300 tabular-nums tracking-tight">

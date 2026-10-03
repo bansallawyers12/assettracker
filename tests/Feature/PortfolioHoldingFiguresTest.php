@@ -4,6 +4,7 @@ use App\Models\Asset;
 use App\Models\BankAccount;
 use App\Models\BankAccountStatement;
 use App\Models\BusinessEntity;
+use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\PropertyReportService;
@@ -99,6 +100,13 @@ it('reads portfolio holding figures from transactions and falls back to the prop
     portfolioHoldingTransaction($entity, $operating, 'valuation_and_rates', 3381.29, '2026-02-01', $funded);
     portfolioHoldingTransaction($entity, $operating, 'oc_fees', 3600, '2026-04-01', $funded);
     portfolioHoldingTransaction($entity, $operating, 'rental_income', 12000, '2026-06-01', $funded);
+    Tenant::create([
+        'asset_id' => $funded->id,
+        'name' => 'Funded tenant',
+        'rent_amount' => 9999,
+        'rent_frequency' => 'Monthly',
+        'move_in_date' => '2024-01-01',
+    ]);
 
     $saved = Asset::create([
         'business_entity_id' => $entity->id,
@@ -117,6 +125,13 @@ it('reads portfolio holding figures from transactions and falls back to the prop
         'owners_corp_amount' => 400,
     ]);
     portfolioHoldingTransaction($entity, $operating, 'rent_to_related_party', 1500, '2026-05-01', $saved);
+    Tenant::create([
+        'asset_id' => $saved->id,
+        'name' => 'Bald Hill tenant',
+        'rent_amount' => 2000,
+        'rent_frequency' => 'Monthly',
+        'move_in_date' => '2024-01-01',
+    ]);
 
     $report = app(PropertyReportService::class)->portfolio(
         [$entity->id],
@@ -140,7 +155,7 @@ it('reads portfolio holding figures from transactions and falls back to the prop
         ->and($rows['1 Bald Hill']['council_rates'])->toBe(300.0)
         ->and($rows['1 Bald Hill']['land_tax'])->toBe(200.0)
         ->and($rows['1 Bald Hill']['strata'])->toBe(400.0)
-        ->and($rows['1 Bald Hill']['period_income'])->toBe(0.0)
+        ->and($rows['1 Bald Hill']['period_income'])->toBe(24000.0)
         ->and($rows['1 Bald Hill']['period_expenses'])->toBe(1500.0)
         ->and($report['totals']['total_loan_balance'])->toBe(1941433.54)
         ->and($report['totals']['total_land_tax'])->toBe(2986.55);
@@ -159,6 +174,7 @@ it('reads portfolio holding figures from transactions and falls back to the prop
         ->assertSee('Strata')
         ->assertDontSee('Monthly rent')
         ->assertSee('$12,000.00')
+        ->assertSee('$24,000.00')
         ->assertSee('$1,500.00')
         ->assertSee('$1,940,433.54')
         ->assertSee('$6,608.00')
