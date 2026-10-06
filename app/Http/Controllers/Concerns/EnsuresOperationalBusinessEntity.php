@@ -17,21 +17,6 @@ trait EnsuresOperationalBusinessEntity
     }
 
     /**
-     * Allow viewing invoice lists and posted records; block only tenancy/property-manager contacts.
-     */
-    protected function ensureAccountingReadable(BusinessEntity $businessEntity): void
-    {
-        if (! $businessEntity->isTenancyContactOnly()) {
-            return;
-        }
-
-        $this->abortOperationalRestriction(
-            403,
-            'This action is not available for tenancy or property-manager contacts. Edit the company profile if this should be one of your operating entities.'
-        );
-    }
-
-    /**
      * Block creating or changing accounting records for closed, inactive, or tenancy-only entities.
      */
     protected function ensureAccountingMutationsAllowed(BusinessEntity $businessEntity): void

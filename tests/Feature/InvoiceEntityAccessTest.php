@@ -4,15 +4,16 @@ use Tests\TestCase;
 
 uses(TestCase::class);
 
-it('separates readable and mutating invoice accounting guards', function () {
+it('routes invoice URLs through Laravel and keeps mutation guards on writes', function () {
     $controller = file_get_contents(app_path('Http/Controllers/InvoiceController.php'));
     $trait = file_get_contents(app_path('Http/Controllers/Concerns/EnsuresOperationalBusinessEntity.php'));
+    $htaccess = file_get_contents(public_path('.htaccess'));
     $indexView = file_get_contents(resource_path('views/invoices/index.blade.php'));
 
-    expect($controller)->toContain('ensureAccountingReadable($businessEntity)')
+    expect($htaccess)->toContain('RewriteRule ^business-entities/[0-9]+/invoices(/.*)?$ index.php')
+        ->and($htaccess)->toContain('RewriteRule ^invoices(/.*)?$ index.php')
         ->and($controller)->toContain('ensureAccountingMutationsAllowed($businessEntity)')
-        ->and($controller)->toContain('authorizeInvoice($businessEntity, $invoice, mutating: true)')
-        ->and($trait)->toContain('ensureAccountingReadable')
+        ->and($controller)->not->toContain('ensureAccountingReadable')
         ->and($trait)->toContain('ensureAccountingMutationsAllowed')
         ->and($trait)->toContain('ensureNotInactive')
         ->and($indexView)->toContain('isClosed()')

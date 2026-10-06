@@ -55,7 +55,6 @@ class InvoiceController extends Controller
 
         if ($businessEntity) {
             $this->authorize('view', $businessEntity);
-            $this->ensureAccountingReadable($businessEntity);
 
             $query = Invoice::where('business_entity_id', $businessEntity->id)->with(['asset', 'lease', 'attachmentDocuments']);
             $this->applyInvoiceListFilters($query, $statusFilter, $receivableOnly, $assetIdFilter, $leaseIdFilter);
@@ -875,11 +874,7 @@ class InvoiceController extends Controller
 
         if ($mutating) {
             $this->ensureAccountingMutationsAllowed($businessEntity);
-
-            return;
         }
-
-        $this->ensureAccountingReadable($businessEntity);
     }
 
     /**

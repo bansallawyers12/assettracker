@@ -10,6 +10,10 @@
 
     RewriteEngine On
 
+    # Force front controller for invoice URLs even if a stray invoices/ directory exists on the server (Apache 403 otherwise).
+    RewriteRule ^invoices(/.*)?$ index.php [L,QSA]
+    RewriteRule ^business-entities/[0-9]+/invoices(/.*)?$ index.php [L,QSA]
+
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
