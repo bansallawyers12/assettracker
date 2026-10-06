@@ -80,12 +80,8 @@ class DocumentUploadService
         $prefix = $this->baseDocsPath($entity, $asset).'/'.$this->categoryPathSegment($categoryId);
         $this->ensureDirectory($prefix);
 
-        $label = $document->checklist_label ?? 'Document';
-        $entityToken = $this->sanitizeLabelForStorage($entity->legal_name);
-        $checklistToken = $this->sanitizeLabelForStorage($label);
         $extension = strtolower($file->getClientOriginalExtension() ?: 'bin');
-        $unique = time().'_'.mt_rand(1000, 9999);
-        $storedName = "{$entityToken}_{$checklistToken}_{$unique}.{$extension}";
+        $storedName = $this->buildStoredObjectName($document, $extension);
         $path = "{$prefix}/{$storedName}";
 
         $mime = $file->getMimeType() ?: $this->mimeTypeForExtension($extension);
@@ -266,12 +262,8 @@ class DocumentUploadService
         $prefix = $this->baseDocsPath($entity, $asset).'/'.$this->categoryPathSegment($categoryId);
         $this->ensureDirectory($prefix);
 
-        $label = $document->checklist_label ?? 'Document';
-        $entityToken = $this->sanitizeLabelForStorage($entity->legal_name);
-        $checklistToken = $this->sanitizeLabelForStorage($label);
         $extension = strtolower(pathinfo($displayFileName, PATHINFO_EXTENSION) ?: pathinfo($sourceS3Path, PATHINFO_EXTENSION) ?: 'bin');
-        $unique = time().'_'.mt_rand(1000, 9999);
-        $storedName = "{$entityToken}_{$checklistToken}_{$unique}.{$extension}";
+        $storedName = $this->buildStoredObjectName($document, $extension);
         $path = "{$prefix}/{$storedName}";
 
         $contents = DocumentStorage::disk()->get($sourceS3Path);
@@ -541,5 +533,13 @@ class DocumentUploadService
                 $this->syncTransactionLegacyDocumentColumns($transaction);
             }
         }
+    }
+
+    private function buildStoredObjectName(Document $document, string $extension): string
+    {
+        $extension = strtolower($extension !== '' ? $extension : 'bin');
+        $unique = time().'_'.mt_rand(1000, 9999);
+
+        return 'doc-'.$document->id.'_'.$unique.'.'.$extension;
     }
 }

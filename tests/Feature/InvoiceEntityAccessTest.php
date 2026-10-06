@@ -20,3 +20,12 @@ it('routes invoice URLs through Laravel and keeps mutation guards on writes', fu
         ->and($indexView)->toContain('isClosed()')
         ->and(file_exists(resource_path('views/errors/403.blade.php')))->toBeTrue();
 });
+
+it('stores document files with compact object keys to fit path column limits', function () {
+    $service = file_get_contents(app_path('Services/DocumentUploadService.php'));
+    $migration = glob(database_path('migrations/*widen_document_storage_path_columns.php'));
+
+    expect($service)->toContain('function buildStoredObjectName')
+        ->and($service)->toContain("'doc-'.$document->id.'_'")
+        ->and($migration)->not->toBeEmpty();
+});
