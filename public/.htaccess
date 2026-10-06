@@ -10,9 +10,9 @@
 
     RewriteEngine On
 
-    # Force front controller for invoice URLs even if a stray invoices/ directory exists on the server (Apache 403 otherwise).
+    # Force Laravel for entity URLs even if a stray business-entities/ directory exists on the host.
+    RewriteRule ^business-entities(/.*)?$ index.php [L,QSA]
     RewriteRule ^invoices(/.*)?$ index.php [L,QSA]
-    RewriteRule ^business-entities/[0-9]+/invoices(/.*)?$ index.php [L,QSA]
 
     # Handle Authorization Header
     RewriteCond %{HTTP:Authorization} .

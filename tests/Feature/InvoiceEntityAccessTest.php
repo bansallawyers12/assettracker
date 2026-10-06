@@ -10,8 +10,9 @@ it('routes invoice URLs through Laravel and keeps mutation guards on writes', fu
     $htaccess = file_get_contents(public_path('.htaccess'));
     $indexView = file_get_contents(resource_path('views/invoices/index.blade.php'));
 
-    expect($htaccess)->toContain('RewriteRule ^business-entities/[0-9]+/invoices(/.*)?$ index.php')
+    expect($htaccess)->toContain('RewriteRule ^business-entities(/.*)?$ index.php')
         ->and($htaccess)->toContain('RewriteRule ^invoices(/.*)?$ index.php')
+        ->and(file_exists(public_path('business-entities')))->toBeFalse()
         ->and($controller)->toContain('ensureAccountingMutationsAllowed($businessEntity)')
         ->and($controller)->not->toContain('ensureAccountingReadable')
         ->and($trait)->toContain('ensureAccountingMutationsAllowed')
