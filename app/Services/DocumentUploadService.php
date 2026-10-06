@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Support\DocumentStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DocumentUploadService
 {
@@ -30,6 +31,36 @@ class DocumentUploadService
     public function sanitizeLabelForStorage(string $label): string
     {
         return preg_replace('/[^a-zA-Z0-9_\-\s]/', '_', $label);
+    }
+
+    /**
+     * Normalize a user-facing file name for DB storage (keeps extension, strips risky characters).
+     */
+    public function sanitizeDisplayFileName(string $originalName): string
+    {
+        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+        $base = pathinfo($originalName, PATHINFO_FILENAME);
+
+        if ($base === '' || $base === '.') {
+            $base = 'attachment';
+        }
+
+        $base = str_ireplace('&', ' and ', $base);
+        $base = preg_replace('/[#\'"`]+/u', '', $base) ?? $base;
+        $base = preg_replace('/[^a-zA-Z0-9_\-\s().]+/u', ' ', $base) ?? $base;
+        $base = preg_replace('/\s+/', ' ', trim($base)) ?? '';
+
+        if ($base === '') {
+            $base = 'attachment';
+        }
+
+        $base = Str::limit($base, 200, '');
+
+        if ($extension === '' || $extension === '.') {
+            return $base;
+        }
+
+        return $base.'.'.strtolower($extension);
     }
 
     public function baseDocsPath(BusinessEntity $entity, ?Asset $asset = null): string
@@ -94,7 +125,7 @@ class DocumentUploadService
         DocumentStorage::put($path, file_get_contents($file->getRealPath()), ['ContentType' => $mime]);
 
         $document->path = $path;
-        $document->file_name = $displayFileName ?? $file->getClientOriginalName();
+        $document->file_name = $this->sanitizeDisplayFileName($displayFileName ?? $file->getClientOriginalName());
         $document->filetype = $mime;
         $document->file_size = $file->getSize();
         $document->user_id = auth()->id();
@@ -196,7 +227,7 @@ class DocumentUploadService
         ?string $displayFileName = null,
     ): Document {
         $category = $this->firstOrCreateCategoryNamed($entity, $asset, self::INVOICE_ATTACHMENTS_CATEGORY_TITLE);
-        $fname = $displayFileName ?? $file->getClientOriginalName();
+        $fname = $this->sanitizeDisplayFileName($displayFileName ?? $file->getClientOriginalName());
         $baseLabel = 'Invoice #'.$invoiceId;
         $label = $baseLabel.' — '.pathinfo($fname, PATHINFO_FILENAME);
         $document = $this->resolveInvoiceAttachmentDocumentSlot($entity, $asset, $category, $label, 'Invoice attachment');
