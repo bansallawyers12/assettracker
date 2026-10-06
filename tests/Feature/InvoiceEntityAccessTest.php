@@ -26,6 +26,6 @@ it('stores document files with compact object keys to fit path column limits', f
     $migration = glob(database_path('migrations/*widen_document_storage_path_columns.php'));
 
     expect($service)->toContain('function buildStoredObjectName')
-        ->and($service)->toContain("'doc-'.$document->id.'_'")
+        ->and($service)->toContain('doc-\'.$document->id.\'_\'')
         ->and($migration)->not->toBeEmpty();
 });
