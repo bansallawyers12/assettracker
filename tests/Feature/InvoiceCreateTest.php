@@ -686,6 +686,46 @@ it('rejects a lease that does not belong to the selected asset', function () {
         ->assertSessionHasErrors('lease_id');
 });
 
+it('stores multiple attachments when creating a draft invoice', function () {
+    Storage::fake('s3');
+    $this->seed(ChartOfAccountSeeder::class);
+    $user = User::factory()->create();
+    $entity = invoiceCreateEntity();
+
+    $this->actingAs($user)->post(route('business-entities.invoices.store', $entity), [
+        'invoice_number' => 'INV'.$entity->id.'-202610001',
+        'issue_date' => '2026-10-06',
+        'customer_name' => 'Multi Attachment Customer',
+        'currency' => 'AUD',
+        'gst_basis' => 'none',
+        'gst_percent' => 0,
+        'expected_attachment_count' => 2,
+        'lines' => [
+            [
+                'description' => 'Consulting',
+                'quantity' => 1,
+                'unit_price' => 200,
+                'account_code' => '4100',
+            ],
+        ],
+        'attachments' => [
+            UploadedFile::fake()->create('invoice-a.pdf', 100, 'application/pdf'),
+            UploadedFile::fake()->create('invoice-b.pdf', 80, 'application/pdf'),
+        ],
+    ])->assertRedirect();
+
+    $invoice = Invoice::query()->where('business_entity_id', $entity->id)->firstOrFail();
+    $invoice->load('attachmentDocuments');
+
+    expect($invoice->attachmentDocuments)->toHaveCount(2);
+
+    $this->actingAs($user)
+        ->get(route('business-entities.invoices.edit', [$entity, $invoice]))
+        ->assertSuccessful()
+        ->assertSee('invoice-a.pdf', false)
+        ->assertSee('invoice-b.pdf', false);
+});
+
 it('stores an optional attachment when creating a draft invoice', function () {
     Storage::fake('s3');
     $this->seed(ChartOfAccountSeeder::class);

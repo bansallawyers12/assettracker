@@ -201,7 +201,8 @@ class DocumentUploadService
     ): Document {
         $category = $this->firstOrCreateCategoryNamed($entity, $asset, self::INVOICE_ATTACHMENTS_CATEGORY_TITLE);
         $fname = $displayFileName ?? $file->getClientOriginalName();
-        $label = 'Invoice #'.$invoiceId;
+        $baseLabel = 'Invoice #'.$invoiceId;
+        $label = $baseLabel.' — '.pathinfo($fname, PATHINFO_FILENAME);
         $document = $this->resolveInvoiceAttachmentDocumentSlot($entity, $asset, $category, $label, 'Invoice attachment');
 
         $this->attachFileToDocument($document, $file, $entity, $asset, $fname);

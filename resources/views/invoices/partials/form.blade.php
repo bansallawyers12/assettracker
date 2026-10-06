@@ -140,6 +140,7 @@
         <input type="hidden" name="lease_id" value="{{ $formConfig['leaseId'] }}" :value="leaseId">
         <input type="hidden" name="gst_percent" value="{{ in_array(($formConfig['gstBasis'] ?? 'inclusive'), ['none', 'manual'], true) ? 0 : 10 }}" :value="gstPercent">
         <input type="hidden" name="gst_basis" value="{{ $formConfig['gstBasis'] ?? 'inclusive' }}" :value="gstBasis">
+        <input type="hidden" name="expected_attachment_count" value="0" data-expected-attachment-count>
 
         {{-- Main Invoice Document Sheet --}}
         <div class="overflow-hidden rounded-2xl border border-gray-200/90 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">

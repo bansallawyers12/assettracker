@@ -22,6 +22,7 @@ use App\Support\DocumentUploadValidation;
 use App\Support\TableSort;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -669,7 +670,10 @@ class InvoiceController extends Controller
             'remove_attachments' => ['nullable', 'array'],
             'remove_attachments.*' => ['integer', 'exists:documents,id'],
             ...$this->invoiceAttachmentFileRules(),
+            'expected_attachment_count' => ['nullable', 'integer', 'min:0', 'max:50'],
         ]);
+
+        $this->assertStagedAttachmentsReceived($request);
 
         if ($data['gst_basis'] === 'none') {
             $data['gst_percent'] = 0;
@@ -687,6 +691,43 @@ class InvoiceController extends Controller
         }
 
         return $data;
+    }
+
+    private function assertStagedAttachmentsReceived(Request $request): void
+    {
+        $expected = (int) $request->input('expected_attachment_count', 0);
+        if ($expected <= 0) {
+            return;
+        }
+
+        $uploaded = $this->normalizedAttachmentUploads($request);
+
+        if ($uploaded === []) {
+            throw ValidationException::withMessages([
+                'attachments' => 'Your selected files were not received by the server. Re-select them and save again, or check PHP upload_max_filesize and post_max_size.',
+            ]);
+        }
+    }
+
+    /**
+     * @return list<UploadedFile>
+     */
+    private function normalizedAttachmentUploads(Request $request): array
+    {
+        $files = [];
+        $fromArray = $request->file('attachments');
+        if (is_array($fromArray)) {
+            $files = array_values(array_filter($fromArray));
+        } elseif ($fromArray) {
+            $files[] = $fromArray;
+        }
+
+        $legacy = $request->file('attachment');
+        if ($legacy) {
+            $files[] = $legacy;
+        }
+
+        return $files;
     }
 
     /**
@@ -904,18 +945,7 @@ class InvoiceController extends Controller
             $this->documentUploadService->detachInvoiceDocumentById($invoice, (int) $invoice->document_id);
         }
 
-        $files = [];
-        $fromArray = $request->file('attachments');
-        if (is_array($fromArray)) {
-            $files = array_values(array_filter($fromArray));
-        } elseif ($fromArray) {
-            $files[] = $fromArray;
-        }
-
-        $legacy = $request->file('attachment');
-        if ($legacy) {
-            $files[] = $legacy;
-        }
+        $files = $this->normalizedAttachmentUploads($request);
 
         if ($files === []) {
             return;

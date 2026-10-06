@@ -72,7 +72,38 @@
                             dt.items.add(file);
                         });
                         input.files = dt.files;
+                        zone.dataset.pendingAttachmentCount = String(pendingFiles.length);
                     };
+
+                    const bindFormSubmit = function () {
+                        const form = zone.closest('form');
+                        if (!form || form.dataset.attachmentDropzoneSubmitBound === '1') {
+                            return;
+                        }
+
+                        form.dataset.attachmentDropzoneSubmitBound = '1';
+                        form.addEventListener('submit', function () {
+                            document.querySelectorAll('[data-attachment-dropzone]').forEach(function (dropZone) {
+                                if (typeof dropZone.__syncAttachmentInputFiles === 'function') {
+                                    dropZone.__syncAttachmentInputFiles();
+                                }
+                            });
+
+                            const expected = form.querySelector('[data-expected-attachment-count]');
+                            if (!expected) {
+                                return;
+                            }
+
+                            let total = 0;
+                            document.querySelectorAll('[data-attachment-dropzone]').forEach(function (dropZone) {
+                                total += parseInt(dropZone.dataset.pendingAttachmentCount || '0', 10);
+                            });
+                            expected.value = String(total);
+                        });
+                    };
+
+                    zone.__syncAttachmentInputFiles = syncInputFiles;
+                    bindFormSubmit();
 
                     const renderPreview = function () {
                         preview.innerHTML = '';
