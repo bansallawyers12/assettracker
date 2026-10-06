@@ -54,11 +54,13 @@
                         <x-lucide-circle-dollar-sign class="h-4 w-4" aria-hidden="true" />
                         Unpaid AR
                     </a>
-                    <a href="{{ route('business-entities.invoices.create', $businessEntity) }}"
-                       class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
-                        <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
-                        New invoice
-                    </a>
+                    @unless ($businessEntity->isClosed() || $businessEntity->isInactive() || $businessEntity->isTenancyContactOnly())
+                        <a href="{{ route('business-entities.invoices.create', $businessEntity) }}"
+                           class="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3.5 py-2 text-sm font-semibold text-white shadow-xs hover:bg-indigo-500">
+                            <x-lucide-plus class="h-4 w-4" aria-hidden="true" />
+                            New invoice
+                        </a>
+                    @endunless
                 </div>
             @endisset
         </div>
@@ -71,6 +73,22 @@
         @if (session('success'))
             <div class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-900/30 dark:text-green-200">{{ session('success') }}</div>
         @endif
+
+        @isset($businessEntity)
+            @if ($businessEntity->isClosed())
+                <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-100" role="status">
+                    {{ __('This entity is closed. You can view invoices here; reopen the company from Edit company profile to create or change them.') }}
+                </div>
+            @elseif ($businessEntity->isInactive())
+                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="status">
+                    {{ __('This company is inactive. Invoices stay visible; mark the company active again before creating or editing.') }}
+                </div>
+            @elseif ($businessEntity->isTenancyContactOnly())
+                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100" role="status">
+                    {{ __('Invoices are not used for tenancy or property-manager contacts.') }}
+                </div>
+            @endif
+        @endisset
 
         <div class="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xs dark:border-gray-800 dark:bg-gray-900">
             <div class="flex flex-col gap-3 border-b border-gray-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">
@@ -305,10 +323,12 @@
                                         <p class="text-sm font-semibold text-gray-900 dark:text-white">No invoices found</p>
                                         <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Try clearing filters{{ isset($businessEntity) ? ' or create a new invoice' : '' }}.</p>
                                         @isset($businessEntity)
-                                            <a href="{{ route('business-entities.invoices.create', $businessEntity) }}" class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500">
-                                                <x-lucide-plus class="h-3.5 w-3.5" aria-hidden="true" />
-                                                New invoice
-                                            </a>
+                                            @unless ($businessEntity->isClosed() || $businessEntity->isInactive() || $businessEntity->isTenancyContactOnly())
+                                                <a href="{{ route('business-entities.invoices.create', $businessEntity) }}" class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-500">
+                                                    <x-lucide-plus class="h-3.5 w-3.5" aria-hidden="true" />
+                                                    New invoice
+                                                </a>
+                                            @endunless
                                         @endisset
                                     </div>
                                 </td>

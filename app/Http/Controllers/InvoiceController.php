@@ -55,7 +55,7 @@ class InvoiceController extends Controller
 
         if ($businessEntity) {
             $this->authorize('view', $businessEntity);
-            $this->ensureOperationalForAccounting($businessEntity);
+            $this->ensureAccountingReadable($businessEntity);
 
             $query = Invoice::where('business_entity_id', $businessEntity->id)->with(['asset', 'lease', 'attachmentDocuments']);
             $this->applyInvoiceListFilters($query, $statusFilter, $receivableOnly, $assetIdFilter, $leaseIdFilter);
@@ -124,7 +124,7 @@ class InvoiceController extends Controller
     public function create(BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
-        $this->ensureOperationalForAccounting($businessEntity);
+        $this->ensureAccountingMutationsAllowed($businessEntity);
 
         $issueDate = old('issue_date', now()->toDateString());
         $suggestedInvoiceNumber = old('invoice_number', Invoice::suggestNumber($businessEntity, $issueDate));
@@ -147,7 +147,7 @@ class InvoiceController extends Controller
     public function suggestNumber(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
-        $this->ensureOperationalForAccounting($businessEntity);
+        $this->ensureAccountingMutationsAllowed($businessEntity);
 
         $data = $request->validate([
             'issue_date' => ['required', 'date'],
@@ -161,7 +161,7 @@ class InvoiceController extends Controller
     public function store(Request $request, BusinessEntity $businessEntity, InvoicePostingService $postingService)
     {
         $this->authorize('update', $businessEntity);
-        $this->ensureOperationalForAccounting($businessEntity);
+        $this->ensureAccountingMutationsAllowed($businessEntity);
 
         $lineAccountCodes = $this->lineAccountCodes();
         $data = $this->validateInvoicePayload($request, $businessEntity, $lineAccountCodes);
@@ -327,7 +327,7 @@ class InvoiceController extends Controller
     public function edit(BusinessEntity $businessEntity, Invoice $invoice)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
 
         if ($invoice->is_posted) {
             return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
@@ -365,7 +365,7 @@ class InvoiceController extends Controller
     public function update(Request $request, BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
         if ($invoice->is_posted) {
             return back()->with('error', 'Posted invoices cannot be edited.');
         }
@@ -427,7 +427,7 @@ class InvoiceController extends Controller
     public function destroy(BusinessEntity $businessEntity, Invoice $invoice)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
         if ($invoice->is_posted) {
             return back()->with('error', 'Posted invoices cannot be deleted.');
         }
@@ -452,7 +452,7 @@ class InvoiceController extends Controller
     public function post(BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
         if ($invoice->is_posted) {
             return back()->with('info', 'Invoice already posted.');
         }
@@ -466,7 +466,7 @@ class InvoiceController extends Controller
     public function unpost(BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
 
         if (! $invoice->is_posted) {
             return back()->with('info', 'Invoice is not posted.');
@@ -489,7 +489,7 @@ class InvoiceController extends Controller
         InvoicePaymentService $paymentService
     ) {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
 
         $transaction = $paymentService->record($request, $businessEntity, $invoice);
         $invoice->refresh();
@@ -516,7 +516,7 @@ class InvoiceController extends Controller
     public function remind(BusinessEntity $businessEntity, Invoice $invoice)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
 
         if ($invoice->status !== 'approved' && $invoice->status !== 'partial') {
             return back()->with('error', 'Reminders can only be sent for approved or partially paid invoices.');
@@ -869,10 +869,17 @@ class InvoiceController extends Controller
         }
     }
 
-    private function authorizeInvoice(BusinessEntity $businessEntity, Invoice $invoice): void
+    private function authorizeInvoice(BusinessEntity $businessEntity, Invoice $invoice, bool $mutating = false): void
     {
         abort_unless((int) $invoice->business_entity_id === (int) $businessEntity->id, 404);
-        $this->ensureOperationalForAccounting($businessEntity);
+
+        if ($mutating) {
+            $this->ensureAccountingMutationsAllowed($businessEntity);
+
+            return;
+        }
+
+        $this->ensureAccountingReadable($businessEntity);
     }
 
     /**

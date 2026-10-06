@@ -9,12 +9,35 @@ use Illuminate\Http\Request;
 trait EnsuresOperationalBusinessEntity
 {
     /**
-     * Block accounting, invoices, rent tools, and tracking categories for tenancy/property-manager contacts.
-     * Closed entities are blocked first — accounting tools stay read-only while closed.
+     * Block accounting mutations (bank links, new invoices, etc.) for closed, inactive, or tenancy-only entities.
      */
     protected function ensureOperationalForAccounting(BusinessEntity $businessEntity): void
     {
+        $this->ensureAccountingMutationsAllowed($businessEntity);
+    }
+
+    /**
+     * Allow viewing invoice lists and posted records; block only tenancy/property-manager contacts.
+     */
+    protected function ensureAccountingReadable(BusinessEntity $businessEntity): void
+    {
+        if (! $businessEntity->isTenancyContactOnly()) {
+            return;
+        }
+
+        $this->abortOperationalRestriction(
+            403,
+            'This action is not available for tenancy or property-manager contacts. Edit the company profile if this should be one of your operating entities.'
+        );
+    }
+
+    /**
+     * Block creating or changing accounting records for closed, inactive, or tenancy-only entities.
+     */
+    protected function ensureAccountingMutationsAllowed(BusinessEntity $businessEntity): void
+    {
         $this->ensureNotClosed($businessEntity);
+        $this->ensureNotInactive($businessEntity);
 
         if (! $businessEntity->isTenancyContactOnly()) {
             return;
@@ -38,6 +61,18 @@ trait EnsuresOperationalBusinessEntity
         $this->abortOperationalRestriction(
             403,
             'This entity is closed, so bank links, transactions, assets, and other changes are blocked. Reopen it from Edit company profile by setting Status to Active.'
+        );
+    }
+
+    protected function ensureNotInactive(BusinessEntity $businessEntity): void
+    {
+        if (! $businessEntity->isInactive()) {
+            return;
+        }
+
+        $this->abortOperationalRestriction(
+            403,
+            'This company is inactive. Mark it active again from Edit company profile before creating or changing invoices and other accounting records.'
         );
     }
 
