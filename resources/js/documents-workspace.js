@@ -3,6 +3,7 @@
  * Imported via app.js (Vite). No inline script in Blade needed.
  */
 import { showWorkspaceAlert, showWorkspaceConfirm, showWorkspacePrompt, showWorkspaceSelect } from './workspace-dialog.js';
+import { sanitizeDisplayFileBase, withSanitizedFileName } from './attachment-filename-sanitize.js';
 import { setRowUploading } from './workspace-upload-ui.js';
 
 (function () {
@@ -726,7 +727,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
             })) { input.value = ''; return; }
 
             const docId = input.dataset.documentId;
-            const file  = input.files?.[0];
+            const file  = withSanitizedFileName(input.files?.[0]);
             if (!docId || !file) { input.value = ''; return; }
             if (fileExceedsLimit(file)) { alertFileTooLarge(); input.value = ''; return; }
 
@@ -1163,7 +1164,17 @@ import { setRowUploading } from './workspace-upload-ui.js';
             });
         }
 
-        bulkFiles?.addEventListener('change', () => refreshBulkMap(bulkFiles.files));
+        bulkFiles?.addEventListener('change', () => {
+            if (!bulkFiles?.files?.length) {
+                return;
+            }
+            const dt = new DataTransfer();
+            Array.from(bulkFiles.files).forEach((file) => {
+                dt.items.add(withSanitizedFileName(file));
+            });
+            bulkFiles.files = dt.files;
+            refreshBulkMap(bulkFiles.files);
+        });
 
         document.getElementById(prefix + '-bulk-go')?.addEventListener('click', async () => {
             const files = bulkFiles?.files;
@@ -1190,7 +1201,9 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
                 if (name === '__NEW__' || (!name && autoCreate)) {
                     type = 'new';
-                    name = file.name.replace(/\.[^/.]+$/, '').replace(/_/g, ' ').trim();
+                    const dot = file.name.lastIndexOf('.');
+                    const basePart = dot > 0 ? file.name.slice(0, dot) : file.name;
+                    name = sanitizeDisplayFileBase(basePart);
                 }
                 if (!name) { mapOk = false; return; }
                 formData.append('mappings[]', JSON.stringify({ type, name, replace }));

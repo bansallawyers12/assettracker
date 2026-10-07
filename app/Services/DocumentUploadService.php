@@ -34,31 +34,40 @@ class DocumentUploadService
     }
 
     /**
+     * Normalize a label or filename base: ASCII letters/digits only; spaces and symbols become underscores.
+     */
+    public function sanitizeDisplayFileBase(string $text): string
+    {
+        $base = trim($text);
+
+        if ($base === '' || $base === '.') {
+            return 'attachment';
+        }
+
+        $base = preg_replace('/[^a-zA-Z0-9]+/', '_', $base) ?? '';
+        $base = preg_replace('/_+/', '_', $base) ?? '';
+        $base = trim($base, '_');
+
+        if ($base === '') {
+            return 'attachment';
+        }
+
+        $base = Str::limit($base, 200, '');
+
+        return rtrim($base, '_') !== '' ? rtrim($base, '_') : 'attachment';
+    }
+
+    /**
      * Normalize a user-facing file name for DB storage (keeps extension).
      * Only ASCII letters and digits remain; spaces and symbols become underscores.
      */
     public function sanitizeDisplayFileName(string $originalName): string
     {
         $extension = pathinfo($originalName, PATHINFO_EXTENSION);
-        $base = pathinfo($originalName, PATHINFO_FILENAME);
-
-        if ($base === '' || $base === '.') {
-            $base = 'attachment';
-        } else {
-            $base = preg_replace('/[^a-zA-Z0-9]+/', '_', $base) ?? '';
-            $base = preg_replace('/_+/', '_', $base) ?? '';
-            $base = trim($base, '_');
-
-            if ($base === '') {
-                $base = 'attachment';
-            }
-
-            $base = Str::limit($base, 200, '');
-            $base = rtrim($base, '_');
-        }
+        $base = $this->sanitizeDisplayFileBase(pathinfo($originalName, PATHINFO_FILENAME));
 
         if ($extension === '' || $extension === '.') {
-            return $base !== '' ? $base : 'attachment';
+            return $base;
         }
 
         $extension = preg_replace('/[^a-zA-Z0-9]+/', '', $extension) ?? '';
@@ -67,6 +76,34 @@ class DocumentUploadService
         }
 
         return $base.'.'.strtolower($extension);
+    }
+
+    /**
+     * Build a display file name from an optional custom label and uploaded file extension.
+     */
+    public function composeUploadDisplayName(UploadedFile $file, ?string $customBase): string
+    {
+        if ($customBase === null || trim($customBase) === '') {
+            return $this->sanitizeDisplayFileName($file->getClientOriginalName());
+        }
+
+        $base = trim($customBase);
+        $ext = strtolower($file->getClientOriginalExtension());
+        if ($ext === '') {
+            return $this->sanitizeDisplayFileName($base);
+        }
+
+        $lowerBase = strtolower($base);
+        if (str_ends_with($lowerBase, '.'.$ext)) {
+            return $this->sanitizeDisplayFileName($base);
+        }
+
+        $existingExt = strtolower((string) pathinfo($base, PATHINFO_EXTENSION));
+        if ($existingExt !== '' && $existingExt === $ext) {
+            return $this->sanitizeDisplayFileName($base);
+        }
+
+        return $this->sanitizeDisplayFileName("{$base}.{$ext}");
     }
 
     public function baseDocsPath(BusinessEntity $entity, ?Asset $asset = null): string
@@ -213,7 +250,7 @@ class DocumentUploadService
         ?string $description = null
     ): Document {
         $category = $this->firstOrCreateCategoryNamed($entity, $asset, self::TRANSACTION_RECEIPTS_CATEGORY_TITLE);
-        $fname = $displayFileName ?? $file->getClientOriginalName();
+        $fname = $this->sanitizeDisplayFileName($displayFileName ?? $file->getClientOriginalName());
         $label = $checklistLabel ?: (pathinfo($fname, PATHINFO_FILENAME) ?: 'Receipt');
         $document = $this->resolveTransactionReceiptDocumentSlot($entity, $asset, $category, $label, $description);
 
@@ -259,10 +296,11 @@ class DocumentUploadService
         }
 
         $category = $this->firstOrCreateCategoryNamed($entity, $asset, self::TRANSACTION_RECEIPTS_CATEGORY_TITLE);
-        $label = $checklistLabel ?: (pathinfo($displayFileName, PATHINFO_FILENAME) ?: 'Receipt');
+        $fname = $this->sanitizeDisplayFileName($displayFileName);
+        $label = $checklistLabel ?: (pathinfo($fname, PATHINFO_FILENAME) ?: 'Receipt');
         $document = $this->resolveTransactionReceiptDocumentSlot($entity, $asset, $category, $label, $description);
 
-        $this->copyS3ObjectIntoDocumentSlot($document, $sourceS3Path, $entity, $asset, $displayFileName);
+        $this->copyS3ObjectIntoDocumentSlot($document, $sourceS3Path, $entity, $asset, $fname);
 
         if (str_starts_with($sourceS3Path, 'Receipts/')
             && $document->path
@@ -316,7 +354,7 @@ class DocumentUploadService
         DocumentStorage::put($path, $contents, ['ContentType' => $mime]);
 
         $document->path = $path;
-        $document->file_name = $displayFileName;
+        $document->file_name = $this->sanitizeDisplayFileName($displayFileName);
         $document->filetype = $mime;
         $document->file_size = strlen($contents);
         if (auth()->check()) {

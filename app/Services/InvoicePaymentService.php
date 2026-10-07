@@ -498,12 +498,16 @@ class InvoicePaymentService
             $lockedInvoice->loadMissing('asset');
             /** @var UploadedFile $payFile */
             $payFile = $request->file('payment_document');
-            $displayName = $request->filled('payment_document_name')
+            $customReceiptName = $request->filled('payment_document_name')
                 ? trim((string) $request->input('payment_document_name'))
-                : $payFile->getClientOriginalName();
-            $labelBase = $request->filled('payment_document_name')
-                ? trim((string) $request->input('payment_document_name'))
-                : (pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME) ?: 'Payment Receipt');
+                : null;
+            $displayName = $this->documentUploadService->composeUploadDisplayName(
+                $payFile,
+                $customReceiptName !== '' ? $customReceiptName : null
+            );
+            $labelBase = $customReceiptName !== null && $customReceiptName !== ''
+                ? $this->documentUploadService->sanitizeDisplayFileBase($customReceiptName)
+                : (pathinfo($displayName, PATHINFO_FILENAME) ?: 'Payment Receipt');
 
             $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
                 $businessEntity,

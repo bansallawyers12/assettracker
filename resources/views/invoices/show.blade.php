@@ -445,7 +445,14 @@
                                 </div>
                                 <div>
                                     <label class="mb-1 block text-xs font-medium text-gray-600 dark:text-gray-300">Payment receipt <span class="font-normal text-gray-400">(optional)</span></label>
-                                    <input type="file" name="payment_document" accept="{{ config('documents.transaction_file_accept') }}" class="block w-full text-sm text-gray-500 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-emerald-700 dark:file:bg-gray-700 dark:file:text-emerald-300" />
+                                    @include('partials.attachment-dropzone', [
+                                        'inputName' => 'payment_document',
+                                        'inputId' => 'invoice-payment-document',
+                                        'zoneId' => 'invoice-payment-document-dropzone',
+                                        'previewId' => 'invoice-payment-document-pending',
+                                        'accent' => 'emerald',
+                                        'multiple' => false,
+                                    ])
                                     @error('payment_document') <p class="mt-1 text-xs text-red-600">{{ $message }}</p> @enderror
                                 </div>
                                 <div>

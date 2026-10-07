@@ -959,7 +959,7 @@ class InvoiceController extends Controller
                 $asset,
                 $file,
                 (int) $invoice->id,
-                $file->getClientOriginalName(),
+                $this->documentUploadService->sanitizeDisplayFileName($file->getClientOriginalName()),
             );
             $this->documentUploadService->linkDocumentToInvoice($invoice, $document);
         }

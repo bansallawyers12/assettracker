@@ -65,12 +65,16 @@ class DocumentController extends Controller
         }
 
         try {
+            $displayName = $request->filled('file_name')
+                ? $this->uploadService->sanitizeDisplayFileName((string) $request->input('file_name'))
+                : null;
+
             $this->uploadService->attachFileToDocument(
                 $document,
                 $request->file('document'),
                 $businessEntity,
                 null,
-                $request->input('file_name')
+                $displayName
             );
 
             if ($request->filled('document_type')) {
@@ -138,12 +142,16 @@ class DocumentController extends Controller
         }
 
         try {
+            $displayName = $request->filled('file_name')
+                ? $this->uploadService->sanitizeDisplayFileName((string) $request->input('file_name'))
+                : null;
+
             $this->uploadService->attachFileToDocument(
                 $document,
                 $request->file('document'),
                 $businessEntity,
                 $asset,
-                $request->input('file_name')
+                $displayName
             );
 
             if ($request->filled('document_type')) {
@@ -324,7 +332,13 @@ class DocumentController extends Controller
                     continue;
                 }
 
-                $this->uploadService->attachFileToDocument($slot, $file, $businessEntity, $asset);
+                $this->uploadService->attachFileToDocument(
+                    $slot,
+                    $file,
+                    $businessEntity,
+                    $asset,
+                    $this->uploadService->sanitizeDisplayFileName($file->getClientOriginalName())
+                );
                 $uploaded++;
                 $patchedDocuments[] = (new DocumentSlotResource($slot->fresh()))->resolve();
             } catch (\Exception $e) {

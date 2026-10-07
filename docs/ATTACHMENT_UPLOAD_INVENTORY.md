@@ -52,37 +52,44 @@ Documents are stored under category **“Invoice attachments”** (`DocumentUplo
 
 | Component | Path | Role |
 |-----------|------|------|
-| Dropzone | `resources/views/partials/attachment-dropzone.blade.php` | Drag/drop multi-file; default `attachments[]` |
+| Dropzone | `resources/views/partials/attachment-dropzone.blade.php` | Drag/drop multi-file; default `attachments[]`; renames files client-side via same rules as `sanitizeDisplayFileName()` |
 | Invoice wrapper | `resources/views/invoices/partials/attachment-dropzone.blade.php` | `attachments[]`, id `invoice_attachments` |
 | Existing file row | `resources/views/partials/document-attachment-row.blade.php` | View link + optional remove |
 | Invoice list | `resources/views/invoices/partials/attachment-display.blade.php` | `attachmentDocuments` + legacy `document` |
 
+Dropzone uploads (`documents[]`, `payment_documents[]`, `attachments[]`) are sanitized on the client when added to the queue and again on the server in `DocumentUploadService::attachFileToDocument()` / `createTransactionReceiptDocumentFromUpload()` / `BusinessEntityController::buildReceiptUploadDisplayName()`.
+
 ### Dropzone usage (7 fields, 4 screens)
 
-| Screen | View | Field name | Purpose |
-|--------|------|------------|---------|
-| Dashboard — add transaction | `resources/views/dashboard.blade.php` | `documents[]` | Invoice / bill |
-| Dashboard | same | `payment_documents[]` | Payment receipt |
-| Bank transaction — create | `resources/views/business-entities/bank-accounts/transactions/create.blade.php` | `documents[]` | Invoice / bill |
-| Bank transaction — create | same | `payment_documents[]` | Payment receipt |
-| Bank transaction — edit | `resources/views/business-entities/bank-accounts/transactions/edit.blade.php` | `documents[]` | Add invoice / bill |
-| Bank transaction — edit | same | `payment_documents[]` | Add payment receipt |
-| Invoice create/edit | `resources/views/invoices/partials/form.blade.php` | `attachments[]` | Invoice attachments |
+All rows use `partials/attachment-dropzone.blade.php` (invoice form uses the thin wrapper). Filenames are sanitized in the browser when queued and on save via `sanitizeDisplayFileName()` / `sanitizeDisplayFileBase()`; transaction flows also sanitize optional `document_name` / `payment_document_name` labels.
+
+| Screen | View | Field name | Purpose | Server handler |
+|--------|------|------------|---------|----------------|
+| Dashboard — add transaction | `resources/views/dashboard.blade.php` | `documents[]` | Invoice / bill | `storeTransaction` → `syncTransactionReceiptUploads` |
+| Dashboard | same | `payment_documents[]` | Payment receipt | `storeTransaction` → `syncTransactionPaymentUploads` |
+| Bank transaction — create | `resources/views/business-entities/bank-accounts/transactions/create.blade.php` | `documents[]` | Invoice / bill | `storeBankTransaction` → `syncTransactionReceiptUploads` |
+| Bank transaction — create | same | `payment_documents[]` | Payment receipt | `storeBankTransaction` → `syncTransactionPaymentUploads` |
+| Bank transaction — edit | `resources/views/business-entities/bank-accounts/transactions/edit.blade.php` | `documents[]` | Add invoice / bill | `updateTransaction` → `syncTransactionReceiptUploads` |
+| Bank transaction — edit | same | `payment_documents[]` | Add payment receipt | `updateTransaction` → `syncTransactionPaymentUploads` |
+| Invoice create/edit | `resources/views/invoices/partials/form.blade.php` | `attachments[]` | Invoice attachments | `InvoiceController::syncInvoiceAttachment` |
 
 ---
 
 ## 3. Transaction document uploads (not invoice pivot)
 
-Uses `DocumentUploadService::createTransactionReceiptDocumentFromUpload()` and `linkDocumentToTransaction()` (`receipt` or `payment` role). Not the invoice attachment pivot.
+Uses `DocumentUploadService::createTransactionReceiptDocumentFromUpload()` (or `createTransactionReceiptFromExistingS3Path()` for `receipt_path` prefill) and `linkDocumentToTransaction()` (`receipt` or `payment` role). Not the invoice attachment pivot.
 
-| # | User flow | Route / method | Request fields |
-|---|-----------|----------------|----------------|
-| 1 | Dashboard batch/single | `POST business-entities/{businessEntity}/transactions` → `storeTransaction` | `documents[]` / `document`, `payment_documents[]` / `payment_document` |
-| 2 | Update transaction | `PUT business-entities/{businessEntity}/transactions/{transaction}` → `updateTransaction` | Same |
-| 3 | Bank — create | `POST …/bank-accounts/{bankAccount}/transactions` → `storeBankTransaction` | Same |
-| 4 | Bank — update | `updateBankTransaction` in `BusinessEntityController` | Payment docs (and receipts per form) |
+**Filename sanitization (same rules as §1–§2):** dropzone files are renamed in the browser; server uses `sanitizeDisplayFileName()` / `sanitizeDisplayFileBase()` via `buildReceiptUploadDisplayName()`, `transactionUploadChecklistLabel()`, and `createTransactionReceiptDocumentFromUpload()`. Optional `document_name` / `payment_document_name` fields are sanitized for checklist labels. S3 object keys remain compact (`doc-{id}_…`).
 
-Helpers in `BusinessEntityController`: `syncTransactionReceiptUploads`, `syncTransactionPaymentUploads`, `normalizedTransactionUploadFiles`, `buildReceiptUploadDisplayName`, `prepareTransactionUploadValidation`.
+| # | User flow | Route / method | Request fields | Sanitization entry points |
+|---|-----------|----------------|----------------|---------------------------|
+| 1 | Dashboard batch/single | `POST business-entities/{businessEntity}/transactions` → `storeTransaction` | `documents[]` / `document`, `payment_documents[]` / `payment_document`, optional `receipt_path` prefill | `syncTransactionReceiptUploads`, `syncTransactionPaymentUploads`; prefill → `sanitizeDisplayFileName(basename(path))` |
+| 2 | Update transaction | `PUT business-entities/{businessEntity}/transactions/{transaction}` → `updateTransaction` | Same (+ `remove_documents[]`, `remove_payment_documents[]`) | Same sync helpers |
+| 3 | Bank — create | `POST …/bank-accounts/{bankAccount}/transactions` → `storeBankTransaction` | Same | Same sync helpers + prefill path sanitization |
+| 4 | Bank — update (legacy single file) | `updateBankTransaction` | `payment_document` (single), `payment_document_name` | `buildReceiptUploadDisplayName`, `transactionUploadChecklistLabel` |
+| 5 | Invoice record payment | `POST …/invoices/{invoice}/record-payment` | `payment_document`, `payment_document_name` | `InvoicePaymentService` → `createTransactionReceiptDocumentFromUpload` |
+
+Helpers in `BusinessEntityController`: `syncTransactionReceiptUploads`, `syncTransactionPaymentUploads`, `normalizedTransactionUploadFiles`, `buildReceiptUploadDisplayName`, `transactionUploadChecklistLabel`, `prepareTransactionUploadValidation`.
 
 Validation limits: `config/documents.php` (`max_kilobytes`, `mimes`, `transaction_file_accept`).
 
@@ -92,7 +99,9 @@ Validation limits: `config/documents.php` (`max_kilobytes`, `mimes`, `transactio
 
 | Screen | View | Field | Handler |
 |--------|------|-------|---------|
-| Invoice show — record payment | `resources/views/invoices/show.blade.php` | `payment_document` | `InvoiceController::recordPayment` → `InvoicePaymentService` → `createTransactionReceiptDocumentFromUpload` |
+| Invoice show — record payment | `resources/views/invoices/show.blade.php` | `payment_document`, optional `payment_document_name` | `InvoiceController::recordPayment` → `InvoicePaymentService` → `createTransactionReceiptDocumentFromUpload` |
+
+**Filename sanitization:** uses `partials/attachment-dropzone` (`multiple` = false, emerald accent) so the file is renamed in the browser when queued; on save, `InvoicePaymentService` calls `composeUploadDisplayName()` and `sanitizeDisplayFileBase()` for the receipt name field, then `createTransactionReceiptDocumentFromUpload()` / `attachFileToDocument()`.
 
 This attaches a receipt to the **payment transaction**, not to the invoice attachment list.
 
@@ -102,12 +111,14 @@ This attaches a receipt to the **payment transaction**, not to the invoice attac
 
 | # | UI | Route | Controller method | Input |
 |---|-----|-------|-------------------|-------|
-| 1 | Entity workspace | `POST business-entities/{businessEntity}/upload-document` | `DocumentController::uploadDocument` | `document` |
-| 2 | Asset workspace | `POST …/assets/{asset}/documents` | `DocumentController::uploadAssetDocument` | `document` |
+| 1 | Entity workspace | `POST business-entities/{businessEntity}/upload-document` | `DocumentController::uploadDocument` | `document`, optional `file_name` |
+| 2 | Asset workspace | `POST …/assets/{asset}/documents` | `DocumentController::uploadAssetDocument` | `document`, optional `file_name` |
 | 3 | Bulk | `POST …/documents/bulk-upload` | `DocumentController::bulkUpload` | `files[]` + `mappings` |
 | 4 | Blade + JS | `business-entities/partials/documents-workspace.blade.php`, `resources/js/documents-workspace.js` | AJAX to routes above | `doc-slot-file`, `{prefix}-bulk-files` |
 
 Workspace pages: `entities.documents.workspace`, `entities.asset-documents.workspace`.
+
+**Filename sanitization:** `resources/js/attachment-filename-sanitize.js` (shared with workspace uploads) renames files in the browser for per-slot and bulk picks; `documents-workspace.js` uses `withSanitizedFileName()` before `FormData` upload and `sanitizeDisplayFileBase()` for “new row from filename” bulk labels. Server: `DocumentController` sanitizes optional `file_name`; all uploads go through `DocumentUploadService::attachFileToDocument()` (ASCII + `_` rules, compact S3 object names).
 
 Core upload: `DocumentUploadService::attachFileToDocument()` into checklist **slots**.
 
