@@ -34,7 +34,8 @@ class DocumentUploadService
     }
 
     /**
-     * Normalize a user-facing file name for DB storage (keeps extension, strips risky characters).
+     * Normalize a user-facing file name for DB storage (keeps extension).
+     * Only ASCII letters and digits remain; spaces and symbols become underscores.
      */
     public function sanitizeDisplayFileName(string $originalName): string
     {
@@ -43,20 +44,25 @@ class DocumentUploadService
 
         if ($base === '' || $base === '.') {
             $base = 'attachment';
+        } else {
+            $base = preg_replace('/[^a-zA-Z0-9]+/', '_', $base) ?? '';
+            $base = preg_replace('/_+/', '_', $base) ?? '';
+            $base = trim($base, '_');
+
+            if ($base === '') {
+                $base = 'attachment';
+            }
+
+            $base = Str::limit($base, 200, '');
+            $base = rtrim($base, '_');
         }
-
-        $base = str_ireplace('&', ' and ', $base);
-        $base = preg_replace('/[#\'"`]+/u', '', $base) ?? $base;
-        $base = preg_replace('/[^a-zA-Z0-9_\-\s().]+/u', ' ', $base) ?? $base;
-        $base = preg_replace('/\s+/', ' ', trim($base)) ?? '';
-
-        if ($base === '') {
-            $base = 'attachment';
-        }
-
-        $base = Str::limit($base, 200, '');
 
         if ($extension === '' || $extension === '.') {
+            return $base !== '' ? $base : 'attachment';
+        }
+
+        $extension = preg_replace('/[^a-zA-Z0-9]+/', '', $extension) ?? '';
+        if ($extension === '') {
             return $base;
         }
 
