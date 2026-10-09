@@ -170,6 +170,7 @@ it('creates a gst-inclusive management fee bill without reducing the rent invoic
         ->and($fee->gst_basis)->toBe('inclusive')
         ->and((float) $fee->gst_amount)->toBe(5.0)
         ->and($fee->gst_status)->toBe('input_credit')
+        ->and($fee->subject_to_bas)->toBeFalse()
         ->and(JournalEntry::query()->where('source_type', Transaction::class)->where('source_id', $fee->id)->count())->toBe(0);
 
     $again = $service->generateRentInvoiceBatch(
@@ -204,6 +205,30 @@ it('limits a rent invoice batch to one property and skips months outside the lea
         ->and($rows[0]['lease']->id)->toBe($included->id)
         ->and($rows[0]['month_label'])->toBe('July 2025')
         ->and($other->asset_id)->not->toBe($included->asset_id);
+});
+
+it('dates a first-month rent invoice on the lease start when that is after the 1st', function () {
+    $service = app(RentInvoiceService::class);
+    $entity = rentInvoiceEntity();
+    $lease = rentInvoiceLease($entity, 1100, 'Monthly');
+    $lease->update(['start_date' => '2025-07-18']);
+
+    $result = $service->generateRentInvoiceBatch(
+        $entity->id,
+        Carbon::parse('2025-07-01'),
+        Carbon::parse('2025-08-01'),
+        null,
+        5.0,
+    );
+
+    $july = Invoice::query()->where('lease_id', $lease->id)->whereMonth('issue_date', 7)->first();
+    $august = Invoice::query()->where('lease_id', $lease->id)->whereMonth('issue_date', 8)->first();
+    $julyFee = Transaction::query()->where('transaction_type', 'management_fees')->whereMonth('date', 7)->first();
+
+    expect($result['invoices_generated'])->toBe(2)
+        ->and($july->issue_date->toDateString())->toBe('2025-07-18')
+        ->and($august->issue_date->toDateString())->toBe('2025-08-01')
+        ->and($julyFee->date->toDateString())->toBe('2025-07-18');
 });
 
 it('previews a rent invoice batch then creates the drafts', function () {

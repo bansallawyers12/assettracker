@@ -191,7 +191,7 @@ class RentInvoiceService
                     'lease' => $lease,
                     'asset_name' => $lease->asset->name,
                     'tenant_name' => $lease->tenant?->name ?? 'Unknown Tenant',
-                    'invoice_date' => $cursor->copy(),
+                    'invoice_date' => $this->invoiceDateForMonth($lease, $cursor),
                     'month_label' => $cursor->format('F Y'),
                     'rent_amount' => $rentAmount,
                     'commission_amount' => $commissionAmount,
@@ -518,6 +518,21 @@ class RentInvoiceService
         return true;
     }
 
+    /**
+     * First of the month, or the lease start date when the lease begins later in that month.
+     */
+    protected function invoiceDateForMonth(Lease $lease, Carbon $month): Carbon
+    {
+        $issueDate = $month->copy()->startOfMonth();
+        $start = $lease->start_date->copy()->startOfDay();
+
+        if ($start->gt($issueDate) && $start->isSameMonth($issueDate)) {
+            return $start;
+        }
+
+        return $issueDate;
+    }
+
     public function managementFeeDescription(Lease $lease, Carbon $date): string
     {
         $tenant = $lease->tenant?->name ?? 'Unknown Tenant';
@@ -536,7 +551,7 @@ class RentInvoiceService
             ->where('asset_id', $lease->asset_id)
             ->where('transaction_type', 'management_fees')
             ->whereBetween('date', [$startOfMonth, $endOfMonth])
-            ->where('description', 'like', '%'.$marker)
+            ->where('description', 'like', '%'.addcslashes($marker, '%_\\'))
             ->first();
     }
 
@@ -558,8 +573,8 @@ class RentInvoiceService
         return Transaction::create([
             'business_entity_id' => $lease->asset->business_entity_id,
             'asset_id' => $lease->asset_id,
-            'date' => $date->copy()->startOfMonth()->toDateString(),
-            'due_date' => $date->copy()->startOfMonth()->addDays(30)->toDateString(),
+            'date' => $date->copy()->startOfDay()->toDateString(),
+            'due_date' => $date->copy()->startOfDay()->addDays(30)->toDateString(),
             'amount' => $amount,
             'description' => $this->managementFeeDescription($lease, $date),
             'vendor_name' => $agentName,
@@ -569,7 +584,6 @@ class RentInvoiceService
             'gst_basis' => $gst['gst_basis'],
             'payment_status' => 'unpaid',
             'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
-            'subject_to_bas' => true,
         ]);
     }
 }
