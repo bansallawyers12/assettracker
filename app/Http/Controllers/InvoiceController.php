@@ -22,6 +22,7 @@ use App\Support\DocumentUploadValidation;
 use App\Support\TableSort;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -55,7 +56,6 @@ class InvoiceController extends Controller
 
         if ($businessEntity) {
             $this->authorize('view', $businessEntity);
-            $this->ensureOperationalForAccounting($businessEntity);
 
             $query = Invoice::where('business_entity_id', $businessEntity->id)->with(['asset', 'lease', 'attachmentDocuments']);
             $this->applyInvoiceListFilters($query, $statusFilter, $receivableOnly, $assetIdFilter, $leaseIdFilter);
@@ -124,7 +124,7 @@ class InvoiceController extends Controller
     public function create(BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
-        $this->ensureOperationalForAccounting($businessEntity);
+        $this->ensureAccountingMutationsAllowed($businessEntity);
 
         $issueDate = old('issue_date', now()->toDateString());
         $suggestedInvoiceNumber = old('invoice_number', Invoice::suggestNumber($businessEntity, $issueDate));
@@ -147,7 +147,7 @@ class InvoiceController extends Controller
     public function suggestNumber(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('view', $businessEntity);
-        $this->ensureOperationalForAccounting($businessEntity);
+        $this->ensureAccountingMutationsAllowed($businessEntity);
 
         $data = $request->validate([
             'issue_date' => ['required', 'date'],
@@ -161,7 +161,7 @@ class InvoiceController extends Controller
     public function store(Request $request, BusinessEntity $businessEntity, InvoicePostingService $postingService)
     {
         $this->authorize('update', $businessEntity);
-        $this->ensureOperationalForAccounting($businessEntity);
+        $this->ensureAccountingMutationsAllowed($businessEntity);
 
         $lineAccountCodes = $this->lineAccountCodes();
         $data = $this->validateInvoicePayload($request, $businessEntity, $lineAccountCodes);
@@ -327,7 +327,7 @@ class InvoiceController extends Controller
     public function edit(BusinessEntity $businessEntity, Invoice $invoice)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
 
         if ($invoice->is_posted) {
             return redirect()->route('business-entities.invoices.show', [$businessEntity, $invoice])
@@ -365,7 +365,7 @@ class InvoiceController extends Controller
     public function update(Request $request, BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
         if ($invoice->is_posted) {
             return back()->with('error', 'Posted invoices cannot be edited.');
         }
@@ -427,7 +427,7 @@ class InvoiceController extends Controller
     public function destroy(BusinessEntity $businessEntity, Invoice $invoice)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
         if ($invoice->is_posted) {
             return back()->with('error', 'Posted invoices cannot be deleted.');
         }
@@ -452,7 +452,7 @@ class InvoiceController extends Controller
     public function post(BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
         if ($invoice->is_posted) {
             return back()->with('info', 'Invoice already posted.');
         }
@@ -466,7 +466,7 @@ class InvoiceController extends Controller
     public function unpost(BusinessEntity $businessEntity, Invoice $invoice, InvoicePostingService $postingService)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
 
         if (! $invoice->is_posted) {
             return back()->with('info', 'Invoice is not posted.');
@@ -489,7 +489,7 @@ class InvoiceController extends Controller
         InvoicePaymentService $paymentService
     ) {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
 
         $transaction = $paymentService->record($request, $businessEntity, $invoice);
         $invoice->refresh();
@@ -516,7 +516,7 @@ class InvoiceController extends Controller
     public function remind(BusinessEntity $businessEntity, Invoice $invoice)
     {
         $this->authorize('update', $businessEntity);
-        $this->authorizeInvoice($businessEntity, $invoice);
+        $this->authorizeInvoice($businessEntity, $invoice, mutating: true);
 
         if ($invoice->status !== 'approved' && $invoice->status !== 'partial') {
             return back()->with('error', 'Reminders can only be sent for approved or partially paid invoices.');
@@ -670,7 +670,10 @@ class InvoiceController extends Controller
             'remove_attachments' => ['nullable', 'array'],
             'remove_attachments.*' => ['integer', 'exists:documents,id'],
             ...$this->invoiceAttachmentFileRules(),
+            'expected_attachment_count' => ['nullable', 'integer', 'min:0', 'max:50'],
         ]);
+
+        $this->assertStagedAttachmentsReceived($request);
 
         if ($data['gst_basis'] === 'none') {
             $data['gst_percent'] = 0;
@@ -688,6 +691,43 @@ class InvoiceController extends Controller
         }
 
         return $data;
+    }
+
+    private function assertStagedAttachmentsReceived(Request $request): void
+    {
+        $expected = (int) $request->input('expected_attachment_count', 0);
+        if ($expected <= 0) {
+            return;
+        }
+
+        $uploaded = $this->normalizedAttachmentUploads($request);
+
+        if ($uploaded === []) {
+            throw ValidationException::withMessages([
+                'attachments' => 'Your selected files were not received by the server. Re-select them and save again, or check PHP upload_max_filesize and post_max_size.',
+            ]);
+        }
+    }
+
+    /**
+     * @return list<UploadedFile>
+     */
+    private function normalizedAttachmentUploads(Request $request): array
+    {
+        $files = [];
+        $fromArray = $request->file('attachments');
+        if (is_array($fromArray)) {
+            $files = array_values(array_filter($fromArray));
+        } elseif ($fromArray) {
+            $files[] = $fromArray;
+        }
+
+        $legacy = $request->file('attachment');
+        if ($legacy) {
+            $files[] = $legacy;
+        }
+
+        return $files;
     }
 
     /**
@@ -869,10 +909,13 @@ class InvoiceController extends Controller
         }
     }
 
-    private function authorizeInvoice(BusinessEntity $businessEntity, Invoice $invoice): void
+    private function authorizeInvoice(BusinessEntity $businessEntity, Invoice $invoice, bool $mutating = false): void
     {
         abort_unless((int) $invoice->business_entity_id === (int) $businessEntity->id, 404);
-        $this->ensureOperationalForAccounting($businessEntity);
+
+        if ($mutating) {
+            $this->ensureAccountingMutationsAllowed($businessEntity);
+        }
     }
 
     /**
@@ -902,18 +945,7 @@ class InvoiceController extends Controller
             $this->documentUploadService->detachInvoiceDocumentById($invoice, (int) $invoice->document_id);
         }
 
-        $files = [];
-        $fromArray = $request->file('attachments');
-        if (is_array($fromArray)) {
-            $files = array_values(array_filter($fromArray));
-        } elseif ($fromArray) {
-            $files[] = $fromArray;
-        }
-
-        $legacy = $request->file('attachment');
-        if ($legacy) {
-            $files[] = $legacy;
-        }
+        $files = $this->normalizedAttachmentUploads($request);
 
         if ($files === []) {
             return;
@@ -927,7 +959,7 @@ class InvoiceController extends Controller
                 $asset,
                 $file,
                 (int) $invoice->id,
-                $file->getClientOriginalName(),
+                $this->documentUploadService->sanitizeDisplayFileName($file->getClientOriginalName()),
             );
             $this->documentUploadService->linkDocumentToInvoice($invoice, $document);
         }

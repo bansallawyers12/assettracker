@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Support\DocumentStorage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class DocumentUploadService
 {
@@ -30,6 +31,79 @@ class DocumentUploadService
     public function sanitizeLabelForStorage(string $label): string
     {
         return preg_replace('/[^a-zA-Z0-9_\-\s]/', '_', $label);
+    }
+
+    /**
+     * Normalize a label or filename base: ASCII letters/digits only; spaces and symbols become underscores.
+     */
+    public function sanitizeDisplayFileBase(string $text): string
+    {
+        $base = trim($text);
+
+        if ($base === '' || $base === '.') {
+            return 'attachment';
+        }
+
+        $base = preg_replace('/[^a-zA-Z0-9]+/', '_', $base) ?? '';
+        $base = preg_replace('/_+/', '_', $base) ?? '';
+        $base = trim($base, '_');
+
+        if ($base === '') {
+            return 'attachment';
+        }
+
+        $base = Str::limit($base, 200, '');
+
+        return rtrim($base, '_') !== '' ? rtrim($base, '_') : 'attachment';
+    }
+
+    /**
+     * Normalize a user-facing file name for DB storage (keeps extension).
+     * Only ASCII letters and digits remain; spaces and symbols become underscores.
+     */
+    public function sanitizeDisplayFileName(string $originalName): string
+    {
+        $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+        $base = $this->sanitizeDisplayFileBase(pathinfo($originalName, PATHINFO_FILENAME));
+
+        if ($extension === '' || $extension === '.') {
+            return $base;
+        }
+
+        $extension = preg_replace('/[^a-zA-Z0-9]+/', '', $extension) ?? '';
+        if ($extension === '') {
+            return $base;
+        }
+
+        return $base.'.'.strtolower($extension);
+    }
+
+    /**
+     * Build a display file name from an optional custom label and uploaded file extension.
+     */
+    public function composeUploadDisplayName(UploadedFile $file, ?string $customBase): string
+    {
+        if ($customBase === null || trim($customBase) === '') {
+            return $this->sanitizeDisplayFileName($file->getClientOriginalName());
+        }
+
+        $base = trim($customBase);
+        $ext = strtolower($file->getClientOriginalExtension());
+        if ($ext === '') {
+            return $this->sanitizeDisplayFileName($base);
+        }
+
+        $lowerBase = strtolower($base);
+        if (str_ends_with($lowerBase, '.'.$ext)) {
+            return $this->sanitizeDisplayFileName($base);
+        }
+
+        $existingExt = strtolower((string) pathinfo($base, PATHINFO_EXTENSION));
+        if ($existingExt !== '' && $existingExt === $ext) {
+            return $this->sanitizeDisplayFileName($base);
+        }
+
+        return $this->sanitizeDisplayFileName("{$base}.{$ext}");
     }
 
     public function baseDocsPath(BusinessEntity $entity, ?Asset $asset = null): string
@@ -80,12 +154,8 @@ class DocumentUploadService
         $prefix = $this->baseDocsPath($entity, $asset).'/'.$this->categoryPathSegment($categoryId);
         $this->ensureDirectory($prefix);
 
-        $label = $document->checklist_label ?? 'Document';
-        $entityToken = $this->sanitizeLabelForStorage($entity->legal_name);
-        $checklistToken = $this->sanitizeLabelForStorage($label);
         $extension = strtolower($file->getClientOriginalExtension() ?: 'bin');
-        $unique = time().'_'.mt_rand(1000, 9999);
-        $storedName = "{$entityToken}_{$checklistToken}_{$unique}.{$extension}";
+        $storedName = $this->buildStoredObjectName($document, $extension);
         $path = "{$prefix}/{$storedName}";
 
         $mime = $file->getMimeType() ?: $this->mimeTypeForExtension($extension);
@@ -98,7 +168,7 @@ class DocumentUploadService
         DocumentStorage::put($path, file_get_contents($file->getRealPath()), ['ContentType' => $mime]);
 
         $document->path = $path;
-        $document->file_name = $displayFileName ?? $file->getClientOriginalName();
+        $document->file_name = $this->sanitizeDisplayFileName($displayFileName ?? $file->getClientOriginalName());
         $document->filetype = $mime;
         $document->file_size = $file->getSize();
         $document->user_id = auth()->id();
@@ -180,7 +250,7 @@ class DocumentUploadService
         ?string $description = null
     ): Document {
         $category = $this->firstOrCreateCategoryNamed($entity, $asset, self::TRANSACTION_RECEIPTS_CATEGORY_TITLE);
-        $fname = $displayFileName ?? $file->getClientOriginalName();
+        $fname = $this->sanitizeDisplayFileName($displayFileName ?? $file->getClientOriginalName());
         $label = $checklistLabel ?: (pathinfo($fname, PATHINFO_FILENAME) ?: 'Receipt');
         $document = $this->resolveTransactionReceiptDocumentSlot($entity, $asset, $category, $label, $description);
 
@@ -200,8 +270,9 @@ class DocumentUploadService
         ?string $displayFileName = null,
     ): Document {
         $category = $this->firstOrCreateCategoryNamed($entity, $asset, self::INVOICE_ATTACHMENTS_CATEGORY_TITLE);
-        $fname = $displayFileName ?? $file->getClientOriginalName();
-        $label = 'Invoice #'.$invoiceId;
+        $fname = $this->sanitizeDisplayFileName($displayFileName ?? $file->getClientOriginalName());
+        $baseLabel = 'Invoice #'.$invoiceId;
+        $label = $baseLabel.' — '.pathinfo($fname, PATHINFO_FILENAME);
         $document = $this->resolveInvoiceAttachmentDocumentSlot($entity, $asset, $category, $label, 'Invoice attachment');
 
         $this->attachFileToDocument($document, $file, $entity, $asset, $fname);
@@ -225,10 +296,11 @@ class DocumentUploadService
         }
 
         $category = $this->firstOrCreateCategoryNamed($entity, $asset, self::TRANSACTION_RECEIPTS_CATEGORY_TITLE);
-        $label = $checklistLabel ?: (pathinfo($displayFileName, PATHINFO_FILENAME) ?: 'Receipt');
+        $fname = $this->sanitizeDisplayFileName($displayFileName);
+        $label = $checklistLabel ?: (pathinfo($fname, PATHINFO_FILENAME) ?: 'Receipt');
         $document = $this->resolveTransactionReceiptDocumentSlot($entity, $asset, $category, $label, $description);
 
-        $this->copyS3ObjectIntoDocumentSlot($document, $sourceS3Path, $entity, $asset, $displayFileName);
+        $this->copyS3ObjectIntoDocumentSlot($document, $sourceS3Path, $entity, $asset, $fname);
 
         if (str_starts_with($sourceS3Path, 'Receipts/')
             && $document->path
@@ -265,12 +337,8 @@ class DocumentUploadService
         $prefix = $this->baseDocsPath($entity, $asset).'/'.$this->categoryPathSegment($categoryId);
         $this->ensureDirectory($prefix);
 
-        $label = $document->checklist_label ?? 'Document';
-        $entityToken = $this->sanitizeLabelForStorage($entity->legal_name);
-        $checklistToken = $this->sanitizeLabelForStorage($label);
         $extension = strtolower(pathinfo($displayFileName, PATHINFO_EXTENSION) ?: pathinfo($sourceS3Path, PATHINFO_EXTENSION) ?: 'bin');
-        $unique = time().'_'.mt_rand(1000, 9999);
-        $storedName = "{$entityToken}_{$checklistToken}_{$unique}.{$extension}";
+        $storedName = $this->buildStoredObjectName($document, $extension);
         $path = "{$prefix}/{$storedName}";
 
         $contents = DocumentStorage::disk()->get($sourceS3Path);
@@ -286,7 +354,7 @@ class DocumentUploadService
         DocumentStorage::put($path, $contents, ['ContentType' => $mime]);
 
         $document->path = $path;
-        $document->file_name = $displayFileName;
+        $document->file_name = $this->sanitizeDisplayFileName($displayFileName);
         $document->filetype = $mime;
         $document->file_size = strlen($contents);
         if (auth()->check()) {
@@ -540,5 +608,13 @@ class DocumentUploadService
                 $this->syncTransactionLegacyDocumentColumns($transaction);
             }
         }
+    }
+
+    private function buildStoredObjectName(Document $document, string $extension): string
+    {
+        $extension = strtolower($extension !== '' ? $extension : 'bin');
+        $unique = time().'_'.mt_rand(1000, 9999);
+
+        return 'doc-'.$document->id.'_'.$unique.'.'.$extension;
     }
 }

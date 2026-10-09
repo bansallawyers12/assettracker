@@ -170,3 +170,34 @@ it('creates a suffixed checklist row when copying from an existing s3 path with 
         ->and($document->path)->not->toBeNull()
         ->and(Document::query()->count())->toBe(2);
 });
+
+it('stores a compact object key when the checklist label is very long', function () {
+    $category = $this->service->firstOrCreateCategoryNamed(
+        $this->entity,
+        null,
+        DocumentUploadService::INVOICE_ATTACHMENTS_CATEGORY_TITLE,
+    );
+
+    $longLabel = 'Invoice #174 — R & J Fencing and Landscaping Pty Ltd - 23m aprox timber standard fence with removal and dump';
+    $document = Document::query()->create([
+        'business_entity_id' => $this->entity->id,
+        'document_category_id' => $category->id,
+        'checklist_label' => $longLabel,
+        'type' => 'financial',
+        'user_id' => $this->user->id,
+    ]);
+
+    $file = UploadedFile::fake()->create(
+        'R & J Fencing and Landscaping Pty Ltd - 23m aprox timber standard fence with removal and dump.pdf',
+        100,
+        'application/pdf'
+    );
+
+    $this->service->attachFileToDocument($document, $file, $this->entity, null, $file->getClientOriginalName());
+
+    $document->refresh();
+
+    expect($document->path)->not->toBeNull()
+        ->and(strlen($document->path))->toBeLessThanOrEqual(1024)
+        ->and($document->path)->toMatch('/\/doc-'.$document->id.'_\d+_\d+\.pdf$/');
+});

@@ -1056,7 +1056,9 @@ class BusinessEntityController extends Controller
                     && $this->prefillReceiptPathAllowedForEntity($prefillPath, $targetEntity)
                     && Storage::disk('s3')->exists($prefillPath)
                 ) {
-                    $displayName = basename(str_replace('\\', '/', $prefillPath));
+                    $displayName = $this->documentUploadService->sanitizeDisplayFileName(
+                        basename(str_replace('\\', '/', $prefillPath))
+                    );
                     $labelBase = pathinfo($displayName, PATHINFO_FILENAME) ?: 'Receipt';
                     $desc = trim('Transaction receipt'.($docLabel !== '' ? ': '.$docLabel : ''));
                     $document = $this->documentUploadService->createTransactionReceiptFromExistingS3Path(
@@ -1357,7 +1359,9 @@ class BusinessEntityController extends Controller
                 && $this->prefillReceiptPathAllowedForEntity($prefillPath, $bookingEntity)
                 && Storage::disk('s3')->exists($prefillPath)
             ) {
-                $displayName = basename(str_replace('\\', '/', $prefillPath));
+                $displayName = $this->documentUploadService->sanitizeDisplayFileName(
+                    basename(str_replace('\\', '/', $prefillPath))
+                );
                 $labelBase = pathinfo($displayName, PATHINFO_FILENAME) ?: 'Receipt';
                 $desc = trim('Transaction receipt'.($request->description ? ': '.$request->description : ''));
                 $document = $this->documentUploadService->createTransactionReceiptFromExistingS3Path(
@@ -2046,9 +2050,7 @@ class BusinessEntityController extends Controller
         if ($request->hasFile('payment_document')) {
             $payFile = $request->file('payment_document');
             $payDisplayName = $this->buildReceiptUploadDisplayName($request, $payFile, 'payment_document_name');
-            $payLabelBase = $request->filled('payment_document_name')
-                ? trim((string) $request->input('payment_document_name'))
-                : pathinfo($payFile->getClientOriginalName(), PATHINFO_FILENAME);
+            $payLabelBase = $this->transactionUploadChecklistLabel($request, $payFile, 'payment_document_name', 'Payment Receipt');
             $payDesc = trim('Payment receipt'.($request->description ? ': '.$request->description : ''));
             $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
                 $businessEntity,
@@ -3763,9 +3765,7 @@ class BusinessEntityController extends Controller
 
         foreach ($this->normalizedTransactionUploadFiles($request, 'documents', 'document') as $file) {
             $displayName = $this->buildReceiptUploadDisplayName($request, $file);
-            $labelBase = $request->filled('document_name')
-                ? trim((string) $request->input('document_name'))
-                : pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $labelBase = $this->transactionUploadChecklistLabel($request, $file, 'document_name', 'Receipt');
             $desc = trim('Transaction receipt'.($contextLabel ? ': '.$contextLabel : ''));
             $document = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
                 $businessEntity,
@@ -3790,9 +3790,7 @@ class BusinessEntityController extends Controller
 
         foreach ($this->normalizedTransactionUploadFiles($request, 'payment_documents', 'payment_document') as $file) {
             $payDisplayName = $this->buildReceiptUploadDisplayName($request, $file, 'payment_document_name');
-            $payLabelBase = $request->filled('payment_document_name')
-                ? trim((string) $request->input('payment_document_name'))
-                : pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $payLabelBase = $this->transactionUploadChecklistLabel($request, $file, 'payment_document_name', 'Payment Receipt');
             $payDesc = trim('Payment receipt'.($contextLabel ? ': '.$contextLabel : ''));
             $payDocument = $this->documentUploadService->createTransactionReceiptDocumentFromUpload(
                 $businessEntity,
@@ -4558,33 +4556,29 @@ class BusinessEntityController extends Controller
             || str_starts_with($path, 'BusinessEntities/'.$entity->id.'_');
     }
 
+    private function transactionUploadChecklistLabel(
+        Request $request,
+        UploadedFile $file,
+        string $nameField,
+        string $defaultLabel,
+    ): string {
+        if ($request->filled($nameField)) {
+            return $this->documentUploadService->sanitizeDisplayFileBase(trim((string) $request->input($nameField)));
+        }
+
+        $sanitizedFileName = $this->documentUploadService->sanitizeDisplayFileName($file->getClientOriginalName());
+
+        return pathinfo($sanitizedFileName, PATHINFO_FILENAME) ?: $defaultLabel;
+    }
+
     private function buildReceiptUploadDisplayName(Request $request, UploadedFile $file, string $nameField = 'document_name'): string
     {
-        if (! $request->filled($nameField)) {
-            return $file->getClientOriginalName();
-        }
+        $custom = $request->filled($nameField) ? trim((string) $request->input($nameField)) : null;
 
-        $base = trim((string) $request->input($nameField, ''));
-        if ($base === '') {
-            return $file->getClientOriginalName();
-        }
-
-        $ext = strtolower((string) $file->getClientOriginalExtension());
-        if ($ext === '') {
-            return $base;
-        }
-
-        $lowerBase = strtolower($base);
-        if (str_ends_with($lowerBase, '.'.$ext)) {
-            return $base;
-        }
-
-        $existingExt = strtolower((string) pathinfo($base, PATHINFO_EXTENSION));
-        if ($existingExt !== '' && $existingExt === $ext) {
-            return $base;
-        }
-
-        return "{$base}.{$ext}";
+        return $this->documentUploadService->composeUploadDisplayName(
+            $file,
+            $custom !== '' ? $custom : null
+        );
     }
 
     /**

@@ -4,6 +4,7 @@
     $zoneId = $zoneId ?? $inputId.'-zone';
     $previewId = $previewId ?? $inputId.'-pending';
     $accent = $accent ?? 'indigo';
+    $multiple = $multiple ?? true;
     $accentLinkClass = match ($accent) {
         'blue' => 'text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300',
         'emerald' => 'text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 dark:hover:text-emerald-300',
@@ -19,11 +20,12 @@
 <div id="{{ $zoneId }}"
      class="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/80 px-4 py-6 text-center transition-colors dark:border-gray-600 dark:bg-gray-900/40"
      data-attachment-dropzone
-     data-drop-accent="{{ $accent }}">
+     data-drop-accent="{{ $accent }}"
+     data-allow-multiple="{{ $multiple ? '1' : '0' }}">
     <input id="{{ $inputId }}"
            type="file"
            name="{{ $inputName }}"
-           multiple
+           @if ($multiple) multiple @endif
            accept="{{ config('documents.transaction_file_accept') }}"
            class="sr-only" />
 
@@ -35,7 +37,7 @@
         </label>
         <span class="text-gray-600 dark:text-gray-300"> or drag and drop here</span>
     </p>
-    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Add one or many · remove before save · same types as Documents</p>
+    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ $multiple ? 'Add one or many · remove before save · same types as Documents' : 'One file · remove before save · same types as Documents' }}</p>
 
     <ul id="{{ $previewId }}" class="mt-4 space-y-2 text-left empty:hidden" aria-live="polite"></ul>
 </div>
@@ -58,7 +60,31 @@
                     }
 
                     const accent = zone.dataset.dropAccent || 'indigo';
+                    const allowMultiple = zone.dataset.allowMultiple !== '0';
                     const dragActive = accentClasses[accent] || accentClasses.indigo;
+
+                    const sanitizeDisplayFileName = function (originalName) {
+                        const dot = originalName.lastIndexOf('.');
+                        let base = dot > 0 ? originalName.slice(0, dot) : originalName;
+                        let ext = dot > 0 ? originalName.slice(dot + 1) : '';
+                        base = base.replace(/[^a-zA-Z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+                        if (!base) {
+                            base = 'attachment';
+                        }
+                        if (base.length > 200) {
+                            base = base.slice(0, 200).replace(/_+$/, '');
+                        }
+                        ext = ext.replace(/[^a-zA-Z0-9]+/g, '').toLowerCase();
+                        return ext ? base + '.' + ext : base;
+                    };
+
+                    const withSanitizedName = function (file) {
+                        const safeName = sanitizeDisplayFileName(file.name);
+                        if (safeName === file.name) {
+                            return file;
+                        }
+                        return new File([file], safeName, { type: file.type, lastModified: file.lastModified });
+                    };
 
                     const mergeKey = function (file) {
                         return [file.name, file.size, file.lastModified].join(':');
@@ -72,7 +98,38 @@
                             dt.items.add(file);
                         });
                         input.files = dt.files;
+                        zone.dataset.pendingAttachmentCount = String(pendingFiles.length);
                     };
+
+                    const bindFormSubmit = function () {
+                        const form = zone.closest('form');
+                        if (!form || form.dataset.attachmentDropzoneSubmitBound === '1') {
+                            return;
+                        }
+
+                        form.dataset.attachmentDropzoneSubmitBound = '1';
+                        form.addEventListener('submit', function () {
+                            document.querySelectorAll('[data-attachment-dropzone]').forEach(function (dropZone) {
+                                if (typeof dropZone.__syncAttachmentInputFiles === 'function') {
+                                    dropZone.__syncAttachmentInputFiles();
+                                }
+                            });
+
+                            const expected = form.querySelector('[data-expected-attachment-count]');
+                            if (!expected) {
+                                return;
+                            }
+
+                            let total = 0;
+                            document.querySelectorAll('[data-attachment-dropzone]').forEach(function (dropZone) {
+                                total += parseInt(dropZone.dataset.pendingAttachmentCount || '0', 10);
+                            });
+                            expected.value = String(total);
+                        });
+                    };
+
+                    zone.__syncAttachmentInputFiles = syncInputFiles;
+                    bindFormSubmit();
 
                     const renderPreview = function () {
                         preview.innerHTML = '';
@@ -111,9 +168,16 @@
                     };
 
                     const addFiles = function (incoming) {
-                        const seen = new Set(pendingFiles.map(mergeKey));
+                        if (!allowMultiple) {
+                            pendingFiles.length = 0;
+                        }
 
-                        Array.from(incoming || []).forEach(function (file) {
+                        const seen = new Set(pendingFiles.map(mergeKey));
+                        const queue = allowMultiple
+                            ? Array.from(incoming || [])
+                            : Array.from(incoming || []).slice(0, 1);
+
+                        queue.forEach(function (file) {
                             if (!file || file.size === 0) {
                                 return;
                             }
@@ -122,7 +186,7 @@
                                 return;
                             }
                             seen.add(key);
-                            pendingFiles.push(file);
+                            pendingFiles.push(withSanitizedName(file));
                         });
 
                         syncInputFiles();

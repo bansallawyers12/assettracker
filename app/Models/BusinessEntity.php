@@ -165,6 +165,11 @@ class BusinessEntity extends Model
         return $this->closed_date !== null;
     }
 
+    public function isInactive(): bool
+    {
+        return $this->status === 'Inactive';
+    }
+
     /**
      * Short label for report entity pickers (trading name when set).
      */

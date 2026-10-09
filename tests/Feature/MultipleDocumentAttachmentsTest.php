@@ -14,7 +14,9 @@ it('supports multiple file uploads on invoice and transaction forms', function (
     $dropzone = file_get_contents(resource_path('views/partials/attachment-dropzone.blade.php'));
 
     expect($invoiceForm)->toContain('invoices.partials.attachment-dropzone')
+        ->and($invoiceForm)->toContain('data-expected-attachment-count')
         ->and($dropzone)->toContain('data-attachment-dropzone')
+        ->and($dropzone)->toContain('attachmentDropzoneSubmitBound')
         ->and($dropzone)->toContain('multiple')
         ->and($dropzone)->toContain('drag and drop')
         ->and($dropzone)->toContain('Remove')
