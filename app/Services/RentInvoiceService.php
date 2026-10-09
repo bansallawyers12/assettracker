@@ -7,7 +7,10 @@ use App\Models\BusinessEntity;
 use App\Models\Invoice;
 use App\Models\InvoiceLine;
 use App\Models\Lease;
+use App\Models\Transaction;
+use App\Support\TransactionGstResolver;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -129,6 +132,146 @@ class RentInvoiceService
                 'message' => 'Failed to generate rent invoice: '.$e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * One row per lease per calendar month in the range.
+     * Commission is a separate unpaid management-fee bill, not a line on the rent invoice.
+     *
+     * @return list<array{
+     *     lease: Lease,
+     *     asset_name: string,
+     *     tenant_name: string,
+     *     invoice_date: Carbon,
+     *     month_label: string,
+     *     rent_amount: float,
+     *     commission_amount: float,
+     *     invoice_exists: bool,
+     *     commission_exists: bool,
+     *     will_create_invoice: bool,
+     *     will_create_commission: bool
+     * }>
+     */
+    public function buildRentInvoiceBatch(
+        int $businessEntityId,
+        Carbon $fromMonth,
+        Carbon $toMonth,
+        ?int $assetId = null,
+        ?float $commissionPercent = null,
+    ): array {
+        $fromMonth = $fromMonth->copy()->startOfMonth();
+        $toMonth = $toMonth->copy()->startOfMonth();
+        $percent = $commissionPercent !== null && $commissionPercent > 0
+            ? round($commissionPercent, 2)
+            : null;
+
+        $leases = $this->leasesForRentGeneration($businessEntityId, $assetId);
+        $rows = [];
+        $cursor = $fromMonth->copy();
+
+        while ($cursor->lte($toMonth)) {
+            foreach ($leases as $lease) {
+                if (! $this->leaseCoversMonth($lease, $cursor)) {
+                    continue;
+                }
+
+                $rentAmount = $this->calculateRentAmount($lease, $cursor);
+                if ($rentAmount <= 0) {
+                    continue;
+                }
+
+                $invoiceExists = $this->getExistingInvoice($lease, $cursor) !== null;
+                $commissionAmount = $percent === null
+                    ? 0.0
+                    : round($rentAmount * $percent / 100, 2);
+                $commissionExists = $commissionAmount > 0
+                    && $this->existingManagementFee($lease, $cursor) !== null;
+
+                $rows[] = [
+                    'lease' => $lease,
+                    'asset_name' => $lease->asset->name,
+                    'tenant_name' => $lease->tenant?->name ?? 'Unknown Tenant',
+                    'invoice_date' => $cursor->copy(),
+                    'month_label' => $cursor->format('F Y'),
+                    'rent_amount' => $rentAmount,
+                    'commission_amount' => $commissionAmount,
+                    'invoice_exists' => $invoiceExists,
+                    'commission_exists' => $commissionExists,
+                    'will_create_invoice' => ! $invoiceExists,
+                    'will_create_commission' => $commissionAmount > 0 && ! $commissionExists,
+                ];
+            }
+
+            $cursor->addMonth();
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Create missing rent drafts and optional management-fee bills for a month range.
+     *
+     * @return array{success: bool, invoices_generated: int, fees_generated: int, message: string}
+     */
+    public function generateRentInvoiceBatch(
+        int $businessEntityId,
+        Carbon $fromMonth,
+        Carbon $toMonth,
+        ?int $assetId = null,
+        ?float $commissionPercent = null,
+        ?string $agentName = null,
+    ): array {
+        $rows = $this->buildRentInvoiceBatch($businessEntityId, $fromMonth, $toMonth, $assetId, $commissionPercent);
+        $invoicesGenerated = 0;
+        $feesGenerated = 0;
+        $period = $fromMonth->copy()->startOfMonth()->format('F Y').' – '.$toMonth->copy()->startOfMonth()->format('F Y');
+
+        try {
+            DB::beginTransaction();
+
+            foreach ($rows as $row) {
+                if ($row['will_create_invoice']) {
+                    $invoice = $this->createRentInvoice($row['lease'], $row['invoice_date']);
+                    if ($invoice) {
+                        $invoicesGenerated++;
+                    }
+                }
+
+                if ($row['will_create_commission']) {
+                    $fee = $this->createManagementFee($row['lease'], $row['invoice_date'], $row['commission_amount'], $agentName);
+                    if ($fee) {
+                        $feesGenerated++;
+                    }
+                }
+            }
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Rent invoice batch failed: '.$e->getMessage());
+
+            return [
+                'success' => false,
+                'invoices_generated' => 0,
+                'fees_generated' => 0,
+                'message' => 'Failed to generate rent invoices: '.$e->getMessage(),
+            ];
+        }
+
+        if ($invoicesGenerated === 0 && $feesGenerated === 0) {
+            $message = "Nothing new to create for {$period}. Existing months were left as they are.";
+        } elseif ($feesGenerated > 0) {
+            $message = "Created {$invoicesGenerated} rent invoices and {$feesGenerated} management-fee bills for {$period}. Existing months were skipped.";
+        } else {
+            $message = "Created {$invoicesGenerated} rent invoices for {$period}. Existing months were skipped.";
+        }
+
+        return [
+            'success' => true,
+            'invoices_generated' => $invoicesGenerated,
+            'fees_generated' => $feesGenerated,
+            'message' => $message,
+        ];
     }
 
     /**
@@ -338,5 +481,95 @@ class RentInvoiceService
         }
 
         return $upcomingInvoices;
+    }
+
+    /**
+     * Active leases on leasable assets for this entity, optionally one property.
+     *
+     * @return Collection<int, Lease>
+     */
+    protected function leasesForRentGeneration(int $businessEntityId, ?int $assetId = null)
+    {
+        return Lease::with(['asset.businessEntity', 'tenant'])
+            ->whereHas('asset', function ($q) use ($businessEntityId, $assetId) {
+                $q->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
+                    ->where('status', 'Active')
+                    ->where('business_entity_id', $businessEntityId);
+                if ($assetId) {
+                    $q->where('id', $assetId);
+                }
+            })
+            ->orderBy('id')
+            ->get();
+    }
+
+    protected function leaseCoversMonth(Lease $lease, Carbon $month): bool
+    {
+        $monthStart = $month->copy()->startOfMonth();
+
+        if ($lease->start_date->copy()->startOfMonth()->gt($monthStart)) {
+            return false;
+        }
+
+        if ($lease->end_date !== null && $lease->end_date->copy()->endOfMonth()->lt($monthStart)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function managementFeeDescription(Lease $lease, Carbon $date): string
+    {
+        $tenant = $lease->tenant?->name ?? 'Unknown Tenant';
+
+        return "Management fee for {$lease->asset->name} - {$tenant} (lease {$lease->id}) - {$date->format('F Y')}";
+    }
+
+    protected function existingManagementFee(Lease $lease, Carbon $date): ?Transaction
+    {
+        $startOfMonth = $date->copy()->startOfMonth()->toDateString();
+        $endOfMonth = $date->copy()->endOfMonth()->toDateString();
+        $marker = '(lease '.$lease->id.') - '.$date->format('F Y');
+
+        return Transaction::query()
+            ->where('business_entity_id', $lease->asset->business_entity_id)
+            ->where('asset_id', $lease->asset_id)
+            ->where('transaction_type', 'management_fees')
+            ->whereBetween('date', [$startOfMonth, $endOfMonth])
+            ->where('description', 'like', '%'.$marker)
+            ->first();
+    }
+
+    /**
+     * Unpaid management-fee bill. GST on the fee is 10% inclusive and does not change the rent invoice.
+     */
+    protected function createManagementFee(Lease $lease, Carbon $date, float $amount, ?string $agentName): ?Transaction
+    {
+        if ($amount <= 0) {
+            return null;
+        }
+
+        if ($this->existingManagementFee($lease, $date)) {
+            return null;
+        }
+
+        $gst = TransactionGstResolver::resolve($amount, 'inclusive', null, 'expense');
+
+        return Transaction::create([
+            'business_entity_id' => $lease->asset->business_entity_id,
+            'asset_id' => $lease->asset_id,
+            'date' => $date->copy()->startOfMonth()->toDateString(),
+            'due_date' => $date->copy()->startOfMonth()->addDays(30)->toDateString(),
+            'amount' => $amount,
+            'description' => $this->managementFeeDescription($lease, $date),
+            'vendor_name' => $agentName,
+            'transaction_type' => 'management_fees',
+            'gst_amount' => $gst['gst_amount'],
+            'gst_status' => $gst['gst_status'],
+            'gst_basis' => $gst['gst_basis'],
+            'payment_status' => 'unpaid',
+            'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+            'subject_to_bas' => true,
+        ]);
     }
 }

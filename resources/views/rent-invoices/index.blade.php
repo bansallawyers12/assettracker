@@ -5,7 +5,7 @@
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Rent Invoice Management</h1>
                 <p class="text-gray-600 mt-2">{{ $businessEntity->legal_name }}</p>
-                <p class="text-sm text-gray-500 mt-1">Taxable leases: GST-inclusive at 10%. GST-not-applicable leases: no GST on the rent amount. One invoice per lease per calendar month.</p>
+                <p class="text-sm text-gray-500 mt-1">Taxable leases: GST-inclusive at 10%. GST-not-applicable leases: no GST on the rent amount. One invoice per lease per calendar month. Management commission is a separate unpaid bill, not a deduction from the tenant invoice.</p>
             </div>
             <div class="flex space-x-3">
                 <button onclick="document.getElementById('generate-all-modal').classList.remove('hidden')" 
@@ -200,29 +200,80 @@
 </div>
 
 <!-- Generate All Invoices Modal -->
-<div id="generate-all-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
-    <div class="relative top-20 mx-auto p-5 border border-gray-200 w-96 shadow-lg rounded-md bg-white">
+@php
+    $openGenerate = $errors->hasAny(['from_month', 'to_month', 'asset_id', 'commission_percent', 'agent_name']);
+@endphp
+<div id="generate-all-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full {{ $openGenerate ? '' : 'hidden' }} z-50">
+    <div class="relative top-16 mx-auto p-5 border border-gray-200 w-full max-w-lg shadow-lg rounded-md bg-white">
         <div class="mt-3">
-            <h3 class="text-lg font-medium text-gray-900 mb-4">Generate All Rent Invoices</h3>
-            <form action="{{ route('business-entities.rent-invoices.generate-all', $businessEntity) }}" method="POST">
+            <h3 class="text-lg font-medium text-gray-900 mb-1">Generate rent invoices</h3>
+            <p class="text-sm text-gray-500 mb-4">One draft per lease for each month in the range. Months that already have an invoice are skipped. Commission, if entered, is a separate unpaid management-fee bill (account 5110, GST inclusive) and does not reduce the rent.</p>
+            <form action="{{ route('business-entities.rent-invoices.preview-bulk', $businessEntity) }}" method="POST">
                 @csrf
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="from_month" class="block text-sm font-medium text-gray-700">From month</label>
+                        <input type="month" name="from_month" id="from_month" required
+                               value="{{ old('from_month', now()->format('Y-m')) }}"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+                        @error('from_month')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="to_month" class="block text-sm font-medium text-gray-700">To month</label>
+                        <input type="month" name="to_month" id="to_month" required
+                               value="{{ old('to_month', now()->format('Y-m')) }}"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+                        @error('to_month')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
                 <div class="mb-4">
-                    <label for="invoice_date" class="block text-sm font-medium text-gray-700">Invoice Date</label>
-                    <x-date-input  
-                           name="invoice_date" 
-                           id="invoice_date" 
-                           value="{{ \Carbon\Carbon::now()->format('Y-m-d') }}"
-                           class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+                    <label for="asset_id" class="block text-sm font-medium text-gray-700">Property</label>
+                    <select name="asset_id" id="asset_id"
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                        <option value="">All leased properties</option>
+                        @foreach ($leaseableAssets as $asset)
+                            <option value="{{ $asset->id }}" @selected((string) old('asset_id') === (string) $asset->id)>{{ $asset->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('asset_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="commission_percent" class="block text-sm font-medium text-gray-700">Management commission %</label>
+                        <input type="number" name="commission_percent" id="commission_percent" min="0" max="100" step="0.01"
+                               value="{{ old('commission_percent') }}"
+                               placeholder="Leave blank for rent only"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+                        @error('commission_percent')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label for="agent_name" class="block text-sm font-medium text-gray-700">Agent name</label>
+                        <input type="text" name="agent_name" id="agent_name" maxlength="255"
+                               value="{{ old('agent_name') }}"
+                               placeholder="Optional"
+                               class="mt-1 block w-full border-gray-300 rounded-md shadow-xs focus:ring-blue-500 focus:border-blue-500 sm:text-sm" />
+                        @error('agent_name')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
                 </div>
                 <div class="flex justify-end space-x-3">
-                    <button type="button" 
+                    <button type="button"
                             onclick="document.getElementById('generate-all-modal').classList.add('hidden')"
                             class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-sm">
                         Cancel
                     </button>
-                    <button type="submit" 
+                    <button type="submit"
                             class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-sm">
-                        Generate All
+                        Preview
                     </button>
                 </div>
             </form>

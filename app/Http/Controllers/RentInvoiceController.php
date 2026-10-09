@@ -10,6 +10,8 @@ use App\Models\Lease;
 use App\Services\RentInvoiceService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class RentInvoiceController extends Controller
 {
@@ -57,28 +59,114 @@ class RentInvoiceController extends Controller
     }
 
     /**
-     * Generate rent invoices for all active leases
+     * Preview rent invoices (and optional management-fee bills) for a month range.
+     */
+    public function previewBulk(Request $request, BusinessEntity $businessEntity)
+    {
+        $this->authorize('update', $businessEntity);
+        $this->ensureOperationalForAccounting($businessEntity);
+
+        $batch = $this->validatedRentBatch($request, $businessEntity);
+        $rows = $this->rentInvoiceService->buildRentInvoiceBatch(
+            $businessEntity->id,
+            $batch['from'],
+            $batch['to'],
+            $batch['asset_id'],
+            $batch['commission_percent'],
+        );
+
+        $createInvoices = collect($rows)->where('will_create_invoice', true)->count();
+        $createFees = collect($rows)->where('will_create_commission', true)->count();
+
+        return view('rent-invoices.bulk-preview', [
+            'businessEntity' => $businessEntity,
+            'rows' => $rows,
+            'batch' => $batch,
+            'createInvoices' => $createInvoices,
+            'createFees' => $createFees,
+            'assetName' => $batch['asset_id']
+                ? Asset::query()->whereKey($batch['asset_id'])->value('name')
+                : null,
+        ]);
+    }
+
+    /**
+     * Generate rent invoices for every month in the chosen range.
      */
     public function generateAll(Request $request, BusinessEntity $businessEntity)
     {
         $this->authorize('update', $businessEntity);
         $this->ensureOperationalForAccounting($businessEntity);
 
-        $request->validate([
-            'invoice_date' => 'nullable|date',
-        ]);
+        $batch = $this->validatedRentBatch($request, $businessEntity);
 
-        $date = $request->invoice_date ? Carbon::parse($request->invoice_date) : Carbon::now();
+        $result = $this->rentInvoiceService->generateRentInvoiceBatch(
+            $businessEntity->id,
+            $batch['from'],
+            $batch['to'],
+            $batch['asset_id'],
+            $batch['commission_percent'],
+            $batch['agent_name'],
+        );
 
-        $result = $this->rentInvoiceService->generateRentInvoices($businessEntity->id, $date);
+        $redirect = redirect()->route('business-entities.rent-invoices.index', $businessEntity);
 
         if ($result['success']) {
-            return redirect()->route('business-entities.rent-invoices.index', $businessEntity)
-                ->with('success', $result['message']);
-        } else {
-            return redirect()->route('business-entities.rent-invoices.index', $businessEntity)
-                ->with('error', $result['message']);
+            return $redirect->with('success', $result['message']);
         }
+
+        return $redirect->with('error', $result['message']);
+    }
+
+    /**
+     * @return array{from: Carbon, to: Carbon, asset_id: ?int, commission_percent: ?float, agent_name: ?string}
+     */
+    protected function validatedRentBatch(Request $request, BusinessEntity $businessEntity): array
+    {
+        $data = $request->validate([
+            'from_month' => ['required', 'date_format:Y-m'],
+            'to_month' => ['required', 'date_format:Y-m', 'after_or_equal:from_month'],
+            'asset_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('assets', 'id')->where(
+                    fn ($query) => $query
+                        ->where('business_entity_id', $businessEntity->id)
+                        ->whereIn('asset_type', Asset::LEASABLE_ASSET_TYPES)
+                ),
+            ],
+            'commission_percent' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'agent_name' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $from = Carbon::createFromFormat('Y-m-d', $data['from_month'].'-01')->startOfDay();
+        $to = Carbon::createFromFormat('Y-m-d', $data['to_month'].'-01')->startOfDay();
+        $months = 0;
+        $cursor = $from->copy();
+        while ($cursor->lte($to)) {
+            $months++;
+            $cursor->addMonth();
+            if ($months > 36) {
+                throw ValidationException::withMessages([
+                    'to_month' => 'Choose a range of 36 months or less.',
+                ]);
+            }
+        }
+
+        $percent = $data['commission_percent'] ?? null;
+        $percent = ($percent === null || $percent === '' || (float) $percent <= 0)
+            ? null
+            : round((float) $percent, 2);
+
+        $agentName = trim((string) ($data['agent_name'] ?? ''));
+
+        return [
+            'from' => $from,
+            'to' => $to,
+            'asset_id' => ! empty($data['asset_id']) ? (int) $data['asset_id'] : null,
+            'commission_percent' => $percent,
+            'agent_name' => $agentName !== '' ? $agentName : null,
+        ];
     }
 
     /**

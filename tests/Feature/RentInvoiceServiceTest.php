@@ -3,8 +3,11 @@
 use App\Models\Asset;
 use App\Models\BusinessEntity;
 use App\Models\Invoice;
+use App\Models\JournalEntry;
 use App\Models\Lease;
 use App\Models\Tenant;
+use App\Models\Transaction;
+use App\Models\User;
 use App\Services\RentInvoiceService;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -115,4 +118,137 @@ it('rejects a duplicate rent invoice for the same lease month', function () {
     expect($first['success'])->toBeTrue()
         ->and($second['success'])->toBeFalse()
         ->and(Invoice::query()->where('lease_id', $lease->id)->count())->toBe(1);
+});
+
+it('creates one rent invoice per month in a range and skips an existing month', function () {
+    $service = app(RentInvoiceService::class);
+    $entity = rentInvoiceEntity();
+    $lease = rentInvoiceLease($entity, 1100, 'Monthly');
+    $lease->update(['start_date' => '2025-01-01']);
+    $service->generateRentInvoiceForLease($lease, Carbon::parse('2025-08-01'));
+
+    $result = $service->generateRentInvoiceBatch(
+        $entity->id,
+        Carbon::parse('2025-07-01'),
+        Carbon::parse('2025-09-01'),
+    );
+
+    expect($result['success'])->toBeTrue()
+        ->and($result['invoices_generated'])->toBe(2)
+        ->and($result['fees_generated'])->toBe(0)
+        ->and(Invoice::query()->where('lease_id', $lease->id)->count())->toBe(3)
+        ->and(Invoice::query()->where('lease_id', $lease->id)->whereDate('issue_date', '2025-07-01')->exists())->toBeTrue()
+        ->and(Invoice::query()->where('lease_id', $lease->id)->whereDate('issue_date', '2025-09-01')->exists())->toBeTrue();
+});
+
+it('creates a gst-inclusive management fee bill without reducing the rent invoice', function () {
+    $service = app(RentInvoiceService::class);
+    $entity = rentInvoiceEntity();
+    $lease = rentInvoiceLease($entity, 1100, 'Monthly');
+    $lease->update(['gst_applicable' => false, 'start_date' => '2025-01-01']);
+
+    $result = $service->generateRentInvoiceBatch(
+        $entity->id,
+        Carbon::parse('2025-07-01'),
+        Carbon::parse('2025-07-01'),
+        null,
+        5.0,
+        'Ray White',
+    );
+
+    $invoice = Invoice::query()->where('lease_id', $lease->id)->first();
+    $fee = Transaction::query()->where('transaction_type', 'management_fees')->first();
+
+    expect($result['invoices_generated'])->toBe(1)
+        ->and($result['fees_generated'])->toBe(1)
+        ->and((float) $invoice->total_amount)->toBe(1100.0)
+        ->and((float) $invoice->gst_amount)->toBe(0.0)
+        ->and($fee->payment_status)->toBe('unpaid')
+        ->and($fee->vendor_name)->toBe('Ray White')
+        ->and($fee->asset_id)->toBe($lease->asset_id)
+        ->and((float) $fee->amount)->toBe(55.0)
+        ->and($fee->gst_basis)->toBe('inclusive')
+        ->and((float) $fee->gst_amount)->toBe(5.0)
+        ->and($fee->gst_status)->toBe('input_credit')
+        ->and(JournalEntry::query()->where('source_type', Transaction::class)->where('source_id', $fee->id)->count())->toBe(0);
+
+    $again = $service->generateRentInvoiceBatch(
+        $entity->id,
+        Carbon::parse('2025-07-01'),
+        Carbon::parse('2025-07-01'),
+        null,
+        5.0,
+        'Ray White',
+    );
+
+    expect($again['invoices_generated'])->toBe(0)
+        ->and($again['fees_generated'])->toBe(0)
+        ->and(Transaction::query()->where('transaction_type', 'management_fees')->count())->toBe(1);
+});
+
+it('limits a rent invoice batch to one property and skips months outside the lease', function () {
+    $service = app(RentInvoiceService::class);
+    $entity = rentInvoiceEntity();
+    $included = rentInvoiceLease($entity, 1100, 'Monthly');
+    $included->update(['start_date' => '2025-01-01', 'end_date' => '2025-07-20']);
+    $other = rentInvoiceLease($entity, 900, 'Monthly');
+
+    $rows = $service->buildRentInvoiceBatch(
+        $entity->id,
+        Carbon::parse('2025-07-01'),
+        Carbon::parse('2025-08-01'),
+        $included->asset_id,
+    );
+
+    expect($rows)->toHaveCount(1)
+        ->and($rows[0]['lease']->id)->toBe($included->id)
+        ->and($rows[0]['month_label'])->toBe('July 2025')
+        ->and($other->asset_id)->not->toBe($included->asset_id);
+});
+
+it('previews a rent invoice batch then creates the drafts', function () {
+    $user = User::factory()->create();
+    $entity = rentInvoiceEntity();
+    $lease = rentInvoiceLease($entity, 1100, 'Monthly');
+    $lease->update(['start_date' => '2025-01-01']);
+
+    $this->actingAs($user)
+        ->post(route('business-entities.rent-invoices.preview-bulk', $entity), [
+            'from_month' => '2025-07',
+            'to_month' => '2025-08',
+            'commission_percent' => '5',
+            'agent_name' => 'Ray White',
+        ])
+        ->assertOk()
+        ->assertSee('July 2025')
+        ->assertSee('August 2025')
+        ->assertSee('$1,100.00')
+        ->assertSee('$55.00')
+        ->assertSee('Create drafts');
+
+    $this->actingAs($user)
+        ->post(route('business-entities.rent-invoices.generate-all', $entity), [
+            'from_month' => '2025-07',
+            'to_month' => '2025-08',
+            'commission_percent' => '5',
+            'agent_name' => 'Ray White',
+        ])
+        ->assertRedirect(route('business-entities.rent-invoices.index', $entity));
+
+    expect(Invoice::query()->where('lease_id', $lease->id)->count())->toBe(2)
+        ->and(Transaction::query()->where('transaction_type', 'management_fees')->count())->toBe(2);
+});
+
+it('rejects a rent invoice batch longer than 36 months', function () {
+    $user = User::factory()->create();
+    $entity = rentInvoiceEntity();
+
+    $this->actingAs($user)
+        ->from(route('business-entities.rent-invoices.index', $entity))
+        ->post(route('business-entities.rent-invoices.preview-bulk', $entity), [
+            'from_month' => '2022-07',
+            'to_month' => '2025-07',
+        ])
+        ->assertRedirect(route('business-entities.rent-invoices.index', $entity))
+        ->assertSessionHasErrors('to_month');
 });

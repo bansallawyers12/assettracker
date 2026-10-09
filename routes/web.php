@@ -450,6 +450,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
 
     // Rent Invoice Routes
     Route::get('business-entities/{businessEntity}/rent-invoices', [RentInvoiceController::class, 'index'])->name('business-entities.rent-invoices.index');
+    Route::post('business-entities/{businessEntity}/rent-invoices/preview-bulk', [RentInvoiceController::class, 'previewBulk'])->name('business-entities.rent-invoices.preview-bulk');
     Route::post('business-entities/{businessEntity}/rent-invoices/generate-all', [RentInvoiceController::class, 'generateAll'])->name('business-entities.rent-invoices.generate-all');
     Route::post('business-entities/{businessEntity}/rent-invoices/generate-lease/{lease}', [RentInvoiceController::class, 'generateForLease'])->name('business-entities.rent-invoices.generate-lease');
     Route::get('business-entities/{businessEntity}/rent-invoices/preview/{lease}', [RentInvoiceController::class, 'preview'])->name('business-entities.rent-invoices.preview');
