@@ -719,7 +719,7 @@ class MailMessageController extends Controller
             $mailMessage = MailMessage::create([
                 'user_id' => $userId,
                 'subject' => $request->input('subject'),
-                'sender_email' => $request->input('from_email'),
+                'sender_email' => config('mail.from.address'),
                 'sender_name' => Auth::user()->name,
                 'recipients' => $request->input('to_email'),
                 'text_content' => $request->input('message'),

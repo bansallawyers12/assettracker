@@ -84,7 +84,7 @@
                                 <!-- Emails could not be loaded -->
                             @endtry
                         </select>
-                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Select the email address to send from</p>
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Mail is sent from the company Gmail account. Replies go to the address you select.</p>
                     </div>
 
                     <!-- Recipients Section -->

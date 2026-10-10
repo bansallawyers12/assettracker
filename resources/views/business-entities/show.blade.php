@@ -814,14 +814,19 @@
                         method: 'POST',
                         body: formData,
                         headers: {
+                            'Accept': 'application/json',
                             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                         }
                     })
-                    .then(response => response.json())
-                    .then(data => {
+                    .then(async (response) => {
+                        const data = await response.json().catch(() => ({}));
+                        if (!response.ok || data.success === false) {
+                            throw new Error(data.message || 'Failed to send email.');
+                        }
+
                         const msg = data.message || 'Email sent successfully.';
                         if (window.showToast) {
-                            window.showToast(msg, data.status ? 'success' : 'info');
+                            window.showToast(msg, 'success');
                         } else {
                             alert(msg);
                         }
@@ -830,7 +835,7 @@
                     })
                     .catch(error => {
                         console.error('Error sending email:', error);
-                        const errMsg = 'Error sending email.';
+                        const errMsg = error.message || 'Error sending email.';
                         if (window.showToast) {
                             window.showToast(errMsg, 'error');
                         } else {

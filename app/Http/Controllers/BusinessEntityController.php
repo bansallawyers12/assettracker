@@ -3435,29 +3435,47 @@ class BusinessEntityController extends Controller
     {
         $this->authorize('update', $businessEntity);
 
-        $request->validate([
-            'subject' => 'required|string',
-            'message' => 'required|string',
-            'attachments.*' => 'nullable|file|max:10240', // Max 10MB per file
+        $validated = $request->validate([
+            'to_email' => ['nullable', 'email'],
+            'cc_email' => ['nullable', 'email'],
+            'subject' => ['required', 'string'],
+            'message' => ['required', 'string'],
+            'attachments.*' => ['nullable', 'file', 'max:10240'],
         ]);
 
-        $subject = $request->input('subject');
-        $message = $request->input('message');
+        $typedRecipient = trim((string) ($validated['to_email'] ?? ''));
+        $recipientEmail = $typedRecipient !== ''
+            ? $typedRecipient
+            : trim((string) $businessEntity->registered_email);
+        $ccEmail = trim((string) ($validated['cc_email'] ?? ''));
+
+        if (
+            ! filter_var($recipientEmail, FILTER_VALIDATE_EMAIL)
+            || (new BusinessEntity(['registered_email' => $recipientEmail]))->registeredEmailIsPlaceholder()
+        ) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Enter a recipient email address.',
+            ], 422);
+        }
+
+        $subject = $validated['subject'];
+        $message = $validated['message'];
         $attachments = $request->file('attachments');
-        $recipientEmail = $businessEntity->registered_email;
 
         try {
-            // Log the email attempt
             Log::info('Attempting to send email', [
                 'to' => $recipientEmail,
+                'cc' => $ccEmail !== '' ? $ccEmail : null,
                 'subject' => $subject,
             ]);
 
-            // Create the email instance
             $email = new ContactEmail($subject, $message, $attachments);
-
-            // Send the email
-            Mail::to($recipientEmail)->send($email);
+            $pending = Mail::to($recipientEmail);
+            if ($ccEmail !== '') {
+                $pending->cc($ccEmail);
+            }
+            $pending->send($email);
 
             // Log successful email
             Log::info('Email sent successfully', [
