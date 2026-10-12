@@ -172,7 +172,7 @@
                         @endif
                         <div class="mt-4">
                             <p class="block text-sm font-medium text-gray-700 dark:text-gray-300">Attach from documents</p>
-                            <div id="stored-document-attachments" class="mt-2 max-h-48 space-y-2 overflow-y-auto"></div>
+                            <div id="stored-document-attachments" class="mt-2 max-h-48 space-y-2 overflow-y-auto" data-url-template="{{ route('business-entities.outgoing-files', ['businessEntity' => 0]) }}"></div>
                         </div>
                         <template id="attachment-file-icon">
                             <x-lucide-file-text class="w-5 h-5 text-gray-400" />
@@ -326,7 +326,8 @@
                 }
 
                 try {
-                    const response = await fetch(`/business-entities/${entityId}/outgoing-files`, {
+                    const template = storedPicker.dataset.urlTemplate || '';
+                    const response = await fetch(template.replace('/0/outgoing-files', `/${encodeURIComponent(entityId)}/outgoing-files`), {
                         headers: {
                             'Accept': 'application/json',
                             'X-Requested-With': 'XMLHttpRequest',

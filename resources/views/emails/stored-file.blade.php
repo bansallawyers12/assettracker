@@ -55,10 +55,19 @@
                     <legend class="text-sm font-medium text-gray-700 dark:text-gray-300">Attach from documents</legend>
                     <p class="mt-1 text-sm text-gray-800 dark:text-gray-200">{{ $primaryName }}</p>
                     @if ($extraFiles !== [])
+                        @php
+                            $selectedDocumentIds = array_map('intval', (array) old('document_ids', []));
+                            $selectedComplianceIds = array_map('intval', (array) old('compliance_file_ids', []));
+                        @endphp
                         <div class="mt-2 max-h-48 space-y-2 overflow-y-auto">
                             @foreach ($extraFiles as $file)
+                                @php
+                                    $fileSelected = $file['kind'] === 'compliance'
+                                        ? in_array((int) $file['id'], $selectedComplianceIds, true)
+                                        : in_array((int) $file['id'], $selectedDocumentIds, true);
+                                @endphp
                                 <label class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                                    <input type="checkbox" name="{{ $file['kind'] === 'compliance' ? 'compliance_file_ids[]' : 'document_ids[]' }}" value="{{ $file['id'] }}"
+                                    <input type="checkbox" name="{{ $file['kind'] === 'compliance' ? 'compliance_file_ids[]' : 'document_ids[]' }}" value="{{ $file['id'] }}" @checked($fileSelected)
                                            class="rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                     <span>{{ $file['label'] }}</span>
                                 </label>

@@ -43,13 +43,18 @@
 
                 <fieldset>
                     <legend class="text-sm font-medium text-gray-700 dark:text-gray-300">Files on this invoice</legend>
+                    <input type="hidden" name="files_reviewed" value="1">
                     @if ($files->isEmpty())
                         <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No extra files are stored on this invoice.</p>
                     @else
+                        @php
+                            $reviewedFileSelection = old('files_reviewed') !== null;
+                            $selectedDocumentIds = array_map('intval', (array) old('document_ids', []));
+                        @endphp
                         <div class="mt-2 space-y-2">
                             @foreach ($files as $file)
                                 <label class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
-                                    <input type="checkbox" name="document_ids[]" value="{{ $file->id }}" checked
+                                    <input type="checkbox" name="document_ids[]" value="{{ $file->id }}" @checked(! $reviewedFileSelection || in_array((int) $file->id, $selectedDocumentIds, true))
                                            class="rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500">
                                     <span>{{ $file->file_name ?: 'Attachment' }}</span>
                                 </label>

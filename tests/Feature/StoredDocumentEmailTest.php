@@ -150,6 +150,11 @@ it('lets a reply attach a stored file and a computer upload while keeping the or
     ]);
 
     $this->actingAs($user)
+        ->get(route('emails.reply', $original))
+        ->assertSuccessful()
+        ->assertSee(route('business-entities.outgoing-files', ['businessEntity' => 0]), false);
+
+    $this->actingAs($user)
         ->post(route('emails.send'), [
             'from_email' => 'staff@example.com',
             'to_email' => 'client@clientmail.com',
@@ -243,7 +248,7 @@ it('emails one compliance file and offers company, contact, person, and tenant a
         ->post(route('business-entities.email-file.send', $entity), [
             'to_email' => 'ada@clientmail.com',
             'subject' => 'bas.pdf',
-            'message' => 'Please find bas.pdf attached.',
+            'message' => "Please find bas.pdf attached.\n<script>alert(1)</script>",
             'primary_compliance_file_id' => $file->id,
             'from' => 'compliance',
         ])
@@ -252,7 +257,9 @@ it('emails one compliance file and offers company, contact, person, and tenant a
     Mail::assertSent(ContactEmail::class, function (ContactEmail $mail): bool {
         $names = collect($mail->attachments())->map(fn ($attachment) => $attachment->as)->all();
 
-        return $mail->hasTo('ada@clientmail.com') && $names === ['bas.pdf'];
+        return $mail->hasTo('ada@clientmail.com')
+            && $names === ['bas.pdf']
+            && $mail->messageBody === nl2br(e("Please find bas.pdf attached.\n<script>alert(1)</script>"));
     });
 });
 

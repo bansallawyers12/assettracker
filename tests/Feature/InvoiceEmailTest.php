@@ -145,6 +145,27 @@ it('rejects an invoice email when no address is entered', function () {
     Mail::assertNothingSent();
 });
 
+it('keeps unticked invoice files unticked after a validation error', function () {
+    ['user' => $user, 'entity' => $entity, 'invoice' => $invoice, 'kept' => $kept, 'skipped' => $skipped] = invoiceEmailFixture();
+    $emailUrl = route('business-entities.invoices.email', [$entity, $invoice]);
+
+    $this->actingAs($user)
+        ->from($emailUrl)
+        ->post(route('business-entities.invoices.send', [$entity, $invoice]), [
+            'to_email' => 'not-an-email',
+            'subject' => 'Invoice INV-100',
+            'message' => 'Cover note',
+            'files_reviewed' => '1',
+            'document_ids' => [$kept->id],
+        ])
+        ->assertSessionHasErrors('to_email');
+
+    $html = $this->actingAs($user)->get($emailUrl)->assertSuccessful()->getContent();
+
+    expect($html)->toContain('value="'.$kept->id.'" checked')
+        ->and($html)->not->toContain('value="'.$skipped->id.'" checked');
+});
+
 it('attaches the pdf and only the ticked invoice files', function () {
     Mail::fake();
     ['user' => $user, 'entity' => $entity, 'invoice' => $invoice, 'kept' => $kept] = invoiceEmailFixture();

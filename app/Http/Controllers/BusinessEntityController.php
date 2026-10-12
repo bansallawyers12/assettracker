@@ -3647,7 +3647,7 @@ class BusinessEntityController extends Controller
         try {
             Mail::to($validated['to_email'])->send(new ContactEmail(
                 $validated['subject'],
-                $validated['message'],
+                nl2br(e($validated['message'])),
                 $request->file('attachments') ?? [],
                 $request->user()?->email,
                 $storedFiles,

@@ -834,6 +834,17 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 return;
             }
 
+            const ctxEmail = ev.target.closest('.doc-ctx-email');
+            if (ctxEmail && root.contains(ctxEmail)) {
+                ev.preventDefault();
+                const href = ctxEmail.href;
+                hideRowContextMenu();
+                if (href && !href.endsWith('#')) {
+                    window.location.assign(href);
+                }
+                return;
+            }
+
             if (ev.target.closest('.doc-context-menu .doc-ctx-item')) {
                 // Let action handlers below run, then close the menu.
                 hideRowContextMenu();
