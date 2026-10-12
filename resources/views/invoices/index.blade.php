@@ -310,6 +310,14 @@
                                            aria-label="Download invoice {{ $inv->invoice_number }}">
                                             <x-lucide-download class="h-4 w-4" aria-hidden="true" />
                                         </a>
+                                        @unless (($businessEntity ?? $inv->businessEntity)?->isTenancyContactOnly())
+                                            <a href="{{ route('business-entities.invoices.email', [$inv->business_entity_id, $inv]) }}"
+                                               class="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-white"
+                                               title="Email invoice"
+                                               aria-label="Email invoice {{ $inv->invoice_number }}">
+                                                <x-lucide-mail class="h-4 w-4" aria-hidden="true" />
+                                            </a>
+                                        @endunless
                                     </div>
                                 </td>
                             </tr>

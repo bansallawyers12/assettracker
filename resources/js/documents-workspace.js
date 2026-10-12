@@ -342,9 +342,41 @@ import { setRowUploading } from './workspace-upload-ui.js';
             panel.querySelector('.doc-cat-preview-image')?.classList.add('hidden');
         }
 
+        function emailFileUrl(docId, assetScope) {
+            const base = root.dataset.emailFileUrl;
+            if (!base || !docId) {
+                return '#';
+            }
+
+            const params = new URLSearchParams();
+            params.set('document', String(docId));
+            const scope = assetScope || root.dataset.assetId || '';
+            if (scope) {
+                params.set('asset', String(scope));
+            }
+
+            return `${base}?${params.toString()}`;
+        }
+
+        function setEmailFileLink(link, docId, assetScope, enabled) {
+            if (!link) {
+                return;
+            }
+
+            if (!enabled) {
+                link.href = '#';
+                link.classList.add('opacity-50', 'pointer-events-none');
+                return;
+            }
+
+            link.href = emailFileUrl(docId, assetScope);
+            link.classList.remove('opacity-50', 'pointer-events-none');
+        }
+
         function setCategoryPanelPreview(panel, docId, assetScope) {
             const frame  = panel.querySelector('.doc-cat-preview-frame');
             const dl     = panel.querySelector('.doc-cat-preview-dl');
+            const emailBtn = panel.querySelector('.doc-cat-preview-email');
             const openBtn = panel.querySelector('.doc-cat-preview-open');
             const delBtn = panel.querySelector('.doc-cat-preview-del');
             const hint   = panel.querySelector('.doc-preview-hint');
@@ -381,6 +413,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
 
             dl.href = documentContentUrl(docId, true, scope);
             dl.classList.remove('opacity-50', 'pointer-events-none');
+            setEmailFileLink(emailBtn, docId, scope, true);
             openBtn?.classList.remove('opacity-50', 'pointer-events-none');
             delBtn?.classList.remove('opacity-50', 'pointer-events-none');
             panel.dataset.previewDocId = String(docId);
@@ -479,6 +512,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
             clearPreviewLoadTimer(panel);
             const frame  = panel.querySelector('.doc-cat-preview-frame');
             const dl     = panel.querySelector('.doc-cat-preview-dl');
+            const emailBtn = panel.querySelector('.doc-cat-preview-email');
             const openBtn = panel.querySelector('.doc-cat-preview-open');
             const delBtn = panel.querySelector('.doc-cat-preview-del');
             const hint   = panel.querySelector('.doc-preview-hint');
@@ -498,6 +532,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
             }
             loading?.classList.add('hidden');
             if (dl)    { dl.href = '#'; dl.classList.add('opacity-50', 'pointer-events-none'); }
+            setEmailFileLink(emailBtn, null, null, false);
             openBtn?.classList.add('opacity-50', 'pointer-events-none');
             delBtn?.classList.add('opacity-50', 'pointer-events-none');
             togglePreviewEmptyState(panel, true);
@@ -634,6 +669,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
             const label = tr.dataset.label || '';
 
             const uploadBtn = contextMenu.querySelector('.doc-ctx-upload');
+            const emailBtn = contextMenu.querySelector('.doc-ctx-email');
             const clearBtn = contextMenu.querySelector('.doc-clear');
             const renameBtn = contextMenu.querySelector('.doc-rename-slot');
             const moveBtn = contextMenu.querySelector('.doc-move-slot');
@@ -643,6 +679,12 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 uploadBtn.textContent = hasFile ? 'Reupload' : 'Upload';
                 uploadBtn.dataset.docId = docId;
                 uploadBtn.dataset.replace = hasFile ? '1' : '0';
+            }
+            if (emailBtn) {
+                const scope = tr.querySelector('.doc-preview')?.dataset.assetScope || root.dataset.assetId || '';
+                setEmailFileLink(emailBtn, docId, scope, hasFile);
+                emailBtn.classList.toggle('hidden', !hasFile);
+                emailBtn.hidden = !hasFile;
             }
             if (clearBtn) {
                 clearBtn.dataset.docId = docId;

@@ -11,6 +11,7 @@ use App\Models\EmailDraft;
 use App\Models\MailAttachment;
 use App\Models\MailLabel;
 use App\Models\MailMessage;
+use App\Services\CompanyStoredFileResolver;
 use App\Services\DocumentUploadService;
 use App\Services\MsgParserService;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class MailMessageController extends Controller
 {
@@ -548,7 +550,44 @@ class MailMessageController extends Controller
             'message' => 'required|string',
             'attachments.*' => 'nullable|file|max:10240', // Max 10MB per file
             'business_entity_id' => ['nullable', BusinessEntity::ruleExistsOperational()],
+            'document_ids' => ['nullable', 'array'],
+            'document_ids.*' => ['integer'],
+            'compliance_file_ids' => ['nullable', 'array'],
+            'compliance_file_ids.*' => ['integer'],
+            'original_message_id' => ['nullable', 'integer'],
         ]);
+
+        $documentIds = array_values(array_filter(array_map('intval', (array) $request->input('document_ids', []))));
+        $complianceIds = array_values(array_filter(array_map('intval', (array) $request->input('compliance_file_ids', []))));
+        $storedFiles = [];
+        $forwardedFiles = [];
+
+        if ($documentIds !== [] || $complianceIds !== []) {
+            if (! $request->filled('business_entity_id')) {
+                throw ValidationException::withMessages([
+                    'business_entity_id' => 'Choose a company before attaching stored documents.',
+                ]);
+            }
+
+            $entity = BusinessEntity::query()->findOrFail($request->integer('business_entity_id'));
+            $this->authorize('update', $entity);
+            $storedFiles = app(CompanyStoredFileResolver::class)->forCompany($entity, $documentIds, $complianceIds);
+        }
+
+        if ($request->filled('original_message_id')) {
+            $original = MailMessage::query()
+                ->where('user_id', Auth::id())
+                ->with('attachments')
+                ->find($request->integer('original_message_id'));
+
+            if ($original === null) {
+                throw ValidationException::withMessages([
+                    'original_message_id' => 'The original message could not be found.',
+                ]);
+            }
+
+            $forwardedFiles = app(CompanyStoredFileResolver::class)->fromMailAttachments($original);
+        }
 
         try {
             $userId = Auth::id();
@@ -561,7 +600,9 @@ class MailMessageController extends Controller
                 $request->input('subject'),
                 $request->input('message'),
                 $request->file('attachments', []),
-                $request->input('from_email')
+                $request->input('from_email'),
+                $storedFiles,
+                $forwardedFiles,
             );
 
             $pending = Mail::to($toEmails);

@@ -2,6 +2,7 @@
 
 namespace App\Mail;
 
+use App\Support\StoredMailFile;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Attachment;
@@ -22,14 +23,32 @@ class ContactEmail extends Mailable
     public $fromEmail;
 
     /**
-     * @param  array<int, mixed>  $attachmentsData
+     * Files already stored for the company.
+     *
+     * @var list<StoredMailFile>
      */
-    public function __construct($subject, $messageBody, $attachmentsData = [], $fromEmail = null)
+    public $storedFiles;
+
+    /**
+     * Attachments kept from the message being forwarded.
+     *
+     * @var list<StoredMailFile>
+     */
+    public $forwardedFiles;
+
+    /**
+     * @param  array<int, mixed>  $attachmentsData
+     * @param  list<StoredMailFile>  $storedFiles
+     * @param  list<StoredMailFile>  $forwardedFiles
+     */
+    public function __construct($subject, $messageBody, $attachmentsData = [], $fromEmail = null, array $storedFiles = [], array $forwardedFiles = [])
     {
         $this->subject = $subject;
         $this->messageBody = $messageBody;
         $this->attachmentsData = $attachmentsData ?? [];
         $this->fromEmail = $fromEmail;
+        $this->storedFiles = $storedFiles;
+        $this->forwardedFiles = $forwardedFiles;
     }
 
     /**
@@ -74,6 +93,14 @@ class ContactEmail extends Mailable
             $attachments[] = Attachment::fromPath($attachment->getRealPath())
                 ->as($attachment->getClientOriginalName())
                 ->withMime($attachment->getMimeType());
+        }
+
+        foreach ($this->storedFiles as $file) {
+            $attachments[] = $file->toAttachment();
+        }
+
+        foreach ($this->forwardedFiles as $file) {
+            $attachments[] = $file->toAttachment();
         }
 
         return $attachments;

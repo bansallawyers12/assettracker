@@ -36,6 +36,7 @@ class Invoice extends Model
         'payment_transaction_id',
         'last_reminder_sent_at',
         'reminder_count',
+        'last_invoice_emailed_at',
         'document_id',
     ];
 
@@ -48,6 +49,7 @@ class Invoice extends Model
         'is_posted' => 'boolean',
         'paid_at' => 'datetime',
         'last_reminder_sent_at' => 'datetime',
+        'last_invoice_emailed_at' => 'datetime',
         'reminder_count' => 'integer',
     ];
 

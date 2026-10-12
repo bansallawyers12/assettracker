@@ -167,6 +167,13 @@
                             </div>
                         </div>
                         <div id="attachment-preview" class="mt-3 space-y-2"></div>
+                        @if ($message->attachments->isNotEmpty())
+                            <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">This forward also includes {{ $message->attachments->pluck('filename')->filter()->join(', ') }}.</p>
+                        @endif
+                        <div class="mt-4">
+                            <p class="block text-sm font-medium text-gray-700 dark:text-gray-300">Attach from documents</p>
+                            <div id="stored-document-attachments" class="mt-2 max-h-48 space-y-2 overflow-y-auto"></div>
+                        </div>
                         <template id="attachment-file-icon">
                             <x-lucide-file-text class="w-5 h-5 text-gray-400" />
                         </template>
@@ -301,6 +308,66 @@
             const enhanceMessageBtn = document.getElementById('enhance-message-btn');
             const attachmentInput = document.getElementById('attachments');
             const attachmentPreview = document.getElementById('attachment-preview');
+            const storedPicker = document.getElementById('stored-document-attachments');
+            const entitySelect = document.getElementById('business_entity_id');
+
+            async function loadStoredFiles() {
+                if (!storedPicker) {
+                    return;
+                }
+                storedPicker.replaceChildren();
+                const entityId = entitySelect?.value || '';
+                if (!entityId) {
+                    const hint = document.createElement('p');
+                    hint.className = 'text-sm text-gray-500 dark:text-gray-400';
+                    hint.textContent = 'Choose a company to attach its stored documents.';
+                    storedPicker.appendChild(hint);
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`/business-entities/${entityId}/outgoing-files`, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                    if (!response.ok) {
+                        throw new Error('Could not load documents.');
+                    }
+                    const data = await response.json();
+                    const files = Array.isArray(data.files) ? data.files : [];
+                    if (files.length === 0) {
+                        const empty = document.createElement('p');
+                        empty.className = 'text-sm text-gray-500 dark:text-gray-400';
+                        empty.textContent = 'No stored files for this company.';
+                        storedPicker.appendChild(empty);
+                        return;
+                    }
+                    files.forEach((file) => {
+                        const label = document.createElement('label');
+                        label.className = 'flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300';
+                        const input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.name = file.kind === 'compliance' ? 'compliance_file_ids[]' : 'document_ids[]';
+                        input.value = String(file.id);
+                        input.className = 'rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500';
+                        const span = document.createElement('span');
+                        span.textContent = file.label || file.name || 'File';
+                        label.appendChild(input);
+                        label.appendChild(span);
+                        storedPicker.appendChild(label);
+                    });
+                } catch (_) {
+                    const error = document.createElement('p');
+                    error.className = 'text-sm text-gray-500 dark:text-gray-400';
+                    error.textContent = 'Stored documents could not be loaded.';
+                    storedPicker.appendChild(error);
+                }
+            }
+
+            entitySelect?.addEventListener('change', loadStoredFiles);
+            loadStoredFiles();
 
             // Handle form submission
             form.addEventListener('submit', function(e) {

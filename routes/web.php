@@ -401,6 +401,9 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     // Email Routes (Nested under Business Entities)
     Route::get('business-entities/{businessEntity}/compose-email-data', [BusinessEntityController::class, 'getComposeEmailData'])->name('business-entities.compose-email-data');
     Route::post('business-entities/{businessEntity}/send-email', [BusinessEntityController::class, 'sendEmail'])->name('business-entities.send-email');
+    Route::get('business-entities/{businessEntity}/outgoing-files', [BusinessEntityController::class, 'outgoingFiles'])->name('business-entities.outgoing-files');
+    Route::get('business-entities/{businessEntity}/email-file', [BusinessEntityController::class, 'emailStoredFile'])->name('business-entities.email-file');
+    Route::post('business-entities/{businessEntity}/email-file', [BusinessEntityController::class, 'sendStoredFile'])->name('business-entities.email-file.send');
 
     // Accounting System Routes — chart of accounts is global; legacy nested URLs redirect
     Route::get('/business-entities/{businessEntity}/chart-of-accounts', function () {
@@ -443,6 +446,8 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/unpost', [InvoiceController::class, 'unpost'])->name('business-entities.invoices.unpost');
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/record-payment', [InvoiceController::class, 'recordPayment'])->name('business-entities.invoices.record-payment');
     Route::post('business-entities/{businessEntity}/invoices/{invoice}/remind', [InvoiceController::class, 'remind'])->name('business-entities.invoices.remind');
+    Route::get('business-entities/{businessEntity}/invoices/{invoice}/email', [InvoiceController::class, 'email'])->name('business-entities.invoices.email');
+    Route::post('business-entities/{businessEntity}/invoices/{invoice}/send', [InvoiceController::class, 'send'])->name('business-entities.invoices.send');
 
     // Tracking Categories Routes
     Route::resource('business-entities.tracking-categories', TrackingCategoryController::class);

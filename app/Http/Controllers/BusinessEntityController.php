@@ -27,12 +27,14 @@ use App\Services\BankAccountAssetLinkService;
 use App\Services\BankStatementMatchSuggester;
 use App\Services\BusinessEntityDeletionService;
 use App\Services\CommitmentReportService;
+use App\Services\CompanyStoredFileResolver;
 use App\Services\ComplianceYearService;
 use App\Services\DocumentUploadService;
 use App\Services\LoanOffsetTransactionGuard;
 use App\Services\TransactionPostingService;
 use App\Support\ChartAccountTransactionTypeMapper;
 use App\Support\DashboardTransactionFormLines;
+use App\Support\OutgoingMailRecipients;
 use App\Support\SecurityAuditLogger;
 use App\Support\TableSort;
 use App\Support\TransactionCashParts;
@@ -3441,6 +3443,11 @@ class BusinessEntityController extends Controller
             'subject' => ['required', 'string'],
             'message' => ['required', 'string'],
             'attachments.*' => ['nullable', 'file', 'max:10240'],
+            'document_ids' => ['nullable', 'array'],
+            'document_ids.*' => ['integer'],
+            'compliance_file_ids' => ['nullable', 'array'],
+            'compliance_file_ids.*' => ['integer'],
+            'asset_id' => ['nullable', 'integer'],
         ]);
 
         $typedRecipient = trim((string) ($validated['to_email'] ?? ''));
@@ -3462,6 +3469,16 @@ class BusinessEntityController extends Controller
         $subject = $validated['subject'];
         $message = $validated['message'];
         $attachments = $request->file('attachments');
+        $assetId = isset($validated['asset_id']) ? (int) $validated['asset_id'] : null;
+        if ($assetId) {
+            Asset::query()->where('business_entity_id', $businessEntity->id)->findOrFail($assetId);
+        }
+        $storedFiles = app(CompanyStoredFileResolver::class)->forCompany(
+            $businessEntity,
+            $validated['document_ids'] ?? [],
+            $validated['compliance_file_ids'] ?? [],
+            $assetId ?: null,
+        );
 
         try {
             Log::info('Attempting to send email', [
@@ -3470,7 +3487,7 @@ class BusinessEntityController extends Controller
                 'subject' => $subject,
             ]);
 
-            $email = new ContactEmail($subject, $message, $attachments);
+            $email = new ContactEmail($subject, $message, $attachments, null, $storedFiles);
             $pending = Mail::to($recipientEmail);
             if ($ccEmail !== '') {
                 $pending->cc($ccEmail);
@@ -3502,6 +3519,151 @@ class BusinessEntityController extends Controller
                 'message' => 'Failed to send email: '.$e->getMessage(),
             ], 500);
         }
+    }
+
+    public function outgoingFiles(Request $request, BusinessEntity $businessEntity, CompanyStoredFileResolver $files): JsonResponse
+    {
+        $this->authorize('update', $businessEntity);
+        $assetId = $request->integer('asset') ?: null;
+        if ($assetId) {
+            Asset::query()->where('business_entity_id', $businessEntity->id)->findOrFail($assetId);
+        }
+
+        return response()->json([
+            'files' => $files->catalog($businessEntity, $assetId),
+        ]);
+    }
+
+    public function emailStoredFile(
+        Request $request,
+        BusinessEntity $businessEntity,
+        CompanyStoredFileResolver $files,
+        OutgoingMailRecipients $recipients,
+    ): View {
+        $this->authorize('update', $businessEntity);
+
+        $documentId = $request->integer('document') ?: null;
+        $complianceFileId = $request->integer('compliance_file') ?: null;
+        $assetId = $request->integer('asset') ?: null;
+        $from = $request->string('from')->toString() === 'compliance' ? 'compliance' : 'documents';
+
+        if (($documentId === null && $complianceFileId === null) || ($documentId !== null && $complianceFileId !== null)) {
+            abort(404);
+        }
+
+        if ($assetId) {
+            Asset::query()->where('business_entity_id', $businessEntity->id)->findOrFail($assetId);
+        }
+
+        try {
+            $primaryFiles = $files->forCompany(
+                $businessEntity,
+                $documentId ? [$documentId] : [],
+                $complianceFileId ? [$complianceFileId] : [],
+                $assetId,
+            );
+        } catch (ValidationException $e) {
+            abort(422, 'That file is not available for this company.');
+        }
+        $primary = $primaryFiles[0] ?? null;
+        if ($primary === null) {
+            abort(422, 'That file is not available for this company.');
+        }
+
+        $catalog = collect($files->catalog($businessEntity, $assetId))
+            ->reject(function (array $item) use ($documentId, $complianceFileId): bool {
+                if ($documentId && $item['kind'] === 'document' && (int) $item['id'] === $documentId) {
+                    return true;
+                }
+
+                return $complianceFileId && $item['kind'] === 'compliance' && (int) $item['id'] === $complianceFileId;
+            })
+            ->values()
+            ->all();
+
+        $recipientOptions = $recipients->options($businessEntity, $assetId);
+        $companyRecipient = collect($recipientOptions)->first(fn (array $row): bool => str_starts_with($row['label'], 'Company'));
+        $fragment = $from === 'compliance' ? 'tab_compliance' : 'tab_documents';
+        $cancelUrl = $assetId
+            ? route('business-entities.assets.show', [$businessEntity, $assetId]).'#'.$fragment
+            : route('business-entities.show', $businessEntity).'#'.$fragment;
+
+        return view('emails.stored-file', [
+            'businessEntity' => $businessEntity,
+            'primaryName' => $primary->name,
+            'primaryDocumentId' => $documentId,
+            'primaryComplianceFileId' => $complianceFileId,
+            'assetId' => $assetId,
+            'from' => $from,
+            'extraFiles' => $catalog,
+            'recipients' => $recipientOptions,
+            'toEmail' => old('to_email', $companyRecipient['email'] ?? ''),
+            'subjectLine' => old('subject', $primary->name),
+            'messageBody' => old('message', 'Please find '.$primary->name.' attached.'),
+            'cancelUrl' => $cancelUrl,
+        ]);
+    }
+
+    public function sendStoredFile(Request $request, BusinessEntity $businessEntity, CompanyStoredFileResolver $files): RedirectResponse
+    {
+        $this->authorize('update', $businessEntity);
+
+        $validated = $request->validate([
+            'to_email' => ['required', 'email'],
+            'subject' => ['required', 'string', 'max:255'],
+            'message' => ['required', 'string', 'max:5000'],
+            'primary_document_id' => ['nullable', 'integer'],
+            'primary_compliance_file_id' => ['nullable', 'integer'],
+            'document_ids' => ['nullable', 'array'],
+            'document_ids.*' => ['integer'],
+            'compliance_file_ids' => ['nullable', 'array'],
+            'compliance_file_ids.*' => ['integer'],
+            'asset_id' => ['nullable', 'integer'],
+            'attachments.*' => ['nullable', 'file', 'max:10240'],
+            'from' => ['nullable', 'string'],
+        ]);
+
+        $assetId = isset($validated['asset_id']) ? (int) $validated['asset_id'] : null;
+        if ($assetId) {
+            Asset::query()->where('business_entity_id', $businessEntity->id)->findOrFail($assetId);
+        }
+
+        $documentIds = array_values(array_unique(array_filter(array_merge(
+            ! empty($validated['primary_document_id']) ? [(int) $validated['primary_document_id']] : [],
+            array_map('intval', $validated['document_ids'] ?? []),
+        ))));
+        $complianceIds = array_values(array_unique(array_filter(array_merge(
+            ! empty($validated['primary_compliance_file_id']) ? [(int) $validated['primary_compliance_file_id']] : [],
+            array_map('intval', $validated['compliance_file_ids'] ?? []),
+        ))));
+
+        $storedFiles = $files->forCompany($businessEntity, $documentIds, $complianceIds, $assetId ?: null);
+        if ($storedFiles === []) {
+            throw ValidationException::withMessages([
+                'document_ids' => 'Choose a stored file to email.',
+            ]);
+        }
+
+        try {
+            Mail::to($validated['to_email'])->send(new ContactEmail(
+                $validated['subject'],
+                $validated['message'],
+                $request->file('attachments') ?? [],
+                $request->user()?->email,
+                $storedFiles,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->withInput()->with('error', 'Could not send email. Check your mail configuration.');
+        }
+
+        $fragment = ($validated['from'] ?? '') === 'compliance' ? 'tab_compliance' : 'tab_documents';
+        $redirect = $assetId
+            ? route('business-entities.assets.show', [$businessEntity, $assetId])
+            : route('business-entities.show', $businessEntity);
+
+        return redirect($redirect.'#'.$fragment)->with('success', 'Email sent to '.$validated['to_email']);
     }
 
     /**

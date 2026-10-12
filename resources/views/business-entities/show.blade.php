@@ -525,6 +525,26 @@
                                             <input type="file" id="attachment" name="attachments[]" class="mt-1 block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500" multiple>
                                         </div>
 
+                                        @php
+                                            $outgoingFiles = app(\App\Services\CompanyStoredFileResolver::class)->catalog($businessEntity);
+                                        @endphp
+                                        <div class="mb-4">
+                                            <p class="block text-sm font-medium text-gray-700 dark:text-gray-300">Attach from documents</p>
+                                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Files already stored for this company.</p>
+                                            @if ($outgoingFiles === [])
+                                                <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No stored files to attach.</p>
+                                            @else
+                                                <div class="mt-2 max-h-48 space-y-2 overflow-y-auto">
+                                                    @foreach ($outgoingFiles as $file)
+                                                        <label class="flex items-center gap-2 text-sm text-gray-800 dark:text-gray-200">
+                                                            <input type="checkbox" name="{{ $file['kind'] === 'compliance' ? 'compliance_file_ids[]' : 'document_ids[]' }}" value="{{ $file['id'] }}" class="rounded-sm border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                                                            <span>{{ $file['label'] }}</span>
+                                                        </label>
+                                                    @endforeach
+                                                </div>
+                                            @endif
+                                        </div>
+
                                         <div class="flex justify-end">
                                             <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg shadow-md transition-all duration-200 transform hover:scale-105">
                                                 Send Email
@@ -821,7 +841,8 @@
                     .then(async (response) => {
                         const data = await response.json().catch(() => ({}));
                         if (!response.ok || data.success === false) {
-                            throw new Error(data.message || 'Failed to send email.');
+                            const firstError = data.errors ? Object.values(data.errors).flat()[0] : null;
+                            throw new Error(firstError || data.message || 'Failed to send email.');
                         }
 
                         const msg = data.message || 'Email sent successfully.';

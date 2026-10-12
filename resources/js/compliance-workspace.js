@@ -276,6 +276,8 @@ import { setRowUploading } from './workspace-upload-ui.js';
                             class="compliance-btn compliance-btn-secondary compliance-preview-open opacity-50 pointer-events-none hidden">Open</a>
                         <a href="#" target="_blank" rel="noopener noreferrer"
                             class="compliance-btn compliance-btn-primary compliance-preview-dl opacity-50 pointer-events-none">Download</a>
+                        <a href="#"
+                            class="compliance-btn compliance-btn-secondary compliance-preview-email opacity-50 pointer-events-none">Email this file</a>
                         <button type="button" class="compliance-btn compliance-btn-danger compliance-preview-clear opacity-50 pointer-events-none">Clear file</button>
                     </div>
                 </div>
@@ -485,6 +487,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
             const previewImage = panel.querySelector('.compliance-preview-image');
             const previewFrame = panel.querySelector('.compliance-preview-frame');
             const previewDl = panel.querySelector('.compliance-preview-dl');
+            const previewEmail = panel.querySelector('.compliance-preview-email');
             const previewOpen = panel.querySelector('.compliance-preview-open');
             const previewClear = panel.querySelector('.compliance-preview-clear');
             const emptyEl = panel.querySelector('.compliance-preview-empty');
@@ -507,6 +510,10 @@ import { setRowUploading } from './workspace-upload-ui.js';
                 previewDl.href = '#';
                 previewDl.classList.add('opacity-50', 'pointer-events-none');
             }
+            if (previewEmail) {
+                previewEmail.href = '#';
+                previewEmail.classList.add('opacity-50', 'pointer-events-none');
+            }
             if (previewOpen) {
                 previewOpen.href = '#';
                 previewOpen.classList.add('hidden', 'opacity-50', 'pointer-events-none');
@@ -526,6 +533,7 @@ import { setRowUploading } from './workspace-upload-ui.js';
             const previewImage = panel.querySelector('.compliance-preview-image');
             const previewFrame = panel.querySelector('.compliance-preview-frame');
             const previewDl = panel.querySelector('.compliance-preview-dl');
+            const previewEmail = panel.querySelector('.compliance-preview-email');
             const previewOpen = panel.querySelector('.compliance-preview-open');
             const previewClear = panel.querySelector('.compliance-preview-clear');
             const nameEl = panel.querySelector('.compliance-preview-filename');
@@ -544,6 +552,16 @@ import { setRowUploading } from './workspace-upload-ui.js';
             if (nameEl) nameEl.textContent = file.file_name || 'Document';
             previewDl.href = downloadUrl || viewUrl;
             previewDl.classList.remove('opacity-50', 'pointer-events-none');
+            if (previewEmail && root.dataset.emailFileUrl) {
+                const emailParams = new URLSearchParams();
+                emailParams.set('compliance_file', String(file.id));
+                emailParams.set('from', 'compliance');
+                if (assetId) {
+                    emailParams.set('asset', String(assetId));
+                }
+                previewEmail.href = `${root.dataset.emailFileUrl}?${emailParams.toString()}`;
+                previewEmail.classList.remove('opacity-50', 'pointer-events-none');
+            }
             if (previewOpen) {
                 previewOpen.href = viewUrl;
                 previewOpen.classList.remove('hidden', 'opacity-50', 'pointer-events-none');

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\EnsuresOperationalBusinessEntity;
+use App\Mail\InvoiceMail;
 use App\Mail\InvoiceReminderMail;
 use App\Models\Asset;
 use App\Models\BankAccount;
@@ -15,9 +16,12 @@ use App\Models\Lease;
 use App\Models\Tenant;
 use App\Models\Transaction;
 use App\Services\BankStatementMatchSuggester;
+use App\Services\CompanyStoredFileResolver;
 use App\Services\DocumentUploadService;
 use App\Services\InvoicePaymentService;
+use App\Services\InvoicePdfRenderer;
 use App\Services\InvoicePostingService;
+use App\Services\SentMailRecorder;
 use App\Support\DocumentUploadValidation;
 use App\Support\TableSort;
 use Illuminate\Http\Request;
@@ -547,6 +551,79 @@ class InvoiceController extends Controller
         return back()->with('success', 'Reminder sent to '.$email);
     }
 
+    public function email(BusinessEntity $businessEntity, Invoice $invoice, CompanyStoredFileResolver $files)
+    {
+        $this->authorizeInvoiceEmail($businessEntity, $invoice);
+        $invoice->loadMissing('lease.tenant');
+
+        $tenantEmail = trim((string) ($invoice->lease?->tenant?->email ?? ''));
+
+        return view('invoices.email', [
+            'businessEntity' => $businessEntity,
+            'invoice' => $invoice,
+            'files' => $files->invoiceDocuments($invoice),
+            'toEmail' => old('to_email', $tenantEmail),
+            'subjectLine' => old('subject', 'Invoice '.$invoice->invoice_number),
+            'messageBody' => old('message', 'Please find invoice '.$invoice->invoice_number.' attached.'),
+        ]);
+    }
+
+    public function send(
+        Request $request,
+        BusinessEntity $businessEntity,
+        Invoice $invoice,
+        InvoicePdfRenderer $pdf,
+        CompanyStoredFileResolver $files,
+        SentMailRecorder $recorder,
+    ) {
+        $this->authorizeInvoiceEmail($businessEntity, $invoice);
+
+        $data = $request->validate([
+            'to_email' => ['required', 'email'],
+            'subject' => ['required', 'string', 'max:255'],
+            'message' => ['required', 'string', 'max:5000'],
+            'document_ids' => ['nullable', 'array'],
+            'document_ids.*' => ['integer'],
+        ]);
+
+        $invoice->load(['attachmentDocuments', 'document', 'asset', 'lease.tenant', 'lines.chartOfAccount']);
+        $stored = $files->forInvoice($invoice, $data['document_ids'] ?? []);
+
+        try {
+            Mail::to($data['to_email'])->send(new InvoiceMail(
+                invoice: $invoice,
+                messageBody: $data['message'],
+                pdfFilename: $pdf->filename($invoice),
+                pdfContents: $pdf->binary($businessEntity, $invoice),
+                storedFiles: $stored,
+                replyToAddress: $request->user()?->email,
+                subjectLine: $data['subject'],
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->withInput()->with('error', 'Could not send email. Check your mail configuration.');
+        }
+
+        $invoice->update([
+            'last_invoice_emailed_at' => now(),
+        ]);
+
+        $recorder->record(
+            userId: (int) $request->user()->id,
+            senderName: (string) $request->user()->name,
+            subject: $data['subject'],
+            recipients: $data['to_email'],
+            message: $data['message'],
+            entity: $businessEntity,
+            assetId: $invoice->asset_id ? (int) $invoice->asset_id : null,
+        );
+
+        return redirect()
+            ->route('business-entities.invoices.show', [$businessEntity, $invoice])
+            ->with('success', 'Invoice emailed to '.$data['to_email']);
+    }
+
     /**
      * @return array{lineAccounts: Collection, defaultAccountCode: string|null, assetsForForm: Collection, tenantsForForm: Collection}
      */
@@ -916,6 +993,25 @@ class InvoiceController extends Controller
         if ($mutating) {
             $this->ensureAccountingMutationsAllowed($businessEntity);
         }
+    }
+
+    /**
+     * Emailing an invoice stays available when the company is closed, the same way Download does.
+     * Tenancy-only contacts remain blocked from accounting actions.
+     */
+    private function authorizeInvoiceEmail(BusinessEntity $businessEntity, Invoice $invoice): void
+    {
+        $this->authorize('update', $businessEntity);
+        $this->authorizeInvoice($businessEntity, $invoice);
+
+        if (! $businessEntity->isTenancyContactOnly()) {
+            return;
+        }
+
+        $this->abortOperationalRestriction(
+            403,
+            'This action is not available for tenancy or property-manager contacts. Edit the company profile if this should be one of your operating entities.'
+        );
     }
 
     /**

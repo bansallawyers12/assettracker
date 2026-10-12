@@ -28,6 +28,7 @@
      data-csrf="{{ csrf_token() }}"
      data-max-file-bytes="{{ $wsDocMaxKb * 1024 }}"
      data-file-accept="{{ $wsDocAccept }}"
+     data-email-file-url="{{ route('business-entities.email-file', $businessEntity) }}"
      @if ($isClosed) data-entity-closed="1" @endif>
 
     @if ($isClosed)
@@ -113,7 +114,7 @@
                             @endforeach
                         </tbody>
                     </table>
-                    <p class="doc-row-hint">Right-click a checklist row for Upload, Clear, Rename, Move, or Delete</p>
+                    <p class="doc-row-hint">Right-click a checklist row for Upload, Clear, Rename, Move, Delete, or Email this file</p>
                 </div>
                 <div class="doc-preview-card">
                     <div class="doc-preview-header">
@@ -133,6 +134,7 @@
                     </div>
                     <div class="doc-preview-actions">
                         <a href="#" class="doc-cat-preview-dl doc-action-btn doc-action-primary opacity-50 pointer-events-none">Download</a>
+                        <a href="#" class="doc-cat-preview-email doc-action-btn doc-action-muted opacity-50 pointer-events-none">Email this file</a>
                         <button type="button" class="doc-cat-preview-open doc-action-btn doc-action-muted opacity-50 pointer-events-none">Preview</button>
                         <button type="button" class="doc-cat-preview-del doc-action-btn doc-action-danger opacity-50 pointer-events-none">Delete file</button>
                     </div>
@@ -164,6 +166,7 @@
     <input type="file" class="hidden doc-slot-file" accept="{{ $wsDocAccept }}" data-document-id="" data-replace="0">
     <div class="doc-context-menu hidden" role="menu" hidden aria-hidden="true">
         <button type="button" class="doc-ctx-item doc-ctx-upload" role="menuitem" data-doc-action="upload">Upload</button>
+        <a href="#" class="doc-ctx-item doc-ctx-email hidden" role="menuitem" data-doc-action="email" hidden>Email this file</a>
         <button type="button" class="doc-ctx-item doc-ctx-warning doc-clear" role="menuitem" data-doc-action="clear">Clear</button>
         <button type="button" class="doc-ctx-item doc-rename-slot" role="menuitem" data-doc-action="rename">Rename</button>
         <button type="button" class="doc-ctx-item doc-move-slot" role="menuitem" data-doc-action="move">Move</button>

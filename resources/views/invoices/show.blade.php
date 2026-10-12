@@ -57,6 +57,9 @@
                         · {{ $invoice->customer_name }}
                     @endif
                 </p>
+                @if ($invoice->last_invoice_emailed_at)
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Invoice emailed {{ $invoice->last_invoice_emailed_at->format('d/m/Y H:i') }}</p>
+                @endif
             </div>
             <div class="flex flex-wrap gap-2">
                 @if ($invoice->asset_id)
@@ -77,6 +80,13 @@
                     <x-lucide-download class="h-4 w-4" aria-hidden="true" />
                     Download
                 </a>
+                @unless ($businessEntity->isTenancyContactOnly())
+                    <a href="{{ route('business-entities.invoices.email', [$businessEntity, $invoice]) }}"
+                       class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 shadow-xs hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700">
+                        <x-lucide-mail class="h-4 w-4" aria-hidden="true" />
+                        Email invoice
+                    </a>
+                @endunless
                 @if (!$invoice->is_posted)
                     <form method="POST" action="{{ route('business-entities.invoices.post', [$businessEntity, $invoice]) }}" class="inline">
                         @csrf

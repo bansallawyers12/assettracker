@@ -51,6 +51,7 @@
      data-default-fy-start="{{ $defaultFyStart }}"
      data-default-fy-label="{{ $defaultFyLabel }}"
      data-loaded="0"
+     data-email-file-url="{{ route('business-entities.email-file', $businessEntity) }}"
      @if ($businessEntity->isClosed()) data-entity-closed="1" @endif>
 
     @if ($businessEntity->isClosed())

@@ -14,7 +14,7 @@
         body {
             margin: 0;
             font-family: Arial, Helvetica, sans-serif;
-            color: var(--ink);
+            color: #111;
             background: #f3f4f6;
             line-height: 1.4;
             font-size: 14px;
@@ -30,12 +30,12 @@
             justify-content: space-between;
             padding: 0.75rem 1.25rem;
             background: #f7f7f7;
-            border-bottom: 1px solid var(--line);
+            border-bottom: 1px solid #ddd;
         }
         .toolbar p {
             margin: 0;
             font-size: 13px;
-            color: var(--muted);
+            color: #666;
         }
         .toolbar-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
         .btn {
@@ -74,7 +74,7 @@
             align-items: flex-start;
             margin-bottom: 1.75rem;
             padding-bottom: 1rem;
-            border-bottom: 1px solid var(--ink);
+            border-bottom: 1px solid #111;
         }
         .brand h1 {
             margin: 0;
@@ -83,7 +83,7 @@
         }
         .brand p {
             margin: 0.35rem 0 0;
-            color: var(--muted);
+            color: #666;
             font-size: 13px;
             max-width: 28rem;
         }
@@ -96,7 +96,7 @@
             font-weight: 700;
             letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: var(--muted);
+            color: #666;
         }
         .meta .number {
             margin: 0.25rem 0 0;
@@ -107,7 +107,7 @@
             display: block;
             margin-top: 0.35rem;
             font-size: 12px;
-            color: var(--muted);
+            color: #666;
         }
         .grid {
             display: grid;
@@ -122,7 +122,7 @@
             font-weight: 700;
             letter-spacing: 0.05em;
             text-transform: uppercase;
-            color: var(--muted);
+            color: #666;
         }
         .name {
             font-size: 15px;
@@ -131,7 +131,7 @@
         .line {
             margin-top: 0.2rem;
             font-size: 13px;
-            color: var(--muted);
+            color: #666;
         }
         .facts p {
             margin: 0 0 0.45rem;
@@ -141,7 +141,7 @@
             display: inline-block;
             min-width: 5.5rem;
             font-weight: 600;
-            color: var(--muted);
+            color: #666;
         }
         table {
             width: 100%;
@@ -151,16 +151,16 @@
         th {
             text-align: left;
             padding: 0.5rem 0.4rem;
-            border-bottom: 1px solid var(--ink);
+            border-bottom: 1px solid #111;
             font-size: 11px;
             font-weight: 700;
             letter-spacing: 0.04em;
             text-transform: uppercase;
-            color: var(--muted);
+            color: #666;
         }
         td {
             padding: 0.65rem 0.4rem;
-            border-bottom: 1px solid var(--line);
+            border-bottom: 1px solid #ddd;
             vertical-align: top;
             font-size: 13px;
         }
@@ -174,25 +174,25 @@
             display: flex;
             justify-content: space-between;
             padding: 0.25rem 0;
-            color: var(--muted);
+            color: #666;
         }
         .totals-row span:last-child {
-            color: var(--ink);
+            color: #111;
             font-variant-numeric: tabular-nums;
         }
         .totals-row.total {
             margin-top: 0.35rem;
             padding-top: 0.5rem;
-            border-top: 1px solid var(--ink);
-            color: var(--ink);
+            border-top: 1px solid #111;
+            color: #111;
             font-size: 15px;
             font-weight: 700;
         }
-        .totals-row.total span { font-weight: 700; color: var(--ink); }
+        .totals-row.total span { font-weight: 700; color: #111; }
         .notes {
             margin-top: 1.5rem;
             padding-top: 1rem;
-            border-top: 1px solid var(--line);
+            border-top: 1px solid #ddd;
             font-size: 13px;
         }
         .notes .label { margin-bottom: 0.35rem; }
@@ -203,7 +203,7 @@
         .footer {
             margin-top: 2rem;
             font-size: 11px;
-            color: var(--muted);
+            color: #666;
         }
         @media print {
             body { background: #fff; }
@@ -225,6 +225,7 @@
     </style>
 </head>
 <body>
+    @unless ($forPdf ?? false)
     <div class="toolbar no-print">
         <p>Print this page and choose <strong>Save as PDF</strong> to download a PDF copy.</p>
         <div class="toolbar-actions">
@@ -232,6 +233,7 @@
             <a class="btn btn-secondary" href="{{ route('business-entities.invoices.show', [$businessEntity, $invoice]) }}">Back to invoice</a>
         </div>
     </div>
+    @endunless
 
     <div class="page">
         <article class="card">
@@ -303,7 +305,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" style="color: var(--muted);">No line items.</td>
+                        <td colspan="6" style="color: #666;">No line items.</td>
                     </tr>
                 @endforelse
             </tbody>

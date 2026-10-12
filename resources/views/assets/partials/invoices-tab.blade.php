@@ -102,6 +102,9 @@
                                     <td class="px-4 py-2">
                                         <div class="flex flex-col gap-2">
                                             <a href="{{ route('business-entities.invoices.show', [$businessEntity, $inv]) }}" class="text-indigo-600 dark:text-indigo-400 hover:underline text-xs font-medium">View</a>
+                                            @unless ($businessEntity->isTenancyContactOnly())
+                                                <a href="{{ route('business-entities.invoices.email', [$businessEntity, $inv]) }}" class="text-xs text-indigo-700 dark:text-indigo-300 hover:underline font-medium">Email invoice</a>
+                                            @endunless
                                             @if (in_array($inv->status, ['approved', 'partial'], true))
                                                 <a href="{{ route('business-entities.invoices.show', [$businessEntity, $inv]) }}" class="text-xs text-emerald-700 dark:text-emerald-400 hover:underline font-medium">Record payment</a>
                                                 @if ($inv->lease?->tenant?->email)
