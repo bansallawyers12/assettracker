@@ -85,7 +85,9 @@ it('pre-fills create form with suggested number, line accounts, and due date', f
         ->assertDontSee('Pick from tenants', false)
         ->assertDontSee('Line total', false)
         ->assertSee('Attach file', false)
-        ->assertSee('enctype="multipart/form-data"', false);
+        ->assertSee('enctype="multipart/form-data"', false)
+        ->assertSee(now()->addDays(Invoice::PAYMENT_TERMS_DAYS)->toDateString(), false)
+        ->assertSee('\u0022paymentTermsDays\u0022:'.Invoice::PAYMENT_TERMS_DAYS, false);
 });
 
 it('includes leases whose planned end date is in the past on the create form', function () {

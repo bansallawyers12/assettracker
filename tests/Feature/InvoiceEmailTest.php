@@ -11,7 +11,9 @@ use App\Models\Lease;
 use App\Models\MailMessage;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\UpcomingRentInvoiceMailer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -153,6 +155,89 @@ it('sends the invoice letter in short paragraphs from the company', function () 
         ->and($html)->not->toContain('<script')
         ->and($mail->envelope()->from?->address)->toBe(config('mail.from.address'))
         ->and($mail->envelope()->from?->name)->toBe('Invoice Email Co');
+});
+
+it('lays the emailed invoice out in columns', function () {
+    ['entity' => $entity, 'invoice' => $invoice] = invoiceEmailFixture();
+    $invoice->load(['lines.chartOfAccount', 'lease.tenant', 'asset']);
+
+    $html = view('invoices.print', [
+        'businessEntity' => $entity,
+        'invoice' => $invoice,
+        'forPdf' => true,
+    ])->render();
+
+    expect($html)->toContain('class="layout header"')
+        ->and($html)->toContain('class="layout parties"')
+        ->and($html)->toContain('<table class="totals"')
+        ->and($html)->toContain('>Subtotal</td>')
+        ->and($html)->toContain('class="for-pdf"')
+        ->and($html)->not->toContain('totals-row');
+});
+
+it('emails an approved rent invoice two days before the due date', function () {
+    Mail::fake();
+    $this->travelTo(Carbon::parse('2026-10-04 08:00:00', 'Australia/Melbourne'));
+    ['user' => $user, 'invoice' => $invoice] = invoiceEmailFixture();
+    $invoice->update([
+        'status' => 'approved',
+        'due_date' => '2026-10-06',
+    ]);
+
+    $result = app(UpcomingRentInvoiceMailer::class)->sendDueSoon();
+
+    expect($result['sent'])->toBe(1)
+        ->and($invoice->fresh()->last_invoice_emailed_at)->not->toBeNull()
+        ->and(MailMessage::query()->where('status', 'sent')->where('user_id', $user->id)->exists())->toBeTrue();
+
+    Mail::assertSent(InvoiceMail::class, function (InvoiceMail $mail): bool {
+        return $mail->hasTo('tenant@example.test')
+            && str_starts_with($mail->pdfContents, '%PDF');
+    });
+
+    Mail::fake();
+    expect(app(UpcomingRentInvoiceMailer::class)->sendDueSoon()['sent'])->toBe(0);
+    Mail::assertNothingSent();
+});
+
+it('skips rent invoices that are not approved or not due in two days', function () {
+    Mail::fake();
+    $this->travelTo(Carbon::parse('2026-10-04 08:00:00', 'Australia/Melbourne'));
+    ['invoice' => $invoice] = invoiceEmailFixture();
+    $invoice->update([
+        'status' => 'draft',
+        'due_date' => '2026-10-06',
+    ]);
+
+    expect(app(UpcomingRentInvoiceMailer::class)->sendDueSoon()['sent'])->toBe(0);
+
+    $invoice->update([
+        'status' => 'approved',
+        'due_date' => '2026-10-20',
+    ]);
+
+    expect(app(UpcomingRentInvoiceMailer::class)->sendDueSoon()['sent'])->toBe(0);
+
+    $invoice->update([
+        'status' => 'approved',
+        'due_date' => '2026-10-03',
+    ]);
+
+    expect(app(UpcomingRentInvoiceMailer::class)->sendDueSoon()['sent'])->toBe(0);
+    Mail::assertNothingSent();
+});
+
+it('still emails a rent invoice the next morning if the two-day send was missed', function () {
+    Mail::fake();
+    $this->travelTo(Carbon::parse('2026-10-05 08:00:00', 'Australia/Melbourne'));
+    ['invoice' => $invoice] = invoiceEmailFixture();
+    $invoice->update([
+        'status' => 'approved',
+        'due_date' => '2026-10-06',
+    ]);
+
+    expect(app(UpcomingRentInvoiceMailer::class)->sendDueSoon()['sent'])->toBe(1);
+    Mail::assertSent(InvoiceMail::class);
 });
 
 it('rejects an invoice email when no address is entered', function () {

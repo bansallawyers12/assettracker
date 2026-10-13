@@ -85,7 +85,9 @@ it('creates a rent invoice using rental_amount and inclusive gst', function () {
         ->and((float) $invoice->subtotal)->toBe(1000.0)
         ->and((float) $invoice->gst_amount)->toBe(100.0)
         ->and($invoice->asset_id)->toBe($lease->asset_id)
-        ->and($invoice->lines)->toHaveCount(1);
+        ->and($invoice->lines)->toHaveCount(1)
+        ->and($invoice->issue_date->toDateString())->toBe('2026-09-03')
+        ->and($invoice->due_date->toDateString())->toBe('2026-09-10');
 });
 
 it('creates a gst-free rent invoice when the lease is not gst applicable', function () {

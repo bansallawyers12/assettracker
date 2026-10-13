@@ -304,7 +304,7 @@ class RentInvoiceService
             'asset_id' => $asset->id,
             'invoice_number' => $invoiceNumber,
             'issue_date' => $date->format('Y-m-d'),
-            'due_date' => $date->copy()->addDays(30)->format('Y-m-d'),
+            'due_date' => $date->copy()->addDays(Invoice::PAYMENT_TERMS_DAYS)->format('Y-m-d'),
             'customer_name' => $tenant ? $tenant->name : 'Unknown Tenant',
             'reference' => "Rent for {$asset->name} - {$date->format('F Y')}",
             'currency' => 'AUD',

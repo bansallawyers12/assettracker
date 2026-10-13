@@ -64,7 +64,7 @@
                             </div>
                             <div>
                                 <dt class="text-sm font-medium text-gray-500">Due Date</dt>
-                                <dd class="text-sm text-gray-900">{{ $currentMonth->copy()->addDays(30)->format('M j, Y') }}</dd>
+                                <dd class="text-sm text-gray-900">{{ $currentMonth->copy()->addDays(\App\Models\Invoice::PAYMENT_TERMS_DAYS)->format('M j, Y') }}</dd>
                             </div>
                             <div>
                                 <dt class="text-sm font-medium text-gray-500">Reference</dt>

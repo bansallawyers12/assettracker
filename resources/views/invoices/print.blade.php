@@ -67,12 +67,25 @@
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
             padding: 2rem 2.25rem;
         }
-        .top {
-            display: flex;
-            justify-content: space-between;
-            gap: 1.5rem;
-            align-items: flex-start;
-            margin-bottom: 1.75rem;
+        body.for-pdf { background: #fff; }
+        body.for-pdf .page { max-width: none; padding: 0; }
+        body.for-pdf .card {
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            padding: 0;
+        }
+        table.layout {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0 0 1.75rem;
+        }
+        table.layout td {
+            border: none;
+            padding: 0;
+            vertical-align: top;
+        }
+        table.header td {
             padding-bottom: 1rem;
             border-bottom: 1px solid #111;
         }
@@ -109,12 +122,8 @@
             font-size: 12px;
             color: #666;
         }
-        .grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 1.75rem;
-        }
+        table.parties td.bill-to { width: 50%; padding-right: 1.5rem; }
+        table.parties td.facts-cell { width: 50%; }
         .label {
             display: block;
             margin-bottom: 0.3rem;
@@ -133,22 +142,24 @@
             font-size: 13px;
             color: #666;
         }
-        .facts p {
-            margin: 0 0 0.45rem;
+        table.facts { width: 100%; margin: 0; }
+        table.facts td {
+            border: none;
+            padding: 0 0 0.45rem;
             font-size: 13px;
+            vertical-align: top;
         }
-        .facts strong {
-            display: inline-block;
-            min-width: 5.5rem;
+        table.facts td.fact-label {
+            width: 5.5rem;
             font-weight: 600;
             color: #666;
         }
-        table {
+        table.lines {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 1rem;
         }
-        th {
+        table.lines th {
             text-align: left;
             padding: 0.5rem 0.4rem;
             border-bottom: 1px solid #111;
@@ -158,37 +169,38 @@
             text-transform: uppercase;
             color: #666;
         }
-        td {
+        table.lines td {
             padding: 0.65rem 0.4rem;
             border-bottom: 1px solid #ddd;
             vertical-align: top;
             font-size: 13px;
         }
-        .num { text-align: right; font-variant-numeric: tabular-nums; }
-        .totals {
+        table.lines th.num,
+        table.lines td.num,
+        table.totals td.num { text-align: right; }
+        table.totals {
             width: 220px;
             margin-left: auto;
-            font-size: 13px;
+            margin-bottom: 0;
+            border-collapse: collapse;
         }
-        .totals-row {
-            display: flex;
-            justify-content: space-between;
+        table.totals td {
+            border: none;
             padding: 0.25rem 0;
+            font-size: 13px;
             color: #666;
         }
-        .totals-row span:last-child {
+        table.totals td.num {
+            text-align: right;
             color: #111;
-            font-variant-numeric: tabular-nums;
         }
-        .totals-row.total {
-            margin-top: 0.35rem;
+        table.totals tr.total td {
             padding-top: 0.5rem;
             border-top: 1px solid #111;
             color: #111;
             font-size: 15px;
             font-weight: 700;
         }
-        .totals-row.total span { font-weight: 700; color: #111; }
         .notes {
             margin-top: 1.5rem;
             padding-top: 1rem;
@@ -217,14 +229,11 @@
             }
         }
         @media (max-width: 640px) {
-            .top, .grid { display: block; }
-            .meta { text-align: left; margin-top: 1rem; }
-            .facts { margin-top: 1rem; }
             .card { padding: 1.25rem; }
         }
     </style>
 </head>
-<body>
+<body @class(['for-pdf' => (bool) ($forPdf ?? false)])>
     @unless ($forPdf ?? false)
     <div class="toolbar no-print">
         <p>Print this page and choose <strong>Save as PDF</strong> to download a PDF copy.</p>
@@ -237,52 +246,67 @@
 
     <div class="page">
         <article class="card">
-        <header class="top">
-            <div class="brand">
-                <h1>{{ $businessEntity->legal_name }}</h1>
-                @if ($businessEntity->registered_address)
-                    <p>{{ $businessEntity->registered_address }}</p>
-                @endif
-                @if ($businessEntity->abn)
-                    <p>ABN {{ \App\Models\BusinessEntity::formatAbn($businessEntity->abn) }}</p>
-                @endif
-                @if ($businessEntity->registered_email || $businessEntity->phone_number)
-                    <p>
-                        @if ($businessEntity->registered_email){{ $businessEntity->registered_email }}@endif
-                        @if ($businessEntity->registered_email && $businessEntity->phone_number) · @endif
-                        @if ($businessEntity->phone_number){{ $businessEntity->phone_number }}@endif
-                    </p>
-                @endif
-            </div>
-            <div class="meta">
-                <p class="title">Tax invoice</p>
-                <p class="number">{{ $invoice->invoice_number }}</p>
-                <span class="status">{{ \App\Models\Invoice::$statuses[$invoice->status] ?? ucfirst($invoice->status) }}</span>
-            </div>
-        </header>
+        <table class="layout header">
+            <tr>
+                <td class="brand" width="58%">
+                    <h1>{{ $businessEntity->legal_name }}</h1>
+                    @if ($businessEntity->registered_address)
+                        <p>{{ $businessEntity->registered_address }}</p>
+                    @endif
+                    @if ($businessEntity->abn)
+                        <p>ABN {{ \App\Models\BusinessEntity::formatAbn($businessEntity->abn) }}</p>
+                    @endif
+                    @if ($businessEntity->registered_email || $businessEntity->phone_number)
+                        <p>
+                            @if ($businessEntity->registered_email){{ $businessEntity->registered_email }}@endif
+                            @if ($businessEntity->registered_email && $businessEntity->phone_number) · @endif
+                            @if ($businessEntity->phone_number){{ $businessEntity->phone_number }}@endif
+                        </p>
+                    @endif
+                </td>
+                <td class="meta" width="42%" align="right">
+                    <p class="title">Tax invoice</p>
+                    <p class="number">{{ $invoice->invoice_number }}</p>
+                    <span class="status">{{ \App\Models\Invoice::$statuses[$invoice->status] ?? ucfirst($invoice->status) }}</span>
+                </td>
+            </tr>
+        </table>
 
-        <section class="grid">
-            <div>
-                <span class="label">Bill to</span>
-                <div class="name">{{ $invoice->customer_name ?: '—' }}</div>
-                @include('invoices.partials.customer-abn', ['invoice' => $invoice, 'variant' => 'print'])
-                @if ($invoice->lease?->tenant?->email)
-                    <div class="line">{{ $invoice->lease->tenant->email }}</div>
-                @endif
-                @if ($invoice->asset)
-                    <div class="line">{{ $invoice->asset->name }}</div>
-                @endif
-            </div>
-            <div class="facts">
-                <p><strong>Issued</strong> {{ $invoice->issue_date->format('d/m/Y') }}</p>
-                <p><strong>Due</strong> {{ $invoice->due_date ? $invoice->due_date->format('d/m/Y') : '—' }}</p>
-                @if ($invoice->reference)
-                    <p><strong>Reference</strong> {{ $invoice->reference }}</p>
-                @endif
-            </div>
-        </section>
+        <table class="layout parties">
+            <tr>
+                <td class="bill-to">
+                    <span class="label">Bill to</span>
+                    <div class="name">{{ $invoice->customer_name ?: '—' }}</div>
+                    @include('invoices.partials.customer-abn', ['invoice' => $invoice, 'variant' => 'print'])
+                    @if ($invoice->lease?->tenant?->email)
+                        <div class="line">{{ $invoice->lease->tenant->email }}</div>
+                    @endif
+                    @if ($invoice->asset)
+                        <div class="line">{{ $invoice->asset->name }}</div>
+                    @endif
+                </td>
+                <td class="facts-cell">
+                    <table class="facts">
+                        <tr>
+                            <td class="fact-label">Issued</td>
+                            <td>{{ $invoice->issue_date->format('d/m/Y') }}</td>
+                        </tr>
+                        <tr>
+                            <td class="fact-label">Due</td>
+                            <td>{{ $invoice->due_date ? $invoice->due_date->format('d/m/Y') : '—' }}</td>
+                        </tr>
+                        @if ($invoice->reference)
+                            <tr>
+                                <td class="fact-label">Reference</td>
+                                <td>{{ $invoice->reference }}</td>
+                            </tr>
+                        @endif
+                    </table>
+                </td>
+            </tr>
+        </table>
 
-        <table>
+        <table class="lines">
             <thead>
                 <tr>
                     <th>Description</th>
@@ -311,11 +335,20 @@
             </tbody>
         </table>
 
-        <div class="totals">
-            <div class="totals-row"><span>Subtotal</span><span>{{ number_format((float) $invoice->subtotal, 2) }}</span></div>
-            <div class="totals-row"><span>GST</span><span>{{ number_format((float) $invoice->gst_amount, 2) }}</span></div>
-            <div class="totals-row total"><span>Total</span><span>{{ number_format((float) $invoice->total_amount, 2) }}</span></div>
-        </div>
+        <table class="totals" align="right">
+            <tr>
+                <td>Subtotal</td>
+                <td class="num">{{ number_format((float) $invoice->subtotal, 2) }}</td>
+            </tr>
+            <tr>
+                <td>GST</td>
+                <td class="num">{{ number_format((float) $invoice->gst_amount, 2) }}</td>
+            </tr>
+            <tr class="total">
+                <td>Total</td>
+                <td class="num">{{ number_format((float) $invoice->total_amount, 2) }}</td>
+            </tr>
+        </table>
 
         @if ($invoice->notes)
             <div class="notes">

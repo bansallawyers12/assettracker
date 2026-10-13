@@ -21,3 +21,9 @@ Schedule::command('depreciation:post-monthly')
     ->monthlyOn(1, '02:00')
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::command('invoices:email-upcoming-rent')
+    ->dailyAt('08:00')
+    ->timezone('Australia/Melbourne')
+    ->withoutOverlapping()
+    ->onOneServer();

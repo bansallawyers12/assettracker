@@ -73,6 +73,7 @@
         'gstBasis' => old('gst_basis', $isEdit ? ($invoice->gst_basis ?: 'inclusive') : 'inclusive'),
         'issueDate' => $issueDate,
         'dueDate' => $defaultDueDate,
+        'paymentTermsDays' => \App\Models\Invoice::PAYMENT_TERMS_DAYS,
         'invoiceNumber' => $suggestedInvoiceNumber,
         'suggestedInvoiceNumber' => $suggestedInvoiceNumber,
         'suggestNumberUrl' => $suggestNumberUrl,
@@ -493,6 +494,7 @@
                 : (config.gstBasis === 'manual' ? 'manual' : (config.gstBasis === 'exclusive' ? 'exclusive' : 'inclusive')),
             issueDate: config.issueDate || '',
             dueDate: config.dueDate || '',
+            paymentTermsDays: Number(config.paymentTermsDays) || 7,
             invoiceNumber: config.invoiceNumber || '',
             suggestedInvoiceNumber: config.suggestedInvoiceNumber || '',
             suggestNumberUrl: config.suggestNumberUrl || '',
@@ -693,7 +695,7 @@
                 if (!this.issueDate || this.dueDateTouched) {
                     return;
                 }
-                this.dueDate = this.addDaysYmd(this.issueDate, 30);
+                this.dueDate = this.addDaysYmd(this.issueDate, this.paymentTermsDays);
                 const dueSource = this.$root.querySelector('[data-invoice-due-date], input[name="due_date"]');
                 if (dueSource && typeof window.setDateInputValue === 'function') {
                     window.setDateInputValue(dueSource, this.dueDate);

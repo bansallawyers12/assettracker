@@ -13,6 +13,10 @@ use Illuminate\Support\Facades\DB;
 
 class Invoice extends Model
 {
+    public const PAYMENT_TERMS_DAYS = 7;
+
+    public const EMAIL_DAYS_BEFORE_DUE = 2;
+
     protected $fillable = [
         'business_entity_id',
         'lease_id',
