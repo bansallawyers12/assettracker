@@ -111,6 +111,11 @@ it('prefills the tenant address and lets the sender override it', function () {
         ->assertSuccessful()
         ->assertSee('value="tenant@example.test"', false)
         ->assertSee('Invoice INV-100', false)
+        ->assertSee('Hello Lease Tenant,', false)
+        ->assertSee('Amount: $100.00 AUD', false)
+        ->assertSee('Due: 31/10/2026', false)
+        ->assertSee('Kind regards,', false)
+        ->assertSee('Invoice Email Co', false)
         ->assertSee('lease.pdf', false)
         ->assertSee('The invoice PDF is always attached', false);
 
@@ -127,6 +132,27 @@ it('prefills the tenant address and lets the sender override it', function () {
         return $mail->hasTo('accounts@clientmail.com')
             && $mail->envelope()->subject === 'Invoice INV-100';
     });
+});
+
+it('sends the invoice letter in short paragraphs from the company', function () {
+    ['entity' => $entity, 'invoice' => $invoice] = invoiceEmailFixture();
+    $invoice->setRelation('businessEntity', $entity);
+
+    $mail = new InvoiceMail(
+        invoice: $invoice,
+        messageBody: "Hello Lease Tenant,\n\nPlease find invoice INV-100 attached.\n\nAmount: $100.00 AUD\nDue: 31/10/2026\n\nKind regards,\nInvoice Email Co",
+        pdfFilename: 'INV-100.pdf',
+        pdfContents: '%PDF',
+    );
+
+    $html = $mail->render();
+
+    expect($html)->toContain('<p style="margin:0 0 16px;">Hello Lease Tenant,</p>')
+        ->and($html)->toContain('Please find invoice INV-100 attached.')
+        ->and($html)->toContain('Amount: $100.00 AUD<br')
+        ->and($html)->not->toContain('<script')
+        ->and($mail->envelope()->from?->address)->toBe(config('mail.from.address'))
+        ->and($mail->envelope()->from?->name)->toBe('Invoice Email Co');
 });
 
 it('rejects an invoice email when no address is entered', function () {

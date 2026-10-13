@@ -564,7 +564,7 @@ class InvoiceController extends Controller
             'files' => $files->invoiceDocuments($invoice),
             'toEmail' => old('to_email', $tenantEmail),
             'subjectLine' => old('subject', 'Invoice '.$invoice->invoice_number),
-            'messageBody' => old('message', 'Please find invoice '.$invoice->invoice_number.' attached.'),
+            'messageBody' => old('message', $this->defaultInvoiceEmailMessage($invoice, $businessEntity)),
         ]);
     }
 
@@ -587,6 +587,7 @@ class InvoiceController extends Controller
         ]);
 
         $invoice->load(['attachmentDocuments', 'document', 'asset', 'lease.tenant', 'lines.chartOfAccount']);
+        $invoice->setRelation('businessEntity', $businessEntity);
         $stored = $files->forInvoice($invoice, $data['document_ids'] ?? []);
 
         try {
@@ -622,6 +623,31 @@ class InvoiceController extends Controller
         return redirect()
             ->route('business-entities.invoices.show', [$businessEntity, $invoice])
             ->with('success', 'Invoice emailed to '.$data['to_email']);
+    }
+
+    private function defaultInvoiceEmailMessage(Invoice $invoice, BusinessEntity $businessEntity): string
+    {
+        $customer = trim((string) $invoice->customer_name);
+        $greeting = $customer !== '' ? 'Hello '.$customer.',' : 'Hello,';
+        $amount = number_format((float) $invoice->total_amount, 2);
+        $currency = trim((string) ($invoice->currency ?: 'AUD'));
+        $lines = [
+            $greeting,
+            '',
+            'Please find invoice '.$invoice->invoice_number.' attached.',
+            '',
+            'Amount: $'.$amount.($currency !== '' ? ' '.$currency : ''),
+        ];
+
+        if ($invoice->due_date) {
+            $lines[] = 'Due: '.$invoice->due_date->format('d/m/Y');
+        }
+
+        $lines[] = '';
+        $lines[] = 'Kind regards,';
+        $lines[] = $businessEntity->legal_name;
+
+        return implode("\n", $lines);
     }
 
     /**
