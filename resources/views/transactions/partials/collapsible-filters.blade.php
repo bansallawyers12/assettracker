@@ -82,6 +82,12 @@
                 <input type="hidden" name="{{ $hiddenName }}" value="{{ $hiddenValue }}">
             @endif
         @endforeach
+        @if(! empty($filters['cash_dated']))
+            <input type="hidden" name="cash_dated" value="1">
+            <p class="mb-3 text-xs text-gray-600 dark:text-gray-300" data-tx-cash-dated-notice>
+                Dates use the payment date, or the transaction date when the payment date is empty.
+            </p>
+        @endif
 
         <div @class([
             'grid grid-cols-1 gap-3 sm:grid-cols-2',

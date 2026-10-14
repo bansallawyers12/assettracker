@@ -157,6 +157,35 @@ it('opens mixed lodgement cycles on quarterly columns and honours layout=annual'
         ->and($onlyMonthly['entities'][0]['lodgement_label'])->toBe('Lodges quarterly');
 });
 
+it('opens quarter links on the payment date rather than the transaction date', function () {
+    $user = User::factory()->create();
+    $entity = gstWorksheetEntity('Cash Date Pty Ltd');
+    gstWorksheetPaid($entity, 'rental_income', 110, 10, '2025-07-01', '2025-10-05');
+    Transaction::query()->where('business_entity_id', $entity->id)->update([
+        'description' => 'October paid July dated',
+    ]);
+
+    $byPaymentDate = $this->actingAs($user)->get(route('transactions.index', [
+        'entity_id' => $entity->id,
+        'date_from' => '2025-10-01',
+        'date_to' => '2025-12-31',
+        'payment_status' => 'paid',
+        'cash_dated' => 1,
+    ]));
+    $byPaymentDate->assertOk();
+    $byPaymentDate->assertSee('October paid July dated');
+    $byPaymentDate->assertSee('data-tx-cash-dated-notice', false);
+
+    $byTransactionDate = $this->actingAs($user)->get(route('transactions.index', [
+        'entity_id' => $entity->id,
+        'date_from' => '2025-10-01',
+        'date_to' => '2025-12-31',
+        'payment_status' => 'paid',
+    ]));
+    $byTransactionDate->assertOk();
+    $byTransactionDate->assertDontSee('October paid July dated');
+});
+
 it('shows the gst worksheet with quarter links, em dashes, and the reports index entry', function () {
     $user = User::factory()->create();
     $quarterly = gstWorksheetEntity('Screen Quarterly Pty Ltd', [
@@ -193,6 +222,7 @@ it('shows the gst worksheet with quarter links, em dashes, and the reports index
     $default->assertSee('date_from=2025-07-01', false);
     $default->assertSee('date_to=2025-09-30', false);
     $default->assertSee('payment_status=paid', false);
+    $default->assertSee('cash_dated=1', false);
     $default->assertSee('direction=income', false);
     $default->assertSee('100.00');
     $default->assertSee('20.00');

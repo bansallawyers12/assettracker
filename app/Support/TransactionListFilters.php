@@ -21,7 +21,8 @@ final class TransactionListFilters
      *     payment_status: ?string,
      *     match_status: ?string,
      *     subject_to_bas: ?string,
-     *     is_flagged: ?string
+     *     is_flagged: ?string,
+     *     cash_dated: ?string
      * }
      */
     public static function empty(): array
@@ -37,6 +38,7 @@ final class TransactionListFilters
             'match_status' => null,
             'subject_to_bas' => null,
             'is_flagged' => null,
+            'cash_dated' => null,
         ];
     }
 
@@ -51,7 +53,8 @@ final class TransactionListFilters
      *     payment_status: ?string,
      *     match_status: ?string,
      *     subject_to_bas: ?string,
-     *     is_flagged: ?string
+     *     is_flagged: ?string,
+     *     cash_dated: ?string
      * }
      */
     public static function fromRequest(Request $request): array
@@ -67,6 +70,7 @@ final class TransactionListFilters
             'match_status' => ['nullable', Rule::in(['matched', 'unmatched'])],
             'subject_to_bas' => ['nullable', Rule::in(['yes', 'no'])],
             'is_flagged' => ['nullable', Rule::in(['yes', 'no'])],
+            'cash_dated' => ['nullable', 'boolean'],
         ]);
 
         $q = isset($validated['q']) ? trim((string) $validated['q']) : '';
@@ -82,6 +86,7 @@ final class TransactionListFilters
             'match_status' => $validated['match_status'] ?? null,
             'subject_to_bas' => $validated['subject_to_bas'] ?? null,
             'is_flagged' => $validated['is_flagged'] ?? null,
+            'cash_dated' => $request->boolean('cash_dated') ? '1' : null,
         ];
     }
 
@@ -97,7 +102,8 @@ final class TransactionListFilters
      *     payment_status: ?string,
      *     match_status: ?string,
      *     subject_to_bas: ?string,
-     *     is_flagged: ?string
+     *     is_flagged: ?string,
+     *     cash_dated?: ?string
      * }  $filters
      */
     public static function apply(Builder|Relation $query, array $filters, ?int $contextEntityId = null): void
@@ -118,12 +124,22 @@ final class TransactionListFilters
             });
         }
 
-        if ($filters['date_from']) {
-            $query->whereDate($table.'.date', '>=', $filters['date_from']);
-        }
+        if (! empty($filters['cash_dated'])) {
+            $cashDate = 'COALESCE('.$table.'.paid_at, '.$table.'.date)';
+            if ($filters['date_from']) {
+                $query->whereRaw($cashDate.' >= ?', [$filters['date_from']]);
+            }
+            if ($filters['date_to']) {
+                $query->whereRaw($cashDate.' <= ?', [$filters['date_to']]);
+            }
+        } else {
+            if ($filters['date_from']) {
+                $query->whereDate($table.'.date', '>=', $filters['date_from']);
+            }
 
-        if ($filters['date_to']) {
-            $query->whereDate($table.'.date', '<=', $filters['date_to']);
+            if ($filters['date_to']) {
+                $query->whereDate($table.'.date', '<=', $filters['date_to']);
+            }
         }
 
         if ($contextEntityId === null && $filters['entity_id']) {
@@ -203,7 +219,8 @@ final class TransactionListFilters
      *     payment_status: ?string,
      *     match_status: ?string,
      *     subject_to_bas: ?string,
-     *     is_flagged: ?string
+     *     is_flagged: ?string,
+     *     cash_dated?: ?string
      * }  $filters
      * @param  array<string, mixed>  $extra
      * @return array<string, mixed>
@@ -221,6 +238,7 @@ final class TransactionListFilters
             'match_status' => $filters['match_status'] ?? null,
             'subject_to_bas' => $filters['subject_to_bas'] ?? null,
             'is_flagged' => $filters['is_flagged'] ?? null,
+            'cash_dated' => $filters['cash_dated'] ?? null,
         ]);
 
         return array_filter(

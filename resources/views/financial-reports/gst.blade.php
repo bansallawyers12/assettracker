@@ -50,6 +50,7 @@
             'date_from' => $period['start'],
             'date_to' => $period['end'],
             'payment_status' => 'paid',
+            'cash_dated' => 1,
         ];
         $direction = match ($rowKey) {
             'sales_ex_gst', 'gst_collected' => 'income',
@@ -198,7 +199,7 @@
             @if($report['portfolio'])
                 <section class="px-6" data-gst-portfolio>
                     <h2 class="text-sm font-semibold text-gray-900">Portfolio total</h2>
-                    <p class="text-xs text-gray-500">GST figures are GST-registered entities only.</p>
+                    <p class="text-xs text-gray-500">GST collected, credits, net GST, and Total BAS include GST-registered entities only. Sales, purchases, and PAYG include every entity on this sheet.</p>
                     @include('financial-reports.partials.gst-worksheet-table', [
                         'visiblePeriods' => $visiblePeriods,
                         'rows' => $report['rows'],

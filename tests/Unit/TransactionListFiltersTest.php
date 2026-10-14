@@ -103,6 +103,29 @@ it('accepts bank account transaction relations when applying filters', function 
     expect($relation->toSql())->toBeString();
 });
 
+it('dates a cash-basis filter by payment date when that date is set', function () {
+    $query = Transaction::query();
+
+    TransactionListFilters::apply($query, [
+        'q' => null,
+        'date_from' => '2025-10-01',
+        'date_to' => '2025-12-31',
+        'entity_id' => null,
+        'type' => null,
+        'direction' => null,
+        'payment_status' => 'paid',
+        'match_status' => null,
+        'subject_to_bas' => null,
+        'is_flagged' => null,
+        'cash_dated' => '1',
+    ]);
+
+    $sql = strtolower($query->toSql());
+
+    expect($sql)->toContain('coalesce')
+        ->and($sql)->toContain('paid_at');
+});
+
 it('builds query params without empty values', function () {
     $params = TransactionListFilters::queryParams([
         'q' => 'water',
