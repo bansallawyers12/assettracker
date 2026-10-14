@@ -2,7 +2,7 @@
 
 ## Rule
 
-- **Loan account** owns loan economics: `loan_interest`, `loan_fees`, `loan_repayments`, plus `asset_purchase` when a charge is added to the property and the loan, plus `director_loan_in` / `director_loan_out` when the director funds or redraws on that ledger. Treat its CSV as loan activity, not cash reconciliation. Loan-ledger transactions must not post to Bank/Cash (`1100`).
+- **Loan account** owns loan economics: `loan_interest`, `loan_fees`, `loan_repayments`, plus `director_loan_in` / `director_loan_out` when the director funds or redraws on that ledger. `asset_purchase` is also allowed on that ledger when the charge is added to the property (Dr 1500 / Cr 4000). Do not add it to `loanEconomicTypes()` — offset cash may still book Asset Purchase against Bank/Cash. Treat the loan CSV as loan activity, not cash reconciliation. Loan-ledger transactions must not post to Bank/Cash (`1100`).
 - **Offset account** is cash. Money moved between offset and loan is `internal_transfer`.
 - Never book `loan_*` types on an offset-purpose account when a linked loan exists; `LoanOffsetTransactionGuard` enforces this.
 - Internal transfers require `counterpart_bank_account_id` on manual create; import may omit it and optionally resolve the asset’s linked loan.

@@ -488,7 +488,11 @@
                                         <div>
                                             <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-300">Or create as type</label>
                                             <p class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
-                                                e.g. Internal Transfer, Rent, Rates — uses the standard type map.
+                                                @if($isLoanActivityImport)
+                                                    Asset Purchase adds the charge to the property and this loan.
+                                                @else
+                                                    e.g. Internal Transfer, Rent, Rates — uses the standard type map.
+                                                @endif
                                             </p>
                                             <x-tom-select
                                                 data-bank-import-create-type

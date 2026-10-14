@@ -204,6 +204,48 @@ it('keeps bank cash out of a director loan funded outside the bank', function ()
         ]);
 });
 
+it('posts asset purchase on a loan ledger to property and the loan not cash', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity();
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $cash = ledgerBankAccount($entity, BankAccount::PURPOSE_GENERAL);
+
+    $onLoan = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $loan->id,
+        'date' => '2022-08-04',
+        'paid_at' => '2022-08-04',
+        'amount' => 380,
+        'description' => 'Document Reading and Preparation Fee',
+        'transaction_type' => 'asset_purchase',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'gst_status' => 'gst_free',
+    ]);
+
+    $onCash = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $cash->id,
+        'date' => '2022-08-04',
+        'paid_at' => '2022-08-04',
+        'amount' => 380,
+        'description' => 'Asset purchase paid from cash',
+        'transaction_type' => 'asset_purchase',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'gst_status' => 'gst_free',
+    ]);
+
+    expect(ledgerLines($onLoan))->toEqual([
+        '1500' => [380.0, 0.0],
+        '4000' => [0.0, 380.0],
+    ])->and(ledgerLines($onCash))->toEqual([
+        '1500' => [380.0, 0.0],
+        '1100' => [0.0, 380.0],
+    ]);
+});
+
 it('posts director loan in on a loan ledger to long-term loans not cash', function () {
     $this->seed(ChartOfAccountSeeder::class);
 
