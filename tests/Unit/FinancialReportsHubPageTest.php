@@ -33,6 +33,7 @@ class FinancialReportsHubPageTest extends TestCase
         ])->render();
 
         $this->assertStringContainsString('data-report-url="'.route('financial-reports.profit-loss').'"', $html);
+        $this->assertStringContainsString('data-report-url="'.route('financial-reports.gst').'"', $html);
         $this->assertStringContainsString('data-report-url="'.route('financial-reports.ato-lodgements').'"', $html);
         $this->assertStringContainsString('ATO / ASIC lodgements', $html);
         $this->assertStringContainsString('type="button"', $html);

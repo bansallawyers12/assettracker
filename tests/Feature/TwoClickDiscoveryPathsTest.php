@@ -8,6 +8,7 @@ it('includes all 2-click report cards in the reports hub', function () {
     $hub = file_get_contents(resource_path('views/financial-reports/index.blade.php'));
 
     expect($hub)->toContain("'route' => 'financial-reports.profit-loss'")
+        ->and($hub)->toContain("'route' => 'financial-reports.gst'")
         ->and($hub)->toContain("'route' => 'financial-reports.balance-sheet'")
         ->and($hub)->toContain("'route' => 'financial-reports.cash-flow'")
         ->and($hub)->toContain("'route' => 'financial-reports.account-transactions'")

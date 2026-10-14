@@ -41,6 +41,15 @@
                     'hoverBorder' => 'hover:border-emerald-300 dark:hover:border-emerald-600',
                 ],
                 [
+                    'route' => 'financial-reports.gst',
+                    'title' => 'GST',
+                    'description' => 'BAS worksheet by quarter or financial year',
+                    'icon' => 'lucide-receipt',
+                    'iconBg' => 'bg-amber-100 dark:bg-amber-950/50',
+                    'iconColor' => 'text-amber-600 dark:text-amber-400',
+                    'hoverBorder' => 'hover:border-amber-300 dark:hover:border-amber-600',
+                ],
+                [
                     'route' => 'financial-reports.cash-flow',
                     'title' => 'Cash flow',
                     'description' => 'Operating, investing and financing',
@@ -246,6 +255,7 @@
                                             @case('lucide-clipboard') <x-lucide-clipboard class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
                                             @case('lucide-calculator') <x-lucide-calculator class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
                                             @case('lucide-bar-chart-3') <x-lucide-bar-chart-3 class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
+                                            @case('lucide-receipt') <x-lucide-receipt class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
                                             @case('lucide-trending-up') <x-lucide-trending-up class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
                                             @case('lucide-archive') <x-lucide-archive class="h-5 w-5 {{ $report['iconColor'] }}" /> @break
                                             @case('lucide-house') <x-lucide-house class="h-5 w-5 {{ $report['iconColor'] }}" /> @break

@@ -500,6 +500,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('/financial-reports', [FinancialReportController::class, 'index'])->name('financial-reports.index');
     Route::get('/financial-reports/entity-summary', [FinancialReportController::class, 'entitySummaryHub'])->name('financial-reports.entity-summary');
     Route::get('/financial-reports/profit-loss', [FinancialReportController::class, 'profitLossHub'])->name('financial-reports.profit-loss');
+    Route::get('/financial-reports/gst', [FinancialReportController::class, 'gstHub'])->name('financial-reports.gst');
     Route::get('/financial-reports/balance-sheet', [FinancialReportController::class, 'balanceSheetHub'])->name('financial-reports.balance-sheet');
     Route::get('/financial-reports/cash-flow', [FinancialReportController::class, 'cashFlowHub'])->name('financial-reports.cash-flow');
     Route::get('/financial-reports/account-transactions', [FinancialReportController::class, 'accountTransactionsHub'])->name('financial-reports.account-transactions');

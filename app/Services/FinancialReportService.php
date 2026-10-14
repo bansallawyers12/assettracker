@@ -1894,7 +1894,15 @@ class FinancialReportService
         return round($total, 2);
     }
 
-    private function netGstFromTransactions(int $entityId, string $start, string $end): float
+    /**
+     * Cash-basis GST split for paid transactions.
+     * Collected is GST on income types; credits are GST on every other type.
+     * This is the entity-summary GST line. Sales and purchases are the ex-GST
+     * nets of those same rows, with PAYG payment types kept off purchases.
+     *
+     * @return array{collected: float, credits: float, sales_ex_gst: float, purchases_ex_gst: float}
+     */
+    public function paidTransactionGstActivity(int $entityId, string $start, string $end): array
     {
         $transactions = Transaction::query()
             ->with('lines')
@@ -1911,37 +1919,91 @@ class FinancialReportService
 
         $collected = 0.0;
         $credits = 0.0;
+        $sales = 0.0;
+        $purchases = 0.0;
         $incomeKeys = array_keys(Transaction::$incomeTypes);
+        $paygTypes = Transaction::paygPaymentTypes();
 
-        foreach ($transactions as $t) {
-            if ($t->isSplit()) {
-                foreach ($t->lines as $line) {
-                    $gst = (float) ($line->gst_amount ?? 0);
-                    if ($gst <= 0) {
-                        continue;
-                    }
-                    if (in_array($line->transaction_type, $incomeKeys, true)) {
-                        $collected += $gst;
-                    } else {
-                        $credits += $gst;
-                    }
+        foreach ($transactions as $transaction) {
+            if ($transaction->isSplit()) {
+                foreach ($transaction->lines as $line) {
+                    $this->accumulatePaidGstActivity(
+                        (string) $line->transaction_type,
+                        (float) ($line->gst_amount ?? 0),
+                        $line->cashParts()['net'],
+                        $incomeKeys,
+                        $paygTypes,
+                        $collected,
+                        $credits,
+                        $sales,
+                        $purchases,
+                    );
                 }
 
                 continue;
             }
 
-            $gst = (float) ($t->gst_amount ?? 0);
-            if ($gst <= 0) {
-                continue;
-            }
-            if (in_array($t->transaction_type, $incomeKeys, true)) {
+            $this->accumulatePaidGstActivity(
+                (string) $transaction->transaction_type,
+                (float) ($transaction->gst_amount ?? 0),
+                $transaction->cashParts()['net'],
+                $incomeKeys,
+                $paygTypes,
+                $collected,
+                $credits,
+                $sales,
+                $purchases,
+            );
+        }
+
+        return [
+            'collected' => round($collected, 2),
+            'credits' => round($credits, 2),
+            'sales_ex_gst' => round($sales, 2),
+            'purchases_ex_gst' => round($purchases, 2),
+        ];
+    }
+
+    public function paidPaygAmount(int $entityId, string $start, string $end): float
+    {
+        return $this->sumPaidTransactionAmounts($entityId, Transaction::paygPaymentTypes(), $start, $end);
+    }
+
+    /**
+     * @param  list<string>  $incomeKeys
+     * @param  list<string>  $paygTypes
+     */
+    private function accumulatePaidGstActivity(
+        string $type,
+        float $gst,
+        float $net,
+        array $incomeKeys,
+        array $paygTypes,
+        float &$collected,
+        float &$credits,
+        float &$sales,
+        float &$purchases,
+    ): void {
+        if ($gst > 0) {
+            if (in_array($type, $incomeKeys, true)) {
                 $collected += $gst;
             } else {
                 $credits += $gst;
             }
         }
 
-        return round($collected - $credits, 2);
+        if (in_array($type, $incomeKeys, true)) {
+            $sales += $net;
+        } elseif (! in_array($type, $paygTypes, true)) {
+            $purchases += $net;
+        }
+    }
+
+    private function netGstFromTransactions(int $entityId, string $start, string $end): float
+    {
+        $activity = $this->paidTransactionGstActivity($entityId, $start, $end);
+
+        return round($activity['collected'] - $activity['credits'], 2);
     }
 
     private function sumPaidTransactionAmounts(int $entityId, array $types, string $start, string $end): float

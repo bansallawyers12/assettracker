@@ -18,6 +18,14 @@
     );
     $formRoute = route('financial-reports.entity-summary');
     $reportQuery = fn (array $merge = []) => ReportScopeQuery::build($formsScope, $formsEntityIds, $merge);
+    $gstLineUrl = function ($entity) use ($fyStart): string {
+        $query = ['fy' => $fyStart->toDateString()];
+        if (! $entity->isGstRegistered()) {
+            $query['include_unregistered'] = 1;
+        }
+
+        return route('financial-reports.gst', ReportScopeQuery::build('selected', [(int) $entity->id], $query));
+    };
 
     $sumMetric = function (string $key) use ($entities, $report): float {
         return (float) $entities->sum(fn ($entity) => (float) ($report['columns'][$entity->id][$key] ?? 0));
@@ -364,7 +372,13 @@
                                                     <dt @class([
                                                         'text-sm entity-summary-money shrink-0',
                                                         'entity-summary-money--negative' => $formatted['negative'],
-                                                    ])>{{ $formatted['display'] }}</dt>
+                                                    ])>
+                                                        @if(in_array($row['key'], ['gst_period', 'gst_fy'], true))
+                                                            <a href="{{ $gstLineUrl($entity) }}" class="text-blue-600 hover:underline dark:text-blue-400" data-entity-summary-gst-link>{{ $formatted['display'] }}</a>
+                                                        @else
+                                                            {{ $formatted['display'] }}
+                                                        @endif
+                                                    </dt>
                                                 </div>
                                             @endforeach
                                         </div>
@@ -407,10 +421,19 @@
                                                     $formatted = $formatValue($val, $row['format']);
                                                 @endphp
                                                 <td class="{{ $cellBg($isBold) }} text-right">
-                                                    <span @class([
-                                                        'entity-summary-money',
-                                                        'entity-summary-money--negative' => $formatted['negative'],
-                                                    ])>{{ $formatted['display'] }}</span>
+                                                    @if(in_array($row['key'], ['gst_period', 'gst_fy'], true))
+                                                        <a href="{{ $gstLineUrl($entity) }}"
+                                                           data-entity-summary-gst-link
+                                                           @class([
+                                                               'entity-summary-money text-blue-600 hover:underline dark:text-blue-400',
+                                                               'entity-summary-money--negative' => $formatted['negative'],
+                                                           ])>{{ $formatted['display'] }}</a>
+                                                    @else
+                                                        <span @class([
+                                                            'entity-summary-money',
+                                                            'entity-summary-money--negative' => $formatted['negative'],
+                                                        ])>{{ $formatted['display'] }}</span>
+                                                    @endif
                                                 </td>
                                             @endforeach
                                         </tr>

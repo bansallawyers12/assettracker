@@ -202,6 +202,132 @@ class FinancialReportCsvExporter
     }
 
     /**
+     * @param  array<string, mixed>  $report
+     */
+    public function gst(array $report): StreamedResponse
+    {
+        $fyLabel = (string) ($report['financial_year']['label'] ?? 'year');
+        $layout = (string) ($report['layout'] ?? 'quarterly');
+        $filename = 'gst-worksheet-'.$fyLabel.'.csv';
+        $visible = array_values(array_filter(
+            $report['periods'] ?? [],
+            fn (array $period): bool => in_array($period['key'], $report['visible_period_keys'] ?? [], true)
+        ));
+
+        return $this->streamDownload($filename, function ($out) use ($report, $fyLabel, $layout, $visible) {
+            $this->writeRow($out, ['Report', 'GST worksheet']);
+            $this->writeRow($out, ['Generated', now()->toDateTimeString()]);
+            $this->writeRow($out, ['Entity scope', $this->entityScopeLabel($report)]);
+            $this->writeRow($out, ['Financial year', $fyLabel]);
+            $this->writeRow($out, ['Layout', $layout === 'annual' ? 'Annual' : 'Quarterly']);
+            $this->writeRow($out, [
+                'GST registration',
+                ($report['include_unregistered'] ?? false)
+                    ? 'Including entities not registered for GST'
+                    : 'GST-registered entities only',
+            ]);
+            $this->writeRow($out, [
+                'Basis',
+                'Cash basis. Paid transactions, dated by the payment date, or the transaction date when the payment date is empty. A positive net is payable; a negative net is a refund.',
+            ]);
+            $this->writeRow($out, [
+                'Note',
+                'GST collected, GST credits, net GST, and Total BAS exclude entities that are not GST registered. GST recorded on transactions is a data warning, not a BAS figure. An em dash means the figure is not a BAS amount.',
+            ]);
+
+            $this->writeBlank($out);
+            $this->writeSection($out, 'Worksheet');
+
+            $header = ['Entity', 'Lodgement', 'GST registered', 'Row'];
+            foreach ($visible as $period) {
+                $header[] = $this->gstPeriodHeading($period, $layout, $fyLabel);
+            }
+            $this->writeRow($out, $header);
+
+            foreach ($report['entities'] ?? [] as $entityRow) {
+                $this->writeGstEntityRows($out, $entityRow, $report['rows'] ?? [], $visible);
+            }
+
+            if (is_array($report['portfolio'] ?? null)) {
+                $this->writeGstFigureRows(
+                    $out,
+                    'Portfolio total',
+                    'GST-registered entities only',
+                    '',
+                    $report['portfolio']['periods'] ?? [],
+                    $report['rows'] ?? [],
+                    $visible,
+                );
+            }
+        });
+    }
+
+    /**
+     * @param  resource  $out
+     * @param  array<string, mixed>  $entityRow
+     * @param  list<array{key: string, label: string}>  $rows
+     * @param  list<array{key: string, label: string}>  $visible
+     */
+    private function writeGstEntityRows($out, array $entityRow, array $rows, array $visible): void
+    {
+        $entity = $entityRow['entity'];
+        $name = $entity->trading_name ?: $entity->legal_name;
+        if (! ($entityRow['gst_registered'] ?? false)) {
+            $name .= ' (Not GST registered)';
+        }
+
+        $this->writeGstFigureRows(
+            $out,
+            $name,
+            (string) ($entityRow['lodgement_label'] ?? ''),
+            ($entityRow['gst_registered'] ?? false) ? 'Yes' : 'No',
+            $entityRow['periods'] ?? [],
+            $rows,
+            $visible,
+        );
+    }
+
+    /**
+     * @param  resource  $out
+     * @param  array<string, array<string, float|null>>  $figuresByPeriod
+     * @param  list<array{key: string, label: string}>  $rows
+     * @param  list<array{key: string, label: string}>  $visible
+     */
+    private function writeGstFigureRows(
+        $out,
+        string $name,
+        string $lodgement,
+        string $registered,
+        array $figuresByPeriod,
+        array $rows,
+        array $visible,
+    ): void {
+        foreach ($rows as $row) {
+            $cells = [$name, $lodgement, $registered, $row['label']];
+            foreach ($visible as $period) {
+                $value = $figuresByPeriod[$period['key']][$row['key']] ?? null;
+                $cells[] = $value === null ? '—' : $this->formatMoney((float) $value);
+            }
+            $this->writeRow($out, $cells);
+            $name = '';
+            $lodgement = '';
+            $registered = '';
+        }
+    }
+
+    /**
+     * @param  array{key: string, label: string}  $period
+     */
+    private function gstPeriodHeading(array $period, string $layout, string $fyLabel): string
+    {
+        if (($period['key'] ?? '') === 'fy' && $layout === 'annual') {
+            return 'FY '.$fyLabel;
+        }
+
+        return (string) $period['label'];
+    }
+
+    /**
      * @param  callable(resource): void  $callback
      */
     private function streamDownload(string $filename, callable $callback): StreamedResponse

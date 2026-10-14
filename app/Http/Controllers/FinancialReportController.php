@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResolvesReportEntityScope;
 use App\Models\BusinessEntity;
 use App\Services\ComplianceYearService;
 use App\Services\FinancialReportService;
+use App\Services\GstWorksheetService;
 use App\Support\ComparativeFinancialReport;
 use App\Support\FinancialReportCsvExporter;
 use App\Support\FinancialYear;
@@ -384,5 +385,43 @@ class FinancialReportController extends Controller
             'fyFromCarbon',
             'fyToCarbon',
         ));
+    }
+
+    public function gstHub(Request $request, GstWorksheetService $gstWorksheet, ComplianceYearService $yearService): View|RedirectResponse|StreamedResponse
+    {
+        $this->authorize('viewAny', BusinessEntity::class);
+        $ids = $this->resolveReportEntityIds($request);
+        if ($ids === null) {
+            return $this->redirectInvalidReportScope();
+        }
+        if ($ids === []) {
+            return redirect()->route('financial-reports.index')->with('error', 'No reporting entities are available.');
+        }
+
+        try {
+            $fyStart = $request->filled('fy')
+                ? $yearService->normalizeFyStart(Carbon::parse($request->get('fy')))
+                : FinancialYear::currentStart();
+        } catch (\Throwable) {
+            $fyStart = FinancialYear::currentStart();
+        }
+
+        $requestedLayout = $request->query('layout');
+        $requestedLayout = is_string($requestedLayout) ? $requestedLayout : null;
+
+        $report = $gstWorksheet->generate(
+            $ids,
+            $fyStart,
+            $request->boolean('include_unregistered'),
+            $requestedLayout,
+        );
+        $report = $this->mergeReportFormScope($report, $request, $ids);
+        $report['available_years'] = $yearService->listAvailableYears();
+
+        if ($request->query('format') === 'csv') {
+            return $this->csvExporter->gst($report);
+        }
+
+        return view('financial-reports.gst', compact('report'));
     }
 }

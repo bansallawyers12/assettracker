@@ -55,6 +55,7 @@ class AppServiceProvider extends ServiceProvider
 
         $glReportViews = [
             'financial-reports.profit-loss',
+            'financial-reports.gst',
             'financial-reports.balance-sheet',
             'financial-reports.cash-flow',
             'financial-reports.account-transactions',
