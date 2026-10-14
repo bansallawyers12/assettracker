@@ -2,15 +2,18 @@
 
 use App\Models\Asset;
 use App\Models\BankAccount;
+use App\Models\BankStatementEntry;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\Transaction;
+use App\Services\BankStatementApplyService;
 use App\Services\FinancialReportService;
 use App\Services\TransactionPostingService;
 use Database\Seeders\ChartOfAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 uses(TestCase::class, RefreshDatabase::class);
@@ -244,6 +247,58 @@ it('posts asset purchase on a loan ledger to property and the loan not cash', fu
         '1500' => [380.0, 0.0],
         '1100' => [0.0, 380.0],
     ]);
+});
+
+it('accepts a negative loan drawdown statement line as an asset purchase onto long term loans', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity('Drawdown Settlement Pty Ltd');
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $entry = BankStatementEntry::create([
+        'bank_account_id' => $loan->id,
+        'date' => '2022-08-04',
+        'amount' => -1680600.40,
+        'description' => 'Loan Drawdown',
+        'transaction_type' => 'debit',
+    ]);
+
+    $result = app(BankStatementApplyService::class)->apply($loan, $entity, [[
+        'bank_entry_id' => $entry->id,
+        'action' => 'create_transaction',
+        'transaction_type' => 'asset_purchase',
+    ]]);
+
+    $transaction = Transaction::query()->where('business_entity_id', $entity->id)->sole();
+
+    expect($result['transactionsCreated'])->toBe(1)
+        ->and($transaction->transaction_type)->toBe('asset_purchase')
+        ->and((float) $transaction->amount)->toBe(1680600.40)
+        ->and(ledgerLines($transaction))->toEqual([
+            '1500' => [1680600.40, 0.0],
+            '4000' => [0.0, 1680600.40],
+        ]);
+});
+
+it('refuses a loan drawdown type on the loan ledger', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity('Drawdown Reject Pty Ltd');
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $entry = BankStatementEntry::create([
+        'bank_account_id' => $loan->id,
+        'date' => '2022-08-04',
+        'amount' => -1680600.40,
+        'description' => 'Loan Drawdown',
+        'transaction_type' => 'debit',
+    ]);
+
+    expect(fn () => app(BankStatementApplyService::class)->apply($loan, $entity, [[
+        'bank_entry_id' => $entry->id,
+        'action' => 'create_transaction',
+        'transaction_type' => 'loan_drawdown',
+    ]]))->toThrow(ValidationException::class);
+
+    expect(Transaction::query()->where('business_entity_id', $entity->id)->exists())->toBeFalse();
 });
 
 it('posts director loan in on a loan ledger to long-term loans not cash', function () {
