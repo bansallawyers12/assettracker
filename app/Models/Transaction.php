@@ -141,6 +141,15 @@ class Transaction extends Model
     }
 
     /**
+     * Loan-ledger types funded by long-term loans (4000), not Bank/Cash.
+     * Asset Purchase adds the charge to the property and to the loan balance.
+     */
+    public static function fundsFromLoanLiability(string $type): bool
+    {
+        return self::isCapitalizedLoanCharge($type) || $type === 'asset_purchase';
+    }
+
+    /**
      * Transaction types accepted when creating activity from a loan statement.
      *
      * @return array<string, string>
@@ -161,7 +170,9 @@ class Transaction extends Model
      */
     public static function loanLedgerAllowedTypes(): array
     {
-        return self::loanActivityTypes() + self::directorLoanPickerTypeMap();
+        return self::loanActivityTypes()
+            + ['asset_purchase' => self::$expenseTypes['asset_purchase']]
+            + self::directorLoanPickerTypeMap();
     }
 
     /**
@@ -180,7 +191,7 @@ class Transaction extends Model
 
     /**
      * Whether this type may be saved on the given bank account.
-     * Loan ledgers only allow loan activity and director loan in/out; offset cash
+     * Loan ledgers only allow loan activity, asset purchase, and director loan in/out; offset cash
      * rejects loan economics. An existing legacy type may be kept on edit.
      */
     public static function isAllowedOnBankAccount(
@@ -216,7 +227,7 @@ class Transaction extends Model
             return 'Loan interest, fees, and repayments must be recorded on the loan account, not the offset account. Use Internal transfer for money moved between offset and loan.';
         }
 
-        return 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, or Director Loan In/Out.';
+        return 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, Asset Purchase, or Director Loan In/Out.';
     }
 
     /**
@@ -228,6 +239,9 @@ class Transaction extends Model
     {
         return [
             'Loan activity' => self::loanActivityTypes(),
+            'Property' => [
+                'asset_purchase' => self::$expenseTypes['asset_purchase'],
+            ],
             'Director & related party' => self::directorLoanPickerTypeMap(),
         ];
     }

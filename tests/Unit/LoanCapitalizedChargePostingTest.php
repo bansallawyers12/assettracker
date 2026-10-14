@@ -67,12 +67,26 @@ it('funds loan interest and fees to long term loans not cash', function () {
     $repaymentLine = $method->invoke($service, $repayment, $accounts, 5917.29, 'expense');
     $refundLine = $method->invoke($service, $interestRefund, $accounts, 10.0, 'income');
 
+    $property = new Transaction([
+        'business_entity_id' => 1,
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'bank_account_id' => 10,
+        'transaction_type' => 'asset_purchase',
+        'paid_by' => null,
+    ]);
+    $property->setRelation('bankAccount', $loanAccount);
+
+    $propertyLine = $method->invoke($service, $property, $accounts, 380.0, 'expense');
+
     expect($interestLine['account_id'])->toBe(4000)
         ->and($interestLine['credit'])->toBe(4395.78)
         ->and($interestLine['debit'])->toBe(0.0)
         ->and($interestLine['description'])->toBe('Capitalised to loan')
         ->and($feesLine['account_id'])->toBe(4000)
         ->and($feesLine['description'])->toBe('Capitalised to loan')
+        ->and($propertyLine['account_id'])->toBe(4000)
+        ->and($propertyLine['credit'])->toBe(380.0)
+        ->and($propertyLine['description'])->toBe('Capitalised to loan')
         ->and($repaymentLine)->toBeNull()
         ->and($refundLine['account_id'])->toBe(4000)
         ->and($refundLine['debit'])->toBe(10.0)
@@ -98,6 +112,9 @@ it('does not capitalise a loan-named charge on a non-loan account', function () 
         'gst_receivable' => null,
     ];
 
+    $cashAccount = new BankAccount([
+        'account_purpose' => BankAccount::PURPOSE_GENERAL,
+    ]);
     $interest = new Transaction([
         'business_entity_id' => 1,
         'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
@@ -105,20 +122,29 @@ it('does not capitalise a loan-named charge on a non-loan account', function () 
         'transaction_type' => 'loan_interest',
         'paid_by' => null,
     ]);
-    $interest->setRelation('bankAccount', new BankAccount([
-        'account_purpose' => BankAccount::PURPOSE_GENERAL,
-    ]));
+    $interest->setRelation('bankAccount', $cashAccount);
+    $property = new Transaction([
+        'business_entity_id' => 1,
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+        'bank_account_id' => 11,
+        'transaction_type' => 'asset_purchase',
+        'paid_by' => null,
+    ]);
+    $property->setRelation('bankAccount', $cashAccount);
 
     $line = $method->invoke($service, $interest, $accounts, 100.0, 'expense');
+    $propertyLine = $method->invoke($service, $property, $accounts, 380.0, 'expense');
 
     expect($line['account_id'])->toBe(1100)
-        ->and($line['description'])->toBe('Cash paid');
+        ->and($line['description'])->toBe('Cash paid')
+        ->and($propertyLine['account_id'])->toBe(1100)
+        ->and($propertyLine['description'])->toBe('Cash paid');
 });
 
 it('documents capitalised loan charge posting in TransactionPostingService', function () {
     $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
 
-    expect($source)->toContain('isCapitalizedLoanCharge')
+    expect($source)->toContain('fundsFromLoanLiability')
         ->and($source)->toContain('Capitalised to loan')
         ->and($source)->toContain('ensureLongTermLoansAccount')
         ->and($source)->toContain("'long_term_loans'")

@@ -93,16 +93,19 @@ it('keeps loan ledger pickers on loan activity and director loan types', functio
 
     expect($groups)->toHaveKey('Loan activity')
         ->and($groups['Loan activity'])->toHaveKeys(['loan_interest', 'loan_fees', 'loan_repayments'])
+        ->and($groups['Property'])->toHaveKey('asset_purchase')
         ->and($groups['Director & related party'])->toHaveKeys(['director_loan_in', 'director_loan_out'])
         ->and($groups)->not->toHaveKey('Income')
         ->and(Transaction::loanLedgerAllowedTypes())->toHaveKeys([
             'loan_interest',
             'loan_fees',
             'loan_repayments',
+            'asset_purchase',
             'director_loan_in',
             'director_loan_out',
         ])
         ->and(Transaction::isAllowedOnBankAccount($loanAccount, 'director_loan_in'))->toBeTrue()
+        ->and(Transaction::isAllowedOnBankAccount($loanAccount, 'asset_purchase'))->toBeTrue()
         ->and(Transaction::isAllowedOnBankAccount($loanAccount, 'sales_revenue'))->toBeFalse()
         ->and(Transaction::isAllowedOnBankAccount($loanAccount, 'directors_loans_to_company', 'directors_loans_to_company'))->toBeTrue();
 });

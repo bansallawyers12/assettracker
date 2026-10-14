@@ -28,9 +28,9 @@
                     This is the loan ledger, not cash reconciliation. Pending lines are counted as <span class="font-medium">to apply</span> (not operating “unmatched”).
                 </p>
                 <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-gray-600 dark:text-gray-400" data-loan-activity-guidance>
-                    <li>Create types are limited to Loan Interest, Loan Fees, Loan Repayment, and Director Loan In/Out.</li>
+                    <li>Create types are limited to Loan Interest, Loan Fees, Loan Repayment, Asset Purchase, and Director Loan In/Out.</li>
                     <li>Match invoice and chart-account create are hidden — those belong on cash/offset accounts.</li>
-                    <li>Interest and fees capitalise to the loan. Loan Repayment on this ledger does not post cash — also book the offset/general side as an Internal transfer to the loan.</li>
+                    <li>Asset Purchase adds the charge to the property and to this loan. Interest and fees capitalise to the loan. Loan Repayment on this ledger does not post cash — also book the offset/general side as an Internal transfer to the loan.</li>
                 </ul>
             @else
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reconcile statement</h3>

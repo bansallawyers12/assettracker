@@ -81,7 +81,7 @@ class BankStatementApplyService
 
                 if ($bankAccount->isLoanLedgerAccount() && $chartAccountId !== null) {
                     throw ValidationException::withMessages([
-                        'matches' => 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, or Director Loan In/Out rather than a chart account.',
+                        'matches' => 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, Asset Purchase, or Director Loan In/Out rather than a chart account.',
                     ]);
                 }
 

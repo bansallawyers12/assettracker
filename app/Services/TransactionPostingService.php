@@ -26,6 +26,7 @@ use Illuminate\Support\Str;
  *   2) Payer entity: cash ↔ director/entity loan (TXN-########-PAY)
  *
  * Loan ledger accounts are not cash: loan_interest/loan_fees capitalise to 4000;
+ * asset_purchase on the loan account debits property (1500) and credits 4000.
  * loan_repayments on the loan account do not post (cash left via offset).
  * director_loan_in/out on the loan account post 4000 ↔ 2500 (not 1100).
  * Offset↔loan internal_transfer posts on the cash/offset side only (1100 ↔ 4000).
@@ -364,7 +365,7 @@ class TransactionPostingService
      * Funding / cash-movement side for operating (non-director-loan-type) journals.
      *
      * Priority: cross-entity paid_by → director loan; director_funds/cash channel →
-     * director loan; loan_interest/loan_fees on loan ledger → long-term loans (no cash);
+     * director loan; loan_interest/loan_fees and asset_purchase on loan ledger → long-term loans (no cash);
      * loan_repayments on loan ledger → none (offset internal_transfer posts 1100↔4000);
      * otherwise bank cash.
      *
@@ -387,7 +388,7 @@ class TransactionPostingService
             && $this->shouldFundOperatingSideViaDirectorLoan($transaction);
         $useLoanLiability = ! $useIntercompany
             && ! $useDirectorFunds
-            && Transaction::isCapitalizedLoanCharge((string) $transaction->transaction_type)
+            && Transaction::fundsFromLoanLiability((string) $transaction->transaction_type)
             && $transaction->bankAccount?->isLoanLedgerAccount();
 
         if ($direction === 'income') {

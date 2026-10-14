@@ -6,7 +6,7 @@ paths:
 # Partials
 
 ## Treat loan statements as liability activity
-Label loan-purpose CSV/Excel imports as "loan activity", not cash reconciliation. Offer Loan Interest, Loan Fees, Loan Repayment, and Director Loan In/Out create types; do not offer chart-account creates or Match invoice. Keep loan pending counts as “to apply” (distinct from operating cash unmatched). Surface `data-loan-activity-guidance` bullets and `data-unmatched-loan-repayments-banner` when repayments lack a cash-side Internal transfer.
+Label loan-purpose CSV/Excel imports as "loan activity", not cash reconciliation. Offer Loan Interest, Loan Fees, Loan Repayment, Asset Purchase, and Director Loan In/Out create types; do not offer chart-account creates or Match invoice. Asset Purchase is for charges added to the property and the loan. Keep loan pending counts as “to apply” (distinct from operating cash unmatched). Surface `data-loan-activity-guidance` bullets and `data-unmatched-loan-repayments-banner` when repayments lack a cash-side Internal transfer.
 
 ## Offset statement pickers exclude loan economics
 For offset-purpose accounts, build create-type options with typeSelectGroupsForBankAccount() (no Loan group). Surface a short note that interest/fees/repayments belong on the linked loan account and offset↔loan cash moves are Internal transfer.
