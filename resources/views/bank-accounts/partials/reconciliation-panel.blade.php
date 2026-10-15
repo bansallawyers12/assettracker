@@ -11,7 +11,58 @@
     $isOffsetCashAccount = $bankAccount->isOffsetCashAccount();
     $invoiceCandidates = $invoiceCandidates ?? collect();
     $matchCandidates = $matchCandidates ?? collect();
+    $unmatchedLinesFocus = (bool) ($unmatchedLinesFocus ?? false);
+    $unmatchedFullPageUrl = $unmatchedFullPageUrl ?? null;
+    $unmatchedCompactPageUrl = $unmatchedCompactPageUrl ?? null;
 @endphp
+
+@once
+    @push('styles')
+        <style>
+            html.bank-import-unmatched-maximized-open::before {
+                content: '';
+                position: fixed;
+                inset: 0;
+                z-index: 60;
+                background: rgb(15 23 42 / 0.45);
+            }
+
+            [data-bank-import-unmatched-section][data-maximized='1'] {
+                position: fixed;
+                inset: 1rem;
+                z-index: 70;
+                display: flex;
+                max-height: calc(100vh - 2rem);
+                flex-direction: column;
+                overflow: hidden;
+                border-radius: 0.75rem;
+                border-width: 1px;
+                border-color: rgb(253 230 138);
+                background-color: rgb(255 251 235 / 0.98);
+                padding: 1rem;
+                box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+            }
+
+            .dark [data-bank-import-unmatched-section][data-maximized='1'] {
+                border-color: rgb(120 53 15 / 0.5);
+                background-color: rgb(69 26 3 / 0.98);
+            }
+
+            [data-bank-import-unmatched-section][data-maximized='1'] [data-bank-import-unmatched-body] {
+                display: flex;
+                min-height: 0;
+                flex: 1 1 auto;
+                flex-direction: column;
+            }
+
+            [data-bank-import-unmatched-section][data-maximized='1'] [data-bank-import-entries] {
+                max-height: none !important;
+                flex: 1 1 auto;
+                overflow-y: auto;
+            }
+        </style>
+    @endpush
+@endonce
 
 <div
     class="rounded-lg border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/50 dark:bg-amber-950/20"
@@ -66,6 +117,7 @@
         </div>
     @endif
 
+    @if (! $unmatchedLinesFocus)
     <form class="mt-4 space-y-3" data-bank-import-upload-form enctype="multipart/form-data">
         <div
             data-bank-import-errors
@@ -252,11 +304,51 @@
             </button>
         </div>
     </div>
+    @endif
 
-    <div class="mt-5 border-t border-amber-200/80 pt-4 dark:border-amber-900/40">
+    <div
+        class="@if($unmatchedLinesFocus) mt-0 @else mt-5 border-t border-amber-200/80 pt-4 dark:border-amber-900/40 @endif"
+        data-bank-import-unmatched-section
+        data-unmatched-focus="{{ $unmatchedLinesFocus ? '1' : '0' }}"
+        data-collapsed="0"
+        data-maximized="{{ $unmatchedLinesFocus ? '0' : '0' }}"
+    >
         <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
             <h4 class="text-xs font-semibold uppercase tracking-wide text-gray-700 dark:text-gray-300">Unmatched lines</h4>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+                @if ($unmatchedLinesFocus && $unmatchedCompactPageUrl)
+                    <a
+                        href="{{ $unmatchedCompactPageUrl }}"
+                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                    >
+                        Exit full page
+                    </a>
+                @elseif (! $unmatchedLinesFocus)
+                    <button
+                        type="button"
+                        data-bank-import-unmatched-minimize
+                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                        aria-expanded="true"
+                    >
+                        Minimize
+                    </button>
+                    <button
+                        type="button"
+                        data-bank-import-unmatched-maximize
+                        class="inline-flex items-center rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200"
+                    >
+                        Maximize
+                    </button>
+                    @if ($unmatchedFullPageUrl)
+                        <a
+                            href="{{ $unmatchedFullPageUrl }}"
+                            class="inline-flex items-center rounded-md border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-800 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950/40 dark:text-indigo-200"
+                        >
+                            Full page
+                        </a>
+                    @endif
+                @endif
+                <span class="hidden h-5 w-px bg-gray-300 dark:bg-gray-600 sm:inline" aria-hidden="true"></span>
                 <button type="button" data-bank-import-select-all class="rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-200">
                     Select all
                 </button>
@@ -285,7 +377,15 @@
             </div>
         </div>
 
-        <div class="mt-3 space-y-3 max-h-[28rem] overflow-y-auto" data-bank-import-entries>
+        <div data-bank-import-unmatched-body>
+        <div
+            @class([
+                'mt-3 space-y-3 overflow-y-auto',
+                'min-h-[calc(100vh-14rem)] max-h-[calc(100vh-14rem)]' => $unmatchedLinesFocus,
+                'max-h-[28rem]' => ! $unmatchedLinesFocus,
+            ])
+            data-bank-import-entries
+        >
             @forelse($unmatchedEntries as $entry)
                 @php
                     $suggestion = $suggestions[(int) $entry->id] ?? [
@@ -579,6 +679,7 @@
                     @endif
                 </p>
             @endforelse
+        </div>
         </div>
     </div>
 </div>

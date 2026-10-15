@@ -13,6 +13,7 @@ use App\Services\BankStatementApplyService;
 use App\Services\BankStatementMatchCorrectionService;
 use App\Services\BankStatementMatchSuggester;
 use App\Services\BankStatementParseService;
+use App\Services\DocumentUploadService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -31,7 +32,8 @@ class BankAccountImportController extends Controller
         private BankStatementParseService $parseService,
         private BankStatementApplyService $applyService,
         private BankStatementMatchCorrectionService $matchCorrectionService,
-        private BankStatementMatchSuggester $suggester
+        private BankStatementMatchSuggester $suggester,
+        private DocumentUploadService $documentUploadService,
     ) {}
 
     public function preview(Request $request, BankAccount $bankAccount): JsonResponse
@@ -48,6 +50,7 @@ class BankAccountImportController extends Controller
 
         try {
             $file = $request->file('statement_file');
+            $displayOriginalName = $this->documentUploadService->sanitizeDisplayFileName($file->getClientOriginalName());
             $ext = strtolower($file->getClientOriginalExtension() ?: 'csv');
             $filename = 'bank_statement_preview_'.time().'_'.Str::random(16).'.'.$ext;
             $filePath = $file->storeAs('bank_statements', $filename, 'local');
@@ -67,13 +70,13 @@ class BankAccountImportController extends Controller
                 'path' => $filePath,
                 'bank_account_id' => (int) $bankAccount->id,
                 'business_entity_id' => (int) $businessEntity->id,
-                'original_name' => $file->getClientOriginalName(),
+                'original_name' => $displayOriginalName,
             ], now()->addMinutes(30));
 
             return response()->json([
                 'success' => true,
                 'preview_token' => $token,
-                'original_name' => $file->getClientOriginalName(),
+                'original_name' => $displayOriginalName,
                 'headers' => $inspect['headers'] ?? [],
                 'sample_rows' => $inspect['sample_rows'] ?? [],
                 'suggested_mapping' => $inspect['suggested_mapping'] ?? [],

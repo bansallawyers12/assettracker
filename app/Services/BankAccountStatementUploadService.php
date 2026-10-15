@@ -44,7 +44,7 @@ class BankAccountStatementUploadService
                 'statement_period_end' => $end,
                 'opening_balance' => $this->nullableBalance($metadata['opening_balance'] ?? null),
                 'closing_balance' => $this->nullableBalance($metadata['closing_balance'] ?? null),
-                'file_name' => $upload->getClientOriginalName(),
+                'file_name' => $this->documentUploadService->sanitizeDisplayFileName($upload->getClientOriginalName()),
                 'path' => $path,
                 'filetype' => $mime,
                 'file_size' => $upload->getSize(),

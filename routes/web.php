@@ -488,6 +488,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::delete('/bank-accounts/{bankAccount}/statements/{bankAccountStatement}', [BankAccountStatementController::class, 'destroy'])->name('bank-accounts.statements.destroy');
     Route::get('/bank-accounts/{bankAccount}/transactions', [BankAccountTransactionController::class, 'index'])->name('bank-accounts.transactions.index');
     Route::get('/bank-accounts/{bankAccount}/transactions/page', [BankAccountTransactionController::class, 'page'])->name('bank-accounts.transactions.page');
+    Route::get('/bank-accounts/{bankAccount}/unmatched-lines', [BankAccountTransactionController::class, 'unmatchedLinesPage'])->name('bank-accounts.unmatched-lines.page');
     Route::post('/bank-accounts/{bankAccount}/import/preview', [BankAccountImportController::class, 'preview'])->name('bank-accounts.import.preview');
     Route::post('/bank-accounts/{bankAccount}/import/process', [BankAccountImportController::class, 'process'])->name('bank-accounts.import.process');
     Route::get('/bank-accounts/{bankAccount}/import/unmatched', [BankAccountImportController::class, 'unmatched'])->name('bank-accounts.import.unmatched');

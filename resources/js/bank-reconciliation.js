@@ -1,6 +1,7 @@
 /**
  * Shared bank statement reconciliation panel (Xero-style suggestions + bulk accept).
  */
+import { withSanitizedFileName } from './attachment-filename-sanitize.js';
 import {
     apiFetch,
     parseJson,
@@ -10,11 +11,63 @@ import {
 import { scheduleForceActivateTomSelectsIn, refreshTomSelect, setSelectValue } from './tomselect-init.js';
 import { showWorkspaceConfirm } from './workspace-dialog.js';
 
+function bindUnmatchedLinesViewControls(importPanel, signal) {
+    const section = importPanel.querySelector('[data-bank-import-unmatched-section]');
+    if (!section || section.dataset.unmatchedFocus === '1') {
+        return;
+    }
+
+    const body = section.querySelector('[data-bank-import-unmatched-body]');
+    const minimizeBtn = section.querySelector('[data-bank-import-unmatched-minimize]');
+    const maximizeBtn = section.querySelector('[data-bank-import-unmatched-maximize]');
+
+    const setCollapsed = (collapsed) => {
+        section.dataset.collapsed = collapsed ? '1' : '0';
+        if (body) {
+            body.classList.toggle('hidden', collapsed);
+        }
+        if (minimizeBtn) {
+            minimizeBtn.textContent = collapsed ? 'Expand' : 'Minimize';
+            minimizeBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+        }
+        if (collapsed && section.dataset.maximized === '1') {
+            setMaximized(false);
+        }
+    };
+
+    const setMaximized = (on) => {
+        section.dataset.maximized = on ? '1' : '0';
+        document.documentElement.classList.toggle('bank-import-unmatched-maximized-open', on);
+        if (maximizeBtn) {
+            maximizeBtn.textContent = on ? 'Restore' : 'Maximize';
+        }
+    };
+
+    minimizeBtn?.addEventListener('click', () => {
+        setCollapsed(section.dataset.collapsed !== '1');
+    }, { signal });
+
+    maximizeBtn?.addEventListener('click', () => {
+        if (section.dataset.collapsed === '1') {
+            setCollapsed(false);
+        }
+        setMaximized(section.dataset.maximized !== '1');
+    }, { signal });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && section.dataset.maximized === '1') {
+            setMaximized(false);
+        }
+    }, { signal });
+}
+
 export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel) {
     const importPanel = panel.querySelector('[data-bank-import-panel]');
     if (!importPanel) {
         return;
     }
+
+    bindUnmatchedLinesViewControls(importPanel, signal);
 
     const uploadForm = importPanel.querySelector('[data-bank-import-upload-form]');
     const acceptBtn = importPanel.querySelector('[data-bank-import-accept-selected]');
@@ -1630,6 +1683,11 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         try {
             const formData = new FormData(uploadForm);
             formData.set('business_entity_id', entityId);
+            const statementInput = uploadForm.querySelector('input[name="statement_file"]');
+            const statementFile = statementInput?.files?.[0];
+            if (statementFile) {
+                formData.set('statement_file', withSanitizedFileName(statementFile));
+            }
 
             const response = await apiFetch(previewUrl, {
                 method: 'POST',

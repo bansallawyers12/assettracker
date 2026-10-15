@@ -50,6 +50,30 @@ class BankAccountTransactionController extends Controller
         ]));
     }
 
+    public function unmatchedLinesPage(Request $request, BankAccount $bankAccount): View
+    {
+        $viewData = $this->transactionsPanelViewData($request, $bankAccount);
+
+        if (! $viewData['canImport']) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $contextEntityId = $viewData['contextEntityId'];
+        $filterQuery = array_filter([
+            'business_entity_id' => $contextEntityId,
+        ], fn ($value) => $value !== null && $value !== '');
+
+        $transactionsPageUrl = route('bank-accounts.transactions.page', array_merge(
+            ['bankAccount' => $bankAccount],
+            $filterQuery
+        ));
+
+        return view('bank-accounts.unmatched-lines', array_merge($viewData, [
+            'transactionsPageUrl' => $transactionsPageUrl,
+            'backUrl' => $transactionsPageUrl,
+        ]));
+    }
+
     /**
      * @return array<string, mixed>
      */

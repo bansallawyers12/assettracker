@@ -67,6 +67,10 @@
     $importRemoveAndRedoUrl = route('bank-accounts.import.remove-and-redo', $bankAccount);
     $importClearEntriesUrl = route('bank-accounts.import.clear-entries', $bankAccount);
     $chartAccountsUrl = route('chart-of-accounts.api');
+    $unmatchedFullPageUrl = route('bank-accounts.unmatched-lines.page', array_merge(
+        ['bankAccount' => $bankAccount],
+        array_filter(['business_entity_id' => $contextEntityId ?? null], fn ($value) => $value !== null && $value !== '')
+    ));
     $canImport = $canImport ?? false;
     $importEntities = $importEntities ?? collect();
     $unmatchedEntries = $unmatchedEntries ?? collect();
@@ -184,6 +188,8 @@
             'isLoanActivityImport' => $isLoanActivityImport ?? $bankAccount->isLoanLedgerAccount(),
             'chartAccounts' => $chartAccounts ?? collect(),
             'unmatchedLoanRepayments' => $unmatchedLoanRepayments ?? ['count' => 0, 'total' => 0.0],
+            'unmatchedFullPageUrl' => $unmatchedFullPageUrl,
+            'unmatchedCompactPageUrl' => $isFullPage ? $pageUrl : null,
         ])
     @endif
 

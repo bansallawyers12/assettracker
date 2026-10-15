@@ -156,7 +156,9 @@ Config: `compliance.mimes`, `compliance.max_kilobytes` (via `DocumentUploadValid
 |---|-----|-------|-------|---------|
 | 1 | Statements panel | `bank-accounts/partials/statements-panel.blade.php` | `statement_file` | `BankAccountStatementController::store` → `BankAccountStatementUploadService` |
 | 2 | Reconciliation import | `bank-accounts/partials/reconciliation-panel.blade.php` | `statement_file` | `BankAccountImportController::preview` / `process` |
-| 3 | Dev PDF test | `dev/bank-statement-pdf-test.blade.php` | `statement_pdf` | `BankAccountPdfTestController::parse` (local/dev route) |
+| 3 | Dev PDF test | `dev/bank-statement-pdf-test.blade.php` | `statement_pdf` | `BankStatementPdfTestController::parse` (local/dev route) |
+
+**Filename sanitization:** PDF statement uploads (`bank-account-modal.js`) and CSV/XLSX import preview (`bank-reconciliation.js`) rename files with `withSanitizedFileName()` before `FormData` POST. Server: `BankAccountStatementUploadService` saves `file_name` via `sanitizeDisplayFileName()` (storage path stays `{period}_{unique}.pdf` under `BankAccounts/{id}/statements/`). Import preview caches `original_name` sanitized; temp disk files use random server names. Dev PDF parse stores a random local path only (no user `file_name` column).
 
 ---
 

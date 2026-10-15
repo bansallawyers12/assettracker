@@ -12,7 +12,7 @@ import './email-templates-workspace.js';
 import './vendors-workspace.js';
 import './entity-create-form.js';
 import './asset-create-form.js';
-import { initBankAccountModal, initBankTransactionsPage } from './bank-account-modal.js';
+import { initBankAccountModal, initBankTransactionsPage, initBankUnmatchedLinesPage } from './bank-account-modal.js';
 import { initTransactionListFilters } from './transaction-list-filters.js';
 import { initBankAccountFormFields } from './bank-form-fields.js';
 import { initFlatpickr, watchFlatpickr, redrawFlatpickr, clearDateInput, setDateInputRequired, setDateInputDisabled, setDateInputValue, getDateInputValue, queryDateInput, formatLocalYmd } from './flatpickr-init';
@@ -115,6 +115,7 @@ function bootApp() {
     initTransactionPaidByBankAccount();
     initBankAccountModal();
     initBankTransactionsPage();
+    initBankUnmatchedLinesPage();
     initTransactionListFilters();
     initBankAccountFormFields();
     initFinancialReportsHub();

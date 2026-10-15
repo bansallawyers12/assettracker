@@ -87,6 +87,31 @@ it('includes transaction filter controls in the transactions panel partial', fun
         ->and($filtersSupport)->toContain('.is_flagged');
 });
 
+it('registers the bank account unmatched lines full page route', function () {
+    expect(route('bank-accounts.unmatched-lines.page', ['bankAccount' => 5]))
+        ->toContain('/bank-accounts/5/unmatched-lines');
+});
+
+it('exposes unmatched lines view controls in the reconciliation partial', function () {
+    $html = file_get_contents(resource_path('views/bank-accounts/partials/reconciliation-panel.blade.php'));
+    $panel = file_get_contents(resource_path('views/bank-accounts/partials/transactions-panel.blade.php'));
+    $unmatchedView = file_get_contents(resource_path('views/bank-accounts/unmatched-lines.blade.php'));
+    $js = file_get_contents(resource_path('js/bank-reconciliation.js'));
+    $modalJs = file_get_contents(resource_path('js/bank-account-modal.js'));
+    $appJs = file_get_contents(resource_path('js/app.js'));
+
+    expect($html)->toContain('data-bank-import-unmatched-section')
+        ->and($html)->toContain('data-bank-import-unmatched-minimize')
+        ->and($html)->toContain('data-bank-import-unmatched-maximize')
+        ->and($html)->toContain('Full page')
+        ->and($panel)->toContain('bank-accounts.unmatched-lines.page')
+        ->and($panel)->toContain('unmatchedFullPageUrl')
+        ->and($unmatchedView)->toContain('data-bank-unmatched-lines-page')
+        ->and($js)->toContain('bindUnmatchedLinesViewControls')
+        ->and($modalJs)->toContain('initBankUnmatchedLinesPage')
+        ->and($appJs)->toContain('initBankUnmatchedLinesPage');
+});
+
 it('supports returning to the full transactions page after create', function () {
     $create = file_get_contents(resource_path('views/business-entities/bank-accounts/transactions/create.blade.php'));
     $controller = file_get_contents(app_path('Http/Controllers/BusinessEntityController.php'));

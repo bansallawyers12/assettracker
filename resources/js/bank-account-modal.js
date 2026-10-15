@@ -1,6 +1,7 @@
 /**
  * Bank account right-side panel — create, link, edit, delete everywhere.
  */
+import { withSanitizedFileName } from './attachment-filename-sanitize.js';
 import { initBankAccountFormFields, refreshRentCollectionAssetSection } from './bank-form-fields.js';
 import { markOverlayPanelClosed, markOverlayPanelOpen } from './overlay-panels.js';
 import { showWorkspaceAlert, showWorkspaceConfirm } from './workspace-dialog.js';
@@ -320,6 +321,25 @@ export function initBankTransactionsPage() {
         contentHost,
         syncBrowserUrl: true,
     });
+}
+
+export function initBankUnmatchedLinesPage() {
+    const pageRoot = document.querySelector('[data-bank-unmatched-lines-page]');
+    if (!pageRoot) {
+        return;
+    }
+
+    const panel = pageRoot.querySelector('[data-bank-transactions-panel]');
+    if (!panel) {
+        return;
+    }
+
+    const controller = new AbortController();
+    const refresh = async () => {
+        window.location.reload();
+    };
+
+    bindReconciliationPanel(panel, controller.signal, refresh);
 }
 
 function parseConfig() {
@@ -959,9 +979,16 @@ export function initBankAccountModal() {
             }
 
             try {
+                const formData = new FormData(form);
+                const statementInput = form.querySelector('input[name="statement_file"]');
+                const statementFile = statementInput?.files?.[0];
+                if (statementFile) {
+                    formData.set('statement_file', withSanitizedFileName(statementFile));
+                }
+
                 const response = await apiFetch(form.action, {
                     method: 'POST',
-                    body: new FormData(form),
+                    body: formData,
                 });
                 const payload = parseJson(await response.text());
 
