@@ -41,9 +41,18 @@ function bindUnmatchedLinesViewControls(importPanel, signal) {
         if (maximizeBtn) {
             maximizeBtn.textContent = on ? 'Restore' : 'Maximize';
         }
+        if (!on) {
+            setCollapsed(false);
+        }
     };
 
     minimizeBtn?.addEventListener('click', () => {
+        if (section.dataset.maximized === '1') {
+            setMaximized(false);
+
+            return;
+        }
+
         setCollapsed(section.dataset.collapsed !== '1');
     }, { signal });
 
