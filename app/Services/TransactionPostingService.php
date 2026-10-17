@@ -25,9 +25,11 @@ use Illuminate\Support\Str;
  *   1) Booking entity: income/expense ↔ director/entity loan (2500), not cash
  *   2) Payer entity: cash ↔ director/entity loan (TXN-########-PAY)
  *
- * Loan ledger accounts are not cash: loan_interest/loan_fees capitalise to 4000;
- * asset_purchase on the loan account debits property (1500) and credits 4000.
- * loan_repayments on the loan account do not post (cash left via offset).
+ * Loan ledger accounts are not cash. Operating journals on a loan account, including
+ * chart-account creates, fund from long-term loans (4000), never Bank/Cash.
+ * loan_interest/loan_fees capitalise to 4000; asset_purchase debits property (1500).
+ * loan_repayments on the loan account do not post when no other chart account is chosen
+ * (cash left via offset). A different chart account on that type posts against 4000.
  * director_loan_in/out on the loan account post 4000 ↔ 2500 (not 1100).
  * Offset↔loan internal_transfer posts on the cash/offset side only (1100 ↔ 4000).
  * Cash↔cash internal transfers remain a wash (no journal).
@@ -178,10 +180,12 @@ class TransactionPostingService
         return $transaction->bankAccountSignedAmount() < 0;
     }
 
+    /**
+     * Memo repayment on the loan ledger: no journal here, the offset transfer posts cash.
+     */
     private function isLoanLedgerRepayment(Transaction $transaction): bool
     {
-        return $transaction->transaction_type === 'loan_repayments'
-            && $transaction->bankAccount?->isLoanLedgerAccount();
+        return $transaction->isLoanLedgerMemoRepayment();
     }
 
     private function deletePayerJournalIfExists(Transaction $transaction): void
@@ -365,8 +369,10 @@ class TransactionPostingService
      * Funding / cash-movement side for operating (non-director-loan-type) journals.
      *
      * Priority: cross-entity paid_by → director loan; director_funds/cash channel →
-     * director loan; loan_interest/loan_fees and asset_purchase on loan ledger → long-term loans (no cash);
-     * loan_repayments on loan ledger → none (offset internal_transfer posts 1100↔4000);
+     * director loan; any operating line on a loan ledger → long-term loans (no cash),
+     * which covers interest, fees, asset purchase, and chart-account creates;
+     * loan_repayments on a loan ledger with no other chart account → none
+     * (offset internal_transfer posts 1100↔4000);
      * otherwise bank cash.
      *
      * @param  array{cash: ChartOfAccount, director_loan: ChartOfAccount, long_term_loans: ChartOfAccount, gst_payable: ChartOfAccount, gst_receivable: ChartOfAccount}  $accounts
@@ -388,7 +394,6 @@ class TransactionPostingService
             && $this->shouldFundOperatingSideViaDirectorLoan($transaction);
         $useLoanLiability = ! $useIntercompany
             && ! $useDirectorFunds
-            && Transaction::fundsFromLoanLiability((string) $transaction->transaction_type)
             && $transaction->bankAccount?->isLoanLedgerAccount();
 
         if ($direction === 'income') {

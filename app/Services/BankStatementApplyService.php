@@ -79,10 +79,18 @@ class BankStatementApplyService
                     ]);
                 }
 
-                if ($bankAccount->isLoanLedgerAccount() && $chartAccountId !== null) {
-                    throw ValidationException::withMessages([
-                        'matches' => 'Loan activity must use Loan Interest, Loan Fees, Loan Repayment, Asset Purchase, or Director Loan In/Out rather than a chart account.',
-                    ]);
+                $chartAccount = null;
+                if ($chartAccountId !== null) {
+                    $chartAccount = ChartOfAccount::query()->find($chartAccountId);
+                    if ($chartAccount === null || ! $chartAccount->is_active) {
+                        throw ValidationException::withMessages([
+                            'matches' => 'Select an active chart account.',
+                        ]);
+                    }
+
+                    if ($bankAccount->isLoanLedgerAccount()) {
+                        $this->assertLoanStatementChartAccount($chartAccount);
+                    }
                 }
 
                 if ($transactionType !== null
@@ -143,8 +151,7 @@ class BankStatementApplyService
                 }
 
                 $resolvedType = $transactionType;
-                if ($resolvedType === null && $chartAccountId !== null) {
-                    $chartAccount = ChartOfAccount::query()->findOrFail($chartAccountId);
+                if ($resolvedType === null && $chartAccount !== null) {
                     $resolvedType = $this->mapTransactionType(
                         $chartAccount,
                         (float) $bankEntry->amount
@@ -388,6 +395,18 @@ class BankStatementApplyService
         if ($entryIsIncome !== $transactionIsIncome) {
             throw ValidationException::withMessages([
                 'matches' => 'Statement line direction does not match the selected transaction.',
+            ]);
+        }
+    }
+
+    /**
+     * Bank/Cash and the loan liability are the statement account, not the coded other side.
+     */
+    private function assertLoanStatementChartAccount(ChartOfAccount $chartAccount): void
+    {
+        if (in_array(trim((string) $chartAccount->account_code), ChartOfAccount::loanStatementExcludedCodes(), true)) {
+            throw ValidationException::withMessages([
+                'matches' => 'Bank/Cash and the loan liability are this statement’s own side. Choose the other chart account, or use Loan Repayment and an offset Internal transfer when cash moved.',
             ]);
         }
     }

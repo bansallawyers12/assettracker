@@ -14,7 +14,7 @@ paths:
 # Services
 
 ## Loan ledger never posts to Bank/Cash
-loan_repayments on a loan-purpose account unpost (no 1100). Offset↔loan internal_transfer posts 1100↔4000 only on the cash/offset side. loan_interest/fees still capitalise to 4000. asset_purchase on a loan ledger debits 1500 and credits 4000. After deploy, run journals:repost-paid-transactions --types=loan_repayments,internal_transfer.
+Operating journals on a loan-purpose account fund from 4000, including chart-account creates (Dr selected account / Cr 4000, or the reverse when the line reduces the loan). loan_repayments on a loan-purpose account unpost only when no other chart account is chosen (no 1100). A different chart account on that type posts against 4000. Offset↔loan internal_transfer posts 1100↔4000 only on the cash/offset side. loan_interest/fees still capitalise to 4000. asset_purchase on a loan ledger debits 1500 and credits 4000. Do not offer 1100 or 4000 as the coded other side (`ChartOfAccount::loanStatementExcludedCodes`). After deploy, run journals:repost-paid-transactions --types=loan_repayments,internal_transfer.
 
 ## Explicit director loans always post to 2500
 All explicit director-loan transaction types (`director_loan_in`, out, repayment, and legacy aliases) post to Director / Entity Loan account 2500. Ignore stale `chart_of_account_id` overrides for these types; re-post affected paid rows after deployment.

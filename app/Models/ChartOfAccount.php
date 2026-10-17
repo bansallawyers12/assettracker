@@ -39,6 +39,38 @@ class ChartOfAccount extends Model
     }
 
     /**
+     * Accounts offered when coding a statement line.
+     * Loan ledgers omit Bank/Cash and Long Term Loans: those are the statement’s own side.
+     *
+     * @return Collection<int, self>
+     */
+    public static function activeForStatementCreate(bool $loanLedger): Collection
+    {
+        $accounts = static::activeForSelect();
+
+        if (! $loanLedger) {
+            return $accounts;
+        }
+
+        $excluded = self::loanStatementExcludedCodes();
+
+        return $accounts
+            ->reject(fn (self $account): bool => in_array(trim((string) $account->account_code), $excluded, true))
+            ->values();
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function loanStatementExcludedCodes(): array
+    {
+        return [
+            (string) config('financial.report_accounts.bank_cash', '1100'),
+            (string) config('financial.report_accounts.long_term_loans', '4000'),
+        ];
+    }
+
+    /**
      * Active chart accounts for dashboard allocation pickers (full active chart).
      *
      * @return Collection<int, self>

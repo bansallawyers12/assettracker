@@ -200,9 +200,7 @@ class BankAccountTransactionController extends Controller
             'suggestions' => $suggestions,
             'transactionTypeGroups' => Transaction::typeSelectGroupsForBankAccount($bankAccount),
             'isLoanActivityImport' => $bankAccount->isLoanLedgerAccount(),
-            'chartAccounts' => $bankAccount->isLoanLedgerAccount()
-                ? collect()
-                : ChartOfAccount::activeForSelect(),
+            'chartAccounts' => ChartOfAccount::activeForStatementCreate($bankAccount->isLoanLedgerAccount()),
             'unmatchedLoanRepayments' => $unmatchedLoanRepayments,
             'filters' => $filters,
             'filtersActive' => $filtersActive,

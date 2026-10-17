@@ -144,7 +144,7 @@ it('does not capitalise a loan-named charge on a non-loan account', function () 
 it('documents capitalised loan charge posting in TransactionPostingService', function () {
     $source = file_get_contents(app_path('Services/TransactionPostingService.php'));
 
-    expect($source)->toContain('fundsFromLoanLiability')
+    expect($source)->toContain('fund from long-term loans')
         ->and($source)->toContain('Capitalised to loan')
         ->and($source)->toContain('ensureLongTermLoansAccount')
         ->and($source)->toContain("'long_term_loans'")

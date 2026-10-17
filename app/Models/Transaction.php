@@ -150,6 +150,32 @@ class Transaction extends Model
     }
 
     /**
+     * A loan-ledger repayment with no other chart account (or coded to the loan itself)
+     * is a memo: the cash journal is the offset Internal transfer. A repayment coded to
+     * another chart account posts that account against the loan and is not a memo.
+     */
+    public function isLoanLedgerMemoRepayment(): bool
+    {
+        if ($this->transaction_type !== 'loan_repayments'
+            || ! $this->bankAccount?->isLoanLedgerAccount()) {
+            return false;
+        }
+
+        if ($this->chart_of_account_id === null) {
+            return true;
+        }
+
+        $chart = ChartOfAccount::query()->find($this->chart_of_account_id);
+        if ($chart === null) {
+            return true;
+        }
+
+        $loanCode = (string) config('financial.report_accounts.long_term_loans', '4000');
+
+        return trim((string) $chart->account_code) === $loanCode;
+    }
+
+    /**
      * Transaction types accepted when creating activity from a loan statement.
      *
      * @return array<string, string>

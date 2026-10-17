@@ -77,6 +77,8 @@ class UnmatchedLoanRepaymentAuditor
             ->orderByRaw('COALESCE(paid_at, date)')
             ->orderBy('id')
             ->get()
+            // Repayments coded to another chart account post against the loan; only memo rows need a cash side.
+            ->filter(fn (Transaction $repayment) => $repayment->isLoanLedgerMemoRepayment())
             ->values();
     }
 

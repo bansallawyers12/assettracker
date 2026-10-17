@@ -265,17 +265,15 @@ class BankAccountImportController extends Controller
             'candidates' => $candidates->map(fn (Transaction $transaction) => $this->candidatePayload($transaction)),
             'invoice_candidates' => $invoiceCandidates->map(fn (Invoice $invoice) => $this->invoicePayload($invoice)),
             'transaction_types' => Transaction::typeSelectGroupsForBankAccount($bankAccount),
-            'chart_accounts' => $bankAccount->isLoanLedgerAccount()
-                ? []
-                : ChartOfAccount::activeForSelect()
-                    ->map(fn (ChartOfAccount $account) => [
-                        'id' => $account->id,
-                        'account_code' => $account->account_code,
-                        'account_name' => $account->account_name,
-                        'account_type' => $account->account_type,
-                    ])
-                    ->values()
-                    ->all(),
+            'chart_accounts' => ChartOfAccount::activeForStatementCreate($bankAccount->isLoanLedgerAccount())
+                ->map(fn (ChartOfAccount $account) => [
+                    'id' => $account->id,
+                    'account_code' => $account->account_code,
+                    'account_name' => $account->account_name,
+                    'account_type' => $account->account_type,
+                ])
+                ->values()
+                ->all(),
             'is_loan_activity' => $bankAccount->isLoanLedgerAccount(),
             'matched_count' => $matchedEntryCount,
         ]);

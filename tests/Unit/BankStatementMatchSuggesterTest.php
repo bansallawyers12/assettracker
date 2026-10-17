@@ -376,7 +376,8 @@ it('enforces loan activity create types in apply service', function () {
     expect($source)->toContain('$bankAccount->isLoanLedgerAccount()')
         ->and($source)->toContain('Transaction::isAllowedOnBankAccount')
         ->and($source)->toContain('Transaction::bankAccountTypeRestrictionMessage')
-        ->and($source)->toContain('Loan activity must use Loan Interest, Loan Fees, Loan Repayment, Asset Purchase, or Director Loan In/Out rather than a chart account.');
+        ->and($source)->toContain('assertLoanStatementChartAccount')
+        ->and($source)->toContain('Bank/Cash and the loan liability are this statement’s own side.');
 });
 
 it('exposes loan types and interest expense posting map', function () {

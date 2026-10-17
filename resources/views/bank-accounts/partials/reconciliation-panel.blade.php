@@ -1,6 +1,9 @@
 @php
     $suggestions = $suggestions ?? [];
     $isLoanActivityImport = (bool) ($isLoanActivityImport ?? $bankAccount->isLoanLedgerAccount());
+    $loanChartExcludedCodes = $isLoanActivityImport
+        ? \App\Models\ChartOfAccount::loanStatementExcludedCodes()
+        : [];
     $transactionTypeGroups = $transactionTypeGroups
         ?? ($isLoanActivityImport
             ? \App\Models\Transaction::loanActivityTypeSelectGroups()
@@ -69,6 +72,7 @@
     data-bank-import-panel
     data-reconciliation-panel
     data-loan-activity="{{ $isLoanActivityImport ? '1' : '0' }}"
+    data-loan-chart-excluded-codes="{{ implode(',', $loanChartExcludedCodes) }}"
     @if ($isOffsetCashAccount) data-offset-cash-account="1" @endif
 >
     <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -79,9 +83,9 @@
                     This is the loan ledger, not cash reconciliation. Pending lines are counted as <span class="font-medium">to apply</span> (not operating “unmatched”).
                 </p>
                 <ul class="mt-2 list-disc space-y-1 pl-4 text-xs text-gray-600 dark:text-gray-400" data-loan-activity-guidance>
-                    <li>Create types are limited to Loan Interest, Loan Fees, Loan Repayment, Asset Purchase, and Director Loan In/Out.</li>
-                    <li>Match invoice and chart-account create are hidden — those belong on cash/offset accounts.</li>
-                    <li>Asset Purchase adds the charge to the property and to this loan. Interest and fees capitalise to the loan. Loan Repayment on this ledger does not post cash — also book the offset/general side as an Internal transfer to the loan.</li>
+                    <li>Or create as type stays Loan Interest, Loan Fees, Loan Repayment, Asset Purchase, and Director Loan In/Out.</li>
+                    <li>Or create from chart account lists the same accounts as a cash account. The other side is this loan (4000), not Bank/Cash. Bank/Cash (1100) and the loan account itself are left off that list.</li>
+                    <li>Asset Purchase adds the charge to the property and to this loan. Interest, fees, and other chart-account charges capitalise to the loan. Loan Repayment on this ledger does not post cash — also book the offset/general side as an Internal transfer to the loan. Match invoice stays on cash/offset accounts.</li>
                 </ul>
             @else
                 <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100">Reconcile statement</h3>
@@ -610,35 +614,38 @@
                                                 @endforeach
                                             </x-tom-select>
                                         </div>
-                                        @unless($isLoanActivityImport)
-                                            <div class="sm:col-span-2">
-                                                <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-300">Or create from chart account</label>
-                                                <p class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400" data-bank-import-chart-account-hint>
+                                        <div class="sm:col-span-2">
+                                            <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-300">Or create from chart account</label>
+                                            <p class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400" data-bank-import-chart-account-hint>
+                                                @if($isLoanActivityImport)
+                                                    Same chart as cash accounts, except Bank/Cash and this loan. The other side of the journal is the loan (4000).
+                                                @else
                                                     Active GL accounts — the type that will be created is shown below (e.g. 2500 → Director Loan).
-                                                </p>
-                                                <x-tom-select
-                                                    data-bank-import-chart-account
-                                                    class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
-                                                >
-                                                    <option value="">— None —</option>
-                                                    @foreach(($chartAccounts ?? collect()) as $chartAccount)
-                                                        <option
-                                                            value="{{ $chartAccount->id }}"
-                                                            data-account-code="{{ $chartAccount->account_code }}"
-                                                            data-account-type="{{ $chartAccount->account_type }}"
-                                                            data-account-name="{{ $chartAccount->account_name }}"
-                                                        >
-                                                            {{ $chartAccount->account_code }} - {{ $chartAccount->account_name }}
-                                                        </option>
-                                                    @endforeach
-                                                </x-tom-select>
-                                                <p
-                                                    class="mt-1.5 hidden text-[11px] leading-snug text-indigo-700 dark:text-indigo-300"
-                                                    data-bank-import-chart-type-preview
-                                                    role="status"
-                                                ></p>
-                                            </div>
-                                        @endunless
+                                                @endif
+                                            </p>
+                                            <x-tom-select
+                                                data-bank-import-chart-account
+                                                class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                            >
+                                                <option value="">— None —</option>
+                                                @foreach(($chartAccounts ?? collect()) as $chartAccount)
+                                                    @continue(in_array(trim((string) $chartAccount->account_code), $loanChartExcludedCodes, true))
+                                                    <option
+                                                        value="{{ $chartAccount->id }}"
+                                                        data-account-code="{{ $chartAccount->account_code }}"
+                                                        data-account-type="{{ $chartAccount->account_type }}"
+                                                        data-account-name="{{ $chartAccount->account_name }}"
+                                                    >
+                                                        {{ $chartAccount->account_code }} - {{ $chartAccount->account_name }}
+                                                    </option>
+                                                @endforeach
+                                            </x-tom-select>
+                                            <p
+                                                class="mt-1.5 hidden text-[11px] leading-snug text-indigo-700 dark:text-indigo-300"
+                                                data-bank-import-chart-type-preview
+                                                role="status"
+                                            ></p>
+                                        </div>
                                     </div>
                                 </div>
 

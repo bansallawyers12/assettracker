@@ -865,7 +865,10 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         const typeKey = mapChartAccountToTransactionType(accountCode, accountType, amount, accountName);
         const typeLabel = CHART_CREATE_TYPE_LABELS[typeKey] || typeKey;
         const direction = amount >= 0 ? 'credit (money in)' : 'debit (money out)';
-        preview.textContent = `Creates as ${typeLabel} · ${direction} from GL ${accountCode}`;
+        const loanSide = importPanel.dataset.loanActivity === '1'
+            ? ' · other side is the loan (4000), not Bank/Cash'
+            : '';
+        preview.textContent = `Creates as ${typeLabel} · ${direction} from GL ${accountCode}${loanSide}`;
         preview.classList.remove('hidden');
     }
 
@@ -881,7 +884,14 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             empty.value = '';
             empty.textContent = '— None —';
             select.appendChild(empty);
+            const excludedCodes = String(importPanel.dataset.loanChartExcludedCodes || '')
+                .split(',')
+                .map((code) => code.trim())
+                .filter(Boolean);
             accounts.forEach((account) => {
+                if (excludedCodes.includes(String(account.account_code ?? ''))) {
+                    return;
+                }
                 const option = document.createElement('option');
                 option.value = String(account.id);
                 option.textContent = `${account.account_code} - ${account.account_name}`;
@@ -902,10 +912,6 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     }
 
     async function loadChartAccounts() {
-        if (importPanel.dataset.loanActivity === '1') {
-            return;
-        }
-
         const url = panel.dataset.chartAccountsUrl;
         if (!url) {
             return;

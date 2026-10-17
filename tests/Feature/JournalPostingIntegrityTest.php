@@ -11,6 +11,7 @@ use App\Models\Transaction;
 use App\Services\BankStatementApplyService;
 use App\Services\FinancialReportService;
 use App\Services\TransactionPostingService;
+use App\Services\UnmatchedLoanRepaymentAuditor;
 use Database\Seeders\ChartOfAccountSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Validation\ValidationException;
@@ -277,6 +278,145 @@ it('accepts a negative loan drawdown statement line as an asset purchase onto lo
             '1500' => [1680600.40, 0.0],
             '4000' => [0.0, 1680600.40],
         ]);
+});
+
+it('codes a loan statement charge to a chart account against the loan not cash', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity('Loan Chart Expense Pty Ltd');
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $rates = ChartOfAccount::query()->where('account_code', '5140')->firstOrFail();
+    $entry = BankStatementEntry::create([
+        'bank_account_id' => $loan->id,
+        'date' => '2026-03-31',
+        'amount' => -50,
+        'description' => 'SERVICE FEE L.S.F',
+        'transaction_type' => 'debit',
+    ]);
+
+    $result = app(BankStatementApplyService::class)->apply($loan, $entity, [[
+        'bank_entry_id' => $entry->id,
+        'action' => 'create_transaction',
+        'chart_account_id' => $rates->id,
+    ]]);
+
+    $transaction = Transaction::query()->where('business_entity_id', $entity->id)->sole();
+
+    expect($result['transactionsCreated'])->toBe(1)
+        ->and((int) $transaction->chart_of_account_id)->toBe($rates->id)
+        ->and(ledgerLines($transaction))->toEqual([
+            '5140' => [50.0, 0.0],
+            '4000' => [0.0, 50.0],
+        ])
+        ->and(ledgerLines($transaction))->not->toHaveKey('1100');
+});
+
+it('codes a loan statement line to another liability against the loan', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity('Loan Chart Liability Pty Ltd');
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $payg = ChartOfAccount::query()->where('account_code', '2120')->firstOrFail();
+    $entry = BankStatementEntry::create([
+        'bank_account_id' => $loan->id,
+        'date' => '2026-04-01',
+        'amount' => -80,
+        'description' => 'PAYG added to loan',
+        'transaction_type' => 'debit',
+    ]);
+
+    app(BankStatementApplyService::class)->apply($loan, $entity, [[
+        'bank_entry_id' => $entry->id,
+        'action' => 'create_transaction',
+        'chart_account_id' => $payg->id,
+    ]]);
+
+    $transaction = Transaction::query()->where('business_entity_id', $entity->id)->sole();
+
+    expect(ledgerLines($transaction))->toEqual([
+        '2120' => [80.0, 0.0],
+        '4000' => [0.0, 80.0],
+    ]);
+});
+
+it('does not audit a chart-coded loan repayment as missing a cash side', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity('Loan Chart Audit Pty Ltd');
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $payg = ChartOfAccount::query()->where('account_code', '2120')->firstOrFail();
+
+    $memo = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $loan->id,
+        'date' => '2026-04-03',
+        'paid_at' => '2026-04-03',
+        'amount' => 2000,
+        'description' => 'Memo repayment awaiting offset transfer',
+        'transaction_type' => 'loan_repayments',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    $coded = Transaction::create([
+        'business_entity_id' => $entity->id,
+        'bank_account_id' => $loan->id,
+        'chart_of_account_id' => $payg->id,
+        'date' => '2026-04-03',
+        'paid_at' => '2026-04-03',
+        'amount' => 80,
+        'description' => 'PAYG coded on the loan statement',
+        'transaction_type' => 'loan_repayments',
+        'payment_status' => 'paid',
+        'payment_channel' => Transaction::PAYMENT_CHANNEL_BANK_ACCOUNT,
+    ]);
+
+    $summary = app(UnmatchedLoanRepaymentAuditor::class)->summaryForLoanAccount($loan, $entity->id);
+
+    expect($memo->fresh()->isLoanLedgerMemoRepayment())->toBeTrue()
+        ->and($coded->fresh()->isLoanLedgerMemoRepayment())->toBeFalse()
+        ->and($summary['count'])->toBe(1)
+        ->and($summary['total'])->toBe(2000.0)
+        ->and(ledgerLines($memo))->toBe([])
+        ->and(ledgerLines($coded))->toEqual([
+            '2120' => [80.0, 0.0],
+            '4000' => [0.0, 80.0],
+        ]);
+});
+
+it('rejects bank cash and the loan account as the other side of a loan statement line', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity('Loan Chart Reject Pty Ltd');
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $cash = ChartOfAccount::query()->where('account_code', '1100')->firstOrFail();
+    $facility = ChartOfAccount::query()->where('account_code', '4000')->firstOrFail();
+
+    $entry = BankStatementEntry::create([
+        'bank_account_id' => $loan->id,
+        'date' => '2026-04-02',
+        'amount' => -25,
+        'description' => 'Should not code to cash',
+        'transaction_type' => 'debit',
+    ]);
+
+    expect(fn () => app(BankStatementApplyService::class)->apply($loan, $entity, [[
+        'bank_entry_id' => $entry->id,
+        'action' => 'create_transaction',
+        'chart_account_id' => $cash->id,
+    ]]))->toThrow(ValidationException::class);
+
+    expect(fn () => app(BankStatementApplyService::class)->apply($loan, $entity, [[
+        'bank_entry_id' => $entry->id,
+        'action' => 'create_transaction',
+        'chart_account_id' => $facility->id,
+    ]]))->toThrow(ValidationException::class);
+
+    expect(Transaction::query()->where('business_entity_id', $entity->id)->exists())->toBeFalse()
+        ->and(ChartOfAccount::activeForStatementCreate(true)->pluck('account_code')->all())
+        ->not->toContain('1100')
+        ->not->toContain('4000')
+        ->toContain('5140');
 });
 
 it('refuses a loan drawdown type on the loan ledger', function () {

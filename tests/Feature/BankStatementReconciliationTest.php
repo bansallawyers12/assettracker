@@ -68,7 +68,7 @@ it('includes shared reconciliation panel markup and JS module', function () {
         ->and($transactions)->toContain('data-bank-transactions-add-transaction')
         ->and($transactions)->toContain('not the full Add transaction flow')
         ->and($controller)->toContain("'chartAccounts'")
-        ->and($controller)->toContain('ChartOfAccount::activeForSelect')
+        ->and($controller)->toContain('ChartOfAccount::activeForStatementCreate')
         ->and($js)->toContain('export function bindReconciliationPanel')
         ->and($js)->toContain('bankImportClearEntriesUrl')
         ->and($js)->toContain("matchStatus: 'unmatched'")
@@ -129,7 +129,7 @@ it('enriches unmatched endpoint with suggestions in controller source', function
         ->and($source)->toContain("'matched_count'")
         ->and($source)->toContain("'chart_accounts'")
         ->and($source)->toContain("'account_type'")
-        ->and($source)->toContain('ChartOfAccount::activeForSelect')
+        ->and($source)->toContain('ChartOfAccount::activeForStatementCreate')
         ->and($source)->toContain("whereNull('transaction_id')")
         ->and($source)->toContain('whereNotNull');
 });

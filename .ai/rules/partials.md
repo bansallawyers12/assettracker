@@ -6,13 +6,13 @@ paths:
 # Partials
 
 ## Treat loan statements as liability activity
-Label loan-purpose CSV/Excel imports as "loan activity", not cash reconciliation. Offer Loan Interest, Loan Fees, Loan Repayment, Asset Purchase, and Director Loan In/Out create types; do not offer chart-account creates or Match invoice. Asset Purchase is for charges added to the property and the loan. Keep loan pending counts as “to apply” (distinct from operating cash unmatched). Surface `data-loan-activity-guidance` bullets and `data-unmatched-loan-repayments-banner` when repayments lack a cash-side Internal transfer.
+Label loan-purpose CSV/Excel imports as "loan activity", not cash reconciliation. The type picker stays Loan Interest, Loan Fees, Loan Repayment, Asset Purchase, and Director Loan In/Out. Also offer Or create from chart account (same active chart as cash, excluding Bank/Cash 1100 and Long Term Loans 4000). Do not offer Match invoice. Asset Purchase is for charges added to the property and the loan. Chart-account charges capitalise to 4000, never 1100. Keep loan pending counts as “to apply” (distinct from operating cash unmatched). Surface `data-loan-activity-guidance` bullets and `data-unmatched-loan-repayments-banner` when repayments lack a cash-side Internal transfer.
 
 ## Offset statement pickers exclude loan economics
 For offset-purpose accounts, build create-type options with typeSelectGroupsForBankAccount() (no Loan group). Surface a short note that interest/fees/repayments belong on the linked loan account and offset↔loan cash moves are Internal transfer.
 
 ## Reconciliation Change panel order
-Cash/offset: Match existing | Match invoice, then Or create as type, then Or create from chart account, then Create markers. Loan activity hides Match invoice and chart-account creates. Do not merge invoices into Match existing. Keep labels stable — do not move chart accounts above Match existing.
+Cash/offset: Match existing | Match invoice, then Or create as type, then Or create from chart account, then Create markers. Loan activity hides Match invoice and shows the chart-account create (excluding 1100 and 4000). Do not merge invoices into Match existing. Keep labels stable — do not move chart accounts above Match existing.
 
 Visually group Match vs Create in the Change panel with short hints so users do not confuse Match existing (booked transactions) with Or create from chart account (GL). Keep pickers mutually exclusive in JS (`bindEntrySelectGuards` / `collectMatches`).
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\BankAccount;
 use App\Models\ChartOfAccount;
 use App\Models\Transaction;
 use App\Services\TransactionPostingService;
@@ -47,6 +48,8 @@ it('builds funding side on director loan for director_funds and cash channels', 
         'bank_account_id' => 99,
         'paid_by' => null,
     ]);
+    // Funding side reads the bank purpose (loan ledgers fund from 4000), so give it a cash account.
+    $bank->setRelation('bankAccount', new BankAccount(['account_purpose' => BankAccount::PURPOSE_GENERAL]));
     $external = new Transaction([
         'business_entity_id' => 1,
         'payment_channel' => Transaction::PAYMENT_CHANNEL_EXTERNAL_THIRD_PARTY,
