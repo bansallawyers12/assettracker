@@ -762,6 +762,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     [chartSelect, typeSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
+                    syncChartLoanPurposeVisibility(entryEl);
                     updateChartTypePreview(entryEl);
                 }
             }, { signal });
@@ -778,12 +779,15 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     filterInvoiceSelectToPool(invoiceSelect, ids);
                     setInvoiceSelection(invoiceSelect, ids);
                     renderInvoiceSplit(entryEl, true);
+                    syncChartLoanPurposeVisibility(entryEl);
                     updateChartTypePreview(entryEl);
                 } else {
                     filterInvoiceSelectToPool(invoiceSelect, []);
                     renderInvoiceSplit(entryEl, true);
                 }
             }, { signal });
+
+            const loanPurposeSelect = entryEl.querySelector('[data-bank-import-chart-loan-purpose]');
 
             chartSelect?.addEventListener('change', () => {
                 if (chartSelect.value) {
@@ -798,6 +802,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                         if (select) refreshTomSelect(select);
                     });
                 }
+                syncChartLoanPurposeVisibility(entryEl);
                 updateChartTypePreview(entryEl);
             }, { signal });
 
@@ -813,13 +818,21 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     [txSelect, chartSelect].forEach((select) => {
                         if (select) refreshTomSelect(select);
                     });
+                    syncChartLoanPurposeVisibility(entryEl);
                     updateChartTypePreview(entryEl);
                 }
             }, { signal });
 
+            loanPurposeSelect?.addEventListener('change', () => {
+                updateChartTypePreview(entryEl);
+            }, { signal });
+
+            syncChartLoanPurposeVisibility(entryEl);
             updateChartTypePreview(entryEl);
         });
     }
+
+    const CHART_LOAN_PURPOSE_ACCOUNT_CODE = '4001';
 
     const CHART_CREATE_TYPE_LABELS = {
         director_loan_in: 'Director Loan In',
@@ -830,10 +843,58 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         asset_purchase: 'Asset Purchase',
         loan_drawdown: 'Loan Drawdown',
         loan_repayments: 'Loan Repayment',
+        loan_interest: 'Loan Interest',
         bas_payments: 'BAS / Tax Payment',
         equity_contribution: 'Equity Contribution',
         directors_fees: 'Directors Fees',
     };
+
+    function selectedChartAccountCode(chartSelect) {
+        if (!chartSelect?.value) {
+            return '';
+        }
+
+        const option = chartSelect.selectedOptions?.[0]
+            || chartSelect.querySelector(`option[value="${CSS.escape(chartSelect.value)}"]`);
+
+        return String(option?.dataset?.accountCode || '').trim();
+    }
+
+    function chartLoanPurposeIsActive(entryEl) {
+        const chartSelect = entryEl.querySelector('[data-bank-import-chart-account]');
+        const amount = Number(entryEl.dataset.entryAmount || 0);
+
+        // Credits on a liability still auto-map to loan_drawdown; only money-out needs the purpose pick.
+        return selectedChartAccountCode(chartSelect) === CHART_LOAN_PURPOSE_ACCOUNT_CODE && amount < 0;
+    }
+
+    function syncChartLoanPurposeVisibility(entryEl) {
+        const wrap = entryEl.querySelector('[data-bank-import-chart-loan-purpose-wrap]');
+        const purposeSelect = entryEl.querySelector('[data-bank-import-chart-loan-purpose]');
+        if (!wrap || !purposeSelect) {
+            return;
+        }
+
+        const active = chartLoanPurposeIsActive(entryEl);
+        wrap.classList.toggle('hidden', !active);
+        if (active && !purposeSelect.value) {
+            purposeSelect.value = 'loan_repayments';
+        }
+        if (!active) {
+            purposeSelect.value = 'loan_repayments';
+        }
+    }
+
+    function resolveChartCreateTransactionType(entryEl, accountCode, accountType, amount, accountName) {
+        if (chartLoanPurposeIsActive(entryEl)) {
+            const purpose = entryEl.querySelector('[data-bank-import-chart-loan-purpose]')?.value;
+            if (purpose === 'loan_interest' || purpose === 'loan_repayments') {
+                return purpose;
+            }
+        }
+
+        return mapChartAccountToTransactionType(accountCode, accountType, amount, accountName);
+    }
 
     /**
      * Mirrors BankStatementApplyService::mapTransactionType for Change-panel preview.
@@ -898,13 +959,16 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
         }
 
         const amount = Number(entryEl.dataset.entryAmount || 0);
-        const typeKey = mapChartAccountToTransactionType(accountCode, accountType, amount, accountName);
+        const typeKey = resolveChartCreateTransactionType(entryEl, accountCode, accountType, amount, accountName);
         const typeLabel = CHART_CREATE_TYPE_LABELS[typeKey] || typeKey;
         const direction = amount >= 0 ? 'credit (money in)' : 'debit (money out)';
         const loanSide = importPanel.dataset.loanActivity === '1'
             ? ' · other side is the loan (4000), not Bank/Cash'
             : '';
-        preview.textContent = `Creates as ${typeLabel} · ${direction} from GL ${accountCode}${loanSide}`;
+        const purposeNote = typeKey === 'loan_interest' && accountCode === CHART_LOAN_PURPOSE_ACCOUNT_CODE
+            ? ' · interest capitalises to Interest Expense (7500)'
+            : '';
+        preview.textContent = `Creates as ${typeLabel} · ${direction} from GL ${accountCode}${loanSide}${purposeNote}`;
         preview.classList.remove('hidden');
     }
 
@@ -942,6 +1006,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
             refreshTomSelect(select);
             const entryEl = select.closest('[data-bank-import-entry]');
             if (entryEl) {
+                syncChartLoanPurposeVisibility(entryEl);
                 updateChartTypePreview(entryEl);
             }
         });
@@ -1051,6 +1116,19 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
                     allocations = [];
                 } else if (invoiceId || allocations.length) {
                     transactionId = '';
+                }
+
+                // 4001 money-out: purpose picker sets the create type without using "Or create as type".
+                if (!transactionType && chartLoanPurposeIsActive(entryEl)) {
+                    const purpose = entryEl.querySelector('[data-bank-import-chart-loan-purpose]')?.value;
+                    if (purpose === 'loan_interest' || purpose === 'loan_repayments') {
+                        transactionType = purpose;
+                    }
+                }
+
+                // Interest capitalises via 7500; keep 4001 only as the UI trigger, not a liability override.
+                if (transactionType === 'loan_interest' && selectedChartAccountCode(chartSelect) === CHART_LOAN_PURPOSE_ACCOUNT_CODE) {
+                    chartAccountId = '';
                 }
             } else {
                 transactionId = suggestedTransactionId;

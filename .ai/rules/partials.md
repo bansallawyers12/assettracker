@@ -19,6 +19,9 @@ Visually group Match vs Create in the Change panel with short hints so users do 
 ## Chart-account create shows resolved transaction type
 When Or create from chart account is selected, surface `data-bank-import-chart-type-preview` using the same rules as `BankStatementApplyService::mapTransactionType` (2500 → director loan in/out; liability → loan_drawdown/repayments; etc.). Include `account_type` on chart options/API payloads. Clear matched/unmatched removals use `showWorkspaceConfirm`, not native `confirm()`.
 
+## 4001 chart create offers loan purpose
+When Or create from chart account is code `4001` on a money-out line, show `data-bank-import-chart-loan-purpose` (Loan repayment / Loan interest). Default stays Loan repayment (same as liability auto-map). Loan interest apply sends `transaction_type=loan_interest` without the 4001 chart override so interest capitalises to 7500. Credits on 4001 keep the existing loan_drawdown auto-map and do not show the purpose picker.
+
 ## Change panel Tom Select activation
 Change stays `hidden` until **Change ▾**. On open, use `scheduleForceActivateTomSelectsIn` then refresh selects after `loadChartAccounts()` so deferred Tom Selects are not empty/broken. Toggle `aria-expanded` and the ▾/▴ label.
 

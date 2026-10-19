@@ -664,6 +664,19 @@
                                                     </option>
                                                 @endforeach
                                             </x-tom-select>
+                                            <div class="mt-2 hidden" data-bank-import-chart-loan-purpose-wrap>
+                                                <label class="block text-[11px] font-medium text-gray-700 dark:text-gray-300">Loan purpose</label>
+                                                <p class="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                                                    Choose how this NAB loan (4001) line should be booked.
+                                                </p>
+                                                <select
+                                                    data-bank-import-chart-loan-purpose
+                                                    class="mt-1 block w-full rounded-md border-gray-300 text-xs shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100"
+                                                >
+                                                    <option value="loan_repayments">Loan repayment</option>
+                                                    <option value="loan_interest">Loan interest</option>
+                                                </select>
+                                            </div>
                                             <p
                                                 class="mt-1.5 hidden text-[11px] leading-snug text-indigo-700 dark:text-indigo-300"
                                                 data-bank-import-chart-type-preview

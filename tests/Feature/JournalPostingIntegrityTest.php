@@ -339,6 +339,78 @@ it('codes a loan statement line to another liability against the loan', function
     ]);
 });
 
+it('books 4001 chart create as loan repayment against the loan facility', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity('NAB Loan Repayment Pty Ltd');
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $nabLoan = ChartOfAccount::create([
+        'account_code' => '4001',
+        'account_name' => 'NAB Loan A/C - 3136',
+        'account_type' => 'liability',
+        'account_category' => 'long_term_liability',
+        'description' => 'NAB loan facility',
+        'is_active' => true,
+        'opening_balance' => 0,
+        'current_balance' => 0,
+    ]);
+    $entry = BankStatementEntry::create([
+        'bank_account_id' => $loan->id,
+        'date' => '2026-08-25',
+        'amount' => -5867.73,
+        'description' => 'NAB LOAN REPAYMENT',
+        'transaction_type' => 'debit',
+    ]);
+
+    app(BankStatementApplyService::class)->apply($loan, $entity, [[
+        'bank_entry_id' => $entry->id,
+        'action' => 'create_transaction',
+        'chart_account_id' => $nabLoan->id,
+        'transaction_type' => 'loan_repayments',
+    ]]);
+
+    $transaction = Transaction::query()->where('business_entity_id', $entity->id)->sole();
+
+    expect($transaction->transaction_type)->toBe('loan_repayments')
+        ->and((int) $transaction->chart_of_account_id)->toBe($nabLoan->id)
+        ->and(ledgerLines($transaction))->toEqual([
+            '4001' => [5867.73, 0.0],
+            '4000' => [0.0, 5867.73],
+        ])
+        ->and(ledgerLines($transaction))->not->toHaveKey('1100');
+});
+
+it('books 4001 loan interest purpose without keeping the liability chart override', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $entity = ledgerEntity('NAB Loan Interest Pty Ltd');
+    $loan = ledgerBankAccount($entity, BankAccount::PURPOSE_LOAN);
+    $entry = BankStatementEntry::create([
+        'bank_account_id' => $loan->id,
+        'date' => '2026-08-25',
+        'amount' => -320.15,
+        'description' => 'NAB LOAN INTEREST',
+        'transaction_type' => 'debit',
+    ]);
+
+    app(BankStatementApplyService::class)->apply($loan, $entity, [[
+        'bank_entry_id' => $entry->id,
+        'action' => 'create_transaction',
+        'transaction_type' => 'loan_interest',
+        'chart_account_id' => null,
+    ]]);
+
+    $transaction = Transaction::query()->where('business_entity_id', $entity->id)->sole();
+
+    expect($transaction->transaction_type)->toBe('loan_interest')
+        ->and($transaction->chart_of_account_id)->toBeNull()
+        ->and(ledgerLines($transaction))->toEqual([
+            '7500' => [320.15, 0.0],
+            '4000' => [0.0, 320.15],
+        ])
+        ->and(ledgerLines($transaction))->not->toHaveKey('1100');
+});
+
 it('does not audit a chart-coded loan repayment as missing a cash side', function () {
     $this->seed(ChartOfAccountSeeder::class);
 
