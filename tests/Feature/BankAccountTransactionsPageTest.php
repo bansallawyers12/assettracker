@@ -103,11 +103,14 @@ it('exposes unmatched lines view controls in the reconciliation partial', functi
     expect($html)->toContain('data-bank-import-unmatched-section')
         ->and($html)->toContain('data-bank-import-unmatched-minimize')
         ->and($html)->toContain('data-bank-import-unmatched-maximize')
+        ->and($html)->toContain('data-bank-import-unmatched-search')
+        ->and($html)->toContain('data-entry-search')
         ->and($html)->toContain('Full page')
         ->and($panel)->toContain('bank-accounts.unmatched-lines.page')
         ->and($panel)->toContain('unmatchedFullPageUrl')
         ->and($unmatchedView)->toContain('data-bank-unmatched-lines-page')
         ->and($js)->toContain('bindUnmatchedLinesViewControls')
+        ->and($js)->toContain('bindUnmatchedLinesSearch')
         ->and($modalJs)->toContain('initBankUnmatchedLinesPage')
         ->and($appJs)->toContain('initBankUnmatchedLinesPage');
 });

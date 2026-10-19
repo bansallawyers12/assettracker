@@ -382,6 +382,22 @@
         </div>
 
         <div data-bank-import-unmatched-body>
+        <div class="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div class="relative min-w-0 flex-1 sm:max-w-md">
+                <label class="sr-only" for="bank_import_unmatched_search_{{ $bankAccount->id }}">Search unmatched lines</label>
+                <input
+                    type="search"
+                    id="bank_import_unmatched_search_{{ $bankAccount->id }}"
+                    data-bank-import-unmatched-search
+                    placeholder="Search description, date, or amount…"
+                    autocomplete="off"
+                    class="block w-full rounded-md border-gray-300 py-1.5 pl-3 pr-8 text-sm shadow-xs focus:border-indigo-500 focus:ring-indigo-500 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
+                >
+            </div>
+            <p class="hidden text-xs text-gray-500 dark:text-gray-400 sm:text-right" data-bank-import-unmatched-search-empty>
+                No lines match your search.
+            </p>
+        </div>
         <div
             @class([
                 'mt-3 space-y-3 overflow-y-auto',
@@ -419,6 +435,13 @@
                     if ($suggestedAllocationIds === [] && $suggestedInvoiceId) {
                         $suggestedAllocationIds = [(int) $suggestedInvoiceId];
                     }
+                    $entrySearchText = strtolower(implode(' ', array_filter([
+                        $entry->description,
+                        $entry->date?->format('d/m/Y'),
+                        $entry->date?->format('Y-m-d'),
+                        (string) $entry->amount,
+                        number_format(abs((float) $entry->amount), 2),
+                    ], fn ($part) => $part !== null && $part !== '')));
                 @endphp
                 <div
                     class="rounded-md border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900"
@@ -426,6 +449,7 @@
                     data-entry-id="{{ $entry->id }}"
                     data-entry-amount="{{ $entry->amount }}"
                     data-entry-date="{{ $entry->date?->format('Y-m-d') }}"
+                    data-entry-search="{{ $entrySearchText }}"
                     data-has-suggestion="{{ $hasSuggestion ? '1' : '0' }}"
                 >
                     <div class="flex items-start gap-3">
@@ -686,6 +710,9 @@
                     @endif
                 </p>
             @endforelse
+            <p class="hidden text-sm text-gray-500 dark:text-gray-400 text-center py-4" data-bank-import-unmatched-search-empty-list>
+                No lines match your search.
+            </p>
         </div>
         </div>
     </div>

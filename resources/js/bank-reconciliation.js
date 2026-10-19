@@ -70,6 +70,41 @@ function bindUnmatchedLinesViewControls(importPanel, signal) {
     }, { signal });
 }
 
+function bindUnmatchedLinesSearch(importPanel, signal) {
+    const searchInput = importPanel.querySelector('[data-bank-import-unmatched-search]');
+    if (!searchInput) {
+        return;
+    }
+
+    const emptyInline = importPanel.querySelector('[data-bank-import-unmatched-search-empty]');
+    const emptyInList = importPanel.querySelector('[data-bank-import-unmatched-search-empty-list]');
+
+    const applyUnmatchedSearch = () => {
+        const query = searchInput.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        importPanel.querySelectorAll('[data-bank-import-entry]').forEach((entryEl) => {
+            const haystack = (entryEl.dataset.entrySearch || '').toLowerCase();
+            const matches = query === '' || haystack.includes(query);
+            entryEl.classList.toggle('hidden', !matches);
+            if (matches) {
+                visibleCount += 1;
+            }
+        });
+
+        const showEmpty = query !== '' && visibleCount === 0;
+        emptyInline?.classList.toggle('hidden', !showEmpty);
+        emptyInList?.classList.toggle('hidden', !showEmpty);
+    };
+
+    searchInput.addEventListener('input', applyUnmatchedSearch, { signal });
+    searchInput.addEventListener('search', applyUnmatchedSearch, { signal });
+}
+
+function unmatchedEntryIsVisible(entryEl) {
+    return !entryEl.classList.contains('hidden');
+}
+
 export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel) {
     const importPanel = panel.querySelector('[data-bank-import-panel]');
     if (!importPanel) {
@@ -77,6 +112,7 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     }
 
     bindUnmatchedLinesViewControls(importPanel, signal);
+    bindUnmatchedLinesSearch(importPanel, signal);
 
     const uploadForm = importPanel.querySelector('[data-bank-import-upload-form]');
     const acceptBtn = importPanel.querySelector('[data-bank-import-accept-selected]');
@@ -1144,8 +1180,14 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
     });
 
     importPanel.querySelector('[data-bank-import-select-all]')?.addEventListener('click', () => {
-        importPanel.querySelectorAll('[data-bank-import-select]').forEach((el) => {
-            el.checked = true;
+        importPanel.querySelectorAll('[data-bank-import-entry]').forEach((entryEl) => {
+            if (!unmatchedEntryIsVisible(entryEl)) {
+                return;
+            }
+            const checkbox = entryEl.querySelector('[data-bank-import-select]');
+            if (checkbox) {
+                checkbox.checked = true;
+            }
         });
     }, { signal });
 
@@ -1157,6 +1199,9 @@ export function bindReconciliationPanel(panel, signal, refreshTransactionsPanel)
 
     importPanel.querySelector('[data-bank-import-select-suggestions]')?.addEventListener('click', () => {
         importPanel.querySelectorAll('[data-bank-import-entry]').forEach((entryEl) => {
+            if (!unmatchedEntryIsVisible(entryEl)) {
+                return;
+            }
             const checkbox = entryEl.querySelector('[data-bank-import-select]');
             if (checkbox) {
                 checkbox.checked = entryEl.dataset.hasSuggestion === '1';
