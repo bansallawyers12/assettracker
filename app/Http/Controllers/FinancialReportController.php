@@ -216,7 +216,7 @@ class FinancialReportController extends Controller
         return $this->cashFlowHub($request);
     }
 
-    public function accountTransactionsHub(Request $request)
+    public function accountTransactionsHub(Request $request): View|RedirectResponse|StreamedResponse
     {
         $this->authorize('viewAny', BusinessEntity::class);
         $ids = $this->resolveReportEntityIds($request);
@@ -238,6 +238,10 @@ class FinancialReportController extends Controller
             $accountIds
         );
         $report = $this->mergeReportFormScope($report, $request, $ids);
+
+        if ($request->query('format') === 'csv') {
+            return $this->csvExporter->accountTransactions($report);
+        }
 
         $allAccounts = $this->financialReportService->getActiveChartOfAccounts();
 

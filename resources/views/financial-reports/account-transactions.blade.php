@@ -151,10 +151,12 @@
                         <x-lucide-ellipsis-vertical class="h-4 w-4 text-gray-500" />
                         More
                     </button>
-                    <div x-show="open" @click.outside="open = false"
-                         class="absolute right-0 mt-1 w-40 rounded-md shadow-lg bg-white border border-gray-200 z-20 text-sm">
+                    <div x-show="open" @click.outside="open = false" x-cloak
+                         class="absolute right-0 mt-1 w-44 rounded-md shadow-lg bg-white border border-gray-200 z-20 text-sm">
                         <a href="javascript:window.print()"
                            class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Print / PDF</a>
+                        <a href="{{ route('financial-reports.account-transactions', $reportQuery(['start_date' => $startDate->toDateString(), 'end_date' => $endDate->toDateString(), 'format' => 'csv'])) }}"
+                           class="block px-4 py-2 text-gray-700 hover:bg-gray-50">Export CSV</a>
                     </div>
                 </div>
 

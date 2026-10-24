@@ -15,6 +15,149 @@ class FinancialReportCsvExporter
     /**
      * @param  array<string, mixed>  $report
      */
+    public function accountTransactions(array $report): StreamedResponse
+    {
+        $start = Carbon::parse($report['period']['start_date'])->toDateString();
+        $end = Carbon::parse($report['period']['end_date'])->toDateString();
+        $filename = 'account-transactions-'.$start.'-to-'.$end.'.csv';
+        $consolidated = (bool) ($report['is_consolidated'] ?? false);
+
+        return $this->streamDownload($filename, function ($out) use ($report, $start, $end, $consolidated) {
+            $this->writeMeta($out, 'Account Transactions', $report, [
+                'Period' => $start.' to '.$end,
+            ], 'Lines match the Account Transactions report, including opening and closing balances for each account.');
+
+            $this->writeBlank($out);
+            $headers = ['Account code', 'Account name', 'Payment date'];
+            if ($consolidated) {
+                $headers[] = 'Entity';
+            }
+            $this->writeRow($out, array_merge($headers, [
+                'Reference',
+                'Description',
+                'Paid by',
+                'Received by',
+                'Bank account',
+                'Type',
+                'Asset',
+                'Debit',
+                'Credit',
+                'Balance',
+            ]));
+
+            $accounts = $report['accounts'] ?? [];
+            if ($accounts === []) {
+                $this->writeRow($out, ['(No transactions found for this period)']);
+
+                return;
+            }
+
+            foreach ($accounts as $block) {
+                $account = $block['account'] ?? null;
+                if ($account === null) {
+                    continue;
+                }
+
+                $this->writeAccountTransactionBalanceRow(
+                    $out,
+                    $account,
+                    $start,
+                    'Opening balance',
+                    (float) ($block['opening_balance'] ?? 0),
+                    $consolidated
+                );
+
+                $lines = $block['lines'] ?? [];
+                if ($lines === []) {
+                    $this->writeRow($out, array_merge(
+                        [(string) $account->account_code, (string) $account->account_name],
+                        $consolidated ? ['', ''] : [''],
+                        ['', 'No transactions in this period']
+                    ));
+                }
+
+                foreach ($lines as $line) {
+                    $cells = [
+                        (string) $account->account_code,
+                        (string) $account->account_name,
+                        $this->formatLineDate($line['date'] ?? null),
+                    ];
+                    if ($consolidated) {
+                        $cells[] = $this->blankDash($line['booking_entity_name'] ?? $line['entity_name'] ?? '');
+                    }
+                    $debit = $line['debit'] ?? null;
+                    $credit = $line['credit'] ?? null;
+                    $this->writeRow($out, array_merge($cells, [
+                        $this->blankDash($line['reference'] ?? ''),
+                        $this->blankDash($line['description'] ?? ''),
+                        $this->blankDash($line['paid_by'] ?? ''),
+                        $this->blankDash($line['received_by'] ?? ''),
+                        $this->blankDash($line['bank_account'] ?? ''),
+                        $this->blankDash($line['transaction_type'] ?? ''),
+                        $this->blankDash($line['asset_name'] ?? ''),
+                        $debit !== null ? number_format((float) $debit, 2, '.', '') : '',
+                        $credit !== null ? number_format((float) $credit, 2, '.', '') : '',
+                        number_format((float) ($line['running_balance'] ?? 0), 2, '.', ''),
+                    ]));
+                }
+
+                $this->writeAccountTransactionBalanceRow(
+                    $out,
+                    $account,
+                    $end,
+                    'Closing balance',
+                    (float) ($block['closing_balance'] ?? 0),
+                    $consolidated
+                );
+            }
+        });
+    }
+
+    /**
+     * @param  resource  $out
+     * @param  object{account_code: string, account_name: string}  $account
+     */
+    private function writeAccountTransactionBalanceRow(
+        $out,
+        object $account,
+        string $date,
+        string $label,
+        float $balance,
+        bool $consolidated
+    ): void {
+        $cells = [
+            (string) $account->account_code,
+            (string) $account->account_name,
+            $date,
+        ];
+        if ($consolidated) {
+            $cells[] = '';
+        }
+
+        $this->writeRow($out, array_merge($cells, [
+            '',
+            $label,
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+            number_format($balance, 2, '.', ''),
+        ]));
+    }
+
+    private function blankDash(mixed $value): string
+    {
+        $text = trim((string) $value);
+
+        return in_array($text, ['', '—', '–'], true) ? '' : $text;
+    }
+
+    /**
+     * @param  array<string, mixed>  $report
+     */
     public function profitLoss(array $report): StreamedResponse
     {
         $start = Carbon::parse($report['period']['start_date'])->toDateString();
@@ -352,7 +495,7 @@ class FinancialReportCsvExporter
      * @param  array<string, mixed>  $report
      * @param  array<string, string>  $extra
      */
-    private function writeMeta($out, string $title, array $report, array $extra = []): void
+    private function writeMeta($out, string $title, array $report, array $extra = [], ?string $note = null): void
     {
         $this->writeRow($out, ['Report', $title]);
         $this->writeRow($out, ['Generated', now()->toDateTimeString()]);
@@ -364,7 +507,7 @@ class FinancialReportCsvExporter
 
         $this->writeRow($out, [
             'Note',
-            'Amounts come from posted journal entries. Supporting entries list the journal lines behind each statement account (including bank account and type when known). Balance sheet supporting entries include all history through the as-at date. When Compare is enabled, both current and prior periods are included.',
+            $note ?? 'Amounts come from posted journal entries. Supporting entries list the journal lines behind each statement account (including bank account and type when known). Balance sheet supporting entries include all history through the as-at date. When Compare is enabled, both current and prior periods are included.',
         ]);
     }
 

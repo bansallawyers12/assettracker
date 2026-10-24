@@ -252,6 +252,106 @@ it('summarises large consolidated entity scope in csv metadata', function () {
         ->and($csv)->not->toContain('Entity 1 Pty Ltd,Entity 2 Pty Ltd');
 });
 
+it('exports account transactions as csv with the on-screen columns', function () {
+    $account = (object) ['account_code' => '0511', 'account_name' => 'Bank Fees'];
+    $entity = (object) ['id' => 48, 'legal_name' => '219 SOUTH GHC UNIT TRUST'];
+
+    $report = [
+        'period' => ['start_date' => '2025-07-01', 'end_date' => '2026-06-30'],
+        'is_consolidated' => false,
+        'business_entity' => $entity,
+        'business_entities' => collect([$entity]),
+        'accounts' => [[
+            'account' => $account,
+            'opening_balance' => 9744.40,
+            'closing_balance' => 11421.68,
+            'lines' => [[
+                'date' => '2025-07-01',
+                'reference' => 'TXN-0000104',
+                'description' => 'LINE FEE REDIRECTED FROM ACCOUNT NUMBER 587706',
+                'paid_by' => '—',
+                'received_by' => '—',
+                'bank_account' => 'Westpac (219 South GHC) - 219 SOUTH GHC UNIT TRUST',
+                'transaction_type' => 'Cost of Goods Sold',
+                'asset_name' => '—',
+                'debit' => 1677.28,
+                'credit' => null,
+                'running_balance' => 11421.68,
+            ]],
+        ]],
+    ];
+
+    $exporter = new FinancialReportCsvExporter(Mockery::mock(FinancialReportService::class));
+    $response = $exporter->accountTransactions($report);
+
+    ob_start();
+    $response->sendContent();
+    $csv = ob_get_clean();
+
+    expect($response->headers->get('content-disposition'))->toContain('account-transactions-2025-07-01-to-2026-06-30.csv')
+        ->and($csv)->toContain('Account Transactions')
+        ->and($csv)->toContain('219 SOUTH GHC UNIT TRUST')
+        ->and($csv)->toContain('Paid by')
+        ->and($csv)->toContain('Opening balance')
+        ->and($csv)->toContain('9744.40')
+        ->and($csv)->toContain('TXN-0000104')
+        ->and($csv)->toContain('LINE FEE REDIRECTED FROM ACCOUNT NUMBER 587706')
+        ->and($csv)->toContain('Westpac (219 South GHC) - 219 SOUTH GHC UNIT TRUST')
+        ->and($csv)->toContain('Cost of Goods Sold')
+        ->and($csv)->toContain('1677.28')
+        ->and($csv)->toContain('Closing balance')
+        ->and($csv)->not->toContain('—');
+});
+
+it('includes the entity column when account transactions are consolidated', function () {
+    $account = (object) ['account_code' => '1100', 'account_name' => 'Bank'];
+    $entities = collect([
+        (object) ['id' => 1, 'legal_name' => 'Entity One'],
+        (object) ['id' => 2, 'legal_name' => 'Entity Two'],
+    ]);
+
+    $report = [
+        'period' => ['start_date' => '2025-07-01', 'end_date' => '2026-06-30'],
+        'is_consolidated' => true,
+        'business_entity' => null,
+        'business_entities' => $entities,
+        'accounts' => [[
+            'account' => $account,
+            'opening_balance' => 0,
+            'closing_balance' => 10,
+            'lines' => [[
+                'date' => '2025-08-01',
+                'booking_entity_name' => 'Entity Two',
+                'reference' => 'R1',
+                'description' => 'Fee',
+                'debit' => 10,
+                'credit' => null,
+                'running_balance' => 10,
+            ]],
+        ]],
+    ];
+
+    $exporter = new FinancialReportCsvExporter(Mockery::mock(FinancialReportService::class));
+    $response = $exporter->accountTransactions($report);
+
+    ob_start();
+    $response->sendContent();
+    $csv = ob_get_clean();
+
+    expect($csv)->toContain('"Payment date",Entity,Reference')
+        ->and($csv)->toContain('Entity Two');
+});
+
+it('offers export csv from the account transactions more menu', function () {
+    $view = file_get_contents(resource_path('views/financial-reports/account-transactions.blade.php'));
+    $controller = file_get_contents(app_path('Http/Controllers/FinancialReportController.php'));
+
+    expect($view)->toContain('Print / PDF')
+        ->and($view)->toContain('Export CSV')
+        ->and($view)->toContain("'format' => 'csv'")
+        ->and($controller)->toContain('csvExporter->accountTransactions');
+});
+
 it('exposes export csv links on profit and loss and balance sheet views', function () {
     $controller = file_get_contents(app_path('Http/Controllers/FinancialReportController.php'));
     $pl = file_get_contents(resource_path('views/financial-reports/profit-loss.blade.php'));
