@@ -61,9 +61,20 @@ class BankCsvStatementParser
     /** @var list<string> */
     private const ORIGINAL_DESCRIPTION_COLUMNS = ['original description'];
 
-    /** @var list<string> */
+    /**
+     * Australian day/month slash formats come before US m/d so ambiguous values
+     * like 01/09/2025 mean 1 Sep, not 9 Jan. Unpadded j/n variants cover bank CSVs.
+     *
+     * @var list<string>
+     */
     private const DATE_FORMATS = [
-        'Y-m-d', 'd/m/Y', 'm/d/Y', 'd-m-Y', 'Y/m/d',
+        'Y-m-d',
+        'd/m/Y', 'j/n/Y', 'j/m/Y', 'd/n/Y',
+        'd-m-Y', 'j-n-Y', 'j-m-Y', 'd-n-Y',
+        'd/m/y', 'j/n/y', 'j/m/y', 'd/n/y',
+        'd-m-y', 'j-n-y',
+        'm/d/Y', 'n/j/Y', 'm-d-Y',
+        'Y/m/d',
         'd M Y', 'j M Y', 'M d, Y', 'd-M-y', 'j-M-y', 'd-M-Y', 'j-M-Y', 'd M y', 'j M y',
     ];
 
@@ -230,6 +241,16 @@ class BankCsvStatementParser
             $candidate = $this->bestUnusedHeader($scores, $byName, 'balance');
             if ($candidate !== null && ($scores[$candidate]['balance'] ?? 0) >= 0.4) {
                 $byName['balance'] = $candidate;
+            }
+        }
+
+        // A single signed Amount column must not also be treated as debit+credit (nets to zero).
+        if ($byName['amount'] !== null) {
+            if ($byName['debit'] === $byName['amount']) {
+                $byName['debit'] = null;
+            }
+            if ($byName['credit'] === $byName['amount']) {
+                $byName['credit'] = null;
             }
         }
 
@@ -565,7 +586,9 @@ class BankCsvStatementParser
             }
 
             foreach ($lookup as $normalized => $original) {
-                if (str_contains($normalized, $candidate) || str_contains($candidate, $normalized)) {
+                // Header must contain the alias (e.g. "aud amount" contains "amount").
+                // Do not reverse-match: that maps bare "Amount" onto "debit amount" / "credit amount".
+                if (str_contains($normalized, $candidate)) {
                     return $original;
                 }
             }
@@ -762,6 +785,11 @@ class BankCsvStatementParser
             return null;
         }
 
+        // Drop a trailing time so "01/09/2025 00:00:00" still matches date formats.
+        if (preg_match('/^(\d{1,4}[\/\-]\d{1,2}[\/\-]\d{1,4})\s+\d{1,2}:\d{2}(?::\d{2})?$/', $stringValue, $matches) === 1) {
+            $stringValue = $matches[1];
+        }
+
         foreach (self::DATE_FORMATS as $format) {
             if (! Carbon::hasFormat($stringValue, $format)) {
                 continue;
@@ -772,6 +800,17 @@ class BankCsvStatementParser
             } catch (InvalidFormatException) {
                 continue;
             }
+        }
+
+        // Carbon::parse() treats slash dates as US m/d/Y — never use it for those.
+        if (str_contains($stringValue, '/')) {
+            return null;
+        }
+
+        // Pure numerics are amounts (or unformatted Excel serials), not free-form dates.
+        $numericProbe = str_replace([',', ' '], '', $stringValue);
+        if ($numericProbe !== '' && is_numeric($numericProbe)) {
+            return null;
         }
 
         try {

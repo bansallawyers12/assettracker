@@ -157,3 +157,37 @@ CSV);
 
     @unlink($path);
 });
+
+it('parses ambiguous slash dates as Australian day/month', function () {
+    $path = writeTempCsv(<<<'CSV'
+Date,Description,Amount
+01/09/2025,Padded ambiguous,-10.00
+2/10/2023,Unpadded ambiguous,-20.00
+30/06/2025,Unambiguous day,-30.00
+01/09/2025 00:00:00,With trailing time,-40.00
+2-Oct-23,Textual month,-50.00
+2025-09-01,ISO,-60.00
+CSV);
+
+    $parser = new BankCsvStatementParser;
+    $parsed = $parser->parseFile($path, 'Test Bank', [
+        'date' => 'Date',
+        'description' => 'Description',
+        'amount' => 'Amount',
+        'debit' => null,
+        'credit' => null,
+        'reference' => null,
+        'balance' => null,
+    ]);
+
+    expect($parsed['success'])->toBeTrue()
+        ->and($parsed['entries'])->toHaveCount(6)
+        ->and($parsed['entries'][0]['date'])->toBe('2025-09-01')
+        ->and($parsed['entries'][1]['date'])->toBe('2023-10-02')
+        ->and($parsed['entries'][2]['date'])->toBe('2025-06-30')
+        ->and($parsed['entries'][3]['date'])->toBe('2025-09-01')
+        ->and($parsed['entries'][4]['date'])->toBe('2023-10-02')
+        ->and($parsed['entries'][5]['date'])->toBe('2025-09-01');
+
+    @unlink($path);
+});
