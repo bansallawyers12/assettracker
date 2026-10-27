@@ -426,6 +426,7 @@ Route::middleware(['auth', '2fa.enrolled', '2fa.verified'])->group(function () {
     Route::get('business-entities/{businessEntity}/financial-reports/balance-sheet', [FinancialReportController::class, 'balanceSheet'])->name('business-entities.financial-reports.balance-sheet');
     Route::get('business-entities/{businessEntity}/financial-reports/cash-flow', [FinancialReportController::class, 'cashFlow'])->name('business-entities.financial-reports.cash-flow');
     Route::get('business-entities/{businessEntity}/financial-reports/tracking-categories', [FinancialReportController::class, 'trackingCategories'])->name('business-entities.financial-reports.tracking-categories');
+    Route::get('business-entities/{businessEntity}/financial-reports/chart-of-accounts', [FinancialReportController::class, 'chartOfAccounts'])->name('business-entities.financial-reports.chart-of-accounts');
     Route::get('business-entities/{businessEntity}/financial-reports/journal-entries', [ManualJournalEntryController::class, 'index'])->name('business-entities.financial-reports.journal-entries.index');
     Route::get('business-entities/{businessEntity}/financial-reports/journal-entries/create', [ManualJournalEntryController::class, 'createForEntity'])->name('business-entities.financial-reports.journal-entries.create');
     Route::post('business-entities/{businessEntity}/financial-reports/journal-entries', [ManualJournalEntryController::class, 'storeForEntity'])->name('business-entities.financial-reports.journal-entries.store');

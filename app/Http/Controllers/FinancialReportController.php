@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResolvesReportEntityScope;
 use App\Models\BusinessEntity;
+use App\Models\ChartOfAccount;
 use App\Services\ComplianceYearService;
 use App\Services\FinancialReportService;
 use App\Services\GstWorksheetService;
@@ -312,6 +313,40 @@ class FinancialReportController extends Controller
         ]);
 
         return $this->trackingCategoriesHub($request);
+    }
+
+    /**
+     * Read-only firm-wide chart with journal line counts scoped to one entity.
+     * Does not restore per-entity CoA CRUD — mutations stay on chart-of-accounts.*.
+     */
+    public function chartOfAccounts(BusinessEntity $businessEntity): View|RedirectResponse
+    {
+        $this->authorize('view', $businessEntity);
+
+        if ($r = $this->redirectIfExcludedFromFinancialReports($businessEntity)) {
+            return $r;
+        }
+
+        $entityId = (int) $businessEntity->id;
+
+        $accounts = ChartOfAccount::query()
+            ->withCount([
+                'journalLines as journal_lines_count' => function ($query) use ($entityId): void {
+                    $query->whereHas(
+                        'journalEntry',
+                        fn ($journalEntry) => $journalEntry->where('business_entity_id', $entityId)
+                    );
+                },
+            ])
+            ->orderBy('account_code')
+            ->get();
+
+        return view('financial-reports.chart-of-accounts', [
+            'businessEntity' => $businessEntity,
+            'accounts' => $accounts,
+            'accountTypes' => ChartOfAccount::$accountTypes,
+            'accountCategories' => ChartOfAccount::$accountCategories,
+        ]);
     }
 
     public function entitySummaryHub(Request $request, ComplianceYearService $yearService)

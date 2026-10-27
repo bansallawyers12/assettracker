@@ -51,6 +51,7 @@ it('keeps active replacement routes registered', function (string $name) {
     'reminders.show',
     'business-entities.transactions.store',
     'business-entities.chart-of-accounts.index',
+    'business-entities.financial-reports.chart-of-accounts',
     'chart-of-accounts.index',
 ]);
 
