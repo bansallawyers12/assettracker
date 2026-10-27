@@ -69,12 +69,16 @@ class FinancialReportService
             'other_expense' => 'Other Expenses',
         ];
 
-        $incomeAccounts = ChartOfAccount::where('account_type', 'income')
+        $incomeAccounts = ChartOfAccount::query()
+            ->availableForEntities($ids)
+            ->where('account_type', 'income')
             ->where('is_active', true)
             ->orderBy('account_code')
             ->get();
 
-        $expenseAccounts = ChartOfAccount::where('account_type', 'expense')
+        $expenseAccounts = ChartOfAccount::query()
+            ->availableForEntities($ids)
+            ->where('account_type', 'expense')
             ->where('is_active', true)
             ->orderBy('account_code')
             ->get();
@@ -144,7 +148,9 @@ class FinancialReportService
         $start = Carbon::parse($startDate);
         $end = Carbon::parse($endDate);
 
-        $accountQuery = ChartOfAccount::where('is_active', true)
+        $accountQuery = ChartOfAccount::query()
+            ->availableForEntities($ids)
+            ->where('is_active', true)
             ->orderBy('account_code');
 
         if (! empty($accountIds)) {
@@ -1295,17 +1301,8 @@ class FinancialReportService
      */
     public function getActiveChartOfAccounts(?array $businessEntityIds = null): EloquentCollection
     {
-        $ids = array_values(array_filter(array_map('intval', $businessEntityIds ?? []), fn (int $id): bool => $id > 0));
-
         return ChartOfAccount::query()
-            ->when(
-                $ids === [],
-                fn ($query) => $query->firmWide(),
-                fn ($query) => $query->where(function ($inner) use ($ids): void {
-                    $inner->whereNull('business_entity_id')
-                        ->orWhereIn('business_entity_id', $ids);
-                }),
-            )
+            ->availableForEntities($businessEntityIds ?? [])
             ->where('is_active', true)
             ->orderBy('account_code')
             ->get();
@@ -1380,7 +1377,9 @@ class FinancialReportService
         array $categoryLabels = [],
         bool $includeBankBreakdown = false
     ): array {
-        $accounts = ChartOfAccount::where('account_type', $accountType)
+        $accounts = ChartOfAccount::query()
+            ->availableForEntities($entityIds)
+            ->where('account_type', $accountType)
             ->where('is_active', true)
             ->orderBy('account_code')
             ->get();
@@ -1505,6 +1504,7 @@ class FinancialReportService
     private function sumAccountTypeBalancesAsOf(array $entityIds, string $accountType, string $asOfDate): float
     {
         $accountIds = ChartOfAccount::query()
+            ->availableForEntities($entityIds)
             ->where('account_type', $accountType)
             ->where('is_active', true)
             ->pluck('id');
@@ -1585,7 +1585,9 @@ class FinancialReportService
 
     private function getAccountBalancesByCategory(array $entityIds, string $accountCategory, string $startDate, string $endDate): array
     {
-        $accounts = ChartOfAccount::where('account_category', $accountCategory)
+        $accounts = ChartOfAccount::query()
+            ->availableForEntities($entityIds)
+            ->where('account_category', $accountCategory)
             ->where('is_active', true)
             ->get();
 
@@ -1896,7 +1898,9 @@ class FinancialReportService
      */
     private function cumulativeIncomeTotal(array $entityIds, string $asOfDate): float
     {
-        $accounts = ChartOfAccount::where('account_type', 'income')
+        $accounts = ChartOfAccount::query()
+            ->availableForEntities($entityIds)
+            ->where('account_type', 'income')
             ->where('is_active', true)
             ->get();
 
@@ -2059,6 +2063,7 @@ class FinancialReportService
     private function directorLoanSummaryForEntity(int $entityId, string $asOfDate): array
     {
         $account = ChartOfAccount::query()
+            ->availableForEntity($entityId)
             ->where('is_active', true)
             ->orderBy('account_code')
             ->get()
@@ -2090,8 +2095,12 @@ class FinancialReportService
             return null;
         }
 
-        $account = ChartOfAccount::where('account_code', $code)->where('is_active', true)->first()
-            ?? ChartOfAccount::where('account_code', $code)->first();
+        $account = ChartOfAccount::query()
+            ->firmWide()
+            ->where('account_code', $code)
+            ->where('is_active', true)
+            ->first()
+            ?? ChartOfAccount::query()->firmWide()->where('account_code', $code)->first();
 
         if (! $account) {
             return null;
@@ -2112,8 +2121,12 @@ class FinancialReportService
             return null;
         }
 
-        $account = ChartOfAccount::where('account_code', $code)->where('is_active', true)->first()
-            ?? ChartOfAccount::where('account_code', $code)->first();
+        $account = ChartOfAccount::query()
+            ->firmWide()
+            ->where('account_code', $code)
+            ->where('is_active', true)
+            ->first()
+            ?? ChartOfAccount::query()->firmWide()->where('account_code', $code)->first();
 
         if (! $account) {
             return null;
@@ -2187,10 +2200,11 @@ class FinancialReportService
         $bankCashCode = config('financial.report_accounts.bank_cash');
         $bankCashAccount = $bankCashCode
             ? (ChartOfAccount::query()
+                ->firmWide()
                 ->where('account_code', $bankCashCode)
                 ->where('is_active', true)
                 ->first()
-                ?? ChartOfAccount::query()->where('account_code', $bankCashCode)->first())
+                ?? ChartOfAccount::query()->firmWide()->where('account_code', $bankCashCode)->first())
             : null;
 
         $columns = [];

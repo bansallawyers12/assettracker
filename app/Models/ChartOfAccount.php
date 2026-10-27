@@ -51,9 +51,30 @@ class ChartOfAccount extends Model
             return $query->firmWide();
         }
 
-        return $query->where(function (Builder $inner) use ($businessEntityId): void {
+        return $query->availableForEntities([$businessEntityId]);
+    }
+
+    /**
+     * Firm/shared accounts plus accounts owned by any of the given entities.
+     *
+     * @param  Builder<self>  $query
+     * @param  list<int>  $businessEntityIds
+     * @return Builder<self>
+     */
+    public function scopeAvailableForEntities(Builder $query, array $businessEntityIds): Builder
+    {
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', $businessEntityIds),
+            fn (int $id): bool => $id > 0
+        )));
+
+        if ($ids === []) {
+            return $query->firmWide();
+        }
+
+        return $query->where(function (Builder $inner) use ($ids): void {
             $inner->whereNull('business_entity_id')
-                ->orWhere('business_entity_id', $businessEntityId);
+                ->orWhereIn('business_entity_id', $ids);
         });
     }
 

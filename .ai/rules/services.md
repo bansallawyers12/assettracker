@@ -72,6 +72,9 @@ director_loan_in/out on a loan-purpose bank account post Long Term Loans 4000 �
 ## Balance sheet 2500 is posted GL
 Balance sheet 2500 is posted GL (debit−credit as-of), same as 4000/1100. Do not strip 2500 or replace it with buildDirectorEntityLoanAccountBlock synthetics — that rebuild is only for the 2500 account-transactions listing. Entity-summary director loan figures also use getAccountBalanceAsOf. Keep UI notices on the BS and Account Transactions report so users trust the BS figure when the listing differs.
 
+## Report CoA rows respect entity ownership
+P&L, balance sheet, cash flow, account-transactions, and related helpers must iterate ChartOfAccount via `availableForEntities($ids)` (firm/shared plus accounts owned by the report entities). Do not load every active CoA by type/category or other entities’ private accounts leak onto reports at $0. Config code lookups (1100/2500/…) stay `firmWide()`.
+
 ## Bank/Cash memo Unallocated is expected for manuals
 Do not try to eliminate Unallocated by inventing bank attribution for manual journals. Surface the remainder as Unallocated / reconciliation difference and keep the parent 1100 row as the posted GL total. Balance sheet copy must say manuals belong in that remainder.
 
