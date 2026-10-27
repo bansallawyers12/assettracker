@@ -111,7 +111,7 @@ it('shows the shared chart with journal line counts scoped to the entity', funct
     $response->assertSee('Chart of Accounts', false);
     $response->assertSee($entity->legal_name, false);
     $response->assertSee('Read-only', false);
-    $response->assertSee('Open firm Chart of Accounts', false);
+    $response->assertDontSee('Open firm Chart of Accounts', false);
     $response->assertDontSee('Add account', false);
 
     $accounts = $response->viewData('accounts');

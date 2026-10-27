@@ -14,17 +14,10 @@
     :entity="$businessEntity">
 
     <div class="px-6 py-4 border-b border-gray-100 print:hidden">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <p class="text-sm text-gray-600 dark:text-gray-400">
-                {{ $accounts->count() }} account{{ $accounts->count() === 1 ? '' : 's' }} ·
-                {{ (int) $accounts->sum('journal_lines_count') }} journal line{{ (int) $accounts->sum('journal_lines_count') === 1 ? '' : 's' }} for this entity
-            </p>
-            <a href="{{ route('chart-of-accounts.index') }}"
-               class="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-                Open firm Chart of Accounts
-                <x-lucide-chevron-right class="h-4 w-4" />
-            </a>
-        </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+            {{ $accounts->count() }} account{{ $accounts->count() === 1 ? '' : 's' }} ·
+            {{ (int) $accounts->sum('journal_lines_count') }} journal line{{ (int) $accounts->sum('journal_lines_count') === 1 ? '' : 's' }} for this entity
+        </p>
     </div>
 
     <div class="overflow-x-auto">
