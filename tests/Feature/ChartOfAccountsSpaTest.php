@@ -47,12 +47,25 @@ it('keeps create and edit named routes while funneling into the spa', function (
 });
 
 it('does not expose stored balances in the SPA account payload keys', function () {
-    $controller = file_get_contents(app_path('Http/Controllers/ChartOfAccountController.php'));
-    $payloadStart = strpos($controller, 'private function accountPayload');
+    $model = file_get_contents(app_path('Models/ChartOfAccount.php'));
+    $payloadStart = strpos($model, 'public function toSpaPayload');
     expect($payloadStart)->not->toBeFalse();
-    $payload = substr($controller, $payloadStart, 900);
+    $payload = substr($model, $payloadStart, 1200);
 
-    expect($payload)->toContain("'journal_lines_count' => \$journalLines")
+    expect($payload)->toContain("'journal_lines_count' => \$displayJournalLines")
+        ->and($payload)->toContain("'can_delete' => \$deleteJournalLines === 0")
         ->and($payload)->not->toContain('current_balance')
         ->and($payload)->not->toContain('opening_balance');
+});
+
+it('supports entity context while keeping firm mutation endpoints', function () {
+    $index = file_get_contents(resource_path('views/chart-of-accounts/index.blade.php'));
+    $reportController = file_get_contents(app_path('Http/Controllers/FinancialReportController.php'));
+
+    expect($index)->toContain('preserveJournalCountsOnSave')
+        ->and($index)->toContain('businessEntity')
+        ->and($reportController)->toContain("view('chart-of-accounts.index'")
+        ->and($reportController)->toContain("route('chart-of-accounts.store')")
+        ->and($reportController)->toContain('firm_journal_lines_count')
+        ->and($reportController)->toContain('toSpaPayload');
 });

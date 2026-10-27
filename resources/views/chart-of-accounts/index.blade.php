@@ -1,5 +1,8 @@
 <x-app-layout>
     @php
+        $businessEntity = $businessEntity ?? null;
+        $pageEyebrow = $pageEyebrow ?? 'Accounting';
+        $pageSubtitle = $pageSubtitle ?? 'Firm-wide chart shared by every entity (legacy per-entity CoA URLs redirect here). This list shows journal line counts — not stored opening/current balances. Entity P&L and balance sheet figures come from posted journals only.';
         $spaConfig = [
             'accounts' => $accountsPayload,
             'accountTypes' => $accountTypes,
@@ -13,6 +16,7 @@
             'csrfToken' => csrf_token(),
             'flashSuccess' => session('success'),
             'flashError' => session('error'),
+            'preserveJournalCountsOnSave' => $businessEntity !== null,
         ];
     @endphp
 
@@ -20,14 +24,31 @@
          x-data="chartOfAccountsSpa(@js($spaConfig))"
          x-init="init()">
 
+        @if ($businessEntity)
+            <nav class="mb-4 flex flex-wrap items-center gap-1.5 text-sm print:hidden">
+                <a href="{{ route('business-entities.show', $businessEntity) }}"
+                   class="text-blue-600 hover:underline font-medium truncate max-w-xs">
+                    {{ $businessEntity->legal_name }}
+                </a>
+                <x-lucide-chevron-right class="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                <a href="{{ route('business-entities.show', $businessEntity) }}#tab_financial_reports"
+                   class="text-blue-600 hover:underline font-medium shrink-0">
+                    Financial Reports
+                </a>
+                <x-lucide-chevron-right class="h-3.5 w-3.5 text-gray-400 shrink-0" />
+                <span class="text-gray-600 truncate">Chart of Accounts</span>
+            </nav>
+        @endif
+
         <div class="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div class="min-w-0">
-                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Accounting</p>
+                <p class="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">{{ $pageEyebrow }}</p>
                 <h1 class="mt-1 text-2xl font-bold text-gray-900 dark:text-white">Chart of Accounts</h1>
+                @if ($businessEntity)
+                    <p class="mt-1 text-sm font-medium text-gray-700 dark:text-gray-300">{{ $businessEntity->legal_name }}</p>
+                @endif
                 <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    Firm-wide chart shared by every entity (legacy per-entity CoA URLs redirect here).
-                    This list shows journal line counts — not stored opening/current balances.
-                    Entity P&amp;L and balance sheet figures come from posted journals only.
+                    {{ $pageSubtitle }}
                 </p>
             </div>
             @can('create', \App\Models\BusinessEntity::class)
@@ -366,6 +387,7 @@
                 storeUrl: config.storeUrl,
                 csrfToken: config.csrfToken,
                 canMutate: Boolean(config.canMutate),
+                preserveJournalCountsOnSave: Boolean(config.preserveJournalCountsOnSave),
                 search: '',
                 typeFilter: '',
                 statusFilter: 'all',
@@ -668,8 +690,14 @@
                         if (data.account) {
                             const index = this.accounts.findIndex((item) => Number(item.id) === Number(data.account.id));
                             if (index >= 0) {
+                                if (this.preserveJournalCountsOnSave) {
+                                    data.account.journal_lines_count = this.accounts[index].journal_lines_count;
+                                }
                                 this.accounts.splice(index, 1, data.account);
                             } else {
+                                if (this.preserveJournalCountsOnSave) {
+                                    data.account.journal_lines_count = 0;
+                                }
                                 this.accounts.push(data.account);
                             }
                         }

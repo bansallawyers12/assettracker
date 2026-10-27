@@ -280,25 +280,7 @@ class ChartOfAccountController extends Controller
      */
     private function accountPayload(ChartOfAccount $account): array
     {
-        $journalLines = (int) ($account->journal_lines_count ?? 0);
-        $children = (int) ($account->child_accounts_count ?? 0);
-        $depreciation = (int) ($account->assets_as_depreciation_account_count ?? 0);
-
-        return [
-            'id' => $account->id,
-            'account_code' => $account->account_code,
-            'account_name' => $account->account_name,
-            'account_type' => $account->account_type,
-            'account_category' => $account->account_category,
-            'parent_account_id' => $account->parent_account_id,
-            'description' => $account->description,
-            'is_active' => (bool) $account->is_active,
-            'is_system_account' => $account->isSystemAccount(),
-            'journal_lines_count' => $journalLines,
-            'can_delete' => $journalLines === 0 && $children === 0 && $depreciation === 0,
-            'update_url' => route('chart-of-accounts.update', $account),
-            'destroy_url' => route('chart-of-accounts.destroy', $account),
-        ];
+        return $account->toSpaPayload();
     }
 
     private function destroyBlocked(Request $request, string $message): RedirectResponse|JsonResponse

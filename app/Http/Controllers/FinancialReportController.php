@@ -316,10 +316,10 @@ class FinancialReportController extends Controller
     }
 
     /**
-     * Read-only firm-wide chart with journal line counts scoped to one entity.
-     * Does not restore per-entity CoA CRUD — mutations stay on chart-of-accounts.*.
+     * Shared firm CoA SPA with journal line counts scoped to one entity.
+     * Mutations still hit firm chart-of-accounts.* — not a separate per-entity chart.
      */
-    public function chartOfAccounts(BusinessEntity $businessEntity): View|RedirectResponse
+    public function chartOfAccounts(BusinessEntity $businessEntity, Request $request): View|RedirectResponse
     {
         $this->authorize('view', $businessEntity);
 
@@ -337,15 +337,30 @@ class FinancialReportController extends Controller
                         fn ($journalEntry) => $journalEntry->where('business_entity_id', $entityId)
                     );
                 },
+                'journalLines as firm_journal_lines_count',
+                'childAccounts',
+                'assetsAsDepreciationAccount',
             ])
             ->orderBy('account_code')
-            ->get();
+            ->get()
+            ->map(fn (ChartOfAccount $account) => $account->toSpaPayload(
+                (int) $account->journal_lines_count,
+                (int) $account->firm_journal_lines_count,
+            ))
+            ->values();
 
-        return view('financial-reports.chart-of-accounts', [
-            'businessEntity' => $businessEntity,
-            'accounts' => $accounts,
+        return view('chart-of-accounts.index', [
+            'accountsPayload' => $accounts,
             'accountTypes' => ChartOfAccount::$accountTypes,
             'accountCategories' => ChartOfAccount::$accountCategories,
+            'reportPlacementHints' => ChartOfAccount::reportPlacementHints(),
+            'storeUrl' => route('chart-of-accounts.store'),
+            'indexUrl' => route('business-entities.financial-reports.chart-of-accounts', $businessEntity),
+            'openPanel' => $request->query('panel'),
+            'openAccountId' => $request->query('account'),
+            'businessEntity' => $businessEntity,
+            'pageEyebrow' => 'Financial Reports',
+            'pageSubtitle' => 'Shared firm-wide chart — journal line counts for this entity only. Add/edit/delete still updates the firm chart for every entity.',
         ]);
     }
 

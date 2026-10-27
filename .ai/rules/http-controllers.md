@@ -13,5 +13,5 @@ paths:
 ## CoA UI is firm-wide; stored balances unused
 The chart is shared across entities. Legacy `business-entities.*.chart-of-accounts.*` GET routes redirect to the global SPA with a firm-wide flash. Do not restore per-entity CoA CRUD. The SPA lists journal line counts and must not present `opening_balance` / `current_balance` as report figures — those columns stay zeroed on create and are ignored by P&L/BS (openings use journals vs 3190).
 
-## Entity Financial Reports CoA is read-only
-`business-entities.financial-reports.chart-of-accounts` is a read-only report of the shared chart with journal line counts scoped to that entity. Keep mutations on firm `chart-of-accounts.*` only; do not add entity CoA create/edit/delete.
+## Entity Financial Reports CoA reuses firm SPA
+`business-entities.financial-reports.chart-of-accounts` renders the shared CoA SPA with journal line counts scoped to that entity. Add/edit/delete still call firm `chart-of-accounts.*` (shared chart). `can_delete` must use firm-wide journal usage, not the entity-scoped display count. Do not add separate entity CoA store/update/destroy routes.

@@ -193,4 +193,47 @@ class ChartOfAccount extends Model
     {
         return $this->hasMany(Asset::class, 'depreciation_account_id');
     }
+
+    /**
+     * SPA row payload. Display count may be entity-scoped; delete safety always uses firm-wide usage.
+     *
+     * @return array{
+     *     id: int,
+     *     account_code: string,
+     *     account_name: string,
+     *     account_type: string,
+     *     account_category: string,
+     *     parent_account_id: int|null,
+     *     description: string|null,
+     *     is_active: bool,
+     *     is_system_account: bool,
+     *     journal_lines_count: int,
+     *     can_delete: bool,
+     *     update_url: string,
+     *     destroy_url: string
+     * }
+     */
+    public function toSpaPayload(?int $journalLinesCount = null, ?int $firmJournalLinesForDelete = null): array
+    {
+        $displayJournalLines = $journalLinesCount ?? (int) ($this->journal_lines_count ?? 0);
+        $deleteJournalLines = $firmJournalLinesForDelete ?? $displayJournalLines;
+        $children = (int) ($this->child_accounts_count ?? 0);
+        $depreciation = (int) ($this->assets_as_depreciation_account_count ?? 0);
+
+        return [
+            'id' => $this->id,
+            'account_code' => $this->account_code,
+            'account_name' => $this->account_name,
+            'account_type' => $this->account_type,
+            'account_category' => $this->account_category,
+            'parent_account_id' => $this->parent_account_id,
+            'description' => $this->description,
+            'is_active' => (bool) $this->is_active,
+            'is_system_account' => $this->isSystemAccount(),
+            'journal_lines_count' => $displayJournalLines,
+            'can_delete' => $deleteJournalLines === 0 && $children === 0 && $depreciation === 0,
+            'update_url' => route('chart-of-accounts.update', $this),
+            'destroy_url' => route('chart-of-accounts.destroy', $this),
+        ];
+    }
 }
