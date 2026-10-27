@@ -19,22 +19,17 @@ beforeEach(function () {
 it('registers the entity financial reports chart of accounts route without restoring entity CoA CRUD routes', function () {
     expect(Route::has('business-entities.financial-reports.chart-of-accounts'))->toBeTrue()
         ->and(Route::has('business-entities.chart-of-accounts.store'))->toBeFalse()
-        ->and(Route::has('business-entities.chart-of-accounts.update'))->toBeFalse()
-        ->and(Route::has('business-entities.chart-of-accounts.destroy'))->toBeFalse()
-        ->and(Route::has('chart-of-accounts.store'))->toBeTrue()
-        ->and(Route::has('chart-of-accounts.update'))->toBeTrue()
-        ->and(Route::has('chart-of-accounts.destroy'))->toBeTrue();
+        ->and(Route::has('chart-of-accounts.store'))->toBeTrue();
 });
 
 it('links chart of accounts from the entity financial reports hub', function () {
     $show = file_get_contents(resource_path('views/business-entities/show.blade.php'));
 
     expect($show)->toContain("route('business-entities.financial-reports.chart-of-accounts'")
-        ->and($show)->toContain('Chart of Accounts')
-        ->and($show)->toContain('Shared chart with this entity');
+        ->and($show)->toContain('Chart of Accounts');
 });
 
-it('shows only accounts with journal activity for the entity', function () {
+it('lists entity-owned accounts and used firm accounts on the entity page only', function () {
     $this->seed(ChartOfAccountSeeder::class);
 
     $user = User::factory()->create();
@@ -59,7 +54,29 @@ it('shows only accounts with journal activity for the entity', function () {
 
     $bank = ChartOfAccount::query()->where('account_code', '1100')->firstOrFail();
     $equity = ChartOfAccount::query()->where('account_code', '3190')->firstOrFail();
-    $unused = ChartOfAccount::query()->where('account_code', '1130')->firstOrFail();
+    $unusedFirm = ChartOfAccount::query()->where('account_code', '1130')->firstOrFail();
+
+    $entityOwned = ChartOfAccount::query()->create([
+        'business_entity_id' => $entity->id,
+        'account_code' => '9001',
+        'account_name' => 'Victoria Only Expense',
+        'account_type' => 'expense',
+        'account_category' => 'other_expense',
+        'is_active' => true,
+        'opening_balance' => 0,
+        'current_balance' => 0,
+    ]);
+
+    $otherOwned = ChartOfAccount::query()->create([
+        'business_entity_id' => $otherEntity->id,
+        'account_code' => '9002',
+        'account_name' => 'Other Only Expense',
+        'account_type' => 'expense',
+        'account_category' => 'other_expense',
+        'is_active' => true,
+        'opening_balance' => 0,
+        'current_balance' => 0,
+    ]);
 
     $entityEntry = JournalEntry::query()->create([
         'business_entity_id' => $entity->id,
@@ -84,61 +101,88 @@ it('shows only accounts with journal activity for the entity', function () {
         'credit_amount' => 100,
     ]);
 
-    $otherEntry = JournalEntry::query()->create([
-        'business_entity_id' => $otherEntity->id,
-        'entry_date' => '2026-08-16',
-        'reference_number' => 'COA-OTH-001',
-        'description' => 'Other entity journal',
-        'total_debit' => 50,
-        'total_credit' => 50,
-        'is_posted' => true,
-        'created_by' => $user->id,
-    ]);
-    JournalLine::query()->create([
-        'journal_entry_id' => $otherEntry->id,
-        'chart_of_account_id' => $bank->id,
-        'debit_amount' => 50,
-        'credit_amount' => 0,
-    ]);
-    JournalLine::query()->create([
-        'journal_entry_id' => $otherEntry->id,
-        'chart_of_account_id' => $equity->id,
-        'debit_amount' => 0,
-        'credit_amount' => 50,
-    ]);
-
-    $response = $this->actingAs($user)
+    $entityResponse = $this->actingAs($user)
         ->get(route('business-entities.financial-reports.chart-of-accounts', $entity));
 
-    $response->assertOk();
-    $response->assertSee('Chart of Accounts', false);
-    $response->assertSee($entity->legal_name, false);
-    $response->assertSee('Accounts used by this entity', false);
-    $response->assertSee('Add account', false);
-    $response->assertSee('chartOfAccountsSpa', false);
+    $entityResponse->assertOk();
+    $entityAccounts = collect($entityResponse->viewData('accountsPayload'));
 
-    $accounts = collect($response->viewData('accountsPayload'));
-    $bankRow = $accounts->firstWhere('account_code', '1100');
-    $equityRow = $accounts->firstWhere('account_code', '3190');
+    expect($entityAccounts->pluck('account_code')->sort()->values()->all())
+        ->toBe(['1100', '3190', '9001'])
+        ->and($entityAccounts->firstWhere('account_code', '9001')['business_entity_id'])->toBe($entity->id)
+        ->and($entityAccounts->firstWhere('account_code', $unusedFirm->account_code))->toBeNull()
+        ->and($entityAccounts->firstWhere('account_code', $otherOwned->account_code))->toBeNull()
+        ->and($entityResponse->viewData('businessEntity')->is($entity))->toBeTrue();
 
-    expect($accounts)->toHaveCount(2)
-        ->and($bankRow)->not->toBeNull()
-        ->and($equityRow)->not->toBeNull()
-        ->and($accounts->firstWhere('account_code', $unused->account_code))->toBeNull()
-        ->and((int) $bankRow['journal_lines_count'])->toBe(1)
-        ->and((int) $equityRow['journal_lines_count'])->toBe(1)
-        ->and($bankRow['can_delete'])->toBeFalse()
-        ->and($bankRow['update_url'])->toContain('/chart-of-accounts/')
-        ->and($response->viewData('storeUrl'))->toBe(route('chart-of-accounts.store'))
-        ->and($response->viewData('businessEntity')->is($entity))->toBeTrue();
+    $firmResponse = $this->actingAs($user)
+        ->get(route('chart-of-accounts.index'));
+
+    $firmResponse->assertOk();
+    $firmAccounts = collect($firmResponse->viewData('accountsPayload'));
+
+    expect($firmAccounts->firstWhere('account_code', $entityOwned->account_code))->toBeNull()
+        ->and($firmAccounts->firstWhere('account_code', $otherOwned->account_code))->toBeNull()
+        ->and($firmAccounts->firstWhere('account_code', '1100'))->not->toBeNull()
+        ->and($firmAccounts->firstWhere('account_code', $unusedFirm->account_code))->not->toBeNull();
+});
+
+it('creates entity-owned accounts from the entity page and firm accounts from the firm page', function () {
+    $this->seed(ChartOfAccountSeeder::class);
+
+    $user = User::factory()->create();
+    $entity = BusinessEntity::create([
+        'legal_name' => 'Create Scope Trust',
+        'entity_type' => 'Trust',
+        'status' => 'Active',
+        'registered_address' => '9 Create St',
+        'registered_email' => 'coa-create@example.test',
+        'phone_number' => '0400000005',
+        'user_id' => $user->id,
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('chart-of-accounts.store'), [
+            'business_entity_id' => $entity->id,
+            'account_code' => '9101',
+            'account_name' => 'Entity Private Fee',
+            'account_type' => 'expense',
+            'account_category' => 'other_expense',
+            'description' => 'Private to entity',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('account.account_code', '9101')
+        ->assertJsonPath('account.business_entity_id', $entity->id);
+
+    expect(ChartOfAccount::query()->where('account_code', '9101')->value('business_entity_id'))
+        ->toBe($entity->id);
 
     $this->actingAs($user)
         ->get(route('chart-of-accounts.index'))
         ->assertOk()
-        ->assertSee($unused->account_code, false);
+        ->assertDontSee('9101', false);
+
+    $this->actingAs($user)
+        ->get(route('business-entities.financial-reports.chart-of-accounts', $entity))
+        ->assertOk()
+        ->assertSee('9101', false);
+
+    $this->actingAs($user)
+        ->postJson(route('chart-of-accounts.store'), [
+            'account_code' => '9102',
+            'account_name' => 'Firm Shared Fee',
+            'account_type' => 'expense',
+            'account_category' => 'other_expense',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('account.business_entity_id', null);
+
+    $this->actingAs($user)
+        ->get(route('chart-of-accounts.index'))
+        ->assertOk()
+        ->assertSee('9102', false);
 });
 
-it('hides add account for viewers on the entity chart of accounts spa', function () {
+it('hides mutate permission for viewers on the entity chart of accounts spa', function () {
     $this->seed(ChartOfAccountSeeder::class);
 
     $user = User::factory()->viewer()->create();
@@ -156,7 +200,6 @@ it('hides add account for viewers on the entity chart of accounts spa', function
         ->get(route('business-entities.financial-reports.chart-of-accounts', $entity));
 
     $response->assertOk();
-    // @js() encodes JSON with unicode escapes; empty-state markup may still mention Add account.
     expect($response->getContent())->toContain('\u0022canMutate\u0022:false');
 });
 

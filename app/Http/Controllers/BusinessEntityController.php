@@ -1494,7 +1494,7 @@ class BusinessEntityController extends Controller
         $bankAccount = $transaction->bankAccount;
         $entityAssets = $businessEntity->assets()->orderBy('name')->get();
 
-        $dashboardChartAccounts = ChartOfAccount::activeForSelect()->map(fn ($account) => [
+        $dashboardChartAccounts = ChartOfAccount::activeForSelect((int) $businessEntity->id)->map(fn ($account) => [
             'id' => $account->id,
             'code' => $account->account_code,
             'name' => $account->account_name,

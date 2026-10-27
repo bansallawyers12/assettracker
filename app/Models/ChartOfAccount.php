@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ChartOfAccount extends Model
 {
     protected $fillable = [
+        'business_entity_id',
         'account_code',
         'account_name',
         'account_type',
@@ -26,16 +29,57 @@ class ChartOfAccount extends Model
     ];
 
     /**
+     * Firm/shared accounts only (business_entity_id null).
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeFirmWide(Builder $query): Builder
+    {
+        return $query->whereNull('business_entity_id');
+    }
+
+    /**
+     * Firm/shared accounts plus optional entity-owned accounts.
+     *
+     * @param  Builder<self>  $query
+     * @return Builder<self>
+     */
+    public function scopeAvailableForEntity(Builder $query, ?int $businessEntityId): Builder
+    {
+        if ($businessEntityId === null || $businessEntityId <= 0) {
+            return $query->firmWide();
+        }
+
+        return $query->where(function (Builder $inner) use ($businessEntityId): void {
+            $inner->whereNull('business_entity_id')
+                ->orWhere('business_entity_id', $businessEntityId);
+        });
+    }
+
+    public function isFirmWide(): bool
+    {
+        return $this->business_entity_id === null;
+    }
+
+    public function businessEntity(): BelongsTo
+    {
+        return $this->belongsTo(BusinessEntity::class);
+    }
+
+    /**
      * Active accounts for reconciliation / journal / invoice pickers.
+     * Defaults to firm/shared only so entity-private accounts do not leak into firm pickers.
      *
      * @return Collection<int, self>
      */
-    public static function activeForSelect(): Collection
+    public static function activeForSelect(?int $businessEntityId = null): Collection
     {
         return static::query()
+            ->availableForEntity($businessEntityId)
             ->where('is_active', true)
             ->orderBy('account_code')
-            ->get(['id', 'account_code', 'account_name', 'account_type', 'account_category']);
+            ->get(['id', 'account_code', 'account_name', 'account_type', 'account_category', 'business_entity_id']);
     }
 
     /**
@@ -44,9 +88,9 @@ class ChartOfAccount extends Model
      *
      * @return Collection<int, self>
      */
-    public static function activeForStatementCreate(bool $loanLedger): Collection
+    public static function activeForStatementCreate(bool $loanLedger, ?int $businessEntityId = null): Collection
     {
-        $accounts = static::activeForSelect();
+        $accounts = static::activeForSelect($businessEntityId);
 
         if (! $loanLedger) {
             return $accounts;
@@ -85,9 +129,10 @@ class ChartOfAccount extends Model
      *
      * @return Collection<int, self>
      */
-    public static function activeIncomeForSelect(): Collection
+    public static function activeIncomeForSelect(?int $businessEntityId = null): Collection
     {
         return static::query()
+            ->availableForEntity($businessEntityId)
             ->where('is_active', true)
             ->where('account_type', 'income')
             ->orderBy('account_code')
@@ -141,6 +186,10 @@ class ChartOfAccount extends Model
 
     public function isSystemAccount(): bool
     {
+        if (! $this->isFirmWide()) {
+            return false;
+        }
+
         return in_array(trim((string) $this->account_code), self::systemAccountCodes(), true);
     }
 
@@ -199,6 +248,7 @@ class ChartOfAccount extends Model
      *
      * @return array{
      *     id: int,
+     *     business_entity_id: int|null,
      *     account_code: string,
      *     account_name: string,
      *     account_type: string,
@@ -222,6 +272,7 @@ class ChartOfAccount extends Model
 
         return [
             'id' => $this->id,
+            'business_entity_id' => $this->business_entity_id !== null ? (int) $this->business_entity_id : null,
             'account_code' => $this->account_code,
             'account_name' => $this->account_name,
             'account_type' => $this->account_type,

@@ -20,6 +20,7 @@ class ChartOfAccountController extends Controller
         $this->authorize('viewAny', BusinessEntity::class);
 
         $accounts = ChartOfAccount::query()
+            ->firmWide()
             ->withCount(['journalLines', 'childAccounts', 'assetsAsDepreciationAccount'])
             ->orderBy('account_code')
             ->get()
@@ -39,7 +40,7 @@ class ChartOfAccountController extends Controller
     }
 
     /**
-     * Active accounts as JSON (shared by all business entities).
+     * Active firm/shared accounts as JSON.
      */
     public function apiIndex(): JsonResponse
     {
@@ -48,6 +49,7 @@ class ChartOfAccountController extends Controller
         return response()->json([
             'success' => true,
             'accounts' => ChartOfAccount::query()
+                ->firmWide()
                 ->where('is_active', true)
                 ->orderBy('account_code')
                 ->get()
@@ -57,6 +59,7 @@ class ChartOfAccountController extends Controller
                     'account_name' => $account->account_name,
                     'account_type' => $account->account_type,
                     'account_category' => $account->account_category,
+                    'business_entity_id' => null,
                 ]),
         ]);
     }
@@ -65,7 +68,18 @@ class ChartOfAccountController extends Controller
     {
         $this->authorize('view', $businessEntity);
 
-        return $this->apiIndex();
+        return response()->json([
+            'success' => true,
+            'accounts' => ChartOfAccount::activeForSelect((int) $businessEntity->id)
+                ->map(fn (ChartOfAccount $account) => [
+                    'id' => $account->id,
+                    'account_code' => $account->account_code,
+                    'account_name' => $account->account_name,
+                    'account_type' => $account->account_type,
+                    'account_category' => $account->account_category,
+                    'business_entity_id' => $account->business_entity_id !== null ? (int) $account->business_entity_id : null,
+                ]),
+        ]);
     }
 
     public function create(): RedirectResponse
@@ -78,14 +92,17 @@ class ChartOfAccountController extends Controller
     public function store(Request $request, ?BusinessEntity $businessEntity = null): RedirectResponse|JsonResponse
     {
         $this->authorize('create', BusinessEntity::class);
-        if ($businessEntity) {
-            $this->authorize('update', $businessEntity);
-            $this->ensureNotClosed($businessEntity);
+
+        $ownerEntity = $this->resolveAccountOwnerEntity($request, $businessEntity);
+        if ($ownerEntity) {
+            $this->authorize('update', $ownerEntity);
+            $this->ensureNotClosed($ownerEntity);
         }
 
-        $this->validateNewAccount($request);
+        $this->validateNewAccount($request, $ownerEntity?->id);
 
         $account = ChartOfAccount::create([
+            'business_entity_id' => $ownerEntity?->id,
             'account_code' => $request->account_code,
             'account_name' => $request->account_name,
             'account_type' => $request->account_type,
@@ -105,6 +122,12 @@ class ChartOfAccountController extends Controller
                 'message' => 'Chart of account created successfully.',
                 'account' => $this->accountPayload($account),
             ], 201);
+        }
+
+        if ($ownerEntity) {
+            return redirect()
+                ->route('business-entities.financial-reports.chart-of-accounts', $ownerEntity)
+                ->with('success', 'Chart of account created successfully.');
         }
 
         return redirect()->route('chart-of-accounts.index')
@@ -128,6 +151,10 @@ class ChartOfAccountController extends Controller
             $this->authorize('update', $businessEntity);
             $this->ensureNotClosed($businessEntity);
         }
+
+        $ownerEntityId = $chart_of_account->business_entity_id !== null
+            ? (int) $chart_of_account->business_entity_id
+            : null;
 
         $request->validate([
             'account_code' => [
@@ -168,7 +195,7 @@ class ChartOfAccountController extends Controller
             'parent_account_id' => [
                 'nullable',
                 'exists:chart_of_accounts,id',
-                function ($attribute, $value, $fail) use ($chart_of_account) {
+                function ($attribute, $value, $fail) use ($chart_of_account, $ownerEntityId) {
                     if (! $value) {
                         return;
                     }
@@ -180,6 +207,11 @@ class ChartOfAccountController extends Controller
                     }
                     if ($this->parentWouldCreateCycle($chart_of_account, $pid)) {
                         $fail(__('That parent would create a circular hierarchy.'));
+
+                        return;
+                    }
+                    if (! $this->parentIsAllowedForOwner($pid, $ownerEntityId)) {
+                        $fail(__('Parent account must be firm-wide or belong to the same entity.'));
                     }
                 },
             ],
@@ -295,7 +327,7 @@ class ChartOfAccountController extends Controller
         return redirect()->route('chart-of-accounts.index')->with('error', $message);
     }
 
-    private function validateNewAccount(Request $request): void
+    private function validateNewAccount(Request $request, ?int $ownerEntityId): void
     {
         $request->validate([
             'account_code' => [
@@ -303,6 +335,14 @@ class ChartOfAccountController extends Controller
                 'string',
                 'max:20',
                 Rule::unique('chart_of_accounts', 'account_code'),
+                function ($attribute, $value, $fail) use ($ownerEntityId) {
+                    if ($ownerEntityId === null) {
+                        return;
+                    }
+                    if (in_array(trim((string) $value), ChartOfAccount::systemAccountCodes(), true)) {
+                        $fail(__('System account codes are firm-wide and cannot be created per entity.'));
+                    }
+                },
             ],
             'account_name' => 'required|string|max:255',
             'account_type' => 'required|in:'.implode(',', array_keys(ChartOfAccount::$accountTypes)),
@@ -310,18 +350,52 @@ class ChartOfAccountController extends Controller
             'parent_account_id' => [
                 'nullable',
                 'exists:chart_of_accounts,id',
-                function ($attribute, $value, $fail) {
+                function ($attribute, $value, $fail) use ($ownerEntityId) {
                     if (! $value) {
                         return;
                     }
                     $parent = ChartOfAccount::find($value);
                     if ($parent && ! $parent->is_active) {
                         $fail(__('Cannot assign an inactive account as parent.'));
+
+                        return;
+                    }
+                    if (! $this->parentIsAllowedForOwner((int) $value, $ownerEntityId)) {
+                        $fail(__('Parent account must be firm-wide or belong to the same entity.'));
                     }
                 },
             ],
             'description' => 'nullable|string',
+            'business_entity_id' => ['nullable', 'integer', 'exists:business_entities,id'],
         ]);
+    }
+
+    private function resolveAccountOwnerEntity(Request $request, ?BusinessEntity $routeEntity): ?BusinessEntity
+    {
+        if ($routeEntity) {
+            return $routeEntity;
+        }
+
+        $id = (int) $request->input('business_entity_id', 0);
+        if ($id <= 0) {
+            return null;
+        }
+
+        return BusinessEntity::query()->find($id);
+    }
+
+    private function parentIsAllowedForOwner(int $parentId, ?int $ownerEntityId): bool
+    {
+        $parent = ChartOfAccount::query()->find($parentId);
+        if (! $parent) {
+            return false;
+        }
+
+        if ($parent->business_entity_id === null) {
+            return true;
+        }
+
+        return $ownerEntityId !== null && (int) $parent->business_entity_id === $ownerEntityId;
     }
 
     /**

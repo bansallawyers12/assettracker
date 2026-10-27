@@ -1290,9 +1290,23 @@ class FinancialReportService
         return Carbon::parse($transaction->date);
     }
 
-    public function getActiveChartOfAccounts(): EloquentCollection
+    /**
+     * @param  list<int>|null  $businessEntityIds
+     */
+    public function getActiveChartOfAccounts(?array $businessEntityIds = null): EloquentCollection
     {
-        return ChartOfAccount::where('is_active', true)
+        $ids = array_values(array_filter(array_map('intval', $businessEntityIds ?? []), fn (int $id): bool => $id > 0));
+
+        return ChartOfAccount::query()
+            ->when(
+                $ids === [],
+                fn ($query) => $query->firmWide(),
+                fn ($query) => $query->where(function ($inner) use ($ids): void {
+                    $inner->whereNull('business_entity_id')
+                        ->orWhereIn('business_entity_id', $ids);
+                }),
+            )
+            ->where('is_active', true)
             ->orderBy('account_code')
             ->get();
     }

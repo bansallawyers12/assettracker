@@ -244,7 +244,7 @@ class FinancialReportController extends Controller
             return $this->csvExporter->accountTransactions($report);
         }
 
-        $allAccounts = $this->financialReportService->getActiveChartOfAccounts();
+        $allAccounts = $this->financialReportService->getActiveChartOfAccounts($ids);
 
         return view('financial-reports.account-transactions', compact('report', 'allAccounts'));
     }
@@ -316,8 +316,8 @@ class FinancialReportController extends Controller
     }
 
     /**
-     * Shared firm CoA SPA filtered to accounts used by this entity (journal lines).
-     * Mutations still hit firm chart-of-accounts.* — not a separate per-entity chart.
+     * Entity CoA SPA: entity-owned accounts plus firm/shared accounts used by this entity.
+     * Add from this page creates entity-owned rows (hidden from firm /chart-of-accounts).
      */
     public function chartOfAccounts(BusinessEntity $businessEntity, Request $request): View|RedirectResponse
     {
@@ -330,10 +330,16 @@ class FinancialReportController extends Controller
         $entityId = (int) $businessEntity->id;
 
         $accounts = ChartOfAccount::query()
-            ->whereHas(
-                'journalLines.journalEntry',
-                fn ($journalEntry) => $journalEntry->where('business_entity_id', $entityId)
-            )
+            ->where(function ($query) use ($entityId): void {
+                $query->where('business_entity_id', $entityId)
+                    ->orWhere(function ($shared) use ($entityId): void {
+                        $shared->whereNull('business_entity_id')
+                            ->whereHas(
+                                'journalLines.journalEntry',
+                                fn ($journalEntry) => $journalEntry->where('business_entity_id', $entityId)
+                            );
+                    });
+            })
             ->withCount([
                 'journalLines as journal_lines_count' => function ($query) use ($entityId): void {
                     $query->whereHas(
@@ -364,7 +370,7 @@ class FinancialReportController extends Controller
             'openAccountId' => $request->query('account'),
             'businessEntity' => $businessEntity,
             'pageEyebrow' => 'Financial Reports',
-            'pageSubtitle' => 'Accounts used by this entity (journal activity). Add/edit/delete still updates the shared firm chart for every entity.',
+            'pageSubtitle' => 'Entity-owned accounts for this company, plus firm accounts this entity has used. Add account here is entity-only (not shown on the firm Chart of Accounts).',
         ]);
     }
 

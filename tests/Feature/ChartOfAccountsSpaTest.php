@@ -63,10 +63,15 @@ it('supports entity context while keeping firm mutation endpoints', function () 
     $reportController = file_get_contents(app_path('Http/Controllers/FinancialReportController.php'));
 
     expect($index)->toContain('preserveJournalCountsOnSave')
-        ->and($index)->toContain('businessEntity')
+        ->and($index)->toContain('businessEntityId')
+        ->and($index)->toContain('payload.business_entity_id')
         ->and($reportController)->toContain("view('chart-of-accounts.index'")
         ->and($reportController)->toContain("route('chart-of-accounts.store')")
         ->and($reportController)->toContain('firm_journal_lines_count')
-        ->and($reportController)->toContain("'journalLines.journalEntry'")
+        ->and($reportController)->toContain("where('business_entity_id', \$entityId)")
         ->and($reportController)->toContain('toSpaPayload');
+
+    $coaController = file_get_contents(app_path('Http/Controllers/ChartOfAccountController.php'));
+    expect($coaController)->toContain('->firmWide()')
+        ->and($coaController)->toContain('resolveAccountOwnerEntity');
 });

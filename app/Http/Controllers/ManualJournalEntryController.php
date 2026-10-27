@@ -463,6 +463,7 @@ class ManualJournalEntryController extends Controller
         ?JournalEntry $editing = null,
     ): View {
         $accounts = ChartOfAccount::query()
+            ->availableForEntity((int) $businessEntity->id)
             ->where('is_active', true)
             ->orderBy('account_code')
             ->get();

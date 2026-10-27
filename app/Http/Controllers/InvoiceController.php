@@ -168,7 +168,7 @@ class InvoiceController extends Controller
         $this->authorize('update', $businessEntity);
         $this->ensureAccountingMutationsAllowed($businessEntity);
 
-        $lineAccountCodes = $this->lineAccountCodes();
+        $lineAccountCodes = $this->lineAccountCodes((int) $businessEntity->id);
         $data = $this->validateInvoicePayload($request, $businessEntity, $lineAccountCodes);
         [$assetId, $leaseId] = $this->resolveAssetAndLease($businessEntity, $data);
 
@@ -375,7 +375,7 @@ class InvoiceController extends Controller
             return back()->with('error', 'Posted invoices cannot be edited.');
         }
 
-        $lineAccountCodes = $this->lineAccountCodes();
+        $lineAccountCodes = $this->lineAccountCodes((int) $businessEntity->id);
         $data = $this->validateInvoicePayload($request, $businessEntity, $lineAccountCodes, $invoice);
         [$assetId, $leaseId] = $this->resolveAssetAndLease($businessEntity, $data);
 
@@ -631,10 +631,10 @@ class InvoiceController extends Controller
      */
     private function invoiceFormContext(BusinessEntity $businessEntity): array
     {
-        $lineAccounts = ChartOfAccount::activeForSelect();
+        $lineAccounts = ChartOfAccount::activeForSelect((int) $businessEntity->id);
         if ($lineAccounts->isEmpty() || $lineAccounts->firstWhere('account_code', '4100') === null) {
             $this->ensureDefaultRentalIncomeAccount();
-            $lineAccounts = ChartOfAccount::activeForSelect();
+            $lineAccounts = ChartOfAccount::activeForSelect((int) $businessEntity->id);
         }
         $defaultAccountCode = old(
             'lines.0.account_code',
@@ -695,12 +695,12 @@ class InvoiceController extends Controller
     /**
      * @return list<string>
      */
-    private function lineAccountCodes(): array
+    private function lineAccountCodes(int $businessEntityId): array
     {
-        $codes = ChartOfAccount::activeForSelect()->pluck('account_code')->all();
+        $codes = ChartOfAccount::activeForSelect($businessEntityId)->pluck('account_code')->all();
         if ($codes === [] || ! in_array('4100', $codes, true)) {
             $this->ensureDefaultRentalIncomeAccount();
-            $codes = ChartOfAccount::activeForSelect()->pluck('account_code')->all();
+            $codes = ChartOfAccount::activeForSelect($businessEntityId)->pluck('account_code')->all();
         }
 
         return $codes;

@@ -2,7 +2,7 @@
     @php
         $businessEntity = $businessEntity ?? null;
         $pageEyebrow = $pageEyebrow ?? 'Accounting';
-        $pageSubtitle = $pageSubtitle ?? 'Firm-wide chart shared by every entity (legacy per-entity CoA URLs redirect here). This list shows journal line counts — not stored opening/current balances. Entity P&L and balance sheet figures come from posted journals only.';
+        $pageSubtitle = $pageSubtitle ?? 'Firm-wide chart shared by every entity (entity-only accounts created on an entity page are not listed here). This list shows journal line counts — not stored opening/current balances. Entity P&L and balance sheet figures come from posted journals only.';
         $spaConfig = [
             'accounts' => $accountsPayload,
             'accountTypes' => $accountTypes,
@@ -17,6 +17,7 @@
             'flashSuccess' => session('success'),
             'flashError' => session('error'),
             'preserveJournalCountsOnSave' => $businessEntity !== null,
+            'businessEntityId' => $businessEntity?->id,
         ];
     @endphp
 
@@ -388,6 +389,7 @@
                 csrfToken: config.csrfToken,
                 canMutate: Boolean(config.canMutate),
                 preserveJournalCountsOnSave: Boolean(config.preserveJournalCountsOnSave),
+                businessEntityId: config.businessEntityId ? Number(config.businessEntityId) : null,
                 search: '',
                 typeFilter: '',
                 statusFilter: 'all',
@@ -660,6 +662,8 @@
                         url = current.update_url;
                         method = 'PUT';
                         payload.is_active = this.form.is_active;
+                    } else if (this.businessEntityId) {
+                        payload.business_entity_id = this.businessEntityId;
                     }
 
                     try {
