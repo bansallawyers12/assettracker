@@ -67,5 +67,6 @@ it('supports entity context while keeping firm mutation endpoints', function () 
         ->and($reportController)->toContain("view('chart-of-accounts.index'")
         ->and($reportController)->toContain("route('chart-of-accounts.store')")
         ->and($reportController)->toContain('firm_journal_lines_count')
+        ->and($reportController)->toContain("'journalLines.journalEntry'")
         ->and($reportController)->toContain('toSpaPayload');
 });

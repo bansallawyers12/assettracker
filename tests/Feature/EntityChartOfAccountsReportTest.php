@@ -34,7 +34,7 @@ it('links chart of accounts from the entity financial reports hub', function () 
         ->and($show)->toContain('Shared chart with this entity');
 });
 
-it('shows the firm CoA spa with entity-scoped journal counts and shared mutation urls', function () {
+it('shows only accounts with journal activity for the entity', function () {
     $this->seed(ChartOfAccountSeeder::class);
 
     $user = User::factory()->create();
@@ -59,6 +59,7 @@ it('shows the firm CoA spa with entity-scoped journal counts and shared mutation
 
     $bank = ChartOfAccount::query()->where('account_code', '1100')->firstOrFail();
     $equity = ChartOfAccount::query()->where('account_code', '3190')->firstOrFail();
+    $unused = ChartOfAccount::query()->where('account_code', '1130')->firstOrFail();
 
     $entityEntry = JournalEntry::query()->create([
         'business_entity_id' => $entity->id,
@@ -112,25 +113,29 @@ it('shows the firm CoA spa with entity-scoped journal counts and shared mutation
     $response->assertOk();
     $response->assertSee('Chart of Accounts', false);
     $response->assertSee($entity->legal_name, false);
+    $response->assertSee('Accounts used by this entity', false);
     $response->assertSee('Add account', false);
     $response->assertSee('chartOfAccountsSpa', false);
-    $response->assertSee('openCreate()', false);
-    $response->assertDontSee('Open firm Chart of Accounts', false);
-    $response->assertDontSee('Read-only', false);
 
-    $accounts = $response->viewData('accountsPayload');
-    $bankRow = collect($accounts)->firstWhere('account_code', '1100');
-    $equityRow = collect($accounts)->firstWhere('account_code', '3190');
+    $accounts = collect($response->viewData('accountsPayload'));
+    $bankRow = $accounts->firstWhere('account_code', '1100');
+    $equityRow = $accounts->firstWhere('account_code', '3190');
 
-    expect($bankRow)->not->toBeNull()
+    expect($accounts)->toHaveCount(2)
+        ->and($bankRow)->not->toBeNull()
+        ->and($equityRow)->not->toBeNull()
+        ->and($accounts->firstWhere('account_code', $unused->account_code))->toBeNull()
         ->and((int) $bankRow['journal_lines_count'])->toBe(1)
         ->and((int) $equityRow['journal_lines_count'])->toBe(1)
         ->and($bankRow['can_delete'])->toBeFalse()
         ->and($bankRow['update_url'])->toContain('/chart-of-accounts/')
-        ->and($bankRow['destroy_url'])->toContain('/chart-of-accounts/')
         ->and($response->viewData('storeUrl'))->toBe(route('chart-of-accounts.store'))
-        ->and($response->viewData('businessEntity')->is($entity))->toBeTrue()
-        ->and(count($accounts))->toBeGreaterThan(2);
+        ->and($response->viewData('businessEntity')->is($entity))->toBeTrue();
+
+    $this->actingAs($user)
+        ->get(route('chart-of-accounts.index'))
+        ->assertOk()
+        ->assertSee($unused->account_code, false);
 });
 
 it('hides add account for viewers on the entity chart of accounts spa', function () {

@@ -316,7 +316,7 @@ class FinancialReportController extends Controller
     }
 
     /**
-     * Shared firm CoA SPA with journal line counts scoped to one entity.
+     * Shared firm CoA SPA filtered to accounts used by this entity (journal lines).
      * Mutations still hit firm chart-of-accounts.* — not a separate per-entity chart.
      */
     public function chartOfAccounts(BusinessEntity $businessEntity, Request $request): View|RedirectResponse
@@ -330,6 +330,10 @@ class FinancialReportController extends Controller
         $entityId = (int) $businessEntity->id;
 
         $accounts = ChartOfAccount::query()
+            ->whereHas(
+                'journalLines.journalEntry',
+                fn ($journalEntry) => $journalEntry->where('business_entity_id', $entityId)
+            )
             ->withCount([
                 'journalLines as journal_lines_count' => function ($query) use ($entityId): void {
                     $query->whereHas(
@@ -360,7 +364,7 @@ class FinancialReportController extends Controller
             'openAccountId' => $request->query('account'),
             'businessEntity' => $businessEntity,
             'pageEyebrow' => 'Financial Reports',
-            'pageSubtitle' => 'Shared firm-wide chart — journal line counts for this entity only. Add/edit/delete still updates the firm chart for every entity.',
+            'pageSubtitle' => 'Accounts used by this entity (journal activity). Add/edit/delete still updates the shared firm chart for every entity.',
         ]);
     }
 
