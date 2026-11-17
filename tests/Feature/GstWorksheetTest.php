@@ -604,3 +604,88 @@ it('opens gst worksheet links on the transactions that make up the cell', functi
     $purchases->assertDontSee('August rent');
     $purchases->assertDontSee('Loan drawn');
 });
+
+it('gives the final invoice receipt the rounding cent', function () {
+    $entity = gstWorksheetEntity('Rounding Cent Pty Ltd');
+    $invoice = Invoice::create([
+        'business_entity_id' => $entity->id,
+        'invoice_number' => 'INV-ROUND',
+        'issue_date' => '2025-08-01',
+        'due_date' => '2025-08-08',
+        'customer_name' => 'Tenant',
+        'currency' => 'AUD',
+        'status' => 'paid',
+        'is_posted' => true,
+        'gst_basis' => 'inclusive',
+        'subtotal' => 90.91,
+        'gst_amount' => 9.09,
+        'total_amount' => 100,
+    ]);
+
+    foreach (range(1, 10) as $day) {
+        $payment = gstWorksheetPaid($entity, 'invoice_payment', 10, 0, '2025-08-'.str_pad((string) $day, 2, '0', STR_PAD_LEFT), '2025-08-'.str_pad((string) $day, 2, '0', STR_PAD_LEFT));
+        InvoicePaymentAllocation::create([
+            'transaction_id' => $payment->id,
+            'invoice_id' => $invoice->id,
+            'amount' => 10,
+        ]);
+    }
+
+    $periods = gstWorksheetReport([$entity->id])['entities'][0]['periods'];
+
+    expect($periods['q1']['gst_collected'])->toBe(9.09)
+        ->and($periods['q1']['sales_ex_gst'])->toBe(90.91);
+});
+
+it('keeps a split off the sales link when only its transfer line looks like income', function () {
+    $user = User::factory()->create();
+    $entity = gstWorksheetEntity('Split Link Pty Ltd');
+    $split = gstWorksheetPaid($entity, 'split', 800, 0, '2025-08-17', '2025-08-17');
+    $split->update(['description' => 'Transfer and repair']);
+    $split->lines()->create([
+        'sort_order' => 1,
+        'transaction_type' => 'internal_transfer',
+        'amount' => 500,
+        'gst_amount' => 0,
+        'gst_basis' => 'inclusive',
+        'description' => 'Offset leg',
+    ]);
+    $split->lines()->create([
+        'sort_order' => 2,
+        'transaction_type' => 'repairs_maintenance',
+        'amount' => 220,
+        'gst_amount' => 20,
+        'gst_basis' => 'inclusive',
+        'description' => 'Repair leg',
+    ]);
+
+    $sales = $this->actingAs($user)->get(route('transactions.index', [
+        'entity_id' => $entity->id,
+        'date_from' => '2025-07-01',
+        'date_to' => '2025-09-30',
+        'payment_status' => 'paid',
+        'cash_dated' => 1,
+        'gst_activity' => 1,
+        'direction' => 'income',
+    ]));
+    $sales->assertOk();
+    $sales->assertDontSee('Transfer and repair');
+
+    $purchases = $this->actingAs($user)->get(route('transactions.index', [
+        'entity_id' => $entity->id,
+        'date_from' => '2025-07-01',
+        'date_to' => '2025-09-30',
+        'payment_status' => 'paid',
+        'cash_dated' => 1,
+        'gst_activity' => 1,
+        'direction' => 'expense',
+    ]));
+    $purchases->assertOk();
+    $purchases->assertSee('Transfer and repair');
+    $purchases->assertSee('200.00');
+
+    $periods = gstWorksheetReport([$entity->id])['entities'][0]['periods'];
+    expect($periods['q1']['purchases_ex_gst'])->toBe(200.0)
+        ->and($periods['q1']['gst_credits'])->toBe(20.0)
+        ->and($periods['q1']['sales_ex_gst'])->toBe(0.0);
+});

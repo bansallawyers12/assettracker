@@ -197,13 +197,21 @@ final class TransactionListFilters
                 Transaction::gstRemittanceTypes(),
                 Transaction::gstWorksheetExcludedTypes(),
             )));
-            $query->where(function ($q) use ($excluded, $table) {
+            $direction = $filters['direction'] ?? null;
+            $query->where(function ($q) use ($excluded, $table, $direction) {
                 $q->where(function ($header) use ($excluded, $table) {
                     $header->where($table.'.transaction_type', '!=', Transaction::TYPE_SPLIT)
                         ->whereNotIn($table.'.transaction_type', $excluded);
-                })->orWhere(function ($split) use ($excluded, $table) {
+                })->orWhere(function ($split) use ($excluded, $table, $direction) {
                     $split->where($table.'.transaction_type', Transaction::TYPE_SPLIT)
-                        ->whereHas('lines', fn ($lq) => $lq->whereNotIn('transaction_type', $excluded));
+                        ->whereHas('lines', function ($lq) use ($excluded, $direction) {
+                            $lq->whereNotIn('transaction_type', $excluded);
+                            if ($direction === 'income') {
+                                $lq->whereIn('transaction_type', array_keys(Transaction::$incomeTypes));
+                            } elseif ($direction === 'expense') {
+                                $lq->whereIn('transaction_type', array_keys(Transaction::$expenseTypes));
+                            }
+                        });
                 });
             });
         }

@@ -3898,7 +3898,7 @@ class BusinessEntityController extends Controller
         };
 
         if (! empty($filters['gst_activity'])) {
-            $query->with(['invoicePaymentAllocations.invoice']);
+            $query->with(['invoicePaymentAllocations.invoice.paymentAllocations.transaction']);
         }
 
         $transactions = $query->paginate(50)->withQueryString();

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BusinessEntity;
 use App\Models\ChartOfAccount;
 use App\Models\Invoice;
+use App\Models\InvoicePaymentAllocation;
 use App\Models\JournalEntry;
 use App\Models\JournalLine;
 use App\Models\TrackingCategory;
@@ -2038,7 +2039,7 @@ class FinancialReportService
     private function paidGstSources(int $entityId, string $start, string $end): \Generator
     {
         $transactions = Transaction::query()
-            ->with(['lines', 'bankAccount', 'invoicePaymentAllocations.invoice'])
+            ->with(['lines', 'bankAccount', 'invoicePaymentAllocations.invoice.paymentAllocations.transaction'])
             ->where('business_entity_id', $entityId)
             ->where('payment_status', 'paid')
             ->where(function ($q) use ($start, $end) {
@@ -2155,13 +2156,7 @@ class FinancialReportService
                 continue;
             }
 
-            $total = (float) $invoice->total_amount;
-            $invoiceGst = (float) ($invoice->gst_amount ?? 0);
-            if ($total <= 0 || $invoiceGst == 0.0) {
-                continue;
-            }
-
-            $gst += round($paid * $invoiceGst / $total, 2);
+            $gst += $this->invoiceAllocationGstShare($allocation, $invoice);
         }
 
         $gst = round($gst, 2);
@@ -2172,6 +2167,94 @@ class FinancialReportService
             'net' => round($cash - $gst, 2),
             'amount' => $cash,
         ];
+    }
+
+    /**
+     * This payment's share of the invoice GST.
+     * Each allocation is rounded on its own. Once the invoice is fully paid,
+     * the last receipt absorbs the rounding difference so the shares add up
+     * to the invoice GST.
+     */
+    private function invoiceAllocationGstShare(InvoicePaymentAllocation $allocation, Invoice $invoice): float
+    {
+        $total = round((float) $invoice->total_amount, 2);
+        $invoiceGst = round((float) ($invoice->gst_amount ?? 0), 2);
+        $paid = round((float) $allocation->amount, 2);
+
+        if ($total <= 0 || $invoiceGst == 0.0 || $paid == 0.0) {
+            return 0.0;
+        }
+
+        $rows = $this->paidInvoiceAllocationRows($invoice);
+        if ($rows === []) {
+            return $this->cappedGstShare($paid, $total, $invoiceGst);
+        }
+
+        $shares = [];
+        $paidTotal = 0.0;
+
+        foreach ($rows as $row) {
+            $rowPaid = $row['amount'];
+            $paidTotal += $rowPaid;
+            $shares[$row['id']] = $this->cappedGstShare($rowPaid, $total, $invoiceGst);
+        }
+
+        $paidTotal = round($paidTotal, 2);
+        $last = $rows[array_key_last($rows)];
+
+        if (abs($paidTotal - $total) <= 0.02) {
+            $drift = round($invoiceGst - array_sum($shares), 2);
+            if (abs($drift) >= 0.01) {
+                $adjusted = round($shares[$last['id']] + $drift, 2);
+                if ($invoiceGst > 0) {
+                    $adjusted = min($last['amount'], max(0.0, $adjusted));
+                }
+                $shares[$last['id']] = $adjusted;
+            }
+        }
+
+        return $shares[$allocation->id] ?? $this->cappedGstShare($paid, $total, $invoiceGst);
+    }
+
+    private function cappedGstShare(float $paid, float $total, float $invoiceGst): float
+    {
+        $share = round($paid * $invoiceGst / $total, 2);
+
+        if ($invoiceGst > 0) {
+            return min($paid, max(0.0, $share));
+        }
+
+        return $share;
+    }
+
+    /**
+     * Paid allocations on an invoice, earliest receipt first.
+     *
+     * @return list<array{id: int, amount: float}>
+     */
+    private function paidInvoiceAllocationRows(Invoice $invoice): array
+    {
+        $allocations = $invoice->relationLoaded('paymentAllocations')
+            ? $invoice->paymentAllocations
+            : $invoice->paymentAllocations()->with('transaction')->get();
+
+        return $allocations
+            ->filter(function (InvoicePaymentAllocation $row): bool {
+                $status = $row->transaction?->payment_status;
+
+                return $status === null || $status === 'paid';
+            })
+            ->sortBy(function (InvoicePaymentAllocation $row): string {
+                $date = $row->transaction?->paid_at ?? $row->transaction?->date;
+
+                return ($date?->toDateString() ?? '9999-12-31').'-'.str_pad((string) $row->id, 10, '0', STR_PAD_LEFT);
+            })
+            ->values()
+            ->map(fn (InvoicePaymentAllocation $row): array => [
+                'id' => (int) $row->id,
+                'amount' => round((float) $row->amount, 2),
+            ])
+            ->all();
     }
 
     private function gstSourceBankLabel(Transaction $transaction): string
