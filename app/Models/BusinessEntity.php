@@ -782,6 +782,24 @@ class BusinessEntity extends Model
     }
 
     /**
+     * ASIC due date for dashboard / bills reminders when $withinDays is the look-ahead window.
+     */
+    public function asicRenewalDueDateForReminders(int $withinDays = 15, ?CarbonInterface $from = null): ?Carbon
+    {
+        $from = Carbon::parse($from ?? now())->startOfDay();
+        $dueDate = $this->displayAsicRenewalDueDate($withinDays, $from);
+
+        if ($dueDate === null) {
+            return null;
+        }
+
+        $earliest = $from->copy()->subDays($withinDays);
+        $cutoff = $from->copy()->addDays($withinDays);
+
+        return $dueDate->betweenIncluded($earliest, $cutoff) ? $dueDate : null;
+    }
+
+    /**
      * Operational companies whose ASIC anniversary is overdue (within lookback)
      * or due within $withinDays.
      *
@@ -795,7 +813,7 @@ class BusinessEntity extends Model
             ->whereNotNull('asic_renewal_date')
             ->get()
             ->map(function (self $entity) use ($withinDays) {
-                $dueDate = $entity->asicRenewalDueDateInWindow($withinDays);
+                $dueDate = $entity->asicRenewalDueDateForReminders($withinDays);
                 if ($dueDate === null) {
                     return null;
                 }

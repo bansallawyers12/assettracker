@@ -141,6 +141,30 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
         $this->assertSame('2026-07-20', $entity->displayAsicRenewalDueDate()?->toDateString());
     }
 
+    public function test_asic_renewal_due_date_for_reminders_omits_explicit_future_anniversary_outside_window(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-17'));
+
+        $entity = new BusinessEntity([
+            'entity_type' => 'Company',
+            'asic_renewal_date' => '2027-11-14',
+        ]);
+
+        $this->assertNull($entity->asicRenewalDueDateForReminders(15));
+    }
+
+    public function test_asic_renewal_due_date_for_reminders_includes_near_term_anniversary(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-17'));
+
+        $entity = new BusinessEntity([
+            'entity_type' => 'Company',
+            'asic_renewal_date' => '2020-11-27',
+        ]);
+
+        $this->assertSame('2026-11-27', $entity->asicRenewalDueDateForReminders(15)?->toDateString());
+    }
+
     public function test_asic_renewal_due_date_in_window_null_outside_window(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-07-24'));
