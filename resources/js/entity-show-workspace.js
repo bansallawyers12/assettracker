@@ -337,6 +337,59 @@ function initContactsWorkspace(root) {
     });
 }
 
+function applyProfilePageRefresh(pageRoot, payload) {
+    const entity = payload?.entity;
+
+    if (entity?.legal_name) {
+        const titleEl = document.querySelector('[data-entity-page-title]');
+        const typeEl = document.querySelector('[data-entity-page-type]');
+        if (titleEl) {
+            titleEl.textContent = entity.legal_name;
+        }
+        if (typeEl) {
+            typeEl.textContent = entity.entity_type;
+        }
+    }
+
+    if (entity && typeof entity.is_closed === 'boolean') {
+        if (entity.is_closed) {
+            pageRoot.dataset.entityClosed = '1';
+        } else {
+            delete pageRoot.dataset.entityClosed;
+        }
+
+        const closedBadge = document.querySelector('[data-entity-page-closed-badge]');
+        if (closedBadge) {
+            closedBadge.classList.toggle('hidden', !entity.is_closed);
+        }
+    }
+
+    if (entity && typeof entity.is_tenancy_contact_only === 'boolean') {
+        const tenancyBadge = document.querySelector('[data-entity-page-tenancy-badge]');
+        if (tenancyBadge) {
+            tenancyBadge.classList.toggle('hidden', !entity.is_tenancy_contact_only);
+        }
+    }
+
+    const closedBannerHost = pageRoot.querySelector('[data-entity-closed-banner-host]');
+    if (closedBannerHost && typeof payload.closed_banner_html === 'string') {
+        closedBannerHost.innerHTML = payload.closed_banner_html;
+    }
+
+    const tenancyBannerHost = pageRoot.querySelector('[data-entity-tenancy-banner-host]');
+    if (tenancyBannerHost && typeof payload.tenancy_banner_html === 'string') {
+        tenancyBannerHost.innerHTML = payload.tenancy_banner_html;
+    }
+
+    const sidebarHost = pageRoot.querySelector('[data-entity-sidebar]');
+    if (sidebarHost && payload.sidebar_html) {
+        sidebarHost.innerHTML = payload.sidebar_html;
+        if (window.Alpine?.initTree) {
+            window.Alpine.initTree(sidebarHost);
+        }
+    }
+}
+
 function initProfileWorkspace(pageRoot) {
     const profileUrl = pageRoot.dataset.profileFormUrl;
     if (!profileUrl) {
@@ -368,26 +421,7 @@ function initProfileWorkspace(pageRoot) {
 
     registerPanelFormHandler('.profile-ws-form', async (payload) => {
         closeWorkspacePanel();
-
-        if (payload.entity?.legal_name) {
-            const titleEl = pageRoot.querySelector('[data-entity-page-title]');
-            const typeEl = pageRoot.querySelector('[data-entity-page-type]');
-            if (titleEl) {
-                titleEl.textContent = payload.entity.legal_name;
-            }
-            if (typeEl) {
-                typeEl.textContent = payload.entity.entity_type;
-            }
-        }
-
-        const sidebarHost = pageRoot.querySelector('[data-entity-sidebar]');
-        if (sidebarHost && payload.sidebar_html) {
-            sidebarHost.innerHTML = payload.sidebar_html;
-            if (window.Alpine?.initTree) {
-                window.Alpine.initTree(sidebarHost);
-            }
-        }
-
+        applyProfilePageRefresh(pageRoot, payload);
         notifyFormSuccess(payload.message || 'Profile updated.', 'Profile updated');
     });
 }

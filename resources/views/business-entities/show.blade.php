@@ -13,12 +13,20 @@
                 <div class="mt-1 flex flex-wrap items-center gap-2">
                     <p class="text-sm text-gray-600 dark:text-gray-400" data-entity-page-type>{{ $businessEntity->entity_type }}</p>
                     @if ($businessEntity->isTenancyContactOnly())
-                        <span class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+                        <span data-entity-page-tenancy-badge class="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
+                            {{ __('Contact only') }}
+                        </span>
+                    @else
+                        <span data-entity-page-tenancy-badge class="hidden inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-900/50 dark:text-amber-100">
                             {{ __('Contact only') }}
                         </span>
                     @endif
                     @if ($businessEntity->isClosed())
-                        <span class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-900 dark:bg-rose-900/50 dark:text-rose-100">
+                        <span data-entity-page-closed-badge class="inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-900 dark:bg-rose-900/50 dark:text-rose-100">
+                            {{ __('Closed') }}
+                        </span>
+                    @else
+                        <span data-entity-page-closed-badge class="hidden inline-flex items-center rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-900 dark:bg-rose-900/50 dark:text-rose-100">
                             {{ __('Closed') }}
                         </span>
                     @endif
@@ -67,65 +75,12 @@
                     </ul>
                 </div>
             @endif
-            @if ($businessEntity->isClosed())
-                <div class="mb-4 rounded-lg border border-rose-200 bg-rose-50 dark:border-rose-900/60 dark:bg-rose-950/40 px-4 py-3 text-sm text-rose-900 dark:text-rose-100" role="status" data-closed-entity-banner>
-                    <p class="font-medium">{{ __('This entity is closed') }}</p>
-                    <p class="mt-1 text-rose-800 dark:text-rose-200">
-                        {{ __('Changes are blocked while it stays closed, including:') }}
-                    </p>
-                    <ul class="mt-2 list-disc space-y-1 pl-5 text-rose-800 dark:text-rose-200">
-                        <li>{{ __('Adding or editing assets, persons, bank accounts, and invoices') }}</li>
-                        <li>{{ __('Bank imports, transactions, and other accounting updates') }}</li>
-                    </ul>
-                    @if ($businessEntity->closed_date)
-                        <p class="mt-2 text-rose-800 dark:text-rose-200">
-                            <span class="font-medium">{{ __('Closed') }}:</span>
-                            {{ $businessEntity->closed_date->format('d/m/Y') }}
-                            @if (filled($businessEntity->closed_reason))
-                                — {{ $businessEntity->closed_reason }}
-                            @endif
-                        </p>
-                    @endif
-                    <p class="mt-2 text-rose-800 dark:text-rose-200">
-                        {{ __('To make changes again, edit the company profile and set Status to Active. That clears the closed date and reopens the entity.') }}
-                    </p>
-                    <div class="mt-3">
-                        @can('update', $businessEntity)
-                            <button type="button" data-entity-profile-edit class="inline-flex items-center rounded-md bg-rose-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-800 dark:bg-rose-600 dark:hover:bg-rose-500">
-                                <x-lucide-pencil class="mr-1.5 h-4 w-4" aria-hidden="true" />
-                                {{ __('Reopen via company profile') }}
-                            </button>
-                        @else
-                            <p class="text-xs text-rose-700 dark:text-rose-300">{{ __('Ask a staff user to reopen this entity from the company profile.') }}</p>
-                        @endcan
-                    </div>
-                </div>
-            @endif
-            @if ($businessEntity->isTenancyContactOnly())
-                <div class="mb-4 rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-900 dark:text-amber-100" role="status" data-tenancy-contact-banner>
-                    <p class="font-medium">{{ __('Tenancy / property manager contact') }}</p>
-                    <p class="mt-1 text-amber-800 dark:text-amber-200">
-                        {{ __('This company is a rental agency / property-manager contact, not one of your operating entities. That is why some sections are missing:') }}
-                    </p>
-                    <ul class="mt-2 list-disc space-y-1 pl-5 text-amber-800 dark:text-amber-200">
-                        <li>{{ __('Profit & Loss, Balance Sheet, and Manual journals') }}</li>
-                        <li>{{ __('Creating invoices and linking bank accounts') }}</li>
-                        <li>{{ __('Company officer / trustee roles on the Persons tab') }}</li>
-                        <li>{{ __('Main entity list, financial reports, and accounting pickers') }}</li>
-                    </ul>
-                    <p class="mt-2 text-amber-800 dark:text-amber-200">
-                        {{ __('Prefer linking agencies when you add a tenant on a property asset. To treat this record as an operating entity instead, edit the company profile and turn off “Tenancy / property manager contact only”.') }}
-                    </p>
-                    <div class="mt-3">
-                        @can('update', $businessEntity)
-                            <button type="button" data-entity-profile-edit class="inline-flex items-center rounded-md bg-amber-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-800 dark:bg-amber-600 dark:hover:bg-amber-500">
-                                <x-lucide-pencil class="mr-1.5 h-4 w-4" aria-hidden="true" />
-                                {{ __('Edit company profile') }}
-                            </button>
-                        @endcan
-                    </div>
-                </div>
-            @endif
+            <div data-entity-closed-banner-host>
+                @include('business-entities.partials.closed-entity-banner', compact('businessEntity'))
+            </div>
+            <div data-entity-tenancy-banner-host>
+                @include('business-entities.partials.tenancy-contact-banner', compact('businessEntity'))
+            </div>
             <div class="flex flex-col lg:flex-row gap-6">
                 <div data-entity-sidebar>
                     @include('business-entities.partials.entity-details-sidebar', compact('businessEntity'))

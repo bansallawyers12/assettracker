@@ -761,6 +761,27 @@ class BusinessEntity extends Model
     }
 
     /**
+     * ASIC due date for profile sidebar: honour an explicit future stored anniversary;
+     * otherwise prefer in-window overdue/soon, then the next rolled occurrence.
+     */
+    public function displayAsicRenewalDueDate(int $withinDays = 30, ?CarbonInterface $from = null): ?Carbon
+    {
+        if (! $this->isCompany() || $this->asic_renewal_date === null) {
+            return null;
+        }
+
+        $from = Carbon::parse($from ?? now())->startOfDay();
+        $stored = $this->asic_renewal_date->copy()->startOfDay();
+
+        if ($stored->gt($from)) {
+            return $stored;
+        }
+
+        return $this->asicRenewalDueDateInWindow($withinDays, $from)
+            ?? $this->nextAsicRenewalDueDate($from);
+    }
+
+    /**
      * Operational companies whose ASIC anniversary is overdue (within lookback)
      * or due within $withinDays.
      *

@@ -4,6 +4,7 @@ namespace Tests\Unit;
 
 use App\Models\BusinessEntity;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Validator;
 use Tests\TestCase;
 
 class BusinessEntityAsicRenewalDueDateTest extends TestCase
@@ -116,6 +117,30 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
         $this->assertSame('2026-07-30', $entity->asicRenewalDueDateInWindow(15)?->toDateString());
     }
 
+    public function test_display_asic_renewal_due_date_honours_explicit_future_anniversary(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-11-17'));
+
+        $entity = new BusinessEntity([
+            'entity_type' => 'Company',
+            'asic_renewal_date' => '2027-11-14',
+        ]);
+
+        $this->assertSame('2027-11-14', $entity->displayAsicRenewalDueDate()?->toDateString());
+    }
+
+    public function test_display_asic_renewal_due_date_uses_in_window_when_stored_anniversary_has_passed(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-07-24'));
+
+        $entity = new BusinessEntity([
+            'entity_type' => 'Company',
+            'asic_renewal_date' => '2020-07-20',
+        ]);
+
+        $this->assertSame('2026-07-20', $entity->displayAsicRenewalDueDate()?->toDateString());
+    }
+
     public function test_asic_renewal_due_date_in_window_null_outside_window(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-07-24'));
@@ -151,20 +176,20 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
             ],
         ];
 
-        $companyWithoutAsic = \Illuminate\Support\Facades\Validator::make(
+        $companyWithoutAsic = Validator::make(
             ['entity_type' => 'Company', 'registration_date' => '2020-03-15', 'asic_renewal_date' => null],
             $rules
         );
         $this->assertFalse($companyWithoutAsic->fails());
 
-        $companyMissingRegistration = \Illuminate\Support\Facades\Validator::make(
+        $companyMissingRegistration = Validator::make(
             ['entity_type' => 'Company', 'registration_date' => null, 'asic_renewal_date' => null],
             $rules
         );
         $this->assertTrue($companyMissingRegistration->fails());
         $this->assertArrayHasKey('registration_date', $companyMissingRegistration->errors()->toArray());
 
-        $provided = \Illuminate\Support\Facades\Validator::make(
+        $provided = Validator::make(
             ['entity_type' => 'Company', 'registration_date' => '2020-03-15', 'asic_renewal_date' => '2020-06-01'],
             $rules
         );
@@ -182,13 +207,13 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
             ],
         ];
 
-        $trustWithDate = \Illuminate\Support\Facades\Validator::make(
+        $trustWithDate = Validator::make(
             ['entity_type' => 'Trust', 'asic_renewal_date' => '2020-03-15'],
             $rules
         );
         $this->assertTrue($trustWithDate->fails());
 
-        $trustWithoutDate = \Illuminate\Support\Facades\Validator::make(
+        $trustWithoutDate = Validator::make(
             ['entity_type' => 'Trust'],
             $rules
         );
@@ -238,13 +263,13 @@ class BusinessEntityAsicRenewalDueDateTest extends TestCase
             'corporate_key' => 'nullable|prohibited_unless:entity_type,Company|string|max:255',
         ];
 
-        $trustWithAcn = \Illuminate\Support\Facades\Validator::make(
+        $trustWithAcn = Validator::make(
             ['entity_type' => 'Trust', 'acn' => '123456789'],
             $rules
         );
         $this->assertTrue($trustWithAcn->fails());
 
-        $companyWithAcn = \Illuminate\Support\Facades\Validator::make(
+        $companyWithAcn = Validator::make(
             ['entity_type' => 'Company', 'acn' => '123456789'],
             $rules
         );

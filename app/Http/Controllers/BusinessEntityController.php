@@ -2455,18 +2455,28 @@ class BusinessEntityController extends Controller
                 app(ComplianceYearService::class)->syncBasSlotsForEntity($businessEntity);
             }
         }
-        if ($request->expectsJson()) {
+        if ($request->expectsJson() || $request->wantsJson()) {
             $businessEntity->refresh();
+            $businessEntity->load(['appointorPerson', 'appointorEntity', 'trustees.trusteeEntity']);
 
             return response()->json([
                 'status' => true,
                 'message' => 'Business entity updated successfully.',
                 'sidebar_html' => view('business-entities.partials.entity-details-sidebar', [
-                    'businessEntity' => $businessEntity->fresh(['appointorPerson', 'appointorEntity', 'trustees.trusteeEntity']),
+                    'businessEntity' => $businessEntity,
+                ])->render(),
+                'closed_banner_html' => view('business-entities.partials.closed-entity-banner', [
+                    'businessEntity' => $businessEntity,
+                ])->render(),
+                'tenancy_banner_html' => view('business-entities.partials.tenancy-contact-banner', [
+                    'businessEntity' => $businessEntity,
                 ])->render(),
                 'entity' => [
                     'legal_name' => $businessEntity->legal_name,
                     'entity_type' => $businessEntity->entity_type,
+                    'trading_name' => $businessEntity->trading_name,
+                    'is_closed' => $businessEntity->isClosed(),
+                    'is_tenancy_contact_only' => $businessEntity->isTenancyContactOnly(),
                 ],
             ]);
         }
