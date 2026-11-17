@@ -1,6 +1,8 @@
 <?php
 
 use App\Models\BusinessEntity;
+use App\Models\Invoice;
+use App\Models\InvoicePaymentAllocation;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\GstWorksheetService;
@@ -249,6 +251,7 @@ it('shows the gst worksheet with quarter links, em dashes, and the reports index
     $default->assertSee('date_to=2025-09-30', false);
     $default->assertSee('payment_status=paid', false);
     $default->assertSee('cash_dated=1', false);
+    $default->assertSee('gst_activity=1', false);
     $default->assertSee('direction=income', false);
     $default->assertDontSee('PAYG paid');
     $default->assertSee('100.00');
@@ -438,4 +441,166 @@ it('lists only the paid transactions that make up each gst worksheet figure', fu
         ->and($q1Total[13])->toBe('40.00')
         ->and($q2Total[10])->toBe('400.00')
         ->and($q2Total[12])->toBe('40.00');
+});
+
+it('leaves funding movements off the worksheet and takes gst from the invoice', function () {
+    $entity = gstWorksheetEntity('Invoice Gst Pty Ltd');
+
+    gstWorksheetPaid($entity, 'loan_drawdown', 5000, 0, '2025-08-01', '2025-08-01');
+    gstWorksheetPaid($entity, 'equity_contribution', 2000, 0, '2025-08-02', '2025-08-02');
+    gstWorksheetPaid($entity, 'director_loan_in', 300, 0, '2025-08-03', '2025-08-03');
+    gstWorksheetPaid($entity, 'internal_transfer', 800, 0, '2025-08-04', '2025-08-04');
+    gstWorksheetPaid($entity, 'loan_repayments', 400, 0, '2025-08-05', '2025-08-05');
+    gstWorksheetPaid($entity, 'loan_interest', 50, 0, '2025-08-06', '2025-08-06');
+    gstWorksheetPaid($entity, 'loan_fees', 25, 0, '2025-08-06', '2025-08-06');
+    gstWorksheetPaid($entity, 'director_loan_out', 120, 0, '2025-08-07', '2025-08-07');
+    gstWorksheetPaid($entity, 'asset_purchase', 1100, 100, '2025-08-08', '2025-08-08');
+
+    $taxed = Invoice::create([
+        'business_entity_id' => $entity->id,
+        'invoice_number' => 'INV-TAXED',
+        'issue_date' => '2025-08-01',
+        'due_date' => '2025-08-08',
+        'customer_name' => 'Tenant',
+        'currency' => 'AUD',
+        'status' => 'approved',
+        'is_posted' => true,
+        'gst_basis' => 'inclusive',
+        'subtotal' => 1000,
+        'gst_amount' => 100,
+        'total_amount' => 1100,
+    ]);
+    $full = gstWorksheetPaid($entity, 'invoice_payment', 1100, 0, '2025-08-15', '2025-08-15');
+    InvoicePaymentAllocation::create([
+        'transaction_id' => $full->id,
+        'invoice_id' => $taxed->id,
+        'amount' => 1100,
+    ]);
+
+    $partialInvoice = Invoice::create([
+        'business_entity_id' => $entity->id,
+        'invoice_number' => 'INV-PART',
+        'issue_date' => '2025-08-01',
+        'due_date' => '2025-08-08',
+        'customer_name' => 'Tenant',
+        'currency' => 'AUD',
+        'status' => 'partial',
+        'is_posted' => true,
+        'gst_basis' => 'inclusive',
+        'subtotal' => 2000,
+        'gst_amount' => 200,
+        'total_amount' => 2200,
+    ]);
+    $partial = gstWorksheetPaid($entity, 'invoice_payment', 1100, 0, '2025-08-20', '2025-08-20');
+    InvoicePaymentAllocation::create([
+        'transaction_id' => $partial->id,
+        'invoice_id' => $partialInvoice->id,
+        'amount' => 1100,
+    ]);
+
+    $overriddenInvoice = Invoice::create([
+        'business_entity_id' => $entity->id,
+        'invoice_number' => 'INV-OVER',
+        'issue_date' => '2025-08-01',
+        'due_date' => '2025-08-08',
+        'customer_name' => 'Tenant',
+        'currency' => 'AUD',
+        'status' => 'approved',
+        'is_posted' => true,
+        'gst_basis' => 'inclusive',
+        'subtotal' => 1000,
+        'gst_amount' => 100,
+        'total_amount' => 1100,
+    ]);
+    $overridden = gstWorksheetPaid($entity, 'invoice_payment', 1100, 40, '2025-08-21', '2025-08-21');
+    InvoicePaymentAllocation::create([
+        'transaction_id' => $overridden->id,
+        'invoice_id' => $overriddenInvoice->id,
+        'amount' => 1100,
+    ]);
+
+    $free = Invoice::create([
+        'business_entity_id' => $entity->id,
+        'invoice_number' => 'INV-FREE',
+        'issue_date' => '2025-08-01',
+        'due_date' => '2025-08-08',
+        'customer_name' => 'Tenant',
+        'currency' => 'AUD',
+        'status' => 'approved',
+        'is_posted' => true,
+        'gst_basis' => 'none',
+        'subtotal' => 500,
+        'gst_amount' => 0,
+        'total_amount' => 500,
+    ]);
+    $freePayment = gstWorksheetPaid($entity, 'invoice_payment', 500, 0, '2025-08-22', '2025-08-22');
+    InvoicePaymentAllocation::create([
+        'transaction_id' => $freePayment->id,
+        'invoice_id' => $free->id,
+        'amount' => 500,
+    ]);
+
+    $periods = gstWorksheetReport([$entity->id])['entities'][0]['periods'];
+
+    expect($periods['q1']['sales_ex_gst'])->toBe(3560.0)
+        ->and($periods['q1']['gst_collected'])->toBe(240.0)
+        ->and($periods['q1']['purchases_ex_gst'])->toBe(1000.0)
+        ->and($periods['q1']['gst_credits'])->toBe(100.0)
+        ->and($periods['q1']['net_gst'])->toBe(140.0);
+});
+
+it('opens gst worksheet links on the transactions that make up the cell', function () {
+    $user = User::factory()->create();
+    $entity = gstWorksheetEntity('Link Scope Pty Ltd');
+
+    gstWorksheetPaid($entity, 'rental_income', 1100, 100, '2025-08-15', '2025-08-15')
+        ->update(['description' => 'August rent']);
+    gstWorksheetPaid($entity, 'loan_drawdown', 5000, 0, '2025-08-16', '2025-08-16')
+        ->update(['description' => 'Loan drawn']);
+    gstWorksheetPaid($entity, 'internal_transfer', 800, 0, '2025-08-17', '2025-08-17')
+        ->update(['description' => 'Offset transfer']);
+    gstWorksheetPaid($entity, 'payg_payment', 80, 0, '2025-08-20', '2025-08-20')
+        ->update(['description' => 'PAYG instalment']);
+    gstWorksheetPaid($entity, 'repairs_maintenance', 220, 20, '2025-09-10', '2025-09-10')
+        ->update(['description' => 'September repair']);
+
+    $sales = $this->actingAs($user)->get(route('transactions.index', [
+        'entity_id' => $entity->id,
+        'date_from' => '2025-07-01',
+        'date_to' => '2025-09-30',
+        'payment_status' => 'paid',
+        'cash_dated' => 1,
+        'gst_activity' => 1,
+        'direction' => 'income',
+    ]));
+
+    $sales->assertOk();
+    $sales->assertSee('August rent');
+    $sales->assertSee('data-tx-gst-activity-notice', false);
+    $sales->assertSee('data-tx-gst-ex-gst', false);
+    $sales->assertSee('1,000.00');
+    $sales->assertSee('100.00');
+    $sales->assertDontSee('Loan drawn');
+    $sales->assertDontSee('Offset transfer');
+    $sales->assertDontSee('September repair');
+    $sales->assertDontSee('PAYG instalment');
+
+    $purchases = $this->actingAs($user)->get(route('transactions.index', [
+        'entity_id' => $entity->id,
+        'date_from' => '2025-07-01',
+        'date_to' => '2025-09-30',
+        'payment_status' => 'paid',
+        'cash_dated' => 1,
+        'gst_activity' => 1,
+        'direction' => 'expense',
+    ]));
+
+    $purchases->assertOk();
+    $purchases->assertSee('September repair');
+    $purchases->assertSee('200.00');
+    $purchases->assertSee('20.00');
+    $purchases->assertDontSee('PAYG instalment');
+    $purchases->assertDontSee('Offset transfer');
+    $purchases->assertDontSee('August rent');
+    $purchases->assertDontSee('Loan drawn');
 });

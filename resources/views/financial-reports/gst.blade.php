@@ -51,6 +51,7 @@
             'date_to' => $period['end'],
             'payment_status' => 'paid',
             'cash_dated' => 1,
+            'gst_activity' => 1,
         ];
         $direction = match ($rowKey) {
             'sales_ex_gst', 'gst_collected' => 'income',
@@ -145,6 +146,8 @@
         <p data-gst-cash-basis-notice>
             Figures are cash basis: paid transactions, dated by the payment date, or the transaction date when the payment date is empty.
             A positive net is payable; a negative net is a refund.
+            Director loans, equity, loan drawdowns, loan principal, loan interest and fees, and transfers between accounts are left out.
+            An invoice receipt uses the invoice’s GST, shared in proportion to the amount paid.
             The quarter or year toggle changes the columns on this page. It does not change how an entity lodges.
         </p>
         @if($showsUnregistered)

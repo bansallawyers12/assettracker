@@ -30,6 +30,7 @@ use App\Services\CommitmentReportService;
 use App\Services\CompanyStoredFileResolver;
 use App\Services\ComplianceYearService;
 use App\Services\DocumentUploadService;
+use App\Services\FinancialReportService;
 use App\Services\LoanOffsetTransactionGuard;
 use App\Services\TransactionPostingService;
 use App\Support\ChartAccountTransactionTypeMapper;
@@ -3896,7 +3897,21 @@ class BusinessEntityController extends Controller
             ], 'date'),
         };
 
+        if (! empty($filters['gst_activity'])) {
+            $query->with(['invoicePaymentAllocations.invoice']);
+        }
+
         $transactions = $query->paginate(50)->withQueryString();
+
+        if (! empty($filters['gst_activity'])) {
+            $gstActivity = app(FinancialReportService::class);
+            $transactions->getCollection()->each(function (Transaction $transaction) use ($gstActivity): void {
+                $transaction->setAttribute(
+                    'gst_worksheet_figures',
+                    $gstActivity->gstActivityForTransaction($transaction)
+                );
+            });
+        }
 
         // Preserve filters only — sort/order are set by the header component.
         $sortQuery = TransactionListFilters::queryParams($filters);

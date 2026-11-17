@@ -1910,10 +1910,12 @@ class FinancialReportService
 
     /**
      * Cash-basis GST split for paid transactions.
-     * Collected is GST on income types; credits are GST on every other type.
-     * This is the entity-summary GST line. Sales and purchases are the ex-GST
-     * nets of those same rows. GST remittances to the ATO and PAYG payment
-     * types stay off purchases.
+     * Collected is GST on sales. Credits are GST on purchases.
+     * Director loans, equity, loan drawdowns, loan principal, loan interest
+     * and fees, and internal transfers are omitted. PAYG and GST remittances
+     * stay off the sheet. An invoice receipt with no GST of its own takes a
+     * proportional share of the invoice GST; the receipt is the cash total,
+     * so the ex-GST figure is that cash minus the GST.
      *
      * @return array{collected: float, credits: float, sales_ex_gst: float, purchases_ex_gst: float}
      */
@@ -1929,6 +1931,39 @@ class FinancialReportService
             $credits += $line['gst_credits'];
             $sales += $line['sales_ex_gst'];
             $purchases += $line['purchases_ex_gst'];
+        }
+
+        return [
+            'collected' => round($collected, 2),
+            'credits' => round($credits, 2),
+            'sales_ex_gst' => round($sales, 2),
+            'purchases_ex_gst' => round($purchases, 2),
+        ];
+    }
+
+    /**
+     * Worksheet figures for one transaction, using the same rules as
+     * {@see paidTransactionGstActivity()}. Split headers sum their included lines.
+     *
+     * @return array{collected: float, credits: float, sales_ex_gst: float, purchases_ex_gst: float}
+     */
+    public function gstActivityForTransaction(Transaction $transaction): array
+    {
+        $collected = 0.0;
+        $credits = 0.0;
+        $sales = 0.0;
+        $purchases = 0.0;
+
+        foreach ($this->gstSourceRows($transaction) as $source) {
+            $classified = $this->classifyPaidGstActivity($source['type'], $source['gst'], $source['net']);
+            if ($classified === null) {
+                continue;
+            }
+
+            $collected += $classified['gst_collected'];
+            $credits += $classified['gst_credits'];
+            $sales += $classified['sales_ex_gst'];
+            $purchases += $classified['purchases_ex_gst'];
         }
 
         return [
@@ -2003,7 +2038,7 @@ class FinancialReportService
     private function paidGstSources(int $entityId, string $start, string $end): \Generator
     {
         $transactions = Transaction::query()
-            ->with(['lines', 'bankAccount'])
+            ->with(['lines', 'bankAccount', 'invoicePaymentAllocations.invoice'])
             ->where('business_entity_id', $entityId)
             ->where('payment_status', 'paid')
             ->where(function ($q) use ($start, $end) {
@@ -2018,43 +2053,125 @@ class FinancialReportService
             ->get();
 
         foreach ($transactions as $transaction) {
-            $paymentDate = ($transaction->paid_at ?? $transaction->date)?->toDateString() ?? '';
-            $transactionDate = $transaction->date?->toDateString() ?? '';
-            $bankAccount = $this->gstSourceBankLabel($transaction);
-            $parts = $transaction->isSplit()
-                ? $transaction->lines
-                : collect([null]);
-
-            foreach ($parts as $line) {
-                if ($line === null) {
-                    yield [
-                        'type' => (string) $transaction->transaction_type,
-                        'gst' => (float) ($transaction->gst_amount ?? 0),
-                        'net' => $transaction->cashParts()['net'],
-                        'amount' => $transaction->cashParts()['cash'],
-                        'payment_date' => $paymentDate,
-                        'transaction_date' => $transactionDate,
-                        'reference' => trim((string) ($transaction->invoice_number ?? '')),
-                        'description' => trim((string) ($transaction->description ?? '')),
-                        'bank_account' => $bankAccount,
-                    ];
-
-                    continue;
-                }
-
-                yield [
-                    'type' => (string) $line->transaction_type,
-                    'gst' => (float) ($line->gst_amount ?? 0),
-                    'net' => $line->cashParts()['net'],
-                    'amount' => $line->cashParts()['cash'],
-                    'payment_date' => $paymentDate,
-                    'transaction_date' => $transactionDate,
-                    'reference' => trim((string) ($line->invoice_number ?: $transaction->invoice_number)),
-                    'description' => trim((string) ($line->description ?: $transaction->description)),
-                    'bank_account' => $bankAccount,
-                ];
+            foreach ($this->gstSourceRows($transaction) as $source) {
+                yield $source;
             }
         }
+    }
+
+    /**
+     * @return list<array{
+     *     type: string,
+     *     gst: float,
+     *     net: float,
+     *     amount: float,
+     *     payment_date: string,
+     *     transaction_date: string,
+     *     reference: string,
+     *     description: string,
+     *     bank_account: string
+     * }>
+     */
+    private function gstSourceRows(Transaction $transaction): array
+    {
+        $paymentDate = ($transaction->paid_at ?? $transaction->date)?->toDateString() ?? '';
+        $transactionDate = $transaction->date?->toDateString() ?? '';
+        $bankAccount = $this->gstSourceBankLabel($transaction);
+        $parts = $transaction->isSplit()
+            ? $transaction->lines
+            : collect([null]);
+        $rows = [];
+
+        foreach ($parts as $line) {
+            if ($line === null) {
+                $cash = $transaction->cashParts();
+                $receipt = $this->invoiceReceiptGstParts($transaction);
+                $rows[] = [
+                    'type' => (string) $transaction->transaction_type,
+                    'gst' => $receipt['gst'] ?? (float) ($transaction->gst_amount ?? 0),
+                    'net' => $receipt['net'] ?? $cash['net'],
+                    'amount' => $receipt['amount'] ?? $cash['cash'],
+                    'payment_date' => $paymentDate,
+                    'transaction_date' => $transactionDate,
+                    'reference' => trim((string) ($transaction->invoice_number ?? '')),
+                    'description' => trim((string) ($transaction->description ?? '')),
+                    'bank_account' => $bankAccount,
+                ];
+
+                continue;
+            }
+
+            $lineCash = $line->cashParts();
+            $rows[] = [
+                'type' => (string) $line->transaction_type,
+                'gst' => (float) ($line->gst_amount ?? 0),
+                'net' => $lineCash['net'],
+                'amount' => $lineCash['cash'],
+                'payment_date' => $paymentDate,
+                'transaction_date' => $transactionDate,
+                'reference' => trim((string) ($line->invoice_number ?: $transaction->invoice_number)),
+                'description' => trim((string) ($line->description ?: $transaction->description)),
+                'bank_account' => $bankAccount,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
+     * GST on an invoice receipt is stored on the invoice, not the payment.
+     * A payment that already has its own GST amount is left unchanged.
+     * The share is the allocation over the invoice cash total.
+     *
+     * @return array{gst: float, net: float, amount: float}|null
+     */
+    private function invoiceReceiptGstParts(Transaction $transaction): ?array
+    {
+        if ($transaction->transaction_type !== Transaction::TYPE_INVOICE_PAYMENT) {
+            return null;
+        }
+
+        if ((float) ($transaction->gst_amount ?? 0) > 0) {
+            return null;
+        }
+
+        $allocations = $transaction->relationLoaded('invoicePaymentAllocations')
+            ? $transaction->invoicePaymentAllocations
+            : $transaction->invoicePaymentAllocations()->with('invoice')->get();
+
+        if ($allocations->isEmpty()) {
+            return null;
+        }
+
+        $gst = 0.0;
+        $cash = 0.0;
+
+        foreach ($allocations as $allocation) {
+            $invoice = $allocation->invoice;
+            $paid = round((float) $allocation->amount, 2);
+            $cash += $paid;
+
+            if ($invoice === null) {
+                continue;
+            }
+
+            $total = (float) $invoice->total_amount;
+            $invoiceGst = (float) ($invoice->gst_amount ?? 0);
+            if ($total <= 0 || $invoiceGst == 0.0) {
+                continue;
+            }
+
+            $gst += round($paid * $invoiceGst / $total, 2);
+        }
+
+        $gst = round($gst, 2);
+        $cash = round($cash, 2);
+
+        return [
+            'gst' => $gst,
+            'net' => round($cash - $gst, 2),
+            'amount' => $cash,
+        ];
     }
 
     private function gstSourceBankLabel(Transaction $transaction): string
@@ -2081,6 +2198,7 @@ class FinancialReportService
         $excluded = array_values(array_unique(array_merge(
             Transaction::paygPaymentTypes(),
             Transaction::gstRemittanceTypes(),
+            Transaction::gstWorksheetExcludedTypes(),
         )));
 
         if (in_array($type, $excluded, true)) {

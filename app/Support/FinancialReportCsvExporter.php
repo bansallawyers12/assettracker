@@ -371,7 +371,7 @@ class FinancialReportCsvExporter
             ]);
             $this->writeRow($out, [
                 'Basis',
-                'Cash basis. Paid transactions, dated by the payment date, or the transaction date when the payment date is empty. A positive net is payable; a negative net is a refund.',
+                'Cash basis. Paid transactions, dated by the payment date, or the transaction date when the payment date is empty. A positive net is payable; a negative net is a refund. Director loans, equity, loan drawdowns, loan principal, loan interest and fees, and transfers between accounts are left out. An invoice receipt uses the invoice’s GST, shared in proportion to the amount paid.',
             ]);
             $this->writeRow($out, [
                 'Note',

@@ -88,6 +88,12 @@
                 Dates use the payment date, or the transaction date when the payment date is empty.
             </p>
         @endif
+        @if(! empty($filters['gst_activity']))
+            <input type="hidden" name="gst_activity" value="1">
+            <p class="mb-3 text-xs text-gray-600 dark:text-gray-300" data-tx-gst-activity-notice>
+                These are the paid transactions behind the GST worksheet. Ex GST and GST are the figures that worksheet adds. The Amount column stays the bank total. Director loans, equity, loan drawdowns, loan principal, loan interest and fees, transfers, PAYG, and BAS payments are left out. An invoice receipt uses the invoice’s GST.
+            </p>
+        @endif
 
         <div @class([
             'grid grid-cols-1 gap-3 sm:grid-cols-2',

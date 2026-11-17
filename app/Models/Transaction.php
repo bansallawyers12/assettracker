@@ -546,6 +546,30 @@ class Transaction extends Model
         return ['bas_payments'];
     }
 
+    /**
+     * Paid movements that are neither sales nor purchases on the GST worksheet.
+     * PAYG and BAS remittances are excluded separately.
+     *
+     * @return list<string>
+     */
+    public static function gstWorksheetExcludedTypes(): array
+    {
+        return [
+            'director_loan_in',
+            'directors_loans_to_company',
+            'loan_drawdown',
+            'equity_contribution',
+            'director_loan_out',
+            'director_loan_repayment',
+            'repayment_directors_loans',
+            'company_loans_to_directors',
+            'loan_repayments',
+            'loan_interest',
+            'loan_fees',
+            self::TYPE_INTERNAL_TRANSFER,
+        ];
+    }
+
     /** Payment method options */
     public static $paymentMethods = [
         'bank_transfer' => 'Bank Transfer',

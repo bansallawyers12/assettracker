@@ -54,7 +54,8 @@ final class TransactionListFilters
      *     match_status: ?string,
      *     subject_to_bas: ?string,
      *     is_flagged: ?string,
-     *     cash_dated: ?string
+     *     cash_dated: ?string,
+     *     gst_activity: ?string
      * }
      */
     public static function fromRequest(Request $request): array
@@ -71,6 +72,7 @@ final class TransactionListFilters
             'subject_to_bas' => ['nullable', Rule::in(['yes', 'no'])],
             'is_flagged' => ['nullable', Rule::in(['yes', 'no'])],
             'cash_dated' => ['nullable', 'boolean'],
+            'gst_activity' => ['nullable', 'boolean'],
         ]);
 
         $q = isset($validated['q']) ? trim((string) $validated['q']) : '';
@@ -87,6 +89,7 @@ final class TransactionListFilters
             'subject_to_bas' => $validated['subject_to_bas'] ?? null,
             'is_flagged' => $validated['is_flagged'] ?? null,
             'cash_dated' => $request->boolean('cash_dated') ? '1' : null,
+            'gst_activity' => $request->boolean('gst_activity') ? '1' : null,
         ];
     }
 
@@ -103,7 +106,8 @@ final class TransactionListFilters
      *     match_status: ?string,
      *     subject_to_bas: ?string,
      *     is_flagged: ?string,
-     *     cash_dated?: ?string
+     *     cash_dated?: ?string,
+     *     gst_activity?: ?string
      * }  $filters
      */
     public static function apply(Builder|Relation $query, array $filters, ?int $contextEntityId = null): void
@@ -186,6 +190,23 @@ final class TransactionListFilters
         if ($filters['is_flagged']) {
             $query->where($table.'.is_flagged', $filters['is_flagged'] === 'yes');
         }
+
+        if (! empty($filters['gst_activity'])) {
+            $excluded = array_values(array_unique(array_merge(
+                Transaction::paygPaymentTypes(),
+                Transaction::gstRemittanceTypes(),
+                Transaction::gstWorksheetExcludedTypes(),
+            )));
+            $query->where(function ($q) use ($excluded, $table) {
+                $q->where(function ($header) use ($excluded, $table) {
+                    $header->where($table.'.transaction_type', '!=', Transaction::TYPE_SPLIT)
+                        ->whereNotIn($table.'.transaction_type', $excluded);
+                })->orWhere(function ($split) use ($excluded, $table) {
+                    $split->where($table.'.transaction_type', Transaction::TYPE_SPLIT)
+                        ->whereHas('lines', fn ($lq) => $lq->whereNotIn('transaction_type', $excluded));
+                });
+            });
+        }
     }
 
     /**
@@ -220,7 +241,8 @@ final class TransactionListFilters
      *     match_status: ?string,
      *     subject_to_bas: ?string,
      *     is_flagged: ?string,
-     *     cash_dated?: ?string
+     *     cash_dated?: ?string,
+     *     gst_activity?: ?string
      * }  $filters
      * @param  array<string, mixed>  $extra
      * @return array<string, mixed>
@@ -239,6 +261,7 @@ final class TransactionListFilters
             'subject_to_bas' => $filters['subject_to_bas'] ?? null,
             'is_flagged' => $filters['is_flagged'] ?? null,
             'cash_dated' => $filters['cash_dated'] ?? null,
+            'gst_activity' => $filters['gst_activity'] ?? null,
         ]);
 
         return array_filter(

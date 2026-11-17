@@ -42,8 +42,22 @@
         </div>
 
         @php
+            $gstActivityList = ! empty($filters['gst_activity']);
+            $gstDirection = $filters['direction'] ?? null;
             $pageIncomeSum = $transactions->filter(fn ($t) => $t->direction === 'income')->sum(fn ($t) => (float) $t->amount);
             $pageExpenseSum = $transactions->filter(fn ($t) => $t->direction === 'expense')->sum(fn ($t) => (float) $t->amount);
+            $pageSalesExGst = $gstActivityList
+                ? $transactions->sum(fn ($t) => (float) ($t->gst_worksheet_figures['sales_ex_gst'] ?? 0))
+                : 0.0;
+            $pagePurchasesExGst = $gstActivityList
+                ? $transactions->sum(fn ($t) => (float) ($t->gst_worksheet_figures['purchases_ex_gst'] ?? 0))
+                : 0.0;
+            $pageGstCollected = $gstActivityList
+                ? $transactions->sum(fn ($t) => (float) ($t->gst_worksheet_figures['collected'] ?? 0))
+                : 0.0;
+            $pageGstCredits = $gstActivityList
+                ? $transactions->sum(fn ($t) => (float) ($t->gst_worksheet_figures['credits'] ?? 0))
+                : 0.0;
         @endphp
 
         <div class="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
@@ -65,6 +79,10 @@
                             <x-sortable-table-header :label="__('Description')" column="description" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
                             <x-sortable-table-header :label="__('Vendor')" column="vendor" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" class="px-4 py-3 text-left text-sm font-medium text-gray-600 dark:text-gray-300" />
                             <x-sortable-table-header :label="__('Amount')" column="amount" :sort="$tableSort->column" :order="$tableSort->order" route="transactions.index" :query="$sortQuery" align="right" class="px-4 py-3 text-right text-sm font-medium text-gray-600 dark:text-gray-300" />
+                            @if($gstActivityList)
+                                <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300">{{ __('Ex GST') }}</th>
+                                <th class="px-4 py-3 text-right font-medium text-gray-600 dark:text-gray-300">{{ __('GST') }}</th>
+                            @endif
                             <th class="px-4 py-3 text-left font-medium text-gray-600 dark:text-gray-300">{{ __('Matched') }}</th>
                         </tr>
                     </thead>
@@ -155,6 +173,27 @@
                                         <span class="text-red-700 dark:text-red-400">−${{ number_format((float) $tx->amount, 2) }}</span>
                                     @endif
                                 </td>
+                                @if($gstActivityList)
+                                    @php
+                                        $figures = $tx->gst_worksheet_figures ?? ['sales_ex_gst' => 0, 'purchases_ex_gst' => 0, 'collected' => 0, 'credits' => 0];
+                                        $exGst = match ($gstDirection) {
+                                            'income' => (float) $figures['sales_ex_gst'],
+                                            'expense' => (float) $figures['purchases_ex_gst'],
+                                            default => (float) $figures['sales_ex_gst'] - (float) $figures['purchases_ex_gst'],
+                                        };
+                                        $gstAmount = match ($gstDirection) {
+                                            'income' => (float) $figures['collected'],
+                                            'expense' => (float) $figures['credits'],
+                                            default => (float) $figures['collected'] - (float) $figures['credits'],
+                                        };
+                                    @endphp
+                                    <td class="px-4 py-3 text-right tabular-nums whitespace-nowrap text-gray-800 dark:text-gray-200" data-tx-gst-ex-gst>
+                                        {{ number_format($exGst, 2) }}
+                                    </td>
+                                    <td class="px-4 py-3 text-right tabular-nums whitespace-nowrap text-gray-800 dark:text-gray-200" data-tx-gst-amount>
+                                        {{ number_format($gstAmount, 2) }}
+                                    </td>
+                                @endif
                                 <td class="px-4 py-3">
                                     @if ($tx->bankStatementEntries->count() > 0)
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
@@ -169,7 +208,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="15" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
+                                <td colspan="{{ $gstActivityList ? 17 : 15 }}" class="px-4 py-10 text-center text-gray-500 dark:text-gray-400">
                                     {{ $filtersActive ? 'No transactions match these filters.' : 'No transactions found.' }}
                                 </td>
                             </tr>
@@ -189,6 +228,21 @@
                     <div>This page — Income: <span class="font-medium text-green-700 dark:text-green-400">${{ number_format($pageIncomeSum, 2) }}</span></div>
                     <div>This page — Expense: <span class="font-medium text-red-700 dark:text-red-400">${{ number_format($pageExpenseSum, 2) }}</span></div>
                     <div>This page — Net: <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($pageIncomeSum - $pageExpenseSum, 2) }}</span></div>
+                    @if($gstActivityList)
+                        <div data-tx-gst-page-totals>
+                            @if($gstDirection === 'expense')
+                                This page — Purchases (ex GST): <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($pagePurchasesExGst, 2) }}</span>
+                                · GST credits: <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($pageGstCredits, 2) }}</span>
+                            @elseif($gstDirection === 'income')
+                                This page — Sales (ex GST): <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($pageSalesExGst, 2) }}</span>
+                                · GST collected: <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($pageGstCollected, 2) }}</span>
+                            @else
+                                This page — Sales (ex GST): <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($pageSalesExGst, 2) }}</span>
+                                · Purchases (ex GST): <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($pagePurchasesExGst, 2) }}</span>
+                                · Net GST: <span class="font-medium text-gray-800 dark:text-gray-200">${{ number_format($pageGstCollected - $pageGstCredits, 2) }}</span>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             @endif
 

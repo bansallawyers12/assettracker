@@ -126,6 +126,30 @@ it('dates a cash-basis filter by payment date when that date is set', function (
         ->and($sql)->toContain('paid_at');
 });
 
+it('limits a gst activity list to sales and purchases', function () {
+    $query = Transaction::query();
+
+    TransactionListFilters::apply($query, [
+        'q' => null,
+        'date_from' => null,
+        'date_to' => null,
+        'entity_id' => null,
+        'type' => null,
+        'direction' => 'income',
+        'payment_status' => 'paid',
+        'match_status' => null,
+        'subject_to_bas' => null,
+        'is_flagged' => null,
+        'gst_activity' => '1',
+    ]);
+
+    expect($query->getBindings())->toContain('loan_drawdown')
+        ->and($query->getBindings())->toContain('internal_transfer')
+        ->and($query->getBindings())->toContain('payg_payment')
+        ->and($query->getBindings())->toContain('bas_payments')
+        ->and($query->getBindings())->toContain('loan_repayments');
+});
+
 it('builds query params without empty values', function () {
     $params = TransactionListFilters::queryParams([
         'q' => 'water',
