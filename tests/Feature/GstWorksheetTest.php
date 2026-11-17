@@ -293,11 +293,20 @@ it('shows the gst worksheet with quarter links, em dashes, and the reports index
     $csv->assertOk();
     $csvBody = $csv->streamedContent();
     expect($csvBody)->toContain('GST worksheet')
+        ->and($csvBody)->toContain('SECTION,Worksheet')
         ->and($csvBody)->toContain('Q1 Jul–Sep')
         ->and($csvBody)->toContain('Sales (ex GST)')
         ->and($csvBody)->toContain('GST recorded on transactions')
         ->and($csvBody)->toContain('Not GST registered')
-        ->and($csvBody)->toContain('—');
+        ->and($csvBody)->toContain('—')
+        ->and($csvBody)->toContain('Supporting transactions')
+        ->and($csvBody)->toContain('Each quarter is listed once')
+        ->and($csvBody)->toContain('Rental Income')
+        ->and($csvBody)->toContain('1000.00')
+        ->and($csvBody)->toContain('Repairs')
+        ->and($csvBody)->toContain('200.00')
+        ->and($csvBody)->toContain('GST recorded')
+        ->and(substr_count($csvBody, 'rental_income'))->toBe(2);
 
     $summary = $this->actingAs($user)->get(route('financial-reports.entity-summary', [
         'scope' => 'selected',
@@ -309,9 +318,124 @@ it('shows the gst worksheet with quarter links, em dashes, and the reports index
     $summary->assertSee('data-entity-summary-gst-link', false);
     $summary->assertSee('/financial-reports/gst', false);
 
+    $annualCsv = $this->actingAs($user)->get(route('financial-reports.gst', array_merge($query, [
+        'layout' => 'annual',
+        'format' => 'csv',
+    ])));
+    $annualCsv->assertOk();
+    $annualBody = $annualCsv->streamedContent();
+    expect($annualBody)->toContain('Supporting transactions')
+        ->and($annualBody)->toContain('The financial year is listed once')
+        ->and($annualBody)->toContain('FY 2025-2026')
+        ->and($annualBody)->not->toContain('Q1 Jul')
+        ->and(substr_count($annualBody, 'rental_income'))->toBe(1);
+
     $hub = file_get_contents(resource_path('views/financial-reports/index.blade.php'));
     $profitLoss = strpos($hub, "'route' => 'financial-reports.profit-loss'");
     $gst = strpos($hub, "'route' => 'financial-reports.gst'");
     expect($profitLoss)->not->toBeFalse()
         ->and($gst)->toBeGreaterThan($profitLoss);
+});
+
+it('lists only the paid transactions that make up each gst worksheet figure', function () {
+    $user = User::factory()->create();
+    $entity = gstWorksheetEntity('Export Lines Pty Ltd');
+
+    gstWorksheetPaid($entity, 'rental_income', 1100, 100, '2025-08-15', '2025-08-15')
+        ->update(['description' => 'August rent', 'invoice_number' => 'INV-AUG']);
+    gstWorksheetPaid($entity, 'repairs_maintenance', 220, 20, '2025-09-10', '2025-09-10')
+        ->update(['description' => 'September repair']);
+    gstWorksheetPaid($entity, 'rental_income', 440, 40, '2025-07-01', '2025-10-05')
+        ->update(['description' => 'October paid July dated']);
+    gstWorksheetPaid($entity, 'payg_payment', 80, 0, '2025-08-20', '2025-08-20')
+        ->update(['description' => 'PAYG instalment']);
+    gstWorksheetPaid($entity, 'bas_payments', 110, 0, '2025-09-28', '2025-09-28')
+        ->update(['description' => 'ATO gst payment']);
+    gstWorksheetPaid($entity, 'rental_income', 999, 99, '2025-08-01', '2025-08-01', 'unpaid')
+        ->update(['description' => 'Unpaid rent']);
+
+    $split = gstWorksheetPaid($entity, 'split', 1320, 0, '2025-08-01', '2025-08-01');
+    $split->update(['description' => 'Split parent']);
+    $split->lines()->create([
+        'sort_order' => 1,
+        'transaction_type' => 'rental_income',
+        'amount' => 1100,
+        'gst_amount' => 100,
+        'gst_basis' => 'inclusive',
+        'description' => 'Split rent',
+        'invoice_number' => 'INV-SPLIT',
+    ]);
+    $split->lines()->create([
+        'sort_order' => 2,
+        'transaction_type' => 'repairs_maintenance',
+        'amount' => 220,
+        'gst_amount' => 20,
+        'gst_basis' => 'inclusive',
+        'description' => 'Split repair',
+    ]);
+
+    $csv = $this->actingAs($user)->get(route('financial-reports.gst', [
+        'fy' => '2025-07-01',
+        'scope' => 'selected',
+        'entity_ids' => [$entity->id],
+        'layout' => 'quarterly',
+        'format' => 'csv',
+    ]));
+    $csv->assertOk();
+
+    $rows = array_map('str_getcsv', preg_split('/\r\n|\n|\r/', trim($csv->streamedContent())) ?: []);
+    $supporting = [];
+    $inSupporting = false;
+    foreach ($rows as $row) {
+        if (($row[0] ?? '') === 'SECTION' && ($row[1] ?? '') === 'Supporting transactions') {
+            $inSupporting = true;
+
+            continue;
+        }
+        if (! $inSupporting || ($row[0] ?? '') === 'Note' || ($row[0] ?? '') === 'Entity') {
+            continue;
+        }
+        $supporting[] = $row;
+    }
+
+    $descriptions = array_column($supporting, 5);
+
+    expect($descriptions)->toContain('August rent')
+        ->and($descriptions)->toContain('September repair')
+        ->and($descriptions)->toContain('October paid July dated')
+        ->and($descriptions)->toContain('Split rent')
+        ->and($descriptions)->toContain('Split repair')
+        ->and($descriptions)->toContain('Total')
+        ->and($descriptions)->not->toContain('PAYG instalment')
+        ->and($descriptions)->not->toContain('ATO gst payment')
+        ->and($descriptions)->not->toContain('Unpaid rent')
+        ->and($descriptions)->not->toContain('Split parent');
+
+    $august = collect($supporting)->first(fn (array $row) => ($row[5] ?? '') === 'August rent');
+    $october = collect($supporting)->first(fn (array $row) => ($row[5] ?? '') === 'October paid July dated');
+    $splitRent = collect($supporting)->first(fn (array $row) => ($row[5] ?? '') === 'Split rent');
+    $q1Total = collect($supporting)->first(
+        fn (array $row) => ($row[1] ?? '') === 'Q1 Jul–Sep' && ($row[5] ?? '') === 'Total'
+    );
+    $q2Total = collect($supporting)->first(
+        fn (array $row) => ($row[1] ?? '') === 'Q2 Oct–Dec' && ($row[5] ?? '') === 'Total'
+    );
+
+    expect($august[1])->toBe('Q1 Jul–Sep')
+        ->and($august[2])->toBe('2025-08-15')
+        ->and($august[4])->toBe('INV-AUG')
+        ->and($august[7])->toBe('Rental Income')
+        ->and($august[10])->toBe('1000.00')
+        ->and($august[12])->toBe('100.00')
+        ->and($october[1])->toBe('Q2 Oct–Dec')
+        ->and($october[2])->toBe('2025-10-05')
+        ->and($october[3])->toBe('2025-07-01')
+        ->and($splitRent[4])->toBe('INV-SPLIT')
+        ->and($splitRent[10])->toBe('1000.00')
+        ->and($q1Total[10])->toBe('2000.00')
+        ->and($q1Total[11])->toBe('400.00')
+        ->and($q1Total[12])->toBe('200.00')
+        ->and($q1Total[13])->toBe('40.00')
+        ->and($q2Total[10])->toBe('400.00')
+        ->and($q2Total[12])->toBe('40.00');
 });

@@ -1919,59 +1919,16 @@ class FinancialReportService
      */
     public function paidTransactionGstActivity(int $entityId, string $start, string $end): array
     {
-        $transactions = Transaction::query()
-            ->with('lines')
-            ->where('business_entity_id', $entityId)
-            ->where('payment_status', 'paid')
-            ->where(function ($q) use ($start, $end) {
-                $q->where(function ($q2) use ($start, $end) {
-                    $q2->whereNotNull('paid_at')->whereBetween('paid_at', [$start, $end]);
-                })->orWhere(function ($q2) use ($start, $end) {
-                    $q2->whereNull('paid_at')->whereBetween('date', [$start, $end]);
-                });
-            })
-            ->get();
-
         $collected = 0.0;
         $credits = 0.0;
         $sales = 0.0;
         $purchases = 0.0;
-        $incomeKeys = array_keys(Transaction::$incomeTypes);
-        $paygTypes = array_values(array_unique(array_merge(
-            Transaction::paygPaymentTypes(),
-            Transaction::gstRemittanceTypes(),
-        )));
 
-        foreach ($transactions as $transaction) {
-            if ($transaction->isSplit()) {
-                foreach ($transaction->lines as $line) {
-                    $this->accumulatePaidGstActivity(
-                        (string) $line->transaction_type,
-                        (float) ($line->gst_amount ?? 0),
-                        $line->cashParts()['net'],
-                        $incomeKeys,
-                        $paygTypes,
-                        $collected,
-                        $credits,
-                        $sales,
-                        $purchases,
-                    );
-                }
-
-                continue;
-            }
-
-            $this->accumulatePaidGstActivity(
-                (string) $transaction->transaction_type,
-                (float) ($transaction->gst_amount ?? 0),
-                $transaction->cashParts()['net'],
-                $incomeKeys,
-                $paygTypes,
-                $collected,
-                $credits,
-                $sales,
-                $purchases,
-            );
+        foreach ($this->paidTransactionGstLines($entityId, $start, $end) as $line) {
+            $collected += $line['gst_collected'];
+            $credits += $line['gst_credits'];
+            $sales += $line['sales_ex_gst'];
+            $purchases += $line['purchases_ex_gst'];
         }
 
         return [
@@ -1983,37 +1940,162 @@ class FinancialReportService
     }
 
     /**
-     * @param  list<string>  $incomeKeys
-     * @param  list<string>  $paygTypes
+     * Paid cash-basis rows behind {@see paidTransactionGstActivity()}.
+     * A split contributes one row per line. PAYG payments and GST remittances are omitted.
+     *
+     * @return list<array{
+     *     payment_date: string,
+     *     transaction_date: string,
+     *     reference: string,
+     *     description: string,
+     *     bank_account: string,
+     *     type: string,
+     *     amount: float,
+     *     gst: float,
+     *     sales_ex_gst: float,
+     *     purchases_ex_gst: float,
+     *     gst_collected: float,
+     *     gst_credits: float
+     * }>
      */
-    private function accumulatePaidGstActivity(
-        string $type,
-        float $gst,
-        float $net,
-        array $incomeKeys,
-        array $paygTypes,
-        float &$collected,
-        float &$credits,
-        float &$sales,
-        float &$purchases,
-    ): void {
-        if (in_array($type, $paygTypes, true)) {
-            return;
+    public function paidTransactionGstLines(int $entityId, string $start, string $end): array
+    {
+        $rows = [];
+
+        foreach ($this->paidGstSources($entityId, $start, $end) as $source) {
+            $classified = $this->classifyPaidGstActivity($source['type'], $source['gst'], $source['net']);
+            if ($classified === null) {
+                continue;
+            }
+
+            $rows[] = [
+                'payment_date' => $source['payment_date'],
+                'transaction_date' => $source['transaction_date'],
+                'reference' => $source['reference'],
+                'description' => $source['description'],
+                'bank_account' => $source['bank_account'],
+                'type' => Transaction::allTypes()[$source['type']] ?? $source['type'],
+                'amount' => $source['amount'],
+                'gst' => $source['gst'] > 0 ? $source['gst'] : 0.0,
+                'sales_ex_gst' => $classified['sales_ex_gst'],
+                'purchases_ex_gst' => $classified['purchases_ex_gst'],
+                'gst_collected' => $classified['gst_collected'],
+                'gst_credits' => $classified['gst_credits'],
+            ];
         }
 
-        if ($gst > 0) {
-            if (in_array($type, $incomeKeys, true)) {
-                $collected += $gst;
-            } else {
-                $credits += $gst;
+        return $rows;
+    }
+
+    /**
+     * @return \Generator<int, array{
+     *     type: string,
+     *     gst: float,
+     *     net: float,
+     *     amount: float,
+     *     payment_date: string,
+     *     transaction_date: string,
+     *     reference: string,
+     *     description: string,
+     *     bank_account: string
+     * }>
+     */
+    private function paidGstSources(int $entityId, string $start, string $end): \Generator
+    {
+        $transactions = Transaction::query()
+            ->with(['lines', 'bankAccount'])
+            ->where('business_entity_id', $entityId)
+            ->where('payment_status', 'paid')
+            ->where(function ($q) use ($start, $end) {
+                $q->where(function ($q2) use ($start, $end) {
+                    $q2->whereNotNull('paid_at')->whereBetween('paid_at', [$start, $end]);
+                })->orWhere(function ($q2) use ($start, $end) {
+                    $q2->whereNull('paid_at')->whereBetween('date', [$start, $end]);
+                });
+            })
+            ->orderByRaw('COALESCE(paid_at, date)')
+            ->orderBy('id')
+            ->get();
+
+        foreach ($transactions as $transaction) {
+            $paymentDate = ($transaction->paid_at ?? $transaction->date)?->toDateString() ?? '';
+            $transactionDate = $transaction->date?->toDateString() ?? '';
+            $bankAccount = $this->gstSourceBankLabel($transaction);
+            $parts = $transaction->isSplit()
+                ? $transaction->lines
+                : collect([null]);
+
+            foreach ($parts as $line) {
+                if ($line === null) {
+                    yield [
+                        'type' => (string) $transaction->transaction_type,
+                        'gst' => (float) ($transaction->gst_amount ?? 0),
+                        'net' => $transaction->cashParts()['net'],
+                        'amount' => $transaction->cashParts()['cash'],
+                        'payment_date' => $paymentDate,
+                        'transaction_date' => $transactionDate,
+                        'reference' => trim((string) ($transaction->invoice_number ?? '')),
+                        'description' => trim((string) ($transaction->description ?? '')),
+                        'bank_account' => $bankAccount,
+                    ];
+
+                    continue;
+                }
+
+                yield [
+                    'type' => (string) $line->transaction_type,
+                    'gst' => (float) ($line->gst_amount ?? 0),
+                    'net' => $line->cashParts()['net'],
+                    'amount' => $line->cashParts()['cash'],
+                    'payment_date' => $paymentDate,
+                    'transaction_date' => $transactionDate,
+                    'reference' => trim((string) ($line->invoice_number ?: $transaction->invoice_number)),
+                    'description' => trim((string) ($line->description ?: $transaction->description)),
+                    'bank_account' => $bankAccount,
+                ];
             }
         }
+    }
 
-        if (in_array($type, $incomeKeys, true)) {
-            $sales += $net;
-        } else {
-            $purchases += $net;
+    private function gstSourceBankLabel(Transaction $transaction): string
+    {
+        $bankAccount = $transaction->bankAccount;
+        if ($bankAccount === null) {
+            return '';
         }
+
+        $label = trim((string) $bankAccount->bank_name);
+        $accountName = trim((string) ($bankAccount->account_name ?? ''));
+        if ($accountName !== '') {
+            $label = $label === '' ? $accountName : $label.' ('.$accountName.')';
+        }
+
+        return $label;
+    }
+
+    /**
+     * @return array{sales_ex_gst: float, purchases_ex_gst: float, gst_collected: float, gst_credits: float}|null
+     */
+    private function classifyPaidGstActivity(string $type, float $gst, float $net): ?array
+    {
+        $excluded = array_values(array_unique(array_merge(
+            Transaction::paygPaymentTypes(),
+            Transaction::gstRemittanceTypes(),
+        )));
+
+        if (in_array($type, $excluded, true)) {
+            return null;
+        }
+
+        $isIncome = array_key_exists($type, Transaction::$incomeTypes);
+        $countsGst = $gst > 0;
+
+        return [
+            'sales_ex_gst' => $isIncome ? $net : 0.0,
+            'purchases_ex_gst' => $isIncome ? 0.0 : $net,
+            'gst_collected' => $countsGst && $isIncome ? $gst : 0.0,
+            'gst_credits' => $countsGst && ! $isIncome ? $gst : 0.0,
+        ];
     }
 
     private function netGstFromTransactions(int $entityId, string $start, string $end): float

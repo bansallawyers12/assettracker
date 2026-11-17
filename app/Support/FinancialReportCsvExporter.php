@@ -402,7 +402,187 @@ class FinancialReportCsvExporter
                     $visible,
                 );
             }
+
+            $this->writeGstSupportingTransactions($out, $report, $layout, $fyLabel);
         });
+    }
+
+    /**
+     * @param  resource  $out
+     * @param  array<string, mixed>  $report
+     */
+    private function writeGstSupportingTransactions($out, array $report, string $layout, string $fyLabel): void
+    {
+        $detailPeriods = array_values(array_filter(
+            $report['periods'] ?? [],
+            function (array $period) use ($layout): bool {
+                if ($layout === 'annual') {
+                    return ($period['key'] ?? '') === 'fy';
+                }
+
+                return ($period['key'] ?? '') !== 'fy';
+            }
+        ));
+
+        $entities = $report['entities'] ?? [];
+        $showGstRecorded = collect($entities)->contains(
+            fn (array $entityRow): bool => ! ($entityRow['gst_registered'] ?? false)
+        );
+
+        $note = 'Paid transactions behind the worksheet, dated by the payment date, or the transaction date when the payment date is empty. ';
+        $note .= $layout === 'annual'
+            ? 'The financial year is listed once. '
+            : 'Each quarter is listed once; the FY total is the sum of those quarters. ';
+        $note .= 'PAYG payments and GST remittances are left out because they are not part of these figures.';
+        if ($showGstRecorded) {
+            $note .= ' GST collected and GST credits are blank for entities that are not GST registered; that GST is shown as GST recorded.';
+        }
+
+        $this->writeBlank($out);
+        $this->writeSection($out, 'Supporting transactions');
+        $this->writeRow($out, ['Note', $note]);
+
+        $headers = [
+            'Entity',
+            'Period',
+            'Payment date',
+            'Transaction date',
+            'Reference',
+            'Description',
+            'Bank account',
+            'Type',
+            'Amount',
+            'GST',
+            'Sales (ex GST)',
+            'Purchases (ex GST)',
+            'GST collected',
+            'GST credits',
+        ];
+        if ($showGstRecorded) {
+            $headers[] = 'GST recorded';
+        }
+        $this->writeRow($out, $headers);
+
+        if ($entities === [] || $detailPeriods === []) {
+            $this->writeRow($out, ['(No paid transactions for this worksheet)']);
+
+            return;
+        }
+
+        foreach ($entities as $entityRow) {
+            $entity = $entityRow['entity'];
+            $name = $this->gstExportEntityName($entityRow);
+            $registered = (bool) ($entityRow['gst_registered'] ?? false);
+            $wroteAny = false;
+
+            foreach ($detailPeriods as $period) {
+                $lines = $this->financialReportService->paidTransactionGstLines(
+                    (int) $entity->id,
+                    (string) $period['start'],
+                    (string) $period['end'],
+                );
+
+                if ($lines === []) {
+                    continue;
+                }
+
+                $wroteAny = true;
+                $totals = [
+                    'sales_ex_gst' => 0.0,
+                    'purchases_ex_gst' => 0.0,
+                    'gst_collected' => 0.0,
+                    'gst_credits' => 0.0,
+                    'gst_recorded' => 0.0,
+                ];
+                $periodLabel = $this->gstPeriodHeading($period, $layout, $fyLabel);
+
+                foreach ($lines as $line) {
+                    $recorded = $line['gst_collected'] + $line['gst_credits'];
+                    $totals['sales_ex_gst'] += $line['sales_ex_gst'];
+                    $totals['purchases_ex_gst'] += $line['purchases_ex_gst'];
+                    $totals['gst_collected'] += $line['gst_collected'];
+                    $totals['gst_credits'] += $line['gst_credits'];
+                    $totals['gst_recorded'] += $recorded;
+
+                    $cells = [
+                        $name,
+                        $periodLabel,
+                        $line['payment_date'],
+                        $line['transaction_date'],
+                        $this->blankDash($line['reference']),
+                        $this->blankDash($line['description']),
+                        $this->blankDash($line['bank_account']),
+                        $this->blankDash($line['type']),
+                        $this->formatPlainMoney($line['amount']),
+                        $this->formatPlainMoney($line['gst']),
+                        $this->formatContribution($line['sales_ex_gst']),
+                        $this->formatContribution($line['purchases_ex_gst']),
+                        $registered ? $this->formatContribution($line['gst_collected']) : '',
+                        $registered ? $this->formatContribution($line['gst_credits']) : '',
+                    ];
+                    if ($showGstRecorded) {
+                        $cells[] = $registered ? '' : $this->formatContribution($recorded);
+                    }
+                    $this->writeRow($out, $cells);
+                }
+
+                $totalCells = [
+                    $name,
+                    $periodLabel,
+                    '',
+                    '',
+                    '',
+                    'Total',
+                    '',
+                    '',
+                    '',
+                    '',
+                    $this->formatPlainMoney($totals['sales_ex_gst']),
+                    $this->formatPlainMoney($totals['purchases_ex_gst']),
+                    $registered ? $this->formatPlainMoney($totals['gst_collected']) : '',
+                    $registered ? $this->formatPlainMoney($totals['gst_credits']) : '',
+                ];
+                if ($showGstRecorded) {
+                    $recordedTotal = round($totals['gst_recorded'], 2);
+                    $totalCells[] = $registered || abs($recordedTotal) < 0.00001
+                        ? ''
+                        : $this->formatPlainMoney($recordedTotal);
+                }
+                $this->writeRow($out, $totalCells);
+            }
+
+            if (! $wroteAny) {
+                $this->writeRow($out, [$name, '', '', '', '', '(No paid transactions in this period)']);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $entityRow
+     */
+    private function gstExportEntityName(array $entityRow): string
+    {
+        $entity = $entityRow['entity'];
+        $name = $entity->trading_name ?: $entity->legal_name;
+        if (! ($entityRow['gst_registered'] ?? false)) {
+            $name .= ' (Not GST registered)';
+        }
+
+        return (string) $name;
+    }
+
+    private function formatContribution(float $value): string
+    {
+        if (abs($value) < 0.00001) {
+            return '';
+        }
+
+        return $this->formatPlainMoney($value);
+    }
+
+    private function formatPlainMoney(float $value): string
+    {
+        return number_format(round($value, 2), 2, '.', '');
     }
 
     /**
