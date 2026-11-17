@@ -199,7 +199,7 @@
             @if($report['portfolio'])
                 <section class="px-6" data-gst-portfolio>
                     <h2 class="text-sm font-semibold text-gray-900">Portfolio total</h2>
-                    <p class="text-xs text-gray-500">GST collected, credits, net GST, and Total BAS include GST-registered entities only. Sales, purchases, and PAYG include every entity on this sheet.</p>
+                    <p class="text-xs text-gray-500">GST collected, credits, net GST, and Total BAS include GST-registered entities only. Sales and purchases include every entity on this sheet.</p>
                     @include('financial-reports.partials.gst-worksheet-table', [
                         'visiblePeriods' => $visiblePeriods,
                         'rows' => $report['rows'],

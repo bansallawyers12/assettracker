@@ -1868,8 +1868,6 @@ class FinancialReportService
 
         $gstPeriod = $this->netGstFromTransactions($entityId, $periodStart, $periodEnd);
         $gstFy = $this->netGstFromTransactions($entityId, $fyStart, $fyEnd);
-        $paygPeriod = $this->sumPaidTransactionAmounts($entityId, Transaction::paygPaymentTypes(), $periodStart, $periodEnd);
-        $paygFy = $this->sumPaidTransactionAmounts($entityId, Transaction::paygPaymentTypes(), $fyStart, $fyEnd);
 
         $directorLoans = $this->directorLoanSummaryForEntity($entityId, $periodEnd);
 
@@ -1877,11 +1875,9 @@ class FinancialReportService
             'total_sales' => $totalSales,
             'period_sales' => $periodSales,
             'gst_period' => $gstPeriod,
-            'payg_period' => $paygPeriod,
             'gst_fy' => $gstFy,
-            'payg_fy' => $paygFy,
-            'total_bas_period' => round($gstPeriod + $paygPeriod, 2),
-            'total_bas_fy' => round($gstFy + $paygFy, 2),
+            'total_bas_period' => $gstPeriod,
+            'total_bas_fy' => $gstFy,
             'profit_fy' => $fyProfit,
             'profit_pct' => $profitPct,
             'director_loan_asset' => $directorLoans['asset'],
@@ -1916,7 +1912,8 @@ class FinancialReportService
      * Cash-basis GST split for paid transactions.
      * Collected is GST on income types; credits are GST on every other type.
      * This is the entity-summary GST line. Sales and purchases are the ex-GST
-     * nets of those same rows, with PAYG payment types kept off purchases.
+     * nets of those same rows. GST remittances to the ATO and PAYG payment
+     * types stay off purchases.
      *
      * @return array{collected: float, credits: float, sales_ex_gst: float, purchases_ex_gst: float}
      */
@@ -1940,7 +1937,10 @@ class FinancialReportService
         $sales = 0.0;
         $purchases = 0.0;
         $incomeKeys = array_keys(Transaction::$incomeTypes);
-        $paygTypes = Transaction::paygPaymentTypes();
+        $paygTypes = array_values(array_unique(array_merge(
+            Transaction::paygPaymentTypes(),
+            Transaction::gstRemittanceTypes(),
+        )));
 
         foreach ($transactions as $transaction) {
             if ($transaction->isSplit()) {
@@ -1982,11 +1982,6 @@ class FinancialReportService
         ];
     }
 
-    public function paidPaygAmount(int $entityId, string $start, string $end): float
-    {
-        return $this->sumPaidTransactionAmounts($entityId, Transaction::paygPaymentTypes(), $start, $end);
-    }
-
     /**
      * @param  list<string>  $incomeKeys
      * @param  list<string>  $paygTypes
@@ -2002,6 +1997,10 @@ class FinancialReportService
         float &$sales,
         float &$purchases,
     ): void {
+        if (in_array($type, $paygTypes, true)) {
+            return;
+        }
+
         if ($gst > 0) {
             if (in_array($type, $incomeKeys, true)) {
                 $collected += $gst;
@@ -2012,7 +2011,7 @@ class FinancialReportService
 
         if (in_array($type, $incomeKeys, true)) {
             $sales += $net;
-        } elseif (! in_array($type, $paygTypes, true)) {
+        } else {
             $purchases += $net;
         }
     }

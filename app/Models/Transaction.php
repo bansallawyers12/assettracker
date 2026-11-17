@@ -529,10 +529,21 @@ class Transaction extends Model
         return ['superannuation', 'wages_superannuation'];
     }
 
-    /** Transaction types used for entity summary PAYG row. */
+    /** Transaction types for a future PAYG row. BAS remittances are not PAYG. */
     public static function paygPaymentTypes(): array
     {
-        return ['payg_payment', 'bas_payments'];
+        return ['payg_payment'];
+    }
+
+    /**
+     * Cash paid to the ATO for GST. These settle GST already recorded on
+     * sales and purchases, so they are not purchases and not PAYG.
+     *
+     * @return list<string>
+     */
+    public static function gstRemittanceTypes(): array
+    {
+        return ['bas_payments'];
     }
 
     /** Payment method options */

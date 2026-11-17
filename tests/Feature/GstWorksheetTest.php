@@ -63,8 +63,8 @@ it('adds quarterly gst columns that sum to the financial year', function () {
     gstWorksheetPaid($entity, 'repairs_maintenance', 220, 20, '2025-09-10', '2025-09-10');
     gstWorksheetPaid($entity, 'rental_income', 550, 50, '2025-11-02', '2025-11-02');
     gstWorksheetPaid($entity, 'sales_revenue', 110, 10, '2026-05-01', '2026-05-01');
+    gstWorksheetPaid($entity, 'bas_payments', 110, 0, '2025-09-28', '2025-09-28');
     gstWorksheetPaid($entity, 'payg_payment', 80, 0, '2025-08-20', '2025-08-20');
-    gstWorksheetPaid($entity, 'payg_payment', 20, 0, '2026-04-15', '2026-04-15');
     gstWorksheetPaid($entity, 'rental_income', 330, 30, '2025-07-20', null);
     gstWorksheetPaid($entity, 'rental_income', 440, 40, '2025-07-01', '2025-10-05');
     gstWorksheetPaid($entity, 'rental_income', 999, 99, '2025-08-01', '2025-08-01', 'unpaid');
@@ -80,7 +80,7 @@ it('adds quarterly gst columns that sum to the financial year', function () {
         ->and($periods['q4']['gst_collected'])->toBe(10.0)
         ->and($periods['q3']['gst_collected'])->toBe(0.0);
 
-    foreach (['sales_ex_gst', 'purchases_ex_gst', 'gst_collected', 'gst_credits', 'net_gst', 'payg_paid', 'total_bas'] as $row) {
+    foreach (['sales_ex_gst', 'purchases_ex_gst', 'gst_collected', 'gst_credits', 'net_gst', 'total_bas'] as $row) {
         $quarterSum = round(
             $periods['q1'][$row] + $periods['q2'][$row] + $periods['q3'][$row] + $periods['q4'][$row],
             2
@@ -90,8 +90,34 @@ it('adds quarterly gst columns that sum to the financial year', function () {
     }
 
     expect($periods['q1']['net_gst'])->toBe(110.0)
-        ->and($periods['q1']['payg_paid'])->toBe(80.0)
-        ->and($periods['q1']['total_bas'])->toBe(190.0);
+        ->and($periods['q1']['purchases_ex_gst'])->toBe(200.0)
+        ->and($periods['q1']['total_bas'])->toBe(110.0)
+        ->and($periods['q1'])->not->toHaveKey('payg_paid');
+});
+
+it('leaves a gst payment to the ato off the worksheet payg row', function () {
+    $entity = gstWorksheetEntity('Gst Payment Only Pty Ltd');
+
+    gstWorksheetPaid($entity, 'rental_income', 11000, 1000, '2026-08-15', '2026-08-15');
+    gstWorksheetPaid($entity, 'repairs_maintenance', 3300, 300, '2026-08-20', '2026-08-20');
+    gstWorksheetPaid($entity, 'bas_payments', 700, 70, '2026-09-21', '2026-09-21');
+
+    $report = app(GstWorksheetService::class)->generate(
+        [$entity->id],
+        Carbon::parse('2026-07-01'),
+        false,
+        'quarterly',
+    );
+    $periods = $report['entities'][0]['periods'];
+    $labels = collect($report['rows'])->pluck('label')->all();
+
+    expect($labels)->not->toContain('PAYG paid')
+        ->and($periods['q1']['sales_ex_gst'])->toBe(10000.0)
+        ->and($periods['q1']['purchases_ex_gst'])->toBe(3000.0)
+        ->and($periods['q1']['gst_collected'])->toBe(1000.0)
+        ->and($periods['q1']['gst_credits'])->toBe(300.0)
+        ->and($periods['q1']['net_gst'])->toBe(700.0)
+        ->and($periods['q1']['total_bas'])->toBe(700.0);
 });
 
 it('omits an unregistered entity until included, then keeps its gst out of the bas figures', function () {
@@ -224,6 +250,7 @@ it('shows the gst worksheet with quarter links, em dashes, and the reports index
     $default->assertSee('payment_status=paid', false);
     $default->assertSee('cash_dated=1', false);
     $default->assertSee('direction=income', false);
+    $default->assertDontSee('PAYG paid');
     $default->assertSee('100.00');
     $default->assertSee('20.00');
 

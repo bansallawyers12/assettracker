@@ -118,7 +118,6 @@ class GstWorksheetService
     private function figuresFor(BusinessEntity $entity, string $start, string $end): array
     {
         $activity = $this->financialReportService->paidTransactionGstActivity((int) $entity->id, $start, $end);
-        $payg = $this->financialReportService->paidPaygAmount((int) $entity->id, $start, $end);
 
         if ($entity->isGstRegistered()) {
             $net = round($activity['collected'] - $activity['credits'], 2);
@@ -129,8 +128,7 @@ class GstWorksheetService
                 'gst_collected' => $activity['collected'],
                 'gst_credits' => $activity['credits'],
                 'net_gst' => $net,
-                'payg_paid' => $payg,
-                'total_bas' => round($net + $payg, 2),
+                'total_bas' => $net,
                 'gst_recorded_warning' => null,
             ];
         }
@@ -143,7 +141,6 @@ class GstWorksheetService
             'gst_collected' => null,
             'gst_credits' => null,
             'net_gst' => null,
-            'payg_paid' => $payg,
             'total_bas' => null,
             'gst_recorded_warning' => $recorded > 0 ? $recorded : null,
         ];
@@ -166,7 +163,6 @@ class GstWorksheetService
                 'gst_collected' => 0.0,
                 'gst_credits' => 0.0,
                 'net_gst' => 0.0,
-                'payg_paid' => 0.0,
                 'total_bas' => 0.0,
                 'gst_recorded_warning' => 0.0,
             ];
@@ -177,7 +173,6 @@ class GstWorksheetService
                 $figures = $row['periods'][$key];
                 $bucket['sales_ex_gst'] += (float) $figures['sales_ex_gst'];
                 $bucket['purchases_ex_gst'] += (float) $figures['purchases_ex_gst'];
-                $bucket['payg_paid'] += (float) $figures['payg_paid'];
 
                 if ($row['gst_registered']) {
                     $hasRegisteredGst = true;
@@ -193,7 +188,7 @@ class GstWorksheetService
                 }
             }
 
-            foreach (['sales_ex_gst', 'purchases_ex_gst', 'payg_paid'] as $metric) {
+            foreach (['sales_ex_gst', 'purchases_ex_gst'] as $metric) {
                 $bucket[$metric] = round($bucket[$metric], 2);
             }
 
@@ -230,8 +225,7 @@ class GstWorksheetService
             ['key' => 'gst_collected', 'label' => 'GST collected (1A)'],
             ['key' => 'gst_credits', 'label' => 'GST credits (1B)'],
             ['key' => 'net_gst', 'label' => 'Net GST payable or refundable'],
-            ['key' => 'payg_paid', 'label' => 'PAYG paid'],
-            ['key' => 'total_bas', 'label' => 'Total BAS (net GST + PAYG)'],
+            ['key' => 'total_bas', 'label' => 'Total BAS'],
         ];
 
         if ($displayed->contains(fn (BusinessEntity $entity) => ! $entity->isGstRegistered())) {

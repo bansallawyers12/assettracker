@@ -60,9 +60,7 @@
                 ['key' => 'total_sales', 'label' => 'Total sales (cumulative)', 'bold' => true, 'format' => 'money'],
                 ['key' => 'period_sales', 'label' => 'Sales — ' . $periodLabel, 'format' => 'money'],
                 ['key' => 'gst_period', 'label' => 'GST — ' . $periodLabel, 'format' => 'money'],
-                ['key' => 'payg_period', 'label' => 'PAYG — ' . $periodLabel, 'format' => 'money'],
                 ['key' => 'gst_fy', 'label' => 'GST — FY ' . $fyLabel, 'format' => 'money'],
-                ['key' => 'payg_fy', 'label' => 'PAYG — FY ' . $fyLabel, 'format' => 'money'],
                 ['key' => 'total_bas_period', 'label' => 'Total BAS — ' . $periodLabel, 'bold' => true, 'format' => 'money'],
             ],
         ],
@@ -291,7 +289,7 @@
                         <p class="entity-summary-stat-label">Total BAS</p>
                     </div>
                     <p class="entity-summary-stat-value">${{ number_format($totalBasPeriod, 0) }}</p>
-                    <p class="entity-summary-stat-hint">GST + PAYG · period</p>
+                    <p class="entity-summary-stat-hint">Net GST · period</p>
                 </div>
 
                 <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-xs dark:border-gray-700 dark:bg-gray-800 col-span-2 lg:col-span-1">
@@ -324,10 +322,9 @@
 
                 <div class="border-b border-amber-100 bg-amber-50/60 px-5 py-3.5 text-xs leading-relaxed text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100 print:bg-transparent print:text-gray-700">
                     <x-lucide-info class="mr-1.5 inline h-3.5 w-3.5 -mt-px opacity-80" aria-hidden="true" />
-                    Enter tax &amp; payroll via transaction types
+                    Enter tax via transaction types
                     <span class="font-semibold">Wages &amp; Salaries</span>,
-                    <span class="font-semibold">Superannuation</span>,
-                    <span class="font-semibold">PAYG Payment</span>, and
+                    <span class="font-semibold">Superannuation</span>, and
                     <span class="font-semibold">BAS / Tax Payment</span>.
                     GST comes from the GST fields on each transaction.
                 </div>
